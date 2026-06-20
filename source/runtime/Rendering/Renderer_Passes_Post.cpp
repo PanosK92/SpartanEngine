@@ -164,7 +164,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_PostProcess_DisplayEffects(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out)
+    void Renderer::Pass_PostProcess_DisplayEffects(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering)
     {
         auto run_effect = [&](const char* name, Renderer_Shader shader, auto setup)
         {
@@ -172,7 +172,7 @@ namespace spartan
             swap(tex_in, tex_out);
         };
 
-        if (cvar_dithering.GetValueAs<bool>())
+        if (apply_dithering && cvar_dithering.GetValueAs<bool>())
         {
             run_effect("dithering", Renderer_Shader::dithering_c, [&]()
             {

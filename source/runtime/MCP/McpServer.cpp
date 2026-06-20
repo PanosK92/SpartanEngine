@@ -163,6 +163,63 @@ namespace spartan
             return decoded;
         }
 
+        std::string json_escape(const std::string& value)
+        {
+            std::string escaped;
+            escaped.reserve(value.size());
+            for (char c : value)
+            {
+                if (c == '\\' || c == '"')
+                {
+                    escaped.push_back('\\');
+                    escaped.push_back(c);
+                }
+                else if (c == '\n')
+                {
+                    escaped += "\\n";
+                }
+                else if (c == '\r')
+                {
+                    escaped += "\\r";
+                }
+                else if (c == '\t')
+                {
+                    escaped += "\\t";
+                }
+                else
+                {
+                    escaped.push_back(c);
+                }
+            }
+            return escaped;
+        }
+
+        std::string response_with_request_id(const McpRequest& request, const std::string& response)
+        {
+            const auto it = request.arguments.find("__request_id");
+            if (it == request.arguments.end() || it->second.empty())
+            {
+                return response;
+            }
+
+            if (response.size() < 2 || response.front() != '{' || response.back() != '}')
+            {
+                return response;
+            }
+
+            const std::string member = "\"request_id\":\"" + json_escape(it->second) + "\"";
+            std::string framed = response;
+            if (framed.size() == 2)
+            {
+                framed.insert(1, member);
+            }
+            else
+            {
+                framed.insert(framed.size() - 1, "," + member);
+            }
+            return framed;
+        }
+
         McpRequest parse_request(const std::string& line)
         {
             McpRequest request;
@@ -247,6 +304,7 @@ namespace spartan
                     {
                         McpRequest request = parse_request(line);
                         std::string response       = McpQueue::Submit(request);
+                        response                   = response_with_request_id(request, response);
                         response.push_back('\n');
 
                         if (!send_all(client_socket, response))

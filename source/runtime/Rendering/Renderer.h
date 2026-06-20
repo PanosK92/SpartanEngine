@@ -156,8 +156,8 @@ namespace spartan
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNumber();
         static RHI_Api_Type GetRhiApiType();
-        static void Screenshot();
-        static void Screenshot(const std::string& file_path);
+        static bool Screenshot();
+        static bool Screenshot(const std::string& file_path);
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // write a draw data entry and return its index
@@ -306,7 +306,7 @@ namespace spartan
         static void Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_PostProcess_Color(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, uint32_t eye_layer);
         static void Pass_PostProcess_EditorOverlays(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_PostProcess_DisplayEffects(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out);
+        static void Pass_PostProcess_DisplayEffects(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering = true);
         static void Pass_Tonemap(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr = false);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_AA_Upscale(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);

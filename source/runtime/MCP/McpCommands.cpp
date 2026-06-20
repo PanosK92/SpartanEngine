@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "McpCommands.h"
 #include "../Commands/Console/ConsoleCommands.h"
+#include "../Commands/CommandStack.h"
 #include "../Core/ProgressTracker.h"
 #include "../Logging/Log.h"
 #include "../Physics/PhysicsWorld.h"
@@ -41,15 +42,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Terrain.h"
 #include "../World/Prefab.h"
 #include "../Resource/ResourceCache.h"
+#include "../Animation/Animation.h"
 #include "../Geometry/Mesh.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Material.h"
+#include "../Rendering/Renderer.h"
 #include "../Math/Vector2.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <iomanip>
+#include <initializer_list>
 #include <optional>
 #include <sstream>
 #include <typeinfo>
@@ -114,6 +118,21 @@ namespace spartan
         std::string json_bool(bool value)
         {
             return value ? "true" : "false";
+        }
+
+        std::string json_string_array(const std::vector<std::string>& values)
+        {
+            std::string json = "[";
+            for (size_t i = 0; i < values.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json += ",";
+                }
+                json += json_string(values[i]);
+            }
+            json += "]";
+            return json;
         }
 
         std::string json_error(const std::string& error)
@@ -488,6 +507,30 @@ namespace spartan
         {
             std::filesystem::path file_path(path);
             return file_path.is_absolute() && file_path.extension() == ".world";
+        }
+
+        std::string normalize_screenshot_path(const std::optional<std::string>& path)
+        {
+            std::filesystem::path file_path;
+            if (path && !path->empty())
+            {
+                file_path = std::filesystem::path(*path);
+                if (file_path.extension().empty())
+                {
+                    file_path.replace_extension(".png");
+                }
+            }
+            else
+            {
+                file_path = std::filesystem::path("screenshots") / ("mcp_screenshot_" + std::to_string(Renderer::GetFrameNumber()) + ".png");
+            }
+
+            if (file_path.is_relative())
+            {
+                file_path = std::filesystem::absolute(file_path);
+            }
+
+            return file_path.generic_string();
         }
 
         Entity* find_entity_by_name_unique(const std::string& name, bool exact, std::string& error)
@@ -1199,6 +1242,84 @@ namespace spartan
             return nullptr;
         }
 
+        std::shared_ptr<IResource> get_resource_shared_by_name_or_path(const std::string& name_or_path, ResourceType type)
+        {
+            std::lock_guard<std::recursive_mutex> guard(ResourceCache::GetMutex());
+            for (std::shared_ptr<IResource>& resource : ResourceCache::GetResources())
+            {
+                if (!resource || (type != ResourceType::Max && resource->GetResourceType() != type))
+                {
+                    continue;
+                }
+
+                if (resource->GetObjectName() == name_or_path || resource->GetResourceFilePath() == name_or_path)
+                {
+                    return resource;
+                }
+            }
+
+            return nullptr;
+        }
+
+        std::optional<std::string> renderer_debug_cvar_from_name(const std::string& name)
+        {
+            if (name == "aabb")
+            {
+                return "r.aabb";
+            }
+            if (name == "picking_ray")
+            {
+                return "r.picking_ray";
+            }
+            if (name == "grid")
+            {
+                return "r.grid";
+            }
+            if (name == "transform_handle")
+            {
+                return "r.transform_handle";
+            }
+            if (name == "selection_outline")
+            {
+                return "r.selection_outline";
+            }
+            if (name == "lights")
+            {
+                return "r.lights";
+            }
+            if (name == "audio_sources")
+            {
+                return "r.audio_sources";
+            }
+            if (name == "performance_metrics")
+            {
+                return "r.performance_metrics";
+            }
+            if (name == "physics")
+            {
+                return "r.physics";
+            }
+            if (name == "wireframe")
+            {
+                return "r.wireframe";
+            }
+            if (name == "meshlet_visualize")
+            {
+                return "r.meshlet_visualize";
+            }
+            if (name == "cluster_visualize")
+            {
+                return "r.cluster_visualize";
+            }
+
+            return std::nullopt;
+        }
+
+        std::string renderer_debug_options_json()
+        {
+            return "[\"aabb\",\"picking_ray\",\"grid\",\"transform_handle\",\"selection_outline\",\"lights\",\"audio_sources\",\"performance_metrics\",\"physics\",\"wireframe\",\"meshlet_visualize\",\"cluster_visualize\"]";
+        }
+
         Material* get_material_from_request(const McpRequest& request, std::string& error)
         {
             const std::optional<std::string> name = get_argument(request, "name");
@@ -1289,6 +1410,187 @@ namespace spartan
             }
             json += "}}";
             return json;
+        }
+
+        struct ComponentMetadata
+        {
+            std::string property;
+            std::string member;
+            std::string type;
+            bool writable = true;
+            std::string unit;
+            std::string range;
+            std::string enum_values;
+            std::vector<std::string> side_effects;
+            std::string read_only_reason;
+            std::string recommended_default;
+            std::string note;
+        };
+
+        std::string range_json(std::optional<float> min, std::optional<float> max)
+        {
+            std::string json = "{";
+            bool first = true;
+            if (min)
+            {
+                json += "\"min\":" + std::to_string(*min);
+                first = false;
+            }
+            if (max)
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                json += "\"max\":" + std::to_string(*max);
+            }
+            json += "}";
+            return json;
+        }
+
+        std::string enum_values_json(std::initializer_list<std::pair<std::string, std::string>> values)
+        {
+            std::string json = "[";
+            size_t index = 0;
+            for (const std::pair<std::string, std::string>& value : values)
+            {
+                if (index != 0)
+                {
+                    json += ",";
+                }
+                json += "{\"name\":" + json_string(value.first) + ",\"value\":" + value.second + "}";
+                index++;
+            }
+            json += "]";
+            return json;
+        }
+
+        std::string component_metadata_to_json(const ComponentMetadata& metadata)
+        {
+            std::string json = "{";
+            json += "\"property\":" + json_string(metadata.property);
+            if (!metadata.member.empty())
+            {
+                json += ",\"member\":" + json_string(metadata.member);
+            }
+            json += ",\"type\":" + json_string(metadata.type);
+            json += ",\"writable\":" + json_bool(metadata.writable);
+            if (!metadata.unit.empty())
+            {
+                json += ",\"unit\":" + json_string(metadata.unit);
+            }
+            if (!metadata.range.empty())
+            {
+                json += ",\"range\":" + metadata.range;
+            }
+            if (!metadata.enum_values.empty())
+            {
+                json += ",\"enum_values\":" + metadata.enum_values;
+            }
+            if (!metadata.side_effects.empty())
+            {
+                json += ",\"side_effects\":" + json_string_array(metadata.side_effects);
+            }
+            if (!metadata.read_only_reason.empty())
+            {
+                json += ",\"read_only_reason\":" + json_string(metadata.read_only_reason);
+            }
+            if (!metadata.recommended_default.empty())
+            {
+                json += ",\"recommended_default\":" + metadata.recommended_default;
+            }
+            if (!metadata.note.empty())
+            {
+                json += ",\"note\":" + json_string(metadata.note);
+            }
+            json += "}";
+            return json;
+        }
+
+        std::string projection_enum_values_json()
+        {
+            return enum_values_json({ { "perspective", json_string("perspective") }, { "orthographic", json_string("orthographic") } });
+        }
+
+        std::string body_type_enum_values_json()
+        {
+            return enum_values_json({
+                { "box", json_string("box") },
+                { "sphere", json_string("sphere") },
+                { "plane", json_string("plane") },
+                { "capsule", json_string("capsule") },
+                { "mesh", json_string("mesh") },
+                { "mesh_convex", json_string("mesh_convex") },
+                { "controller", json_string("controller") },
+                { "vehicle", json_string("vehicle") },
+                { "cloth", json_string("cloth") }
+            });
+        }
+
+        std::string light_type_enum_values_json()
+        {
+            return enum_values_json({
+                { "directional", json_string("directional") },
+                { "point", json_string("point") },
+                { "spot", json_string("spot") },
+                { "area", json_string("area") }
+            });
+        }
+
+        std::string spline_profile_enum_values_json()
+        {
+            return enum_values_json({
+                { "road", json_string("road") },
+                { "wall", json_string("wall") },
+                { "tube", json_string("tube") },
+                { "fence", json_string("fence") },
+                { "channel", json_string("channel") }
+            });
+        }
+
+        std::string spline_attach_mode_enum_values_json()
+        {
+            return enum_values_json({
+                { "none", json_string("none") },
+                { "centerline", json_string("centerline") },
+                { "left_edge", json_string("left_edge") },
+                { "right_edge", json_string("right_edge") },
+                { "left_outer", json_string("left_outer") },
+                { "right_outer", json_string("right_outer") }
+            });
+        }
+
+        std::string particle_preset_enum_values_json()
+        {
+            return enum_values_json({
+                { "custom", "0" },
+                { "fire", "1" },
+                { "smoke", "2" },
+                { "steam", "3" },
+                { "sparks", "4" },
+                { "dust", "5" },
+                { "snow", "6" },
+                { "rain", "7" },
+                { "confetti", "8" },
+                { "fireflies", "9" },
+                { "blood", "10" },
+                { "magic", "11" },
+                { "explosion", "12" },
+                { "waterfall", "13" },
+                { "embers", "14" },
+                { "tire_smoke", "15" },
+                { "exhaust", "16" }
+            });
+        }
+
+        std::string particle_blend_mode_enum_values_json()
+        {
+            return enum_values_json({ { "alpha", "0" }, { "premultiplied", "1" }, { "additive", "2" } });
+        }
+
+        std::string particle_lighting_mode_enum_values_json()
+        {
+            return enum_values_json({ { "lit", "0" }, { "unlit", "1" }, { "emissive", "2" } });
         }
 
         std::string attribute_value_to_json(const std::any& value, const std::string& type_name)
@@ -1703,6 +2005,167 @@ namespace spartan
             return json;
         }
 
+        void apply_common_member_metadata(ComponentMetadata& metadata)
+        {
+            const std::string property = metadata.property;
+            if (property == "projection_type")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = projection_enum_values_json();
+            }
+            else if (property == "body_type")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = body_type_enum_values_json();
+                metadata.side_effects.emplace_back("recreates physics body and shapes");
+            }
+            else if (property == "light_type")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = light_type_enum_values_json();
+                metadata.side_effects.emplace_back("resets sensible range and shadow mode compatibility");
+            }
+            else if (property == "profile")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = spline_profile_enum_values_json();
+                metadata.side_effects.emplace_back("changes generated spline cross section");
+            }
+            else if (property == "attach_mode")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = spline_attach_mode_enum_values_json();
+                metadata.side_effects.emplace_back("changes how the spline samples its source spline");
+            }
+            else if (property == "preset")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = particle_preset_enum_values_json();
+                metadata.side_effects.emplace_back("overwrites multiple particle properties");
+            }
+            else if (property == "blend_mode")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = particle_blend_mode_enum_values_json();
+                metadata.side_effects.emplace_back("changes particle material blending");
+            }
+            else if (property == "lighting_mode")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = particle_lighting_mode_enum_values_json();
+                metadata.side_effects.emplace_back("changes particle lighting path");
+            }
+
+            if (property.find("path") != std::string::npos || property.find("mesh") != std::string::npos || property.find("material") != std::string::npos)
+            {
+                if (metadata.unit.empty())
+                {
+                    metadata.unit = "path or resource name";
+                }
+            }
+            if (property.find("distance") != std::string::npos || property.find("width") != std::string::npos || property.find("height") != std::string::npos || property.find("radius") != std::string::npos || property.find("offset") != std::string::npos)
+            {
+                if (metadata.unit.empty())
+                {
+                    metadata.unit = "meters";
+                }
+                if (metadata.range.empty())
+                {
+                    metadata.range = range_json(0.0f, std::nullopt);
+                }
+            }
+            if (property.find("angle") != std::string::npos || property.find("yaw") != std::string::npos)
+            {
+                if (metadata.unit.empty())
+                {
+                    metadata.unit = "radians";
+                }
+            }
+            if (property.find("fps") != std::string::npos)
+            {
+                metadata.unit = "frames per second";
+                metadata.range = range_json(0.0f, std::nullopt);
+            }
+            if (property.find("rate") != std::string::npos)
+            {
+                metadata.unit = "per second";
+                metadata.range = range_json(0.0f, std::nullopt);
+            }
+            if (property.find("count") != std::string::npos || property.find("resolution") != std::string::npos || property.find("segments") != std::string::npos || property.find("iterations") != std::string::npos)
+            {
+                metadata.range = range_json(0.0f, std::nullopt);
+            }
+            if (property.find("opacity") != std::string::npos || property.find("wet") != std::string::npos || property.find("blend") != std::string::npos || property.find("influence") != std::string::npos || property.find("stiffness") != std::string::npos || property.find("damping") != std::string::npos)
+            {
+                metadata.unit = "normalized";
+                metadata.range = range_json(0.0f, 1.0f);
+            }
+            if (property == "mass")
+            {
+                metadata.unit = "kilograms";
+                metadata.range = range_json(0.0f, std::nullopt);
+                metadata.side_effects.emplace_back("updates rigid body mass");
+            }
+            if (property == "friction" || property == "friction_rolling" || property == "restitution")
+            {
+                metadata.unit = "coefficient";
+                metadata.range = property == "restitution" ? range_json(0.0f, 1.0f) : range_json(0.0f, std::nullopt);
+                metadata.side_effects.emplace_back("updates physics material");
+            }
+            if (property == "bounding_box" || property == "bounding_box_mesh" || property == "distance_squared" || property == "is_visible" || property == "lod_index" || property == "previous_lights" || property == "area_km2" || property == "height_samples" || property == "vertex_count" || property == "index_count" || property == "triangle_count")
+            {
+                metadata.note = "derived runtime state, edits can be overwritten by the component";
+            }
+            if (property == "spawn_burst")
+            {
+                metadata.side_effects.emplace_back("emits a particle burst");
+            }
+            if (property == "needs_road_regeneration")
+            {
+                metadata.note = "internal dirty flag, prefer component_action generate_road_mesh";
+            }
+            if (property == "source_spline_entity_id" || property == "instance_template_id")
+            {
+                metadata.unit = "entity id";
+            }
+        }
+
+        ComponentMetadata component_member_metadata(const Attribute& attribute)
+        {
+            const std::any value = attribute.getter();
+            ComponentMetadata metadata;
+            metadata.property = attribute_property_name(attribute);
+            metadata.member   = attribute.name;
+            metadata.type     = attribute.type;
+            metadata.writable = attribute_type_is_writable(value);
+            if (!metadata.writable)
+            {
+                metadata.read_only_reason = "unsupported member type for component_set";
+            }
+
+            apply_common_member_metadata(metadata);
+            return metadata;
+        }
+
+        std::string component_member_metadata_json(Component* component)
+        {
+            std::string json = "[";
+            bool first = true;
+
+            for (const Attribute& attribute : component->GetAttributes())
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += component_metadata_to_json(component_member_metadata(attribute));
+            }
+
+            json += "]";
+            return json;
+        }
+
         std::string component_member_properties_to_json(Component* component)
         {
             std::string json = "{";
@@ -1897,6 +2360,36 @@ namespace spartan
             json += ",\"forward\":" + json_vector3(entity->GetForward());
             json += ",\"right\":" + json_vector3(entity->GetRight());
             json += ",\"up\":" + json_vector3(entity->GetUp());
+            json += "}";
+            return json;
+        }
+
+        std::string command_screenshot_take(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            const std::string path = normalize_screenshot_path(get_argument(request, "path"));
+            std::string extension = std::filesystem::path(path).extension().generic_string();
+            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (extension != ".png")
+            {
+                return json_error("screenshot path must be a .png file");
+            }
+
+            const bool accepted = Renderer::Screenshot(path);
+            if (!accepted)
+            {
+                return json_error("screenshot already pending");
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"path\":" + json_string(path);
+            json += ",\"ready\":false";
+            json += ",\"async\":true";
+            json += ",\"note\":" + json_string("screenshot will be written after the next rendered frame");
             json += "}";
             return json;
         }
@@ -2808,6 +3301,97 @@ namespace spartan
             return "[]";
         }
 
+        std::string component_property_metadata_json(ComponentType type)
+        {
+            std::vector<ComponentMetadata> entries;
+            const auto add = [&](ComponentMetadata metadata)
+            {
+                entries.emplace_back(std::move(metadata));
+            };
+
+            if (type == ComponentType::Render)
+            {
+                add({ "mesh", "", "string", true, "", "", "", { "loads or resolves render mesh", "updates render bounds and acceleration structure state" }, "", json_string("standard_cube") });
+                add({ "material", "", "string", true, "", "", "", { "loads or resolves material resource", "changes rendered surface appearance" }, "", json_string("standard") });
+                add({ "default_material", "", "bool", true, "", "", "", { "replaces the assigned material with the renderer default material" }, "", "false" });
+                add({ "visible", "", "bool", true, "", "", "", {}, "", "true" });
+                add({ "casts_shadows", "", "bool", true, "", "", "", { "affects shadow map participation" }, "", "true" });
+                add({ "exclude_from_ray_tracing", "", "bool", true, "", "", "", { "affects blas and tlas participation" }, "", "false" });
+                add({ "max_render_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects distance culling" }, "", "0" });
+                add({ "max_shadow_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects shadow culling" }, "", "0" });
+            }
+            else if (type == ComponentType::Physics)
+            {
+                add({ "body_type", "", "enum", true, "", "", body_type_enum_values_json(), { "recreates physics body and shapes" }, "", json_string("box") });
+                add({ "static", "", "bool", true, "", "", "", { "recreates or retags physics body" }, "", "false" });
+                add({ "kinematic", "", "bool", true, "", "", "", { "changes simulation ownership of the body" }, "", "false" });
+                add({ "enabled", "", "bool", true, "", "", "", { "enables or disables physics processing for the component" }, "", "true" });
+                add({ "mass", "", "float", true, "kilograms", range_json(0.0f, std::nullopt), "", { "updates rigid body mass" }, "", "1" });
+                add({ "friction", "", "float", true, "coefficient", range_json(0.0f, std::nullopt), "", { "updates physics material" }, "", "0.4" });
+                add({ "friction_rolling", "", "float", true, "coefficient", range_json(0.0f, std::nullopt), "", { "updates rolling friction" }, "", "0.4" });
+                add({ "restitution", "", "float", true, "coefficient", range_json(0.0f, 1.0f), "", { "updates physics material bounce" }, "", "0.2" });
+                add({ "center_of_mass", "", "vector3", true, "meters local", "", "", { "changes rigid body center of mass" }, "", "[0,0,0]" });
+                add({ "linear_velocity", "", "vector3", true, "meters per second", "", "", { "changes runtime rigid body velocity" }, "", "[0,0,0]" });
+                add({ "angular_velocity", "", "vector3", true, "radians per second", "", "", { "changes runtime rigid body angular velocity" }, "", "[0,0,0]" });
+            }
+            else if (type == ComponentType::Light)
+            {
+                add({ "light_type", "", "enum", true, "", "", light_type_enum_values_json(), { "resets sensible range and shadow mode compatibility" }, "", json_string("point") });
+                add({ "color", "", "color", true, "linear rgba", range_json(0.0f, std::nullopt), "", { "updates light color and marks renderer lighting data dirty" }, "", "[1,1,1,1]" });
+                add({ "temperature", "", "float", true, "kelvin", range_json(1000.0f, 40000.0f), "", { "updates light color from blackbody temperature" }, "", "6500" });
+                add({ "intensity", "", "float", true, "lux for directional, lumens otherwise", range_json(0.0f, std::nullopt), "", { "updates photometric and radiometric light intensity" }, "", "1000" });
+                add({ "range", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects light culling and shadow coverage" }, "", "10" });
+                add({ "angle_degrees", "", "float", true, "degrees", range_json(0.1f, 179.0f), "", { "affects spot light cone and shadow projection" }, "", "45" });
+                add({ "area_width", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects area light emitter size" }, "", "1" });
+                add({ "area_height", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects area light emitter size" }, "", "1" });
+                add({ "shadows", "", "bool", true, "", "", "", { "allocates and renders shadow maps when enabled" }, "", "true" });
+                add({ "volumetric", "", "bool", true, "", "", "", { "enables volumetric lighting contribution" }, "", "false" });
+                add({ "draw_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects light icon and debug drawing visibility" }, "", "0" });
+                add({ "shadow_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects shadow rendering distance" }, "", "0" });
+                add({ "volumetric_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects volumetric contribution distance" }, "", "0" });
+            }
+            else if (type == ComponentType::Camera)
+            {
+                add({ "fov_degrees", "", "float", true, "degrees", range_json(1.0f, 179.0f), "", { "updates camera projection" }, "", "90" });
+                add({ "aperture", "", "float", true, "f stop", range_json(0.01f, std::nullopt), "", { "changes exposure and depth of field behavior" }, "", "5.6" });
+                add({ "shutter_speed", "", "float", true, "seconds", range_json(0.0001f, std::nullopt), "", { "changes exposure and motion blur behavior" }, "", "0.008" });
+                add({ "iso", "", "float", true, "iso", range_json(1.0f, std::nullopt), "", { "changes exposure" }, "", "200" });
+                add({ "projection", "", "enum", true, "", "", projection_enum_values_json(), { "updates camera projection" }, "", json_string("perspective") });
+                add({ "controllable", "", "bool", true, "", "", "", { "enables editor fps camera controls" }, "", "true" });
+                add({ "flashlight", "", "bool", true, "", "", "", { "creates or toggles transient camera flashlight entity" }, "", "false" });
+            }
+            else if (type == ComponentType::AudioSource)
+            {
+                add({ "clip", "", "string", true, "path or cached clip name", "", "", { "loads or resolves audio clip resource" }, "", json_string("") });
+                add({ "mute", "", "bool", true, "", "", "", {}, "", "false" });
+                add({ "play_on_start", "", "bool", true, "", "", "", { "changes behavior on component start" }, "", "false" });
+                add({ "loop", "", "bool", true, "", "", "", { "changes playback looping behavior" }, "", "false" });
+                add({ "is_3d", "", "bool", true, "", "", "", { "changes spatialization behavior" }, "", "true" });
+                add({ "volume", "", "float", true, "linear gain", range_json(0.0f, 1.0f), "", { "updates playback gain" }, "", "1" });
+                add({ "pitch", "", "float", true, "multiplier", range_json(0.0f, 4.0f), "", { "updates playback rate and pitch" }, "", "1" });
+                add({ "reverb_enabled", "", "bool", true, "", "", "", { "enables reverb processing" }, "", "false" });
+                add({ "reverb_room_size", "", "float", true, "normalized", range_json(0.0f, 1.0f), "", { "updates reverb parameters" }, "", "0.5" });
+                add({ "reverb_decay", "", "float", true, "seconds", range_json(0.0f, std::nullopt), "", { "updates reverb parameters" }, "", "1" });
+                add({ "reverb_wet", "", "float", true, "normalized", range_json(0.0f, 1.0f), "", { "updates reverb wet mix" }, "", "0.3" });
+            }
+            else if (type == ComponentType::Script)
+            {
+                add({ "file_path", "", "string", true, "path", "", "", { "changes script file loaded by the component" }, "", json_string("") });
+            }
+
+            std::string json = "[";
+            for (size_t i = 0; i < entries.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json += ",";
+                }
+                json += component_metadata_to_json(entries[i]);
+            }
+            json += "]";
+            return json;
+        }
+
         std::string command_component_get(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -2844,6 +3428,8 @@ namespace spartan
             json += "\"type\":" + json_string(*type_name);
             json += ",\"editable_properties\":" + editable_properties_json(*type);
             json += ",\"editable_members\":" + component_member_names_json(component);
+            json += ",\"property_metadata\":" + component_property_metadata_json(*type);
+            json += ",\"member_metadata\":" + component_member_metadata_json(component);
             json += ",\"properties\":" + component_properties_to_json(component);
             json += ",\"members\":" + component_members_to_json(component);
             json += "}}";
@@ -3094,6 +3680,499 @@ namespace spartan
 
             material->SetTexture(*texture_type, *texture_path, slot);
             return "{\"ok\":true,\"material\":" + material_to_json(material) + "}";
+        }
+
+        std::string command_undo_redo(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("undo and redo require edit mode");
+            }
+
+            const std::optional<std::string> action_arg = get_argument(request, "action");
+            if (!action_arg)
+            {
+                return json_error("missing action");
+            }
+
+            const std::string action = to_lower_copy(*action_arg);
+            if (action == "undo")
+            {
+                CommandStack::Undo();
+            }
+            else if (action == "redo")
+            {
+                CommandStack::Redo();
+            }
+            else
+            {
+                return json_error("unknown undo action");
+            }
+
+            return "{\"ok\":true,\"action\":" + json_string(action) + "}";
+        }
+
+        std::string command_resource_load(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            const std::optional<std::string> type_arg = get_argument(request, "type");
+            const std::optional<std::string> path_arg = get_argument(request, "path");
+            if (!type_arg || !path_arg || path_arg->empty())
+            {
+                return json_error("missing type or path");
+            }
+
+            const std::optional<ResourceType> type = resource_type_from_name(to_lower_copy(*type_arg));
+            if (!type || *type == ResourceType::Max || *type == ResourceType::Unknown)
+            {
+                return json_error("invalid resource type");
+            }
+
+            uint32_t flags = 0;
+            if (const std::optional<std::string> flags_arg = get_argument(request, "flags"))
+            {
+                if (!parse_uint32(*flags_arg, flags))
+                {
+                    return json_error("invalid flags");
+                }
+            }
+
+            std::shared_ptr<IResource> resource;
+            if (*type == ResourceType::Material)
+            {
+                resource = ResourceCache::Load<Material>(*path_arg, flags);
+            }
+            else if (*type == ResourceType::Texture)
+            {
+                resource = ResourceCache::Load<RHI_Texture>(*path_arg, flags != 0 ? flags : RHI_Texture_Srv);
+            }
+            else if (*type == ResourceType::Mesh)
+            {
+                resource = ResourceCache::Load<Mesh>(*path_arg, flags);
+            }
+            else if (*type == ResourceType::Animation)
+            {
+                resource = ResourceCache::Load<Animation>(*path_arg, flags);
+            }
+            else
+            {
+                return json_error("resource type is not loadable by MCP");
+            }
+
+            if (!resource)
+            {
+                return json_error("failed to load resource");
+            }
+
+            return "{\"ok\":true,\"resource\":" + resource_to_json(resource.get()) + "}";
+        }
+
+        std::string command_resource_reload(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            const std::optional<std::string> key_arg = get_argument(request, "name") ? get_argument(request, "name") : get_argument(request, "path");
+            if (!key_arg || key_arg->empty())
+            {
+                return json_error("missing resource name or path");
+            }
+
+            ResourceType type = ResourceType::Max;
+            if (const std::optional<std::string> type_arg = get_argument(request, "type"))
+            {
+                const std::optional<ResourceType> parsed = resource_type_from_name(to_lower_copy(*type_arg));
+                if (!parsed)
+                {
+                    return json_error("invalid resource type");
+                }
+                type = *parsed;
+            }
+
+            std::shared_ptr<IResource> resource = get_resource_shared_by_name_or_path(*key_arg, type);
+            if (!resource)
+            {
+                return json_error("resource not found");
+            }
+            if (resource->GetResourceFilePath().empty())
+            {
+                return json_error("resource has no file path");
+            }
+
+            resource->LoadFromFile(resource->GetResourceFilePath());
+            return "{\"ok\":true,\"resource\":" + resource_to_json(resource.get()) + "}";
+        }
+
+        std::string command_resource_save(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("resource save requires edit mode");
+            }
+
+            const std::optional<std::string> key_arg = get_argument(request, "name") ? get_argument(request, "name") : get_argument(request, "path");
+            if (!key_arg || key_arg->empty())
+            {
+                return json_error("missing resource name or path");
+            }
+
+            ResourceType type = ResourceType::Max;
+            if (const std::optional<std::string> type_arg = get_argument(request, "type"))
+            {
+                const std::optional<ResourceType> parsed = resource_type_from_name(to_lower_copy(*type_arg));
+                if (!parsed)
+                {
+                    return json_error("invalid resource type");
+                }
+                type = *parsed;
+            }
+
+            std::shared_ptr<IResource> resource = get_resource_shared_by_name_or_path(*key_arg, type);
+            if (!resource)
+            {
+                return json_error("resource not found");
+            }
+
+            const std::optional<std::string> save_path = get_argument(request, "save_path");
+            const std::string path = save_path && !save_path->empty() ? *save_path : resource->GetResourceFilePath();
+            if (path.empty())
+            {
+                return json_error("resource has no save path");
+            }
+
+            const std::filesystem::path file_path(path);
+            if (file_path.has_parent_path())
+            {
+                std::filesystem::create_directories(file_path.parent_path());
+            }
+            resource->SetResourceFilePath(path);
+            resource->SaveToFile(path);
+            return "{\"ok\":true,\"path\":" + json_string(path) + ",\"resource\":" + resource_to_json(resource.get()) + "}";
+        }
+
+        std::string command_resource_remove(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("resource removal requires edit mode");
+            }
+
+            const std::optional<std::string> key_arg = get_argument(request, "name") ? get_argument(request, "name") : get_argument(request, "path");
+            if (!key_arg || key_arg->empty())
+            {
+                return json_error("missing resource name or path");
+            }
+
+            ResourceType type = ResourceType::Max;
+            if (const std::optional<std::string> type_arg = get_argument(request, "type"))
+            {
+                const std::optional<ResourceType> parsed = resource_type_from_name(to_lower_copy(*type_arg));
+                if (!parsed)
+                {
+                    return json_error("invalid resource type");
+                }
+                type = *parsed;
+            }
+
+            std::lock_guard<std::recursive_mutex> guard(ResourceCache::GetMutex());
+            std::vector<std::shared_ptr<IResource>>& resources = ResourceCache::GetResources();
+            const auto it = std::find_if(resources.begin(), resources.end(), [&](const std::shared_ptr<IResource>& resource)
+            {
+                return resource && (type == ResourceType::Max || resource->GetResourceType() == type) && (resource->GetObjectName() == *key_arg || resource->GetResourceFilePath() == *key_arg);
+            });
+
+            if (it == resources.end())
+            {
+                return json_error("resource not found");
+            }
+
+            const std::string removed = resource_to_json(it->get());
+            resources.erase(it);
+            return "{\"ok\":true,\"removed\":" + removed + "}";
+        }
+
+        std::string command_material_create(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("material creation requires edit mode");
+            }
+
+            const std::optional<std::string> path_arg = get_argument(request, "path");
+            if (!path_arg || path_arg->empty())
+            {
+                return json_error("missing path");
+            }
+
+            std::shared_ptr<Material> material = std::make_shared<Material>();
+            const std::filesystem::path file_path(*path_arg);
+            if (file_path.has_parent_path())
+            {
+                std::filesystem::create_directories(file_path.parent_path());
+            }
+            material->SetResourceFilePath(*path_arg);
+            material->SaveToFile(*path_arg);
+            if (const std::optional<std::string> name = get_argument(request, "name"))
+            {
+                material->SetObjectName(*name);
+            }
+
+            material = ResourceCache::Cache(material);
+            return "{\"ok\":true,\"material\":" + material_to_json(material.get()) + "}";
+        }
+
+        std::string command_viewport_frame(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("viewport frame requires edit mode");
+            }
+
+            Camera* camera = World::GetCamera();
+            if (camera == nullptr)
+            {
+                return json_error("camera not found");
+            }
+
+            if (get_argument(request, "id"))
+            {
+                std::string error;
+                Entity* entity = get_entity_from_request(request, error);
+                if (entity == nullptr)
+                {
+                    return json_error(error);
+                }
+                camera->ClearSelection();
+                camera->AddToSelection(entity);
+            }
+
+            camera->FocusOnSelectedEntity();
+            return command_camera_snapshot();
+        }
+
+        std::string command_camera_set_view(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("camera view changes require edit mode");
+            }
+
+            Camera* camera = World::GetCamera();
+            if (camera == nullptr || camera->GetEntity() == nullptr)
+            {
+                return json_error("camera not found");
+            }
+
+            Entity* entity = camera->GetEntity();
+            if (const std::optional<std::string> position = get_argument(request, "position"))
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*position, parsed))
+                {
+                    return json_error("invalid position");
+                }
+                entity->SetPosition(parsed);
+            }
+
+            if (const std::optional<std::string> rotation_euler = get_argument(request, "rotation_euler"))
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*rotation_euler, parsed))
+                {
+                    return json_error("invalid rotation_euler");
+                }
+                entity->SetRotation(math::Quaternion::FromEulerAngles(parsed));
+            }
+            else if (const std::optional<std::string> target = get_argument(request, "target"))
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*target, parsed))
+                {
+                    return json_error("invalid target");
+                }
+                const math::Vector3 direction = parsed - entity->GetPosition();
+                if (direction.LengthSquared() <= std::numeric_limits<float>::epsilon())
+                {
+                    return json_error("target must differ from camera position");
+                }
+                entity->SetRotation(math::Quaternion::FromLookRotation(direction));
+            }
+
+            return command_camera_snapshot();
+        }
+
+        std::string command_renderer_debug_get()
+        {
+            std::string json = "{\"ok\":true,\"options\":" + renderer_debug_options_json() + ",\"values\":{";
+            bool first = true;
+            const std::vector<std::string> options =
+            {
+                "aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "lights", "audio_sources", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"
+            };
+
+            for (const std::string& option : options)
+            {
+                const std::optional<std::string> cvar = renderer_debug_cvar_from_name(option);
+                if (!cvar)
+                {
+                    continue;
+                }
+                const std::optional<std::string> value = ConsoleRegistry::Get().GetValueAsString(*cvar);
+                if (!value)
+                {
+                    continue;
+                }
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(option) + ":" + json_string(*value);
+            }
+
+            json += "}}";
+            return json;
+        }
+
+        std::string command_renderer_debug_set(const McpRequest& request)
+        {
+            const std::optional<std::string> option_arg = get_argument(request, "option");
+            const std::optional<std::string> value_arg = get_argument(request, "value");
+            if (!option_arg || !value_arg)
+            {
+                return json_error("missing option or value");
+            }
+
+            const std::optional<std::string> cvar = renderer_debug_cvar_from_name(to_lower_copy(*option_arg));
+            if (!cvar)
+            {
+                return json_error("unknown renderer debug option");
+            }
+
+            std::string value = to_lower_copy(*value_arg);
+            if (value == "true")
+            {
+                value = "1";
+            }
+            else if (value == "false")
+            {
+                value = "0";
+            }
+
+            if (!ConsoleRegistry::Get().SetValueFromString(*cvar, value))
+            {
+                return json_error("failed to set renderer debug option");
+            }
+
+            return command_renderer_debug_get();
+        }
+
+        std::string command_physics_state(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            Physics* physics = entity->GetComponent<Physics>();
+            if (physics == nullptr)
+            {
+                return json_error("physics component not found");
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"entity\":" + entity_to_json_compact(entity);
+            json += ",\"body_type\":" + json_string(body_type_to_name(physics->GetBodyType()));
+            json += ",\"enabled\":" + json_bool(physics->IsEnabled());
+            json += ",\"static\":" + json_bool(physics->IsStatic());
+            json += ",\"kinematic\":" + json_bool(physics->IsKinematic());
+            json += ",\"mass\":" + std::to_string(physics->GetMass());
+            json += ",\"friction\":" + std::to_string(physics->GetFriction());
+            json += ",\"friction_rolling\":" + std::to_string(physics->GetFrictionRolling());
+            json += ",\"restitution\":" + std::to_string(physics->GetRestitution());
+            json += ",\"center_of_mass\":" + json_vector3(physics->GetCenterOfMass());
+            json += ",\"linear_velocity\":" + json_vector3(physics->GetLinearVelocity());
+            json += ",\"grounded\":" + json_bool(physics->IsGrounded());
+            if (Entity* ground = physics->GetGroundEntity())
+            {
+                json += ",\"ground_entity\":" + entity_to_json_compact(ground);
+            }
+
+            if (physics->GetBodyType() == BodyType::Vehicle)
+            {
+                json += ",\"vehicle\":{";
+                json += "\"throttle\":" + std::to_string(physics->GetVehicleThrottle());
+                json += ",\"brake\":" + std::to_string(physics->GetVehicleBrake());
+                json += ",\"steering\":" + std::to_string(physics->GetVehicleSteering());
+                json += ",\"handbrake\":" + std::to_string(physics->GetVehicleHandbrake());
+                json += ",\"gear\":" + json_string(physics->GetCurrentGearString());
+                json += ",\"engine_rpm\":" + std::to_string(physics->GetEngineRPM());
+                json += ",\"boost_pressure\":" + std::to_string(physics->GetBoostPressure());
+                json += ",\"abs_active\":" + json_bool(physics->IsAbsActiveAny());
+                json += ",\"tc_active\":" + json_bool(physics->IsTcActive());
+                json += ",\"wheels\":[";
+                for (uint32_t i = 0; i < static_cast<uint32_t>(WheelIndex::Count); i++)
+                {
+                    if (i != 0)
+                    {
+                        json += ",";
+                    }
+                    const WheelIndex wheel = static_cast<WheelIndex>(i);
+                    json += "{";
+                    json += "\"index\":" + std::to_string(i);
+                    json += ",\"grounded\":" + json_bool(physics->IsWheelGrounded(wheel));
+                    json += ",\"compression\":" + std::to_string(physics->GetWheelCompression(wheel));
+                    json += ",\"slip_angle\":" + std::to_string(physics->GetWheelSlipAngle(wheel));
+                    json += ",\"slip_ratio\":" + std::to_string(physics->GetWheelSlipRatio(wheel));
+                    json += ",\"rpm\":" + std::to_string(physics->GetWheelRPM(wheel));
+                    json += ",\"temperature\":" + std::to_string(physics->GetWheelTemperature(wheel));
+                    json += ",\"wear\":" + std::to_string(physics->GetWheelWear(wheel));
+                    json += ",\"contact_point\":" + json_vector3(physics->GetWheelContactPoint(wheel));
+                    json += ",\"contact_normal\":" + json_vector3(physics->GetWheelContactNormal(wheel));
+                    json += "}";
+                }
+                json += "]}";
+            }
+
+            json += "}";
+            return json;
         }
 
         std::string command_selection_update(const McpRequest& request)
@@ -4936,6 +6015,10 @@ namespace spartan
         {
             return command_engine_set_mode(request);
         }
+        if (request.command == "undo_redo")
+        {
+            return command_undo_redo(request);
+        }
         if (request.command == "cvar_list")
         {
             return command_cvar_list();
@@ -5000,6 +6083,14 @@ namespace spartan
         {
             return command_camera_snapshot();
         }
+        if (request.command == "camera_set_view")
+        {
+            return command_camera_set_view(request);
+        }
+        if (request.command == "screenshot_take")
+        {
+            return command_screenshot_take(request);
+        }
         if (request.command == "entity_resolve")
         {
             return command_entity_resolve(request);
@@ -5052,6 +6143,10 @@ namespace spartan
         {
             return command_entity_move_index(request);
         }
+        if (request.command == "viewport_frame")
+        {
+            return command_viewport_frame(request);
+        }
         if (request.command == "entity_set_transform")
         {
             return command_entity_set_transform(request);
@@ -5076,9 +6171,29 @@ namespace spartan
         {
             return command_resource_list(request);
         }
+        if (request.command == "resource_load")
+        {
+            return command_resource_load(request);
+        }
+        if (request.command == "resource_reload")
+        {
+            return command_resource_reload(request);
+        }
+        if (request.command == "resource_save")
+        {
+            return command_resource_save(request);
+        }
+        if (request.command == "resource_remove")
+        {
+            return command_resource_remove(request);
+        }
         if (request.command == "material_get")
         {
             return command_material_get(request);
+        }
+        if (request.command == "material_create")
+        {
+            return command_material_create(request);
         }
         if (request.command == "material_set_property")
         {
@@ -5099,6 +6214,18 @@ namespace spartan
         if (request.command == "component_action")
         {
             return command_component_action(request);
+        }
+        if (request.command == "renderer_debug_get")
+        {
+            return command_renderer_debug_get();
+        }
+        if (request.command == "renderer_debug_set")
+        {
+            return command_renderer_debug_set(request);
+        }
+        if (request.command == "physics_state")
+        {
+            return command_physics_state(request);
         }
         if (request.command == "prefab_types")
         {

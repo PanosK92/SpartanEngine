@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import http from "node:http";
+import fs from "node:fs/promises";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -72,6 +73,8 @@ void append_debug_log({
     idle_socket_reuse: true,
     idle_close_ms: 250,
     command_timeout_names: true,
+    bridge_request_ids: true,
+    async_task_reporting: true,
   },
 });
 
@@ -143,6 +146,64 @@ function register_tool(server, name, description, schema, command, options = {})
     const result = await send_engine_command(command, mapped_args);
     return tool_result(result);
   });
+}
+
+const async_tasks = new Map();
+let next_async_task_id = 1;
+
+function async_task_receipt(task) {
+  return {
+    id: task.id,
+    tool: task.tool,
+    status: task.status,
+    started_at: task.started_at,
+    completed_at: task.completed_at,
+    duration_ms: task.completed_at ? task.completed_at_ms - task.started_at_ms : Date.now() - task.started_at_ms,
+    is_error: task.is_error,
+    result: task.result,
+  };
+}
+
+function prune_async_tasks() {
+  if (async_tasks.size <= 100)
+  {
+    return;
+  }
+
+  for (const [id, task] of async_tasks)
+  {
+    if (task.status === "completed" || task.status === "failed")
+    {
+      async_tasks.delete(id);
+      if (async_tasks.size <= 100)
+      {
+        return;
+      }
+    }
+  }
+}
+
+async function run_async_task(task, tool, args) {
+  task.status = "running";
+  try
+  {
+    const result = await tool.handler(args);
+    task.result = normalize_result(result?.structuredContent ?? { ok: false, error: "tool returned no structured result" });
+    task.is_error = Boolean(result?.isError);
+    task.status = task.is_error ? "failed" : "completed";
+  }
+  catch (error)
+  {
+    task.result = structured_error(error.message, { code: "async_task_failed" });
+    task.is_error = true;
+    task.status = "failed";
+  }
+  finally
+  {
+    task.completed_at_ms = Date.now();
+    task.completed_at = new Date(task.completed_at_ms).toISOString();
+    prune_async_tasks();
+  }
 }
 
 const vector3 = z.array(z.number()).length(3);
@@ -262,6 +323,88 @@ const destructive_tool = {
   openWorldHint: true,
 };
 
+register_local_tool("async_task_start", {
+  title: "async task start",
+  description: "Start a registered Spartan MCP tool in the background and return a task id for polling.",
+  inputSchema: {
+    tool: z.string(),
+    args: z.record(z.string(), z.any()).optional(),
+  },
+  outputSchema: output_schemas.async_task,
+  annotations: destructive_tool,
+}, async ({ tool, args = {} }) => {
+  if (["async_task_start", "async_task_get", "async_task_list"].includes(tool))
+  {
+    return tool_result(structured_error("async task tools cannot start themselves", { code: "invalid_arguments" }));
+  }
+
+  const target = tool_registry.get(tool);
+  if (!target)
+  {
+    return tool_result(structured_error("unknown tool", { code: "target_resolution_failed" }));
+  }
+
+  const parsed = parse_raw_shape(target.inputSchema, args);
+  if (!parsed.ok)
+  {
+    return tool_result(parsed.error);
+  }
+
+  const started_at_ms = Date.now();
+  const task = {
+    id: `task_${next_async_task_id++}`,
+    tool,
+    status: "queued",
+    started_at_ms,
+    started_at: new Date(started_at_ms).toISOString(),
+    completed_at_ms: null,
+    completed_at: null,
+    is_error: false,
+    result: null,
+  };
+  async_tasks.set(task.id, task);
+  void run_async_task(task, target, parsed.value);
+
+  return tool_result({
+    ok: true,
+    task: async_task_receipt(task),
+  });
+});
+
+register_local_tool("async_task_get", {
+  title: "async task get",
+  description: "Read the current status and result of an async Spartan MCP task.",
+  inputSchema: {
+    id: z.string(),
+  },
+  outputSchema: output_schemas.async_task,
+  annotations: read_only,
+}, async ({ id }) => {
+  const task = async_tasks.get(id);
+  if (!task)
+  {
+    return tool_result(structured_error("async task not found", { code: "target_resolution_failed" }));
+  }
+
+  return tool_result({
+    ok: true,
+    task: async_task_receipt(task),
+  });
+});
+
+register_local_tool("async_task_list", {
+  title: "async task list",
+  description: "List recent async Spartan MCP tasks.",
+  inputSchema: {},
+  outputSchema: output_schemas.async_task_list,
+  annotations: read_only,
+}, async () => {
+  return tool_result({
+    ok: true,
+    tasks: [...async_tasks.values()].map((task) => async_task_receipt(task)),
+  });
+});
+
 register_local_tool("spartan_status", {
   title: "Spartan Status",
   description: "Return Spartan MCP bridge, engine, and codebase-index status.",
@@ -285,6 +428,14 @@ register_local_tool("spartan_status", {
     read_only_mode,
     engine: engine_status,
     codebase: codebase.status(),
+    features: {
+      bridge_request_ids: true,
+      async_task_reporting: true,
+    },
+    async_tasks: {
+      total: async_tasks.size,
+      active: [...async_tasks.values()].filter((task) => task.status === "queued" || task.status === "running").length,
+    },
   });
 });
 
@@ -498,6 +649,17 @@ register_tool(
   { annotations: edit_tool, outputSchema: output_schemas.engine_status },
 );
 
+register_tool(
+  server,
+  "undo_redo",
+  "Run editor undo or redo through the command stack.",
+  {
+    action: z.enum(["undo", "redo"]),
+  },
+  "undo_redo",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
 register_tool(server, "cvar_list", "List registered console variables.", {}, "cvar_list", {
   annotations: read_only,
 });
@@ -550,6 +712,77 @@ register_tool(server, "context_snapshot", "Read engine status, world summary, an
 register_tool(server, "camera_snapshot", "Read the live editor camera position and basis vectors for camera-relative placement.", {}, "camera_snapshot", {
   annotations: read_only,
   outputSchema: output_schemas.camera_snapshot,
+});
+
+register_tool(
+  server,
+  "camera_set_view",
+  "Set the editor camera position and rotation, or look at a target point.",
+  {
+    position: vector3.optional(),
+    rotation_euler: vector3.optional(),
+    target: vector3.optional(),
+  },
+  "camera_set_view",
+  { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
+);
+
+register_local_tool("screenshot_take", {
+  title: "screenshot take",
+  description: "Request a renderer screenshot and return the target PNG path. If the async save completes quickly, the PNG is also returned as image content.",
+  inputSchema: {
+    path: z.string().optional(),
+    wait_ms: z.number().int().min(0).max(10000).optional(),
+  },
+  outputSchema: output_schemas.screenshot_take,
+  annotations: read_only,
+}, async (args) => {
+  const result = await send_engine_command("screenshot_take", { path: args.path });
+  if (!result.ok || !result.path)
+  {
+    return tool_result(result);
+  }
+
+  const wait_ms = args.wait_ms ?? 2500;
+  const deadline = Date.now() + wait_ms;
+  let image_buffer = null;
+  while (Date.now() <= deadline)
+  {
+    try
+    {
+      image_buffer = await fs.readFile(result.path);
+      break;
+    }
+    catch
+    {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  const normalized = normalize_result({
+    ...result,
+    ready: Boolean(image_buffer),
+  });
+  const content = [
+    {
+      type: "text",
+      text: JSON.stringify(normalized),
+    },
+  ];
+  if (image_buffer)
+  {
+    content.push({
+      type: "image",
+      mimeType: "image/png",
+      data: image_buffer.toString("base64"),
+    });
+  }
+
+  return {
+    structuredContent: normalized,
+    content,
+    isError: false,
+  };
 });
 
 register_tool(
@@ -893,6 +1126,17 @@ register_tool(
 
 register_tool(
   server,
+  "viewport_frame",
+  "Frame the current selection or a specific entity in the editor camera.",
+  {
+    id: z.string().optional(),
+  },
+  "viewport_frame",
+  { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
+);
+
+register_tool(
+  server,
   "entity_delete",
   "Delete an entity in edit mode.",
   {
@@ -990,6 +1234,59 @@ register_tool(
 
 register_tool(
   server,
+  "resource_load",
+  "Load a resource into the cache by type and path.",
+  {
+    type: z.enum(["texture", "material", "mesh", "animation"]),
+    path: z.string(),
+    flags: z.number().int().min(0).optional(),
+  },
+  "resource_load",
+  { annotations: edit_tool, outputSchema: output_schemas.resource_receipt },
+);
+
+register_tool(
+  server,
+  "resource_reload",
+  "Reload a cached resource by name or path.",
+  {
+    name: z.string().optional(),
+    path: z.string().optional(),
+    type: resource_type.optional(),
+  },
+  "resource_reload",
+  { annotations: edit_tool, outputSchema: output_schemas.resource_receipt },
+);
+
+register_tool(
+  server,
+  "resource_save",
+  "Save a cached resource to its current path or a new save_path.",
+  {
+    name: z.string().optional(),
+    path: z.string().optional(),
+    type: resource_type.optional(),
+    save_path: z.string().optional(),
+  },
+  "resource_save",
+  { annotations: edit_tool, outputSchema: output_schemas.resource_receipt },
+);
+
+register_tool(
+  server,
+  "resource_remove",
+  "Remove a cached resource by name or path without deleting the file from disk.",
+  {
+    name: z.string().optional(),
+    path: z.string().optional(),
+    type: resource_type.optional(),
+  },
+  "resource_remove",
+  { annotations: destructive_tool, outputSchema: output_schemas.resource_receipt },
+);
+
+register_tool(
+  server,
   "material_get",
   "Inspect one cached material by name or path, including all scalar properties and texture slots.",
   {
@@ -998,6 +1295,18 @@ register_tool(
   },
   "material_get",
   { annotations: read_only, outputSchema: output_schemas.material },
+);
+
+register_tool(
+  server,
+  "material_create",
+  "Create, save, and cache a new material file in edit mode.",
+  {
+    path: z.string(),
+    name: z.string().optional(),
+  },
+  "material_create",
+  { annotations: edit_tool, outputSchema: output_schemas.material },
 );
 
 register_tool(
@@ -1162,6 +1471,38 @@ register_tool(
   },
   "component_action",
   { annotations: edit_tool, outputSchema: output_schemas.component_action },
+);
+
+register_tool(
+  server,
+  "renderer_debug_get",
+  "Read friendly renderer debug overlay and visualization options.",
+  {},
+  "renderer_debug_get",
+  { annotations: read_only, outputSchema: output_schemas.renderer_debug },
+);
+
+register_tool(
+  server,
+  "renderer_debug_set",
+  "Set a friendly renderer debug overlay or visualization option.",
+  {
+    option: z.enum(["aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "lights", "audio_sources", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"]),
+    value: z.union([z.boolean(), z.number(), z.string()]),
+  },
+  "renderer_debug_set",
+  { annotations: edit_tool, outputSchema: output_schemas.renderer_debug },
+);
+
+register_tool(
+  server,
+  "physics_state",
+  "Inspect rigid body and vehicle physics state for one entity.",
+  {
+    id: z.string(),
+  },
+  "physics_state",
+  { annotations: read_only, outputSchema: output_schemas.physics_state },
 );
 
 register_tool(

@@ -2445,21 +2445,22 @@ namespace spartan
         }
     }
 
-    void Renderer::Screenshot()
+    bool Renderer::Screenshot()
     {
-        Screenshot("");
+        return Screenshot("");
     }
 
-    void Renderer::Screenshot(const string& file_path)
+    bool Renderer::Screenshot(const string& file_path)
     {
         lock_guard<mutex> lock(screenshot_mutex);
         if (screenshot.pending || screenshot.ready)
         {
             SP_LOG_WARNING("Screenshot already pending");
-            return;
+            return false;
         }
 
         screenshot = make_screenshot_request(file_path);
+        return true;
     }
 
     void Renderer::Pass_Screenshot(RHI_CommandList* cmd_list, RHI_Texture* tex_pre_tonemap)
@@ -2485,7 +2486,7 @@ namespace spartan
 
             RHI_Texture* tex_in  = tex_sdr;
             RHI_Texture* tex_out = tex_ping;
-            Pass_PostProcess_DisplayEffects(cmd_list, tex_in, tex_out);
+            Pass_PostProcess_DisplayEffects(cmd_list, tex_in, tex_out, false);
 
             if (tex_in != tex_sdr)
             {

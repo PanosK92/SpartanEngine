@@ -385,43 +385,77 @@ namespace spartan
         float half_to_float(uint16_t half)
         {
             uint32_t mant = half & 0x3FFu;
-            uint32_t exp  = (half >> 10) & 0x1Fu;
+            int32_t exp   = (half >> 10) & 0x1F;
             uint32_t sign = (half >> 15) & 0x1u;
 
             uint32_t f;
             if (exp == 0)
             {
-                f = (sign << 31) | (mant ? ((127 - 15) << 23) | (mant << 13) : 0); // denormals as zero for simplicity
+                if (mant == 0)
+                {
+                    f = sign << 31;
+                }
+                else
+                {
+                    exp = 1;
+                    while ((mant & 0x400u) == 0)
+                    {
+                        mant <<= 1;
+                        exp--;
+                    }
+                    mant &= 0x3FFu;
+                    f = (sign << 31) | (static_cast<uint32_t>(exp + (127 - 15)) << 23) | (mant << 13);
+                }
             }
             else if (exp == 0x1F)
             {
-                f = (sign << 31) | (0x7F800000) | (mant << 13); // inf/nan
+                f = (sign << 31) | (0x7F800000) | (mant << 13);
             }
             else
             {
-                f = (sign << 31) | ((exp + (127 - 15)) << 23) | (mant << 13);
+                f = (sign << 31) | (static_cast<uint32_t>(exp + (127 - 15)) << 23) | (mant << 13);
             }
 
-            return *reinterpret_cast<float*>(&f); // assumes ieee 754 and little-endian
+            float value = 0.0f;
+            memcpy(&value, &f, sizeof(value));
+            return value;
         }
 
-        uint32_t hash_pixel(uint32_t x, uint32_t y, uint32_t channel)
+        float saturate_float(float value)
         {
-            uint32_t h = x * 0x8da6b343u;
-            h ^= y * 0xd8163841u;
-            h ^= channel * 0xcb1ab31fu;
-            h ^= h >> 16;
-            h *= 0x7feb352du;
-            h ^= h >> 15;
-            h *= 0x846ca68bu;
-            h ^= h >> 16;
-            return h;
+            if (!(value > 0.0f))
+            {
+                return 0.0f;
+            }
+
+            if (value >= 1.0f)
+            {
+                return 1.0f;
+            }
+
+            return value;
         }
 
-        BYTE float_to_unorm8(float value, uint32_t x, uint32_t y, uint32_t channel)
+        float get_sdr_dither(uint32_t x, uint32_t y)
         {
-            float noise = (static_cast<float>(hash_pixel(x, y, channel) & 0x00ffffffu) / 16777215.0f) - 0.5f;
-            value       = min(max(value + noise / 255.0f, 0.0f), 1.0f);
+            static constexpr uint8_t bayer_8x8[64] =
+            {
+                 0, 48, 12, 60,  3, 51, 15, 63,
+                32, 16, 44, 28, 35, 19, 47, 31,
+                 8, 56,  4, 52, 11, 59,  7, 55,
+                40, 24, 36, 20, 43, 27, 39, 23,
+                 2, 50, 14, 62,  1, 49, 13, 61,
+                34, 18, 46, 30, 33, 17, 45, 29,
+                10, 58,  6, 54,  9, 57,  5, 53,
+                42, 26, 38, 22, 41, 25, 37, 21
+            };
+
+            return (static_cast<float>(bayer_8x8[(y & 7) * 8 + (x & 7)]) + 0.5f) / 64.0f - 0.5f;
+        }
+
+        BYTE float_to_unorm8_dithered(float value, float dither, float strength)
+        {
+            value = saturate_float(value + dither * (strength / 255.0f));
             return static_cast<BYTE>(value * 255.0f + 0.5f);
         }
 
@@ -613,7 +647,6 @@ namespace spartan
     {
         const uint16_t* src_half = static_cast<const uint16_t*>(data);
 
-        // allocate 24-bit RGB bitmap (8 bits per channel)
         FIBITMAP* bitmap = FreeImage_Allocate(width, height, 24);
         if (!bitmap)
         {
@@ -627,21 +660,20 @@ namespace spartan
             for (uint32_t x = 0; x < width; x++)
             {
                 uint32_t src_idx = (y * width + x) * 4;
-
-                // convert half to float
-                float r = half_to_float(src_half[src_idx + 0]);
-                float g = half_to_float(src_half[src_idx + 1]);
-                float b = half_to_float(src_half[src_idx + 2]);
-
-                // convert to 8-bit (FreeImage uses BGR order)
+                float r          = half_to_float(src_half[src_idx + 0]);
+                float g          = half_to_float(src_half[src_idx + 1]);
+                float b          = half_to_float(src_half[src_idx + 2]);
+                float peak       = max(max(r, g), b);
+                float strength   = 1.0f + (1.0f - saturate_float(peak * 8.0f)) * 0.75f;
+                float dither     = get_sdr_dither(x, y);
                 uint32_t dst_idx = x * 3;
-                scanline[dst_idx + 0] = float_to_unorm8(b, x, y, 2);
-                scanline[dst_idx + 1] = float_to_unorm8(g, x, y, 1);
-                scanline[dst_idx + 2] = float_to_unorm8(r, x, y, 0);
+
+                scanline[dst_idx + 0] = float_to_unorm8_dithered(b, dither, strength);
+                scanline[dst_idx + 1] = float_to_unorm8_dithered(g, dither, strength);
+                scanline[dst_idx + 2] = float_to_unorm8_dithered(r, dither, strength);
             }
         }
 
-        // save as PNG (lossless, universal format)
         BOOL saved = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_Z_BEST_COMPRESSION);
         FreeImage_Unload(bitmap);
 

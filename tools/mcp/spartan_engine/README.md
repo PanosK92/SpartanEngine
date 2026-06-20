@@ -7,6 +7,7 @@ Spartan exposes engine-aware tools to MCP clients through a Node adapter and the
 - `server.mjs` is the MCP server used by Cursor and other MCP clients over stdio.
 - `assistant.mjs` is the local helper used by the in-editor Spartan AI widget.
 - The engine bridge listens on `127.0.0.1:47777` and executes commands on the engine main thread.
+- Bridge commands include request ids so clients can correlate responses and debug logs.
 - The editor assistant helper listens on `127.0.0.1:47778`.
 - The optional development HTTP shim listens on `127.0.0.1:8765/mcp`.
 
@@ -69,15 +70,21 @@ Use these first:
 - `spartan_status` to check bridge, transport, read-only mode, and code index health.
 - `search_capabilities` and `get_capability_details` to discover tools/resources without guessing.
 - `context_snapshot` to read engine status, world summary, selection, and camera grounding in one call.
+- `async_task_start`, `async_task_get`, and `async_task_list` for long-running tools that should not block the main MCP call.
+- `undo_redo` for editor command-stack undo and redo.
 - `entity_render_materials` before deleting/rebuilding existing geometry when materials should be preserved.
 - `resource_list`, `material_get`, `material_set_property`, and `material_set_texture` for cached asset/material inspection and edits.
+- `resource_load`, `resource_reload`, `resource_save`, `resource_remove`, and `material_create` for resource lifecycle work.
+- `camera_set_view` and `viewport_frame` for editor camera positioning and framing.
+- `renderer_debug_get`, `renderer_debug_set`, and `physics_state` for debug overlays and physics inspection.
 - `selection_update`, `entity_clone`, and `entity_move_index` for editor selection and hierarchy operations.
 - `prefab_types`, `prefab_save`, and `prefab_load` for prefab discovery and file prefab workflows.
+- `screenshot_take` when visual confirmation is useful; it can return image content after the next rendered frame.
 - `camera_snapshot` before camera-relative placement.
 - `world_raycast` before ground or surface-relative placement.
 - `entity_resolve` before mutating a named or selected entity.
 - `entity_find_by_component` when targeting all entities with a component type.
-- `component_get` before `component_set`.
+- `component_get` before `component_set`; inspect `property_metadata` and `member_metadata` for ranges, units, enum values, side effects, and read-only reasons.
 - `component_set_batch` for multiple edits on one component.
 - `component_action` for supported component methods before using Lua.
 - `search_codebase`, then `read_source_file`, for source questions.

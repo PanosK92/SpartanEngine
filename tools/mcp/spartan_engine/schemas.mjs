@@ -13,6 +13,7 @@ const source_match = z.object({
 function with_error_fields(shape = {}) {
   return {
     ok: z.boolean(),
+    request_id: z.string().optional(),
     error: z.string().optional(),
     code: z.string().optional(),
     retryable: z.boolean().optional(),
@@ -33,6 +34,8 @@ export const output_schemas = {
     read_only_mode: z.boolean().optional(),
     engine: any_object.optional(),
     codebase: any_object.optional(),
+    features: any_object.optional(),
+    async_tasks: any_object.optional(),
   }),
   search_codebase: with_error_fields({
     ready: z.boolean().optional(),
@@ -64,6 +67,12 @@ export const output_schemas = {
     path: z.string().optional(),
     log: z.string().optional(),
   }),
+  async_task: with_error_fields({
+    task: any_object.optional(),
+  }),
+  async_task_list: with_error_fields({
+    tasks: z.array(any_object).optional(),
+  }),
   engine_status: with_error_fields({
     playing: z.boolean().optional(),
     paused: z.boolean().optional(),
@@ -78,6 +87,12 @@ export const output_schemas = {
     forward: vector3.optional(),
     right: vector3.optional(),
     up: vector3.optional(),
+  }),
+  screenshot_take: with_error_fields({
+    path: z.string().optional(),
+    ready: z.boolean().optional(),
+    async: z.boolean().optional(),
+    note: z.string().optional(),
   }),
   world_summary: with_error_fields({
     name: z.string().optional(),
@@ -141,6 +156,11 @@ export const output_schemas = {
     truncated: z.boolean().optional(),
     resources: z.array(any_object).optional(),
   }),
+  resource_receipt: with_error_fields({
+    path: z.string().optional(),
+    resource: any_object.optional(),
+    removed: any_object.optional(),
+  }),
   material: with_error_fields({
     material: any_object.optional(),
   }),
@@ -168,6 +188,18 @@ export const output_schemas = {
     action: z.string().optional(),
     result: any_object.optional(),
     component: any_object.optional(),
+  }),
+  renderer_debug: with_error_fields({
+    options: z.array(z.string()).optional(),
+    values: any_object.optional(),
+  }),
+  physics_state: with_error_fields({
+    entity: any_object.optional(),
+    body_type: z.string().optional(),
+    enabled: z.boolean().optional(),
+    static: z.boolean().optional(),
+    kinematic: z.boolean().optional(),
+    vehicle: any_object.optional(),
   }),
   batch_receipt: with_error_fields({
     created_count: z.number().int().optional(),

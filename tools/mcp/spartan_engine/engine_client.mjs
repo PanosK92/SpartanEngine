@@ -2,11 +2,13 @@ import net from "node:net";
 import { append_debug_log } from "./debug_log.mjs";
 
 function protocol_value(value) {
-  if (Array.isArray(value)) {
+  if (Array.isArray(value))
+  {
     return value.join(",");
   }
 
-  if (typeof value === "boolean") {
+  if (typeof value === "boolean")
+  {
     return value ? "true" : "false";
   }
 
@@ -15,8 +17,10 @@ function protocol_value(value) {
 
 function command_line(command, args = {}) {
   const parts = [command];
-  for (const [key, value] of Object.entries(args)) {
-    if (value === undefined || value === null) {
+  for (const [key, value] of Object.entries(args))
+  {
+    if (value === undefined || value === null)
+    {
       continue;
     }
 
@@ -35,6 +39,8 @@ export class EngineClient {
     this.socket = null;
     this.buffer = "";
     this.pending = [];
+    this.pending_by_request_id = new Map();
+    this.next_request_id = 1;
     this.connecting = null;
     this.idle_close_timer = null;
   }
@@ -42,10 +48,12 @@ export class EngineClient {
   async command(command, args = {}, timeout_ms = this.timeout_ms) {
     this.cancel_idle_close();
     const started_at = Date.now();
+    const request_id = `${this.source}-${Date.now().toString(36)}-${this.next_request_id++}`;
     const finish = (result, phase = "response") => {
       void append_debug_log({
         type: "engine_command",
         source: this.source,
+        request_id,
         host: this.host,
         port: this.port,
         command,
@@ -60,7 +68,8 @@ export class EngineClient {
     };
 
     const connected = await this.ensure_connected(timeout_ms);
-    if (!connected) {
+    if (!connected)
+    {
       return finish({
         ok: false,
         error: `engine connection for ${command} timed out after ${timeout_ms}ms`,
@@ -69,16 +78,19 @@ export class EngineClient {
         suggested_action: "restart the engine MCP bridge or close the client currently holding the bridge connection",
       }, "connect");
     }
-    if (!this.socket || this.socket.destroyed) {
+    if (!this.socket || this.socket.destroyed)
+    {
       this.close();
       const reconnected = await this.ensure_connected(timeout_ms);
-      if (!reconnected || !this.socket || this.socket.destroyed) {
+      if (!reconnected || !this.socket || this.socket.destroyed)
+      {
         return finish({ ok: false, error: "engine connection is not available" }, "connect");
       }
     }
 
     return new Promise((resolve) => {
       const request = {
+        request_id,
         resolve,
         finish,
         completed: false,
@@ -90,6 +102,7 @@ export class EngineClient {
             error: `engine command ${command} timed out after ${timeout_ms}ms`,
             code: "engine_timeout",
             command,
+            request_id,
             retryable: true,
             suggested_action: "retry once, then use a smaller operation or a native batch command",
           }, "timeout"));
@@ -98,9 +111,13 @@ export class EngineClient {
       };
 
       this.pending.push(request);
-      try {
-        this.socket.write(command_line(command, args));
-      } catch (error) {
+      this.pending_by_request_id.set(request_id, request);
+      try
+      {
+        this.socket.write(command_line(command, { ...args, __request_id: request_id }));
+      }
+      catch (error)
+      {
         this.finish_request(request, finish({ ok: false, error: `engine write failed, ${error.message}` }, "write"));
         this.close();
       }
@@ -109,11 +126,13 @@ export class EngineClient {
 
   async ensure_connected(timeout_ms = this.timeout_ms) {
     this.cancel_idle_close();
-    if (this.socket && !this.socket.destroyed && !this.socket.writableEnded) {
+    if (this.socket && !this.socket.destroyed && !this.socket.writableEnded)
+    {
       return true;
     }
 
-    if (this.connecting) {
+    if (this.connecting)
+    {
       return this.connecting;
     }
 
@@ -124,7 +143,8 @@ export class EngineClient {
       let settled = false;
 
       const finish = (ok) => {
-        if (settled) {
+        if (settled)
+        {
           return;
         }
 
@@ -156,7 +176,8 @@ export class EngineClient {
 
       socket.on("close", () => {
         this.fail_all("engine connection closed");
-        if (this.socket === socket) {
+        if (this.socket === socket)
+        {
           this.socket = null;
         }
         finish(false);
@@ -170,25 +191,61 @@ export class EngineClient {
     this.buffer += text;
 
     let newline = this.buffer.indexOf("\n");
-    while (newline !== -1) {
+    while (newline !== -1)
+    {
       const line = this.buffer.slice(0, newline).trim();
       this.buffer = this.buffer.slice(newline + 1);
-      const request = this.pending.shift();
-      if (request) {
-        if (request.timed_out) {
+      let parsed = null;
+      try
+      {
+        parsed = JSON.parse(line);
+      }
+      catch (error)
+      {
+        const request = this.pending.shift();
+        if (request)
+        {
+          this.pending_by_request_id.delete(request.request_id);
+          this.resolve_request(request, request.finish({ ok: false, error: `invalid engine response, ${error.message}` }, "parse"));
+        }
+        newline = this.buffer.indexOf("\n");
+        continue;
+      }
+
+      let request = null;
+      if (typeof parsed?.request_id === "string")
+      {
+        request = this.pending_by_request_id.get(parsed.request_id) ?? null;
+        if (!request)
+        {
+          newline = this.buffer.indexOf("\n");
+          continue;
+        }
+        this.remove_pending_request(request);
+      }
+      else
+      {
+        request = this.pending.shift();
+        if (request)
+        {
+          this.pending_by_request_id.delete(request.request_id);
+        }
+      }
+
+      if (request)
+      {
+        if (request.timed_out)
+        {
           clearTimeout(request.timer);
           newline = this.buffer.indexOf("\n");
           continue;
         }
 
-        try {
-          this.resolve_request(request, request.finish(JSON.parse(line)));
-        } catch (error) {
-          this.resolve_request(request, request.finish({ ok: false, error: `invalid engine response, ${error.message}` }, "parse"));
-        }
+        this.resolve_request(request, request.finish(parsed));
       }
 
-      if (this.pending.length === 0) {
+      if (this.pending.length === 0)
+      {
         this.schedule_idle_close();
       }
 
@@ -197,7 +254,8 @@ export class EngineClient {
   }
 
   resolve_request(request, result) {
-    if (request.completed) {
+    if (request.completed)
+    {
       return;
     }
 
@@ -207,24 +265,33 @@ export class EngineClient {
   }
 
   finish_request(request, result) {
+    this.remove_pending_request(request);
+    this.resolve_request(request, result);
+  }
+
+  remove_pending_request(request) {
     const index = this.pending.indexOf(request);
-    if (index !== -1) {
+    if (index !== -1)
+    {
       this.pending.splice(index, 1);
     }
 
-    this.resolve_request(request, result);
+    this.pending_by_request_id.delete(request.request_id);
   }
 
   fail_all(message) {
     const requests = this.pending.splice(0);
-    for (const request of requests) {
+    this.pending_by_request_id.clear();
+    for (const request of requests)
+    {
       this.resolve_request(request, request.finish({ ok: false, error: message }, "socket"));
     }
   }
 
   close() {
     this.cancel_idle_close();
-    if (this.socket && !this.socket.destroyed) {
+    if (this.socket && !this.socket.destroyed)
+    {
       this.socket.destroy();
     }
     this.socket = null;
@@ -234,7 +301,8 @@ export class EngineClient {
     this.cancel_idle_close();
     this.idle_close_timer = setTimeout(() => {
       this.idle_close_timer = null;
-      if (this.pending.length !== 0 || !this.socket || this.socket.destroyed) {
+      if (this.pending.length !== 0 || !this.socket || this.socket.destroyed)
+      {
         return;
       }
 
@@ -244,7 +312,8 @@ export class EngineClient {
   }
 
   cancel_idle_close() {
-    if (this.idle_close_timer) {
+    if (this.idle_close_timer)
+    {
       clearTimeout(this.idle_close_timer);
       this.idle_close_timer = null;
     }
