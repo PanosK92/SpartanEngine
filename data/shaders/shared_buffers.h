@@ -468,6 +468,10 @@ struct EmitterParams
     SHARED_UINT   emitter_count    SHARED_DEFAULT(0);
     SHARED_UINT   blend_mode       SHARED_DEFAULT(0);
     SHARED_UINT   lighting_mode    SHARED_DEFAULT(0);
+    SHARED_UINT   render_mode      SHARED_DEFAULT(0);
+    SHARED_FLOAT  volume_density   SHARED_DEFAULT(1.0f);
+    SHARED_FLOAT  volume_anisotropy SHARED_DEFAULT(0.35f);
+    SHARED_FLOAT  volume_shadowing SHARED_DEFAULT(0.5f);
     SHARED_FLOAT3 emission_direction;
     SHARED_FLOAT  emission_cone_angle SHARED_DEFAULT(0.0f);
     SHARED_FLOAT  directional_blend   SHARED_DEFAULT(0.0f);

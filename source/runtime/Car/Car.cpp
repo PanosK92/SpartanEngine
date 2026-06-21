@@ -143,7 +143,11 @@ namespace spartan
         config.show_telemetry = node.attribute("telemetry").as_bool(false);
         config.camera_follows = node.attribute("camera_follows").as_bool(false);
 
-        // note: camera finding is now deferred to Tick() to support parallel entity loading
+        const char* preset_path = node.attribute("preset_path").as_string("");
+        if (::car::load_presets_from_xml(preset_path) && ::car::preset_count > 0)
+        {
+            ::car::load_car(*::car::preset_registry[::car::active_preset_index].instance);
+        }
 
         Car* car = Create(config);
         if (car && parent)

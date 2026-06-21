@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #pragma once
 #include <cstring>
+#include <string>
+#include <vector>
 //==========================================
 
 // static per-car preset data: engine/gearbox/chassis/tires/suspension/aero tuning tables.
@@ -971,14 +973,18 @@ namespace car
     inline gt3_992_preset   _preset_gt3_992;
     inline evo_ix_preset    _preset_evo_ix;
 
-    // add new presets here - the osd combo box picks them up automatically
-    inline preset_entry preset_registry[] =
+    inline std::vector<car_preset> external_presets;
+    inline std::vector<std::string> external_preset_names;
+
+    inline std::vector<preset_entry> preset_registry =
     {
         { "Ferrari LaFerrari",            &_preset_laferrari },
         { "Porsche 911 GT3 (992)",        &_preset_gt3_992   },
         { "Mitsubishi Lancer Evolution IX", &_preset_evo_ix  },
     };
 
-    inline constexpr int preset_count = sizeof(preset_registry) / sizeof(preset_registry[0]);
-    inline int active_preset_index    = 0;
+    inline int preset_count        = static_cast<int>(preset_registry.size());
+    inline int active_preset_index = 0;
+
+    bool load_presets_from_xml(const char* file_path);
 }

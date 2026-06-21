@@ -57,8 +57,12 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_directional_blend, float);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_blend_mode, SetBlendMode, ParticleBlendMode);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_lighting_mode, SetLightingMode, ParticleLightingMode);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_render_mode, SetRenderMode, ParticleRenderMode);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emissive_strength, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_soft_depth_scale, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_density, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_anisotropy, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_shadowing, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_drag, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_turbulence_strength, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_wind_influence, float);
@@ -85,8 +89,12 @@ namespace spartan
         m_effect_path.clear();
         m_blend_mode           = ParticleBlendMode::Additive;
         m_lighting_mode        = ParticleLightingMode::Lit;
+        m_render_mode          = ParticleRenderMode::Billboard;
         m_emissive_strength    = 0.0f;
         m_soft_depth_scale      = 20.0f;
+        m_volume_density        = 1.0f;
+        m_volume_anisotropy     = 0.35f;
+        m_volume_shadowing      = 0.5f;
         m_drag                  = 1.2f;
         m_turbulence_strength   = 0.3f;
         m_wind_influence        = 0.0f;
@@ -478,6 +486,22 @@ namespace spartan
         MarkCustom();
     }
 
+    ParticleRenderMode ParticleSystem::GetRenderMode() const
+    {
+        return m_render_mode;
+    }
+
+    void ParticleSystem::SetRenderMode(ParticleRenderMode mode)
+    {
+        if (static_cast<uint32_t>(mode) >= static_cast<uint32_t>(ParticleRenderMode::Count))
+        {
+            return;
+        }
+
+        m_render_mode = mode;
+        MarkCustom();
+    }
+
     float ParticleSystem::GetEmissiveStrength() const
     {
         return m_emissive_strength;
@@ -497,6 +521,39 @@ namespace spartan
     void ParticleSystem::SetSoftDepthScale(float scale)
     {
         m_soft_depth_scale = clamp(scale, 0.0f, 100.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetVolumeDensity() const
+    {
+        return m_volume_density;
+    }
+
+    void ParticleSystem::SetVolumeDensity(float density)
+    {
+        m_volume_density = clamp(density, 0.0f, 25.0f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetVolumeAnisotropy() const
+    {
+        return m_volume_anisotropy;
+    }
+
+    void ParticleSystem::SetVolumeAnisotropy(float anisotropy)
+    {
+        m_volume_anisotropy = clamp(anisotropy, -0.9f, 0.9f);
+        MarkCustom();
+    }
+
+    float ParticleSystem::GetVolumeShadowing() const
+    {
+        return m_volume_shadowing;
+    }
+
+    void ParticleSystem::SetVolumeShadowing(float shadowing)
+    {
+        m_volume_shadowing = clamp(shadowing, 0.0f, 1.0f);
         MarkCustom();
     }
 
@@ -626,13 +683,22 @@ namespace spartan
 
     void ParticleSystem::UpdateRuntime(const Vector3& position, float delta_time)
     {
+        Vector3 velocity = Vector3::Zero;
         if (m_has_last_position && delta_time > 0.000001f)
         {
-            m_emitter_velocity = (position - m_last_position) / delta_time;
+            velocity = (position - m_last_position) / delta_time;
+            const float max_velocity = 80.0f;
+            velocity.ClampMagnitude(max_velocity);
+        }
+
+        if (m_has_last_position && delta_time > 0.000001f)
+        {
+            const float response = 1.0f - expf(-delta_time * 7.0f);
+            m_emitter_velocity += (velocity - m_emitter_velocity) * response;
         }
         else
         {
-            m_emitter_velocity = Vector3::Zero;
+            m_emitter_velocity = velocity;
         }
 
         m_last_position     = position;
@@ -698,8 +764,12 @@ namespace spartan
         node.append_attribute("directional_blend")    = m_directional_blend;
         node.append_attribute("blend_mode")           = static_cast<uint32_t>(m_blend_mode);
         node.append_attribute("lighting_mode")        = static_cast<uint32_t>(m_lighting_mode);
+        node.append_attribute("render_mode")          = static_cast<uint32_t>(m_render_mode);
         node.append_attribute("emissive_strength")    = m_emissive_strength;
         node.append_attribute("soft_depth_scale")     = m_soft_depth_scale;
+        node.append_attribute("volume_density")       = m_volume_density;
+        node.append_attribute("volume_anisotropy")    = m_volume_anisotropy;
+        node.append_attribute("volume_shadowing")     = m_volume_shadowing;
         node.append_attribute("drag")                 = m_drag;
         node.append_attribute("turbulence_strength")  = m_turbulence_strength;
         node.append_attribute("wind_influence")       = m_wind_influence;
@@ -751,6 +821,7 @@ namespace spartan
         m_directional_blend   = clamp(node.attribute("directional_blend").as_float(m_directional_blend), 0.0f, 1.0f);
         m_blend_mode          = static_cast<ParticleBlendMode>(node.attribute("blend_mode").as_uint(static_cast<uint32_t>(m_blend_mode)));
         m_lighting_mode       = static_cast<ParticleLightingMode>(node.attribute("lighting_mode").as_uint(static_cast<uint32_t>(m_lighting_mode)));
+        m_render_mode         = static_cast<ParticleRenderMode>(node.attribute("render_mode").as_uint(static_cast<uint32_t>(m_render_mode)));
         if (static_cast<uint32_t>(m_blend_mode) >= static_cast<uint32_t>(ParticleBlendMode::Count))
         {
             m_blend_mode = ParticleBlendMode::Alpha;
@@ -759,9 +830,16 @@ namespace spartan
         {
             m_lighting_mode = ParticleLightingMode::Lit;
         }
+        if (static_cast<uint32_t>(m_render_mode) >= static_cast<uint32_t>(ParticleRenderMode::Count))
+        {
+            m_render_mode = ParticleRenderMode::Billboard;
+        }
 
         m_emissive_strength    = clamp(node.attribute("emissive_strength").as_float(m_emissive_strength), 0.0f, 100.0f);
         m_soft_depth_scale     = clamp(node.attribute("soft_depth_scale").as_float(m_soft_depth_scale), 0.0f, 100.0f);
+        m_volume_density       = clamp(node.attribute("volume_density").as_float(m_volume_density), 0.0f, 25.0f);
+        m_volume_anisotropy    = clamp(node.attribute("volume_anisotropy").as_float(m_volume_anisotropy), -0.9f, 0.9f);
+        m_volume_shadowing     = clamp(node.attribute("volume_shadowing").as_float(m_volume_shadowing), 0.0f, 1.0f);
         m_drag                 = clamp(node.attribute("drag").as_float(m_drag), 0.0f, 10.0f);
         m_turbulence_strength  = clamp(node.attribute("turbulence_strength").as_float(m_turbulence_strength), 0.0f, 10.0f);
         m_wind_influence       = clamp(node.attribute("wind_influence").as_float(m_wind_influence), 0.0f, 5.0f);
@@ -875,10 +953,18 @@ namespace spartan
             "SetBlendMode",           [](ParticleSystem& self, uint32_t mode) { self.SetBlendMode(static_cast<ParticleBlendMode>(mode)); },
             "GetLightingMode",        [](ParticleSystem& self) { return static_cast<uint32_t>(self.GetLightingMode()); },
             "SetLightingMode",        [](ParticleSystem& self, uint32_t mode) { self.SetLightingMode(static_cast<ParticleLightingMode>(mode)); },
+            "GetRenderMode",          [](ParticleSystem& self) { return static_cast<uint32_t>(self.GetRenderMode()); },
+            "SetRenderMode",          [](ParticleSystem& self, uint32_t mode) { self.SetRenderMode(static_cast<ParticleRenderMode>(mode)); },
             "GetEmissiveStrength",    &ParticleSystem::GetEmissiveStrength,
             "SetEmissiveStrength",    &ParticleSystem::SetEmissiveStrength,
             "GetSoftDepthScale",      &ParticleSystem::GetSoftDepthScale,
             "SetSoftDepthScale",      &ParticleSystem::SetSoftDepthScale,
+            "GetVolumeDensity",       &ParticleSystem::GetVolumeDensity,
+            "SetVolumeDensity",       &ParticleSystem::SetVolumeDensity,
+            "GetVolumeAnisotropy",    &ParticleSystem::GetVolumeAnisotropy,
+            "SetVolumeAnisotropy",    &ParticleSystem::SetVolumeAnisotropy,
+            "GetVolumeShadowing",     &ParticleSystem::GetVolumeShadowing,
+            "SetVolumeShadowing",     &ParticleSystem::SetVolumeShadowing,
             "GetDrag",                &ParticleSystem::GetDrag,
             "SetDrag",                &ParticleSystem::SetDrag,
             "GetTurbulenceStrength",  &ParticleSystem::GetTurbulenceStrength,

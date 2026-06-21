@@ -70,6 +70,13 @@ namespace spartan
         Count
     };
 
+    enum class ParticleRenderMode : uint32_t
+    {
+        Billboard,
+        Volumetric,
+        Count
+    };
+
     class ParticleSystem : public Component
     {
     public:
@@ -143,10 +150,18 @@ namespace spartan
         void SetBlendMode(ParticleBlendMode mode);
         ParticleLightingMode GetLightingMode() const;
         void SetLightingMode(ParticleLightingMode mode);
+        ParticleRenderMode GetRenderMode() const;
+        void SetRenderMode(ParticleRenderMode mode);
         float GetEmissiveStrength() const;
         void SetEmissiveStrength(float strength);
         float GetSoftDepthScale() const;
         void SetSoftDepthScale(float scale);
+        float GetVolumeDensity() const;
+        void SetVolumeDensity(float density);
+        float GetVolumeAnisotropy() const;
+        void SetVolumeAnisotropy(float anisotropy);
+        float GetVolumeShadowing() const;
+        void SetVolumeShadowing(float shadowing);
 
         // simulation
         float GetDrag() const;
@@ -203,8 +218,12 @@ namespace spartan
         float m_directional_blend          = 0.0f;
         ParticleBlendMode m_blend_mode     = ParticleBlendMode::Additive;
         ParticleLightingMode m_lighting_mode = ParticleLightingMode::Lit;
+        ParticleRenderMode m_render_mode   = ParticleRenderMode::Billboard;
         float m_emissive_strength          = 0.0f;
         float m_soft_depth_scale            = 20.0f;
+        float m_volume_density              = 1.0f;
+        float m_volume_anisotropy           = 0.35f;
+        float m_volume_shadowing            = 0.5f;
         float m_drag                        = 1.2f;
         float m_turbulence_strength         = 0.3f;
         float m_wind_influence              = 0.0f;

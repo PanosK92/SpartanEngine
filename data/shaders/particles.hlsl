@@ -147,6 +147,115 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 static const float collision_restitution = 0.3;  // velocity retained after bounce
 static const float collision_offset      = 0.05; // push off surface, must exceed depth buffer precision to prevent re-triggering
 
+void apply_depth_collision(inout Particle p, inout float3 new_pos, EmitterParams emitter)
+{
+    float4 clip_new = mul(float4(new_pos, 1.0), buffer_frame.view_projection);
+    if (clip_new.w <= 0.0)
+    {
+        return;
+    }
+
+    float3 ndc_new = clip_new.xyz / clip_new.w;
+    float2 uv_new  = ndc_new.xy * float2(0.5, -0.5) + 0.5;
+    if (uv_new.x <= 0.0 || uv_new.x >= 1.0 || uv_new.y <= 0.0 || uv_new.y >= 1.0)
+    {
+        return;
+    }
+
+    int2 pixel = int2(uv_new * buffer_frame.resolution_render);
+    float scene_depth_raw = tex_depth.Load(int3(pixel, 0)).r;
+    if (scene_depth_raw <= 0.0)
+    {
+        return;
+    }
+    if (length(tex_velocity.Load(int3(pixel, 0)).xy) > 0.0005)
+    {
+        return;
+    }
+
+    float linear_particle = linearize_depth(ndc_new.z);
+    float linear_scene    = linearize_depth(scene_depth_raw);
+    float penetration     = linear_particle - linear_scene;
+    float surface_band    = max(p.size * 0.75, 0.18);
+    float collision_thickness = length(p.velocity) * emitter.delta_time + surface_band + 0.35;
+    if (penetration <= -surface_band || penetration >= collision_thickness)
+    {
+        return;
+    }
+
+    float3 surface_normal = get_normal(pixel);
+    float normal_length   = length(surface_normal);
+    if (normal_length <= 0.1)
+    {
+        return;
+    }
+
+    surface_normal /= normal_length;
+    float3 surface_pos = get_position(scene_depth_raw, uv_new);
+    float influence = saturate((surface_band - abs(penetration)) / max(surface_band, 0.001));
+    influence *= influence;
+
+    if (penetration > 0.0)
+    {
+        float into_surface = dot(p.velocity, surface_normal);
+        if (into_surface < 0.0)
+        {
+            p.velocity -= surface_normal * into_surface * (1.0 + collision_restitution);
+        }
+
+        new_pos = surface_pos + surface_normal * (collision_offset + p.size * 0.35);
+    }
+    else
+    {
+        float into_surface = dot(p.velocity, surface_normal);
+        if (into_surface < 0.0)
+        {
+            p.velocity -= surface_normal * into_surface * influence;
+        }
+
+        p.velocity += surface_normal * influence * emitter.turbulence_strength * 0.65 * emitter.delta_time;
+        new_pos += surface_normal * influence * surface_band * 0.35 * emitter.delta_time;
+    }
+}
+
+void apply_moving_emitter_push(inout Particle p, EmitterParams emitter)
+{
+    float speed = length(emitter.emitter_velocity);
+    if (speed < 3.0)
+    {
+        return;
+    }
+
+    float3 wake_dir = emitter.emitter_velocity / speed;
+    float3 wake_center = emitter.position + wake_dir * 0.35;
+    float3 rel = p.position - wake_center;
+    float axial = dot(rel, wake_dir);
+    if (axial < -2.2 || axial > 1.8)
+    {
+        return;
+    }
+
+    float3 radial = rel - wake_dir * axial;
+    radial.y *= 0.65;
+    float radial_len = length(radial);
+    float push_radius = 1.25 + saturate(speed / 45.0) * 0.55;
+    if (radial_len >= push_radius)
+    {
+        return;
+    }
+
+    float3 push_dir = safe_normalize(radial + float3(0.0, 0.12, 0.0), float3(0.0, 1.0, 0.0));
+    float radial_t = saturate(1.0 - radial_len / push_radius);
+    float axial_t = 1.0 - saturate(abs(axial) / 2.2);
+    float strength = radial_t * radial_t * axial_t * saturate(speed / 28.0);
+    float age_t = 1.0 - saturate(p.lifetime / max(p.max_lifetime, 0.0001));
+    strength *= saturate(age_t * 3.0);
+
+    float push = strength * (2.4 + speed * 0.045) * emitter.delta_time;
+    p.velocity += push_dir * push;
+    p.velocity -= wake_dir * dot(p.velocity, wake_dir) * strength * 0.04 * emitter.delta_time;
+}
+
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
@@ -183,59 +292,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float3 turb = float3(sin(tp.y + ts * 1.3) + cos(tp.z * 0.7 - ts),
                          sin(tp.z + ts * 1.1) + cos(tp.x * 0.8 + ts),
                          sin(tp.x + ts * 0.9) + cos(tp.y * 0.6 - ts));
-    p.velocity += turb * emitter.turbulence_strength * dt;
+    p.velocity += turb * emitter.turbulence_strength * 0.55 * dt;
     p.velocity += buffer_frame.wind * emitter.wind_influence * dt;
+    apply_moving_emitter_push(p, emitter);
 
     // predict next position
     float3 new_pos = p.position + p.velocity * dt;
 
-    // depth buffer collision - project the future position to screen space
-    // and check if it would penetrate nearby scene geometry
-    float4 clip_new = mul(float4(new_pos, 1.0), buffer_frame.view_projection);
-    if (clip_new.w > 0.0)
-    {
-        float3 ndc_new = clip_new.xyz / clip_new.w;
-        float2 uv_new  = ndc_new.xy * float2(0.5, -0.5) + 0.5;
-
-        // only test if the projected position is on screen
-        if (uv_new.x > 0.0 && uv_new.x < 1.0 && uv_new.y > 0.0 && uv_new.y < 1.0)
-        {
-            int2 pixel = int2(uv_new * buffer_frame.resolution_render);
-
-            float scene_depth_raw = tex_depth.Load(int3(pixel, 0)).r;
-            if (scene_depth_raw > 0.0) // skip sky (no geometry)
-            {
-                float linear_particle = linearize_depth(ndc_new.z);
-                float linear_scene    = linearize_depth(scene_depth_raw);
-                float penetration     = linear_particle - linear_scene;
-
-                // the maximum distance a particle can travel in one frame, plus a small margin;
-                // if penetration exceeds this, the surface is too far away to be a real collision
-                // (it's just an occluder between the camera and the particle)
-                float collision_thickness = length(p.velocity) * dt + 0.5;
-
-                if (penetration > 0.0 && penetration < collision_thickness)
-                {
-                    float3 surface_normal = get_normal(pixel);
-                    float normal_length   = length(surface_normal);
-
-                    if (normal_length > 0.1) // valid normal
-                    {
-                        surface_normal /= normal_length;
-
-                        // reconstruct the world-space surface position
-                        float3 surface_pos = get_position(scene_depth_raw, uv_new);
-
-                        // reflect velocity off the surface and dampen
-                        p.velocity = reflect(p.velocity, surface_normal) * collision_restitution;
-
-                        // place particle at the surface with a small offset to prevent re-penetration
-                        new_pos = surface_pos + surface_normal * collision_offset;
-                    }
-                }
-            }
-        }
-    }
+    // scene depth makes particles slide off visible geometry
+    apply_depth_collision(p, new_pos, emitter);
 
     // commit the new position
     p.position = new_pos;
@@ -252,10 +317,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // normalized age: 0 = just born, 1 = about to die
     float t = 1.0 - saturate(p.lifetime / p.max_lifetime);
 
-    // interpolate color over lifetime, size grows with an ease-out curve so the puff expands fast at birth
-    // then settles, size uses the particle's own birth values so emitter changes never resize live particles
+    // fade each particle from its own current value so emitter script changes do not pulse old smoke
     float te = 1.0 - (1.0 - t) * (1.0 - t);
-    p.color  = lerp(emitter.start_color, emitter.end_color, t);
+    float end_pull = saturate(dt * (0.35 + t * 1.4));
+    p.color.rgb = lerp(p.color.rgb, emitter.end_color.rgb, end_pull);
+    p.color.a = min(p.color.a, lerp(p.color.a, emitter.end_color.a, end_pull));
+    float life_left = saturate(p.lifetime / max(p.max_lifetime, 0.0001));
+    p.color.a = min(p.color.a, emitter.start_color.a * smoothstep(0.0, 0.25, life_left));
     p.size   = lerp(p.start_size, p.end_size, te);
 
     particle_buffer_a[index] = p;

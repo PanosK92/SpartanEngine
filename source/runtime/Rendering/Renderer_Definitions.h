@@ -86,6 +86,9 @@ namespace spartan
     const uint32_t renderer_resolution_skysphere_h  = 2048; // skysphere panorama height
     const uint32_t renderer_resolution_brdf_lut     = 512;  // pre integrated brdf lookup table
     const uint32_t renderer_resolution_restir_min   = 64;   // minimum restir output dimension regardless of scale
+    const uint32_t renderer_particle_volume_width   = 160;
+    const uint32_t renderer_particle_volume_height  = 90;
+    const uint32_t renderer_particle_volume_depth   = 64;
 
     enum class Renderer_Tonemapping : uint32_t
     {
@@ -217,6 +220,8 @@ namespace spartan
         grass_instances        = 50,
         grass_count            = 51,
         grass_indirect_args    = 52,
+        particle_volume_density = 53,
+        particle_volume_color   = 54,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -310,6 +315,10 @@ namespace spartan
         particle_simulate_c,
         particle_render_v,
         particle_render_p,
+        particle_volume_clear_c,
+        particle_volume_splat_c,
+        particle_volume_resolve_c,
+        particle_volume_composite_c,
         // gpu procedural grass
         grass_populate_c,
         grass_indirect_args_c,
@@ -342,6 +351,7 @@ namespace spartan
         light_diffuse,
         light_specular,
         light_volumetric,
+        particle_volume,
         frame_render,
         frame_render_opaque,
         frame_output,
@@ -449,6 +459,8 @@ namespace spartan
         ParticleBufferA,
         ParticleCounter,
         ParticleEmitter,
+        ParticleVolumeDensity,
+        ParticleVolumeColor,
         // gpu procedural grass, allocated lazily by Renderer::EnableProceduralGrass
         // GrassInstances is the transient ring buffer of GrassInstance entries (full float xyz)
         // GrassCount holds one uint per lod, bumped atomically by the populate shader

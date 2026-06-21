@@ -627,6 +627,10 @@ namespace spartan
         RHI_Shader* shader_simulate = GetShader(Renderer_Shader::particle_simulate_c);
         RHI_Shader* shader_render_v = GetShader(Renderer_Shader::particle_render_v);
         RHI_Shader* shader_render_p = GetShader(Renderer_Shader::particle_render_p);
+        RHI_Shader* shader_volume_clear     = GetShader(Renderer_Shader::particle_volume_clear_c);
+        RHI_Shader* shader_volume_splat     = GetShader(Renderer_Shader::particle_volume_splat_c);
+        RHI_Shader* shader_volume_resolve   = GetShader(Renderer_Shader::particle_volume_resolve_c);
+        RHI_Shader* shader_volume_composite = GetShader(Renderer_Shader::particle_volume_composite_c);
         if (!shader_emit || !shader_emit->IsCompiled() ||
             !shader_simulate || !shader_simulate->IsCompiled() ||
             !shader_render_v || !shader_render_v->IsCompiled() ||
@@ -634,14 +638,23 @@ namespace spartan
         {
             return;
         }
+        bool volume_shaders_ready =
+            shader_volume_clear && shader_volume_clear->IsCompiled() &&
+            shader_volume_splat && shader_volume_splat->IsCompiled() &&
+            shader_volume_resolve && shader_volume_resolve->IsCompiled() &&
+            shader_volume_composite && shader_volume_composite->IsCompiled();
 
         RHI_Buffer* buf_a       = GetBuffer(Renderer_Buffer::ParticleBufferA);
         RHI_Buffer* buf_counter = GetBuffer(Renderer_Buffer::ParticleCounter);
         RHI_Buffer* buf_emitter = GetBuffer(Renderer_Buffer::ParticleEmitter);
+        RHI_Buffer* buf_volume_density = GetBuffer(Renderer_Buffer::ParticleVolumeDensity);
+        RHI_Buffer* buf_volume_color   = GetBuffer(Renderer_Buffer::ParticleVolumeColor);
+        RHI_Texture* tex_volume        = GetRenderTarget(Renderer_RenderTarget::particle_volume);
         if (!buf_a || !buf_counter || !buf_emitter)
         {
             return;
         }
+        volume_shaders_ready = volume_shaders_ready && buf_volume_density && buf_volume_color && tex_volume;
 
         // clamp the emitter count to the emitter buffer capacity
         uint32_t emitter_capacity = static_cast<uint32_t>(buf_emitter->GetObjectSize() / sizeof(Sb_EmitterParams));
@@ -653,6 +666,7 @@ namespace spartan
         vector<uint32_t> range_starts(emitter_count, 0);
         vector<uint32_t> range_counts(emitter_count, 0);
         vector<uint32_t> emit_counts(emitter_count, 0);
+        bool volume_present = false;
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             range_starts[i] = total_particles;
@@ -712,6 +726,10 @@ namespace spartan
             params.emitter_count    = emitter_count;
             params.blend_mode       = static_cast<uint32_t>(emitter->GetBlendMode());
             params.lighting_mode    = static_cast<uint32_t>(emitter->GetLightingMode());
+            params.render_mode      = static_cast<uint32_t>(emitter->GetRenderMode());
+            params.volume_density   = emitter->GetVolumeDensity();
+            params.volume_anisotropy = emitter->GetVolumeAnisotropy();
+            params.volume_shadowing = emitter->GetVolumeShadowing();
             params.emission_direction = emitter->GetEmissionDirection();
             params.emission_cone_angle = emitter->GetEmissionConeAngle();
             params.directional_blend   = emitter->GetDirectionalBlend();
@@ -726,6 +744,7 @@ namespace spartan
             params.flipbook_columns     = emitter->GetFlipbookColumns();
             params.flipbook_fps         = emitter->GetFlipbookFps();
             params.emitter_velocity     = emitter->GetEmitterVelocity();
+            volume_present = volume_present || (range_counts[i] > 0 && emitter->GetRenderMode() == ParticleRenderMode::Volumetric);
         }
 
         buf_emitter->ResetOffset();
@@ -790,6 +809,10 @@ namespace spartan
             {
                 continue;
             }
+            if (volume_shaders_ready && emitters[i]->GetRenderMode() == ParticleRenderMode::Volumetric)
+            {
+                continue;
+            }
 
             RHI_Texture* tex_particle = emitters[i]->GetTexture();
             bool has_texture          = tex_particle != nullptr;
@@ -831,6 +854,67 @@ namespace spartan
 
             cmd_list->SetCullMode(RHI_CullMode::None);
             cmd_list->Draw(range_counts[i] * 6);
+        }
+
+        if (volume_shaders_ready && volume_present)
+        {
+            const uint32_t voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
+
+            {
+                RHI_PipelineState pso;
+                pso.name             = "particle_volume_clear";
+                pso.shaders[Compute] = shader_volume_clear;
+                cmd_list->SetPipelineState(pso);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_color,   buf_volume_color);
+                cmd_list->Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
+            }
+
+            cmd_list->InsertBarrier(buf_volume_density);
+            cmd_list->InsertBarrier(buf_volume_color);
+
+            {
+                RHI_PipelineState pso;
+                pso.name             = "particle_volume_splat";
+                pso.shaders[Compute] = shader_volume_splat;
+                cmd_list->SetPipelineState(pso);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a,        buf_a);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,         buf_emitter);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_density,  buf_volume_density);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_color,    buf_volume_color);
+                cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
+            }
+
+            cmd_list->InsertBarrier(buf_volume_density);
+            cmd_list->InsertBarrier(buf_volume_color);
+
+            {
+                RHI_PipelineState pso;
+                pso.name             = "particle_volume_resolve";
+                pso.shaders[Compute] = shader_volume_resolve;
+                cmd_list->SetPipelineState(pso);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_density, buf_volume_density);
+                cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_color,   buf_volume_color);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_volume);
+                cmd_list->Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
+            }
+
+            cmd_list->InsertBarrier(tex_volume, RHI_BarrierType::EnsureWriteThenRead);
+
+            {
+                RHI_PipelineState pso;
+                pso.name             = "particle_volume_composite";
+                pso.shaders[Compute] = shader_volume_composite;
+                cmd_list->SetPipelineState(pso);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_render);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_volume);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+                cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
+                cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                cmd_list->Dispatch(tex_render);
+            }
         }
 
         cmd_list->EndTimeblock();

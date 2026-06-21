@@ -218,6 +218,9 @@ namespace spartan
         at(buffers, Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),          particle_counter_max, particle_counter_init, true, "particle_counter");
         const uint32_t particle_emitter_max = 64; // upper bound on simultaneously rendered emitters
         at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  particle_emitter_max, nullptr,           true, "particle_emitter");
+        const uint32_t particle_volume_voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
+        at(buffers, Renderer_Buffer::ParticleVolumeDensity) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count, nullptr, false, "particle_volume_density");
+        at(buffers, Renderer_Buffer::ParticleVolumeColor)   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count * 3, nullptr, false, "particle_volume_color");
 
         // gpu procedural grass, sized once and reused for the lifetime of the renderer
         // GrassInstances is the transient per-frame ring buffer that the populate shader fills
@@ -452,6 +455,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::light_diffuse)               = nullptr;
             at(render_targets, Renderer_RenderTarget::light_specular)              = nullptr;
             at(render_targets, Renderer_RenderTarget::light_volumetric)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::particle_volume)             = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders)     = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = nullptr;
             at(render_targets, Renderer_RenderTarget::sss)                         = nullptr;
@@ -516,6 +520,7 @@ namespace spartan
             // for explicit queue family ownership transfers between the two queues
             at(render_targets, Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
             at(render_targets, Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
+            at(render_targets, Renderer_RenderTarget::particle_volume)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
 
             // debug output sits at render resolution so debug raster passes can share gbuffer_depth for read-equal tests
             at(render_targets, Renderer_RenderTarget::debug_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "debug_output");
@@ -796,6 +801,10 @@ namespace spartan
             { Renderer_Shader::particle_simulate_c,                   RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "SIMULATE"                       },
             { Renderer_Shader::particle_render_v,                     RHI_Shader_Type::Vertex,  "particles.hlsl",                             RHI_Vertex_Type::Max, "RENDER"                         },
             { Renderer_Shader::particle_render_p,                     RHI_Shader_Type::Pixel,   "particles.hlsl",                             RHI_Vertex_Type::Max, "RENDER"                         },
+            { Renderer_Shader::particle_volume_clear_c,                RHI_Shader_Type::Compute, "particles_volumetric.hlsl",                  RHI_Vertex_Type::Max, "VOLUME_CLEAR"                   },
+            { Renderer_Shader::particle_volume_splat_c,                RHI_Shader_Type::Compute, "particles_volumetric.hlsl",                  RHI_Vertex_Type::Max, "VOLUME_SPLAT"                   },
+            { Renderer_Shader::particle_volume_resolve_c,              RHI_Shader_Type::Compute, "particles_volumetric.hlsl",                  RHI_Vertex_Type::Max, "VOLUME_RESOLVE"                 },
+            { Renderer_Shader::particle_volume_composite_c,            RHI_Shader_Type::Compute, "particles_volumetric.hlsl",                  RHI_Vertex_Type::Max, "VOLUME_COMPOSITE"               },
 
             // gpu procedural grass
             { Renderer_Shader::grass_populate_c,                      RHI_Shader_Type::Compute, "grass_populate.hlsl"                                                                              },

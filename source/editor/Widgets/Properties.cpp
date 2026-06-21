@@ -2828,6 +2828,9 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         float directional_blend    = particle_system->GetDirectionalBlend();
         float emissive_strength    = particle_system->GetEmissiveStrength();
         float soft_depth_scale     = particle_system->GetSoftDepthScale();
+        float volume_density       = particle_system->GetVolumeDensity();
+        float volume_anisotropy    = particle_system->GetVolumeAnisotropy();
+        float volume_shadowing     = particle_system->GetVolumeShadowing();
         float drag                 = particle_system->GetDrag();
         float turbulence_strength  = particle_system->GetTurbulenceStrength();
         float wind_influence       = particle_system->GetWindInfluence();
@@ -2867,6 +2870,9 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             directional_blend = particle_system->GetDirectionalBlend();
             emissive_strength = particle_system->GetEmissiveStrength();
             soft_depth_scale = particle_system->GetSoftDepthScale();
+            volume_density = particle_system->GetVolumeDensity();
+            volume_anisotropy = particle_system->GetVolumeAnisotropy();
+            volume_shadowing = particle_system->GetVolumeShadowing();
             drag = particle_system->GetDrag();
             turbulence_strength = particle_system->GetTurbulenceStrength();
             wind_influence = particle_system->GetWindInfluence();
@@ -2894,7 +2900,7 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         ImGui::SameLine();
         if (ImGuiSp::button("Save Effect"))
         {
-            const string path = particle_system->GetEffectPath().empty() ? "project/particles/custom.particle" : particle_system->GetEffectPath();
+            const string path = particle_system->GetEffectPath().empty() ? "worlds/custom.particle" : particle_system->GetEffectPath();
             particle_system->SaveEffect(path);
             particle_system->SetEffectPath(path);
         }
@@ -3019,6 +3025,13 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             particle_system->SetLightingMode(static_cast<spartan::ParticleLightingMode>(lighting_mode));
         }
 
+        static vector<string> render_modes = { "Billboard", "Volumetric" };
+        uint32_t render_mode = static_cast<uint32_t>(particle_system->GetRenderMode());
+        if (property_combo("Render Mode", render_modes, &render_mode, "billboard quads or froxel raymarched density"))
+        {
+            particle_system->SetRenderMode(static_cast<spartan::ParticleRenderMode>(render_mode));
+        }
+
         if (property_float("Emissive", &emissive_strength, 0.1f, 0.0f, 100.0f, "hdr multiplier for emissive particles", "%.1f"))
         {
             particle_system->SetEmissiveStrength(emissive_strength);
@@ -3027,6 +3040,21 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         if (property_float("Soft Depth", &soft_depth_scale, 0.1f, 0.0f, 100.0f, "higher values make depth intersections tighter", "%.1f"))
         {
             particle_system->SetSoftDepthScale(soft_depth_scale);
+        }
+
+        if (property_float("Volume Density", &volume_density, 0.01f, 0.0f, 25.0f, "density scale for volumetric render mode", "%.2f"))
+        {
+            particle_system->SetVolumeDensity(volume_density);
+        }
+
+        if (property_float("Volume Anisotropy", &volume_anisotropy, 0.01f, -0.9f, 0.9f, "phase bias for volumetric forward scattering", "%.2f"))
+        {
+            particle_system->SetVolumeAnisotropy(volume_anisotropy);
+        }
+
+        if (property_float("Volume Shadowing", &volume_shadowing, 0.01f, 0.0f, 1.0f, "self shadowing strength for dense smoke", "%.2f"))
+        {
+            particle_system->SetVolumeShadowing(volume_shadowing);
         }
 
         layout::group_spacing();

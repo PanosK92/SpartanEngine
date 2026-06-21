@@ -209,6 +209,8 @@ RWStructuredBuffer<EmissiveTriangle> emissive_triangles : register(u49);
 RWStructuredBuffer<GrassInstance>    grass_instances     : register(u50);
 RWStructuredBuffer<uint>             grass_count         : register(u51);
 RWStructuredBuffer<IndirectDrawArgs> grass_indirect_args : register(u52);
+RWStructuredBuffer<uint>             particle_volume_density : register(u53);
+RWStructuredBuffer<uint>             particle_volume_color   : register(u54);
 
 // buffers
 #ifdef API_D3D12

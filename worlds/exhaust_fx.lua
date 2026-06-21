@@ -1,8 +1,8 @@
 local exhaust_fx = {}
 
 local smoke_rate_idle      = 18.0
-local smoke_rate_load      = 145.0
-local smoke_rate_overrun   = 170.0
+local smoke_rate_load      = 52.0
+local smoke_rate_overrun   = 68.0
 local smoke_phase_strength = 0.12
 local fire_rate_peak       = 1050.0
 local fire_fade_speed      = 13.0
@@ -92,7 +92,11 @@ local function apply_smoke(pipe, vehicle, intensity, overrun, speed, time)
     local direction = tail_direction(vehicle, 0.08 + intensity * 0.06)
     pipe.smoke:SetEmissionDirection(direction.x, direction.y, direction.z)
 
-    local alpha = clamp(0.30 + intensity * 0.30 + overrun * 0.20, 0.0, 0.76)
+    pipe.smoke:SetVolumeDensity(0.62 + intensity * 0.18 + overrun * 0.12)
+    pipe.smoke:SetVolumeAnisotropy(0.35)
+    pipe.smoke:SetVolumeShadowing(0.55)
+
+    local alpha = clamp(0.24 + intensity * 0.14 + overrun * 0.08, 0.0, 0.42)
     local shade = 0.58 - intensity * 0.09 - overrun * 0.06
     pipe.smoke:SetStartColor(shade + 0.10, shade + 0.09, shade + 0.085, alpha)
     pipe.smoke:SetEndColor(0.32, 0.32, 0.30, 0.0)
@@ -208,13 +212,17 @@ function exhaust_fx.Tick(self, entity)
 
         for _, pipe in ipairs(self.pipes) do
             if pipe.smoke then
-                pipe.smoke:LoadEffect("project/particles/exhaust_smoke.particle")
+                pipe.smoke:LoadEffect("worlds/exhaust_smoke.particle")
+                pipe.smoke:SetRenderMode(1)
+                pipe.smoke:SetVolumeDensity(0.62)
+                pipe.smoke:SetVolumeAnisotropy(0.35)
+                pipe.smoke:SetVolumeShadowing(0.55)
             end
             if pipe.fire then
-                pipe.fire:LoadEffect("project/particles/exhaust_fire.particle")
+                pipe.fire:LoadEffect("worlds/exhaust_fire.particle")
             end
             if pipe.embers then
-                pipe.embers:LoadEffect("project/particles/exhaust_embers.particle")
+                pipe.embers:LoadEffect("worlds/exhaust_embers.particle")
             end
         end
 
