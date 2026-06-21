@@ -103,10 +103,7 @@ namespace
                 return;
             }
 
-            spartan::ThreadPool::AddTask([world_file_path]()
-            {
-                spartan::World::SaveToFile(world_file_path);
-            });
+            spartan::World::SaveToFile(world_file_path);
         }
 
         void ShowWorldLoadDialog()
@@ -178,11 +175,7 @@ namespace
                 {
                     if (file_dialog->GetFilter() == FileDialog_Filter_World)
                     {
-                        spartan::ThreadPool::AddTask([]()
-                        {
-                            spartan::World::SaveToFile(file_dialog_selection_path);
-                        });
-
+                        spartan::World::SaveToFile(file_dialog_selection_path);
                         show_file_dialog = false;
                     }
                 }

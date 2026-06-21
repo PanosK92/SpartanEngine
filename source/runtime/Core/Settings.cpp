@@ -88,7 +88,10 @@ namespace spartan
                 root.append_child("UseRootShaderDirectory").text().set(ResourceCache::GetUseRootShaderDirectory());
             }
 
-            doc.save_file(file_path.c_str());
+            if (!doc.save_file(file_path.c_str()))
+            {
+                SP_LOG_ERROR("Failed to save settings file: %s", file_path.c_str());
+            }
         }
 
         void load()

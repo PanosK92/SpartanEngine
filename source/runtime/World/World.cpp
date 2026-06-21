@@ -1261,7 +1261,7 @@ namespace spartan
             pugi::xml_node entities_node = world_node.append_child("Entities");
 
             // get root entities, save them, and they will save their children recursively
-            static vector<Entity*> root_entities;
+            vector<Entity*> root_entities;
             World::GetRootEntities(root_entities);
             const uint32_t root_entity_count = static_cast<uint32_t>(root_entities.size());
 

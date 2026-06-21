@@ -123,6 +123,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 current_color    = sample_input(int2(pixel), resolution);
     float  current_linear_z = linearize_depth(depth);
     float  current_luma     = dot(current_color, luminance_weights);
+    float  source_roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    uint   source_material_index = uint(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
+    MaterialParameters source_mat = material_parameters[source_material_index];
+    source_roughness = lerp(source_roughness, source_mat.clearcoat_roughness, saturate(source_mat.clearcoat));
+    float  source_alpha     = ggx_alpha_from_roughness(source_roughness);
+    float  rough_reflection = smoothstep(0.03f, 0.45f, source_alpha);
 
     float2 prev_uv         = reproject_to_previous_frame(uv);
     float  confidence      = 0.0f;
@@ -142,14 +148,25 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         // accumulate, the floor keeps a held still view averaging down residual lobe noise
         float n_eff     = history_moments.z;
         float min_alpha = saturate(1.0f / max(n_eff + 1.0f, 1.0f));
-        float ema_alpha = max(min_alpha, 0.03f);
-        history_weight  = saturate(min((1.0f - ema_alpha) * confidence, 0.97f));
+        float ema_floor = lerp(0.03f, 0.01f, rough_reflection);
+        float ema_alpha = max(min_alpha, ema_floor);
+        float max_history = lerp(0.97f, 0.99f, rough_reflection);
+        history_weight  = saturate(min((1.0f - ema_alpha) * confidence, max_history));
     }
 
     // local neighborhood stats stabilize the variance estimate and feed the firefly clamp
     float3 mean_color, sigma_color;
     compute_local_statistics(pixel, resolution, mean_color, sigma_color);
     float spatial_sigma_luma = dot(sigma_color, luminance_weights);
+
+    float raw_mean_luma = dot(mean_color, luminance_weights);
+    float raw_band      = lerp(10.0f, 2.0f, rough_reflection);
+    float raw_high      = raw_mean_luma + raw_band * max(spatial_sigma_luma, 0.05f);
+    if (rough_reflection > 0.0f && current_luma > raw_high && current_luma > 1e-3f)
+    {
+        current_color *= raw_high / current_luma;
+        current_luma   = raw_high;
+    }
 
     // firefly soft clamp before the moment ema, a bright lobe sample is pulled back toward the
     // converged temporal mean so it cannot slowly accumulate and smear across frames

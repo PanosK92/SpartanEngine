@@ -34,18 +34,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float3 luminance_weights = float3(0.299f, 0.587f, 0.114f);
 
-static const int2 spatial_offsets[9] =
+static const int2 spatial_offsets[25] =
 {
-    int2(-1, -1), int2(0, -1), int2(1, -1),
-    int2(-1,  0), int2(0,  0), int2(1,  0),
-    int2(-1,  1), int2(0,  1), int2(1,  1)
+    int2(-2, -2), int2(-1, -2), int2(0, -2), int2(1, -2), int2(2, -2),
+    int2(-2, -1), int2(-1, -1), int2(0, -1), int2(1, -1), int2(2, -1),
+    int2(-2,  0), int2(-1,  0), int2(0,  0), int2(1,  0), int2(2,  0),
+    int2(-2,  1), int2(-1,  1), int2(0,  1), int2(1,  1), int2(2,  1),
+    int2(-2,  2), int2(-1,  2), int2(0,  2), int2(1,  2), int2(2,  2)
 };
 
-static const float spatial_kernel[9] =
+static const float spatial_kernel[25] =
 {
-    1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f,
-    2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f,
-    1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f
+     1.0f / 256.0f,  4.0f / 256.0f,  6.0f / 256.0f,  4.0f / 256.0f,  1.0f / 256.0f,
+     4.0f / 256.0f, 16.0f / 256.0f, 24.0f / 256.0f, 16.0f / 256.0f,  4.0f / 256.0f,
+     6.0f / 256.0f, 24.0f / 256.0f, 36.0f / 256.0f, 24.0f / 256.0f,  6.0f / 256.0f,
+     4.0f / 256.0f, 16.0f / 256.0f, 24.0f / 256.0f, 16.0f / 256.0f,  4.0f / 256.0f,
+     1.0f / 256.0f,  4.0f / 256.0f,  6.0f / 256.0f,  4.0f / 256.0f,  1.0f / 256.0f
 };
 
 float gaussian_filtered_variance(int2 pixel, uint2 resolution)
@@ -53,7 +57,7 @@ float gaussian_filtered_variance(int2 pixel, uint2 resolution)
     float variance_sum = 0.0f;
     float weight_sum   = 0.0f;
     [unroll]
-    for (uint i = 0; i < 9; i++)
+    for (uint i = 0; i < 25; i++)
     {
         int2 sp = clamp(pixel + spatial_offsets[i], int2(0, 0), int2(resolution) - 1);
         float w = spatial_kernel[i];
@@ -65,7 +69,10 @@ float gaussian_filtered_variance(int2 pixel, uint2 resolution)
 
 float load_roughness(float2 uv)
 {
-    return tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    float roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    uint material_index = uint(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
+    MaterialParameters mat = material_parameters[material_index];
+    return lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat));
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -111,11 +118,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     int step_width = max((int)pass_get_f3_value().x, 1);
 
-    // rougher surfaces tolerate a looser luma gate so the wide lobe blends freely, smoother ones
-    // keep the schied reference gate so they preserve detail
     const float phi_depth  = 1.0f;
-    const float phi_normal = 128.0f;
-    float       phi_luma   = lerp(4.0f, 8.0f, filter_strength);
+    float       phi_normal = lerp(128.0f, 48.0f, filter_strength);
+    float       phi_luma   = lerp(5.0f, 24.0f, filter_strength);
 
     float blurred_variance = gaussian_filtered_variance(int2(pixel), resolution);
     float luma_sigma       = max(sqrt(max(blurred_variance, 1e-6f)) * phi_luma, 0.01f);
@@ -124,14 +129,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float depth_y = abs(linearize_depth(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv + float2(0.0f, 1.0f / resolution.y), 0).r) - center_depth);
     float depth_grad_max = max(max(depth_x, depth_y), 1e-3f);
 
-    float4 filtered_color    = center_sample * spatial_kernel[4];
-    float  filtered_variance = center_variance * spatial_kernel[4] * spatial_kernel[4];
-    float  total_weight      = spatial_kernel[4];
+    float4 filtered_color    = center_sample * spatial_kernel[12];
+    float  filtered_variance = center_variance * spatial_kernel[12] * spatial_kernel[12];
+    float  total_weight      = spatial_kernel[12];
 
     [unroll]
-    for (uint i = 0; i < 9; i++)
+    for (uint i = 0; i < 25; i++)
     {
-        if (i == 4)
+        if (i == 12)
         {
             continue;
         }

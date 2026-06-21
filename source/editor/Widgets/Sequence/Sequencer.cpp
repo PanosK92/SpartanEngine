@@ -253,7 +253,10 @@ void Sequencer::Save()
         seq.Save(seq_node);
     }
 
-    doc.save_file(file_path.c_str(), " ", pugi::format_indent);
+    if (!doc.save_file(file_path.c_str(), " ", pugi::format_indent))
+    {
+        SP_LOG_ERROR("Failed to save sequencer file: %s", file_path.c_str());
+    }
 }
 
 void Sequencer::Load()

@@ -214,29 +214,35 @@ namespace spartan
 
     void Light::Load(pugi::xml_node& node)
     {
-        m_flags                = node.attribute("flags").as_uint(0);
-        m_light_type           = static_cast<LightType>(node.attribute("light_type").as_int(static_cast<int>(LightType::Max)));
-        m_color_rgb.r          = node.attribute("color_r").as_float(0.0f);
-        m_color_rgb.g          = node.attribute("color_g").as_float(0.0f);
-        m_color_rgb.b          = node.attribute("color_b").as_float(0.0f);
-        m_temperature_kelvin   = node.attribute("temperature").as_float(0.0f);
-        m_intensity = static_cast<LightIntensity>(node.attribute("intensity").as_int(static_cast<int>(LightIntensity::bulb_500_watt)));
+        m_flags                = node.attribute("flags").as_uint(m_flags);
+        int light_type         = node.attribute("light_type").as_int(static_cast<int>(m_light_type));
+        if (light_type < static_cast<int>(LightType::Directional) || light_type >= static_cast<int>(LightType::Max))
+        {
+            light_type = static_cast<int>(LightType::Point);
+        }
+        m_light_type           = static_cast<LightType>(light_type);
+        SetColor(get_sensible_color(m_light_type));
+        m_color_rgb.r          = node.attribute("color_r").as_float(m_color_rgb.r);
+        m_color_rgb.g          = node.attribute("color_g").as_float(m_color_rgb.g);
+        m_color_rgb.b          = node.attribute("color_b").as_float(m_color_rgb.b);
+        m_temperature_kelvin   = node.attribute("temperature").as_float(m_temperature_kelvin);
+        m_intensity = static_cast<LightIntensity>(node.attribute("intensity").as_int(static_cast<int>(m_intensity)));
 
         pugi::xml_attribute intensity_attribute = node.attribute("intensity_photometric");
         if (!intensity_attribute)
         {
             intensity_attribute = node.attribute("intensity_lum");
         }
-        m_intensity_photometric = intensity_attribute.as_float(2600.0f);
+        m_intensity_photometric = intensity_attribute.as_float(m_intensity_photometric);
+        m_angle_rad            = node.attribute("angle").as_float(m_angle_rad);
         m_range                = node.attribute("range").as_float(get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad));
-        m_angle_rad            = node.attribute("angle").as_float(math::deg_to_rad * 30.0f);
-        m_index                = node.attribute("index").as_uint(0);
-        m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(LightPreset::custom)));
-        m_area_width           = node.attribute("area_width").as_float(1.0f);
-        m_area_height          = node.attribute("area_height").as_float(1.0f);
-        m_draw_distance        = node.attribute("draw_distance").as_float(512.0f);
-        m_distance_shadows     = node.attribute("distance_shadows").as_float(64.0f);
-        m_distance_volumetric  = node.attribute("distance_volumetric").as_float(32.0f);
+        m_index                = node.attribute("index").as_uint(m_index);
+        m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(m_preset)));
+        m_area_width           = node.attribute("area_width").as_float(m_area_width);
+        m_area_height          = node.attribute("area_height").as_float(m_area_height);
+        m_draw_distance        = node.attribute("draw_distance").as_float(m_draw_distance);
+        m_distance_shadows     = node.attribute("distance_shadows").as_float(m_distance_shadows);
+        m_distance_volumetric  = node.attribute("distance_volumetric").as_float(m_distance_volumetric);
         m_screen_space_shadows_slice_index = 0;
 
         if (m_light_type != LightType::Directional || !(m_flags & LightFlags::Shadows))

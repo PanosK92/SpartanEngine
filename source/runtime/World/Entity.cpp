@@ -527,9 +527,9 @@ namespace spartan
     {
         // self
         {
-            m_is_active   = node.attribute("active").as_bool();
+            m_is_active   = node.attribute("active").as_bool(true);
             m_object_id   = node.attribute("id").as_ullong();
-            m_object_name = node.attribute("name").as_string();
+            m_object_name = node.attribute("name").as_string(m_object_name.c_str());
 
             {
                 string pos_str = node.attribute("position").as_string();

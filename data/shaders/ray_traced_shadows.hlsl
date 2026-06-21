@@ -124,12 +124,8 @@ void ray_gen()
     float base_offset     = 0.01f + camera_distance * 0.0001f;
     float3 ray_origin     = pos_ws + normal_ws * base_offset;
     
-    // temporal jitter
-    float temporal_offset = noise_interleaved_gradient(float2(launch_id), true);
-    uint frame_offset     = buffer_frame.frame % 64;
-    
     // contact-hardening soft shadows
-    static const uint TOTAL_SAMPLES = 16;
+    static const uint TOTAL_SAMPLES = 64;
     
     float avg_blocker_dist   = 0.0f;
     float blocker_count      = 0.0f;
@@ -141,8 +137,7 @@ void ray_gen()
     
     for (uint i = 0; i < TOTAL_SAMPLES; i++)
     {
-        float2 sample_2d  = halton_2d(i + frame_offset * TOTAL_SAMPLES);
-        sample_2d         = frac(sample_2d + temporal_offset);
+        float2 sample_2d  = halton_2d(i + 1);
         float2 disk       = concentric_disk_sample(sample_2d);
         float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
         
@@ -230,8 +225,7 @@ void ray_gen()
     
     for (uint j = 0; j < TOTAL_SAMPLES; j++)
     {
-        float2 sample_2d  = halton_2d(j + frame_offset * TOTAL_SAMPLES);
-        sample_2d         = frac(sample_2d + temporal_offset);
+        float2 sample_2d  = halton_2d(j + 1);
         float2 disk       = concentric_disk_sample(sample_2d);
         float sample_dist = length(disk);
         

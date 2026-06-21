@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // shadow mapping constants
-static const uint  g_shadow_sample_count            = 4;
+static const uint  g_shadow_sample_count            = 32;
 static const float g_shadow_filter_size             = 2.5f;
 static const float g_shadow_cascade_blend_threshold = 0.8f;
 static const uint  g_penumbra_sample_count          = 8;
@@ -35,15 +35,6 @@ static const float g_maximum_penumbra_size          = 64.0f;
 static const float g_contact_hardening_factor       = 0.5f;
 static const float g_base_bias_texels               = 0.6f;
 static const float g_slope_bias_texels              = 2.2f;
-
-// pre-computed vogel disk samples
-static const float2 g_vogel_samples_shadow[g_shadow_sample_count] =
-{
-    float2(0.353553f, 0.000000f),
-    float2(-0.451544f, 0.413652f),
-    float2(0.069116f, -0.787542f),
-    float2(0.569143f, 0.742345f)
-};
 
 static const float2 g_vogel_samples_penumbra[g_penumbra_sample_count] =
 {
@@ -73,12 +64,7 @@ float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
 {
     float2 sample;
     
-    // lookup pre-computed sample
-    if (sample_count == g_shadow_sample_count)
-    {
-        sample = g_vogel_samples_shadow[sample_index];
-    }
-    else if (sample_count == g_penumbra_sample_count)
+    if (sample_count == g_penumbra_sample_count)
     {
         sample = g_vogel_samples_penumbra[sample_index];
     }
@@ -146,19 +132,15 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
     if (center <= 0.001f) return 0.0f;
     if (center >= 0.999f) return 1.0f;
 
-    float shadow_factor = 0.0f;
-    
-    // temporal jitter
-    float temporal_offset = noise_interleaved_gradient(surface.pos);
-    float temporal_angle  = temporal_offset * PI2;
-
     // atlas texel size in cascade local space, computed once and shared with the penumbra search
     uint   cascade_index            = (uint)sample_coords.z;
     float2 texel_size_cascade_local = light.atlas_texel_size[cascade_index] / light.atlas_scale[cascade_index];
+    float  rotation_angle           = float(cascade_index) * 0.785398163f;
+    float  shadow_factor            = 0.0f;
     
     // estimate penumbra
     float light_distance = light.is_directional() ? 1000.0f : length(surface.position - light.position);
-    float penumbra       = compute_penumbra(light, temporal_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
+    float penumbra       = compute_penumbra(light, rotation_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
 
     float valid_sample_count = 0.0f;
     
@@ -166,7 +148,7 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
     for (uint i = 0; i < g_shadow_sample_count; i++)
     {
         float2 filter_size = texel_size_cascade_local * g_shadow_filter_size * filter_size_multiplier * penumbra;
-        float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, temporal_angle) * filter_size;
+        float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, rotation_angle) * filter_size;
         float2 sample_uv   = sample_coords.xy + offset;
 
         // check bounds and fade

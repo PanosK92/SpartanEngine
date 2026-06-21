@@ -217,13 +217,17 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     if (geo.uv_rotation != 0.0f)
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
     
+    float hit_distance      = RayTCurrent();
+    float n_dot_v_hit       = saturate(dot(normal_world, -WorldRayDirection()));
+    float grazing_mip_boost = lerp(2.5f, 0.0f, n_dot_v_hit);
+    float distance_mip      = log2(max(hit_distance, 1.0f));
+    float mip_level         = clamp(distance_mip + grazing_mip_boost, 0.0f, 7.0f);
+
     // normal mapping, mild mip bias to avoid specular sparkle on detailed normal maps
     if (mat.has_texture_normal())
     {
         uint  normal_texture_index = material_index + material_texture_index_normal;
-        float hit_distance_n       = RayTCurrent();
-        float n_dot_v_n            = saturate(dot(normal_world, -WorldRayDirection()));
-        float normal_mip           = clamp(log2(max(hit_distance_n, 1.0f)) + lerp(1.5f, 0.0f, n_dot_v_n), 0.0f, 5.0f);
+        float normal_mip           = clamp(distance_mip + lerp(1.5f, 0.0f, n_dot_v_hit), 0.0f, 5.0f);
         float3 normal_sample       = material_textures[normal_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, normal_mip).xyz;
         normal_sample              = normal_sample * 2.0f - 1.0f;
 
@@ -237,21 +241,29 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     if (mat.has_texture_albedo())
     {
         uint  albedo_texture_index = material_index + material_texture_index_albedo;
-        float hit_distance         = RayTCurrent();
-        float n_dot_v_hit          = saturate(dot(normal_world, -WorldRayDirection()));
-        float grazing_mip_boost    = lerp(2.5f, 0.0f, n_dot_v_hit);
-        float distance_mip         = log2(max(hit_distance, 1.0f));
-        float mip_level            = clamp(distance_mip + grazing_mip_boost, 0.0f, 7.0f);
-
         float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
+        if (mat.is_albedo_srgb())
+        {
+            sampled_albedo.rgb = srgb_to_linear(sampled_albedo.rgb);
+        }
         if (sampled_albedo.a > 0.01f)
+        {
             albedo = sampled_albedo.rgb * mat.color.rgb;
+        }
     }
+
+    float roughness = mat.roughness;
+    if (mat.has_texture_roughness())
+    {
+        uint roughness_texture_index = material_index + material_texture_index_roughness;
+        roughness *= material_textures[roughness_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).g;
+    }
+    roughness = max(roughness, 0.04f);
     
     payload.position       = hit_pos;
     payload.hit_distance   = RayTCurrent();
     payload.normal         = normal_world;
     payload.material_index = float(material_index);
     payload.albedo         = albedo;
-    payload.roughness      = mat.roughness;
+    payload.roughness      = roughness;
 }

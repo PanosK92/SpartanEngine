@@ -31,41 +31,76 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float sample_ray_traced_shadow(float2 uv)
 {
     if (!is_ray_traced_shadows_enabled())
+    {
         return 1.0;
+    }
 
-    float shadow = tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
+    float center_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    if (center_depth_raw <= 0.0f)
+    {
+        return 1.0f;
+    }
+
+    uint shadow_width, shadow_height;
+    tex4.GetDimensions(shadow_width, shadow_height);
+    float2 shadow_resolution = float2((float)shadow_width, (float)shadow_height);
+
+    float2 texel_size   = 1.0f / max(shadow_resolution, float2(1.0f, 1.0f));
+    float  center_depth = linearize_depth(center_depth_raw);
+    float3 center_normal = get_normal(uv);
+    float  depth_phi    = max(center_depth * 0.015f, 0.02f);
+
+    float shadow_sum = 0.0f;
+    float weight_sum = 0.0f;
+
+    [unroll]
+    for (int y = -2; y <= 2; y++)
+    {
+        [unroll]
+        for (int x = -2; x <= 2; x++)
+        {
+            float2 offset_uv        = float2((float)x, (float)y) * texel_size;
+            float2 sample_uv        = saturate(uv + offset_uv);
+            float  sample_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).r;
+            if (sample_depth_raw <= 0.0f)
+            {
+                continue;
+            }
+
+            float  sample_depth  = linearize_depth(sample_depth_raw);
+            float3 sample_normal = get_normal(sample_uv);
+            float  spatial_w     = exp(-dot(float2((float)x, (float)y), float2((float)x, (float)y)) * 0.35f);
+            float  depth_w       = exp(-abs(sample_depth - center_depth) / depth_phi);
+            float  normal_w      = pow(saturate(dot(center_normal, sample_normal)), 64.0f);
+            float  weight        = spatial_w * depth_w * normal_w;
+
+            shadow_sum += tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), sample_uv, 0).r * weight;
+            weight_sum += weight;
+        }
+    }
+
+    float shadow = shadow_sum / max(weight_sum, 1e-4f);
 
     return shadow;
 }
 
-// inline ray traced shadow for any light type, stationary halton set rotated per pixel
+// inline ray traced shadow for any light type, deterministic hammersley disk
 #ifdef RAY_TRACING_ENABLED
-static const uint k_inline_shadow_spp = 16;
+static const uint k_inline_shadow_spp = 64;
 
-static const float2 k_halton_2_3[16] =
+float radical_inverse_vdc(uint bits)
 {
-    float2(0.500000f, 0.333333f),
-    float2(0.250000f, 0.666667f),
-    float2(0.750000f, 0.111111f),
-    float2(0.125000f, 0.444444f),
-    float2(0.625000f, 0.777778f),
-    float2(0.375000f, 0.222222f),
-    float2(0.875000f, 0.555556f),
-    float2(0.062500f, 0.888889f),
-    float2(0.562500f, 0.037037f),
-    float2(0.312500f, 0.370370f),
-    float2(0.812500f, 0.703704f),
-    float2(0.187500f, 0.148148f),
-    float2(0.687500f, 0.481481f),
-    float2(0.437500f, 0.814815f),
-    float2(0.937500f, 0.259259f),
-    float2(0.031250f, 0.592593f)
-};
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    return float(bits) * 2.3283064365386963e-10f;
+}
 
-// stationary per pixel hash used to rotate the halton disk
-float spatial_hash_unit(float2 pixel_xy)
+float2 hammersley_2d(uint index, uint count)
 {
-    return frac(52.9829189f * frac(pixel_xy.x * 0.06711056f + pixel_xy.y * 0.00583715f));
+    return float2((float(index) + 0.5f) / float(count), radical_inverse_vdc(index + 1u));
 }
 
 // concentric mapping from [-1,1]^2 square to unit disk
@@ -89,14 +124,13 @@ float2 concentric_disk(float2 u)
     return r * float2(cos(theta), sin(theta));
 }
 
-float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
+float trace_inline_shadow_ray(Light light, Surface surface)
 {
     // self intersection bias scaled by camera distance, reuse cached length
     float bias    = 0.005f + surface.camera_to_pixel_length * 0.0001f;
     float3 origin = surface.position + surface.normal * bias;
 
-    // stationary per pixel rotation to break stratification banding without temporal motion
-    float rot_angle = spatial_hash_unit(pixel_xy) * PI2;
+    float rot_angle = 0.785398163f;
     float cos_r     = cos(rot_angle);
     float sin_r     = sin(rot_angle);
 
@@ -129,11 +163,9 @@ float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
     [unroll]
     for (uint s = 0; s < k_inline_shadow_spp; s++)
     {
-        // halton point in [0,1)^2 mapped to disk in [-1,1]^2
-        float2 u    = k_halton_2_3[s] * 2.0f - 1.0f;
-        float2 disk = concentric_disk(u);
+        float2 sample_square = hammersley_2d(s, k_inline_shadow_spp) * 2.0f - 1.0f;
+        float2 disk          = concentric_disk(sample_square);
 
-        // rotate by stationary per pixel angle
         float2 disk_r = float2(disk.x * cos_r - disk.y * sin_r,
                                disk.x * sin_r + disk.y * cos_r);
 
@@ -151,8 +183,8 @@ float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
         {
             // sample a deterministic point inside the rectangle for soft area shadows
             float3 sample_point = light.position
-                                + area_right * disk_r.x * (light.area_width  * 0.5f)
-                                + area_up    * disk_r.y * (light.area_height * 0.5f);
+                                + area_right * sample_square.x * (light.area_width  * 0.5f)
+                                + area_up    * sample_square.y * (light.area_height * 0.5f);
             float3 to_light = sample_point - origin;
             float  dist     = length(to_light);
             if (dist < 0.0001f)
@@ -300,7 +332,7 @@ void evaluate_light(
     #ifdef RAY_TRACING_ENABLED
         else if (can_use_rt_shadows)
         {
-            L_shadow_primary = trace_inline_shadow_ray(light, surface, float2(pixel_xy));
+            L_shadow_primary = trace_inline_shadow_ray(light, surface);
         }
     #endif
         else if (light.has_shadows())

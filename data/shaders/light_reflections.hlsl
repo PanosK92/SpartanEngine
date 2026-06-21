@@ -51,6 +51,19 @@ float2 reflections_env_brdf_approx(float roughness, float n_dot_v)
     return float2(-1.04f, 1.04f) * a004 + r.zw;
 }
 
+float3 reflections_compress_luminance(float3 color, float knee, float shoulder)
+{
+    float luma = luminance(color);
+    if (luma <= knee)
+    {
+        return color;
+    }
+
+    float excess          = luma - knee;
+    float compressed_luma = knee + excess / (1.0f + excess / max(shoulder, 1e-3f));
+    return color * (compressed_luma / max(luma, FLT_MIN));
+}
+
 float2 reflections_concentric_disk(float2 u)
 {
     if (u.x == 0.0f && u.y == 0.0f)
@@ -215,6 +228,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 gbuffer_position = tex[thread_id.xy];
     float4 gbuffer_normal   = tex2[thread_id.xy];
     float4 gbuffer_albedo   = tex3[thread_id.xy];
+    float2 uv_source        = (thread_id.xy + 0.5f) / resolution_out;
     
     float  hit_distance   = gbuffer_position.w;
     float3 position       = gbuffer_position.xyz;
@@ -222,6 +236,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     uint   material_index = uint(gbuffer_normal.w);
     float3 albedo         = gbuffer_albedo.rgb;
     float  roughness      = gbuffer_albedo.a;
+    float  source_roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv_source, 0).r;
+    uint   source_material_index = uint(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv_source, 0).a);
+    MaterialParameters source_mat = material_parameters[source_material_index];
+    source_roughness = lerp(source_roughness, source_mat.clearcoat_roughness, saturate(source_mat.clearcoat));
+    float  source_alpha     = min(ggx_alpha_from_roughness(source_roughness), 0.6f);
+    float  rough_reflection = smoothstep(0.03f, 0.45f, source_alpha);
     
     // skip pixels marked as no reflection needed (roughness >= 0.9)
     if (hit_distance < 0.0f)
@@ -233,7 +253,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // miss returns sky color, prefiltered by source surface roughness so smooth metals get sharp sky
     if (hit_distance == 0.0f)
     {
-        float source_roughness = tex_material[thread_id.xy].r;
         float mip_count        = pass_get_f3_value().y;
         float sky_mip          = source_roughness * source_roughness * (mip_count - 1.0f);
         float3 ray_dir         = position; // direction stored in position for misses
@@ -249,12 +268,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 F0              = lerp(0.04f, albedo, metallic);
     
     // view direction at the hit points back toward the source pixel
-    float2 uv_source     = (thread_id.xy + 0.5f) / resolution_out;
     float3 source_pos    = get_position(uv_source);
     float3 view_dir      = source_pos - position;
     float  view_dist     = length(view_dir);
     view_dir             = view_dist > 0.0001f ? view_dir / view_dist : -normal;
     float  n_dot_v       = saturate(dot(normal, view_dir));
+    float  n_dot_v_brdf  = max(n_dot_v, lerp(0.001f, 0.04f, rough_reflection));
     float  edge          = 1.0f - n_dot_v;
     float  edge5         = edge * edge * edge * edge * edge;
     float  pearl_blend   = saturate(mat.pearl_strength * edge5);
@@ -282,6 +301,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // direction from hit toward the light (l) and attenuation
         float3 to_light    = float3(0.0f, 0.0f, 0.0f);
         float  attenuation = 0.0f;
+        float  light_distance = 10000.0f;
         
         if (is_directional)
         {
@@ -292,6 +312,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             float3 from_light = position - light_p.position.xyz;
             float  d          = length(from_light);
+            light_distance    = d;
             float3 to_pixel   = d > 0.0001f ? from_light / d : float3(0.0f, 1.0f, 0.0f);
             to_light          = -to_pixel;
             
@@ -335,21 +356,37 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 radiance = light_p.color.rgb * light_p.intensity * attenuation * n_dot_l * shadow;
         
         // simple isotropic ggx + lambert evaluated for view_dir back toward the source
-        float3 h        = normalize(to_light + view_dir);
+        float3 h_unorm  = to_light + view_dir;
+        float  h_len2   = dot(h_unorm, h_unorm);
+        if (h_len2 <= 1e-6f)
+        {
+            continue;
+        }
+        float3 h        = h_unorm * rsqrt(h_len2);
         float  n_dot_h  = saturate(dot(normal, h));
         float  l_dot_h  = saturate(dot(to_light, h));
         
-        float roughness_alpha = roughness * roughness;
-        float alpha2          = roughness_alpha * roughness_alpha;
+        float hit_alpha     = ggx_alpha_from_roughness(roughness);
+        float area_alpha    = 0.0f;
+        if (is_area)
+        {
+            float area_size = max(light_p.area_width, light_p.area_height) * 0.5f;
+            area_alpha      = saturate(area_size / (2.0f * max(light_distance, 0.01f)));
+        }
+        float filtered_alpha = saturate(sqrt(hit_alpha * hit_alpha + source_alpha * source_alpha * 0.35f + area_alpha * area_alpha));
+        float alpha2         = filtered_alpha * filtered_alpha;
         
         float3 diffuse_brdf  = albedo * INV_PI * (1.0f - metallic);
         float  D             = D_GGX(n_dot_h, alpha2);
-        float  G             = V_SmithGGX(n_dot_v, n_dot_l, alpha2);
+        float  G             = V_SmithGGX(n_dot_v_brdf, n_dot_l, alpha2);
         float3 F             = F_Schlick(F0, get_f90(), l_dot_h);
         float3 specular_brdf = D * G * F;
+        float3 specular      = specular_brdf * radiance;
+        float  specular_knee = lerp(4096.0f, 96.0f, rough_reflection);
+        specular             = reflections_compress_luminance(specular, specular_knee, specular_knee * 0.5f);
         
         out_diffuse  += diffuse_brdf  * radiance;
-        out_specular += specular_brdf * radiance;
+        out_specular += specular;
     }
     
     float mip_count = pass_get_f3_value().y;
@@ -366,9 +403,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // and not a silhouette, single bounce sky approximation gated by a visibility ray along the
     // hit reflection direction so enclosed geometry does not leak sky
     float3 reflect_dir    = reflect(-view_dir, normal);
-    float  spec_mip       = roughness * roughness * (mip_count - 1.0f);
+    float  env_roughness  = saturate(max(roughness, source_roughness * rough_reflection));
+    float  spec_mip       = env_roughness * env_roughness * (mip_count - 1.0f);
     float3 env_spec       = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(reflect_dir), spec_mip).rgb;
-    float2 env_brdf       = reflections_env_brdf_approx(roughness, n_dot_v);
+    float2 env_brdf       = reflections_env_brdf_approx(env_roughness, n_dot_v_brdf);
     float  spec_vis       = reflections_trace_sky_visibility(position, normal, reflect_dir);
     float3 ibl_specular   = env_spec * (F0 * env_brdf.x + env_brdf.y) * spec_vis;
 
@@ -384,8 +422,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         emission = mat.color.rgb * 25.0f;
     }
+    float emission_knee = lerp(FLT_MAX_16U, 320.0f, rough_reflection);
+    emission = reflections_compress_luminance(emission, emission_knee, emission_knee * 0.5f);
 
     float3 final_color = out_diffuse + out_specular + ibl_diffuse + ibl_specular + emission;
+    float  final_knee  = lerp(FLT_MAX_16U, 768.0f, rough_reflection);
+    final_color        = reflections_compress_luminance(final_color, final_knee, final_knee * 0.5f);
 
     // rt owns the full primary specular lobe, restir contributes diffuse only so there is no overlap
     tex_uav[thread_id.xy] = validate_output(float4(final_color, 1.0f));

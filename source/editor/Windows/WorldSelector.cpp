@@ -304,7 +304,10 @@ namespace
             world_node.append_attribute("last_opened").set_value(last_opened_text.c_str());
         }
 
-        doc.save_file(world_recency_file);
+        if (!doc.save_file(world_recency_file))
+        {
+            SP_LOG_ERROR("Failed to save world recency file: %s", world_recency_file);
+        }
     }
 
     void record_world_opened(const string& path)

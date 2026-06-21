@@ -13,6 +13,51 @@ namespace
     {
         return Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused);
     }
+
+    void save_lua_value(pugi::xml_node& node, const std::string& key_name, const sol::object& value)
+    {
+        if (key_name.empty() || key_name == "file_path")
+        {
+            return;
+        }
+
+        pugi::xml_attribute attr = node.attribute(key_name.c_str());
+        if (!attr)
+        {
+            attr = node.append_attribute(key_name.c_str());
+        }
+
+        if (value.is<int>())
+        {
+            attr = value.as<int>();
+        }
+        else if (value.is<float>() || value.is<double>())
+        {
+            attr = value.as<float>();
+        }
+        else if (value.is<bool>())
+        {
+            attr = value.as<bool>();
+        }
+        else if (value.is<std::string>())
+        {
+            const std::string string_value = value.as<std::string>();
+            attr = string_value.c_str();
+        }
+    }
+
+    void save_lua_table(pugi::xml_node& node, const sol::table& table)
+    {
+        for (auto& [key, value] : table)
+        {
+            if (!key.is<std::string>())
+            {
+                continue;
+            }
+
+            save_lua_value(node, key.as<std::string>(), value);
+        }
+    }
 }
 
 Script::Script(Entity* Entity)
@@ -154,27 +199,6 @@ void Script::Save(pugi::xml_node& node)
 
     if (script.valid())
     {
-        for (auto& [key, value] : script)
-        {
-            std::string_view key_name = key.as<std::string_view>();
-            if (value.is<int>())
-            {
-                node.append_attribute(key_name.data()) = value.as<int>();
-            }
-            else if (value.is<float>() || value.is<double>())
-            {
-                node.append_attribute(key_name.data()) = value.as<float>();
-            }
-            else if (value.is<bool>())
-            {
-                node.append_attribute(key_name.data()) = value.as<bool>();
-            }
-            else if (value.is<std::string>())
-            {
-                node.append_attribute(key_name.data()) = value.as<std::string>().c_str();
-            }
-        }
-
         sol::protected_function TickFunction = script["Save"];
         if (TickFunction.valid())
         {
@@ -183,7 +207,22 @@ void Script::Save(pugi::xml_node& node)
             {
                 sol::error Error = Result;
                 SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
+                save_lua_table(node, script);
             }
+            else
+            {
+                save_lua_table(node, script);
+
+                sol::object ReturnValue = Result;
+                if (ReturnValue.is<sol::table>())
+                {
+                    save_lua_table(node, ReturnValue.as<sol::table>());
+                }
+            }
+        }
+        else
+        {
+            save_lua_table(node, script);
         }
     }
 }
@@ -215,10 +254,25 @@ void Script::LoadInternal(pugi::xml_node& node)
 
     if (script.valid())
     {
+        sol::table saved_data = World::GetLuaState().create_table();
+        for (pugi::xml_attribute attr = node.first_attribute(); attr; attr = attr.next_attribute())
+        {
+            std::string attr_name = attr.name();
+            if (attr_name != "file_path")
+            {
+                saved_data[attr_name] = attr.value();
+            }
+        }
+
         for (auto& [key, value] : script)
         {
-            std::string_view key_name = key.as<std::string_view>();
-            auto attr = node.attribute(key_name.data());
+            if (!key.is<std::string>())
+            {
+                continue;
+            }
+
+            std::string key_name = key.as<std::string>();
+            auto attr = node.attribute(key_name.c_str());
             if (attr.empty())
             {
                 continue;
@@ -227,18 +281,22 @@ void Script::LoadInternal(pugi::xml_node& node)
             if (value.is<int>())
             {
                 script[key_name] = attr.as_int();
+                saved_data[key_name] = attr.as_int();
             }
             else if (value.is<float>() || value.is<double>())
             {
                 script[key_name] = attr.as_float();
+                saved_data[key_name] = attr.as_float();
             }
             else if (value.is<bool>())
             {
                 script[key_name] = attr.as_bool();
+                saved_data[key_name] = attr.as_bool();
             }
             else if (value.is<std::string>())
             {
                 script[key_name] = attr.as_string();
+                saved_data[key_name] = attr.as_string();
             }
         }
 
@@ -257,7 +315,7 @@ void Script::LoadInternal(pugi::xml_node& node)
         sol::protected_function TickFunction = script["Load"];
         if (TickFunction.valid())
         {
-            sol::protected_function_result Result = TickFunction(script, GetEntity());
+            sol::protected_function_result Result = TickFunction(script, GetEntity(), saved_data);
             if (!Result.valid())
             {
                 sol::error Error = Result;

@@ -912,6 +912,11 @@ namespace spartan
 
         SetResourceFilePath(file_path);
         pugi::xml_node node_material = doc.child("Material");
+        if (!node_material)
+        {
+            SP_LOG_ERROR("Material file missing root node: %s", file_path.c_str());
+            return;
+        }
 
         // load properties
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
@@ -972,7 +977,9 @@ namespace spartan
     {
         // skip when called without a resolved path
         if (file_path.empty())
+        {
             return;
+        }
 
         // serialize concurrent saves of the same path, the tmp file and rename must not race
         lock_guard<mutex> file_lock(save_mutex_for(file_path));

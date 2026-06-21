@@ -1047,10 +1047,7 @@ void WorldViewer::HandleKeyShortcuts()
         }
         else
         {
-            ThreadPool::AddTask([]()
-            {
-                World::SaveToFile(World::GetFilePath());
-            });
+            World::SaveToFile(file_path);
         }
     }
 
