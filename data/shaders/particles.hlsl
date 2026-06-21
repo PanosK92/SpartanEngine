@@ -299,8 +299,12 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // predict next position
     float3 new_pos = p.position + p.velocity * dt;
 
-    // scene depth makes particles slide off visible geometry
-    apply_depth_collision(p, new_pos, emitter);
+    // fresh puffs need a short grace period to leave tight emitters such as exhaust tips
+    float age_for_collision = 1.0 - saturate(p.lifetime / max(p.max_lifetime, 0.0001));
+    if (age_for_collision > 0.18)
+    {
+        apply_depth_collision(p, new_pos, emitter);
+    }
 
     // commit the new position
     p.position = new_pos;

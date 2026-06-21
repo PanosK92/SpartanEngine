@@ -1,8 +1,8 @@
 local exhaust_fx = {}
 
-local smoke_rate_idle      = 18.0
-local smoke_rate_load      = 52.0
-local smoke_rate_overrun   = 68.0
+local smoke_rate_idle      = 36.0
+local smoke_rate_load      = 36.0
+local smoke_rate_overrun   = 44.0
 local smoke_phase_strength = 0.12
 local fire_rate_peak       = 1050.0
 local fire_fade_speed      = 13.0
@@ -74,10 +74,10 @@ local function apply_smoke(pipe, vehicle, intensity, overrun, speed, time)
     pipe.smoke:SetBlendMode(1)
     pipe.smoke:SetLightingMode(0)
     pipe.smoke:SetEmissionRate(rate)
-    pipe.smoke:SetLifetime(0.55 + intensity * 0.85 + overrun * 0.32)
-    pipe.smoke:SetStartSpeed(0.25 + intensity * 0.48 + travel * 0.36)
-    pipe.smoke:SetStartSize(0.05 + intensity * 0.06)
-    pipe.smoke:SetEndSize(0.32 + intensity * 0.42 + overrun * 0.16)
+    pipe.smoke:SetLifetime(0.85 + intensity * 0.42 + overrun * 0.16)
+    pipe.smoke:SetStartSpeed(0.48 + intensity * 0.26 + travel * 0.24)
+    pipe.smoke:SetStartSize(0.04 + intensity * 0.03)
+    pipe.smoke:SetEndSize(0.24 + intensity * 0.18 + overrun * 0.07)
     pipe.smoke:SetGravityModifier(-0.025 - intensity * 0.035)
     pipe.smoke:SetEmissionRadius(0.035 + intensity * 0.035)
     pipe.smoke:SetEmissionConeAngle(0.42 + intensity * 0.16)
@@ -92,11 +92,11 @@ local function apply_smoke(pipe, vehicle, intensity, overrun, speed, time)
     local direction = tail_direction(vehicle, 0.08 + intensity * 0.06)
     pipe.smoke:SetEmissionDirection(direction.x, direction.y, direction.z)
 
-    pipe.smoke:SetVolumeDensity(0.62 + intensity * 0.18 + overrun * 0.12)
+    pipe.smoke:SetVolumeDensity(0.95 + intensity * 0.08 + overrun * 0.05)
     pipe.smoke:SetVolumeAnisotropy(0.35)
     pipe.smoke:SetVolumeShadowing(0.55)
 
-    local alpha = clamp(0.24 + intensity * 0.14 + overrun * 0.08, 0.0, 0.42)
+    local alpha = clamp(0.32 + intensity * 0.06 + overrun * 0.04, 0.0, 0.38)
     local shade = 0.58 - intensity * 0.09 - overrun * 0.06
     pipe.smoke:SetStartColor(shade + 0.10, shade + 0.09, shade + 0.085, alpha)
     pipe.smoke:SetEndColor(0.32, 0.32, 0.30, 0.0)
@@ -214,7 +214,7 @@ function exhaust_fx.Tick(self, entity)
             if pipe.smoke then
                 pipe.smoke:LoadEffect("worlds/exhaust_smoke.particle")
                 pipe.smoke:SetRenderMode(1)
-                pipe.smoke:SetVolumeDensity(0.62)
+                pipe.smoke:SetVolumeDensity(0.95)
                 pipe.smoke:SetVolumeAnisotropy(0.35)
                 pipe.smoke:SetVolumeShadowing(0.55)
             end

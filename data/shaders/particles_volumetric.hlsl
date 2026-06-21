@@ -66,6 +66,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
 #elif defined(VOLUME_SPLAT)
 
+float volume_hash(uint3 value, uint seed)
+{
+    uint h = value.x * 73856093u ^ value.y * 19349663u ^ value.z * 83492791u ^ seed;
+    h = (h ^ (h >> 16u)) * 2246822519u;
+    h = (h ^ (h >> 13u)) * 3266489917u;
+    h = h ^ (h >> 16u);
+    return (float)(h & 0x00ffffffu) * (1.0f / 16777215.0f);
+}
+
 void splat_voxel(uint3 voxel, Particle particle, EmitterParams emitter, float falloff)
 {
     uint index = volume_index(voxel);
@@ -130,9 +139,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
     float3 center = float3(uv * float2(volume_width, volume_height), saturate(distance_camera / volume_max_distance) * volume_depth);
-    float radius_xy = clamp(particle.size / max(distance_camera, 0.25f) * volume_height * 2.2f, 1.5f, 10.0f);
-    float radius_z  = clamp(particle.size / volume_max_distance * volume_depth * 3.0f, 1.25f, 6.0f);
-    int3 radius = int3((int)ceil(radius_xy), (int)ceil(radius_xy), (int)ceil(radius_z));
+    uint particle_seed = asuint(particle.max_lifetime) ^ (asuint(particle.start_size) * 1664525u) ^ (emitter_index * 1013904223u);
+    float radius_xy = clamp(particle.size / max(distance_camera, 0.25f) * volume_height * 1.55f, 1.0f, 7.0f);
+    float radius_z  = clamp(particle.size / volume_max_distance * volume_depth * 2.0f, 1.0f, 4.5f);
+    float radius_x  = radius_xy * lerp(0.72f, 1.08f, volume_hash(uint3(3u, 17u, 41u), particle_seed));
+    float radius_y  = radius_xy * lerp(0.65f, 1.00f, volume_hash(uint3(5u, 23u, 59u), particle_seed));
+    float radius_d  = radius_z  * lerp(0.78f, 1.16f, volume_hash(uint3(7u, 29u, 67u), particle_seed));
+    int3 radius = int3((int)ceil(max(radius_x, radius_y)), (int)ceil(max(radius_x, radius_y)), (int)ceil(radius_d));
     int3 c = int3(floor(center));
 
     [loop]
@@ -151,16 +164,22 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                 }
 
                 float3 voxel_center = float3(v) + 0.5f;
-                float3 delta = float3((voxel_center.x - center.x) / max(radius_xy, 0.001f),
-                                      (voxel_center.y - center.y) / max(radius_xy, 0.001f),
-                                      (voxel_center.z - center.z) / max(radius_z, 0.001f));
+                float3 delta = float3((voxel_center.x - center.x) / max(radius_x, 0.001f),
+                                      (voxel_center.y - center.y) / max(radius_y, 0.001f),
+                                      (voxel_center.z - center.z) / max(radius_d, 0.001f));
                 float dist_sq = dot(delta, delta);
+                uint3 voxel_u = (uint3)v;
+                float coarse_noise = volume_hash(voxel_u / 2u, particle_seed);
+                float edge = smoothstep(0.12f, 0.95f, dist_sq);
+                dist_sq += (coarse_noise - 0.5f) * 0.42f * edge;
                 if (dist_sq >= 1.0f)
                 {
                     continue;
                 }
 
+                float fine_noise = volume_hash(voxel_u, particle_seed ^ 0x9e3779b9u);
                 float falloff = (1.0f - dist_sq) * (1.0f - dist_sq);
+                falloff *= lerp(0.55f, 1.18f, fine_noise);
                 splat_voxel((uint3)v, particle, emitter, falloff);
             }
         }
