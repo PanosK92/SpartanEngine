@@ -200,6 +200,14 @@ struct MaterialParameters
 
     SHARED_FLOAT clearcoat;
     SHARED_FLOAT clearcoat_roughness;
+    SHARED_FLOAT flake_strength;
+    SHARED_FLOAT flake_scale;
+
+    SHARED_FLOAT4 pearl_color SHARED_DEFAULT(spartan::math::Vector4::One);
+    SHARED_FLOAT4 coat_tint SHARED_DEFAULT(spartan::math::Vector4::One);
+
+    SHARED_FLOAT pearl_strength;
+    SHARED_FLOAT ior;
     SHARED_FLOAT padding0 SHARED_DEFAULT(0.0f);
     SHARED_FLOAT padding1 SHARED_DEFAULT(0.0f);
 

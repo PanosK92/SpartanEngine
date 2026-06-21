@@ -427,6 +427,18 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
     }
+
+    if (material.flake_strength > 0.0f)
+    {
+        float flake_scale = max(material.flake_scale, 1.0f);
+        float2 flake_cell = floor(vertex.uv_misc.xy * flake_scale);
+        float flake_hash  = hash(flake_cell + floor(position_world.xz * 0.25f));
+        float sparkle     = pow(saturate(flake_hash), 48.0f) * saturate(material.flake_strength);
+        float3 flake_tint = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), 0.35f);
+        albedo.rgb       += sparkle * flake_tint * 0.35f;
+        roughness         = lerp(roughness, roughness * 0.65f, sparkle);
+        metalness         = saturate(metalness + sparkle * 0.12f);
+    }
     
     // specular anti-aliasing
     if (surface.has_texture_normal())

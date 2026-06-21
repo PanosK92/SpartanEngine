@@ -41,6 +41,13 @@ struct Surface
     float  anisotropic_rotation;
     float  sheen;
     float  subsurface_scattering;
+    float  flake_strength;
+    float  flake_scale;
+    float  pearl_strength;
+    float3 pearl_color;
+    float3 coat_tint;
+    float  coat_tint_strength;
+    float  ior;
     float  occlusion;
     float3 emissive;
     float3 F0;
@@ -106,6 +113,13 @@ struct Surface
         clearcoat_roughness   = material.clearcoat_roughness;
         sheen                 = material.sheen;
         subsurface_scattering = material.subsurface_scattering;
+        flake_strength        = material.flake_strength;
+        flake_scale           = material.flake_scale;
+        pearl_strength        = material.pearl_strength;
+        pearl_color           = material.pearl_color.rgb;
+        coat_tint             = material.coat_tint.rgb;
+        coat_tint_strength    = material.coat_tint.a;
+        ior                   = material.ior;
         diffuse_energy        = 1.0f;
 
         // roughness is authored as perceptual roughness, as is convention
@@ -131,6 +145,19 @@ struct Surface
         camera_to_pixel        = position - get_camera_position();
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel        = normalize(camera_to_pixel);
+
+        float n_dot_v        = saturate(dot(normal, -camera_to_pixel));
+        float edge           = 1.0f - n_dot_v;
+        float edge5          = edge * edge * edge * edge * edge;
+        float pearl_blend    = saturate(pearl_strength * edge5);
+        float coat_blend     = saturate(coat_tint_strength * lerp(0.35f, 1.0f, edge5));
+        float3 paint_albedo  = lerp(albedo, pearl_color, pearl_blend);
+        paint_albedo        *= lerp(float3(1.0f, 1.0f, 1.0f), coat_tint, coat_blend);
+        if (!replace_color_with_one)
+        {
+            albedo = paint_albedo;
+        }
+        F0                   = lerp(F0, pearl_color, pearl_blend * 0.35f);
     }
 };
 

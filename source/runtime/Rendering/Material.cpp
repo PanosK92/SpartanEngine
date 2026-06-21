@@ -72,6 +72,19 @@ namespace spartan
                 case MaterialProperty::AnisotropicRotation:        return "anisotropic_rotation";
                 case MaterialProperty::Sheen:                      return "sheen";
                 case MaterialProperty::SubsurfaceScattering:       return "subsurface_scattering";
+                case MaterialProperty::FlakeStrength:              return "flake_strength";
+                case MaterialProperty::FlakeScale:                 return "flake_scale";
+                case MaterialProperty::PearlStrength:              return "pearl_strength";
+                case MaterialProperty::PearlColorR:                return "pearl_color_r";
+                case MaterialProperty::PearlColorG:                return "pearl_color_g";
+                case MaterialProperty::PearlColorB:                return "pearl_color_b";
+                case MaterialProperty::CoatTintR:                  return "coat_tint_r";
+                case MaterialProperty::CoatTintG:                  return "coat_tint_g";
+                case MaterialProperty::CoatTintB:                  return "coat_tint_b";
+                case MaterialProperty::CoatTintStrength:           return "coat_tint_strength";
+                case MaterialProperty::Ior:                        return "ior";
+                case MaterialProperty::PaintPreset:                return "paint_preset";
+                case MaterialProperty::SurfacePreset:              return "surface_preset";
                 case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
                 case MaterialProperty::EmissiveFromAlbedo:         return "emissive_from_albedo";
         
@@ -612,6 +625,14 @@ namespace spartan
         SetProperty(MaterialProperty::TextureTilingY, 1.0f);
         SetProperty(MaterialProperty::TextureInvertX, 0.0f);
         SetProperty(MaterialProperty::TextureInvertY, 0.0f);
+        SetProperty(MaterialProperty::FlakeScale,     120.0f);
+        SetProperty(MaterialProperty::PearlColorR,    1.0f);
+        SetProperty(MaterialProperty::PearlColorG,    1.0f);
+        SetProperty(MaterialProperty::PearlColorB,    1.0f);
+        SetProperty(MaterialProperty::CoatTintR,      1.0f);
+        SetProperty(MaterialProperty::CoatTintG,      1.0f);
+        SetProperty(MaterialProperty::CoatTintB,      1.0f);
+        SetProperty(MaterialProperty::Ior,            EnumToIor(MaterialIor::Glass));
         SetProperty(MaterialProperty::WorldHeight,    1.0f);
         SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
 
@@ -619,6 +640,264 @@ namespace spartan
         char file_path[512];
         snprintf(file_path, sizeof(file_path), "%smaterials\\empty.xml", project_dir);
         SetResourceFilePath(file_path);
+    }
+
+    void Material::ApplyPaintPreset(MaterialPaintPreset preset, const Color& color, bool save)
+    {
+        ResetPresetProperties(false);
+        SetColorInternal(color, false);
+
+        switch (preset)
+        {
+            case MaterialPaintPreset::GlossSolid:
+            {
+                SetPropertyInternal(MaterialProperty::Roughness,           0.08f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.05f, false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.03f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingX,      100.0f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingY,      100.0f, false);
+                break;
+            }
+            case MaterialPaintPreset::Metallic:
+            {
+                SetPropertyInternal(MaterialProperty::Roughness,           0.26f, false);
+                SetPropertyInternal(MaterialProperty::Metalness,           0.02f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.9f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.1f,  false);
+                SetPropertyInternal(MaterialProperty::Anisotropic,         0.1f,  false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.04f, false);
+                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.18f, false);
+                SetPropertyInternal(MaterialProperty::FlakeScale,          160.0f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingX,      130.0f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingY,      130.0f, false);
+                break;
+            }
+            case MaterialPaintPreset::Satin:
+            {
+                SetPropertyInternal(MaterialProperty::Roughness,           0.42f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.75f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.45f, false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.02f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingX,      80.0f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingY,      80.0f, false);
+                break;
+            }
+            case MaterialPaintPreset::Matte:
+            {
+                SetPropertyInternal(MaterialProperty::Roughness, 0.82f, false);
+                SetPropertyInternal(MaterialProperty::Sheen,     0.15f, false);
+                SetPropertyInternal(MaterialProperty::Normal,    0.02f, false);
+                break;
+            }
+            case MaterialPaintPreset::Pearl:
+            {
+                SetPropertyInternal(MaterialProperty::Roughness,           0.18f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.07f, false);
+                SetPropertyInternal(MaterialProperty::Sheen,               0.25f, false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.04f, false);
+                SetPropertyInternal(MaterialProperty::PearlStrength,       0.55f, false);
+                SetPropertyInternal(MaterialProperty::PearlColorR,         0.55f, false);
+                SetPropertyInternal(MaterialProperty::PearlColorG,         0.78f, false);
+                SetPropertyInternal(MaterialProperty::PearlColorB,         1.0f,  false);
+                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.18f, false);
+                SetPropertyInternal(MaterialProperty::FlakeScale,          140.0f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingX,      120.0f, false);
+                SetPropertyInternal(MaterialProperty::TextureTilingY,      120.0f, false);
+                break;
+            }
+            case MaterialPaintPreset::Candy:
+            {
+                SetPropertyInternal(MaterialProperty::Roughness,             0.12f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,             1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness,   0.035f, false);
+                SetPropertyInternal(MaterialProperty::SubsurfaceScattering,  0.18f, false);
+                SetPropertyInternal(MaterialProperty::Normal,                0.015f, false);
+                SetPropertyInternal(MaterialProperty::CoatTintR,             1.0f, false);
+                SetPropertyInternal(MaterialProperty::CoatTintG,             0.12f, false);
+                SetPropertyInternal(MaterialProperty::CoatTintB,             0.04f, false);
+                SetPropertyInternal(MaterialProperty::CoatTintStrength,      0.45f, false);
+                break;
+            }
+            case MaterialPaintPreset::Chameleon:
+            {
+                SetPropertyInternal(MaterialProperty::Roughness,           0.16f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.06f, false);
+                SetPropertyInternal(MaterialProperty::Sheen,               0.5f,  false);
+                SetPropertyInternal(MaterialProperty::Anisotropic,         0.15f, false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.04f, false);
+                SetPropertyInternal(MaterialProperty::PearlStrength,       0.9f,  false);
+                SetPropertyInternal(MaterialProperty::PearlColorR,         0.25f, false);
+                SetPropertyInternal(MaterialProperty::PearlColorG,         0.9f,  false);
+                SetPropertyInternal(MaterialProperty::PearlColorB,         1.0f,  false);
+                SetPropertyInternal(MaterialProperty::CoatTintR,           0.55f, false);
+                SetPropertyInternal(MaterialProperty::CoatTintG,           0.2f,  false);
+                SetPropertyInternal(MaterialProperty::CoatTintB,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::CoatTintStrength,    0.25f, false);
+                SetPropertyInternal(MaterialProperty::FlakeStrength,       0.25f, false);
+                SetPropertyInternal(MaterialProperty::FlakeScale,          180.0f, false);
+                break;
+            }
+            case MaterialPaintPreset::Max:
+            default:
+            {
+                SP_ASSERT_MSG(false, "Unknown material paint preset");
+                break;
+            }
+        }
+
+        SetPropertyInternal(MaterialProperty::PaintPreset,   static_cast<float>(preset) + 1.0f, false);
+        SetPropertyInternal(MaterialProperty::SurfacePreset, 0.0f, false);
+
+        if (save)
+        {
+            SaveToFile(GetResourceFilePath());
+        }
+    }
+
+    void Material::ApplySurfacePreset(MaterialSurfacePreset preset, bool save)
+    {
+        ResetPresetProperties(false);
+
+        switch (preset)
+        {
+            case MaterialSurfacePreset::GlassClear:
+            {
+                SetColorInternal(Color(0.85f, 0.95f, 1.0f, 0.35f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.02f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.02f, false);
+                SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                break;
+            }
+            case MaterialSurfacePreset::GlassTinted:
+            {
+                SetColorInternal(Color(0.08f, 0.1f, 0.12f, 0.45f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.04f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.04f, false);
+                SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                break;
+            }
+            case MaterialSurfacePreset::HeadlightLens:
+            {
+                SetColorInternal(Color(1.0f, 0.96f, 0.82f, 0.55f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.12f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.06f, false);
+                SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                break;
+            }
+            case MaterialSurfacePreset::TaillightLens:
+            {
+                SetColorInternal(Color(1.0f, 0.04f, 0.02f, 0.65f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.18f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.8f,  false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.12f, false);
+                SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                break;
+            }
+            case MaterialSurfacePreset::RubberTire:
+            {
+                SetColorInternal(Color(0.015f, 0.014f, 0.013f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness, 0.92f, false);
+                SetPropertyInternal(MaterialProperty::Normal,    0.35f, false);
+                break;
+            }
+            case MaterialSurfacePreset::CarbonFiber:
+            {
+                SetColorInternal(Color(0.015f, 0.016f, 0.017f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.38f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.65f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.18f, false);
+                SetPropertyInternal(MaterialProperty::Anisotropic,         0.7f,  false);
+                SetPropertyInternal(MaterialProperty::AnisotropicRotation, 0.125f, false);
+                SetPropertyInternal(MaterialProperty::Normal,              0.25f, false);
+                break;
+            }
+            case MaterialSurfacePreset::Chrome:
+            {
+                SetColorInternal(Color(0.95f, 0.94f, 0.92f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness, 0.05f, false);
+                SetPropertyInternal(MaterialProperty::Metalness, 1.0f,  false);
+                break;
+            }
+            case MaterialSurfacePreset::PolishedMetal:
+            {
+                SetColorInternal(Color(0.72f, 0.7f, 0.66f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness, 0.22f, false);
+                SetPropertyInternal(MaterialProperty::Metalness, 1.0f,  false);
+                break;
+            }
+            case MaterialSurfacePreset::BrakeDisc:
+            {
+                SetColorInternal(Color(0.62f, 0.6f, 0.56f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.36f, false);
+                SetPropertyInternal(MaterialProperty::Metalness,           1.0f,  false);
+                SetPropertyInternal(MaterialProperty::Anisotropic,         1.0f,  false);
+                SetPropertyInternal(MaterialProperty::AnisotropicRotation, 0.2f,  false);
+                break;
+            }
+            case MaterialSurfacePreset::Leather:
+            {
+                SetColorInternal(Color(0.035f, 0.03f, 0.026f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness, 0.75f, false);
+                SetPropertyInternal(MaterialProperty::Sheen,     0.25f, false);
+                SetPropertyInternal(MaterialProperty::Normal,    0.08f, false);
+                break;
+            }
+            case MaterialSurfacePreset::BlackPlastic:
+            {
+                SetColorInternal(Color(0.006f, 0.006f, 0.006f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.55f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat,           0.25f, false);
+                SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.35f, false);
+                break;
+            }
+            case MaterialSurfacePreset::EmissiveRedLight:
+            {
+                SetColorInternal(Color(1.0f, 0.02f, 0.01f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,          0.2f, false);
+                SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo, 1.0f, false);
+                break;
+            }
+            case MaterialSurfacePreset::EmissiveWhiteLight:
+            {
+                SetColorInternal(Color(1.0f, 0.86f, 0.58f, 1.0f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,          0.15f, false);
+                SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo, 1.0f, false);
+                break;
+            }
+            case MaterialSurfacePreset::Max:
+            default:
+            {
+                SP_ASSERT_MSG(false, "Unknown material surface preset");
+                break;
+            }
+        }
+
+        SetPropertyInternal(MaterialProperty::PaintPreset,   0.0f, false);
+        SetPropertyInternal(MaterialProperty::SurfacePreset, static_cast<float>(preset) + 1.0f, false);
+
+        if (save)
+        {
+            SaveToFile(GetResourceFilePath());
+        }
+    }
+
+    shared_ptr<Material> Material::Clone(const string& resource_name) const
+    {
+        shared_ptr<Material> clone = make_shared<Material>();
+        clone->SetResourceName(resource_name);
+        clone->m_textures      = m_textures;
+        clone->m_properties    = m_properties;
+        clone->m_flags         = m_flags;
+        clone->m_needs_repack  = true;
+        clone->m_object_size   = sizeof(*clone);
+
+        return clone;
     }
 
     void Material::LoadFromFile(const string& file_path)
@@ -638,7 +917,10 @@ namespace spartan
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {
             const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
-            m_properties[i] = node_material.child(attribute_name).text().as_float();
+            if (pugi::xml_node property_node = node_material.child(attribute_name))
+            {
+                m_properties[i] = property_node.text().as_float();
+            }
         }
     
         // load textures (skip packed textures as they're regenerated from source textures during PrepareForGpu)
@@ -948,10 +1230,12 @@ namespace spartan
         return max<uint32_t>(*max_element(begin(max_used_slot), end(max_used_slot)), 1);
     }
 
-    void Material::SetProperty(const MaterialProperty property_type, float value)
+    void Material::SetPropertyInternal(MaterialProperty property_type, float value, bool save)
     {
         if (m_properties[static_cast<uint32_t>(property_type)] == value)
+        {
             return;
+        }
 
         if (property_type == MaterialProperty::ColorA)
         {
@@ -971,15 +1255,69 @@ namespace spartan
         m_properties[static_cast<uint32_t>(property_type)] = value;
 
         // save on change
-        SaveToFile(GetResourceFilePath());
+        if (save)
+        {
+            SaveToFile(GetResourceFilePath());
+        }
+    }
+
+    void Material::SetColorInternal(const Color& color, bool save)
+    {
+        SetPropertyInternal(MaterialProperty::ColorR, color.r, false);
+        SetPropertyInternal(MaterialProperty::ColorG, color.g, false);
+        SetPropertyInternal(MaterialProperty::ColorB, color.b, false);
+        SetPropertyInternal(MaterialProperty::ColorA, color.a, false);
+
+        if (save)
+        {
+            SaveToFile(GetResourceFilePath());
+        }
+    }
+
+    void Material::ResetPresetProperties(bool save)
+    {
+        SetPropertyInternal(MaterialProperty::ColorA,               1.0f, false);
+        SetPropertyInternal(MaterialProperty::Roughness,            1.0f, false);
+        SetPropertyInternal(MaterialProperty::Metalness,            0.0f, false);
+        SetPropertyInternal(MaterialProperty::Normal,               0.0f, false);
+        SetPropertyInternal(MaterialProperty::Height,               0.0f, false);
+        SetPropertyInternal(MaterialProperty::Clearcoat,            0.0f, false);
+        SetPropertyInternal(MaterialProperty::Clearcoat_Roughness,  0.0f, false);
+        SetPropertyInternal(MaterialProperty::Anisotropic,          0.0f, false);
+        SetPropertyInternal(MaterialProperty::AnisotropicRotation,  0.0f, false);
+        SetPropertyInternal(MaterialProperty::Sheen,                0.0f, false);
+        SetPropertyInternal(MaterialProperty::SubsurfaceScattering, 0.0f, false);
+        SetPropertyInternal(MaterialProperty::FlakeStrength,        0.0f, false);
+        SetPropertyInternal(MaterialProperty::FlakeScale,           120.0f, false);
+        SetPropertyInternal(MaterialProperty::PearlStrength,        0.0f, false);
+        SetPropertyInternal(MaterialProperty::PearlColorR,          1.0f, false);
+        SetPropertyInternal(MaterialProperty::PearlColorG,          1.0f, false);
+        SetPropertyInternal(MaterialProperty::PearlColorB,          1.0f, false);
+        SetPropertyInternal(MaterialProperty::CoatTintR,            1.0f, false);
+        SetPropertyInternal(MaterialProperty::CoatTintG,            1.0f, false);
+        SetPropertyInternal(MaterialProperty::CoatTintB,            1.0f, false);
+        SetPropertyInternal(MaterialProperty::CoatTintStrength,     0.0f, false);
+        SetPropertyInternal(MaterialProperty::Ior,                  EnumToIor(MaterialIor::Glass), false);
+        SetPropertyInternal(MaterialProperty::PaintPreset,          0.0f, false);
+        SetPropertyInternal(MaterialProperty::SurfacePreset,        0.0f, false);
+        SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo,   0.0f, false);
+        SetPropertyInternal(MaterialProperty::TextureTilingX,       1.0f, false);
+        SetPropertyInternal(MaterialProperty::TextureTilingY,       1.0f, false);
+
+        if (save)
+        {
+            SaveToFile(GetResourceFilePath());
+        }
+    }
+
+    void Material::SetProperty(const MaterialProperty property_type, float value)
+    {
+        SetPropertyInternal(property_type, value, true);
     }
 
     void Material::SetColor(const Color& color)
     {
-        SetProperty(MaterialProperty::ColorR, color.r);
-        SetProperty(MaterialProperty::ColorG, color.g);
-        SetProperty(MaterialProperty::ColorB, color.b);
-        SetProperty(MaterialProperty::ColorA, color.a);
+        SetColorInternal(color, true);
     }
 
     bool Material::IsAlphaTested()

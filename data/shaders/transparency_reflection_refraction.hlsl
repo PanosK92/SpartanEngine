@@ -188,7 +188,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 refraction = background;
     
     // determine material IOR
-    float ior_material = surface.is_water() ? ior_water : ior_glass;
+    float ior_material = surface.is_water() ? ior_water : max(surface.ior, 1.0001f);
     
     // compute view direction and angle
     float3 view_dir_normalized = normalize(surface.camera_to_pixel);

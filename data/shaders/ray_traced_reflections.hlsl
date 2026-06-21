@@ -68,7 +68,11 @@ void ray_gen()
     float3 V         = normalize(get_camera_position() - pos_ws);
 
     // source roughness drives the ray spread, the vndf sampler is mirror sharp at roughness 0
+    float4 normal_sample = tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    uint material_index  = uint(normal_sample.a);
+    MaterialParameters mat = material_parameters[material_index];
     float roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    roughness       = lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat));
     float alpha     = min(ggx_alpha_from_roughness(roughness), k_reflection_alpha_max);
 
     // per pixel per frame low discrepancy sample, r2 frame rotation for the denoiser to accumulate

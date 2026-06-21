@@ -1613,6 +1613,102 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
         ImGui::PopStyleColor();
 
         layout::separator();
+        layout::section_header("Presets");
+
+        auto refresh_material_color_picker = [&]()
+        {
+            tiling = uv_per_renderable
+                ? Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY())
+                : Vector2(material->GetProperty(MaterialProperty::TextureTilingX), material->GetProperty(MaterialProperty::TextureTilingY));
+
+            offset = uv_per_renderable
+                ? Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY())
+                : Vector2(material->GetProperty(MaterialProperty::TextureOffsetX), material->GetProperty(MaterialProperty::TextureOffsetY));
+
+            m_material_color_picker->SetColor(Color(
+                material->GetProperty(MaterialProperty::ColorR),
+                material->GetProperty(MaterialProperty::ColorG),
+                material->GetProperty(MaterialProperty::ColorB),
+                material->GetProperty(MaterialProperty::ColorA)
+            ));
+        };
+
+        {
+            static vector<string> paint_presets =
+            {
+                "Select...",
+                "Gloss Solid",
+                "Metallic",
+                "Satin",
+                "Matte",
+                "Pearl",
+                "Candy",
+                "Chameleon"
+            };
+
+            uint32_t paint_preset_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::PaintPreset));
+            if (paint_preset_index >= paint_presets.size())
+            {
+                paint_preset_index = 0;
+            }
+
+            if (property_combo("Paint", paint_presets, &paint_preset_index, "apply an automotive paint preset"))
+            {
+                if (paint_preset_index > 0)
+                {
+                    material->ApplyPaintPreset(
+                        static_cast<MaterialPaintPreset>(paint_preset_index - 1),
+                        m_material_color_picker->GetColor()
+                    );
+                    refresh_material_color_picker();
+                }
+                else
+                {
+                    material->SetProperty(MaterialProperty::PaintPreset, 0.0f);
+                }
+            }
+        }
+
+        {
+            static vector<string> surface_presets =
+            {
+                "Select...",
+                "Glass Clear",
+                "Glass Tinted",
+                "Headlight Lens",
+                "Taillight Lens",
+                "Rubber Tire",
+                "Carbon Fiber",
+                "Chrome",
+                "Polished Metal",
+                "Brake Disc",
+                "Leather",
+                "Black Plastic",
+                "Emissive Red Light",
+                "Emissive White Light"
+            };
+
+            uint32_t surface_preset_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::SurfacePreset));
+            if (surface_preset_index >= surface_presets.size())
+            {
+                surface_preset_index = 0;
+            }
+
+            if (property_combo("Surface", surface_presets, &surface_preset_index, "apply a reusable surface preset"))
+            {
+                if (surface_preset_index > 0)
+                {
+                    material->ApplySurfacePreset(static_cast<MaterialSurfacePreset>(surface_preset_index - 1));
+                    refresh_material_color_picker();
+                }
+                else
+                {
+                    material->SetProperty(MaterialProperty::SurfacePreset, 0.0f);
+                }
+            }
+        }
+
+        layout::separator();
         layout::section_header("Surface");
 
         // texture slot helper lambda
@@ -1720,6 +1816,73 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
         show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
         show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
         show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
+
+        layout::separator();
+        layout::section_header("Automotive");
+
+        float flake_strength = material->GetProperty(MaterialProperty::FlakeStrength);
+        if (property_float("Flake strength", &flake_strength, 0.004f, 0.0f, 1.0f, "procedural metallic sparkle strength", "%.3f"))
+        {
+            material->SetProperty(MaterialProperty::FlakeStrength, flake_strength);
+        }
+
+        float flake_scale = material->GetProperty(MaterialProperty::FlakeScale);
+        if (property_float("Flake scale", &flake_scale, 1.0f, 1.0f, 512.0f, "procedural metallic sparkle density", "%.0f"))
+        {
+            material->SetProperty(MaterialProperty::FlakeScale, flake_scale);
+        }
+
+        float pearl_strength = material->GetProperty(MaterialProperty::PearlStrength);
+        if (property_float("Pearl strength", &pearl_strength, 0.004f, 0.0f, 1.0f, "view angle color shift strength", "%.3f"))
+        {
+            material->SetProperty(MaterialProperty::PearlStrength, pearl_strength);
+        }
+
+        {
+            float pearl_color[3] =
+            {
+                material->GetProperty(MaterialProperty::PearlColorR),
+                material->GetProperty(MaterialProperty::PearlColorG),
+                material->GetProperty(MaterialProperty::PearlColorB)
+            };
+
+            layout::begin_property("Pearl color", "view angle color shift tint");
+            if (ImGui::ColorEdit3("##pearl_color", pearl_color, ImGuiColorEditFlags_NoInputs))
+            {
+                material->SetProperty(MaterialProperty::PearlColorR, pearl_color[0]);
+                material->SetProperty(MaterialProperty::PearlColorG, pearl_color[1]);
+                material->SetProperty(MaterialProperty::PearlColorB, pearl_color[2]);
+            }
+        }
+
+        float coat_tint_strength = material->GetProperty(MaterialProperty::CoatTintStrength);
+        if (property_float("Coat tint", &coat_tint_strength, 0.004f, 0.0f, 1.0f, "colored clearcoat and candy absorption strength", "%.3f"))
+        {
+            material->SetProperty(MaterialProperty::CoatTintStrength, coat_tint_strength);
+        }
+
+        {
+            float coat_tint[3] =
+            {
+                material->GetProperty(MaterialProperty::CoatTintR),
+                material->GetProperty(MaterialProperty::CoatTintG),
+                material->GetProperty(MaterialProperty::CoatTintB)
+            };
+
+            layout::begin_property("Coat color", "colored clearcoat and candy absorption tint");
+            if (ImGui::ColorEdit3("##coat_color", coat_tint, ImGuiColorEditFlags_NoInputs))
+            {
+                material->SetProperty(MaterialProperty::CoatTintR, coat_tint[0]);
+                material->SetProperty(MaterialProperty::CoatTintG, coat_tint[1]);
+                material->SetProperty(MaterialProperty::CoatTintB, coat_tint[2]);
+            }
+        }
+
+        float ior = material->GetProperty(MaterialProperty::Ior);
+        if (property_float("IOR", &ior, 0.01f, 1.0f, 2.6f, "index of refraction for transparent materials", "%.2f"))
+        {
+            material->SetProperty(MaterialProperty::Ior, ior);
+        }
 
         layout::separator();
         layout::section_header("UV Mapping");

@@ -74,6 +74,19 @@ namespace spartan
         AnisotropicRotation,        // anisotropy direction
         Sheen,                      // velvet-like reflection at grazing angles
         SubsurfaceScattering,       // light scattering through surface
+        FlakeStrength,              // automotive metallic flake intensity
+        FlakeScale,                 // automotive metallic flake density
+        PearlStrength,              // view dependent pearl color shift
+        PearlColorR,                // pearl color red
+        PearlColorG,                // pearl color green
+        PearlColorB,                // pearl color blue
+        CoatTintR,                  // tinted clearcoat red
+        CoatTintG,                  // tinted clearcoat green
+        CoatTintB,                  // tinted clearcoat blue
+        CoatTintStrength,           // tinted clearcoat strength
+        Ior,                        // index of refraction
+        PaintPreset,                // selected paint preset
+        SurfacePreset,              // selected surface preset
         NormalFromAlbedo,           // derive normal from albedo
         EmissiveFromAlbedo,         // derive emissive from albedo
     
@@ -112,6 +125,36 @@ namespace spartan
         Max
     };
 
+    enum class MaterialPaintPreset
+    {
+        GlossSolid,
+        Metallic,
+        Satin,
+        Matte,
+        Pearl,
+        Candy,
+        Chameleon,
+        Max
+    };
+
+    enum class MaterialSurfacePreset
+    {
+        GlassClear,
+        GlassTinted,
+        HeadlightLens,
+        TaillightLens,
+        RubberTire,
+        CarbonFiber,
+        Chrome,
+        PolishedMetal,
+        BrakeDisc,
+        Leather,
+        BlackPlastic,
+        EmissiveRedLight,
+        EmissiveWhiteLight,
+        Max
+    };
+
     class Material : public IResource
     {
     public:
@@ -146,6 +189,11 @@ namespace spartan
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
 
+        // presets
+        void ApplyPaintPreset(MaterialPaintPreset preset, const Color& color, bool save = true);
+        void ApplySurfacePreset(MaterialSurfacePreset preset, bool save = true);
+        std::shared_ptr<Material> Clone(const std::string& resource_name) const;
+
         // misc
         void PrepareForGpu();
         uint32_t GetUsedSlotCount() const;
@@ -155,6 +203,9 @@ namespace spartan
         void ClearPackedTextures();
 
     private:
+        void SetPropertyInternal(MaterialProperty property_type, float value, bool save);
+        void SetColorInternal(const Color& color, bool save);
+        void ResetPresetProperties(bool save);
         bool IsPackableTextureType(MaterialTextureType type) const;
 
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;

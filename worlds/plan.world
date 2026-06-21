@@ -2,6 +2,7 @@
 <World name="plan" description="NFS Underground 2 starting area blockout - airport parking lot, highway exit, and city entrance">
  <ConsoleVariables>
   <Variable name="r.bloom" value="1.000000" />
+  <Variable name="r.ray_traced_reflections" value="1.000000" />
   <Variable name="r.motion_blur" value="1.000000" />
   <Variable name="r.film_grain" value="0.150000" />
   <Variable name="r.chromatic_aberration" value="0.000000" />
@@ -8265,7 +8266,7 @@
    </Entity>
   </Entity>
   <Entity name="player_car" id="2411005043703651744" active="true" position="-12.5 1.2 102.8" rotation="3.72529e-09 0.679444 -6.7025e-09 0.733727" scale="1 1 1">
-   <prefab type="car" drivable="true" telemetry="true" camera_follows="true" preset_path="worlds/car_presets.xml" />
+   <prefab type="car" drivable="true" telemetry="true" camera_follows="true" preset_path="worlds/car_presets.xml" paint_preset="metallic" paint_color_r="0.392156869" paint_color_g="0" paint_color_b="0" paint_color_a="1" />
    <prefab_override path="vehicle" position="-21.1954 -0.566725 -65.3291" rotation="-0.00149654 -0.682559 -0.00139753 0.730829" scale="1 1 1">
     <script file_path="../worlds/tire_smoke.lua" />
     <skid_marks slip_threshold="0.349999994" min_segment_distance="0.0500000007" max_segments="512" opacity="0.75" z_offset="0.0199999996" uv_tiling="0.5" fade_distance="0.5" />
@@ -11278,7 +11279,7 @@
    </Entity>
   </Entity>
   <Entity name="spline_car" id="5723169428173956022" active="true" position="15 0.7 105.6" rotation="3.72529e-09 0.679444 -6.7025e-09 0.733727" scale="1 1 1">
-   <prefab type="car" static_physics="false" drivable="false" />
+   <prefab type="car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_g="0" paint_color_b="0" paint_color_a="1" />
   </Entity>
   <Entity name="spline_road" id="10358794943034623506" active="true" position="81.9 0.5 102.4" rotation="0 -0.675137 0 0.737693" scale="1 1 1">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />

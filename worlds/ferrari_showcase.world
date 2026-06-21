@@ -2,6 +2,7 @@
 <World name="ferrari_showcase" description="Ferrari laferrari rotating on a lit turntable">
  <ConsoleVariables>
   <Variable name="r.lights" value="1.000000" />
+  <Variable name="r.ray_traced_reflections" value="1.000000" />
   <Variable name="r.dithering" value="0.000000" />
  </ConsoleVariables>
  <Entities>
@@ -2561,7 +2562,7 @@
     </render>
    </Entity>
    <Entity name="ferrari" id="9100000000000000008" active="true" position="0 0.3 0" rotation="0 0 0 1" scale="1 1 1">
-    <prefab type="car" static_physics="false" drivable="false" />
+    <prefab type="car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_g="0" paint_color_b="0" paint_color_a="1" />
    </Entity>
   </Entity>
   <Entity name="tube_right_red" id="12638874799870260081" active="true" position="5.025 1.15 0.0250001" rotation="0 -0.706985 0 0.707228" scale="0.02 2.3 0.02">

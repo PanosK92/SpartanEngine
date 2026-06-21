@@ -1497,6 +1497,18 @@ namespace spartan
                 properties[count].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
                 properties[count].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
                 properties[count].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                properties[count].flake_strength        = material->GetProperty(MaterialProperty::FlakeStrength);
+                properties[count].flake_scale           = material->GetProperty(MaterialProperty::FlakeScale);
+                properties[count].pearl_strength        = material->GetProperty(MaterialProperty::PearlStrength);
+                properties[count].pearl_color.x         = material->GetProperty(MaterialProperty::PearlColorR);
+                properties[count].pearl_color.y         = material->GetProperty(MaterialProperty::PearlColorG);
+                properties[count].pearl_color.z         = material->GetProperty(MaterialProperty::PearlColorB);
+                properties[count].pearl_color.w         = 1.0f;
+                properties[count].coat_tint.x           = material->GetProperty(MaterialProperty::CoatTintR);
+                properties[count].coat_tint.y           = material->GetProperty(MaterialProperty::CoatTintG);
+                properties[count].coat_tint.z           = material->GetProperty(MaterialProperty::CoatTintB);
+                properties[count].coat_tint.w           = material->GetProperty(MaterialProperty::CoatTintStrength);
+                properties[count].ior                   = material->GetProperty(MaterialProperty::Ior);
                 properties[count].sheen                 = material->GetProperty(MaterialProperty::Sheen);
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
 

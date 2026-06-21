@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/BoundingBox.h"
+#include "../Rendering/Material.h"
 //==============================
 
 namespace pugi
@@ -60,6 +61,8 @@ namespace spartan
             bool          static_physics = false;  // kinematic physics on the body (for display)
             bool          show_telemetry = false;  // shows vehicle telemetry hud
             bool          camera_follows = false;  // attach camera to follow the car
+            MaterialPaintPreset paint_preset = MaterialPaintPreset::Metallic;
+            Color               paint_color  = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         };
 
         // factory method - creates a car and adds it to the registry
@@ -178,6 +181,8 @@ namespace spartan
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
         CarView           m_current_view    = CarView::Chase;
+        MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
+        Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         ChaseCameraState  m_chase_camera;
 
         // mouse orbit state (right_click drag)

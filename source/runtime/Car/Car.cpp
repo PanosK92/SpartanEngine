@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarTireSquealSynthesis.h"
 #include "../Input/Input.h"
 #include "../Core/Window.h"
+#include "../Rendering/Material.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
 #include "../World/World.h"
@@ -36,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Physics.h"
+#include "../World/Components/Render.h"
 #include "../World/Prefab.h"
 #include "../IO/pugixml.hpp"
 //==========================================
@@ -51,12 +53,203 @@ namespace spartan
     Entity* default_car        = nullptr;
     Entity* default_car_window = nullptr;
 
+    namespace
+    {
+        enum class CarMaterialSlot
+        {
+            Unknown,
+            BodyPaint,
+            CarbonTrim,
+            TireRubber,
+            RimMetal,
+            HeadlightLens,
+            TaillightLens,
+            MainGlass,
+            MirrorGlass,
+            EngineMetal,
+            BrakeDisc,
+            InteriorLeather,
+            BlackTrim,
+            EmissiveRedLight,
+            EmissiveWhiteLight
+        };
+
+        std::string to_lower_copy(std::string value)
+        {
+            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return std::tolower(c); });
+            return value;
+        }
+
+        bool contains(const std::string& value, const char* token)
+        {
+            return value.find(token) != std::string::npos;
+        }
+
+        MaterialPaintPreset parse_paint_preset(const char* value)
+        {
+            const std::string preset = to_lower_copy(value ? value : "");
+
+            if (preset == "gloss_solid" || preset == "gloss solid" || preset == "solid")
+            {
+                return MaterialPaintPreset::GlossSolid;
+            }
+
+            if (preset == "metallic")
+            {
+                return MaterialPaintPreset::Metallic;
+            }
+
+            if (preset == "satin")
+            {
+                return MaterialPaintPreset::Satin;
+            }
+
+            if (preset == "matte")
+            {
+                return MaterialPaintPreset::Matte;
+            }
+
+            if (preset == "pearl")
+            {
+                return MaterialPaintPreset::Pearl;
+            }
+
+            if (preset == "chameleon")
+            {
+                return MaterialPaintPreset::Chameleon;
+            }
+
+            return MaterialPaintPreset::Metallic;
+        }
+
+        std::string get_material_context(Entity* entity, Render* renderable)
+        {
+            std::string context;
+            for (Entity* current = entity; current != nullptr; current = current->GetParent())
+            {
+                context += " ";
+                context += to_lower_copy(current->GetObjectName());
+            }
+
+            if (renderable)
+            {
+                context += " ";
+                context += to_lower_copy(renderable->GetMaterialName());
+            }
+
+            return context;
+        }
+
+        CarMaterialSlot resolve_car_material_slot(Entity* entity, Render* renderable)
+        {
+            const std::string context = get_material_context(entity, renderable);
+
+            if (contains(context, "car_paint") || contains(context, "body"))
+            {
+                return CarMaterialSlot::BodyPaint;
+            }
+
+            if (contains(context, "carbon"))
+            {
+                return CarMaterialSlot::CarbonTrim;
+            }
+
+            if (contains(context, "object_129") || contains(context, "object_144") || contains(context, "object_159") || contains(context, "object_174"))
+            {
+                return CarMaterialSlot::BrakeDisc;
+            }
+
+            if (contains(context, "object_180") || contains(context, "object_150") || contains(context, "rim"))
+            {
+                return CarMaterialSlot::RimMetal;
+            }
+
+            if (contains(context, "tire"))
+            {
+                return CarMaterialSlot::TireRubber;
+            }
+
+            if (contains(context, "red_light") || contains(context, "tail_lights") || contains(context, "run_lights"))
+            {
+                return CarMaterialSlot::EmissiveRedLight;
+            }
+
+            if ((contains(context, "rear") || contains(context, "tail") || contains(context, "break") || contains(context, "breake")) && contains(context, "headlight"))
+            {
+                return CarMaterialSlot::EmissiveRedLight;
+            }
+
+            if (contains(context, "headlight") && !contains(context, "glass"))
+            {
+                return CarMaterialSlot::EmissiveWhiteLight;
+            }
+
+            if (contains(context, "glass") || contains(context, "glasses"))
+            {
+                if (contains(context, "break") || contains(context, "breake") || contains(context, "tail") || contains(context, "rear") || contains(context, "red"))
+                {
+                    return CarMaterialSlot::TaillightLens;
+                }
+
+                if (contains(context, "head"))
+                {
+                    return CarMaterialSlot::HeadlightLens;
+                }
+
+                return CarMaterialSlot::MainGlass;
+            }
+
+            if (contains(context, "object_58"))
+            {
+                return CarMaterialSlot::MainGlass;
+            }
+
+            if (contains(context, "object_98"))
+            {
+                return CarMaterialSlot::MirrorGlass;
+            }
+
+            if (contains(context, "object_14") || contains(context, "engine") || contains(context, "disk"))
+            {
+                return CarMaterialSlot::EngineMetal;
+            }
+
+            if (contains(context, "object_90") || contains(context, "leather") || contains(context, "interior"))
+            {
+                return CarMaterialSlot::InteriorLeather;
+            }
+
+            if (contains(context, "black") || contains(context, "under"))
+            {
+                return CarMaterialSlot::BlackTrim;
+            }
+
+            return CarMaterialSlot::Unknown;
+        }
+
+        std::shared_ptr<Material> clone_car_material(Entity* car_entity, Entity* entity, Render* renderable, const char* slot_name)
+        {
+            Material* source = renderable ? renderable->GetMaterial() : nullptr;
+            if (!source)
+            {
+                return nullptr;
+            }
+
+            const std::string resource_name = "car_" + std::to_string(car_entity->GetObjectId()) + "_" + std::to_string(entity->GetObjectId()) + "_" + slot_name + std::string(EXTENSION_MATERIAL);
+            std::shared_ptr<Material> material = source->Clone(resource_name);
+            renderable->SetMaterial(material);
+            return material;
+        }
+    }
+
     Car* Car::Create(const Config& config)
     {
         Car* car = new Car();
         car->m_spawn_position = config.position;
         car->m_show_telemetry = config.show_telemetry;
         car->m_is_drivable    = config.drivable;
+        car->m_paint_preset   = config.paint_preset;
+        car->m_paint_color    = config.paint_color;
 
         if (config.drivable)
         {
@@ -142,6 +335,11 @@ namespace spartan
         config.static_physics = node.attribute("static_physics").as_bool(false);
         config.show_telemetry = node.attribute("telemetry").as_bool(false);
         config.camera_follows = node.attribute("camera_follows").as_bool(false);
+        config.paint_preset   = parse_paint_preset(node.attribute("paint_preset").as_string("metallic"));
+        config.paint_color.r  = node.attribute("paint_color_r").as_float(config.paint_color.r);
+        config.paint_color.g  = node.attribute("paint_color_g").as_float(config.paint_color.g);
+        config.paint_color.b  = node.attribute("paint_color_b").as_float(config.paint_color.b);
+        config.paint_color.a  = node.attribute("paint_color_a").as_float(config.paint_color.a);
 
         const char* preset_path = node.attribute("preset_path").as_string("");
         if (::car::load_presets_from_xml(preset_path) && ::car::preset_count > 0)
@@ -614,12 +812,6 @@ namespace spartan
         car_entity->SetObjectName("ferrari_laferrari");
         car_entity->SetScale(2.0f);
 
-        auto to_lower = [](std::string s)
-        {
-            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
-            return s;
-        };
-
         // sync tire and brake disc active state with remove_wheels so cloned bodies match the requested config
         {
             std::vector<Entity*> descendants;
@@ -627,7 +819,7 @@ namespace spartan
 
             for (Entity* descendant : descendants)
             {
-                std::string entity_name = to_lower(descendant->GetObjectName());
+                std::string entity_name = to_lower_copy(descendant->GetObjectName());
 
                 bool is_excluded_part = entity_name.find("tire 1")    != std::string::npos ||
                                        entity_name.find("tire 2")    != std::string::npos ||
@@ -647,98 +839,146 @@ namespace spartan
             }
         }
 
-        // material tweaks
+        // material presets
         {
-            // body main - red clearcoat paint
-            if (Material* material = car_entity->GetDescendantByName("Object_12")->GetComponent<Render>()->GetMaterial())
+            std::vector<Entity*> descendants;
+            car_entity->GetDescendants(&descendants);
+            for (Entity* descendant : descendants)
             {
-                material->SetResourceName("car_paint" + std::string(EXTENSION_MATERIAL));
-                material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
-                material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
-                material->SetProperty(MaterialProperty::Normal, 0.03f);
-                material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
-                material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
-            }
-
-            // body metallic/carbon parts
-            if (Material* material = car_entity->GetDescendantByName("Object_10")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                material->SetProperty(MaterialProperty::Metalness, 1.0f);
-            }
-
-            // tires - rubber
-            {
-                const char* tire_parts[] = {"Object_127", "Object_142", "Object_157", "Object_172"};
-                for (const char* part : tire_parts)
+                Render* renderable = descendant->GetComponent<Render>();
+                if (!renderable || !renderable->GetMaterial())
                 {
-                    if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Render>()->GetMaterial())
+                    continue;
+                }
+
+                const std::string context = get_material_context(descendant, renderable);
+
+                switch (resolve_car_material_slot(descendant, renderable))
+                {
+                    case CarMaterialSlot::BodyPaint:
                     {
-                        material->SetProperty(MaterialProperty::Roughness, 0.9f);
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "body_paint"))
+                        {
+                            material->ApplyPaintPreset(m_paint_preset, m_paint_color, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::CarbonTrim:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "carbon_trim"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::CarbonFiber, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::TireRubber:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "tire_rubber"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::RubberTire, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::RimMetal:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "rim_metal"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::Chrome, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::HeadlightLens:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "headlight_lens"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::HeadlightLens, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::TaillightLens:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "taillight_lens"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::TaillightLens, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::MainGlass:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "main_glass"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::GlassClear, false);
+                        }
+
+                        if (contains(context, "object_58") || contains(context, "windshield"))
+                        {
+                            m_window_entity      = descendant;
+                            default_car_window   = descendant;
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::MirrorGlass:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "mirror_glass"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::Chrome, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::EngineMetal:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "engine_metal"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::PolishedMetal, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::BrakeDisc:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "brake_disc"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::BrakeDisc, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::InteriorLeather:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "interior_leather"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::Leather, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::BlackTrim:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "black_trim"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::BlackPlastic, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::EmissiveRedLight:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "emissive_red_light"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveRedLight, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::EmissiveWhiteLight:
+                    {
+                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "emissive_white_light"))
+                        {
+                            material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveWhiteLight, false);
+                        }
+                        break;
+                    }
+                    case CarMaterialSlot::Unknown:
+                    default:
+                    {
+                        break;
                     }
                 }
-            }
-
-            // rims - polished metal
-            if (Material* material = car_entity->GetDescendantByName("Object_180")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                material->SetProperty(MaterialProperty::Roughness, 0.3f);
-            }
-            if (Material* material = car_entity->GetDescendantByName("Object_150")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                material->SetProperty(MaterialProperty::Roughness, 0.3f);
-            }
-
-            // headlight and taillight glass
-            if (Material* material = car_entity->GetDescendantByName("Object_38")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                material->SetProperty(MaterialProperty::Metalness, 1.0f);
-            }
-
-            // windshield and engine glass
-            if (Material* material = car_entity->GetDescendantByName("Object_58")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                material->SetProperty(MaterialProperty::Metalness, 0.0f);
-            }
-
-            // side mirror glass
-            if (Material* material = car_entity->GetDescendantByName("Object_98")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                material->SetProperty(MaterialProperty::Metalness, 1.0f);
-            }
-
-            // engine block
-            if (Material* material = car_entity->GetDescendantByName("Object_14")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                material->SetProperty(MaterialProperty::Metalness, 1.0f);
-            }
-
-            // brake discs - anisotropic metal
-            {
-                const char* brake_parts[] = {"Object_129", "Object_144", "Object_174", "Object_159"};
-                for (const char* part : brake_parts)
-                {
-                    if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Render>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                        material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
-                        material->SetProperty(MaterialProperty::AnisotropicRotation, 0.2f);
-                    }
-                }
-            }
-
-            // interior leather
-            if (Material* material = car_entity->GetDescendantByName("Object_90")->GetComponent<Render>()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::Roughness, 0.75f);
             }
         }
 

@@ -255,6 +255,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float  view_dist     = length(view_dir);
     view_dir             = view_dist > 0.0001f ? view_dir / view_dist : -normal;
     float  n_dot_v       = saturate(dot(normal, view_dir));
+    float  edge          = 1.0f - n_dot_v;
+    float  edge5         = edge * edge * edge * edge * edge;
+    float  pearl_blend   = saturate(mat.pearl_strength * edge5);
+    float  coat_blend    = saturate(mat.coat_tint.a * lerp(0.35f, 1.0f, edge5));
+    albedo               = lerp(albedo, mat.pearl_color.rgb, pearl_blend);
+    albedo              *= lerp(float3(1.0f, 1.0f, 1.0f), mat.coat_tint.rgb, coat_blend);
+    F0                   = lerp(F0, mat.pearl_color.rgb, pearl_blend * 0.35f);
     
     // accumulators for radiance leaving the hit point along view_dir
     float3 out_diffuse  = 0.0f;

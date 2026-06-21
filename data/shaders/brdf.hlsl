@@ -223,6 +223,7 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
     float  V  = V_Kelemen(angular_info.v_dot_h);
     float  F  = F_Schlick(0.04, 1.0, angular_info.v_dot_h) * surface.clearcoat;
     float3 Fr = D * V * F;
+    Fr *= lerp(float3(1.0f, 1.0f, 1.0f), surface.coat_tint, saturate(surface.coat_tint_strength));
     
     // energy - attenuate base layer
     surface.diffuse_energy *= 1.0 - F;
