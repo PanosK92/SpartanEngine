@@ -93,7 +93,7 @@ float2 get_neighborhood_max_velocity(float2 uv, float2 texel_size, float jitter)
         {
             float2 offset      = mul(rot, float2(x, y) * search_step);
             float2 sample_uv   = uv + offset;
-            float2 sample_vel  = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv * buffer_frame.resolution_scale, 0).xy;
+            float2 sample_vel  = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv * get_render_uv_scale(), 0).xy;
             float  sample_len  = length(sample_vel);
 
             if (sample_len > best_length)
@@ -154,7 +154,7 @@ float4 motion_blur_reconstruction(
 
     // sample center
     float4 center_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
-    float2 render_uv    = uv * buffer_frame.resolution_scale;
+    float2 render_uv    = uv * get_render_uv_scale();
     float  center_depth = get_linear_depth(render_uv);
 
     // per-pixel velocity - for sky pixels (no geometry), derive from camera rotation
@@ -250,8 +250,8 @@ float4 motion_blur_reconstruction(
         if (is_valid_uv(uv_fwd))
         {
             float4 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_fwd, 0);
-            float  sample_depth = get_linear_depth(uv_fwd * buffer_frame.resolution_scale);
-            float2 sample_vel   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_fwd * buffer_frame.resolution_scale, 0).xy;
+            float  sample_depth = get_linear_depth(uv_fwd * get_render_uv_scale());
+            float2 sample_vel   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_fwd * get_render_uv_scale(), 0).xy;
             float  sample_blur  = length(sample_vel * resolution) * shutter_ratio;
 
             // depth-aware weighting
@@ -273,8 +273,8 @@ float4 motion_blur_reconstruction(
         if (is_valid_uv(uv_bwd))
         {
             float4 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_bwd, 0);
-            float  sample_depth = get_linear_depth(uv_bwd * buffer_frame.resolution_scale);
-            float2 sample_vel   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_bwd * buffer_frame.resolution_scale, 0).xy;
+            float  sample_depth = get_linear_depth(uv_bwd * get_render_uv_scale());
+            float2 sample_vel   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_bwd * get_render_uv_scale(), 0).xy;
             float  sample_blur  = length(sample_vel * resolution) * shutter_ratio;
 
             // depth-aware weighting

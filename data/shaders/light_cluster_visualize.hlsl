@@ -68,7 +68,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // uv covers [0, resolution_scale] inside the texture, uv_full is the [0, 1] screen space uv
     float2 uv      = (thread_id.xy + 0.5f) / resolution;
-    float2 uv_full = uv / buffer_frame.resolution_scale;
+    float2 uv_full = render_uv_to_screen_uv(uv);
 
     // pixels outside the rendered region read garbage depth, clear them to a neutral value and bail
     if (uv_full.x > 1.0f || uv_full.y > 1.0f)

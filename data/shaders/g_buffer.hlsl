@@ -190,7 +190,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float emission  = 0.0f;
 
     // velocity computation
-    float2 position_ndc          = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
+    float2 position_ndc          = uv_to_ndc(vertex.position.xy / get_render_resolution_active());
     float2 position_ndc_previous = vertex.position_previous.xy / vertex.position_previous.w;
     float2 position_ndc_jittered = position_ndc;
     position_ndc                -= buffer_frame.taa_jitter_current;

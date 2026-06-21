@@ -127,7 +127,7 @@ struct Surface
             occlusion = 1.0f;
         }
 
-        position               = get_position(depth, uv / buffer_frame.resolution_scale);
+        position               = get_position(depth, render_uv_to_screen_uv(uv));
         camera_to_pixel        = position - get_camera_position();
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel        = normalize(camera_to_pixel);

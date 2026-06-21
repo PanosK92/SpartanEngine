@@ -77,7 +77,8 @@ float hiz_min_depth_over_box(float2 min_uv, float2 max_uv, float max_mip_level)
     min_uv = saturate(min_uv - mip_texel);
     max_uv = saturate(max_uv + mip_texel);
 
-    float4 scaled_uvs = float4(min_uv, max_uv) * buffer_frame.resolution_scale;
+    float2 uv_scale   = get_render_uv_scale();
+    float4 scaled_uvs = float4(min_uv * uv_scale, max_uv * uv_scale);
     float d0 = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xy, mip).r;
     float d1 = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zy, mip).r;
     float d2 = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xw, mip).r;

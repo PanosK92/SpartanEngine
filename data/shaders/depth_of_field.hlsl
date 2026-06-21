@@ -108,7 +108,7 @@ float compute_focus_distance(float2 resolution)
         float2 offset = float2(cos_a, sin_a) * radius;
         float2 uv     = center + offset;
         
-        depths[i]    = get_linear_depth(uv * buffer_frame.resolution_scale);
+        depths[i]    = get_linear_depth(uv * get_render_uv_scale());
         float dist_n = length(offset) * INV_FOCUS_REGION;
         weights[i]   = exp(-dist_n * dist_n * CENTER_WEIGHT_BIAS);
         weight_sum  += weights[i];
@@ -175,7 +175,7 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
             continue;
         
         float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb;
-        float  sample_depth = get_linear_depth(sample_uv * buffer_frame.resolution_scale);
+        float  sample_depth = get_linear_depth(sample_uv * get_render_uv_scale());
         float  sample_coc   = compute_coc_signed(sample_depth, lens);
         float  abs_sample_coc = abs(sample_coc);
 
@@ -223,7 +223,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
 
     lens_t lens       = gs_lens;
     float2 uv         = (thread_id.xy + 0.5f) / resolution;
-    float  depth      = get_linear_depth(uv * buffer_frame.resolution_scale);
+    float  depth      = get_linear_depth(uv * get_render_uv_scale());
     float  coc        = compute_coc_signed(depth, lens);
     float  blur_radius = abs(coc);
 

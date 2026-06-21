@@ -252,6 +252,21 @@ float2 uv_to_ndc(float2 uv)
     return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f); // flip y for dx style
 }
 
+float2 get_render_resolution_active()
+{
+    return max(floor(buffer_frame.resolution_render * buffer_frame.resolution_scale), float2(1.0f, 1.0f));
+}
+
+float2 get_render_uv_scale()
+{
+    return get_render_resolution_active() / max(buffer_frame.resolution_render, float2(1.0f, 1.0f));
+}
+
+float2 render_uv_to_screen_uv(float2 uv)
+{
+    return uv / get_render_uv_scale();
+}
+
 // rotate uv in 90 degree increments: 0 = 0, 1 = 90, 2 = 180, 3 = 270
 float2 rotate_uv_90(float2 uv, float rotation_index)
 {
@@ -387,12 +402,12 @@ float3 get_position_for_view(float z, float2 uv, uint view_id)
 
 float3 get_position(float2 uv)
 {
-    return get_position(get_depth(uv), uv / buffer_frame.resolution_scale);
+    return get_position(get_depth(uv), render_uv_to_screen_uv(uv));
 }
 
 float3 get_position(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / (buffer_frame.resolution_render * buffer_frame.resolution_scale);
+    const float2 uv = (pos + 0.5f) / get_render_resolution_active();
     return get_position(get_depth(pos), uv);
 }
 
@@ -403,7 +418,7 @@ float3 get_position_view_space(uint2 pos)
 
 float3 get_position_view_space(float2 uv)
 {
-    return mul(float4(get_position(get_depth(uv), uv / buffer_frame.resolution_scale), 1.0f), get_view()).xyz;
+    return mul(float4(get_position(get_depth(uv), render_uv_to_screen_uv(uv)), 1.0f), get_view()).xyz;
 }
 
 /*------------------------------------------------------------------------------
@@ -434,7 +449,7 @@ float3 get_view_direction(float depth, float2 uv)
 
 float3 get_view_direction(float2 uv)
 {
-    return get_view_direction(get_position(get_depth(uv), uv / buffer_frame.resolution_scale));
+    return get_view_direction(get_position(get_depth(uv), render_uv_to_screen_uv(uv)));
 }
 
 float3 get_view_direction(uint2 pos, float2 resolution)
@@ -445,7 +460,7 @@ float3 get_view_direction(uint2 pos, float2 resolution)
 
 float3 get_view_direction_view_space(float2 uv)
 {
-    return mul(float4(get_view_direction(get_position(get_depth(uv), uv / buffer_frame.resolution_scale)), 0.0f), get_view()).xyz;
+    return mul(float4(get_view_direction(get_position(get_depth(uv), render_uv_to_screen_uv(uv))), 0.0f), get_view()).xyz;
 }
 
 float3 get_view_direction_view_space(uint2 pos, float2 resolution)

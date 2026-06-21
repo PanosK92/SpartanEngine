@@ -350,8 +350,8 @@ namespace spartan
         const Vector3 camera_pos = GetEntity()->GetPosition();
         const Vector3 camera_fwd = GetEntity()->GetForward();
 
-        // match the fixed size used by the icon render pass
-        const float icon_half_px = static_cast<float>(renderer_editor_icon_size_px) * 0.5f;
+        const float icon_pick_padding_px = 6.0f;
+        const float icon_half_px         = static_cast<float>(renderer_editor_icon_size_px) * 0.5f + icon_pick_padding_px;
 
         Entity* best     = nullptr;
         float   best_dist = numeric_limits<float>::max();
@@ -611,14 +611,14 @@ namespace spartan
 
     void Camera::WorldToScreenCoordinates(const Vector3& position_world, Vector2& position_screen) const
     {
-        const Vector3 position_clip = position_world * m_view_projection_non_reverse_z;
+        const Vector4 position_clip = Vector4(position_world, 1.0f) * m_view_projection_non_reverse_z;
 
         // convert clip space position to screen space position
         const RHI_Viewport& viewport = Renderer::GetViewport();
         float viewport_half_width    = viewport.width  * 0.5f;
         float viewport_half_height   = viewport.height * 0.5f;
-        position_screen.x            = (position_clip.x / position_clip.z) *  viewport_half_width  + viewport_half_width;
-        position_screen.y            = (position_clip.y / position_clip.z) * -viewport_half_height + viewport_half_height;
+        position_screen.x            = (position_clip.x / position_clip.w) *  viewport_half_width  + viewport_half_width;
+        position_screen.y            = (position_clip.y / position_clip.w) * -viewport_half_height + viewport_half_height;
     }
 
     Rectangle Camera::WorldToScreenCoordinates(const BoundingBox& bounding_box) const
