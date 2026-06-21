@@ -880,8 +880,8 @@ namespace spartan
 
             // jitter sized to active render area, m_resolution_render * scale, not the full target, sub pixel coverage shrinks otherwise
             const float scale    = GetResolutionScale();
-            const float render_w = max(m_resolution_render.x * scale, 1.0f);
-            const float render_h = max(m_resolution_render.y * scale, 1.0f);
+            const float render_w = static_cast<float>(GetScaledDimension(static_cast<uint32_t>(m_resolution_render.x), scale));
+            const float render_h = static_cast<float>(GetScaledDimension(static_cast<uint32_t>(m_resolution_render.y), scale));
             m_jitter_offset.x = 2.0f * jx / render_w;
             m_jitter_offset.y = -2.0f * jy / render_h;
 

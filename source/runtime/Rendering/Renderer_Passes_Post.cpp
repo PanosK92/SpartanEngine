@@ -413,6 +413,7 @@ namespace spartan
                 pso.shaders[Compute] = GetShader(Renderer_Shader::taau_c);
                 cmd_list->SetPipelineState(pso);
 
+                SetCommonTextures(cmd_list);
                 m_pcb_pass_cpu.set_f3_value(m_taau_reset_history ? 1.0f : 0.0f, 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 

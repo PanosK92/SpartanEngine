@@ -141,17 +141,25 @@ float3 sample_history_catmull_rom(float2 uv, float2 resolution)
     float2 tex_pos_3  = (tex_pos_1 + 2.0f) * inv_res;
     float2 tex_pos_12 = (tex_pos_1 + offset_12) * inv_res;
 
+    float3 h0 = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_0.y),  0.0f).rgb;
+    float3 h1 = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_0.x,  tex_pos_12.y), 0.0f).rgb;
+    float3 h2 = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_12.y), 0.0f).rgb;
+    float3 h3 = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_3.x,  tex_pos_12.y), 0.0f).rgb;
+    float3 h4 = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_3.y),  0.0f).rgb;
+
     float3 result = 0.0f.xxx;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_0.y),  0.0f).rgb * w12.x * w0.y;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_0.x,  tex_pos_12.y), 0.0f).rgb * w0.x  * w12.y;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_12.y), 0.0f).rgb * w12.x * w12.y;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_3.x,  tex_pos_12.y), 0.0f).rgb * w3.x  * w12.y;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_3.y),  0.0f).rgb * w12.x * w3.y;
+    result += h0 * w12.x * w0.y;
+    result += h1 * w0.x  * w12.y;
+    result += h2 * w12.x * w12.y;
+    result += h3 * w3.x  * w12.y;
+    result += h4 * w12.x * w3.y;
 
     // renormalize, since w0+w12+w3 = 1 along each axis the sum of the kept weights
     // simplifies to w12.x + w12.y - w12.x*w12.y, never zero for f in [0,1]
-    float weight_sum = w12.x + w12.y - w12.x * w12.y;
-    return max(result * rcp(weight_sum), 0.0f.xxx);
+    float  weight_sum  = w12.x + w12.y - w12.x * w12.y;
+    float3 history_min = min(min(min(h0, h1), min(h2, h3)), h4);
+    float3 history_max = max(max(max(h0, h1), max(h2, h3)), h4);
+    return clamp(result * rcp(weight_sum), history_min, history_max);
 }
 
 /*------------------------------------------------------------------------------
@@ -162,20 +170,21 @@ float3 taau(uint2 px_out, float2 res_out)
     // setup
     float2 uv_out        = (px_out + 0.5f) / res_out;
     float  scale         = buffer_frame.resolution_scale;
-    float2 active_render = buffer_frame.resolution_render * scale;
+    uint2  active_render = uint2(max(buffer_frame.resolution_render * scale, float2(1.0f, 1.0f)));
     int2   px_render_max = max(int2(active_render) - 1, int2(0, 0));
 
     // taa_jitter_current is in ndc, ndc to render-pixel is (x*0.5*width, y*-0.5*height)
     // because ndc y is flipped relative to texture y, the rendered image is shifted by
     // +jitter_px so the world point that corresponds to output pixel uv_out lands at
     // uv_out*active_render + jitter_px in render pixel space
-    float2 jitter_px = buffer_frame.taa_jitter_current * float2(0.5f, -0.5f) * active_render;
-    float2 p_render  = uv_out * active_render + jitter_px;
+    float2 active_render_f = float2(active_render);
+    float2 jitter_px       = buffer_frame.taa_jitter_current * float2(0.5f, -0.5f) * active_render_f;
+    float2 p_render        = uv_out * active_render_f + jitter_px;
 
     // clamp the reconstruction point so the 3x3 gather always centers inside the
     // valid (top-left) rendered region, near the right and bottom output edges
     // p_render would otherwise land outside the rasterized area and skew weights
-    p_render         = clamp(p_render, float2(0.5f, 0.5f), float2(active_render) - 0.5f);
+    p_render         = clamp(p_render, float2(0.5f, 0.5f), active_render_f - 0.5f);
     int2   center    = clamp(int2(floor(p_render)), int2(0, 0), px_render_max);
 
     // 3x3 gather, blackman-harris weighted reconstruction in tonemapped space plus
