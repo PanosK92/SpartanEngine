@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common.hlsl"
 #include "fog.hlsl"
+#include "shadow_mapping.hlsl"
 #include "light_cluster.hlsl"
 
 static const uint particle_render_billboard   = 0u;
@@ -33,6 +34,7 @@ static const float volume_max_distance        = 96.0f;
 static const float volume_density_scale       = 2048.0f;
 static const float volume_color_scale         = 2048.0f;
 static const float volume_extinction_scale    = 0.28f;
+static const float volume_shadow_min_light    = 0.12f;
 
 uint volume_index(uint3 voxel)
 {
@@ -45,6 +47,48 @@ float henyey_greenstein(float cos_theta, float g)
     float g2 = g * g;
     float d  = max(1.0f + g2 - 2.0f * g * cos_theta, 0.0001f);
     return (1.0f - g2) / (4.0f * PI * d * sqrt(d));
+}
+
+float3 volume_world_position(uint3 voxel)
+{
+    float2 uv = (float2(voxel.xy) + 0.5f) / float2((float)volume_width, (float)volume_height);
+    float2 ndc = float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f);
+    float4 view_far = mul(float4(ndc, 1.0f, 1.0f), get_projection_inverted());
+    float3 view_dir = normalize(view_far.xyz / view_far.w);
+    float3 world_dir = normalize(mul(float4(view_dir, 0.0f), get_view_inverted()).xyz);
+    float distance_camera = ((float)voxel.z + 0.5f) * (volume_max_distance / (float)volume_depth);
+    return get_camera_position() + world_dir * distance_camera;
+}
+
+Surface build_volume_surface(float3 position, float3 ray_direction, uint2 pixel, float2 uv)
+{
+    Surface surface;
+    surface.flags                  = 0u;
+    surface.albedo                 = 1.0f;
+    surface.alpha                  = 1.0f;
+    surface.roughness              = 1.0f;
+    surface.roughness_alpha        = 1.0f;
+    surface.metallic               = 0.0f;
+    surface.clearcoat              = 0.0f;
+    surface.clearcoat_roughness    = 0.0f;
+    surface.anisotropic            = 0.0f;
+    surface.anisotropic_rotation   = 0.0f;
+    surface.sheen                  = 0.0f;
+    surface.subsurface_scattering  = 0.0f;
+    surface.occlusion              = 1.0f;
+    surface.emissive               = 0.0f;
+    surface.F0                     = 0.04f;
+    surface.pos                    = pixel;
+    surface.uv                     = uv;
+    surface.depth                  = 0.0f;
+    surface.position               = position;
+    surface.normal                 = -ray_direction;
+    surface.bent_normal            = surface.normal;
+    surface.camera_to_pixel        = ray_direction;
+    surface.camera_to_pixel_length = distance(position, get_camera_position());
+    surface.diffuse_energy         = 1.0f;
+
+    return surface;
 }
 
 #if defined(VOLUME_CLEAR)
@@ -188,6 +232,47 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
 #elif defined(VOLUME_RESOLVE)
 
+#ifdef RAY_TRACING_ENABLED
+float trace_volume_shadow_ray(Light light, float3 sample_pos, float3 light_dir)
+{
+    float bias = 0.015f;
+    float3 origin = sample_pos + light_dir * bias;
+    float3 direction;
+    float t_max;
+
+    if (light.is_directional())
+    {
+        direction = normalize(-light.forward);
+        t_max = 10000.0f;
+    }
+    else
+    {
+        float3 target = light.is_area() ? light.compute_closest_point_on_area(sample_pos) : light.position;
+        float3 to_light = target - origin;
+        float dist = length(to_light);
+        if (dist <= bias)
+        {
+            return 1.0f;
+        }
+
+        direction = to_light / dist;
+        t_max = max(dist - bias, 0.001f);
+    }
+
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001f;
+    ray.TMax      = t_max;
+
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    query.Proceed();
+
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+}
+#endif
+
 [numthreads(8, 8, 4)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
@@ -205,43 +290,36 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         color.r = (float)particle_volume_color[index * 3u + 0u] / ((float)density_u * volume_color_scale / volume_density_scale);
         color.g = (float)particle_volume_color[index * 3u + 1u] / ((float)density_u * volume_color_scale / volume_density_scale);
         color.b = (float)particle_volume_color[index * 3u + 2u] / ((float)density_u * volume_color_scale / volume_density_scale);
+
+    #ifdef RAY_TRACING_ENABLED
+        if ((is_ray_traced_shadows_enabled() || is_restir_pt_enabled()) && buffer_frame.cluster_light_count > 0u)
+        {
+            float3 sample_pos = volume_world_position(dispatch_thread_id);
+            float2 uv = (float2(dispatch_thread_id.xy) + 0.5f) / float2((float)volume_width, (float)volume_height);
+            float3 ray_direction = normalize(sample_pos - get_camera_position());
+            Surface surface = build_volume_surface(sample_pos, ray_direction, dispatch_thread_id.xy, uv);
+
+            Light light;
+            light.Build(0u, surface);
+            if (light.has_shadows())
+            {
+                float3 light_dir;
+                float local_atten;
+                compute_volumetric_light_sample(light, sample_pos, light_dir, local_atten);
+                if (local_atten > 0.0f)
+                {
+                    float visibility = trace_volume_shadow_ray(light, sample_pos, light_dir);
+                    color *= lerp(volume_shadow_min_light, 1.0f, visibility);
+                }
+            }
+        }
+    #endif
     }
 
     tex3d_uav[dispatch_thread_id] = float4(saturate(color), density);
 }
 
 #elif defined(VOLUME_COMPOSITE)
-
-Surface build_volume_surface(float3 position, float3 ray_direction, uint2 pixel, float2 uv)
-{
-    Surface surface;
-    surface.flags                  = 0u;
-    surface.albedo                 = 1.0f;
-    surface.alpha                  = 1.0f;
-    surface.roughness              = 1.0f;
-    surface.roughness_alpha        = 1.0f;
-    surface.metallic               = 0.0f;
-    surface.clearcoat              = 0.0f;
-    surface.clearcoat_roughness    = 0.0f;
-    surface.anisotropic            = 0.0f;
-    surface.anisotropic_rotation   = 0.0f;
-    surface.sheen                  = 0.0f;
-    surface.subsurface_scattering  = 0.0f;
-    surface.occlusion              = 1.0f;
-    surface.emissive               = 0.0f;
-    surface.F0                     = 0.04f;
-    surface.pos                    = pixel;
-    surface.uv                     = uv;
-    surface.depth                  = 0.0f;
-    surface.position               = position;
-    surface.normal                 = -ray_direction;
-    surface.bent_normal            = surface.normal;
-    surface.camera_to_pixel        = ray_direction;
-    surface.camera_to_pixel_length = distance(position, get_camera_position());
-    surface.diffuse_energy         = 1.0f;
-
-    return surface;
-}
 
 float3 evaluate_volume_light(uint light_index, float3 sample_pos, float3 ray_direction, uint2 pixel, float2 uv)
 {
@@ -258,7 +336,23 @@ float3 evaluate_volume_light(uint light_index, float3 sample_pos, float3 ray_dir
         return 0.0f;
     }
 
-    float visibility = light.has_shadows() ? visible(sample_pos, light, pixel) : 1.0f;
+    surface.normal = light_dir;
+    surface.bent_normal = light_dir;
+
+    float visibility = 1.0f;
+    if (light.has_shadows())
+    {
+    #ifdef RAY_TRACING_ENABLED
+        if (is_ray_traced_shadows_enabled() || is_restir_pt_enabled())
+        {
+            visibility = 1.0f;
+        }
+        else
+    #endif
+        {
+            visibility = compute_shadow(surface, light);
+        }
+    }
     float phase      = henyey_greenstein(dot(ray_direction, light_dir), light.is_directional() ? 0.22f : 0.45f);
 
     return light.color * light.intensity * local_atten * visibility * phase;

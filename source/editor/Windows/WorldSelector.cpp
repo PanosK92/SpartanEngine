@@ -28,6 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Style.h"
 #include "../Widgets/Viewport.h"
 #include "Core/ProgressTracker.h"
+SP_WARNINGS_OFF
+#include "IO/pugixml.hpp"
+SP_WARNINGS_ON
 //===================================
 
 //= NAMESPACES =====
@@ -89,6 +92,10 @@ namespace
 
     float last_click_time = -1.0f;
     int last_click_index  = -1;
+
+    unordered_map<string, int64_t> world_last_opened;
+
+    const char* world_recency_file = "spartan_worlds.xml";
 
     const char* assets_url          = "https://www.dropbox.com/scl/fi/kydbsf9pzzlfuskfdmf6v/project.7z?rlkey=8uyp0ps2wmnf93fq3priooxo2&dl=1";
     const char* assets_destination  = "project/project.7z";
@@ -222,6 +229,112 @@ namespace
         return value;
     }
 
+    string normalize_world_path(string path)
+    {
+        replace(path.begin(), path.end(), '\\', '/');
+#if defined(_WIN32)
+        return lowercase_copy(path);
+#else
+        return path;
+#endif
+    }
+
+    int64_t get_current_timestamp()
+    {
+        return static_cast<int64_t>(chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count());
+    }
+
+    int64_t get_last_opened(const string& path)
+    {
+        const auto it = world_last_opened.find(normalize_world_path(path));
+        if (it != world_last_opened.end())
+        {
+            return it->second;
+        }
+
+        return 0;
+    }
+
+    void load_world_recency()
+    {
+        world_last_opened.clear();
+
+        if (!spartan::FileSystem::Exists(world_recency_file))
+        {
+            return;
+        }
+
+        pugi::xml_document doc;
+        if (!doc.load_file(world_recency_file))
+        {
+            return;
+        }
+
+        pugi::xml_node root = doc.child("WorldRecency");
+        for (pugi::xml_node world_node = root.child("World"); world_node; world_node = world_node.next_sibling("World"))
+        {
+            const string path             = normalize_world_path(world_node.attribute("path").as_string());
+            const string last_opened_text = world_node.attribute("last_opened").as_string();
+            if (path.empty() || last_opened_text.empty())
+            {
+                continue;
+            }
+
+            try
+            {
+                world_last_opened[path] = stoll(last_opened_text);
+            }
+            catch (...)
+            {
+                continue;
+            }
+        }
+    }
+
+    void save_world_recency()
+    {
+        pugi::xml_document doc;
+        pugi::xml_node root = doc.append_child("WorldRecency");
+
+        for (const auto& [path, last_opened] : world_last_opened)
+        {
+            const string last_opened_text = to_string(last_opened);
+            pugi::xml_node world_node = root.append_child("World");
+            world_node.append_attribute("path").set_value(path.c_str());
+            world_node.append_attribute("last_opened").set_value(last_opened_text.c_str());
+        }
+
+        doc.save_file(world_recency_file);
+    }
+
+    void record_world_opened(const string& path)
+    {
+        world_last_opened[normalize_world_path(path)] = get_current_timestamp();
+        save_world_recency();
+    }
+
+    int world_index_from_path(const string& path)
+    {
+        const string normalized_path = normalize_world_path(path);
+        for (int i = 0; i < static_cast<int>(world_files.size()); i++)
+        {
+            if (normalize_world_path(world_files[i].file_path) == normalized_path)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    void sort_world_files()
+    {
+        stable_sort(world_files.begin(), world_files.end(), [](const spartan::WorldMetadata& a, const spartan::WorldMetadata& b)
+        {
+            return get_last_opened(a.file_path) > get_last_opened(b.file_path);
+        });
+    }
+
     bool is_work_in_progress(const spartan::WorldMetadata& world)
     {
         return lowercase_copy(world.name).find("forest") != string::npos;
@@ -346,6 +459,12 @@ namespace
 
     void scan_for_world_files()
     {
+        string selected_path;
+        if (selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
+        {
+            selected_path = world_files[selected_index].file_path;
+        }
+
         world_files.clear();
 
         string project_dir = spartan::ResourceCache::GetProjectDirectory();
@@ -361,7 +480,14 @@ namespace
             }
         }
 
-        if (selected_index >= static_cast<int>(world_files.size()))
+        sort_world_files();
+
+        if (!selected_path.empty())
+        {
+            selected_index = world_index_from_path(selected_path);
+        }
+
+        if (selected_index < 0 || selected_index >= static_cast<int>(world_files.size()))
         {
             selected_index = world_files.empty() ? -1 : 0;
         }
@@ -600,8 +726,10 @@ namespace
     {
         if (selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
         {
-            WorldPreviews::RequestGeneration(world_files[selected_index].file_path);
-            spartan::World::LoadFromFile(world_files[selected_index].file_path);
+            const string world_path = world_files[selected_index].file_path;
+            record_world_opened(world_path);
+            WorldPreviews::RequestGeneration(world_path);
+            spartan::World::LoadFromFile(world_path);
         }
         visible_world_list = false;
     }
@@ -1046,6 +1174,7 @@ namespace
 void WorldSelector::Initialize(Editor* editor_in)
 {
     editor = editor_in;
+    load_world_recency();
 
     size_t file_count  = spartan::FileSystem::GetFilesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size();
     file_count        += spartan::FileSystem::GetDirectoriesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size();

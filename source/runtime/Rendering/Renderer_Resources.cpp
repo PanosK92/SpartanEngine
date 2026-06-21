@@ -824,7 +824,11 @@ namespace spartan
             {
                 continue;
             }
-            const char* define_ext = (rt && e.id == Renderer_Shader::particle_render_p) ? "RAY_TRACING_ENABLED" : nullptr;
+            const bool needs_ray_tracing_define =
+                e.id == Renderer_Shader::particle_render_p ||
+                e.id == Renderer_Shader::particle_volume_resolve_c ||
+                e.id == Renderer_Shader::particle_volume_composite_c;
+            const char* define_ext = (rt && needs_ray_tracing_define) ? "RAY_TRACING_ENABLED" : nullptr;
             compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define, define_ext);
         }
     }
