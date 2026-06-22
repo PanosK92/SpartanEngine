@@ -185,10 +185,9 @@ namespace spartan
                 return;
             }
 
-            ThreadPool::AddTask([request, sdr_staging, exr_staging, width, height, channel_count, bits_per_channel]()
+            ThreadPool::AddTask([request, sdr_staging, width, height, channel_count, bits_per_channel]()
             {
                 void* sdr_data = sdr_staging->GetMappedData();
-                void* exr_data = exr_staging ? exr_staging->GetMappedData() : nullptr;
 
                 if (!request.file_path.empty())
                 {
@@ -211,14 +210,22 @@ namespace spartan
                     return;
                 }
 
-                SP_LOG_INFO("Saving screenshots...");
-                if (request.save_exr && exr_data)
-                {
-                    ImageImporter::Save(request.exr_path, width, height, channel_count, bits_per_channel, exr_data);
-                }
+                SP_LOG_INFO("Saving SDR screenshot to '%s'...", request.png_path.c_str());
                 ImageImporter::SaveSdr(request.png_path, width, height, channel_count, bits_per_channel, sdr_data);
-                SP_LOG_INFO("Screenshots saved as '%s' and '%s'", request.exr_path.c_str(), request.png_path.c_str());
+                SP_LOG_INFO("SDR screenshot saved as '%s'", request.png_path.c_str());
             });
+
+            if (request.save_exr && exr_staging && exr_staging->GetMappedData())
+            {
+                ThreadPool::AddTask([request, exr_staging, width, height, channel_count, bits_per_channel]()
+                {
+                    void* exr_data = exr_staging->GetMappedData();
+
+                    SP_LOG_INFO("Saving HDR screenshot to '%s'...", request.exr_path.c_str());
+                    ImageImporter::Save(request.exr_path, width, height, channel_count, bits_per_channel, exr_data);
+                    SP_LOG_INFO("HDR screenshot saved as '%s'", request.exr_path.c_str());
+                });
+            }
         }
 
         screenshot_request make_screenshot_request(const string& file_path)

@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "pch.h"
+#include <array>
 #include "ImageImporter.h"
 #include "../../RHI/RHI_Texture.h"
 #include "../../Core/ThreadPool.h"
@@ -382,7 +383,7 @@ namespace spartan
         }
 
 
-        float half_to_float(uint16_t half)
+        float half_to_float_scalar(uint16_t half)
         {
             uint32_t mant = half & 0x3FFu;
             int32_t exp   = (half >> 10) & 0x1F;
@@ -419,6 +420,21 @@ namespace spartan
             float value = 0.0f;
             memcpy(&value, &f, sizeof(value));
             return value;
+        }
+
+        float half_to_float(uint16_t half)
+        {
+            static const array<float, 65536> lookup_table = []()
+            {
+                array<float, 65536> values = {};
+                for (uint32_t i = 0; i < static_cast<uint32_t>(values.size()); i++)
+                {
+                    values[i] = half_to_float_scalar(static_cast<uint16_t>(i));
+                }
+                return values;
+            }();
+
+            return lookup_table[half];
         }
 
         float saturate_float(float value)
@@ -604,21 +620,33 @@ namespace spartan
 
     void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
-        // assume input is half float RGBA16F (from Vulkan)
-        const uint16_t* src_half = static_cast<const uint16_t*>(data);
-        uint32_t pixel_count     = width * height;
-
-        // convert half -> float
-        std::vector<float> converted(pixel_count * 4);
-        for (uint32_t i = 0; i < pixel_count; i++)
+        if (width == 0 || height == 0)
         {
-            converted[i * 4 + 0] = half_to_float(src_half[i * 4 + 0]);
-            converted[i * 4 + 1] = half_to_float(src_half[i * 4 + 1]);
-            converted[i * 4 + 2] = half_to_float(src_half[i * 4 + 2]);
-            converted[i * 4 + 3] = half_to_float(src_half[i * 4 + 3]);
+            return;
         }
 
-        // allocate HDR bitmap (RGBAF = 128 bits per pixel float)
+        const uint16_t* src_half = static_cast<const uint16_t*>(data);
+        const size_t pixel_count = static_cast<size_t>(width) * height;
+
+        std::vector<float> converted(pixel_count * 4);
+        ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
+        {
+            for (uint32_t y = row_start; y < row_end; y++)
+            {
+                for (uint32_t x = 0; x < width; x++)
+                {
+                    const size_t pixel_index = static_cast<size_t>(y) * width + x;
+                    const size_t src_index   = pixel_index * 4;
+                    const size_t dst_index   = pixel_index * 4;
+
+                    converted[dst_index + 0] = half_to_float(src_half[src_index + 0]);
+                    converted[dst_index + 1] = half_to_float(src_half[src_index + 1]);
+                    converted[dst_index + 2] = half_to_float(src_half[src_index + 2]);
+                    converted[dst_index + 3] = half_to_float(src_half[src_index + 3]);
+                }
+            }
+        }, height);
+
         FIBITMAP* bitmap = FreeImage_AllocateT(FIT_RGBAF, width, height, 128);
         if (!bitmap)
         {
@@ -626,15 +654,19 @@ namespace spartan
             return;
         }
 
-        // copy data row by row (FreeImage stores bottom-up by default)
         for (uint32_t y = 0; y < height; y++)
         {
             float* scanline = reinterpret_cast<float*>(FreeImage_GetScanLine(bitmap, height - 1 - y));
-            memcpy(scanline, &converted[y * width * 4], width * 4 * sizeof(float));
+            memcpy(scanline, converted.data() + static_cast<size_t>(y) * width * 4, static_cast<size_t>(width) * 4 * sizeof(float));
         }
 
-        // save as OpenEXR
-        BOOL saved = FreeImage_Save(FIF_EXR, bitmap, file_path.c_str(), EXR_DEFAULT);
+        #if defined(EXR_NONE)
+        constexpr int exr_save_flags = EXR_NONE;
+        #else
+        constexpr int exr_save_flags = EXR_DEFAULT;
+        #endif
+
+        BOOL saved = FreeImage_Save(FIF_EXR, bitmap, file_path.c_str(), exr_save_flags);
         FreeImage_Unload(bitmap);
 
         if (!saved)
@@ -645,6 +677,11 @@ namespace spartan
 
     void ImageImporter::SaveSdr(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
+        if (width == 0 || height == 0)
+        {
+            return;
+        }
+
         const uint16_t* src_half = static_cast<const uint16_t*>(data);
 
         FIBITMAP* bitmap = FreeImage_Allocate(width, height, 24);
@@ -654,27 +691,39 @@ namespace spartan
             return;
         }
 
+        vector<BYTE> converted(static_cast<size_t>(width) * height * 3);
+        ThreadPool::ParallelLoop([&](uint32_t row_start, uint32_t row_end)
+        {
+            for (uint32_t y = row_start; y < row_end; y++)
+            {
+                const uint16_t* src_row = src_half + static_cast<size_t>(y) * width * 4;
+                BYTE* dst_row           = converted.data() + static_cast<size_t>(y) * width * 3;
+
+                for (uint32_t x = 0; x < width; x++)
+                {
+                    const uint32_t src_index = x * 4;
+                    const uint32_t dst_index = x * 3;
+                    const float r            = half_to_float(src_row[src_index + 0]);
+                    const float g            = half_to_float(src_row[src_index + 1]);
+                    const float b            = half_to_float(src_row[src_index + 2]);
+                    const float peak         = max(max(r, g), b);
+                    const float strength     = 1.0f + (1.0f - saturate_float(peak * 8.0f)) * 0.75f;
+                    const float dither       = get_sdr_dither(x, y);
+
+                    dst_row[dst_index + 0] = float_to_unorm8_dithered(b, dither, strength);
+                    dst_row[dst_index + 1] = float_to_unorm8_dithered(g, dither, strength);
+                    dst_row[dst_index + 2] = float_to_unorm8_dithered(r, dither, strength);
+                }
+            }
+        }, height);
+
         for (uint32_t y = 0; y < height; y++)
         {
             BYTE* scanline = FreeImage_GetScanLine(bitmap, height - 1 - y);
-            for (uint32_t x = 0; x < width; x++)
-            {
-                uint32_t src_idx = (y * width + x) * 4;
-                float r          = half_to_float(src_half[src_idx + 0]);
-                float g          = half_to_float(src_half[src_idx + 1]);
-                float b          = half_to_float(src_half[src_idx + 2]);
-                float peak       = max(max(r, g), b);
-                float strength   = 1.0f + (1.0f - saturate_float(peak * 8.0f)) * 0.75f;
-                float dither     = get_sdr_dither(x, y);
-                uint32_t dst_idx = x * 3;
-
-                scanline[dst_idx + 0] = float_to_unorm8_dithered(b, dither, strength);
-                scanline[dst_idx + 1] = float_to_unorm8_dithered(g, dither, strength);
-                scanline[dst_idx + 2] = float_to_unorm8_dithered(r, dither, strength);
-            }
+            memcpy(scanline, converted.data() + static_cast<size_t>(y) * width * 3, static_cast<size_t>(width) * 3);
         }
 
-        BOOL saved = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_Z_BEST_COMPRESSION);
+        BOOL saved = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_Z_BEST_SPEED);
         FreeImage_Unload(bitmap);
 
         if (!saved)
