@@ -1175,7 +1175,9 @@ namespace spartan
 
         if (!tris.empty() && total_weight > 0.0f)
         {
-            GetBuffer(Renderer_Buffer::EmissiveTriangles)->Update(
+            RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
+            emissive_triangles_buffer->ResetOffset();
+            emissive_triangles_buffer->Update(
                 cmd_list,
                 tris.data(),
                 static_cast<uint32_t>(tris.size() * sizeof(Sb_EmissiveTriangle))
