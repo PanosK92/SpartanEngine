@@ -12,7 +12,7 @@
     "assistant": "node ./assistant.mjs"
   },
   "dependencies": {
-    "@connectrpc/connect-node": "1.7.0",
+    "@connectrpc/connect-node": "2.1.2",
     "@cursor/sdk": "1.0.19",
     "@modelcontextprotocol/sdk": "1.29.0",
     "zod": "4.4.3"
