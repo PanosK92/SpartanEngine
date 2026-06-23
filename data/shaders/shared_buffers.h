@@ -138,6 +138,17 @@ struct FrameBufferData
     SHARED_UINT   volumetric_light_count;
     SHARED_FLOAT  cluster_padding1;
 
+    // fft ocean, filled each frame from the active Water component while it is enabled
+    SHARED_FLOAT4 ocean_cascade_length;       // patch length (meters) per cascade
+    SHARED_FLOAT  ocean_sea_level;
+    SHARED_FLOAT  ocean_choppiness;
+    SHARED_FLOAT  ocean_displacement_scale;
+    SHARED_FLOAT  ocean_normal_strength;
+    SHARED_FLOAT  ocean_foam_coverage;
+    SHARED_UINT   ocean_cascade_count;
+    SHARED_FLOAT  ocean_enabled;
+    SHARED_FLOAT  ocean_padding0;
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {

@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Renderer.h"
 #include "World/Components/Script.h"
 #include "World/Components/ParticleSystem.h"
+#include "World/Components/Water.h"
 #include "World/Prefab.h"
 //==========================================
 
@@ -107,6 +108,7 @@ namespace
         inline ImVec4 accent_spline_follower() { return ImVec4(0.35f, 0.80f, 0.65f, 1.0f); }
         inline ImVec4 accent_script()          { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
         inline ImVec4 accent_particles() { return ImVec4(0.90f, 0.55f, 0.30f, 1.0f); }
+        inline ImVec4 accent_water()     { return ImVec4(0.30f, 0.60f, 0.80f, 1.0f); }
 
         // helper to get dimmed version for backgrounds
         inline ImVec4 dimmed(const ImVec4& color, float factor = 0.15f)
@@ -665,6 +667,7 @@ void Properties::OnTickVisible()
             ShowPhysics(entity->GetComponent<Physics>());
             ShowVolume(entity->GetComponent<Volume>());
             ShowParticleSystem(entity->GetComponent<ParticleSystem>());
+            ShowWater(entity->GetComponent<Water>());
 
             ShowAddComponentButton();
 
@@ -2252,6 +2255,51 @@ void Properties::ShowTerrain(Terrain* terrain) const
     component_end();
 }
 
+void Properties::ShowWater(spartan::Water* water) const
+{
+    if (!water)
+    {
+        return;
+    }
+
+    if (component_begin("Water", design::accent_water(), water))
+    {
+        float wind_speed         = water->GetWindSpeed();
+        float wind_direction     = water->GetWindDirection();
+        float amplitude          = water->GetAmplitude();
+        float choppiness         = water->GetChoppiness();
+        float displacement_scale = water->GetDisplacementScale();
+        float normal_strength    = water->GetNormalStrength();
+        float foam_coverage      = water->GetFoamCoverage();
+        float sea_level          = water->GetSeaLevel();
+
+        uint32_t cascade_index = water->GetCascadeCount() - 1;
+        if (property_combo("Detail Cascades", { "1", "2", "3", "4" }, &cascade_index, "number of band-limited scales, more cascades adds finer microwaves"))
+        {
+            water->SetCascadeCount(cascade_index + 1);
+        }
+
+        property_float("Wind Speed",         &wind_speed,         0.1f,  0.0f,    100.0f, "wind speed driving the wave spectrum", "%.1f m/s");
+        property_float("Wind Direction",     &wind_direction,     0.01f, -6.28f,  6.28f,  "wind direction in radians",            "%.2f rad");
+        property_float("Amplitude",          &amplitude,          0.1f,  0.0f,    50.0f,  "overall wave height");
+        property_float("Choppiness",         &choppiness,         0.05f, 0.0f,    4.0f,   "horizontal sharpening of the crests");
+        property_float("Displacement Scale", &displacement_scale, 0.05f, 0.0f,    4.0f,   "scales the simulated displacement");
+        property_float("Normal Strength",    &normal_strength,    0.05f, 0.0f,    8.0f,   "steepens the surface normals so waves catch more light");
+        property_float("Foam Coverage",      &foam_coverage,      0.01f, 0.0f,    1.0f,   "lowers the fold threshold so more wave crests turn to foam");
+        property_float("Sea Level",          &sea_level,          0.1f,  -100.0f, 100.0f, "world height of the water surface", "%.1f m");
+
+        if (wind_speed != water->GetWindSpeed())                 { water->SetWindSpeed(wind_speed); }
+        if (wind_direction != water->GetWindDirection())         { water->SetWindDirection(wind_direction); }
+        if (amplitude != water->GetAmplitude())                  { water->SetAmplitude(amplitude); }
+        if (choppiness != water->GetChoppiness())                { water->SetChoppiness(choppiness); }
+        if (displacement_scale != water->GetDisplacementScale()) { water->SetDisplacementScale(displacement_scale); }
+        if (normal_strength != water->GetNormalStrength())       { water->SetNormalStrength(normal_strength); }
+        if (foam_coverage != water->GetFoamCoverage())           { water->SetFoamCoverage(foam_coverage); }
+        if (sea_level != water->GetSeaLevel())                   { water->SetSeaLevel(sea_level); }
+    }
+    component_end();
+}
+
 void Properties::ShowSpline(spartan::Spline* spline) const
 {
     if (!spline)
@@ -3517,6 +3565,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Particle System"))
             {
                 entity->AddComponent<ParticleSystem>();
+            }
+
+            if (ImGui::MenuItem("Water"))
+            {
+                entity->AddComponent<Water>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

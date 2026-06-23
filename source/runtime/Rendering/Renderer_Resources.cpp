@@ -623,6 +623,20 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::wind_field) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 256, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "wind_field");
         };
 
+        auto create_ocean = [&]()
+        {
+            // fft ocean cascades, one array slice per cascade, recomputed each frame while a water component is active
+            const uint32_t n      = renderer_ocean_resolution;
+            const uint32_t slices = renderer_ocean_max_cascades;
+            const uint32_t flags  = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing;
+
+            at(render_targets, Renderer_RenderTarget::ocean_spectrum)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R32G32B32A32_Float, flags, "ocean_spectrum");
+            at(render_targets, Renderer_RenderTarget::ocean_fft_a)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R32G32B32A32_Float, flags, "ocean_fft_a");
+            at(render_targets, Renderer_RenderTarget::ocean_fft_b)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R32G32B32A32_Float, flags, "ocean_fft_b");
+            at(render_targets, Renderer_RenderTarget::ocean_displacement) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement");
+            at(render_targets, Renderer_RenderTarget::ocean_normal)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_normal");
+        };
+
         if (create_render)
         {
             create_gbuffer();
@@ -641,6 +655,7 @@ namespace spartan
         {
             create_atmosphere_luts();
             create_wind();
+            create_ocean();
         }
     }
 
@@ -795,6 +810,13 @@ namespace spartan
 
             // wind field
             { Renderer_Shader::wind_field_c,                          RHI_Shader_Type::Compute, "wind_field.hlsl"                                                                                    },
+
+            // fft ocean
+            { Renderer_Shader::ocean_spectrum_init_c,                 RHI_Shader_Type::Compute, "ocean/ocean_spectrum.hlsl",                  RHI_Vertex_Type::Max, "INIT"                           },
+            { Renderer_Shader::ocean_spectrum_update_c,               RHI_Shader_Type::Compute, "ocean/ocean_spectrum.hlsl",                  RHI_Vertex_Type::Max, "UPDATE"                         },
+            { Renderer_Shader::ocean_fft_horizontal_c,                RHI_Shader_Type::Compute, "ocean/ocean_fft.hlsl",                       RHI_Vertex_Type::Max, "HORIZONTAL"                     },
+            { Renderer_Shader::ocean_fft_vertical_c,                  RHI_Shader_Type::Compute, "ocean/ocean_fft.hlsl",                       RHI_Vertex_Type::Max, "VERTICAL"                       },
+            { Renderer_Shader::ocean_assemble_c,                      RHI_Shader_Type::Compute, "ocean/ocean_assemble.hlsl"                                                                          },
 
             // gpu-driven particles
             { Renderer_Shader::particle_emit_c,                       RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "EMIT"                           },

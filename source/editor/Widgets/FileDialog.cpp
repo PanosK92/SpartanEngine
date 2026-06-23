@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Prefab.h"
 #include "World/World.h"
 #include "World/Components/Script.h"
+#include "Core/ThreadPool.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -1331,6 +1332,7 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
         {
             if (FileSystem::IsSupportedImageFile(path))
             {
+                // load the thumbnail off the main thread so the folder opens instantly
                 ThreadPool::AddTask([this, path]()
                 {
                     auto texture = spartan::ResourceCache::Load<RHI_Texture>(path);
@@ -1400,8 +1402,8 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
     // sort items
     sort(m_items.begin(), m_items.end(), [this](const FileDialogItem& a, const FileDialogItem& b)
     {
-        bool a_is_dir = FileSystem::IsDirectory(a.GetPath());
-        bool b_is_dir = FileSystem::IsDirectory(b.GetPath());
+        bool a_is_dir = a.IsDirectory();
+        bool b_is_dir = b.IsDirectory();
 
         // directories always first
         if (a_is_dir != b_is_dir)

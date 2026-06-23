@@ -65,6 +65,11 @@ Texture2D<float4> tex_reservoir_prev5 : register(t27);
 // rg = flow vector (signed, [-1,1]), b = gust pressure (0..1), a = micro turbulence (0..1)
 Texture2D<float4> tex_wind_field : register(t29);
 
+// fft ocean cascades, one array slice per cascade
+// displacement.xyz = world-space offset, normal.xy = surface slope, normal.z = foam
+Texture2DArray<float4> tex_ocean_displacement : register(t30);
+Texture2DArray<float4> tex_ocean_normal       : register(t31);
+
 // geometry info buffer for ray tracing (per-blas-instance offsets)
 RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
 
@@ -96,6 +101,13 @@ globallycoherent RWStructuredBuffer<uint> g_atomic_counter                      
 [[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12] : register(u8); // used by FidelityFX SPD
 // integer format textures (vrs, etc)
 RWTexture2D<uint> tex_uav_uint : register(u30);
+
+// fft ocean compute targets, texture2d arrays with one slice per cascade
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_ocean_spectrum_uav     : register(u9);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_ocean_fft_a_uav        : register(u10);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_ocean_fft_b_uav        : register(u11);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_ocean_displacement_uav : register(u12);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_ocean_normal_uav       : register(u13);
 
 // bindless draw data - per-draw transforms, material indices, etc.
 StructuredBuffer<DrawData> draw_data                     : register(t19, space5);

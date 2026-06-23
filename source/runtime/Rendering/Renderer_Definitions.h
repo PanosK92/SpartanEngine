@@ -79,6 +79,10 @@ namespace spartan
         return base;
     }
 
+    // fft ocean, square spectrum resolution and the max number of cascades packed as array slices
+    const uint32_t renderer_ocean_resolution   = 256;
+    const uint32_t renderer_ocean_max_cascades = 4;
+
     // render target dimensions, fixed allocations sized for current quality budgets
     const uint32_t renderer_resolution_shadow_atlas = 8192; // total shadow atlas, packed by row of square slices
     const uint32_t renderer_resolution_blur_scratch = 4096; // ping pong target reused by every blur pass
@@ -158,6 +162,10 @@ namespace spartan
 
         // baked wind field, sampled by all wind-driven geometry
         tex_wind_field     = 29,
+
+        // fft ocean, displacement and normal/foam cascades sampled by water geometry
+        ocean_displacement = 30,
+        ocean_normal       = 31,
     };
 
     enum class Renderer_BindingsUav
@@ -170,6 +178,12 @@ namespace spartan
         tex_sss       = 5,
         sb_spd        = 7,
         tex_spd       = 8,
+        // fft ocean compute targets (texture2d arrays, one slice per cascade)
+        ocean_spectrum     = 9,  // persistent h0 spectrum
+        ocean_fft_a        = 10, // working: height + x displacement
+        ocean_fft_b        = 11, // working: z displacement
+        ocean_displacement = 12, // assembled displacement
+        ocean_normal       = 13, // assembled slope + foam
         geometry_info = 20, // ray tracing geometry info buffer
         // restir reservoir uav bindings
         reservoir0    = 21,
@@ -301,6 +315,12 @@ namespace spartan
         restir_pt_denoise_spatial_c,
         // baked wind field
         wind_field_c,
+        // fft ocean
+        ocean_spectrum_init_c,
+        ocean_spectrum_update_c,
+        ocean_fft_horizontal_c,
+        ocean_fft_vertical_c,
+        ocean_assemble_c,
         light_reflections_c,
         // gpu-driven indirect rendering
         indirect_cull_c,
@@ -411,6 +431,12 @@ namespace spartan
         restir_reservoir_spatial5,
         // baked wind field, written each frame, sampled by depth_prepass/g_buffer/depth_light
         wind_field,
+        // fft ocean, texture2d arrays with one slice per cascade
+        ocean_spectrum,      // persistent h0 spectrum
+        ocean_fft_a,         // working: height + x displacement
+        ocean_fft_b,         // working: z displacement
+        ocean_displacement,  // assembled displacement, sampled by water vs
+        ocean_normal,        // assembled slope + foam, sampled by water ps
         // debug
         debug_output,
         // vr stereo

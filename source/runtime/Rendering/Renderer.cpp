@@ -946,6 +946,24 @@ namespace spartan
         m_cb_frame_cpu.camera_exposure              = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
         m_cb_frame_cpu.restir_pt_light_count        = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind                         = World::GetWind();
+
+        // fft ocean, geometry samples these to displace and shade the water surface
+        if (m_pass_state.ocean_enabled)
+        {
+            const OceanParams& ocean              = m_pass_state.ocean_params;
+            m_cb_frame_cpu.ocean_cascade_length     = Vector4(ocean.cascade_length[0], ocean.cascade_length[1], ocean.cascade_length[2], ocean.cascade_length[3]);
+            m_cb_frame_cpu.ocean_sea_level          = ocean.sea_level;
+            m_cb_frame_cpu.ocean_choppiness         = ocean.choppiness;
+            m_cb_frame_cpu.ocean_displacement_scale = ocean.displacement_scale;
+            m_cb_frame_cpu.ocean_normal_strength    = ocean.normal_strength;
+            m_cb_frame_cpu.ocean_foam_coverage      = ocean.foam_coverage;
+            m_cb_frame_cpu.ocean_cascade_count      = ocean.cascade_count;
+            m_cb_frame_cpu.ocean_enabled            = 1.0f;
+        }
+        else
+        {
+            m_cb_frame_cpu.ocean_enabled = 0.0f;
+        }
     }
 
     void Renderer::UpdateFrameCb_ClusterLighting()
@@ -1283,6 +1301,33 @@ namespace spartan
     bool Renderer::IsProceduralGrassEnabled()
     {
         return m_pass_state.grass_enabled;
+    }
+
+    void Renderer::EnableOcean(Mesh* ocean_mesh, Material* ocean_material, const OceanParams& params)
+    {
+        if (!ocean_mesh || !ocean_material)
+        {
+            m_pass_state.ocean_enabled = false;
+            return;
+        }
+
+        m_pass_state.ocean_mesh           = ocean_mesh;
+        m_pass_state.ocean_material       = ocean_material;
+        m_pass_state.ocean_params         = params;
+        m_pass_state.ocean_enabled        = true;
+        m_pass_state.ocean_spectrum_dirty = true; // re-seed the spectrum whenever parameters change
+    }
+
+    void Renderer::DisableOcean()
+    {
+        m_pass_state.ocean_enabled  = false;
+        m_pass_state.ocean_mesh     = nullptr;
+        m_pass_state.ocean_material = nullptr;
+    }
+
+    bool Renderer::IsOceanEnabled()
+    {
+        return m_pass_state.ocean_enabled;
     }
 
     void Renderer::OnFullScreenToggled()
@@ -2645,6 +2690,18 @@ namespace spartan
         {
             cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
         }
+
+        // fft ocean cascades, bound only once Pass_Ocean has transitioned them to shader read, same guard as the wind field
+        RHI_Texture* tex_ocean_disp = GetRenderTarget(Renderer_RenderTarget::ocean_displacement);
+        RHI_Texture* tex_ocean_norm = GetRenderTarget(Renderer_RenderTarget::ocean_normal);
+        if (is_graphics_queue && tex_ocean_disp && tex_ocean_disp->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        {
+            cmd_list->SetTexture(Renderer_BindingsSrv::ocean_displacement, tex_ocean_disp);
+        }
+        if (is_graphics_queue && tex_ocean_norm && tex_ocean_norm->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        {
+            cmd_list->SetTexture(Renderer_BindingsSrv::ocean_normal, tex_ocean_norm);
+        }
     }
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
@@ -2834,6 +2891,9 @@ namespace spartan
         // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
         // recorded after the compute submit so the gpu compute queue is already kicked off by the time we record it
         Pass_WindField(cmd_list_graphics_present);
+
+        // fft ocean runs on the graphics queue too, its displacement must be ready for the depth prepass and gbuffer
+        Pass_Ocean(cmd_list_graphics_present);
 
         if (Camera* camera = World::GetCamera())
         {

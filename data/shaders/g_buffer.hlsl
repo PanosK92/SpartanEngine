@@ -52,21 +52,37 @@ static const float POM_FADE_START        = 25.0f;
 static const float POM_FADE_END          = 50.0f;
 static const float POM_HEIGHT_SCALE      = 0.04f;
 
-// rotate uv around center (0.5, 0.5) by angle
-static float2 rotate_uv(float2 uv, float angle)
+// breaks visible tiling by blending four randomly offset and mirrored texture repeats
+// derivatives come from the continuous uv and feed SampleGrad, so mip selection stays
+// correct across cell seams, mirroring keeps the anisotropic footprint axis aligned so
+// grazing angles blur uniformly instead of streaking per cell, after inigo quilez
+static float4 sample_reduce_tiling(uint texture_index, float2 uv)
 {
-    float cos_a      = cos(angle);
-    float sin_a      = sin(angle);
-    float2 centered  = uv - 0.5f;
-    return float2(centered.x * cos_a - centered.y * sin_a, centered.x * sin_a + centered.y * cos_a) + 0.5f;
-}
+    float2 cell   = floor(uv);
+    float2 local  = frac(uv);
+    float2 ddx_uv = ddx(uv);
+    float2 ddy_uv = ddy(uv);
+    float2 blend  = smoothstep(0.25f, 0.75f, local);
 
-static float4 sample_reduce_tiling(uint texture_index, float2 uv, float3 world_pos)
-{
-    int2 tile_coords  = int2(floor(world_pos.x), floor(world_pos.z));
-    float angle       = floor(hash(tile_coords) * 4.0f) * PI_HALF;
-    float2 final_uv   = frac(float2(tile_coords) + rotate_uv(frac(uv), angle));
-    return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), final_uv);
+    float4 sum = 0.0f;
+    [unroll]
+    for (int j = 0; j < 2; j++)
+    {
+        [unroll]
+        for (int i = 0; i < 2; i++)
+        {
+            float2 corner = cell + float2(i, j);
+            float2 offset = float2(hash(corner), hash(corner + 23.13f));
+            float2 mirror = sign(float2(hash(corner + 71.70f), hash(corner + 51.30f)) - 0.5f);
+
+            float2 muv = uv * mirror + offset;
+            float  w   = ((i == 0) ? 1.0f - blend.x : blend.x) * ((j == 0) ? 1.0f - blend.y : blend.y);
+
+            sum += w * GET_TEXTURE(texture_index).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), muv, ddx_uv * mirror, ddy_uv * mirror);
+        }
+    }
+
+    return sum;
 }
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface, float3 world_pos)
@@ -75,9 +91,9 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     
     if (surface.is_terrain())
     {
-        color               = sample_reduce_tiling(texture_index, vertex.uv_misc.xy, world_pos);
-        float4 tex_rock     = sample_reduce_tiling(texture_index + 1, vertex.uv_misc.xy, world_pos);
-        float4 tex_sand     = sample_reduce_tiling(texture_index + 2, vertex.uv_misc.xy, world_pos);
+        color               = sample_reduce_tiling(texture_index, vertex.uv_misc.xy);
+        float4 tex_rock     = sample_reduce_tiling(texture_index + 1, vertex.uv_misc.xy);
+        float4 tex_sand     = sample_reduce_tiling(texture_index + 2, vertex.uv_misc.xy);
 
         float surface_angle = acos(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f)));
         float slope         = saturate((surface_angle - 50.0f * DEG_TO_RAD) * 5.0f);
@@ -364,39 +380,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     
         // reconstruct z for bc5 two-channel normal maps
         tangent_normal.z = fast_sqrt(max(0.0f, 1.0f - dot(tangent_normal.xy, tangent_normal.xy)));
-    
-        // rotate normals to fake water waves/ripples
-        if (surface.is_water())
-        {
-            static const float2 direction = float2(1.0f, 0.5f);
-            static const float speed      = 0.5f;
-            float time                    = (float)buffer_frame.time;
-            float2 uv_offset              = direction * time * speed;
-            float2 noise_uv               = vertex.uv_misc.xy + uv_offset;
-            float noise                   = noise_perlin(noise_uv);
-            float angle                   = noise * PI2;
-
-            // rotate tangent normal.xy around z-axis (tangent space)
-            float cos_a = cos(angle);
-            float sin_a = sin(angle);
-            float2 rotated_xy = float2(
-                tangent_normal.x * cos_a - tangent_normal.y * sin_a,
-                tangent_normal.x * sin_a + tangent_normal.y * cos_a
-            );
-
-            tangent_normal.xy    = rotated_xy;
-            float2 tangent_xy_sq = tangent_normal.xy * tangent_normal.xy;
-            tangent_normal.z     = fast_sqrt(max(0.0f, 1.0f - tangent_xy_sq.x - tangent_xy_sq.y));
-
-            // flip if normal points down
-            tangent_normal *= sign(tangent_normal.z);
-
-            // fade normal texture beyond a certain distance to avoid high frequency noise from lower mips
-            static const float fade_start = 200.0f;
-            static const float fade_end   = 500.0f;
-            static const float fade_range = fade_end - fade_start;
-            distance_fade                 = saturate((fade_end - distance) / fade_range);
-        }
 
         float normal_intensity     = saturate(max(0.01f, material.normal)) * distance_fade;
         tangent_normal.xy         *= normal_intensity;
@@ -426,6 +409,29 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         occlusion     = lerp(occlusion, packed.r, (float)material.has_texture_occlusion());
         roughness    *= lerp(1.0f, packed.g, (float)material.has_texture_roughness());
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
+    }
+
+    // fft ocean shading, world-space normal from the summed cascade slopes plus foam
+    if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
+    {
+        float2 world_xz = position_world.xz;
+        float2 slope    = 0.0f;
+        float foam      = 0.0f;
+        uint cascades   = buffer_frame.ocean_cascade_count;
+        [loop] for (uint c = 0; c < cascades; ++c)
+        {
+            float L      = buffer_frame.ocean_cascade_length[c];
+            float2 uv    = world_xz / L;
+            float4 slope_foam = tex_ocean_normal.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float3(uv, (float)c), 0.0f);
+            slope       += slope_foam.xy;
+            foam        += slope_foam.z;
+        }
+
+        normal     = normalize(float3(-slope.x, 1.0f, -slope.y));
+        foam       = saturate(foam);
+        albedo.rgb = lerp(albedo.rgb, float3(0.95f, 0.97f, 1.0f), foam);
+        albedo.a   = lerp(albedo.a, 1.0f, foam); // foam is opaque, the clear water below stays translucent
+        roughness  = lerp(roughness, 1.0f, foam);
     }
 
     if (material.flake_strength > 0.0f)

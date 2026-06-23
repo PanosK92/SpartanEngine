@@ -129,6 +129,22 @@ namespace spartan
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f); // terrain xz world-space extent, centered at origin
         };
 
+        // configures the fft ocean, passed verbatim to Renderer::EnableOcean by the Water component
+        // cascade_length carries one patch length (meters) per cascade, the spectrum and ifft run per slice
+        struct OceanParams
+        {
+            uint32_t cascade_count    = 3;
+            float    cascade_length[4] = { 1503.0f, 389.0f, 97.0f, 41.0f };
+            float    wind_speed       = 22.0f;
+            float    wind_direction   = 0.5f;
+            float    amplitude        = 2.0f;
+            float    choppiness       = 1.4f;
+            float    displacement_scale = 1.0f;
+            float    normal_strength  = 1.0f;
+            float    foam_coverage    = 0.6f;
+            float    sea_level        = 0.0f;
+        };
+
         // core
         static void Initialize();
         static void Shutdown();
@@ -177,6 +193,14 @@ namespace spartan
         static void EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params);
         static void DisableProceduralGrass();
         static bool IsProceduralGrassEnabled();
+
+        // fft ocean
+        // EnableOcean arms the per-frame spectrum + ifft passes and captures the parameters that the
+        // water vertex/pixel shaders read from the frame constant buffer. the mesh and material pointers
+        // are stored raw and must outlive the renderer's use, the Water component owns the resources.
+        static void EnableOcean(Mesh* ocean_mesh, Material* ocean_material, const OceanParams& params);
+        static void DisableOcean();
+        static bool IsOceanEnabled();
 
         // viewport
         static const RHI_Viewport& GetViewport();
@@ -296,6 +320,8 @@ namespace spartan
         static void Pass_Grass_Draw(RHI_CommandList* cmd_list, bool is_depth_prepass);
         // passes - wind field
         static void Pass_WindField(RHI_CommandList* cmd_list);
+        // passes - fft ocean
+        static void Pass_Ocean(RHI_CommandList* cmd_list);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -447,6 +473,13 @@ namespace spartan
             // args build shader bakes in the dynamic instance_count from grass_count, three entries per lod
             std::array<Sb_IndirectDrawArgs, renderer_max_grass_lod_count> grass_indirect_args_static{};
             bool                  grass_args_baked = false;
+
+            // fft ocean, toggled by EnableOcean / DisableOcean, the spectrum init runs whenever the params change
+            bool        ocean_enabled        = false;
+            Mesh*       ocean_mesh           = nullptr;
+            Material*   ocean_material       = nullptr;
+            OceanParams ocean_params;
+            bool        ocean_spectrum_dirty = true;
 
             void Reset()
             {

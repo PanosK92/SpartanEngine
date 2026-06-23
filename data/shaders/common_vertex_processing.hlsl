@@ -362,6 +362,22 @@ struct vertex_processing
         float3 instance_up   = normalize(transform[1].xyz);
         float3 instance_pos  = float3(transform[3].x, transform[3].y, transform[3].z);
 
+        // fft ocean, displace the camera-centered clipmap by the summed cascade displacement
+        if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
+        {
+            float2 world_xz = position_world.xz;
+            float3 disp     = 0.0f;
+            uint cascades   = buffer_frame.ocean_cascade_count;
+            [loop] for (uint c = 0; c < cascades; ++c)
+            {
+                float L   = buffer_frame.ocean_cascade_length[c];
+                float2 uv = world_xz / L;
+                disp     += tex_ocean_displacement.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float3(uv, (float)c), 0.0f).xyz;
+            }
+            position_world += disp;
+            return;
+        }
+
         // camera-facing bias for grass (ghost of tsushima technique)
         // rotates blades partially toward camera when edge-on to maintain visual density
         if (surface.is_grass_blade())

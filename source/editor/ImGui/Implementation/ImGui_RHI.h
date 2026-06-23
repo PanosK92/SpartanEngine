@@ -365,6 +365,7 @@ namespace ImGui::RHI
                 const uint32_t count                        = vertex_buffer->GetElementCount();
                 const uint32_t count_new                    = draw_data->TotalVtxCount + 15000;
                 rhi_resources->vertex_buffers[buffer_index] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(ImDrawVert), count_new, nullptr, true, vertex_buffer->GetObjectName().c_str());
+                vertex_buffer                               = rhi_resources->vertex_buffers[buffer_index].get();
 
                 if (count != 0)
                 {
@@ -378,6 +379,7 @@ namespace ImGui::RHI
                 const uint32_t count                       = index_buffer->GetElementCount();
                 const uint32_t count_new                   = draw_data->TotalIdxCount + 30000;
                 rhi_resources->index_buffers[buffer_index] = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index, sizeof(ImDrawIdx), count_new, nullptr, true, index_buffer->GetObjectName().c_str());
+                index_buffer                               = rhi_resources->index_buffers[buffer_index].get();
 
                 if (count != 0)
                 {

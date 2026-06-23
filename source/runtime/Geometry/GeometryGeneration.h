@@ -153,6 +153,62 @@ namespace spartan::geometry_generation
         }
     }
 
+    // camera-centered ocean clipmap, a single mesh made of concentric square levels
+    // level 0 is a dense grid, each outer level doubles the cell size and skips the inner block
+    // so the rings tile seamlessly, the vertex shader recenters the whole mesh on the camera
+    static void generate_ocean_clipmap(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution, uint32_t levels, float base_cell_size)
+    {
+        using namespace math;
+
+        const Vector3 normal(0, 1, 0);
+        const Vector3 tangent(1, 0, 0);
+        const uint32_t verts_per_side = resolution + 1;
+        const uint32_t quarter        = resolution / 4;
+
+        for (uint32_t level = 0; level < levels; ++level)
+        {
+            const float cell      = base_cell_size * static_cast<float>(1u << level);
+            const float half      = resolution * cell * 0.5f;
+            const uint32_t v_base = static_cast<uint32_t>(vertices->size());
+
+            for (uint32_t i = 0; i < verts_per_side; ++i)
+            {
+                for (uint32_t j = 0; j < verts_per_side; ++j)
+                {
+                    const float x = static_cast<float>(i) * cell - half;
+                    const float z = static_cast<float>(j) * cell - half;
+                    const Vector2 uv(static_cast<float>(i) / resolution, static_cast<float>(j) / resolution);
+                    vertices->emplace_back(Vector3(x, 0.0f, z), uv, normal, tangent);
+                }
+            }
+
+            for (uint32_t i = 0; i < resolution; ++i)
+            {
+                for (uint32_t j = 0; j < resolution; ++j)
+                {
+                    // outer levels leave a hole for the finer level nested inside them
+                    const bool inner_hole = level > 0 && i >= quarter && i < quarter * 3 && j >= quarter && j < quarter * 3;
+                    if (inner_hole)
+                    {
+                        continue;
+                    }
+
+                    const uint32_t top_left     = v_base + i * verts_per_side + j;
+                    const uint32_t top_right    = v_base + i * verts_per_side + j + 1;
+                    const uint32_t bottom_left  = v_base + (i + 1) * verts_per_side + j;
+                    const uint32_t bottom_right = v_base + (i + 1) * verts_per_side + j + 1;
+
+                    indices->emplace_back(top_left);
+                    indices->emplace_back(bottom_right);
+                    indices->emplace_back(bottom_left);
+                    indices->emplace_back(top_left);
+                    indices->emplace_back(top_right);
+                    indices->emplace_back(bottom_right);
+                }
+            }
+        }
+    }
+
     static void generate_sphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20)
     {
         using namespace math;

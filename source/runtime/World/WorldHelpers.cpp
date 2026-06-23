@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Physics.h"
 #include "Components/AudioSource.h"
 #include "Components/Terrain.h"
+#include "Components/Water.h"
 #include "../Core/ThreadPool.h"
 #include "../Core/Stopwatch.h"
 #include "../Rendering/Renderer.h"
@@ -58,77 +59,13 @@ namespace spartan
         vector<shared_ptr<Material>> builder_materials;
     }
 
-    // tiled water surface with custom geometry, ported from the old game.cpp
-    static Entity* create_water(const Vector3& position, float dimension, uint32_t density, Color color)
+    // fft ocean surface, the water component owns the clipmap mesh and drives the gpu simulation
+    static Entity* create_water(const Vector3& position)
     {
         Entity* water = World::CreateEntity();
         water->SetObjectName("water");
         water->SetPosition(position);
-
-        shared_ptr<Material> material = make_shared<Material>();
-        {
-            material->SetResourceName("water" + string(EXTENSION_MATERIAL));
-            material->SetColor(color);
-            material->SetTexture(MaterialTextureType::Normal,            "project/materials/water/normal.jpeg");
-            material->SetProperty(MaterialProperty::Roughness,           0.0f);
-            material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
-            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
-            material->SetProperty(MaterialProperty::WorldSpaceUv,        1.0f);
-            material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
-            material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
-            material->SetProperty(MaterialProperty::IsWater,             1.0f);
-            material->SetProperty(MaterialProperty::Normal,              0.01f);
-            material->SetProperty(MaterialProperty::TextureTilingX,      0.1f);
-            material->SetProperty(MaterialProperty::TextureTilingY,      0.1f);
-        }
-
-        {
-            const uint32_t grid_points_per_dimension = density;
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            vector<uint32_t> indices;
-            geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, dimension);
-
-            const uint32_t tile_count = max(1u, density / 6);
-            vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
-            vector<vector<uint32_t>> tiled_indices;
-            vector<Vector3> tile_offsets;
-            geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices, tile_offsets);
-
-            const uint32_t actual_tile_count = static_cast<uint32_t>(tiled_vertices.size());
-
-            vector<shared_ptr<Mesh>> tile_meshes(actual_tile_count);
-            for (uint32_t tile_index = 0; tile_index < actual_tile_count; tile_index++)
-            {
-                string name = "tile_" + to_string(tile_index);
-                tile_meshes[tile_index] = builder_meshes.emplace_back(make_shared<Mesh>());
-                tile_meshes[tile_index]->SetObjectName(name);
-                tile_meshes[tile_index]->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            }
-
-            ThreadPool::ParallelLoop([&tile_meshes, &tiled_vertices, &tiled_indices](uint32_t start, uint32_t end)
-            {
-                for (uint32_t i = start; i < end; i++)
-                {
-                    tile_meshes[i]->AddGeometry(tiled_vertices[i], tiled_indices[i], false);
-                    tile_meshes[i]->CreateGpuBuffers();
-                }
-            }, actual_tile_count);
-
-            for (uint32_t tile_index = 0; tile_index < actual_tile_count; tile_index++)
-            {
-                Entity* entity_tile = World::CreateEntity();
-                entity_tile->SetObjectName(tile_meshes[tile_index]->GetObjectName());
-                entity_tile->SetParent(water);
-                entity_tile->SetPosition(tile_offsets[tile_index]);
-
-                if (Render* renderable = entity_tile->AddComponent<Render>())
-                {
-                    renderable->SetMesh(tile_meshes[tile_index].get());
-                    renderable->SetMaterial(material);
-                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                }
-            }
-        }
+        water->AddComponent<Water>();
 
         return water;
     }
@@ -345,10 +282,7 @@ namespace spartan
         }
 
         // water
-        const float dimension          = 8000;
-        const uint32_t density         = 64;
-        const Color forest_water_color = Color(0.0f / 255.0f, 140.0f / 255.0f, 100.0f / 255.0f, 50.0f / 255.0f);
-        create_water(Vector3::Zero, dimension, density, forest_water_color);
+        create_water(Vector3::Zero);
 
         // props: trees, rocks, grass
         {
