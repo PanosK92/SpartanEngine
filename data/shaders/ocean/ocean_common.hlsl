@@ -23,10 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../common_resources.hlsl"
 
-static const uint  OCEAN_N      = 256;
-static const uint  OCEAN_LOG2N  = 8;
-static const float OCEAN_PI     = 3.14159265359;
-static const float OCEAN_G      = 9.81;
+static const uint  OCEAN_N          = 256;
+static const uint  OCEAN_LOG2N      = 8;
+static const float OCEAN_PI         = 3.14159265359;
+static const float OCEAN_G          = 9.81;
+static const float OCEAN_FOAM_DECAY = 0.6;   // foam fade rate per second, lower lingers longer
+static const float OCEAN_DIR_SPREAD = 2.0;   // cos power for wind alignment, higher is tighter
+static const float OCEAN_CAPILLARY  = 0.003; // sub-capillary cutoff in metres, only the finest ripples below this are damped
 
 // push constant unpack, the cascade lengths are packed across the value slots by Pass_Ocean
 float2 ocean_wind_dir()    { return pass_get_f3_value().xy; }
@@ -96,8 +99,11 @@ float ocean_phillips(float2 k, float2 wind_dir, float wind_speed, float amplitud
 
     float largest = wind_speed * wind_speed / OCEAN_G; // longest wave the wind can raise
     float k4      = k2 * k2;
-    float k_dot_w = dot(normalize(k), wind_dir);
-    float spectrum = amplitude * exp(-1.0 / (k2 * largest * largest)) / k4 * (k_dot_w * k_dot_w);
+
+    // directional spreading, the cos power aligns waves with the wind, higher is tighter
+    float k_dot_w     = dot(normalize(k), wind_dir);
+    float directional = pow(abs(k_dot_w), OCEAN_DIR_SPREAD);
+    float spectrum    = amplitude * exp(-1.0 / (k2 * largest * largest)) / k4 * directional;
 
     // damp waves travelling against the wind
     if (k_dot_w < 0.0)
@@ -105,9 +111,8 @@ float ocean_phillips(float2 k, float2 wind_dir, float wind_speed, float amplitud
         spectrum *= 0.07;
     }
 
-    // suppress the smallest waves to keep the surface stable
-    float small = largest * 0.001;
-    spectrum   *= exp(-k2 * small * small);
+    // damp only the sub-capillary ripples to curb aliasing, fine detail above the cutoff survives
+    spectrum *= exp(-k2 * OCEAN_CAPILLARY * OCEAN_CAPILLARY);
 
     return spectrum;
 }

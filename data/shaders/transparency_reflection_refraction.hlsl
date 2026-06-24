@@ -30,7 +30,8 @@ static const float ior_water                  = 1.333f; // water IOR
 static const float ior_glass                  = 1.5f;   // glass IOR
 static const float ior_air                    = 1.0f;   // air IOR
 static const float chromatic_aberration       = 0.02f;  // chromatic aberration strength
-static const float absorption_scale           = 0.1f;   // water absorption scale
+static const float absorption_scale           = 0.45f;  // water absorption scale
+static const float3 water_body_color          = float3(0.0f, 0.09f, 0.13f); // deep blue-green in-scattering tint
 
 // ray traced reflections now jitter the ray across the ggx lobe by surface roughness and a
 // spatiotemporal denoiser reconstructs a roughness proportional blur, so rough surfaces show a
@@ -58,20 +59,16 @@ float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_in
     return F_Schlick(F0, get_f90(), cos_theta);
 }
 
-// Apply water absorption using Beer-Lambert law
+// Apply water absorption using Beer-Lambert law, with depth-driven in-scattering toward the body color
 float3 apply_water_absorption(float3 color, float depth)
 {
-    // wavelength-dependent absorption (red/green absorbed more than blue)
-    float3 absorption = float3(0.15f, 0.08f, 0.03f) * absorption_scale;
+    // wavelength-dependent extinction, red dies first and blue persists, so the column tints toward blue-green with depth
+    float3 extinction  = float3(0.45f, 0.15f, 0.08f) * absorption_scale;
+    float3 transmitted = color * exp(-extinction * depth);
     
-    // Beer-Lambert absorption
-    float3 absorbed = color * exp(-absorption * depth);
-    
-    // scattering approximation (blue tint increases with depth)
-    float scatter_factor = saturate(depth * 0.5f);
-    float3 scatter_tint = lerp(float3(1.0f, 1.0f, 1.0f), float3(0.7f, 0.85f, 1.0f), scatter_factor);
-    
-    return absorbed * scatter_tint;
+    // in-scattered body color fills in as the column deepens, so deep water reads opaque and colored instead of like thin glass
+    float scatter = 1.0f - exp(-depth * 0.35f);
+    return lerp(transmitted, water_body_color, scatter);
 }
 
 // Compute refracted direction using Snell's law (returns zero if total internal reflection)
@@ -182,7 +179,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // skip sky pixels
     if (surface.is_sky())
         return;
-    
+
+    // fft ocean foam, the water color below is built purely from reflection and refraction so the diffuse
+    // foam written into the g-buffer never surfaces, it has to be injected here from the same cascade map
+    float foam = 0.0f;
+    if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
+    {
+        uint cascades = buffer_frame.ocean_cascade_count;
+        [loop] for (uint c = 0; c < cascades; ++c)
+        {
+            float2 uv = surface.position.xz / buffer_frame.ocean_cascade_length[c];
+            foam += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f).z;
+        }
+        foam = saturate(foam);
+    }
+
     // get background color
     float3 background = tex2[thread_id.xy].rgb;
     float3 refraction = background;
@@ -279,5 +290,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 kT            = float3(1.0f, 1.0f, 1.0f) - F;
         float3 surface_color = specular_reflection + refraction * kT;
         tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
+    }
+
+    // overlay lit foam on top of the composited water, a rough diffuse white tied to the sun so it matches
+    // scene exposure and fades at night, where foam is full it hides the underlying reflection and refraction
+    if (foam > 0.0f)
+    {
+        // foam is bright whitewater, lit by the sun with a wrap term so the bumpy surface still catches grazing light, plus the reflected sky as ambient
+        // the foam roughness was kept moderate in the g-buffer so this reflection stays bright instead of collapsing to black
+        float  n_dot_l  = saturate(dot(surface.normal, -light_parameters[0].direction));
+        float3 sun      = get_sun_radiance() * (n_dot_l * 0.5f + 0.5f) / PI;
+        float3 sky      = tex[thread_id.xy].rgb;
+        float3 foam_lit = sun + sky;
+
+        // bias strongly toward white so whitewater reads as foam rather than tinted water, then keep it from ever darkening the surface
+        float  foam_luma  = luminance(foam_lit);
+        float3 foam_color = lerp(foam_lit, float3(foam_luma, foam_luma, foam_luma), 0.6f) * float3(0.97f, 0.98f, 1.0f);
+        float3 base       = tex_uav[thread_id.xy].rgb;
+        tex_uav[thread_id.xy].rgb = lerp(base, max(foam_color, base), foam);
     }
 }

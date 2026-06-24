@@ -71,17 +71,11 @@ float3 sample_sun_direction(float3 light_dir, float2 disk_sample, float penumbra
 
 float2 halton_2d(uint index)
 {
-    float x = 0.0f, y = 0.0f;
-    float f_x = 0.5f, f_y = 1.0f / 3.0f;
-    uint i_x = index, i_y = index;
+    // base 2 radical inverse is just a bit reversal scaled by 1 / 2^32
+    float x = reversebits(index) * 2.3283064365386963e-10f;
     
-    while (i_x > 0)
-    {
-        x   += f_x * (i_x % 2);
-        i_x /= 2;
-        f_x *= 0.5f;
-    }
-    
+    float y = 0.0f, f_y = 1.0f / 3.0f;
+    uint i_y = index;
     while (i_y > 0)
     {
         y   += f_y * (i_y % 3);
@@ -124,21 +118,24 @@ void ray_gen()
     float base_offset     = 0.01f + camera_distance * 0.0001f;
     float3 ray_origin     = pos_ws + normal_ws * base_offset;
     
-    // contact-hardening soft shadows
-    static const uint TOTAL_SAMPLES = 64;
-    
-    float avg_blocker_dist   = 0.0f;
-    float blocker_count      = 0.0f;
-    float hit_distances[TOTAL_SAMPLES];
-    float shadow_alphas[TOTAL_SAMPLES];
-    
-    // blocker search - trace through transparent surfaces to find opaque blockers behind them
+    // contact hardening soft shadows
+    static const uint TOTAL_SAMPLES          = 64;
     static const uint MAX_TRANSPARENT_LAYERS = 4;
+    
+    float avg_blocker_dist = 0.0f;
+    float blocker_count    = 0.0f;
+    
+    // penumbra weighting is linear in the disk radius so its sums are accumulated inline
+    // instead of caching per sample results, this avoids two large arrays and a second pass
+    float sum_visibility      = 0.0f;
+    float sum_dist            = 0.0f;
+    float sum_visibility_dist = 0.0f;
     
     for (uint i = 0; i < TOTAL_SAMPLES; i++)
     {
         float2 sample_2d  = halton_2d(i + 1);
         float2 disk       = concentric_disk_sample(sample_2d);
+        float  disk_dist  = length(disk);
         float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
         
         float  accumulated_alpha = 0.0f;
@@ -157,7 +154,8 @@ void ray_gen()
             payload.hit_distance = -1.0f;
             payload.shadow_alpha = 0.0f;
             
-            TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
+            // no any hit shader exists so traversal can treat all geometry as opaque
+            TraceRay(tlas, RAY_FLAG_FORCE_OPAQUE, 0xFF, 0, 1, 0, ray, payload);
             
             // read payload unconditionally so the compiler sees both fields accessed after trace
             float local_hit_distance = payload.hit_distance;
@@ -171,14 +169,14 @@ void ray_gen()
             if (first_hit_dist < 0.0f)
                 first_hit_dist = local_hit_distance;
             
-            // opaque blocker - fully shadowed, no need to trace further
+            // opaque blocker, fully shadowed, no need to trace further
             if (local_shadow_alpha >= 1.0f)
             {
                 accumulated_alpha = 1.0f;
                 break;
             }
             
-            // transparent surface - accumulate opacity and continue past it
+            // transparent surface, accumulate opacity and continue past it
             accumulated_alpha = 1.0f - (1.0f - accumulated_alpha) * (1.0f - local_shadow_alpha);
             if (accumulated_alpha >= 0.99f)
             {
@@ -190,8 +188,10 @@ void ray_gen()
             current_origin = current_origin + sample_dir * (local_hit_distance + 0.01f);
         }
         
-        hit_distances[i] = first_hit_dist;
-        shadow_alphas[i] = accumulated_alpha;
+        float visibility     = 1.0f - accumulated_alpha;
+        sum_visibility      += visibility;
+        sum_dist            += disk_dist;
+        sum_visibility_dist += visibility * disk_dist;
         
         if (first_hit_dist > 0.0f && accumulated_alpha > 0.0f)
         {
@@ -219,24 +219,11 @@ void ray_gen()
     // penumbra width from blocker distance
     float penumbra_size = saturate(avg_blocker_dist / 100.0f);
     
-    // weighted visibility
-    float weighted_visibility = 0.0f;
-    float total_weight        = 0.0f;
-    
-    for (uint j = 0; j < TOTAL_SAMPLES; j++)
-    {
-        float2 sample_2d  = halton_2d(j + 1);
-        float2 disk       = concentric_disk_sample(sample_2d);
-        float sample_dist = length(disk);
-        
-        float weight = lerp(1.0f, 1.0f - sample_dist * 0.5f, penumbra_size);
-        weight       = max(weight, 0.1f);
-        
-        // use shadow alpha for partial transparency (0 = fully lit, 1 = fully shadowed)
-        float sample_visibility = 1.0f - shadow_alphas[j];
-        weighted_visibility    += sample_visibility * weight;
-        total_weight           += weight;
-    }
+    // weight per sample is 1 - 0.5 * penumbra_size * disk_dist, the original 0.1 clamp is
+    // unreachable since disk_dist and penumbra_size are both in [0,1] so weight stays in [0.5,1]
+    float k                   = 0.5f * penumbra_size;
+    float total_weight        = float(TOTAL_SAMPLES) - k * sum_dist;
+    float weighted_visibility = sum_visibility - k * sum_visibility_dist;
     
     float final_shadow = weighted_visibility / total_weight;
     tex_uav[launch_id] = float4(final_shadow, final_shadow, final_shadow, 1.0f);

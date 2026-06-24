@@ -69,11 +69,11 @@ namespace spartan
         // four cascades spanning swells down to microwaves, each band-limited to its own range in the spectrum shader
         uint32_t m_cascade_count    = 4;
         float m_cascade_length[4]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
-        float m_amplitude           = 50.0f;
-        float m_choppiness          = 2.5f;
-        float m_displacement_scale  = 4.0f;
-        float m_normal_strength     = 7.25f;
-        float m_foam_coverage       = 0.5f;
+        float m_amplitude           = 100.0f;
+        float m_choppiness          = 6.0f;
+        float m_displacement_scale  = 6.0f;
+        float m_normal_strength     = 10.0f; // steepens the analytic slopes so the waves catch more light
+        float m_foam_coverage       = 1.5f; // scales how strongly folding crests turn to foam, the deadzone keeps calm water clear
         float m_sea_level           = 0.0f;
 
         // clipmap geometry

@@ -429,9 +429,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         normal     = normalize(float3(-slope.x, 1.0f, -slope.y));
         foam       = saturate(foam);
-        albedo.rgb = lerp(albedo.rgb, float3(0.95f, 0.97f, 1.0f), foam);
-        albedo.a   = lerp(albedo.a, 1.0f, foam); // foam is opaque, the clear water below stays translucent
-        roughness  = lerp(roughness, 1.0f, foam);
+
+        // distance hides the sub-texel slope variance, lift roughness with distance so far water reads as a glitter sheet, not a sharp mirror
+        float distance_fade = saturate(distance / 600.0f);
+        roughness           = lerp(roughness, 0.35f, distance_fade * distance_fade);
+
+        // foam reads as whitewater in the transparency pass, keep its roughness moderate here so its reflection stays bright enough to light the foam, a full rough surface collapses the reflection to black
+        roughness  = lerp(roughness, 0.5f, foam);
     }
 
     if (material.flake_strength > 0.0f)
@@ -446,8 +450,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         metalness         = saturate(metalness + sparkle * 0.12f);
     }
     
-    // specular anti-aliasing
-    if (surface.has_texture_normal())
+    // specular anti-aliasing, water has analytic normals rather than a normal texture so it is admitted explicitly
+    if (surface.has_texture_normal() || surface.is_water())
     {
         float3 dndu = ddx(normal);
         float3 dndv = ddy(normal);

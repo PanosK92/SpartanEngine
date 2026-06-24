@@ -55,7 +55,11 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float3 displacement            = float3(dx * chop, height, dz * chop) * disp_scale;
     tex_ocean_displacement_uav[id] = float4(displacement, 0.0);
 
-    // wrapped neighbours for finite-difference derivatives
+    // analytic surface slope carried through the ifft, full spectral detail unlike a finite difference of the height
+    float slope_x = b.z * s;
+    float slope_z = b.w * s;
+
+    // wrapped neighbours for the horizontal-displacement finite differences, used for the choppiness stretch and foam jacobian
     uint xp = (id.x + 1) % OCEAN_N;
     uint xm = (id.x + OCEAN_N - 1) % OCEAN_N;
     uint yp = (id.y + 1) % OCEAN_N;
@@ -76,15 +80,17 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float cell = length_m / (float)OCEAN_N; // world distance between neighbouring texels
     float inv2 = 1.0 / (2.0 * cell);
 
-    // surface slope from the height gradient
-    float slope_x = ((a_xp.x * s_xp) - (a_xm.x * s_xm)) * inv2;
-    float slope_z = ((a_yp.x * s_yp) - (a_ym.x * s_ym)) * inv2;
+    // horizontal displacement gradients from the choppiness term, used for normal stretch below
+    float dDx_dx = (((a_xp.z * s_xp) - (a_xm.z * s_xm)) * inv2) * chop;
+    float dDz_dz = (((b_yp.x * s_yp) - (b_ym.x * s_ym)) * inv2) * chop;
+    float dDx_dz = (((a_yp.z * s_yp) - (a_ym.z * s_ym)) * inv2) * chop;
 
     // jacobian of the horizontal displacement, foam forms where the surface folds onto itself
-    float dDx_dx   = (((a_xp.z * s_xp) - (a_xm.z * s_xm)) * inv2) * chop;
-    float dDz_dz   = (((b_yp.x * s_yp) - (b_ym.x * s_ym)) * inv2) * chop;
-    float dDx_dz   = (((a_yp.z * s_yp) - (a_ym.z * s_ym)) * inv2) * chop;
-    float jacobian = (1.0 + dDx_dx) * (1.0 + dDz_dz) - dDx_dz * dDx_dz;
+    // the displacement map also scales the horizontal offset by disp_scale, so the folding metric must include it
+    float jx       = dDx_dx * disp_scale;
+    float jz       = dDz_dz * disp_scale;
+    float jxz      = dDx_dz * disp_scale;
+    float jacobian = (1.0 + jx) * (1.0 + jz) - jxz * jxz;
 
     // choppiness folds the surface horizontally, dividing the height gradient by the horizontal stretch
     // sharpens normals on compressed crests and flattens stretched troughs, this is what makes choppiness read in the lighting
@@ -93,10 +99,16 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     slope_x        /= stretch_x;
     slope_z        /= stretch_z;
 
-    // foam forms where the jacobian drops as crests fold, coverage lowers the threshold so more crests qualify
-    // normalising by the threshold keeps a calm surface (jacobian near 1) foam free instead of uniformly lightening
-    float threshold = max(foam_cov, 1e-3);
-    float foam      = saturate((threshold - jacobian) / threshold);
+    // whitecaps form where the choppy surface folds, the jacobian of the horizontal displacement drops below one as a crest compresses
+    // a small deadzone ignores gentle compression so calm water and the broad swell cascade never wash to a uniform white
+    // coverage then scales how strongly the remaining folds turn to foam, raising it widens and intensifies the whitecaps, zero disables them
+    // the result is accumulated over time so it trails behind the crests as fading streaks instead of single-frame sparkle,
+    // the previous value is read back from the persistent normal target whose slope channels are overwritten below
+    float compression = max(0.0, (1.0 - jacobian) - 0.15);
+    float inject      = foam_cov > 0.0 ? saturate(compression * foam_cov) : 0.0;
+    float prev_foam   = saturate(tex_ocean_normal_uav[id].z);
+    float decay       = exp(-buffer_frame.delta_time * OCEAN_FOAM_DECAY);
+    float foam        = max(inject, prev_foam * decay);
 
     tex_ocean_normal_uav[id] = float4(slope_x * normal_str, slope_z * normal_str, foam, 0.0);
 }
