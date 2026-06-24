@@ -46,8 +46,6 @@ namespace spartan
     Water::Water(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cascade_count,     uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_wind_speed,        float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_wind_direction_rad, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_amplitude,         float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_choppiness,        float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_displacement_scale, float);
@@ -134,8 +132,6 @@ namespace spartan
         params.cascade_length[1] = m_cascade_length[1];
         params.cascade_length[2] = m_cascade_length[2];
         params.cascade_length[3] = m_cascade_length[3];
-        params.wind_speed        = m_wind_speed;
-        params.wind_direction    = m_wind_direction_rad;
         params.amplitude         = m_amplitude;
         params.choppiness        = m_choppiness;
         params.displacement_scale = m_displacement_scale;
@@ -150,8 +146,6 @@ namespace spartan
     {
         pugi::xml_node water = node.append_child("water");
         water.append_attribute("cascade_count")     = m_cascade_count;
-        water.append_attribute("wind_speed")        = m_wind_speed;
-        water.append_attribute("wind_direction")    = m_wind_direction_rad;
         water.append_attribute("amplitude")         = m_amplitude;
         water.append_attribute("choppiness")        = m_choppiness;
         water.append_attribute("displacement_scale") = m_displacement_scale;
@@ -169,8 +163,6 @@ namespace spartan
         }
 
         m_cascade_count      = water.attribute("cascade_count").as_uint(m_cascade_count);
-        m_wind_speed         = water.attribute("wind_speed").as_float(m_wind_speed);
-        m_wind_direction_rad = water.attribute("wind_direction").as_float(m_wind_direction_rad);
         m_amplitude          = water.attribute("amplitude").as_float(m_amplitude);
         m_choppiness         = water.attribute("choppiness").as_float(m_choppiness);
         m_displacement_scale = water.attribute("displacement_scale").as_float(m_displacement_scale);

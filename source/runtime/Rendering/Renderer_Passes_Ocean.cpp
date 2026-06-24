@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Texture.h"
+#include "../World/World.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -79,10 +80,20 @@ namespace spartan
         cascades                  = cascades < 1 ? 1 : cascades;
         cascades                  = cascades > renderer_ocean_max_cascades ? renderer_ocean_max_cascades : cascades;
 
+        // wind comes from the world, re-seed the spectrum whenever it changes
+        const Vector3 wind     = World::GetWind();
+        const float wind_speed = wind.Length();
+        const float len_xz     = sqrtf(wind.x * wind.x + wind.z * wind.z);
+        const float dir_x      = len_xz > 0.0001f ? wind.x / len_xz : 1.0f;
+        const float dir_z      = len_xz > 0.0001f ? wind.z / len_xz : 0.0f;
+        if (wind != m_pass_state.ocean_wind)
+        {
+            m_pass_state.ocean_spectrum_dirty = true;
+            m_pass_state.ocean_wind           = wind;
+        }
+
         // shared push constants, the cascade lengths are packed across the value slots
-        const float dir_x = cosf(params.wind_direction);
-        const float dir_z = sinf(params.wind_direction);
-        m_pcb_pass_cpu.set_f3_value(dir_x, dir_z, params.wind_speed);
+        m_pcb_pass_cpu.set_f3_value(dir_x, dir_z, wind_speed);
         m_pcb_pass_cpu.set_f3_value2(params.cascade_length[0], params.cascade_length[1], params.cascade_length[2]);
         m_pcb_pass_cpu.set_f4_value(params.amplitude, params.choppiness, params.foam_coverage, params.displacement_scale);
         m_pcb_pass_cpu.set_f2_value(params.cascade_length[3], params.normal_strength);

@@ -135,8 +135,6 @@ namespace spartan
         {
             uint32_t cascade_count    = 3;
             float    cascade_length[4] = { 1503.0f, 389.0f, 97.0f, 41.0f };
-            float    wind_speed       = 22.0f;
-            float    wind_direction   = 0.5f;
             float    amplitude        = 2.0f;
             float    choppiness       = 1.4f;
             float    displacement_scale = 1.0f;
@@ -480,6 +478,7 @@ namespace spartan
             Material*   ocean_material       = nullptr;
             OceanParams ocean_params;
             bool        ocean_spectrum_dirty = true;
+            math::Vector3 ocean_wind         = math::Vector3::Zero; // last world wind used, re-seeds the spectrum on change
 
             void Reset()
             {

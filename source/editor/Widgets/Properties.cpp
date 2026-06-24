@@ -2264,8 +2264,6 @@ void Properties::ShowWater(spartan::Water* water) const
 
     if (component_begin("Water", design::accent_water(), water))
     {
-        float wind_speed         = water->GetWindSpeed();
-        float wind_direction     = water->GetWindDirection();
         float amplitude          = water->GetAmplitude();
         float choppiness         = water->GetChoppiness();
         float displacement_scale = water->GetDisplacementScale();
@@ -2279,8 +2277,6 @@ void Properties::ShowWater(spartan::Water* water) const
             water->SetCascadeCount(cascade_index + 1);
         }
 
-        property_float("Wind Speed",         &wind_speed,         0.1f,  0.0f,    100.0f, "wind speed driving the wave spectrum", "%.1f m/s");
-        property_float("Wind Direction",     &wind_direction,     0.01f, -6.28f,  6.28f,  "wind direction in radians",            "%.2f rad");
         property_float("Amplitude",          &amplitude,          0.1f,  0.0f,    50.0f,  "overall wave height");
         property_float("Choppiness",         &choppiness,         0.05f, 0.0f,    4.0f,   "horizontal sharpening of the crests");
         property_float("Displacement Scale", &displacement_scale, 0.05f, 0.0f,    4.0f,   "scales the simulated displacement");
@@ -2288,8 +2284,6 @@ void Properties::ShowWater(spartan::Water* water) const
         property_float("Foam Coverage",      &foam_coverage,      0.01f, 0.0f,    1.0f,   "lowers the fold threshold so more wave crests turn to foam");
         property_float("Sea Level",          &sea_level,          0.1f,  -100.0f, 100.0f, "world height of the water surface", "%.1f m");
 
-        if (wind_speed != water->GetWindSpeed())                 { water->SetWindSpeed(wind_speed); }
-        if (wind_direction != water->GetWindDirection())         { water->SetWindDirection(wind_direction); }
         if (amplitude != water->GetAmplitude())                  { water->SetAmplitude(amplitude); }
         if (choppiness != water->GetChoppiness())                { water->SetChoppiness(choppiness); }
         if (displacement_scale != water->GetDisplacementScale()) { water->SetDisplacementScale(displacement_scale); }

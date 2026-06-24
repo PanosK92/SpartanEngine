@@ -48,10 +48,6 @@ namespace spartan
         // simulation parameters
         uint32_t GetCascadeCount() const          { return m_cascade_count; }
         void SetCascadeCount(uint32_t count)      { m_cascade_count = count; PushToRenderer(); }
-        float GetWindSpeed() const                { return m_wind_speed; }
-        void SetWindSpeed(float speed)            { m_wind_speed = speed; PushToRenderer(); }
-        float GetWindDirection() const            { return m_wind_direction_rad; }
-        void SetWindDirection(float radians)      { m_wind_direction_rad = radians; PushToRenderer(); }
         float GetAmplitude() const                { return m_amplitude; }
         void SetAmplitude(float amplitude)        { m_amplitude = amplitude; PushToRenderer(); }
         float GetChoppiness() const               { return m_choppiness; }
@@ -73,8 +69,6 @@ namespace spartan
         // four cascades spanning swells down to microwaves, each band-limited to its own range in the spectrum shader
         uint32_t m_cascade_count    = 4;
         float m_cascade_length[4]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
-        float m_wind_speed          = 10.0f;
-        float m_wind_direction_rad  = 0.5f;
         float m_amplitude           = 50.0f;
         float m_choppiness          = 2.5f;
         float m_displacement_scale  = 4.0f;
