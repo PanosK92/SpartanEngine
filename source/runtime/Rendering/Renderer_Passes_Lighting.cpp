@@ -43,19 +43,19 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    void Renderer::Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    void Renderer::Pass_Reflections_Apply(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* tex_frame             = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::reflections);
+        RHI_Texture* tex_reflections       = GetRenderTarget(Renderer_RenderTarget::reflections);
         RHI_Texture* tex_refraction_source = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
 
-        cmd_list->BeginTimeblock("transparency_reflection_refraction");
+        cmd_list->BeginTimeblock("reflections_apply");
         {
             bool use_ray_traced = cvar_ray_traced_reflections.GetValueAs<bool>();
 
             if (!m_pass_state.cleared_reflections && !use_ray_traced)
             {
-                cmd_list->ClearTexture(tex_ssr, Color::standard_transparent);
+                cmd_list->ClearTexture(tex_reflections, Color::standard_transparent);
                 m_pass_state.cleared_reflections = true;
             }
 
@@ -64,12 +64,12 @@ namespace spartan
             cmd_list->BeginMarker("apply");
             {
                 RHI_PipelineState pso;
-                pso.name             = "apply_reflections_refraction";
-                pso.shaders[Compute] = GetShader(Renderer_Shader::transparency_reflection_refraction_c);
+                pso.name             = "reflections_apply";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::reflections_apply_c);
 
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list, eye_layer);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);               // in - reflection
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections);        // in - reflection
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
@@ -83,7 +83,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    void Renderer::Pass_Reflections_Trace(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         const uint32_t min_rt_dimension = 64;
         if (Window::IsMinimized())
@@ -116,7 +116,7 @@ namespace spartan
         }
         m_pass_state.cleared_rt_reflections = false;
 
-        cmd_list->BeginTimeblock("ray_traced_reflections");
+        cmd_list->BeginTimeblock("reflections_trace");
         {
             RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
             if (!tlas || !tlas->GetRhiResource())
@@ -135,7 +135,7 @@ namespace spartan
             cmd_list->InsertBarrier(tex_reflections_albedo, RHI_BarrierType::EnsureReadThenWrite);
 
             RHI_PipelineState pso;
-            pso.name                   = "ray_traced_reflections";
+            pso.name                   = "reflections_trace";
             pso.shaders[RayGeneration] = GetShader(Renderer_Shader::reflections_ray_generation_r);
             pso.shaders[RayMiss]       = GetShader(Renderer_Shader::reflections_ray_miss_r);
             pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
@@ -168,7 +168,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
     
-    void Renderer::Pass_Composite_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    void Renderer::Pass_Reflections_Shade(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         // rt reflections shades the full primary specular lobe at every roughness, restir pt is
         // diffuse only at the primary (restir_primary_specular_blend returns 0 in
@@ -189,7 +189,7 @@ namespace spartan
             return;
         }
 
-        cmd_list->BeginTimeblock("light_reflections");
+        cmd_list->BeginTimeblock("reflections_shade");
         {
             tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
             cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
@@ -200,8 +200,8 @@ namespace spartan
             tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
 
             RHI_PipelineState pso;
-            pso.name             = "light_reflections";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::light_reflections_c);
+            pso.name             = "reflections_shade";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::reflections_shade_c);
             cmd_list->SetPipelineState(pso);
             
             SetCommonTextures(cmd_list, eye_layer);
@@ -231,9 +231,9 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Denoise_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    void Renderer::Pass_Reflections_Denoise(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        // the reflection ray is jittered across the ggx lobe per frame (see ray_traced_reflections.hlsl)
+        // the reflection ray is jittered across the ggx lobe per frame (see reflections_trace.hlsl)
         // so the raw reflections texture is noisy on rough surfaces, this spatiotemporal denoiser
         // reconstructs it into a clean, roughness proportional blur, smooth surfaces pass through
         // untouched because the spatial kernel strength ramps from zero with roughness

@@ -139,7 +139,6 @@ namespace spartan
         SetIntensity(LightIntensity::bulb_500_watt);
         SetRange(get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad));
         SetFlag(LightFlags::Shadows);
-        m_flags |= static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
     }
 
     Light::~Light()

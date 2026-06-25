@@ -293,13 +293,15 @@ namespace spartan
         blit_c,
         icon_c,
         dithering_c,
-        transparency_reflection_refraction_c,
         auto_exposure_c,
+        // reflections
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        reflections_shade_c,
         reflections_denoise_temporal_c,
         reflections_denoise_spatial_c,
+        reflections_apply_c,
         // ray traced shadows
         shadows_ray_generation_r,
         shadows_ray_miss_r,
@@ -323,7 +325,6 @@ namespace spartan
         ocean_fft_horizontal_c,
         ocean_fft_vertical_c,
         ocean_assemble_c,
-        light_reflections_c,
         // gpu-driven indirect rendering
         indirect_cull_c,
         indirect_cull_triangle_c,

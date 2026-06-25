@@ -285,8 +285,10 @@ namespace spartan
         static void Pass_GBuffer_TessellatedAndTransparent(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_MeshletVisualize(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
-        static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Reflections_Trace(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Reflections_Shade(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Reflections_Denoise(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Reflections_Apply(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
         static void Pass_Denoise_RayTracedShadows(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
@@ -296,8 +298,6 @@ namespace spartan
         static void Pass_ReSTIR_SwapReservoirs();
         static void Pass_ReSTIR_SwapGBufferHistory();
         static void Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list);
-        static void Pass_Composite_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Denoise_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting

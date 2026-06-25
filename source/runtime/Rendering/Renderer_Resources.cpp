@@ -797,14 +797,14 @@ namespace spartan
             // misc
             { Renderer_Shader::icon_c,                                RHI_Shader_Type::Compute, "icon.hlsl"                                                                  },
             { Renderer_Shader::dithering_c,                           RHI_Shader_Type::Compute, "dithering.hlsl"                                                             },
-            { Renderer_Shader::transparency_reflection_refraction_c,  RHI_Shader_Type::Compute, "transparency_reflection_refraction.hlsl"                                    },
+            { Renderer_Shader::reflections_apply_c,                   RHI_Shader_Type::Compute, "reflections_apply.hlsl"                                                     },
             { Renderer_Shader::auto_exposure_c,                       RHI_Shader_Type::Compute, "auto_exposure.hlsl"                                                         },
 
             // ray tracing, only compiled when supported
-            { Renderer_Shader::reflections_ray_generation_r,          RHI_Shader_Type::RayGeneration, "ray_traced_reflections.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::reflections_ray_miss_r,                RHI_Shader_Type::RayMiss,       "ray_traced_reflections.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::reflections_ray_hit_r,                 RHI_Shader_Type::RayHit,        "ray_traced_reflections.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::light_reflections_c,                   RHI_Shader_Type::Compute,       "light_reflections.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::reflections_ray_generation_r,          RHI_Shader_Type::RayGeneration, "reflections_trace.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::reflections_ray_miss_r,                RHI_Shader_Type::RayMiss,       "reflections_trace.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::reflections_ray_hit_r,                 RHI_Shader_Type::RayHit,        "reflections_trace.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::reflections_shade_c,                   RHI_Shader_Type::Compute,       "reflections_shade.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::reflections_denoise_temporal_c,        RHI_Shader_Type::Compute,       "reflections_denoise_temporal.hlsl",    RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::reflections_denoise_spatial_c,         RHI_Shader_Type::Compute,       "reflections_denoise_spatial.hlsl",     RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_generation_r,              RHI_Shader_Type::RayGeneration, "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
