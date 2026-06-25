@@ -274,9 +274,12 @@ void evaluate_light(
     float  micro_shadow    = 1.0f;
 
     // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
-    bool light_can_contribute = any(light_radiance_raw > 0.0f);
-    bool has_brdf             = any(light.radiance > 0.0f);
-    bool has_sss              = surface.subsurface_scattering > 0.0f;
+    // cull the inverse square tail clustering cannot, skip when the exposed contribution is sub perceptual
+    const float k_contribution_cull = 1e-3f;
+    float contribution_luminance    = luminance(light_radiance_raw) * buffer_frame.camera_exposure;
+    bool light_can_contribute       = contribution_luminance > k_contribution_cull;
+    bool has_brdf                   = any(light.radiance > 0.0f);
+    bool has_sss                    = surface.subsurface_scattering > 0.0f;
 
     if (eval_surface && !surface.is_sky() && !skip_surface_lighting && light_can_contribute && (has_brdf || has_sss))
     {
