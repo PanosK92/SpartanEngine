@@ -65,7 +65,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_fog;
     extern TConsoleVar<float> cvar_ssao;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
-    extern TConsoleVar<float> cvar_ray_traced_reflections_denoise;
     extern TConsoleVar<float> cvar_ray_traced_shadows;
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
@@ -340,7 +339,7 @@ namespace spartan
         static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum,
                                  RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
         // passes - utility
-        static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
         // restir denoising fallback, history clear plus blit raw to denoised, used when restir is off, debug mode is on, or shaders missing

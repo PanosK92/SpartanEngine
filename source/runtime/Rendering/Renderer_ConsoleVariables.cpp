@@ -145,7 +145,7 @@ namespace spartan
     // debug visualization
     TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,                                                    "draw axis-aligned bounding boxes");
     TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,                                                    "draw picking ray");
-    TConsoleVar<float> cvar_grid                           ("r.grid",                           1.0f,                                                    "draw editor grid");
+    TConsoleVar<float> cvar_grid                           ("r.grid",                           0.0f,                                                    "draw editor grid");
     TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,                                                    "draw transform handles");
     TConsoleVar<float> cvar_transform_snap                 ("r.transform_snap",                 1.0f,                                                    "snap transform handles");
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
@@ -159,7 +159,6 @@ namespace spartan
     TConsoleVar<float> cvar_fog                            ("r.fog",                            1.0f,                                                    "fog intensity/particle density");
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,                                                    "screen space ambient occlusion");
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections",                  on_ray_traced_reflections_change);
-    TConsoleVar<float> cvar_ray_traced_reflections_denoise ("r.ray_traced_reflections_denoise", 1.0f,                                                    "denoise stochastic ray traced reflections, disable to inspect the raw noisy reflection");
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights",       on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,                                                    "restir path tracing global illumination");
     TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                0.5f,                                                    "restir resolution scale (0.1-1.0)",       on_restir_pt_scale_change);
@@ -175,7 +174,7 @@ namespace spartan
     // quality settings
     TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering level (0-16)",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
-    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        3.0f,                                                    "aa/upsampling method index",              on_antialiasing_change);
+    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,                                                    "aa/upsampling method index",              on_antialiasing_change); // int value from Renderer_AntiAliasing_Upsampling
     // display
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
     TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");

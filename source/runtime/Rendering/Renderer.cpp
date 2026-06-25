@@ -938,19 +938,19 @@ namespace spartan
         m_cb_frame_cpu.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
         m_cb_frame_cpu.frame                 = static_cast<uint32_t>(m_frame_num);
         m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
-        m_cb_frame_cpu.restir_pt_scale              = cvar_restir_pt_scale.GetValue();
-        m_cb_frame_cpu.restir_pt_w_clamp            = std::max(cvar_restir_pt_w_clamp.GetValue(), 100.0f);
-        m_cb_frame_cpu.hdr_enabled                  = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
-        m_cb_frame_cpu.hdr_max_nits                 = Display::GetLuminanceMax();
-        m_cb_frame_cpu.gamma                        = cvar_gamma.GetValue();
-        m_cb_frame_cpu.camera_exposure              = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
-        m_cb_frame_cpu.restir_pt_light_count        = static_cast<float>(m_count_active_lights);
-        m_cb_frame_cpu.wind                         = World::GetWind();
+        m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
+        m_cb_frame_cpu.restir_pt_w_clamp     = std::max(cvar_restir_pt_w_clamp.GetValue(), 100.0f);
+        m_cb_frame_cpu.hdr_enabled           = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
+        m_cb_frame_cpu.hdr_max_nits          = Display::GetLuminanceMax();
+        m_cb_frame_cpu.gamma                 = cvar_gamma.GetValue();
+        m_cb_frame_cpu.camera_exposure       = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+        m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
+        m_cb_frame_cpu.wind                  = World::GetWind();
 
         // fft ocean, geometry samples these to displace and shade the water surface
         if (m_pass_state.ocean_enabled)
         {
-            const OceanParams& ocean              = m_pass_state.ocean_params;
+            const OceanParams& ocean                = m_pass_state.ocean_params;
             m_cb_frame_cpu.ocean_cascade_length     = Vector4(ocean.cascade_length[0], ocean.cascade_length[1], ocean.cascade_length[2], ocean.cascade_length[3]);
             m_cb_frame_cpu.ocean_sea_level          = ocean.sea_level;
             m_cb_frame_cpu.ocean_choppiness         = ocean.choppiness;
@@ -1013,17 +1013,17 @@ namespace spartan
             m_cb_frame_cpu.view_projection_previous_unjittered = m_view_projection_previous_unjittered_left;
             m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view_projection;
 
-            m_cb_frame_cpu.view_right                                 = Xr::GetViewMatrix(1);
-            m_cb_frame_cpu.view_inverted_right                        = Matrix::Invert(m_cb_frame_cpu.view_right);
-            m_cb_frame_cpu.projection_right                           = Xr::GetProjectionMatrix(1);
-            m_cb_frame_cpu.projection_inverted_right                  = Matrix::Invert(m_cb_frame_cpu.projection_right);
-            m_cb_frame_cpu.view_projection_right                      = m_cb_frame_cpu.view_right * m_cb_frame_cpu.projection_right;
-            m_cb_frame_cpu.view_projection_inverted_right             = Matrix::Invert(m_cb_frame_cpu.view_projection_right);
-            m_cb_frame_cpu.view_projection_previous_right             = m_view_projection_previous_right;
-            m_cb_frame_cpu.view_projection_unjittered_right           = m_cb_frame_cpu.view_projection_right;
-            m_cb_frame_cpu.view_projection_previous_unjittered_right  = m_view_projection_previous_right;
-            m_cb_frame_cpu.camera_position_right                      = m_cb_frame_cpu.view_inverted_right.GetTranslation();
-            m_cb_frame_cpu.is_multiview                               = 1;
+            m_cb_frame_cpu.view_right                                = Xr::GetViewMatrix(1);
+            m_cb_frame_cpu.view_inverted_right                       = Matrix::Invert(m_cb_frame_cpu.view_right);
+            m_cb_frame_cpu.projection_right                          = Xr::GetProjectionMatrix(1);
+            m_cb_frame_cpu.projection_inverted_right                 = Matrix::Invert(m_cb_frame_cpu.projection_right);
+            m_cb_frame_cpu.view_projection_right                     = m_cb_frame_cpu.view_right * m_cb_frame_cpu.projection_right;
+            m_cb_frame_cpu.view_projection_inverted_right            = Matrix::Invert(m_cb_frame_cpu.view_projection_right);
+            m_cb_frame_cpu.view_projection_previous_right            = m_view_projection_previous_right;
+            m_cb_frame_cpu.view_projection_unjittered_right          = m_cb_frame_cpu.view_projection_right;
+            m_cb_frame_cpu.view_projection_previous_unjittered_right = m_view_projection_previous_right;
+            m_cb_frame_cpu.camera_position_right                     = m_cb_frame_cpu.view_inverted_right.GetTranslation();
+            m_cb_frame_cpu.is_multiview                              = 1;
 
             // record per-eye view projection so next frame's right-eye history exists, mono path tracks left eye via shared view_projection
             m_view_projection_previous_right           = m_cb_frame_cpu.view_projection_right;
@@ -2779,7 +2779,6 @@ namespace spartan
         Pass_ScreenSpaceAmbientOcclusion(cmd_list);
         Pass_ScreenSpaceShadows(cmd_list);
         Pass_RayTracedShadows(cmd_list);
-        Pass_Denoise_RayTracedShadows(cmd_list);
         Pass_ReSTIR_PathTracing(cmd_list);
         Pass_ReSTIR_Denoising(cmd_list);
         cmd_list->EndMarker();

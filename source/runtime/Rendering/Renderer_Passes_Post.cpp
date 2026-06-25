@@ -472,12 +472,21 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing /*= true*/)
     {
         // compute blit: vulkan can't blit depth to float, amd uav requires float
         RHI_Shader* shader_c = GetShader(Renderer_Shader::blit_c);
 
-        cmd_list->BeginTimeblock("blit");
+        // gpu_timing false emits a marker instead of a timeblock so a caller can fold this blit
+        // into its own single profiler chunk, the gpu debugger label is still kept
+        if (gpu_timing)
+        {
+            cmd_list->BeginTimeblock("blit");
+        }
+        else
+        {
+            cmd_list->BeginMarker("blit");
+        }
         {
             RHI_PipelineState pso;
             pso.name             = "blit";
@@ -488,7 +497,14 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
             cmd_list->Dispatch(tex_out);
         }
-        cmd_list->EndTimeblock();
+        if (gpu_timing)
+        {
+            cmd_list->EndTimeblock();
+        }
+        else
+        {
+            cmd_list->EndMarker();
+        }
     }
 
     void Renderer::Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised, RHI_Texture* tex_history, bool clear_history_to_black)

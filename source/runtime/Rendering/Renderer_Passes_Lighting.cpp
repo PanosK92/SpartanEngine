@@ -247,12 +247,6 @@ namespace spartan
             return;
         }
 
-        // debug bypass, leaves the raw stochastic reflection visible for a/b inspection
-        if (!cvar_ray_traced_reflections_denoise.GetValueAs<bool>())
-        {
-            return;
-        }
-
         RHI_Texture* tex_reflections     = GetRenderTarget(Renderer_RenderTarget::reflections);
         RHI_Texture* tex_history         = GetRenderTarget(Renderer_RenderTarget::reflections_history);
         RHI_Texture* tex_moments         = GetRenderTarget(Renderer_RenderTarget::reflections_moments);
@@ -278,75 +272,81 @@ namespace spartan
             return;
         }
 
-        // temporal accumulation, raw reflections in -> ping holds (accumulated color, variance),
-        // moments out for the next frame's ema, history and previous depth gate the reprojection
-        cmd_list->BeginTimeblock("reflections_denoise_temporal");
+        // the whole spatiotemporal denoiser is one timeblock so it shows up as a single profiler
+        // chunk, the temporal, a-trous and history blit sub stages below are plain gpu markers
+        cmd_list->BeginTimeblock("reflections_denoise");
         {
-            RHI_PipelineState pso;
-            pso.name             = "reflections_denoise_temporal";
-            pso.shaders[Compute] = shader_temporal;
-            cmd_list->SetPipelineState(pso);
-
-            cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureReadThenWrite);
-            SetCommonTextures(cmd_list, eye_layer);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments_history);
-            if (tex_depth_previous)
-            {
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_depth_previous);
-            }
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ping);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_moments);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->Dispatch(tex_reflections);
-            cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureWriteThenRead);
-        }
-        cmd_list->EndTimeblock();
-
-        // a-trous ping pong, step width doubles each level, the routing alternates ping and the
-        // reflections texture so the final write lands in reflections which is consumed downstream
-        struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
-        const denoise_stage stages[3] =
-        {
-            { "reflections_denoise_spatial",   1.0f, tex_ping,        tex_reflections },
-            { "reflections_denoise_spatial_2", 2.0f, tex_reflections, tex_ping        },
-            { "reflections_denoise_spatial_3", 4.0f, tex_ping,        tex_reflections },
-        };
-
-        for (const denoise_stage& s : stages)
-        {
-            cmd_list->BeginTimeblock(s.name);
+            // temporal accumulation, raw reflections in -> ping holds (accumulated color, variance),
+            // moments out for the next frame's ema, history and previous depth gate the reprojection
+            cmd_list->BeginMarker("denoise_temporal");
             {
                 RHI_PipelineState pso;
-                pso.name             = s.name;
-                pso.shaders[Compute] = shader_spatial;
+                pso.name             = "reflections_denoise_temporal";
+                pso.shaders[Compute] = shader_temporal;
                 cmd_list->SetPipelineState(pso);
 
-                m_pcb_pass_cpu.set_f3_value(s.radius);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureReadThenWrite);
+                cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureReadThenWrite);
+                cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureReadThenWrite);
                 SetCommonTextures(cmd_list, eye_layer);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, s.src);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, s.dst);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments_history);
+                if (tex_depth_previous)
+                {
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_depth_previous);
+                }
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ping);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_moments);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(tex_reflections);
-                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureWriteThenRead);
             }
-            cmd_list->EndTimeblock();
+            cmd_list->EndMarker();
+
+            // a-trous ping pong, step width doubles each level, the routing alternates ping and the
+            // reflections texture so the final write lands in reflections which is consumed downstream
+            struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
+            const denoise_stage stages[3] =
+            {
+                { "denoise_spatial",   1.0f, tex_ping,        tex_reflections },
+                { "denoise_spatial_2", 2.0f, tex_reflections, tex_ping        },
+                { "denoise_spatial_3", 4.0f, tex_ping,        tex_reflections },
+            };
+
+            for (const denoise_stage& s : stages)
+            {
+                cmd_list->BeginMarker(s.name);
+                {
+                    RHI_PipelineState pso;
+                    pso.name             = s.name;
+                    pso.shaders[Compute] = shader_spatial;
+                    cmd_list->SetPipelineState(pso);
+
+                    m_pcb_pass_cpu.set_f3_value(s.radius);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureReadThenWrite);
+                    SetCommonTextures(cmd_list, eye_layer);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, s.src);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, s.dst);
+                    cmd_list->Dispatch(tex_reflections);
+                    cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
+                }
+                cmd_list->EndMarker();
+            }
+
+            // feed the denoised reflection back as next frame's history and copy the moments forward
+            cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
+            Pass_Blit(cmd_list, tex_reflections, tex_history, false);
+            cmd_list->InsertBarrier(tex_history,     RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
+
+            cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureReadThenWrite);
+            Pass_Blit(cmd_list, tex_moments, tex_moments_history, false);
+            cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureWriteThenRead);
         }
-
-        // feed the denoised reflection back as next frame's history and copy the moments forward
-        cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_reflections, tex_history);
-        cmd_list->InsertBarrier(tex_history,     RHI_BarrierType::EnsureWriteThenRead);
-        cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
-
-        cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_moments, tex_moments_history);
-        cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureWriteThenRead);
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_RayTracedShadows(RHI_CommandList* cmd_list)
@@ -400,24 +400,32 @@ namespace spartan
             return;
         }
 
+        // the trace and its spatiotemporal denoiser are wrapped in one timeblock so they show up
+        // as a single chunk in the profiler, the sub stages below are plain gpu markers
         cmd_list->BeginTimeblock("ray_traced_shadows");
         {
-            RHI_PipelineState pso;
-            pso.name                   = "ray_traced_shadows";
-            pso.shaders[RayGeneration] = shader_rgen;
-            pso.shaders[RayMiss]       = shader_miss;
-            pso.shaders[RayHit]        = shader_hit;
-            cmd_list->SetPipelineState(pso);
-            
-            SetCommonTextures(cmd_list);
-            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->BeginMarker("trace");
+            {
+                RHI_PipelineState pso;
+                pso.name                   = "ray_traced_shadows";
+                pso.shaders[RayGeneration] = shader_rgen;
+                pso.shaders[RayMiss]       = shader_miss;
+                pso.shaders[RayHit]        = shader_hit;
+                cmd_list->SetPipelineState(pso);
 
-            uint32_t width  = tex_shadows->GetWidth();
-            uint32_t height = tex_shadows->GetHeight();
-            cmd_list->TraceRays(width, height);
-            cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
+                SetCommonTextures(cmd_list);
+                cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                uint32_t width  = tex_shadows->GetWidth();
+                uint32_t height = tex_shadows->GetHeight();
+                cmd_list->TraceRays(width, height);
+                cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
+            }
+            cmd_list->EndMarker();
+
+            Pass_Denoise_RayTracedShadows(cmd_list);
         }
         cmd_list->EndTimeblock();
     }
@@ -472,7 +480,8 @@ namespace spartan
 
         // temporal accumulation, raw shadows in -> ping holds (visibility, variance, blocker_distance),
         // moments out for the next frame's ema, history and previous depth gate the reprojection
-        cmd_list->BeginTimeblock("shadows_denoise_temporal");
+        // markers only, the caller wraps the whole trace plus denoise in a single timeblock
+        cmd_list->BeginMarker("denoise_temporal");
         {
             RHI_PipelineState pso;
             pso.name             = "shadows_denoise_temporal";
@@ -496,21 +505,21 @@ namespace spartan
             cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureWriteThenRead);
         }
-        cmd_list->EndTimeblock();
+        cmd_list->EndMarker();
 
         // a-trous ping pong, step width doubles each level, the routing alternates ping and the
         // shadows texture so the final write lands in ray_traced_shadows which is consumed downstream
         struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
         const denoise_stage stages[3] =
         {
-            { "shadows_denoise_spatial",   1.0f, tex_ping,    tex_shadows },
-            { "shadows_denoise_spatial_2", 2.0f, tex_shadows, tex_ping    },
-            { "shadows_denoise_spatial_3", 4.0f, tex_ping,    tex_shadows },
+            { "denoise_spatial",   1.0f, tex_ping,    tex_shadows },
+            { "denoise_spatial_2", 2.0f, tex_shadows, tex_ping    },
+            { "denoise_spatial_3", 4.0f, tex_ping,    tex_shadows },
         };
 
         for (const denoise_stage& s : stages)
         {
-            cmd_list->BeginTimeblock(s.name);
+            cmd_list->BeginMarker(s.name);
             {
                 RHI_PipelineState pso;
                 pso.name             = s.name;
@@ -527,17 +536,17 @@ namespace spartan
                 cmd_list->Dispatch(tex_shadows);
                 cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
             }
-            cmd_list->EndTimeblock();
+            cmd_list->EndMarker();
         }
 
         // feed the denoised shadow back as next frame's history and copy the moments forward
         cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_shadows, tex_history);
+        Pass_Blit(cmd_list, tex_shadows, tex_history, false);
         cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureWriteThenRead);
         cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
 
         cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_moments, tex_moments_history);
+        Pass_Blit(cmd_list, tex_moments, tex_moments_history, false);
         cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureWriteThenRead);
     }
 
@@ -973,7 +982,11 @@ namespace spartan
         const uint32_t dispatch_x           = (width + thread_group_count_x - 1) / thread_group_count_x;
         const uint32_t dispatch_y           = (height + thread_group_count_y - 1) / thread_group_count_y;
 
-        cmd_list->BeginTimeblock("restir_pt_denoise_temporal");
+        // one timeblock wraps the whole svgf denoiser so it reads as a single profiler chunk, the
+        // temporal, a-trous and history blit sub stages below are plain gpu markers
+        cmd_list->BeginTimeblock("restir_pt_denoise");
+
+        cmd_list->BeginMarker("denoise_temporal");
         {
             RHI_PipelineState pso;
             pso.name             = "restir_pt_denoise_temporal";
@@ -1011,7 +1024,7 @@ namespace spartan
             cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(tex_moments,     RHI_BarrierType::EnsureWriteThenRead);
         }
-        cmd_list->EndTimeblock();
+        cmd_list->EndMarker();
 
         // ping pong spatial passes, parameter is the kernel radius, src and dst alternate
         // a-trous step doubling at each level matches lin 2022's reference svgf, 4 levels
@@ -1033,7 +1046,7 @@ namespace spartan
         uint32_t stage_index = 0;
         for (const denoise_stage& s : stages)
         {
-            cmd_list->BeginTimeblock(s.name);
+            cmd_list->BeginMarker(s.name);
             {
                 RHI_PipelineState pso;
                 pso.name             = s.name;
@@ -1053,7 +1066,7 @@ namespace spartan
                 cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
                 cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
             }
-            cmd_list->EndTimeblock();
+            cmd_list->EndMarker();
 
             // svgf feeds the first wavelet iteration back as next frame's color history,
             // schied 2017 4.2, feeding back the final widest blur compounded blur and lag
@@ -1061,7 +1074,7 @@ namespace spartan
             if (stage_index == 0)
             {
                 cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
-                Pass_Blit(cmd_list, s.dst, tex_gi_history);
+                Pass_Blit(cmd_list, s.dst, tex_gi_history, false);
                 cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureWriteThenRead);
             }
             stage_index++;
@@ -1072,8 +1085,10 @@ namespace spartan
 
         // moments history copy for the next frame's svgf temporal accumulation
         cmd_list->InsertBarrier(tex_moments_hist, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_moments, tex_moments_hist);
+        Pass_Blit(cmd_list, tex_moments, tex_moments_hist, false);
         cmd_list->InsertBarrier(tex_moments_hist, RHI_BarrierType::EnsureWriteThenRead);
+
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)
