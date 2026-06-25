@@ -320,10 +320,11 @@ struct IndirectDispatchArgs
 };
 
 // per-draw data for gpu-driven rendering (one entry per renderable lod, looked up from MeshletInstance.draw_index)
-// flags bit 0: skinned (cull falls back to per-renderable aabb, triangle pass skips backface)
-// flags bit 1: per-instance (cull rebuilds per-instance world transform from task.instance_index for per-instance cone+sphere)
-// flags bit 2: hw-instancing fallback (one task fans into N MeshletInstances, cull falls back to per-renderable aabb)
+// flags bit 0: skinned (instance cull uses the dynamic world aabb, phase b keeps every meshlet, triangle pass skips backface)
+// flags bit 1: per-instance (both cull phases rebuild the per-instance world transform from instance_index for per-instance bounds)
+// flags bit 2: retired (was the hw-instancing fallback, the two-phase cull culls every instance individually)
 // flags bit 3: two-sided material (triangle pass skips backface)
+// flags bit 4: alpha-tested material (triangle pass routes survivors to the alpha half so the depth prepass can run opaque depth-only)
 // lod_first_index/lod_vertex_offset hold the global geometry offsets for the lod (replaces what indirect_draw_args used to carry)
 struct DrawData
 {
@@ -337,6 +338,8 @@ struct DrawData
     SHARED_UINT   instance_offset   SHARED_DEFAULT(0); // offset into the global instance buffer
     SHARED_UINT   instance_index    SHARED_DEFAULT(0); // per-draw instance to fetch, vs uses this in place of sv_instanceid
     SHARED_UINT   lod_vertex_offset SHARED_DEFAULT(0); // global vertex offset for this lod (added to lod-local indices)
+    SHARED_UINT   lod_meshlet_offset SHARED_DEFAULT(0); // global first meshlet index for this lod, phase b expands meshlets from here
+    SHARED_UINT   lod_meshlet_count  SHARED_DEFAULT(0); // meshlet count for this lod, phase b loops over this many meshlets per surviving instance
 
     // per-renderable uv state, resolved on the cpu from the renderable's override or the material default
     // lets multiple renderables share a material yet tweak tiling, offset, rotation, invert, or world_space_uv independently
@@ -358,16 +361,22 @@ struct DrawData
     SHARED_FLOAT  max_render_distance_squared   SHARED_DEFAULT(0.0f);
 };
 
-// one cull task per (renderable lod, meshlet) tuple, the cull pass dispatches over these
-// meshlet_index is a global index into the meshlet_bounds buffer
-// instance_index is the base hw instance, instance_count is normally 1 but can be N for the hw-instancing fallback,
-// in which case the cull shader emits N consecutive MeshletInstance entries on survival
+// one cull task per (renderable lod, instance) tuple, the instance cull pass (phase a) dispatches over these
+// meshlet_index and instance_count are unused now, the meshlet range lives on DrawData and phase b expands it per survivor
 struct CullTask
 {
     SHARED_UINT draw_index     SHARED_DEFAULT(0);
     SHARED_UINT meshlet_index  SHARED_DEFAULT(0);
     SHARED_UINT instance_index SHARED_DEFAULT(0);
     SHARED_UINT instance_count SHARED_DEFAULT(1);
+};
+
+// emitted by the instance cull pass (phase a) for every surviving (renderable lod, instance) tuple
+// the meshlet cull pass (phase b) dispatches one workgroup per entry and expands that instance's meshlets
+struct SurvivingInstance
+{
+    SHARED_UINT draw_index     SHARED_DEFAULT(0);
+    SHARED_UINT instance_index SHARED_DEFAULT(0);
 };
 
 // emitted by the meshlet cull pass for every surviving (renderable lod, meshlet, instance) tuple
@@ -523,8 +532,9 @@ namespace spartan
     using Sb_IndirectDispatchArgs = IndirectDispatchArgs;
     using Sb_DrawData         = DrawData;
     using Sb_MeshletBounds    = MeshletBounds;
-    using Sb_CullTask         = CullTask;
-    using Sb_MeshletInstance  = MeshletInstance;
+    using Sb_CullTask          = CullTask;
+    using Sb_SurvivingInstance = SurvivingInstance;
+    using Sb_MeshletInstance   = MeshletInstance;
     using Sb_Particle         = Particle;
     using Sb_EmitterParams    = EmitterParams;
     using Sb_GrassInstance    = GrassInstance;

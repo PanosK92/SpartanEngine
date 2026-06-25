@@ -36,22 +36,22 @@ namespace spartan
     const uint32_t restir_emissive_tri_max         = 16384;
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
     const uint32_t renderer_max_indirect_draws     = 131072;  // per-renderable lod draw data, cull shader clamps writes
-    // per (renderable, meshlet) cull tasks, drives meshlet cull dispatch size
-    // sized to fit per-instance cull tasks for typical instanced scenes (trees/rocks),
-    // when this budget overflows the cpu falls back to hw-instancing which fans every
-    // visible meshlet into N survivors and easily bursts renderer_max_meshlet_instances,
-    // dense world-spanning instanced entities then starve every later renderable of survivor slots
+    // per (renderable, instance) cull tasks, drives the phase a instance cull dispatch size and caps the phase a survivor list
+    // this is one task per instance now (not per meshlet x instance), so the budget scales with instance count, not geometry density,
+    // a consolidated world-spanning forest entity costs one task per tree here instead of meshlets x trees
     const uint32_t renderer_max_cull_tasks         = 8 * 1024 * 1024;
-    // meshlet cull survivor list, hw instancing fans out so can exceed renderer_max_cull_tasks
-    // sized to absorb the worst-case hw-instancing fanout for per-tile foliage entities so that
-    // distant terrain, leaves and rocks do not lose their survivor slots to the wave atomic race
-    // 4M is enough headroom once per-instance distance cull (DrawData.max_render_distance_squared)
-    // rejects out-of-range instances of consolidated world-spanning entities at the cull stage
+    // meshlet cull survivor list (phase b output), bounded by the visible meshlets of the phase a survivors
+    // 4M is ample once phase a frustum + hi-z + distance culls out-of-view and out-of-range instances before meshlet expansion
     const uint32_t renderer_max_meshlet_instances  = 4 * 1024 * 1024;
     // triangle cull survivor list, the cull pass packs (meshlet_instance_idx, triangle_idx) into a uint per visible triangle
     // sized to absorb the burst of dense foliage + terrain meshlets without throttling, when this overflows the wave-atomic
     // race silently drops late triangles which manifests as distant terrain rendering only a few meshlets at a time
     const uint32_t renderer_max_visible_triangles  = 32 * 1024 * 1024;
+    // the triangle cull partitions the one visible-triangle buffer into two equal halves, opaque survivors
+    // grow from offset 0, alpha-tested survivors grow from this midpoint, the split lets the depth prepass
+    // draw the opaque half with no pixel shader (double-speed z) and run the alpha-test ps only on the alpha half
+    // both halves draw with first_vertex 0 and a base offset pushed in the constant, so the addressing is api agnostic
+    const uint32_t renderer_visible_triangles_half = renderer_max_visible_triangles / 2;
 
     // gpu procedural grass
     // per-lod hard cap on the number of blades the populate shader is allowed to emit, the visible
@@ -216,6 +216,9 @@ namespace spartan
         meshlet_bounds         = 43,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
+        // two-phase culling: phase a survivor list + its indirect dispatch args
+        surviving_instances    = 37,
+        instance_dispatch_args = 55,
         // clustered lighting, grid is uint2 (first_index, count), indices is a flat uint list
         cluster_light_grid     = 45,
         cluster_light_indices  = 46,
@@ -326,6 +329,7 @@ namespace spartan
         ocean_fft_vertical_c,
         ocean_assemble_c,
         // gpu-driven indirect rendering
+        instance_cull_c,
         indirect_cull_c,
         indirect_cull_triangle_c,
         gbuffer_indirect_v,
@@ -346,7 +350,6 @@ namespace spartan
         grass_populate_c,
         grass_indirect_args_c,
         grass_gbuffer_v,
-        grass_depth_prepass_v,
         // gpu texture compression
         texture_compress_bc1_c,
         texture_compress_bc3_c,
@@ -479,7 +482,9 @@ namespace spartan
         MeshletInstances,          // meshlet-cull survivor list, the triangle cull pass dispatches one workgroup per entry
         VisibleTriangles,          // triangle-cull survivor list, one packed (meshlet_instance, triangle_in_meshlet) per entry
         TriangleDispatchArgs,      // single-slot indirect dispatch args buffer driving the triangle cull pass
-        CullTasks,                 // per (renderable, meshlet) cull tasks consumed by the meshlet cull compute shader
+        CullTasks,                 // per (renderable, instance) cull tasks consumed by the instance cull compute shader (phase a)
+        SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
+        InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         // clustered lighting
         ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices

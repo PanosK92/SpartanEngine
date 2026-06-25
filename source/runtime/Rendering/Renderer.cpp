@@ -660,13 +660,14 @@ namespace spartan
             last_instance_buffer = current_instance;
         }
 
-        // single slot indirect draw args, layout matches VkDrawIndirectCommand on the first 16 bytes
+        // two slot indirect draw args, slot 0 opaque slot 1 alpha-tested, layout matches VkDrawIndirectCommand on the first 16 bytes
         // index_count aliases vertex_count and is bumped 3 at a time by the triangle cull, instance_count fixed at 1
-        Sb_IndirectDrawArgs single_args = {};
-        single_args.instance_count      = 1;
-        RHI_Buffer* args_buffer         = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
+        Sb_IndirectDrawArgs draw_args[2] = {};
+        draw_args[0].instance_count      = 1;
+        draw_args[1].instance_count      = 1;
+        RHI_Buffer* args_buffer          = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
         args_buffer->ResetOffset();
-        args_buffer->Update(cmd_list, &single_args, sizeof(Sb_IndirectDrawArgs));
+        args_buffer->Update(cmd_list, &draw_args[0], sizeof(draw_args));
 
         // single slot indirect dispatch args for triangle cull, group_count_x bumped by the meshlet cull
         Sb_IndirectDispatchArgs dispatch_args = {};
@@ -675,6 +676,14 @@ namespace spartan
         RHI_Buffer* dispatch_args_buffer      = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
         dispatch_args_buffer->ResetOffset();
         dispatch_args_buffer->Update(cmd_list, &dispatch_args, sizeof(Sb_IndirectDispatchArgs));
+
+        // single slot indirect dispatch args for the meshlet cull (phase b), group_count_x bumped by the instance cull (phase a)
+        Sb_IndirectDispatchArgs instance_dispatch = {};
+        instance_dispatch.group_count_y          = 1;
+        instance_dispatch.group_count_z          = 1;
+        RHI_Buffer* instance_dispatch_buffer     = GetBuffer(Renderer_Buffer::InstanceDispatchArgs);
+        instance_dispatch_buffer->ResetOffset();
+        instance_dispatch_buffer->Update(cmd_list, &instance_dispatch, sizeof(Sb_IndirectDispatchArgs));
 
         if (m_indirect_draw_count > 0)
         {
@@ -1937,8 +1946,8 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_BuildIndirectAndCullTasks()
     {
-        // one draw entry per renderable lod, one cull task per (renderable, meshlet) tuple
-        // survivors are compacted by the cull shader into meshlet_instances and drawn via one indirect draw
+        // one draw entry per renderable lod, one instance cull task per (renderable, instance) tuple
+        // phase a compacts visible instances, phase b expands their meshlets, the triangle cull then feeds the indirect draw
         m_indirect_draw_count       = 0;
         m_indirect_renderable_count = 0;
         m_cull_task_count           = 0;
@@ -1949,7 +1958,6 @@ namespace spartan
         // so the one-shot log below can name the renderable that pushed the engine over the cliff
         uint64_t expected_survivors_worst_case = 0;
         uint32_t cull_task_overflow_renderables = 0;
-        uint32_t hw_instancing_renderables      = 0;
 
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
@@ -1985,33 +1993,22 @@ namespace spartan
             const bool is_instanced = dc.instance_count > 1;
             const uint32_t inst_n   = is_instanced ? dc.instance_count : 1;
 
-            // hw-instancing fallback when per-instance fanout overflows the cull-task budget, cull shader emits n MeshletInstances per task
-            const uint32_t per_instance_tasks_add = lod_meshlet_count * inst_n;
-            const uint32_t hw_instanced_tasks_add = lod_meshlet_count;
-            const bool use_hw_instancing          = is_instanced && (m_cull_task_count + per_instance_tasks_add > renderer_max_cull_tasks);
-            const uint32_t actual_tasks_add       = use_hw_instancing ? hw_instanced_tasks_add : per_instance_tasks_add;
+            // one instance cull task per instance (phase a), phase b expands the meshlets of the survivors,
+            // so the task budget scales with instance count, not meshlets x instances as the old single-phase path did
+            const uint32_t tasks_add = inst_n;
 
             if (m_indirect_draw_count + 1 > renderer_max_indirect_draws)
             {
                 continue;
             }
-            if (m_cull_task_count + actual_tasks_add > renderer_max_cull_tasks)
+            if (m_cull_task_count + tasks_add > renderer_max_cull_tasks)
             {
                 cull_task_overflow_renderables++;
                 continue;
             }
 
-            // worst case survivor accounting, hw mode emits inst_n per visible meshlet while per-instance emits at most 1 per task
-            // a single dense world spanning entity here is enough to starve every later renderable of survivor slots
-            if (use_hw_instancing)
-            {
-                hw_instancing_renderables++;
-                expected_survivors_worst_case += static_cast<uint64_t>(lod_meshlet_count) * static_cast<uint64_t>(inst_n);
-            }
-            else
-            {
-                expected_survivors_worst_case += static_cast<uint64_t>(per_instance_tasks_add);
-            }
+            // worst case survivor accounting, every instance visible and emitting all of its meshlets
+            expected_survivors_worst_case += static_cast<uint64_t>(inst_n) * static_cast<uint64_t>(lod_meshlet_count);
 
             const uint32_t renderable_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_renderable_count;
             const uint32_t base_first_index     = renderable->GetIndexOffset(dc.lod_index);
@@ -2021,10 +2018,11 @@ namespace spartan
             Entity* entity = renderable->GetEntity();
             Mesh* mesh     = renderable->GetMesh();
 
-            // flags bit 0 skinned, bit 1 per instance, bit 2 hw instancing, bit 3 two sided material
+            // flags bit 0 skinned, bit 1 per instance, bit 3 two sided material, bit 4 alpha tested (bit 2 retired with the hw-instancing fallback)
             const bool is_skinned       = mesh->IsSkinned() && !cvar_meshlet_cull_skinned.GetValueAs<bool>();
-            const bool use_per_instance = is_instanced && !use_hw_instancing;
+            const bool use_per_instance = is_instanced;
             const bool is_two_sided     = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
+            const bool is_alpha_tested  = material->IsAlphaTested();
             uint32_t base_flags         = 0u;
             if (is_skinned)
             {
@@ -2034,13 +2032,13 @@ namespace spartan
             {
                 base_flags |= 2u;
             }
-            if (use_hw_instancing)
-            {
-                base_flags |= 4u;
-            }
             if (is_two_sided)
             {
                 base_flags |= 8u;
+            }
+            if (is_alpha_tested)
+            {
+                base_flags |= 16u;
             }
 
             const uint32_t draw_idx        = m_indirect_draw_count++;
@@ -2055,6 +2053,8 @@ namespace spartan
             data.instance_offset           = renderable->GetGlobalInstanceOffset();
             data.instance_index            = 0;
             data.lod_vertex_offset         = vertex_offset;
+            data.lod_meshlet_offset        = base_meshlet_index;
+            data.lod_meshlet_count         = lod_meshlet_count;
             fill_uv_draw_fields_from_renderable(data, renderable);
 
             // lod-local aabb, must match the one build_meshlets quantized the compressed meshlet bounds against
@@ -2077,21 +2077,14 @@ namespace spartan
             // parallel renderable handle, UpdateBoundingBoxes uses this to write each aabb at exactly the slot the cull shader will read
             m_indirect_renderables[draw_idx] = renderable;
 
-            // one cull task per meshlet, fan out per-instance tasks unless hw-instancing fell back
-            const uint32_t instances_per_task = use_hw_instancing ? inst_n : 1u;
-            const uint32_t task_instance_iter = use_hw_instancing ? 1u    : inst_n;
-
-            for (uint32_t m = 0; m < lod_meshlet_count; m++)
+            // one instance cull task per instance, phase a tests each instance's bounds, phase b expands the survivors' meshlets
+            for (uint32_t inst = 0; inst < inst_n; inst++)
             {
-                const uint32_t global_meshlet = base_meshlet_index + m;
-                for (uint32_t inst = 0; inst < task_instance_iter; inst++)
-                {
-                    Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
-                    task.draw_index     = draw_idx;
-                    task.meshlet_index  = global_meshlet;
-                    task.instance_index = inst;
-                    task.instance_count = instances_per_task;
-                }
+                Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
+                task.draw_index     = draw_idx;
+                task.meshlet_index  = 0; // unused in phase a, the meshlet range lives on DrawData
+                task.instance_index = inst;
+                task.instance_count = 1;
             }
 
             m_indirect_renderable_count++;
@@ -2105,17 +2098,16 @@ namespace spartan
         if (!s_logged_survivor_overflow && expected_survivors_worst_case > renderer_max_meshlet_instances)
         {
             SP_LOG_WARNING(
-                "meshlet cull survivor buffer is too small, worst case %llu > capacity %u, hw-instancing renderables=%u, distant or later-submitted geometry may be silently dropped",
+                "meshlet cull survivor buffer is too small, worst case %llu > capacity %u, distant or later-submitted geometry may be silently dropped",
                 static_cast<unsigned long long>(expected_survivors_worst_case),
-                renderer_max_meshlet_instances,
-                hw_instancing_renderables
+                renderer_max_meshlet_instances
             );
             s_logged_survivor_overflow = true;
         }
         if (!s_logged_cull_task_overflow && cull_task_overflow_renderables > 0)
         {
             SP_LOG_WARNING(
-                "cull task budget exhausted, %u renderable lods rejected, raise renderer_max_cull_tasks (current=%u) to keep them in per-instance cull",
+                "instance cull task budget exhausted, %u renderable lods rejected, raise renderer_max_cull_tasks (current=%u) to keep them in per-instance cull",
                 cull_task_overflow_renderables,
                 renderer_max_cull_tasks
             );

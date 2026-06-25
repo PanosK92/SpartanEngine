@@ -103,10 +103,13 @@ Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_o
 
 // gpu-driven path entry, populates _draw and the meshlet handle from the visible triangle list
 // vertex_id is sv_vertexid for a non-instanced indirect draw, vertex_count = visible_triangle_count * 3
+// f4_value.x carries the region base, 0 for the opaque half and the half capacity for the alpha half,
+// both draws issue with first_vertex 0 so the base must be added here rather than relying on sv_vertexid (api dependent)
 Vertex_PosUvNorTan pull_visible_triangle_vertex(uint vertex_id, out MeshletInstance mi_out)
 {
-    uint triangle_slot = vertex_id / 3u;
-    uint corner        = vertex_id - triangle_slot * 3u;
+    uint local_triangle = vertex_id / 3u;
+    uint corner         = vertex_id - local_triangle * 3u;
+    uint triangle_slot  = (uint)pass_get_f4_value().x + local_triangle;
 
     uint packed       = visible_triangles[triangle_slot];
     uint mi_idx       = VISIBLE_TRI_MI(packed);

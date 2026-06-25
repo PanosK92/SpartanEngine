@@ -193,6 +193,12 @@ uint meshlet_decode_triangle_count(MeshletBounds mb)
 // per-instance cull tasks (read-only, declared as rw to keep slot management uniform with other indirect buffers)
 RWStructuredBuffer<CullTask> cull_tasks : register(u44);
 
+// gpu-driven two-phase culling, phase a (instance_cull) compacts visible instances into surviving_instances and
+// bumps instance_dispatch_args.group_count_x, phase b (indirect_cull) is a DispatchIndirect over that count, one
+// workgroup per surviving instance expanding its meshlets
+RWStructuredBuffer<SurvivingInstance>    surviving_instances    : register(u37);
+RWStructuredBuffer<IndirectDispatchArgs> instance_dispatch_args : register(u55);
+
 // clustered lighting, written by light_cluster_assign and read by light
 // grid is (first_index, count) per cluster, indices is the flat list of light slot ids
 // single grid shared by both vr eyes, built in the left eye view-projection space, the right eye projects

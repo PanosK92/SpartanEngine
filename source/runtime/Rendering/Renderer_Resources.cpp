@@ -123,10 +123,11 @@ namespace spartan
         {
             FrameResource& fr = m_frame_resources[i];
 
-            // single-slot args buffer for the final non-indexed indirect draw, vertex_count is bumped atomically by the triangle cull pass
+            // two-slot args buffer for the final non-indexed indirect draws, slot 0 opaque slot 1 alpha-tested
+            // vertex_count of each slot is bumped atomically by the triangle cull pass for its half of the survivor list
             fr.indirect_draw_args = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-                1, nullptr, true,
+                2, nullptr, true,
                 (string("indirect_draw_args_") + to_string(i)).c_str()
             );
 
@@ -162,6 +163,20 @@ namespace spartan
                 renderer_max_cull_tasks, nullptr, true,
                 (string("cull_tasks_") + to_string(i)).c_str()
             );
+
+            // phase a survivors, gpu-only (compute writes, phase b reads), one entry per visible instance
+            fr.surviving_instances = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_SurvivingInstance)),
+                renderer_max_cull_tasks, nullptr, false,
+                (string("surviving_instances_") + to_string(i)).c_str()
+            );
+
+            // single-slot indirect dispatch args for the meshlet cull pass, group_count_x is bumped atomically by the instance cull
+            fr.instance_dispatch_args = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
+                1, nullptr, true,
+                (string("instance_dispatch_args_") + to_string(i)).c_str()
+            );
         }
 
         // point the active buffer slots at frame 0
@@ -172,6 +187,8 @@ namespace spartan
         at(buffers, Renderer_Buffer::VisibleTriangles)     = fr.visible_triangles;
         at(buffers, Renderer_Buffer::TriangleDispatchArgs) = fr.triangle_dispatch_args;
         at(buffers, Renderer_Buffer::CullTasks)            = fr.cull_tasks;
+        at(buffers, Renderer_Buffer::SurvivingInstances)   = fr.surviving_instances;
+        at(buffers, Renderer_Buffer::InstanceDispatchArgs) = fr.instance_dispatch_args;
 
         // clustered lighting buffers, written by the cluster assign pass and read by the light pass
         // grid stores (first_index, count) per cluster, indices is fixed-slot with first_index = cluster_id * CLUSTER_MAX_LIGHTS
@@ -785,6 +802,7 @@ namespace spartan
             { Renderer_Shader::blit_c,                                RHI_Shader_Type::Compute, "blit.hlsl"                                                                  },
 
             // indirect draw
+            { Renderer_Shader::instance_cull_c,                       RHI_Shader_Type::Compute, "instance_cull.hlsl"                                                         },
             { Renderer_Shader::indirect_cull_c,                       RHI_Shader_Type::Compute, "indirect_cull.hlsl"                                                         },
             { Renderer_Shader::indirect_cull_triangle_c,              RHI_Shader_Type::Compute, "indirect_cull_triangle.hlsl"                                                },
             { Renderer_Shader::gbuffer_indirect_v,                    RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
@@ -845,7 +863,6 @@ namespace spartan
             { Renderer_Shader::grass_populate_c,                      RHI_Shader_Type::Compute, "grass_populate.hlsl"                                                                              },
             { Renderer_Shader::grass_indirect_args_c,                 RHI_Shader_Type::Compute, "grass_indirect_args.hlsl"                                                                         },
             { Renderer_Shader::grass_gbuffer_v,                       RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
-            { Renderer_Shader::grass_depth_prepass_v,                 RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
 
             // gpu texture compression, synchronous so encode-on-load can wait
             { Renderer_Shader::texture_compress_bc1_c,                RHI_Shader_Type::Compute, "texture_compress_bc1.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },
@@ -1056,6 +1073,8 @@ namespace spartan
         buffers[static_cast<uint8_t>(Renderer_Buffer::VisibleTriangles)]     = fr.visible_triangles;
         buffers[static_cast<uint8_t>(Renderer_Buffer::TriangleDispatchArgs)] = fr.triangle_dispatch_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::CullTasks)]            = fr.cull_tasks;
+        buffers[static_cast<uint8_t>(Renderer_Buffer::SurvivingInstances)]   = fr.surviving_instances;
+        buffers[static_cast<uint8_t>(Renderer_Buffer::InstanceDispatchArgs)] = fr.instance_dispatch_args;
     }
 
     RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)

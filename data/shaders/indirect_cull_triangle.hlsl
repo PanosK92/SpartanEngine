@@ -32,6 +32,7 @@ groupshared DrawData        gs_draw;
 groupshared MeshletBounds   gs_mb;
 groupshared float4x4        gs_world_xform;
 groupshared bool            gs_skip_backface;
+groupshared bool            gs_is_alpha;
 groupshared uint            gs_triangle_count;
 groupshared uint            gs_base_index_pos;
 
@@ -42,7 +43,7 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
     uint triangle_idx = lid.x;
 
     uint max_meshlet_instances = (uint)pass_get_f4_value().x;
-    uint max_visible_triangles = (uint)pass_get_f4_value().y;
+    uint region_cap            = (uint)pass_get_f4_value().y; // per-half capacity, doubles as the alpha region base offset
 
     // header load is wave-uniform across the workgroup, one thread reads, all threads consume after the barrier
     if (lid.x == 0)
@@ -54,6 +55,8 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
             gs_mb             = meshlet_bounds[gs_mi.meshlet_index];
             gs_world_xform    = mul(pull_instance_transform(gs_draw.instance_offset, gs_mi.instance_index), gs_draw.transform);
             gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
+            // alpha-tested is uniform across the workgroup since every thread shares this meshlet instance, it routes survivors to the alpha half
+            gs_is_alpha       = (gs_draw.flags & 16u) != 0u;
             // first_index and triangle_count come out of the compressed bounds, the helpers stay in lockstep with the cpu packer in build_meshlets
             gs_triangle_count = meshlet_decode_triangle_count(gs_mb);
             gs_base_index_pos = gs_draw.lod_first_index + meshlet_decode_first_index(gs_mb);
@@ -61,6 +64,7 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
         else
         {
             gs_triangle_count = 0u;
+            gs_is_alpha       = false;
         }
     }
     GroupMemoryBarrierWithGroupSync();
@@ -142,6 +146,11 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
         packed   = VISIBLE_TRI_PACK(mi_idx, triangle_idx);
     }
 
+    // opaque survivors go to slot 0 and the lower half of visible_triangles, alpha-tested to slot 1 and the upper half
+    // gs_is_alpha is uniform across the workgroup so every wave here routes to the same slot, the two halves never overlap
+    uint args_index  = gs_is_alpha ? 1u : 0u;
+    uint region_base = gs_is_alpha ? region_cap : 0u;
+
     // wave-aggregated atomic, one InterlockedAdd per wave instead of per surviving triangle, this is the single biggest perf win in the dense-foliage path
     uint wave_count = WaveActiveCountBits(survives);
     uint lane_off   = WavePrefixCountBits(survives);
@@ -150,21 +159,21 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
     if (WaveIsFirstLane() && wave_count > 0u)
     {
         uint old;
-        InterlockedAdd(indirect_draw_args[0].index_count, wave_count * 3u, old);
+        InterlockedAdd(indirect_draw_args[args_index].index_count, wave_count * 3u, old);
         wave_base  = old / 3u;
-        overflow_u = (wave_base + wave_count) > max_visible_triangles ? 1u : 0u;
+        overflow_u = (wave_base + wave_count) > region_cap ? 1u : 0u;
     }
     wave_base  = WaveReadLaneFirst(wave_base);
     overflow_u = WaveReadLaneFirst(overflow_u);
 
     if (survives)
     {
-        uint triangle_slot = wave_base + lane_off;
-        if (triangle_slot < max_visible_triangles)
-            visible_triangles[triangle_slot] = packed;
+        uint local_slot = wave_base + lane_off;
+        if (local_slot < region_cap)
+            visible_triangles[region_base + local_slot] = packed;
     }
 
     // clamp on overflow, only the wave that crossed the cap pays the second atomic, uint avoids the bool-broadcast portability pitfall on some drivers
     if (overflow_u != 0u && WaveIsFirstLane())
-        InterlockedMin(indirect_draw_args[0].index_count, max_visible_triangles * 3u);
+        InterlockedMin(indirect_draw_args[args_index].index_count, region_cap * 3u);
 }

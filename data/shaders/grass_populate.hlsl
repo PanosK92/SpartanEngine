@@ -19,9 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES =================
 #include "common.hlsl"
-//====================
+#include "common_culling.hlsl"
+//============================
+
+// conservative world-space bound used to cull a blade against the camera frustum and the occluder hi-z
+// covers the tallest scaled blade plus wind sway and the intra-cell scatter, generous enough that no
+// on-screen blade is ever wrongly rejected so visible density stays identical
+static const float grass_cull_half_height = 0.5f;
+static const float grass_cull_radius      = 1.5f;
 
 // gpu procedural grass placement (ghost of tsushima style)
 //
@@ -58,20 +65,31 @@ float hash_unit(uint h)
     return float(h) * (1.0f / 4294967296.0f);
 }
 
-float3 sample_terrain(float2 world_xz, float2 terrain_extent)
+// single centre sample, gates the cheap height reject and the frustum/hi-z visibility cull
+// before the four neighbor taps that the slope reject needs, so off-screen blades pay one tap not five
+float sample_terrain_height(float2 world_xz, float2 terrain_extent, out float valid)
 {
     // terrain is centered at origin in xz, so a world position maps to uv = world_xz / extent + 0.5
     float2 uv = world_xz / terrain_extent + 0.5f;
 
-    // out of range, skip
     if (any(uv < 0.0f) || any(uv > 1.0f))
-        return float3(0.0f, -1.0e6f, 1.0f);
+    {
+        valid = 0.0f;
+        return 0.0f;
+    }
 
-    // sample the centre height in world meters
-    float y = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
+    valid = 1.0f;
+    return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
+}
+
+// two forward taps for the surface slope, reuses the centre height so a surviving blade pays three terrain
+// samples total (one centre in sample_terrain_height plus these two) instead of five
+float sample_terrain_slope_cos(float2 world_xz, float2 terrain_extent, float y_c)
+{
+    float2 uv = world_xz / terrain_extent + 0.5f;
 
     // sample exactly one texel apart for the slope, sub-texel offsets get smeared by the bilinear filter
-    // and starve the central difference of any signal, query the heightmap dimensions so the offsets are
+    // and starve the difference of any signal, query the heightmap dimensions so the offsets are
     // correct regardless of how the terrain component sized the dense heightmap
     uint width;
     uint height;
@@ -81,21 +99,16 @@ float3 sample_terrain(float2 world_xz, float2 terrain_extent)
     float world_per_texel_x = terrain_extent.x * texel_uv_x;
     float world_per_texel_z = terrain_extent.y * texel_uv_z;
 
-    float y_l = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-texel_uv_x, 0.0f), 0).r;
-    float y_r = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( texel_uv_x, 0.0f), 0).r;
-    float y_d = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, -texel_uv_z), 0).r;
-    float y_u = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f,  texel_uv_z), 0).r;
+    float y_r = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(texel_uv_x, 0.0f), 0).r;
+    float y_u = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, texel_uv_z), 0).r;
 
-    // central differences in world units, world height delta divided by twice the world distance between samples,
-    // previous version divided by uv-space texel which collapsed dy/dx to (delta_y * extent / 2) and forced
-    // normal.y to ~0 for any non-flat terrain, killing every grass cell at the slope check
-    float dy_dx = (y_r - y_l) / (2.0f * world_per_texel_x);
-    float dy_dz = (y_u - y_d) / (2.0f * world_per_texel_z);
+    // forward differences in world units, world height delta divided by the world distance to the forward sample
+    float dy_dx = (y_r - y_c) / world_per_texel_x;
+    float dy_dz = (y_u - y_c) / world_per_texel_z;
 
-    // standard right-handed surface normal, y is the up axis
+    // standard right-handed surface normal, y is the up axis, return its y as the slope cosine
     float3 normal = normalize(float3(-dy_dx, 1.0f, -dy_dz));
-
-    return float3(y, normal.y, 1.0f); // y, slope_cos, valid
+    return normal.y;
 }
 
 // pack a position-yaw-scale-normal tuple into the 16-byte GrassInstance layout
@@ -195,18 +208,34 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     if (dist2 > ring_radius * ring_radius)
         return;
 
-    // height/slope reject, sample the terrain to find y and the surface gradient
-    float3 terrain_sample = sample_terrain(world_xz, terrain_extent);
-    float  world_y        = terrain_sample.x;
-    float  slope_cos      = terrain_sample.y;
-    float  valid          = terrain_sample.z;
-
-    if (valid < 0.5f || world_y < height_min || world_y > height_max || slope_cos < max_slope_cos)
+    // height reject, single centre tap, also yields world_y for the visibility cull below
+    float valid;
+    float world_y = sample_terrain_height(world_xz, terrain_extent, valid);
+    if (valid < 0.5f || world_y < height_min || world_y > height_max)
         return;
 
-    // surface normal, reuse the slope_cos we already computed in sample_terrain (approximate, fast)
-    // a more accurate normal would require returning xyz from sample_terrain, the slight loss is fine
-    // because grass blades only need a rough up vector to align to the surface
+    // visibility cull, frustum + occluder hi-z on a conservative blade sphere, only blades the camera
+    // can actually see survive so on-screen density is unchanged while off-screen and occluded blades
+    // are dropped before the expensive slope taps, vertex shading and the atomic allocate
+    float3 blade_center = float3(world_xz.x, world_y + grass_cull_half_height, world_xz.y);
+    float4 plane_l, plane_r, plane_b, plane_t;
+    get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
+    if (!sphere_in_side_planes(blade_center, grass_cull_radius, plane_l, plane_r, plane_b, plane_t))
+        return;
+
+    // hi-z arrives on tex2, derive the max mip from the texture so no extra push constant is needed
+    // the sphere test also rejects blades behind the camera (the side planes alone do not)
+    uint hiz_w, hiz_h, hiz_mips;
+    tex2.GetDimensions(0, hiz_w, hiz_h, hiz_mips);
+    if (!sphere_hiz_visible(tex2, blade_center, grass_cull_radius, float(hiz_mips - 1u)))
+        return;
+
+    // slope reject, two forward taps reusing the centre height, paid only by visible blades
+    float slope_cos = sample_terrain_slope_cos(world_xz, terrain_extent, world_y);
+    if (slope_cos < max_slope_cos)
+        return;
+
+    // grass blades only need a rough up vector to align to the surface, a flat up is enough
     float3 up = float3(0.0f, 1.0f, 0.0f);
 
     // scale: compose_instance_transform decodes scale_01 via exp2(lerp(log2(0.01), log2(100), t)),

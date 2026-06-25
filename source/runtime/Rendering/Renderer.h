@@ -311,10 +311,9 @@ namespace spartan
         // passes - particles
         static void Pass_Particles(RHI_CommandList* cmd_list);
         // passes - gpu procedural grass
-        // runs the placement compute + indirect args build, the actual draw calls are folded into
-        // Pass_Depth_Prepass and Pass_GBuffer_Indirect via Pass_Grass_Draw to share their pso state
+        // runs the placement compute + indirect args build, the draw is folded into the g-buffer pass via Pass_Grass_Draw
         static void Pass_Grass_Populate(RHI_CommandList* cmd_list);
-        static void Pass_Grass_Draw(RHI_CommandList* cmd_list, bool is_depth_prepass);
+        static void Pass_Grass_Draw(RHI_CommandList* cmd_list);
         // passes - wind field
         static void Pass_WindField(RHI_CommandList* cmd_list);
         // passes - fft ocean
@@ -410,6 +409,8 @@ namespace spartan
             std::shared_ptr<RHI_Buffer> visible_triangles;      // triangle-cull survivor list (packed meshlet_instance + triangle index)
             std::shared_ptr<RHI_Buffer> triangle_dispatch_args; // single-slot indirect dispatch args for the triangle cull pass
             std::shared_ptr<RHI_Buffer> cull_tasks;
+            std::shared_ptr<RHI_Buffer> surviving_instances;    // phase a survivor list, one entry per visible instance
+            std::shared_ptr<RHI_Buffer> instance_dispatch_args; // single-slot indirect dispatch args for the meshlet cull pass (phase b)
         };
         static std::array<FrameResource, renderer_draw_data_buffer_count> m_frame_resources;
         static uint32_t m_frame_resource_index;
