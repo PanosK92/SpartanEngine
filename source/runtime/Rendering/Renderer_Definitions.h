@@ -304,6 +304,8 @@ namespace spartan
         shadows_ray_generation_r,
         shadows_ray_miss_r,
         shadows_ray_hit_r,
+        shadows_denoise_temporal_c,
+        shadows_denoise_spatial_c,
         // restir path tracing gi
         restir_pt_ray_generation_r,
         restir_pt_ray_miss_r,
@@ -399,6 +401,10 @@ namespace spartan
         auto_exposure_previous,
         // ray traced shadows
         ray_traced_shadows,
+        ray_traced_shadows_history,
+        ray_traced_shadows_moments,
+        ray_traced_shadows_moments_history,
+        ray_traced_shadows_ping,
         // restir path tracing output
         restir_output,
         // sample duplication score map driving the adaptive temporal confidence cap, lin 2026

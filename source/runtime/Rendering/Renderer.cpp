@@ -2779,6 +2779,7 @@ namespace spartan
         Pass_ScreenSpaceAmbientOcclusion(cmd_list);
         Pass_ScreenSpaceShadows(cmd_list);
         Pass_RayTracedShadows(cmd_list);
+        Pass_Denoise_RayTracedShadows(cmd_list);
         Pass_ReSTIR_PathTracing(cmd_list);
         Pass_ReSTIR_Denoising(cmd_list);
         cmd_list->EndMarker();

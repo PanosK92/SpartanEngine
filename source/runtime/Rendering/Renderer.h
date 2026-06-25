@@ -289,6 +289,7 @@ namespace spartan
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
+        static void Pass_Denoise_RayTracedShadows(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_TraceInitial(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* tex_skysphere, RHI_Texture* const* reservoirs, uint32_t width, uint32_t height);
         static void Pass_ReSTIR_Temporal(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y);

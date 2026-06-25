@@ -422,6 +422,125 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_Denoise_RayTracedShadows(RHI_CommandList* cmd_list)
+    {
+        // the sun ray is jittered across the solar disk per frame (see ray_traced_shadows.hlsl) so the
+        // raw shadow texture carries one noisy sample per pixel, this spatiotemporal denoiser reprojects
+        // the history, accumulates it, then reconstructs the penumbra with a blocker distance driven
+        // a-trous filter, contact shadows stay crisp while distant blockers soften
+        if (Window::IsMinimized())
+        {
+            return;
+        }
+
+        // skip when the trace did not run, the texture is then a flat white clear which needs no denoise
+        bool restir_pt_owns_shadows = cvar_restir_pt.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
+        if (!cvar_ray_traced_shadows.GetValueAs<bool>() || restir_pt_owns_shadows || !RHI_Device::IsSupportedRayTracing())
+        {
+            return;
+        }
+
+        if (!GetTopLevelAccelerationStructure())
+        {
+            return;
+        }
+
+        RHI_Texture* tex_shadows         = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows);
+        RHI_Texture* tex_history         = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_history);
+        RHI_Texture* tex_moments         = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_moments);
+        RHI_Texture* tex_moments_history = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_moments_history);
+        RHI_Texture* tex_ping            = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_ping);
+        RHI_Texture* tex_depth_previous  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous);
+
+        if (!tex_shadows || !tex_history || !tex_moments || !tex_moments_history || !tex_ping)
+        {
+            return;
+        }
+
+        const uint32_t min_rt_dimension = 64;
+        if (tex_shadows->GetWidth() < min_rt_dimension || tex_shadows->GetHeight() < min_rt_dimension)
+        {
+            return;
+        }
+
+        RHI_Shader* shader_temporal = GetShader(Renderer_Shader::shadows_denoise_temporal_c);
+        RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::shadows_denoise_spatial_c);
+        if (!shader_temporal || !shader_spatial || !shader_temporal->IsCompiled() || !shader_spatial->IsCompiled())
+        {
+            return;
+        }
+
+        // temporal accumulation, raw shadows in -> ping holds (visibility, variance, blocker_distance),
+        // moments out for the next frame's ema, history and previous depth gate the reprojection
+        cmd_list->BeginTimeblock("shadows_denoise_temporal");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "shadows_denoise_temporal";
+            pso.shaders[Compute] = shader_temporal;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureReadThenWrite);
+            SetCommonTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_shadows);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments_history);
+            if (tex_depth_previous)
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_depth_previous);
+            }
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ping);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_moments);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->Dispatch(tex_shadows);
+            cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+
+        // a-trous ping pong, step width doubles each level, the routing alternates ping and the
+        // shadows texture so the final write lands in ray_traced_shadows which is consumed downstream
+        struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
+        const denoise_stage stages[3] =
+        {
+            { "shadows_denoise_spatial",   1.0f, tex_ping,    tex_shadows },
+            { "shadows_denoise_spatial_2", 2.0f, tex_shadows, tex_ping    },
+            { "shadows_denoise_spatial_3", 4.0f, tex_ping,    tex_shadows },
+        };
+
+        for (const denoise_stage& s : stages)
+        {
+            cmd_list->BeginTimeblock(s.name);
+            {
+                RHI_PipelineState pso;
+                pso.name             = s.name;
+                pso.shaders[Compute] = shader_spatial;
+                cmd_list->SetPipelineState(pso);
+
+                m_pcb_pass_cpu.set_f3_value(s.radius);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureReadThenWrite);
+                SetCommonTextures(cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, s.src);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, s.dst);
+                cmd_list->Dispatch(tex_shadows);
+                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
+            }
+            cmd_list->EndTimeblock();
+        }
+
+        // feed the denoised shadow back as next frame's history and copy the moments forward
+        cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
+        Pass_Blit(cmd_list, tex_shadows, tex_history);
+        cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureWriteThenRead);
+        cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
+
+        cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureReadThenWrite);
+        Pass_Blit(cmd_list, tex_moments, tex_moments_history);
+        cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureWriteThenRead);
+    }
+
     void Renderer::Pass_ReSTIR_TraceInitial(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* tex_skysphere, RHI_Texture* const* reservoirs, uint32_t width, uint32_t height)
     {
         // amd tdrs when tracerays dispatches with uninitialized push constants, all raygen passes must push constants

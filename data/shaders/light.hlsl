@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "light_cluster.hlsl"
 //============================
 
-// samples the ray traced shadow texture bound on tex4
+// samples the denoised ray traced shadow texture bound on tex4, the spatiotemporal denoiser has
+// already reconstructed a clean penumbra so a single bilinear fetch is all that is needed here
 float sample_ray_traced_shadow(float2 uv)
 {
     if (!is_ray_traced_shadows_enabled())
@@ -35,58 +36,12 @@ float sample_ray_traced_shadow(float2 uv)
         return 1.0;
     }
 
-    float center_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
-    if (center_depth_raw <= 0.0f)
-    {
-        return 1.0f;
-    }
-
-    uint shadow_width, shadow_height;
-    tex4.GetDimensions(shadow_width, shadow_height);
-    float2 shadow_resolution = float2((float)shadow_width, (float)shadow_height);
-
-    float2 texel_size   = 1.0f / max(shadow_resolution, float2(1.0f, 1.0f));
-    float  center_depth = linearize_depth(center_depth_raw);
-    float3 center_normal = get_normal(uv);
-    float  depth_phi    = max(center_depth * 0.015f, 0.02f);
-
-    float shadow_sum = 0.0f;
-    float weight_sum = 0.0f;
-
-    [unroll]
-    for (int y = -2; y <= 2; y++)
-    {
-        [unroll]
-        for (int x = -2; x <= 2; x++)
-        {
-            float2 offset_uv        = float2((float)x, (float)y) * texel_size;
-            float2 sample_uv        = saturate(uv + offset_uv);
-            float  sample_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).r;
-            if (sample_depth_raw <= 0.0f)
-            {
-                continue;
-            }
-
-            float  sample_depth  = linearize_depth(sample_depth_raw);
-            float3 sample_normal = get_normal(sample_uv);
-            float  spatial_w     = exp(-dot(float2((float)x, (float)y), float2((float)x, (float)y)) * 0.35f);
-            float  depth_w       = exp(-abs(sample_depth - center_depth) / depth_phi);
-            float  normal_w      = pow(saturate(dot(center_normal, sample_normal)), 64.0f);
-            float  weight        = spatial_w * depth_w * normal_w;
-
-            shadow_sum += tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), sample_uv, 0).r * weight;
-            weight_sum += weight;
-        }
-    }
-
-    float shadow = shadow_sum / max(weight_sum, 1e-4f);
-
-    return shadow;
+    return saturate(tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r);
 }
 
 // inline ray traced shadow for any light type, deterministic hammersley disk
 #ifdef RAY_TRACING_ENABLED
-static const uint k_inline_shadow_spp = 64;
+static const uint k_inline_shadow_spp = 2;
 
 float radical_inverse_vdc(uint bits)
 {
@@ -160,10 +115,17 @@ float trace_inline_shadow_ray(Light light, Surface surface)
     float visibility_sum = 0.0f;
     float valid_samples  = 0.0f;
 
+    // cranley patterson rotation per pixel per frame so taa averages the low sample count down,
+    // a deterministic 2 spp set would otherwise band, this jitters it into stable soft shadows
+    float  frame_index = (float)buffer_frame.frame;
+    float2 cp_rot;
+    cp_rot.x = frac(hash(surface.uv)         + frame_index * 0.7548776662f);
+    cp_rot.y = frac(hash(surface.uv + 17.3f) + frame_index * 0.5698402909f);
+
     [unroll]
     for (uint s = 0; s < k_inline_shadow_spp; s++)
     {
-        float2 sample_square = hammersley_2d(s, k_inline_shadow_spp) * 2.0f - 1.0f;
+        float2 sample_square = frac(hammersley_2d(s, k_inline_shadow_spp) + cp_rot) * 2.0f - 1.0f;
         float2 disk          = concentric_disk(sample_square);
 
         float2 disk_r = float2(disk.x * cos_r - disk.y * sin_r,

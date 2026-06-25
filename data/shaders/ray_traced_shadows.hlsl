@@ -69,23 +69,6 @@ float3 sample_sun_direction(float3 light_dir, float2 disk_sample, float penumbra
     return normalize(light_dir + tangent * offset.x + bitangent * offset.y);
 }
 
-float2 halton_2d(uint index)
-{
-    // base 2 radical inverse is just a bit reversal scaled by 1 / 2^32
-    float x = reversebits(index) * 2.3283064365386963e-10f;
-    
-    float y = 0.0f, f_y = 1.0f / 3.0f;
-    uint i_y = index;
-    while (i_y > 0)
-    {
-        y   += f_y * (i_y % 3);
-        i_y /= 3;
-        f_y /= 3.0f;
-    }
-    
-    return float2(x, y);
-}
-
 [shader("raygeneration")]
 void ray_gen()
 {
@@ -93,11 +76,11 @@ void ray_gen()
     uint2 launch_size = DispatchRaysDimensions().xy;
     float2 uv         = (launch_id + 0.5f) / launch_size;
     
-    // early out for sky pixels
+    // early out for sky pixels, fully lit with no blocker
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
     {
-        tex_uav[launch_id] = float4(1.0f, 1.0f, 1.0f, 1.0f);
+        tex_uav[launch_id] = float4(1.0f, 0.0f, 0.0f, 1.0f);
         return;
     }
     
@@ -105,7 +88,7 @@ void ray_gen()
     float3 normal_ws = get_normal(uv);
     float3 light_dir = normalize(-light_parameters[0].direction);
     
-    // backface culling
+    // backface culling, fully shadowed with no blocker distance
     float n_dot_l = dot(normal_ws, light_dir);
     if (n_dot_l <= 0.0f)
     {
@@ -118,24 +101,25 @@ void ray_gen()
     float base_offset     = 0.01f + camera_distance * 0.0001f;
     float3 ray_origin     = pos_ws + normal_ws * base_offset;
     
-    // contact hardening soft shadows
-    static const uint TOTAL_SAMPLES          = 64;
+    // one stochastic sample per frame toward the jittered sun disk, the denoiser accumulates
+    // the temporal history so a single ray converges to a soft penumbra over a few frames
+    static const uint SHADOW_SAMPLES         = 1;
     static const uint MAX_TRANSPARENT_LAYERS = 4;
     
-    float avg_blocker_dist = 0.0f;
-    float blocker_count    = 0.0f;
+    // per pixel per frame low discrepancy sample, r2 frame rotation for the denoiser to accumulate
+    float  frame_index = (float)buffer_frame.frame;
+    float2 xi_base;
+    xi_base.x = frac(hash(float2(launch_id))         + frame_index * 0.7548776662f);
+    xi_base.y = frac(hash(float2(launch_id) + 31.7f) + frame_index * 0.5698402909f);
     
-    // penumbra weighting is linear in the disk radius so its sums are accumulated inline
-    // instead of caching per sample results, this avoids two large arrays and a second pass
-    float sum_visibility      = 0.0f;
-    float sum_dist            = 0.0f;
-    float sum_visibility_dist = 0.0f;
+    float sum_visibility = 0.0f;
+    float sum_blocker    = 0.0f;
+    float blocker_weight = 0.0f;
     
-    for (uint i = 0; i < TOTAL_SAMPLES; i++)
+    for (uint i = 0; i < SHADOW_SAMPLES; i++)
     {
-        float2 sample_2d  = halton_2d(i + 1);
+        float2 sample_2d  = frac(xi_base + (float)i * float2(0.7548776662f, 0.5698402909f));
         float2 disk       = concentric_disk_sample(sample_2d);
-        float  disk_dist  = length(disk);
         float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
         
         float  accumulated_alpha = 0.0f;
@@ -188,45 +172,21 @@ void ray_gen()
             current_origin = current_origin + sample_dir * (local_hit_distance + 0.01f);
         }
         
-        float visibility     = 1.0f - accumulated_alpha;
-        sum_visibility      += visibility;
-        sum_dist            += disk_dist;
-        sum_visibility_dist += visibility * disk_dist;
+        sum_visibility += 1.0f - accumulated_alpha;
         
         if (first_hit_dist > 0.0f && accumulated_alpha > 0.0f)
         {
-            avg_blocker_dist += first_hit_dist;
-            blocker_count    += accumulated_alpha; // weight by opacity
+            // accumulate the blocker distance weighted by opacity for spatial penumbra reconstruction
+            sum_blocker    += first_hit_dist * accumulated_alpha;
+            blocker_weight += accumulated_alpha;
         }
     }
     
-    // fully lit (no blockers at all)
-    if (blocker_count < 0.01f)
-    {
-        tex_uav[launch_id] = float4(1.0f, 1.0f, 1.0f, 1.0f);
-        return;
-    }
+    float visibility = sum_visibility / (float)SHADOW_SAMPLES;
+    float hit_dist   = blocker_weight > 0.0f ? (sum_blocker / blocker_weight) : 0.0f;
     
-    // fully shadowed (all samples hit fully opaque blockers)
-    if (blocker_count >= float(TOTAL_SAMPLES) - 0.01f)
-    {
-        tex_uav[launch_id] = float4(0.0f, 0.0f, 0.0f, 1.0f);
-        return;
-    }
-    
-    avg_blocker_dist /= blocker_count;
-    
-    // penumbra width from blocker distance
-    float penumbra_size = saturate(avg_blocker_dist / 100.0f);
-    
-    // weight per sample is 1 - 0.5 * penumbra_size * disk_dist, the original 0.1 clamp is
-    // unreachable since disk_dist and penumbra_size are both in [0,1] so weight stays in [0.5,1]
-    float k                   = 0.5f * penumbra_size;
-    float total_weight        = float(TOTAL_SAMPLES) - k * sum_dist;
-    float weighted_visibility = sum_visibility - k * sum_visibility_dist;
-    
-    float final_shadow = weighted_visibility / total_weight;
-    tex_uav[launch_id] = float4(final_shadow, final_shadow, final_shadow, 1.0f);
+    // r = raw visibility, g = blocker distance for the penumbra aware spatial filter
+    tex_uav[launch_id] = float4(visibility, hit_dist, 0.0f, 1.0f);
 }
 
 [shader("miss")]
