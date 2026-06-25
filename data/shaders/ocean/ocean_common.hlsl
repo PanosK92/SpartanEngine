@@ -36,9 +36,8 @@ float2 ocean_wind_dir()    { return pass_get_f3_value().xy; }
 float  ocean_wind_speed()  { return pass_get_f3_value().z; }
 float  ocean_amplitude()   { return pass_get_f4_value().x; }
 float  ocean_choppiness()  { return pass_get_f4_value().y; }
-float  ocean_foam()        { return pass_get_f4_value().z; }
-float  ocean_disp_scale()  { return pass_get_f4_value().w; }
-float  ocean_normal_str()  { return pass_get_f2_value().y; }
+float  ocean_disp_scale()  { return pass_get_f4_value().z; }
+float  ocean_normal_str()  { return pass_get_f4_value().w; }
 
 float ocean_cascade_length(uint cascade)
 {

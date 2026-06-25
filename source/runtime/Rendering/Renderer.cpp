@@ -956,7 +956,6 @@ namespace spartan
             m_cb_frame_cpu.ocean_choppiness         = ocean.choppiness;
             m_cb_frame_cpu.ocean_displacement_scale = ocean.displacement_scale;
             m_cb_frame_cpu.ocean_normal_strength    = ocean.normal_strength;
-            m_cb_frame_cpu.ocean_foam_coverage      = ocean.foam_coverage;
             m_cb_frame_cpu.ocean_cascade_count      = ocean.cascade_count;
             m_cb_frame_cpu.ocean_enabled            = 1.0f;
         }

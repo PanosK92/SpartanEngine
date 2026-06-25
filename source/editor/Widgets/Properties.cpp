@@ -2268,7 +2268,6 @@ void Properties::ShowWater(spartan::Water* water) const
         float choppiness         = water->GetChoppiness();
         float displacement_scale = water->GetDisplacementScale();
         float normal_strength    = water->GetNormalStrength();
-        float foam_coverage      = water->GetFoamCoverage();
         float sea_level          = water->GetSeaLevel();
 
         uint32_t cascade_index = water->GetCascadeCount() - 1;
@@ -2281,14 +2280,12 @@ void Properties::ShowWater(spartan::Water* water) const
         property_float("Choppiness",         &choppiness,         0.1f,  0.0f,    40.0f,    "horizontal sharpening of the crests");
         property_float("Displacement Scale", &displacement_scale, 0.1f,  0.0f,    40.0f,    "scales the simulated displacement");
         property_float("Normal Strength",    &normal_strength,    0.1f,  0.0f,    40.0f,    "steepens the surface normals so waves catch more light");
-        property_float("Foam Coverage",      &foam_coverage,      0.1f,  0.0f,    20.0f,    "sensitivity of foam to wave folding, higher turns more crests to foam");
         property_float("Sea Level",          &sea_level,          0.1f,  -1000.0f, 1000.0f, "world height of the water surface", "%.1f m");
 
         if (amplitude != water->GetAmplitude())                  { water->SetAmplitude(amplitude); }
         if (choppiness != water->GetChoppiness())                { water->SetChoppiness(choppiness); }
         if (displacement_scale != water->GetDisplacementScale()) { water->SetDisplacementScale(displacement_scale); }
         if (normal_strength != water->GetNormalStrength())       { water->SetNormalStrength(normal_strength); }
-        if (foam_coverage != water->GetFoamCoverage())           { water->SetFoamCoverage(foam_coverage); }
         if (sea_level != water->GetSeaLevel())                   { water->SetSeaLevel(sea_level); }
     }
     component_end();

@@ -772,7 +772,7 @@ namespace spartan
         void initialize()
         {
             float rotation_y      = 120.0f * math::deg_to_rad;
-            const float intensity = 3.0f;
+            const float intensity = 8.0f;
             wind = Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity;
         }
     }

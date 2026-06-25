@@ -56,8 +56,6 @@ namespace spartan
         void SetDisplacementScale(float scale)    { m_displacement_scale = scale; PushToRenderer(); }
         float GetNormalStrength() const           { return m_normal_strength; }
         void SetNormalStrength(float strength)    { m_normal_strength = strength; PushToRenderer(); }
-        float GetFoamCoverage() const             { return m_foam_coverage; }
-        void SetFoamCoverage(float coverage)      { m_foam_coverage = coverage; PushToRenderer(); }
         float GetSeaLevel() const                 { return m_sea_level; }
         void SetSeaLevel(float level)             { m_sea_level = level; PushToRenderer(); }
 
@@ -69,17 +67,16 @@ namespace spartan
         // four cascades spanning swells down to microwaves, each band-limited to its own range in the spectrum shader
         uint32_t m_cascade_count    = 4;
         float m_cascade_length[4]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
-        float m_amplitude           = 100.0f;
-        float m_choppiness          = 6.0f;
-        float m_displacement_scale  = 6.0f;
-        float m_normal_strength     = 10.0f; // steepens the analytic slopes so the waves catch more light
-        float m_foam_coverage       = 1.5f; // scales how strongly folding crests turn to foam, the deadzone keeps calm water clear
+        float m_amplitude           = 40.0f;
+        float m_choppiness          = 8.0f;
+        float m_displacement_scale  = 8.0f;
+        float m_normal_strength     = 12.0f; // steepens the analytic slopes so the waves catch more light
         float m_sea_level           = 0.0f;
 
         // clipmap geometry
         uint32_t m_clipmap_resolution = 128;
         uint32_t m_clipmap_levels     = 8;
-        float m_clipmap_base_cell     = 1.0f;
+        float m_clipmap_base_cell     = 0.5f; // finer cells so the geometry carries the sub-meter ripples the foam forms on, same vertex budget
 
         // owned resources, kept alive beyond any single frame
         std::shared_ptr<Mesh> m_mesh         = nullptr;

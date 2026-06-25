@@ -167,6 +167,19 @@ void compute_refraction_with_chromatic_aberration(
     refracted_uv = clamp(uv + base_uv_offset, 0.0f, 1.0f);
 }
 
+// smooth value noise, used to carve the coarse jacobian foam into finer whitewater
+float ocean_value_noise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    f       = f * f * (3.0f - 2.0f * f);
+    float a = hash(i + float2(0.0f, 0.0f));
+    float b = hash(i + float2(1.0f, 0.0f));
+    float c = hash(i + float2(0.0f, 1.0f));
+    float d = hash(i + float2(1.0f, 1.0f));
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -186,12 +199,32 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
         uint cascades = buffer_frame.ocean_cascade_count;
+
+        // the geometry was shifted horizontally by the choppiness displacement, undo it so foam lands on the waves it formed on
+        // the depth here only gives the displaced position, fixed-point iterate g = p - displacement(g) to recover the undisplaced grid domain the fft indexes
+        float2 world_xz = surface.position.xz;
+        [unroll] for (uint it = 0; it < 3; ++it)
+        {
+            float2 displaced = 0.0f;
+            [loop] for (uint c = 0; c < cascades; ++c)
+            {
+                float2 uv  = world_xz / buffer_frame.ocean_cascade_length[c];
+                displaced += tex_ocean_displacement.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f).xz;
+            }
+            world_xz = surface.position.xz - displaced;
+        }
+
         [loop] for (uint c = 0; c < cascades; ++c)
         {
-            float2 uv = surface.position.xz / buffer_frame.ocean_cascade_length[c];
+            float2 uv = world_xz / buffer_frame.ocean_cascade_length[c];
             foam += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f).z;
         }
         foam = saturate(foam);
+
+        // the jacobian foam is low frequency and reads as coarse blobs, carve it with two octaves of fine
+        // world locked noise so it breaks into bubbly whitewater, sampled in the undisplaced domain so the detail rides the surface
+        float detail = ocean_value_noise(world_xz * 6.0f) * 0.6f + ocean_value_noise(world_xz * 18.0f) * 0.4f;
+        foam         = saturate(foam * (0.5f + detail));
     }
 
     // get background color
@@ -292,21 +325,22 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
     }
 
-    // overlay lit foam on top of the composited water, a rough diffuse white tied to the sun so it matches
-    // scene exposure and fades at night, where foam is full it hides the underlying reflection and refraction
+    // overlay lit foam on top of the composited water, whitewater is a bright near-white lambertian cap so it
+    // must replace the reflection and refraction below rather than tint them, additive blending only desaturates the water
     if (foam > 0.0f)
     {
-        // foam is bright whitewater, lit by the sun with a wrap term so the bumpy surface still catches grazing light, plus the reflected sky as ambient
-        // the foam roughness was kept moderate in the g-buffer so this reflection stays bright instead of collapsing to black
-        float  n_dot_l  = saturate(dot(surface.normal, -light_parameters[0].direction));
-        float3 sun      = get_sun_radiance() * (n_dot_l * 0.5f + 0.5f) / PI;
-        float3 sky      = tex[thread_id.xy].rgb;
-        float3 foam_lit = sun + sky;
+        // whitewater receives the sun as a wrap-lit diffuse term plus the reflected sky as an ambient fill, near-white albedo
+        float  n_dot_l   = saturate(dot(surface.normal, -light_parameters[0].direction));
+        float3 sun_diff  = get_sun_radiance() * (n_dot_l * 0.5f + 0.5f) * (1.0f / PI);
+        float3 sky       = tex[thread_id.xy].rgb;
+        float3 incoming  = sun_diff + sky;
 
-        // bias strongly toward white so whitewater reads as foam rather than tinted water, then keep it from ever darkening the surface
-        float  foam_luma  = luminance(foam_lit);
-        float3 foam_color = lerp(foam_lit, float3(foam_luma, foam_luma, foam_luma), 0.6f) * float3(0.97f, 0.98f, 1.0f);
-        float3 base       = tex_uav[thread_id.xy].rgb;
-        tex_uav[thread_id.xy].rgb = lerp(base, max(foam_color, base), foam);
+        // drive the chroma to white and lift the brightness so foam reads as whitewater instead of dull tinted water
+        float  luma       = luminance(incoming);
+        float3 foam_color = lerp(incoming, luma.xxx, 0.85f) * float3(0.97f, 0.98f, 1.0f) * 2.0f;
+
+        // foam sits on top of the water, dense foam fully hides the reflection and refraction below
+        float3 base = tex_uav[thread_id.xy].rgb;
+        tex_uav[thread_id.xy].rgb = lerp(base, foam_color, foam);
     }
 }

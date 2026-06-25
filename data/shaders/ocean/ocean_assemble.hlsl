@@ -42,7 +42,6 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float chop       = ocean_choppiness();
     float disp_scale = ocean_disp_scale();
     float normal_str = ocean_normal_str();
-    float foam_cov   = ocean_foam();
 
     float s    = ocean_sign(id.xy);
     float4 a   = tex_ocean_fft_a_uav[id];
@@ -99,16 +98,15 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     slope_x        /= stretch_x;
     slope_z        /= stretch_z;
 
-    // whitecaps form where the choppy surface folds, the jacobian of the horizontal displacement drops below one as a crest compresses
-    // a small deadzone ignores gentle compression so calm water and the broad swell cascade never wash to a uniform white
-    // coverage then scales how strongly the remaining folds turn to foam, raising it widens and intensifies the whitecaps, zero disables them
+    // whitewater is a pure consequence of the surface folding onto itself, nothing artistic gates it
+    // the jacobian of the horizontal displacement passes through zero as a crest pinches and goes negative where it overhangs,
+    // so the fold depth itself is the foam intensity, steeper or choppier waves fold harder and foam more while calm water never folds and stays clear
     // the result is accumulated over time so it trails behind the crests as fading streaks instead of single-frame sparkle,
     // the previous value is read back from the persistent normal target whose slope channels are overwritten below
-    float compression = max(0.0, (1.0 - jacobian) - 0.15);
-    float inject      = foam_cov > 0.0 ? saturate(compression * foam_cov) : 0.0;
-    float prev_foam   = saturate(tex_ocean_normal_uav[id].z);
-    float decay       = exp(-buffer_frame.delta_time * OCEAN_FOAM_DECAY);
-    float foam        = max(inject, prev_foam * decay);
+    float inject    = saturate(-jacobian);
+    float prev_foam = saturate(tex_ocean_normal_uav[id].z);
+    float decay     = exp(-buffer_frame.delta_time * OCEAN_FOAM_DECAY);
+    float foam      = max(inject, prev_foam * decay);
 
     tex_ocean_normal_uav[id] = float4(slope_x * normal_str, slope_z * normal_str, foam, 0.0);
 }

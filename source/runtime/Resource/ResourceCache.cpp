@@ -55,6 +55,30 @@ namespace spartan
         bool use_root_shader_directory = false;
         unordered_map<string, unique_ptr<mutex>> m_in_flight_mutexes;
         mutex m_in_flight_map_mutex;
+
+        // walks up from the working directory to the repository root, identified by a .git entry, so the
+        // root shader directory resolves to the git tracked source no matter where the engine is launched from
+        string resolve_root_shader_directory(const string& shaders_relative)
+        {
+            string current = FileSystem::GetWorkingDirectory();
+            for (uint32_t level = 0; level < 16; level++)
+            {
+                const string candidate = current + "/" + shaders_relative;
+                if (FileSystem::Exists(current + "/.git") && FileSystem::IsDirectory(candidate))
+                {
+                    return candidate;
+                }
+
+                const string parent = FileSystem::GetParentDirectory(current);
+                if (parent == current)
+                {
+                    break;
+                }
+                current = parent;
+            }
+
+            return "";
+        }
     }
 
     void ResourceCache::Initialize()
@@ -154,11 +178,13 @@ namespace spartan
     string ResourceCache::GetResourceDirectory(const ResourceDirectory resource_directory_type)
     {
         string directory = m_standard_resource_directories[static_cast<uint32_t>(resource_directory_type)];
-        if (use_root_shader_directory)
+        if (use_root_shader_directory && resource_directory_type == ResourceDirectory::Shaders)
         {
-            if (resource_directory_type == ResourceDirectory::Shaders)
+            // resolve against the repository root so it works from any working directory, fall back to the local copy
+            const string root_directory = resolve_root_shader_directory(directory);
+            if (!root_directory.empty())
             {
-                directory = "..\\" + directory;
+                return root_directory;
             }
         }
         return directory;

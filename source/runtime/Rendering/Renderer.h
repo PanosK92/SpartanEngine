@@ -138,7 +138,6 @@ namespace spartan
             float    choppiness       = 1.4f;
             float    displacement_scale = 1.0f;
             float    normal_strength  = 1.0f;
-            float    foam_coverage    = 0.6f;
             float    sea_level        = 0.0f;
         };
 

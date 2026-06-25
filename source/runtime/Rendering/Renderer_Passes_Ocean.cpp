@@ -95,8 +95,8 @@ namespace spartan
         // shared push constants, the cascade lengths are packed across the value slots
         m_pcb_pass_cpu.set_f3_value(dir_x, dir_z, wind_speed);
         m_pcb_pass_cpu.set_f3_value2(params.cascade_length[0], params.cascade_length[1], params.cascade_length[2]);
-        m_pcb_pass_cpu.set_f4_value(params.amplitude, params.choppiness, params.foam_coverage, params.displacement_scale);
-        m_pcb_pass_cpu.set_f2_value(params.cascade_length[3], params.normal_strength);
+        m_pcb_pass_cpu.set_f4_value(params.amplitude, params.choppiness, params.displacement_scale, params.normal_strength);
+        m_pcb_pass_cpu.set_f2_value(params.cascade_length[3], 0.0f);
 
         cmd_list->BeginTimeblock("ocean");
         {

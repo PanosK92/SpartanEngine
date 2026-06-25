@@ -50,7 +50,6 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_choppiness,        float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_displacement_scale, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_strength,   float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_foam_coverage,     float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sea_level,         float);
     }
 
@@ -136,7 +135,6 @@ namespace spartan
         params.choppiness        = m_choppiness;
         params.displacement_scale = m_displacement_scale;
         params.normal_strength   = m_normal_strength;
-        params.foam_coverage     = m_foam_coverage;
         params.sea_level         = m_sea_level;
 
         Renderer::EnableOcean(m_mesh.get(), m_material.get(), params);
@@ -150,7 +148,6 @@ namespace spartan
         water.append_attribute("choppiness")        = m_choppiness;
         water.append_attribute("displacement_scale") = m_displacement_scale;
         water.append_attribute("normal_strength")   = m_normal_strength;
-        water.append_attribute("foam_coverage")     = m_foam_coverage;
         water.append_attribute("sea_level")         = m_sea_level;
     }
 
@@ -167,7 +164,6 @@ namespace spartan
         m_choppiness         = water.attribute("choppiness").as_float(m_choppiness);
         m_displacement_scale = water.attribute("displacement_scale").as_float(m_displacement_scale);
         m_normal_strength    = water.attribute("normal_strength").as_float(m_normal_strength);
-        m_foam_coverage      = water.attribute("foam_coverage").as_float(m_foam_coverage);
         m_sea_level          = water.attribute("sea_level").as_float(m_sea_level);
 
         PushToRenderer();

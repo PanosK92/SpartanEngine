@@ -138,6 +138,7 @@ struct gbuffer_vertex
     // nointerpolation since these are constant per draw
     nointerpolation float4 uv_xform_ts  : TEXCOORD5; // xy = tiling, zw = offset
     nointerpolation float4 uv_xform_ir  : TEXCOORD6; // xy = invert, z = rotation, w = unused
+    float2 ocean_world_xz               : TEXCOORD7; // undisplaced clipmap world xz, fft normal/foam are indexed in this domain
 };
 
 float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
@@ -549,6 +550,9 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // transform normal and tangent to world space (extract 3x3 rotation/scale matrix)
     vertex.normal  = normalize(mul(input_normal,  (float3x3)transform));
     vertex.tangent = normalize(mul(input_tangent, (float3x3)transform));
+
+    // capture the undisplaced world xz before the ocean displacement shifts it, the fft normal and foam are indexed in this domain
+    vertex.ocean_world_xz = position.xz;
 
     // apply wind animation and other world-space effects
     // note: we need to save and restore vertex.normal/tangent because process_world_space modifies them

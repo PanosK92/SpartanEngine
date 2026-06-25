@@ -414,7 +414,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // fft ocean shading, world-space normal from the summed cascade slopes plus foam
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
-        float2 world_xz = position_world.xz;
+        // sample in the undisplaced grid domain the fft writes into, the geometry was shifted horizontally by the choppiness displacement
+        float2 world_xz = vertex.ocean_world_xz;
         float2 slope    = 0.0f;
         float foam      = 0.0f;
         uint cascades   = buffer_frame.ocean_cascade_count;
