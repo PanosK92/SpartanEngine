@@ -357,9 +357,11 @@ namespace car
             float torque_lock = fabsf(effective_delta) * lock_ratio * fabsf(axle_torque);
             torque_lock = PxMin(torque_lock, fabsf(axle_torque) * 0.9f);
 
+            float viscous = delta_w * tuning::spec.lsd_viscous;
+
             // preload is the static friction of the plate pack - it resists differential motion
             // regardless of input torque, so it must never be scaled by axle_torque
-            float lock_torque = tuning::spec.lsd_preload * smooth_ramp + torque_lock;
+            float lock_torque = tuning::spec.lsd_preload * smooth_ramp + torque_lock + fabsf(viscous);
             float bias_sign = (delta_w > 0.0f) ? -1.0f : 1.0f;
 
             wheels[left].net_torque  += axle_torque * 0.5f + bias_sign * lock_torque * 0.5f;
@@ -580,10 +582,15 @@ namespace car
                 t *= brake_efficiency;
 
                 abs_active[i] = false;
-                if (tuning::spec.abs_enabled && wheels[i].grounded && -wheels[i].slip_ratio > tuning::spec.abs_slip_threshold)
+                if (tuning::spec.abs_enabled && wheels[i].grounded)
                 {
-                    abs_active[i] = true;
-                    t *= (abs_phase < 0.5f) ? tuning::spec.abs_release_rate : 1.0f;
+                    float load_f = PxClamp(wheels[i].tire_load / PxMax(tuning::spec.load_reference, 1000.0f), 0.6f, 1.6f);
+                    float th = tuning::spec.abs_slip_threshold * (1.0f - tuning::spec.abs_load_sensitivity * (load_f - 1.0f));
+                    if (-wheels[i].slip_ratio > th)
+                    {
+                        abs_active[i] = true;
+                        t *= (abs_phase < 0.5f) ? tuning::spec.abs_release_rate : 1.0f;
+                    }
                 }
 
                 float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;

@@ -57,6 +57,17 @@ namespace car
             float wr      = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
             float wmoi    = (std::isfinite(wheel_moi[i]) && wheel_moi[i] > 0.0f) ? wheel_moi[i] : 1.0f;
 
+            float defl = 0.0f;
+            if (tuning::spec.tire_vertical_stiffness > 1000.0f)
+            {
+                defl = PxClamp(w.tire_load / tuning::spec.tire_vertical_stiffness, 0.0f, 0.05f);
+            }
+            float wr_eff = PxMax(wr - defl * 0.55f, 0.05f);
+
+            float camb = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
+            float g = is_front(i) ? tuning::spec.front_camber_gain : tuning::spec.rear_camber_gain;
+            float dyn_camb = camb + g * w.compression * cfg.suspension_travel;
+
             // --- airborne branch ---
             if (!w.grounded || w.tire_load <= 0.0f)
             {
@@ -68,7 +79,7 @@ namespace car
 
                 PxVec3 vel = body->getLinearVelocity();
                 float car_fwd_speed = vel.dot(chassis_fwd);
-                float target_w = car_fwd_speed / wr;
+                float target_w = car_fwd_speed / wr_eff;
 
                 if (input.handbrake > tuning::spec.input_deadzone && is_rear(i))
                 {
@@ -113,7 +124,7 @@ namespace car
 
             float vx = wheel_vel.dot(wheel_fwd);
             float vy = wheel_vel.dot(wheel_lat);
-            float wheel_speed  = w.angular_velocity * wr;
+            float wheel_speed  = w.angular_velocity * wr_eff;
             float ground_speed = sqrtf(vx * vx + vy * vy);
             float slip_v_long = fabsf(wheel_speed - vx);
             float slip_v_lat  = fabsf(vy);
@@ -128,7 +139,8 @@ namespace car
             float wear_factor    = 1.0f - w.wear * tuning::spec.tire_grip_wear_loss;
             float base_grip     = tuning::spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f)) * wear_factor;
             float temp_factor   = get_tire_temp_grip_factor(w.thermal.avg_surface());
-            float camber_factor = get_camber_grip_factor(i, w.slip_angle);
+            float eff_camb = dyn_camb - w.slip_angle * 0.3f;
+            float camber_factor = 1.0f - fabsf(eff_camb) * 0.1f;
             float surface_factor = get_surface_friction(w.contact_surface);
             // rear_grip_ratio scales the whole friction budget on the rear axle rather than only
             // lateral force, which kept the friction circle well-behaved under combined slip
@@ -219,9 +231,8 @@ namespace car
             float dynamic_lat_f  = -Fy0 * peak_force;
             float dynamic_long_f =  Fx0 * peak_force;
 
-            float camber = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
             bool is_left_wheel = (i == front_left || i == rear_left);
-            float camber_thrust = camber * w.tire_load * tuning::spec.camber_thrust_coeff;
+            float camber_thrust = dyn_camb * w.tire_load * tuning::spec.camber_thrust_coeff;
             dynamic_lat_f += is_left_wheel ? -camber_thrust : camber_thrust;
 
             float total_f = sqrtf(dynamic_lat_f * dynamic_lat_f + dynamic_long_f * dynamic_long_f);
@@ -240,7 +251,7 @@ namespace car
             if (max_v < blend_hi)
             {
                 float rest_blend = 1.0f - pacejka_weight;
-                w.angular_velocity = lerp(w.angular_velocity, vx / wr, exp_decay(20.0f * rest_blend, dt));
+                w.angular_velocity = lerp(w.angular_velocity, vx / wr_eff, exp_decay(20.0f * rest_blend, dt));
             }
 
             if (tuning::log_pacejka)
@@ -263,8 +274,7 @@ namespace car
 
             // camber determines heat distribution across zones:
             // negative camber loads the inside zone more under cornering
-            float eff_camber = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
-            float camber_bias = eff_camber * 3.0f;
+            float camber_bias = dyn_camb * 3.0f;
             float zone_heat[3] = {
                 base_heat * (1.0f + camber_bias),  // inside: more heat with negative camber
                 base_heat,                          // middle: uniform
@@ -315,7 +325,7 @@ namespace car
             safe_add_force_at_pos(body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos);
 
             // accumulate all torques on the wheel, then integrate once (semi-implicit euler)
-            w.net_torque += -long_f * wr; // tire longitudinal reaction
+            w.net_torque += -long_f * wr_eff; // tire longitudinal reaction
             w.net_torque -= w.angular_velocity * tuning::spec.bearing_friction * wmoi; // bearing drag
 
             if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
@@ -346,7 +356,7 @@ namespace car
             bool should_match = coasting || !is_driven(i) || (ground_speed < tuning::spec.min_slip_speed && (!is_driven(i) || input.throttle < 0.01f));
             if (should_match)
             {
-                float target_w = vx / wr;
+                float target_w = vx / wr_eff;
                 float match_rate = coasting ? tuning::spec.ground_match_rate : ((ground_speed < tuning::spec.min_slip_speed) ? tuning::spec.ground_match_rate * 2.0f : tuning::spec.ground_match_rate);
                 w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(match_rate, dt));
             }

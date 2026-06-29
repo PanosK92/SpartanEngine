@@ -565,16 +565,20 @@ namespace car
             p.rear_spring_freq *= s;
             p.front_arb_stiffness *= s;
             p.rear_arb_stiffness *= s;
+            p.front_camber_gain *= (1.0f + 0.08f * ups.suspension);
+            p.rear_camber_gain *= (1.0f + 0.08f * ups.suspension);
         }
         if (ups.tires > 0 && base.tires_stage_max > 0)
         {
             p.tire_friction += 0.05f * ups.tires;
             p.tire_optimal_temp += 5.0f * ups.tires;
+            p.tire_vertical_stiffness *= (1.0f + 0.05f * ups.tires);
         }
         if (ups.brakes > 0 && base.brakes_stage_max > 0)
         {
             p.brake_force *= (1.0f + 0.08f * ups.brakes);
             p.brake_cooling_airflow *= (1.0f + 0.10f * ups.brakes);
+            p.abs_load_sensitivity *= (1.0f + 0.1f * ups.brakes);
         }
         if (ups.aero > 0 && base.aero_stage_max > 0)
         {

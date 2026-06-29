@@ -204,6 +204,13 @@ namespace car
         float front_bump_steer;
         float rear_bump_steer;
 
+        float front_camber_gain;
+        float rear_camber_gain;
+        float tire_vertical_stiffness;
+        float lsd_viscous;
+        float abs_load_sensitivity;
+        float steer_compliance;
+
         // wheels
         float airborne_wheel_decay;
         float bearing_friction;
@@ -448,6 +455,13 @@ namespace car
             front_bump_steer = -0.02f;
             rear_bump_steer  =  0.01f;
 
+            front_camber_gain = -0.7f;
+            rear_camber_gain  = -0.4f;
+            tire_vertical_stiffness = 180000.0f;
+            lsd_viscous = 40.0f;
+            abs_load_sensitivity = 0.15f;
+            steer_compliance = 0.04f;
+
             // wheels
             airborne_wheel_decay     = 0.99f;
             bearing_friction         = 0.2f;
@@ -690,6 +704,13 @@ namespace car
             front_bump_steer = -0.02f;
             rear_bump_steer  =  0.01f;
 
+            front_camber_gain = -1.0f;
+            rear_camber_gain  = -0.5f;
+            tire_vertical_stiffness = 200000.0f;
+            lsd_viscous = 60.0f;
+            abs_load_sensitivity = 0.2f;
+            steer_compliance = 0.03f;
+
             // wheels
             airborne_wheel_decay     = 0.99f;
             bearing_friction         = 0.2f;
@@ -929,6 +950,13 @@ namespace car
             rear_toe         =  0.2f * (3.14159265f / 180.0f);
             front_bump_steer = -0.015f;
             rear_bump_steer  =  0.01f;
+
+            front_camber_gain = -0.9f;
+            rear_camber_gain  = -0.3f;
+            tire_vertical_stiffness = 160000.0f;
+            lsd_viscous = 120.0f;
+            abs_load_sensitivity = 0.25f;
+            steer_compliance = 0.05f;
 
             // wheels
             airborne_wheel_decay     = 0.99f;

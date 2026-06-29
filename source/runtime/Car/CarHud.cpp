@@ -964,16 +964,18 @@ namespace spartan::car_hud
                     ImGui::PushID(s);
                     char lbl[2] = {'0', 0};
                     lbl[0] = (char)('0' + s);
+                    bool pushed = false;
                     if (level == s)
                     {
                         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.45f, 0.72f, 1.0f));
+                        pushed = true;
                     }
                     if (ImGui::SmallButton(lbl))
                     {
                         level = s;
                         car::reapply_upgrades();
                     }
-                    if (level == s)
+                    if (pushed)
                     {
                         ImGui::PopStyleColor();
                     }

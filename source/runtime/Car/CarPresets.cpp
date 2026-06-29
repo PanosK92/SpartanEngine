@@ -215,6 +215,13 @@ namespace car
             READ_FLOAT(front_bump_steer);
             READ_FLOAT(rear_bump_steer);
 
+            READ_FLOAT(front_camber_gain);
+            READ_FLOAT(rear_camber_gain);
+            READ_FLOAT(tire_vertical_stiffness);
+            READ_FLOAT(lsd_viscous);
+            READ_FLOAT(abs_load_sensitivity);
+            READ_FLOAT(steer_compliance);
+
             READ_FLOAT(airborne_wheel_decay);
             READ_FLOAT(bearing_friction);
             READ_FLOAT(ground_match_rate);

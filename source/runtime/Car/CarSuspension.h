@@ -305,6 +305,10 @@ namespace car
 
         float curved_input = copysignf(powf(fabsf(input.steering), tuning::spec.steering_linearity), input.steering);
         float base = curved_input * tuning::spec.max_steer_angle * reduction;
+        if (tuning::spec.steer_compliance > 0.0f)
+        {
+            base *= (1.0f - tuning::spec.steer_compliance);
+        }
 
         // bump steer
         float front_left_bump  = wheels[front_left].compression * cfg.suspension_travel * tuning::spec.front_bump_steer;
