@@ -241,6 +241,8 @@ namespace car
         float        brake_temp           = 30.0f;
         float        wear                 = 0.0f;
         surface_type contact_surface      = surface_asphalt;
+        float        effective_radius     = 0.0f;
+        float        dynamic_camber       = 0.0f;
     };
 
     struct input_state
@@ -321,8 +323,8 @@ namespace car
 
     // telemetry: writes a per-tick csv of body + per-wheel state to car_telemetry.csv
     // in the working directory. opens lazily, closes when tuning::log_to_file is off,
-    // and flushes periodically so the file survives a crash. columns are tuned for
-    // diagnosing handling issues (spin-out, self-alignment, weight transfer)
+    // and flushes periodically so the file survives a crash. columns tuned for
+    // diagnosing handling: spin out, self align, weight transfer, thermals, grip, geometry
     struct telemetry_dump
     {
         FILE* file          = nullptr;
@@ -397,7 +399,24 @@ namespace car
                 "fl_comp,fr_comp,rl_comp,rr_comp,"
                 "fl_sweep_dist,fr_sweep_dist,rl_sweep_dist,rr_sweep_dist,"
                 "fl_spring_force,fr_spring_force,rl_spring_force,rr_spring_force,"
-                "fl_contact_ny,fr_contact_ny,rl_contact_ny,rr_contact_ny\n");
+                "fl_contact_ny,fr_contact_ny,rl_contact_ny,rr_contact_ny,"
+                // upgrades levels and key handling state that changes at runtime
+                "eng_up,susp_up,tire_up,brake_up,aero_up,weight_up,"
+                // per wheel brake and wear directly affect braking and grip
+                "fl_brake_temp,fr_brake_temp,rl_brake_temp,rr_brake_temp,"
+                "fl_wear,fr_wear,rl_wear,rr_wear,"
+                // tire thermals surface avg core drive grip via temp factor
+                "fl_surf_temp,fr_surf_temp,rl_surf_temp,rr_surf_temp,"
+                "fl_core_temp,fr_core_temp,rl_core_temp,rr_core_temp,"
+                // instantaneous efficiency and grip multipliers used this tick
+                "fl_brake_eff,fr_brake_eff,rl_brake_eff,rr_brake_eff,"
+                "fl_grip_temp_f,fr_grip_temp_f,rl_grip_temp_f,rr_grip_temp_f,"
+                "fl_grip_wear_f,fr_grip_wear_f,rl_grip_wear_f,rr_grip_wear_f,"
+                // new geometry effective loaded radius and dynamic camber used in slip grip calcs
+                "fl_eff_r,fr_eff_r,rl_eff_r,rr_eff_r,"
+                "fl_dyn_camb,fr_dyn_camb,rl_dyn_camb,rr_dyn_camb,"
+                "fl_abs,fr_abs,rl_abs,rr_abs,"
+                "mass,tire_friction,brake_force,engine_peak_tq\n");
             frame_counter = 0;
             elapsed_time  = 0.0f;
             return true;
@@ -436,6 +455,13 @@ namespace car
                 body_slip_deg = atan2f(lateral_speed, forward_speed) * 180.0f / PxPi;
             }
 
+            // derive handling multipliers for this tick, inlined to avoid include cycle
+            auto brake_eff = [](float t){ float amb=tuning::spec.brake_ambient_temp; float opt=PxMax(tuning::spec.brake_optimal_temp,amb+10.f); float fad=PxMax(tuning::spec.brake_fade_temp,opt+10.f); if(t>=fad)return 0.6f; if(t<opt){float u=PxClamp((t-amb)/PxMax(opt-amb,1.f),0.f,1.f);return 0.8f+0.2f*u;} float u=(t-opt)/PxMax(fad-opt,1.f); return PxClamp(1.f-0.4f*u,0.5f,1.f); };
+            auto temp_gf  = [](float s){ float dev=fabsf(s-tuning::spec.tire_optimal_temp); float n=PxClamp(dev/PxMax(tuning::spec.tire_temp_range,1.f),0.f,1.f); return 1.f - n*n * tuning::spec.tire_grip_temp_factor; };
+            float be_fl = brake_eff(wheels[front_left].brake_temp),  be_fr=brake_eff(wheels[front_right].brake_temp),  be_rl=brake_eff(wheels[rear_left].brake_temp),  be_rr=brake_eff(wheels[rear_right].brake_temp);
+            float tg_fl = temp_gf(wheels[front_left].thermal.avg_surface()), tg_fr=temp_gf(wheels[front_right].thermal.avg_surface()), tg_rl=temp_gf(wheels[rear_left].thermal.avg_surface()), tg_rr=temp_gf(wheels[rear_right].thermal.avg_surface());
+            float wg_fl = 1.f - wheels[front_left].wear * tuning::spec.tire_grip_wear_loss, wg_fr=1.f - wheels[front_right].wear * tuning::spec.tire_grip_wear_loss, wg_rl=1.f - wheels[rear_left].wear * tuning::spec.tire_grip_wear_loss, wg_rr=1.f - wheels[rear_right].wear * tuning::spec.tire_grip_wear_loss;
+
             fprintf(file,
                 "%d,%.3f,%.4f,"
                 "%.2f,%.2f,%.2f,"
@@ -458,7 +484,19 @@ namespace car
                 "%.3f,%.3f,%.3f,%.3f,"
                 "%.4f,%.4f,%.4f,%.4f,"
                 "%.1f,%.1f,%.1f,%.1f,"
-                "%.3f,%.3f,%.3f,%.3f\n",
+                "%.3f,%.3f,%.3f,%.3f,"
+                // upgrades
+                "%d,%d,%d,%d,%d,%d,"
+                // brake wear
+                "%.1f,%.1f,%.1f,%.1f,%.3f,%.3f,%.3f,%.3f,"
+                // thermals
+                "%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,"
+                // eff grip factors
+                "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,"
+                // eff r dyn camb
+                "%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,"
+                "%d,%d,%d,%d,"
+                "%.1f,%.3f,%.1f,%.1f\n",
                 frame_counter, elapsed_time, dt,
                 pose.p.x, pose.p.y, pose.p.z,
                 speed_kmh, forward_speed, lateral_speed,
@@ -495,7 +533,29 @@ namespace car
                 spring_force[front_left],               spring_force[front_right],
                 spring_force[rear_left],                spring_force[rear_right],
                 wheels[front_left].contact_normal.y,    wheels[front_right].contact_normal.y,
-                wheels[rear_left].contact_normal.y,     wheels[rear_right].contact_normal.y);
+                wheels[rear_left].contact_normal.y,     wheels[rear_right].contact_normal.y,
+                // upgrades
+                car::upgrades.engine, car::upgrades.suspension, car::upgrades.tires, car::upgrades.brakes, car::upgrades.aero, car::upgrades.weight,
+                // brake temp wear
+                wheels[front_left].brake_temp, wheels[front_right].brake_temp, wheels[rear_left].brake_temp, wheels[rear_right].brake_temp,
+                wheels[front_left].wear,       wheels[front_right].wear,       wheels[rear_left].wear,       wheels[rear_right].wear,
+                // thermals
+                wheels[front_left].thermal.avg_surface(), wheels[front_right].thermal.avg_surface(),
+                wheels[rear_left].thermal.avg_surface(),  wheels[rear_right].thermal.avg_surface(),
+                wheels[front_left].thermal.core, wheels[front_right].thermal.core,
+                wheels[rear_left].thermal.core,  wheels[rear_right].thermal.core,
+                // effs and factors what actually multiplies grip brake this tick
+                be_fl, be_fr, be_rl, be_rr,
+                tg_fl, tg_fr, tg_rl, tg_rr,
+                wg_fl, wg_fr, wg_rl, wg_rr,
+                // computed geometry used in this ticks slip and force
+                wheels[front_left].effective_radius, wheels[front_right].effective_radius,
+                wheels[rear_left].effective_radius,  wheels[rear_right].effective_radius,
+                wheels[front_left].dynamic_camber,   wheels[front_right].dynamic_camber,
+                wheels[rear_left].dynamic_camber,    wheels[rear_right].dynamic_camber,
+                abs_active[front_left] ? 1 : 0, abs_active[front_right] ? 1 : 0,
+                abs_active[rear_left] ? 1 : 0,  abs_active[rear_right] ? 1 : 0,
+                cfg.mass, tuning::spec.tire_friction, tuning::spec.brake_force, tuning::spec.engine_peak_torque);
 
             if (frame_counter % 200 == 0)
             {
@@ -595,6 +655,8 @@ namespace car
         fixed |= sanitize_float(w.thermal.surface[1]);
         fixed |= sanitize_float(w.thermal.surface[2]);
         fixed |= sanitize_float(w.thermal.core);
+        fixed |= sanitize_float(w.effective_radius);
+        fixed |= sanitize_float(w.dynamic_camber);
         return fixed;
     }
 

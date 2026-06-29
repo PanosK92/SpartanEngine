@@ -68,7 +68,10 @@ namespace car
             float g = is_front(i) ? tuning::spec.front_camber_gain : tuning::spec.rear_camber_gain;
             float dyn_camb = camb + g * w.compression * cfg.suspension_travel;
 
-            // --- airborne branch ---
+            w.effective_radius = wr_eff;
+            w.dynamic_camber   = dyn_camb;
+
+            // airborne branch
             if (!w.grounded || w.tire_load <= 0.0f)
             {
                 if (tuning::log_pacejka)

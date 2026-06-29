@@ -346,6 +346,7 @@ namespace car
         {
             wheels[i] = wheel();
             abs_active[i] = false;
+            wheels[i].effective_radius = cfg.wheel_radius_for(i);
         }
         input = input_state();
         input_target = input_state();
@@ -518,10 +519,13 @@ namespace car
         for (int i = 0; i < wheel_count; i++)
         {
             wheels[i].brake_temp = PxMax(tuning::spec.brake_ambient_temp, 0.0f);
+            wheels[i].wear = 0.0f;
             wheels[i].thermal.surface[0] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
             wheels[i].thermal.surface[1] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
             wheels[i].thermal.surface[2] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
             wheels[i].thermal.core = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
+            wheels[i].effective_radius = (i < 2 ? cfg.front_wheel_radius : cfg.rear_wheel_radius);
+            wheels[i].dynamic_camber = 0.0f;
         }
     }
 
@@ -901,6 +905,8 @@ namespace car
     WHEEL_GETTER(longitudinal_force, longitudinal_force)
     WHEEL_GETTER(angular_velocity, angular_velocity)
     WHEEL_GETTER(rotation, rotation)
+    WHEEL_GETTER(effective_radius, effective_radius)
+    WHEEL_GETTER(dynamic_camber, dynamic_camber)
     #undef WHEEL_GETTER
     inline float get_wheel_temperature(int i) { return is_valid_wheel(i) ? wheels[i].thermal.avg_surface() : 0.0f; }
 

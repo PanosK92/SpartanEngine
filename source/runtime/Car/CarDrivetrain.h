@@ -561,7 +561,7 @@ namespace car
             return;
         }
 
-        if (forward_speed_kmh > tuning::spec.braking_speed_threshold)
+        if (fabsf(forward_speed_kmh) > tuning::spec.braking_speed_threshold)
         {
             float avg_r = (cfg.front_wheel_radius + cfg.rear_wheel_radius) * 0.5f;
             float total_torque = tuning::spec.brake_force * avg_r * input.brake;
