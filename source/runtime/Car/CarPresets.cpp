@@ -227,6 +227,12 @@ namespace car
             READ_FLOAT(lsd_lock_ratio_accel);
             READ_FLOAT(lsd_lock_ratio_decel);
             READ_INT(diff_type);
+            READ_INT(engine_stage_max);
+            READ_INT(suspension_stage_max);
+            READ_INT(tires_stage_max);
+            READ_INT(brakes_stage_max);
+            READ_INT(aero_stage_max);
+            READ_INT(weight_stage_max);
             READ_FLOAT(driveshaft_stiffness);
 
             READ_FLOAT(input_deadzone);

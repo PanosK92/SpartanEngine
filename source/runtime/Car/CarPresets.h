@@ -221,6 +221,13 @@ namespace car
         float lsd_lock_ratio_decel;
         int   diff_type;
 
+        int engine_stage_max;
+        int suspension_stage_max;
+        int tires_stage_max;
+        int brakes_stage_max;
+        int aero_stage_max;
+        int weight_stage_max;
+
         // driveshaft
         float driveshaft_stiffness;  // Nm/rad torsional compliance
 
@@ -490,6 +497,13 @@ namespace car
             boost_torque_mult   = 0.0f;
             boost_min_rpm       = 0.0f;
 
+            engine_stage_max     = 1;
+            suspension_stage_max = 1;
+            tires_stage_max      = 1;
+            brakes_stage_max     = 1;
+            aero_stage_max       = 0;
+            weight_stage_max     = 1;
+
         }
     };
 
@@ -725,6 +739,13 @@ namespace car
             boost_torque_mult   = 0.0f;
             boost_min_rpm       = 0.0f;
 
+            engine_stage_max     = 3;
+            suspension_stage_max = 2;
+            tires_stage_max      = 2;
+            brakes_stage_max     = 2;
+            aero_stage_max       = 1;
+            weight_stage_max     = 2;
+
         }
     };
 
@@ -957,6 +978,13 @@ namespace car
             boost_wastegate_rpm = 6000.0f;
             boost_torque_mult   = 0.25f;
             boost_min_rpm       = 2800.0f;
+
+            engine_stage_max     = 3;
+            suspension_stage_max = 2;
+            tires_stage_max      = 2;
+            brakes_stage_max     = 2;
+            aero_stage_max       = 1;
+            weight_stage_max     = 2;
 
         }
     };

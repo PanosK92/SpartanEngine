@@ -38,7 +38,7 @@
         drivetrain_type="0" torque_split_front="0" lsd_preload="120" lsd_lock_ratio_accel="0.4" lsd_lock_ratio_decel="0.25" diff_type="2" driveshaft_stiffness="7000"
         input_deadzone="0.01" steering_deadzone="0.001" braking_speed_threshold="3" linear_damping="0.001" angular_damping="0.05" yaw_damping="4000"
         abs_enabled="false" abs_slip_threshold="0.15" abs_release_rate="0.7" abs_pulse_frequency="15" tc_enabled="false" tc_slip_threshold="0.08" tc_power_reduction="0.8" tc_response_rate="15"
-        turbo_enabled="false" boost_max_pressure="0" boost_spool_rate="0" boost_wastegate_rpm="0" boost_torque_mult="0" boost_min_rpm="0" />
+        turbo_enabled="false" boost_max_pressure="0" boost_spool_rate="0" boost_wastegate_rpm="0" boost_torque_mult="0" boost_min_rpm="0" engine_stage_max="3" suspension_stage_max="2" tires_stage_max="2" brakes_stage_max="2" aero_stage_max="1" weight_stage_max="2" />
 
     <preset name="Mitsubishi Lancer Evolution IX"
         mass="1420" length="4.49" width="1.77" height="1.45" wheelbase="2.625" track_front="1.515" track_rear="1.515" suspension_height="0.36" suspension_travel="0.15"
@@ -58,5 +58,5 @@
         drivetrain_type="2" torque_split_front="0.5" lsd_preload="100" lsd_lock_ratio_accel="0.45" lsd_lock_ratio_decel="0.2" diff_type="2" driveshaft_stiffness="5000"
         input_deadzone="0.01" steering_deadzone="0.001" braking_speed_threshold="3" linear_damping="0.001" angular_damping="0.08" yaw_damping="3000"
         abs_enabled="false" abs_slip_threshold="0.15" abs_release_rate="0.7" abs_pulse_frequency="12" tc_enabled="false" tc_slip_threshold="0.1" tc_power_reduction="0.7" tc_response_rate="12"
-        turbo_enabled="true" boost_max_pressure="1.35" boost_spool_rate="3.5" boost_wastegate_rpm="6000" boost_torque_mult="0.25" boost_min_rpm="2800" />
+        turbo_enabled="true" boost_max_pressure="1.35" boost_spool_rate="3.5" boost_wastegate_rpm="6000" boost_torque_mult="0.25" boost_min_rpm="2800" engine_stage_max="3" suspension_stage_max="2" tires_stage_max="2" brakes_stage_max="2" aero_stage_max="1" weight_stage_max="2" />
 </car_presets>

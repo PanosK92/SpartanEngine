@@ -55,12 +55,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //   stiff spring-damper systems to a variable timestep.
 //
 // - pacejka magic formula tires with friction-circle combined slip
-//   the pacejka model describes how tire grip varies with slip using empirical
-//   curve-fit coefficients (B, C, D, E). combined slip is handled by evaluating
-//   each pacejka curve at the combined slip magnitude and projecting the result
-//   onto the longitudinal / lateral axes (sigma_x / sigma_y weighting). it is not
-//   the full MF 5.2 g_xa/g_ya combined model, but it produces the correct friction
-//   circle behavior: braking mid-corner reduces cornering grip and vice versa.
+//   pure long and lat curves are evaluated separately then limited by a friction
+//   circle in normalized space. lateral input uses tan(alpha). this gives correct
+//   pure-slip shapes and proper combined grip trade-off without the old magnitude
+//   projection.
 //
 // - 3-zone surface + core tire thermal model
 //   each tire tracks three surface zones (inside, middle, outside) plus a core
@@ -330,6 +328,8 @@ namespace car
         config                  car_config;
     };
 
+    inline void apply_car_spec(const car_preset& spec, bool set_as_base);
+
     inline bool setup(const setup_params& params)
     {
         if (!params.physics || !params.scene)
@@ -340,8 +340,7 @@ namespace car
         cfg = params.car_config;
         // overlay the active preset's physical parameters before deriving anything,
         // so the body, springs and inertias all use this car's real numbers
-        apply_preset_geometry(tuning::spec);
-        compute_constants();
+        apply_car_spec(tuning::spec, true);
 
         for (int i = 0; i < wheel_count; i++)
         {
@@ -350,25 +349,8 @@ namespace car
         }
         input = input_state();
         input_target = input_state();
-        abs_phase = 0.0f;
-        tc_reduction = 0.0f;
-        tc_active = false;
-        engine_rpm = tuning::spec.engine_idle_rpm;
-        current_gear = 2;
-        shift_timer = 0.0f;
-        is_shifting = false;
-        clutch = 1.0f;
-        shift_cooldown = 0.0f;
-        last_shift_direction = 0;
-        boost_pressure = 0.0f;
-        rev_limiter_active = false;
-        downshift_blip_timer = 0.0f;
-        drs_active = false;
-        longitudinal_accel = 0.0f;
-        lateral_accel = 0.0f;
-        road_bump_phase = 0.0f;
-        driveshaft_twist = 0.0f;
-        prev_velocity = PxVec3(0);
+        reset_drivetrain_transients();
+        reset_wheel_thermals();
 
         material = params.physics->createMaterial(0.8f, 0.7f, 0.1f);
         if (!material)
@@ -490,23 +472,201 @@ namespace car
         SP_LOG_INFO("car center of mass set to (%.2f, %.2f, %.2f)", com.x, com.y, com.z);
     }
 
+    inline void apply_car_spec(const car_preset& spec, bool set_as_base)
+    {
+        tuning::spec = spec;
+        if (set_as_base)
+        {
+            base_spec = spec;
+        }
+        apply_preset_geometry(spec);
+        compute_constants();
+        update_mass_properties();
+    }
+
+    inline void reset_drivetrain_transients()
+    {
+        engine_rpm = tuning::spec.engine_idle_rpm;
+        current_gear = (tuning::spec.gear_count > 2) ? 2 : 1;
+        shift_timer = 0.0f;
+        is_shifting = false;
+        clutch = 1.0f;
+        shift_cooldown = 0.0f;
+        last_shift_direction = 0;
+        redline_hold_timer = 0.0f;
+        boost_pressure = 0.0f;
+        rev_limiter_active = false;
+        downshift_blip_timer = 0.0f;
+        driveshaft_twist = 0.0f;
+        tc_reduction = 0.0f;
+        tc_active = false;
+        abs_phase = 0.0f;
+        for (int i = 0; i < wheel_count; i++)
+        {
+            abs_active[i] = false;
+        }
+        longitudinal_accel = 0.0f;
+        lateral_accel = 0.0f;
+        road_bump_phase = 0.0f;
+        prev_velocity = PxVec3(0);
+        drs_active = false;
+        engine_brake_torque = 0.0f;
+    }
+
+    inline void reset_wheel_thermals()
+    {
+        for (int i = 0; i < wheel_count; i++)
+        {
+            wheels[i].brake_temp = PxMax(tuning::spec.brake_ambient_temp, 0.0f);
+            wheels[i].thermal.surface[0] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
+            wheels[i].thermal.surface[1] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
+            wheels[i].thermal.surface[2] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
+            wheels[i].thermal.core = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
+        }
+    }
+
     // swap the active car preset at runtime
     // this is the real entry point, the forward declaration in CarState.h points here.
     // it has to live in CarSimulation.h because it touches the physics body and recomputes geometry.
     inline void load_car(const car_preset& new_spec)
     {
-        tuning::spec = new_spec;
+        upgrades = active_upgrades{};
+        apply_car_spec(new_spec, true);
 
-        apply_preset_geometry(new_spec);
-        compute_constants();
-
-        // also push the new wheel offsets out so the next sync from visuals respects them
-        update_mass_properties();
+        reset_drivetrain_transients();
+        reset_wheel_thermals();
 
         SP_LOG_INFO("loaded car preset: %s (mass=%.0f kg, wheelbase=%.3f m, track f/r=%.3f/%.3f m, drivetrain=%s)",
             new_spec.name ? new_spec.name : "?",
             cfg.mass, cfg.wheelbase, cfg.track_front, cfg.track_rear,
             new_spec.drivetrain_type == 0 ? "rwd" : new_spec.drivetrain_type == 1 ? "fwd" : "awd");
+    }
+
+    inline car_preset make_upgraded_spec(const car_preset& base, const active_upgrades& ups)
+    {
+        car_preset p = base;
+        if (ups.engine > 0 && base.engine_stage_max > 0)
+        {
+            float m = 1.0f + 0.05f * ups.engine;
+            p.engine_peak_torque *= m;
+            if (ups.engine >= 2)
+            {
+                p.engine_redline_rpm += 250.0f * (ups.engine - 1);
+            }
+            if (ups.engine >= 3)
+            {
+                p.engine_max_rpm += 300.0f;
+            }
+        }
+        if (ups.suspension > 0 && base.suspension_stage_max > 0)
+        {
+            float s = 1.0f + 0.08f * ups.suspension;
+            p.front_spring_freq *= s;
+            p.rear_spring_freq *= s;
+            p.front_arb_stiffness *= s;
+            p.rear_arb_stiffness *= s;
+        }
+        if (ups.tires > 0 && base.tires_stage_max > 0)
+        {
+            p.tire_friction += 0.05f * ups.tires;
+            p.tire_optimal_temp += 5.0f * ups.tires;
+        }
+        if (ups.brakes > 0 && base.brakes_stage_max > 0)
+        {
+            p.brake_force *= (1.0f + 0.08f * ups.brakes);
+            p.brake_cooling_airflow *= (1.0f + 0.10f * ups.brakes);
+        }
+        if (ups.aero > 0 && base.aero_stage_max > 0)
+        {
+            float d = 0.10f * ups.aero;
+            p.lift_coeff_front -= d;
+            p.lift_coeff_rear -= d * 1.2f;
+        }
+        if (ups.weight > 0 && base.weight_stage_max > 0)
+        {
+            float wm = 1.0f - 0.015f * ups.weight;
+            p.mass *= wm;
+        }
+
+        p.mass = PxMax(p.mass, 200.0f);
+        p.engine_peak_torque = PxMax(p.engine_peak_torque, 10.0f);
+        p.engine_redline_rpm = PxMax(p.engine_redline_rpm, p.engine_idle_rpm + 100.0f);
+        p.tire_friction = PxMax(p.tire_friction, 0.1f);
+
+        return p;
+    }
+
+    inline void clamp_upgrade_stage(int& stage, int max_stage)
+    {
+        if (stage > max_stage)
+        {
+            stage = max_stage;
+        }
+        if (stage < 0)
+        {
+            stage = 0;
+        }
+    }
+
+    inline void reapply_upgrades()
+    {
+        clamp_upgrade_stage(upgrades.engine, base_spec.engine_stage_max);
+        clamp_upgrade_stage(upgrades.suspension, base_spec.suspension_stage_max);
+        clamp_upgrade_stage(upgrades.tires, base_spec.tires_stage_max);
+        clamp_upgrade_stage(upgrades.brakes, base_spec.brakes_stage_max);
+        clamp_upgrade_stage(upgrades.aero, base_spec.aero_stage_max);
+        clamp_upgrade_stage(upgrades.weight, base_spec.weight_stage_max);
+
+        bool save_abs = tuning::spec.abs_enabled;
+        bool save_tc = tuning::spec.tc_enabled;
+        bool save_manual = tuning::spec.manual_transmission;
+        bool save_turbo = tuning::spec.turbo_enabled;
+        bool save_drs = tuning::spec.drs_enabled;
+        int save_diff = tuning::spec.diff_type;
+
+        float save_abs_th = tuning::spec.abs_slip_threshold;
+        float save_abs_release = tuning::spec.abs_release_rate;
+        float save_abs_pulse = tuning::spec.abs_pulse_frequency;
+
+        float save_tc_th = tuning::spec.tc_slip_threshold;
+        float save_tc_pwr = tuning::spec.tc_power_reduction;
+        float save_tc_rate = tuning::spec.tc_response_rate;
+
+        float save_bst_max = tuning::spec.boost_max_pressure;
+        float save_bst_spool = tuning::spec.boost_spool_rate;
+        float save_bst_waste = tuning::spec.boost_wastegate_rpm;
+        float save_bst_torq = tuning::spec.boost_torque_mult;
+        float save_bst_min = tuning::spec.boost_min_rpm;
+
+        car_preset eff = make_upgraded_spec(base_spec, upgrades);
+        apply_car_spec(eff, false);
+
+        tuning::spec.abs_enabled = save_abs;
+        tuning::spec.tc_enabled = save_tc;
+        tuning::spec.manual_transmission = save_manual;
+        tuning::spec.turbo_enabled = save_turbo;
+        tuning::spec.drs_enabled = save_drs;
+        tuning::spec.diff_type = save_diff;
+
+        tuning::spec.abs_slip_threshold = save_abs_th;
+        tuning::spec.abs_release_rate = save_abs_release;
+        tuning::spec.abs_pulse_frequency = save_abs_pulse;
+
+        tuning::spec.tc_slip_threshold = save_tc_th;
+        tuning::spec.tc_power_reduction = save_tc_pwr;
+        tuning::spec.tc_response_rate = save_tc_rate;
+
+        tuning::spec.boost_max_pressure = save_bst_max;
+        tuning::spec.boost_spool_rate = save_bst_spool;
+        tuning::spec.boost_wastegate_rpm = save_bst_waste;
+        tuning::spec.boost_torque_mult = save_bst_torq;
+        tuning::spec.boost_min_rpm = save_bst_min;
+    }
+
+    inline void reset_upgrades()
+    {
+        upgrades = active_upgrades{};
+        apply_car_spec(base_spec, false);
     }
 
     inline void set_center_of_mass(float x, float y, float z)

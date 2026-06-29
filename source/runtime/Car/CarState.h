@@ -55,6 +55,11 @@ namespace car
     // defined in CarSimulation.h because it also has to update the cached cfg geometry,
     // recompute wheel offsets and refresh the body's mass and inertia tensor
     void load_car(const car_preset& new_spec);
+    void reset_drivetrain_transients();
+    void reset_wheel_thermals();
+    void clamp_upgrade_stage(int& stage, int max_stage);
+    void reapply_upgrades();
+    void reset_upgrades();
 
     namespace tuning
     {
@@ -233,7 +238,7 @@ namespace car
         float        longitudinal_force   = 0.0f;
         float        net_torque           = 0.0f;
         tire_thermal thermal;
-        float        brake_temp           = tuning::spec.brake_ambient_temp;
+        float        brake_temp           = 30.0f;
         float        wear                 = 0.0f;
         surface_type contact_surface      = surface_asphalt;
     };
@@ -246,12 +251,24 @@ namespace car
         float handbrake = 0.0f;
     };
 
+    struct active_upgrades
+    {
+        int engine = 0;
+        int suspension = 0;
+        int tires = 0;
+        int brakes = 0;
+        int aero = 0;
+        int weight = 0;
+    };
+
     // all of the following are `inline` (not `inline static`) at namespace scope so they
     // get external linkage. see the comment on aero_debug above for why this matters
     inline PxRigidDynamic* body             = nullptr;
     inline PxMaterial*     material         = nullptr;
     inline PxConvexMesh*   wheel_sweep_mesh = nullptr;
     inline config          cfg;
+    inline car_preset      base_spec;
+    inline active_upgrades upgrades;
     inline wheel           wheels[wheel_count];
     inline input_state     input;
     inline input_state     input_target;
@@ -269,10 +286,10 @@ namespace car
     inline bool            abs_active[wheel_count] = {};
     inline float           tc_reduction            = 0.0f;
     inline bool            tc_active               = false;
-    inline float           engine_rpm              = tuning::spec.engine_idle_rpm;
+    inline float           engine_rpm              = 800.0f;
     // gear encoding: 0 = reverse, 1 = neutral (gear_ratios[1] == 0 acts as the sentinel),
     // 2..8 = forward gears. use the helpers below rather than literal-comparing the index.
-    inline int             current_gear            = 2;
+    inline int             current_gear            = 1;
 
     inline bool is_in_reverse()      { return current_gear == 0; }
     inline bool is_in_neutral()      { return current_gear == 1; }
@@ -572,6 +589,12 @@ namespace car
         fixed |= sanitize_float(w.net_torque);
         fixed |= sanitize_vec(w.contact_point);
         fixed |= sanitize_vec(w.contact_normal, PxVec3(0, 1, 0));
+        fixed |= sanitize_float(w.wear);
+        fixed |= sanitize_float(w.brake_temp);
+        fixed |= sanitize_float(w.thermal.surface[0]);
+        fixed |= sanitize_float(w.thermal.surface[1]);
+        fixed |= sanitize_float(w.thermal.surface[2]);
+        fixed |= sanitize_float(w.thermal.core);
         return fixed;
     }
 

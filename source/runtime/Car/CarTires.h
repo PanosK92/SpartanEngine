@@ -115,6 +115,9 @@ namespace car
             float vy = wheel_vel.dot(wheel_lat);
             float wheel_speed  = w.angular_velocity * wr;
             float ground_speed = sqrtf(vx * vx + vy * vy);
+            float slip_v_long = fabsf(wheel_speed - vx);
+            float slip_v_lat  = fabsf(vy);
+            float slip_v      = sqrtf(slip_v_long * slip_v_long + slip_v_lat * slip_v_lat);
             float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
 
             if (tuning::log_pacejka)
@@ -200,31 +203,21 @@ namespace car
             float lat_B_eff  = tuning::spec.lat_B * B_load_scale * pressure_B_scale;
             float long_B_eff = tuning::spec.long_B * B_load_scale;
 
-            // friction-circle combined slip via sigma_x / sigma_y vector projection
-            float abs_sr = fabsf(w.slip_ratio);
-            float abs_sa = fabsf(pacejka_slip_angle);
-            float combined_slip = sqrtf(abs_sr * abs_sr + abs_sa * abs_sa);
-            // symmetric fallback at rest avoids silently biasing the weights toward one axis
-            // (in practice both Fx0/Fy0 are ~0 here anyway, so this only matters if extended later)
-            float sigma_x = (combined_slip > 0.001f) ? abs_sr / combined_slip : 0.0f;
-            float sigma_y = (combined_slip > 0.001f) ? abs_sa / combined_slip : 0.0f;
+            float long_input = w.slip_ratio;
+            float lat_input  = tanf(pacejka_slip_angle);
+            float Fx0 = pacejka(long_input, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
+            float Fy0 = pacejka(lat_input,  lat_B_eff, tuning::spec.lat_C,  tuning::spec.lat_D,  tuning::spec.lat_E);
 
-            float Fx0 = pacejka(combined_slip, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
-            float Fy0 = pacejka(combined_slip, lat_B_eff, tuning::spec.lat_C, tuning::spec.lat_D, tuning::spec.lat_E);
-            float long_mu = Fx0 * sigma_x * ((w.slip_ratio >= 0.0f) ? 1.0f : -1.0f);
-            float lat_mu  = Fy0 * sigma_y * ((pacejka_slip_angle >= 0.0f) ? 1.0f : -1.0f);
-
-            // lateral grip floor
-            float lat_abs  = fabsf(lat_mu);
-            float long_abs = fabsf(long_mu);
-            if (lat_abs < tuning::spec.min_lateral_grip * long_abs && abs_sa > 0.001f)
+            float f = sqrtf(Fx0 * Fx0 + Fy0 * Fy0);
+            if (f > 1.0f && f > 0.0f)
             {
-                float scale = tuning::spec.min_lateral_grip * long_abs / PxMax(lat_abs, 0.001f);
-                lat_mu *= PxMin(scale, 2.0f);
+                float s = 1.0f / f;
+                Fx0 *= s;
+                Fy0 *= s;
             }
 
-            float dynamic_lat_f  = -lat_mu * peak_force;
-            float dynamic_long_f =  long_mu * peak_force;
+            float dynamic_lat_f  = -Fy0 * peak_force;
+            float dynamic_long_f =  Fx0 * peak_force;
 
             float camber = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
             bool is_left_wheel = (i == front_left || i == rear_left);
@@ -263,9 +256,9 @@ namespace car
             float cooling_air = tuning::spec.tire_cooling_rate + ground_speed * tuning::spec.tire_cooling_airflow;
             float force_magnitude = sqrtf(long_f * long_f + lat_f * lat_f);
             float normalized_force = force_magnitude / tuning::spec.load_reference;
-            float slip_intensity_val = fabsf(w.slip_angle) + fabsf(w.slip_ratio);
+            float slip_ratio_eff = PxClamp(slip_v / PxMax(ground_speed, 0.5f), 0.0f, 2.0f);
             float speed_heat_scale = PxClamp(ground_speed / 2.0f, 0.0f, 1.0f);
-            float friction_work = normalized_force * slip_intensity_val * pacejka_weight * speed_heat_scale;
+            float friction_work = normalized_force * slip_ratio_eff * pacejka_weight * speed_heat_scale;
             float base_heat = friction_work * tuning::spec.tire_heat_from_slip * pressure_heat_mult + rolling_heat;
 
             // camber determines heat distribution across zones:
@@ -306,7 +299,7 @@ namespace car
                 total_wear += zone_wear;
             }
             float wear_rate = total_wear / 3.0f;
-            float wear_amount = wear_rate * slip_intensity_val * ground_speed * dt;
+            float wear_amount = wear_rate * slip_v * dt;
             w.wear = PxMin(w.wear + PxMax(wear_amount, 0.0f), 1.0f);
 
             if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)

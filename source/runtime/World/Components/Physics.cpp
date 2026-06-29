@@ -1386,6 +1386,9 @@ namespace spartan
             {
                 car::wheels[i].angular_velocity = 0.0f;
             }
+
+            car::reset_drivetrain_transients();
+            car::reset_wheel_thermals();
             return;
         }
 

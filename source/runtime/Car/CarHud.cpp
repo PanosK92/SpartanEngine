@@ -926,6 +926,80 @@ namespace spartan::car_hud
             }
         }
 
+        void tab_upgrades(Physics* /*physics*/)
+        {
+            ImGui::SeparatorText("Available upgrades");
+            ImGui::TextColored(imvec4_from_u32(text_dim), "%s", car::tuning::spec.name ? car::tuning::spec.name : "");
+            if (ImGui::Button("Reset to stock"))
+            {
+                car::reset_upgrades();
+            }
+            hud_tooltip("removes all upgrades, restores base preset");
+            auto draw_stages = [](const char* name, int& level, int maxs, const char* desc)
+            {
+                if (maxs <= 0)
+                {
+                    int before = level;
+                    car::clamp_upgrade_stage(level, 0);
+                    if (level != before)
+                    {
+                        car::reapply_upgrades();
+                    }
+                    return;
+                }
+                int before = level;
+                car::clamp_upgrade_stage(level, maxs);
+                if (level != before)
+                {
+                    car::reapply_upgrades();
+                }
+                ImGui::PushID(name);
+                ImGui::SeparatorText(name);
+                for (int s = 0; s <= maxs; s++)
+                {
+                    if (s > 0)
+                    {
+                        ImGui::SameLine();
+                    }
+                    ImGui::PushID(s);
+                    char lbl[2] = {'0', 0};
+                    lbl[0] = (char)('0' + s);
+                    if (level == s)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.45f, 0.72f, 1.0f));
+                    }
+                    if (ImGui::SmallButton(lbl))
+                    {
+                        level = s;
+                        car::reapply_upgrades();
+                    }
+                    if (level == s)
+                    {
+                        ImGui::PopStyleColor();
+                    }
+                    ImGui::PopID();
+                }
+                if (desc && desc[0])
+                {
+                    ImGui::TextColored(imvec4_from_u32(text_dim), "%s", desc);
+                }
+                ImGui::PopID();
+            };
+            draw_stages("Engine", car::upgrades.engine, car::base_spec.engine_stage_max, "Increases engine power and redline.");
+            draw_stages("Suspension", car::upgrades.suspension, car::base_spec.suspension_stage_max, "Stiffer springs and dampers for sharper handling.");
+            draw_stages("Tires", car::upgrades.tires, car::base_spec.tires_stage_max, "Higher grip compound for better traction and cornering.");
+            draw_stages("Brakes", car::upgrades.brakes, car::base_spec.brakes_stage_max, "Stronger brakes with improved cooling to resist fade.");
+            draw_stages("Aero", car::upgrades.aero, car::base_spec.aero_stage_max, "Adds downforce for high-speed stability and cornering grip.");
+            draw_stages("Weight", car::upgrades.weight, car::base_spec.weight_stage_max, "Reduces overall mass for better acceleration and handling.");
+            if (car::base_spec.engine_peak_torque > 0.0f)
+            {
+                float cur = car::tuning::spec.engine_peak_torque;
+                float bse = car::base_spec.engine_peak_torque;
+                ImGui::SeparatorText("Delta");
+                ImGui::TextColored(imvec4_from_u32(text_label), "torque %.0f vs %.0f", cur, bse);
+            }
+        }
+
         // tires tab: 2x2 table of wheel cells, each cell holds the tire visual plus a temps sub-table
         void tab_tires(Physics* physics)
         {
@@ -1651,6 +1725,15 @@ namespace spartan::car_hud
                     if (ImGui::BeginChild("##car_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
                     {
                         tab_car(physics);
+                    }
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Upgrades"))
+                {
+                    if (ImGui::BeginChild("##upgrades_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                    {
+                        tab_upgrades(physics);
                     }
                     ImGui::EndChild();
                     ImGui::EndTabItem();

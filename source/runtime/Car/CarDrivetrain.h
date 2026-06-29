@@ -57,7 +57,13 @@ namespace car
 
     inline float get_engine_torque(float rpm)
     {
-        rpm = PxClamp(rpm, tuning::spec.engine_idle_rpm, tuning::spec.engine_max_rpm);
+        float idl = tuning::spec.engine_idle_rpm;
+        float mx = tuning::spec.engine_max_rpm;
+        if (idl > mx)
+        {
+            mx = idl + 1000.0f;
+        }
+        rpm = PxClamp(rpm, idl, mx);
 
         // breakpoints are relative to the engine's actual operating range
         float idle    = tuning::spec.engine_idle_rpm;
@@ -67,6 +73,10 @@ namespace car
 
         // split idle-to-peak into three progressive ramp zones
         float ramp_range = peak - idle;
+        if (ramp_range <= 0.0f)
+        {
+            ramp_range = 1.0f;
+        }
         float bp1 = idle + ramp_range * 0.30f; // low-end spool
         float bp2 = idle + ramp_range * 0.65f; // mid-range build
 
@@ -90,6 +100,10 @@ namespace car
         }
         else
         {
+            if (max_rpm <= redline)
+            {
+                max_rpm = redline + 1.0f;
+            }
             factor = 0.80f * (1.0f - ((rpm - redline) / (max_rpm - redline)) * 0.8f);
         }
 
@@ -565,15 +579,15 @@ namespace car
                 float brake_efficiency = get_brake_efficiency(wheels[i].brake_temp);
                 t *= brake_efficiency;
 
-                float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;
-                wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, tuning::spec.brake_max_temp);
-
                 abs_active[i] = false;
                 if (tuning::spec.abs_enabled && wheels[i].grounded && -wheels[i].slip_ratio > tuning::spec.abs_slip_threshold)
                 {
                     abs_active[i] = true;
                     t *= (abs_phase < 0.5f) ? tuning::spec.abs_release_rate : 1.0f;
                 }
+
+                float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;
+                wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, tuning::spec.brake_max_temp);
 
                 // push brake torque into net_torque: the single semi-implicit integration in
                 // apply_tire_forces handles the actual spin-down and sign-reversal lock

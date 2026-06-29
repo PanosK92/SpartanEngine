@@ -57,8 +57,12 @@ namespace car
 
     inline float get_tire_temp_grip_factor(float temperature)
     {
-        float penalty = PxClamp(fabsf(temperature - tuning::spec.tire_optimal_temp) / tuning::spec.tire_temp_range, 0.0f, 1.0f);
-        return 1.0f - penalty * tuning::spec.tire_grip_temp_factor;
+        float opt = tuning::spec.tire_optimal_temp;
+        float range = PxMax(tuning::spec.tire_temp_range, 1.0f);
+        float dev = fabsf(temperature - opt);
+        float norm = PxClamp(dev / range, 0.0f, 1.0f);
+        float penalty = norm * norm * tuning::spec.tire_grip_temp_factor;
+        return 1.0f - penalty;
     }
 
     inline float get_camber_grip_factor(int wheel_index, float slip_angle)
@@ -83,18 +87,19 @@ namespace car
 
     inline float get_brake_efficiency(float temp)
     {
-        if (temp >= tuning::spec.brake_fade_temp)
+        float amb = tuning::spec.brake_ambient_temp;
+        float opt = PxMax(tuning::spec.brake_optimal_temp, amb + 10.0f);
+        float fade = PxMax(tuning::spec.brake_fade_temp, opt + 10.0f);
+        if (temp >= fade)
         {
             return 0.6f;
         }
-
-        if (temp < tuning::spec.brake_optimal_temp)
+        if (temp < opt)
         {
-            float t = PxClamp((temp - tuning::spec.brake_ambient_temp) / (tuning::spec.brake_optimal_temp - tuning::spec.brake_ambient_temp), 0.0f, 1.0f);
-            return 0.85f + 0.15f * t;
+            float t = PxClamp((temp - amb) / (opt - amb), 0.0f, 1.0f);
+            return 0.80f + 0.20f * t;
         }
-
-        float t = (temp - tuning::spec.brake_optimal_temp) / (tuning::spec.brake_fade_temp - tuning::spec.brake_optimal_temp);
-        return 1.0f - 0.4f * t;
+        float t = (temp - opt) / (fade - opt);
+        return PxClamp(1.0f - 0.4f * t, 0.5f, 1.0f);
     }
 }
