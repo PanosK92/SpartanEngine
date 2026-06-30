@@ -244,29 +244,6 @@ namespace car
             }
         }
 
-        // longitudinal weight transfer from body acceleration
-        float avg_wr = (cfg.front_wheel_radius + cfg.rear_wheel_radius) * 0.5f;
-        float com_height = fabsf(tuning::spec.center_of_mass_y) + avg_wr;
-        float weight_transfer = cfg.mass * longitudinal_accel * com_height / PxMax(cfg.wheelbase, 0.1f);
-        float max_transfer = cfg.mass * 9.81f * 0.25f;
-        weight_transfer = PxClamp(weight_transfer, -max_transfer, max_transfer);
-        float transfer_per_wheel = weight_transfer * 0.5f;
-        for (int i = 0; i < wheel_count; i++)
-        {
-            if (wheels[i].grounded)
-            {
-                if (is_front(i))
-                {
-                    wheels[i].tire_load -= transfer_per_wheel;
-                }
-                else
-                {
-                    wheels[i].tire_load += transfer_per_wheel;
-                }
-                wheels[i].tire_load = PxMax(wheels[i].tire_load, 0.0f);
-            }
-        }
-
         // lateral weight transfer: only the geometric component is added explicitly
         // the elastic component is already produced by the springs as the body rolls under lateral force
         // adding it here would double count it and starve the inside wheels of load at high lateral g

@@ -310,6 +310,7 @@ namespace car
     inline int             last_shift_direction    = 0;
     inline float           redline_hold_timer      = 0.0f;
     inline float           boost_pressure          = 0.0f;
+    inline float           motor_torque            = 0.0f;
     inline bool            rev_limiter_active      = false;
     inline float           downshift_blip_timer    = 0.0f;
     inline float           driveshaft_twist        = 0.0f;

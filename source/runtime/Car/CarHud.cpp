@@ -1480,9 +1480,16 @@ namespace spartan::car_hud
         {
             const engine_sound::debug_data& dbg = engine_sound::get_debug();
 
-            ImGui::SeparatorText("Engine state");
-            ImGui::TextColored(imvec4_from_u32(accent_warn), "RPM %.0f  |  Throttle %.0f%%  |  Boost %.2f bar  |  Firing %.1f Hz",
-                dbg.rpm, dbg.throttle * 100.0f, dbg.boost, dbg.firing_freq);
+            float ice_tq = car::get_engine_torque_current();
+            float mot_tq = car::get_motor_torque();
+            float rpm    = car::get_current_engine_rpm();
+            float boost  = car::get_boost_pressure();
+            float throt  = dbg.throttle;
+
+            ImGui::SeparatorText("Powertrain");
+            ImGui::TextColored(imvec4_from_u32(accent_warn), "RPM %.0f  |  Throttle %.0f%%  |  Boost %.2f bar", rpm, throt * 100.0f, boost);
+            float mot_kw = mot_tq * rpm * (2.0f * 3.14159265f / 60.0f) / 1000.0f;
+            ImGui::Text("ICE %.0f Nm  |  Motor %.0f Nm (%.0f kW)  |  Total %.0f Nm", ice_tq, mot_tq, mot_kw, ice_tq + mot_tq);
 
             if (dbg.ir_taps > 0)
             {

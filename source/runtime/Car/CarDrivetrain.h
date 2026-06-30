@@ -110,6 +110,27 @@ namespace car
         return tuning::spec.engine_peak_torque * factor;
     }
 
+    inline float get_electric_motor_torque(float rpm, float throttle)
+    {
+        if (!tuning::spec.electric_enabled || throttle <= tuning::spec.input_deadzone)
+        {
+            return 0.0f;
+        }
+        float tq = tuning::spec.electric_motor_torque;
+        if (tq <= 0.0f)
+        {
+            return 0.0f;
+        }
+        float pkw = tuning::spec.electric_motor_power_kw;
+        if (pkw > 0.0f && rpm > 50.0f)
+        {
+            float omega = rpm * (2.0f * 3.14159265f / 60.0f);
+            float p_tq = (pkw * 1000.0f) / PxMax(omega, 1.0f);
+            tq = PxMin(tq, p_tq);
+        }
+        return throttle * tq;
+    }
+
     inline float wheel_rpm_to_engine_rpm(float wheel_rpm, int gear)
     {
         if (gear < 0 || gear >= tuning::spec.gear_count || gear == 1)
@@ -510,14 +531,33 @@ namespace car
     {
         float base_torque    = get_engine_torque(engine_rpm);
         float boosted_torque = base_torque * (1.0f + boost_pressure * tuning::spec.boost_torque_mult);
-        float engine_torque  = rev_limiter_active ? 0.0f : boosted_torque * input.throttle;
+        float ice_torque     = rev_limiter_active ? 0.0f : boosted_torque * input.throttle;
 
-        engine_torque = apply_traction_control(engine_torque, forward_speed_ms, dt);
+        float elec_target    = get_electric_motor_torque(engine_rpm, input.throttle);
+        float elec_rate      = tuning::spec.electric_torque_response > 0.0f ? tuning::spec.electric_torque_response : 50.0f;
+        motor_torque         = lerp(motor_torque, elec_target, exp_decay(elec_rate, dt));
+
+        float combined       = ice_torque + motor_torque;
+        float delivered      = apply_traction_control(combined, forward_speed_ms, dt);
+
+        float ice_delivered = ice_torque;
+        float elec_delivered = motor_torque;
+        if (combined > 0.001f)
+        {
+            float k = delivered / combined;
+            ice_delivered *= k;
+            elec_delivered *= k;
+        }
+
+        motor_torque = elec_delivered;
 
         float gear_ratio   = tuning::spec.gear_ratios[current_gear] * tuning::spec.final_drive;
-        float rigid_torque = engine_torque * gear_ratio * clutch * tuning::spec.drivetrain_efficiency;
+        float rigid_torque = ice_delivered * gear_ratio * clutch * tuning::spec.drivetrain_efficiency;
 
-        // driveshaft torsional compliance: 1st torsional mode ~30-50 hz, fixed rate
+        // electric motor couples near final drive (dedicated reduction), not full variable gearbox ratio
+        float elec_axle_torque = elec_delivered * tuning::spec.final_drive * clutch * tuning::spec.drivetrain_efficiency;
+
+        // driveshaft torsional compliance applies to the ice path
         float stiffness = tuning::spec.driveshaft_stiffness;
         if (stiffness > 0.0f)
         {
@@ -531,6 +571,9 @@ namespace car
         {
             apply_drive_torque(rigid_torque, dt);
         }
+
+        // elec added directly at axle level
+        apply_drive_torque(elec_axle_torque, dt);
     }
 
     inline void apply_reverse_drive_torque(float dt)
@@ -548,6 +591,7 @@ namespace car
         driveshaft_twist = lerp(driveshaft_twist, 0.0f, exp_decay(10.0f, dt));
         tc_reduction       = lerp(tc_reduction, 0.0f, exp_decay(tuning::spec.tc_response_rate * 2.0f, dt));
         tc_active          = false;
+        motor_torque       = 0.0f;
     }
 
     // service brakes: writes brake torque into net_torque (integrated once in apply_tire_forces),

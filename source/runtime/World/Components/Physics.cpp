@@ -793,6 +793,7 @@ namespace spartan
             "GetCurrentGearString",         &Physics::GetCurrentGearString,
             "GetEngineRPM",                 &Physics::GetEngineRPM,
             "GetEngineTorque",              &Physics::GetEngineTorque,
+            "GetMotorTorque",               &Physics::GetMotorTorque,
             "GetIdleRPM",                   &Physics::GetIdleRPM,
             "GetRedlineRPM",                &Physics::GetRedlineRPM,
             "IsShifting",                   &Physics::IsShifting,
@@ -2484,6 +2485,15 @@ namespace spartan
             return 0.0f;
         }
         return car::get_engine_torque_current();
+    }
+
+    float Physics::GetMotorTorque() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            return 0.0f;
+        }
+        return car::get_motor_torque();
     }
 
     float Physics::GetIdleRPM() const

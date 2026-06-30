@@ -325,7 +325,8 @@ namespace car
             w.lateral_force = lat_f;
             w.longitudinal_force = long_f;
 
-            safe_add_force_at_pos(body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos);
+            PxVec3 fpos = w.grounded ? w.contact_point : world_pos;
+            safe_add_force_at_pos(body, wheel_lat * lat_f + wheel_fwd * long_f, fpos);
 
             // accumulate all torques on the wheel, then integrate once (semi-implicit euler)
             w.net_torque += -long_f * wr_eff; // tire longitudinal reaction

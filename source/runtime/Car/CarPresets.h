@@ -267,6 +267,13 @@ namespace car
         float boost_wastegate_rpm;
         float boost_torque_mult;
         float boost_min_rpm;
+
+        // electric motor (HY-KERS for laferrari etc)
+        bool  electric_enabled;
+        float electric_motor_torque;    // Nm peak
+        float electric_motor_power_kw;
+        float electric_motor_max_rpm;
+        float electric_torque_response; // response rate
     };
 
     //= car presets ================================================================
@@ -369,7 +376,7 @@ namespace car
             min_slip_speed      = 0.5f;
             load_sensitivity    = 0.92f;
             load_reference      = 4000.0f;
-            rear_grip_ratio     = 1.10f;
+            rear_grip_ratio     = 1.0f;
             slip_angle_deadband = 0.01f;
             min_lateral_grip    = 0.4f;
             camber_thrust_coeff = 0.015f;
@@ -444,7 +451,7 @@ namespace car
             max_steer_angle            = 0.65f;
             high_speed_steer_reduction = 0.4f;
             steering_rate              = 1.5f;
-            self_align_gain            = 0.5f;
+            self_align_gain            = 0.35f;
             steering_linearity         = 1.3f;
 
             // alignment
@@ -476,8 +483,8 @@ namespace car
 
             // differential - e-diff (electronically controlled lsd, tied to f1-trac)
             lsd_preload          = 150.0f;
-            lsd_lock_ratio_accel = 0.5f;
-            lsd_lock_ratio_decel = 0.3f;
+            lsd_lock_ratio_accel = 0.25f;
+            lsd_lock_ratio_decel = 0.15f;
             diff_type            = 2;
             driveshaft_stiffness = 8000.0f;
 
@@ -489,7 +496,7 @@ namespace car
             // damping
             linear_damping  = 0.001f;
             angular_damping = 0.05f;
-            yaw_damping     = 3500.0f;
+            yaw_damping     = 900.0f;
 
             // abs
             abs_enabled         = false;
@@ -510,6 +517,13 @@ namespace car
             boost_wastegate_rpm = 0.0f;
             boost_torque_mult   = 0.0f;
             boost_min_rpm       = 0.0f;
+
+            // electric - hy-kers instant low-rpm torque fill (adds to rwd torque)
+            electric_enabled         = true;
+            electric_motor_torque    = 220.0f;
+            electric_motor_power_kw  = 120.0f;
+            electric_motor_max_rpm   = 9500.0f;
+            electric_torque_response = 60.0f;
 
             engine_stage_max     = 1;
             suspension_stage_max = 1;

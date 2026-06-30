@@ -496,6 +496,7 @@ namespace car
         last_shift_direction = 0;
         redline_hold_timer = 0.0f;
         boost_pressure = 0.0f;
+        motor_torque = 0.0f;
         rev_limiter_active = false;
         downshift_blip_timer = 0.0f;
         driveshaft_twist = 0.0f;
@@ -1005,6 +1006,8 @@ namespace car
     inline bool        get_is_shifting()           { return is_shifting; }
     inline float       get_clutch()                { return clutch; }
     inline float       get_engine_torque_current() { return get_engine_torque(engine_rpm) * (1.0f + boost_pressure * tuning::spec.boost_torque_mult); }
+    inline float       get_motor_torque()          { return motor_torque; }
+    inline float       get_motor_power_kw()        { float w = motor_torque * engine_rpm * (2.0f * 3.14159265f / 60.0f); return w / 1000.0f; }
     inline float       get_redline_rpm()           { return tuning::spec.engine_redline_rpm; }
     inline float       get_max_rpm()               { return tuning::spec.engine_max_rpm; }
     inline float       get_idle_rpm()              { return tuning::spec.engine_idle_rpm; }

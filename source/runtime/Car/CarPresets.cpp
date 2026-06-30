@@ -265,6 +265,12 @@ namespace car
             READ_FLOAT(boost_torque_mult);
             READ_FLOAT(boost_min_rpm);
 
+            READ_BOOL(electric_enabled);
+            READ_FLOAT(electric_motor_torque);
+            READ_FLOAT(electric_motor_power_kw);
+            READ_FLOAT(electric_motor_max_rpm);
+            READ_FLOAT(electric_torque_response);
+
             #undef READ_FLOAT
             #undef READ_INT
             #undef READ_BOOL
