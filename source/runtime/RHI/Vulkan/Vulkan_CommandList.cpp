@@ -773,24 +773,19 @@ namespace spartan
 
     namespace descriptor_sets
     {
-        VkShaderStageFlags get_stage_flags(const RHI_PipelineState& pso)
+        VkPipelineBindPoint get_bind_point(const RHI_PipelineState& pso)
         {
             if (pso.IsGraphics())
             {
-                return VK_SHADER_STAGE_VERTEX_BIT                  |
-                       VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    |
-                       VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                       VK_SHADER_STAGE_FRAGMENT_BIT;
+                return VK_PIPELINE_BIND_POINT_GRAPHICS;
             }
 
             if (pso.IsRayTracing())
             {
-                return VK_SHADER_STAGE_RAYGEN_BIT_KHR      |
-                       VK_SHADER_STAGE_MISS_BIT_KHR        |
-                       VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+                return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
             }
 
-            return VK_SHADER_STAGE_COMPUTE_BIT;
+            return VK_PIPELINE_BIND_POINT_COMPUTE;
         }
 
         void set_dynamic(const RHI_PipelineState pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout)
@@ -801,17 +796,16 @@ namespace spartan
             uint32_t dynamic_offset_count = 0;
             layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
 
-            VkBindDescriptorSetsInfo bind_info = {};
-            bind_info.sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO;
-            bind_info.stageFlags         = get_stage_flags(pso);
-            bind_info.layout             = static_cast<VkPipelineLayout>(pipeline_layout);
-            bind_info.firstSet           = 0;
-            bind_info.descriptorSetCount = 1;
-            bind_info.pDescriptorSets    = &descriptor_set;
-            bind_info.dynamicOffsetCount = dynamic_offset_count;
-            bind_info.pDynamicOffsets    = dynamic_offsets.data();
-
-            vkCmdBindDescriptorSets2(static_cast<VkCommandBuffer>(resource), &bind_info);
+            // nvidia pascal drivers null deref inside vkCmdBindDescriptorSets2, so use the core variant
+            vkCmdBindDescriptorSets(
+                static_cast<VkCommandBuffer>(resource),
+                get_bind_point(pso),
+                static_cast<VkPipelineLayout>(pipeline_layout),
+                0,
+                1,
+                &descriptor_set,
+                dynamic_offset_count,
+                dynamic_offsets.data());
         }
 
         void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
@@ -822,17 +816,16 @@ namespace spartan
                 sets[i] = static_cast<VkDescriptorSet>(RHI_Device::GetDescriptorSet(static_cast<RHI_Device_Bindless_Resource>(i)));
             }
 
-            VkBindDescriptorSetsInfo bind_info = {};
-            bind_info.sType              = VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO;
-            bind_info.stageFlags         = get_stage_flags(pso);
-            bind_info.layout             = static_cast<VkPipelineLayout>(pipeline_layout);
-            bind_info.firstSet           = 1;
-            bind_info.descriptorSetCount = static_cast<uint32_t>(sets.size());
-            bind_info.pDescriptorSets    = sets.data();
-            bind_info.dynamicOffsetCount = 0;
-            bind_info.pDynamicOffsets    = nullptr;
-
-            vkCmdBindDescriptorSets2(static_cast<VkCommandBuffer>(resource), &bind_info);
+            // nvidia pascal drivers null deref inside vkCmdBindDescriptorSets2, so use the core variant
+            vkCmdBindDescriptorSets(
+                static_cast<VkCommandBuffer>(resource),
+                get_bind_point(pso),
+                static_cast<VkPipelineLayout>(pipeline_layout),
+                1,
+                static_cast<uint32_t>(sets.size()),
+                sets.data(),
+                0,
+                nullptr);
         }
     }
 

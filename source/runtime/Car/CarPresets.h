@@ -433,8 +433,8 @@ namespace car
             ground_effect_height_ref = 0.15f;
             ground_effect_height_max = 0.30f;
             yaw_aero_enabled         = true;
-            yaw_drag_multiplier      = 2.5f;
-            yaw_side_force_coeff     = 1.2f;
+            yaw_drag_multiplier      = 1.8f;
+            yaw_side_force_coeff     = 0.6f;
             pitch_aero_enabled       = true;
             pitch_sensitivity        = 0.5f;
             aero_center_height       = 0.3f;
@@ -451,7 +451,7 @@ namespace car
             max_steer_angle            = 0.65f;
             high_speed_steer_reduction = 0.4f;
             steering_rate              = 1.5f;
-            self_align_gain            = 0.35f;
+            self_align_gain            = 0.40f;
             steering_linearity         = 1.3f;
 
             // alignment
@@ -496,7 +496,7 @@ namespace car
             // damping
             linear_damping  = 0.001f;
             angular_damping = 0.05f;
-            yaw_damping     = 900.0f;
+            yaw_damping     = 2000.0f;
 
             // abs
             abs_enabled         = false;
