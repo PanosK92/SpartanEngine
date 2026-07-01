@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../common_resources.hlsl"
 
-static const uint  OCEAN_N          = 256;
-static const uint  OCEAN_LOG2N      = 8;
+static const uint  OCEAN_N          = 512;
+static const uint  OCEAN_LOG2N      = 9;
 static const float OCEAN_PI         = 3.14159265359;
 static const float OCEAN_G          = 9.81;
 static const float OCEAN_FOAM_DECAY = 0.6;   // foam fade rate per second, lower lingers longer

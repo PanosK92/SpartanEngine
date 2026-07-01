@@ -4,26 +4,34 @@
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="0 4 0" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="1" friction_rolling="0.8" restitution="0.1" is_static="false" is_kinematic="false" body_type="6" />
-   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
-    <camera aperture="11" shutter_speed="0.02083333395" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="6" flags="17" />
+  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="-3.33064 4.85496 2.83888" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="0.0339964 0.897228 -0.0701812 0.434628" scale="1 1 1">
+    <camera aperture="11" shutter_speed="0.00400000019" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="1" flags="17" />
    </Entity>
   </Entity>
-  <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/sun.lua" preset="day" volumetric="true" override_rotation="true" rot_pitch="35" rot_yaw="45" rot_roll="0" />
-  </Entity>
   <Entity name="ocean_sound" id="2001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/ocean.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.65" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.3" />
+   <audio_source path="project/music/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
-  <Entity name="platform" id="2001000000000000005" active="true" position="0 1 0" rotation="0 0 0 1" scale="10 0.2 10">
-   <physics mass="1" friction="0.6" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="2" />
-   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+  <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.461521 0.0278618 -0.886573 0.0145039" scale="1 1 1">
+   <light flags="7" light_type="0" color_r="1" color_g="0.607858837" color_b="0.237299785" temperature="2400" intensity="8" intensity_photometric="12000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <script file_path="../worlds/sun.lua" rot_yaw="45" rot_roll="0" rot_pitch="35" Initialize="" override_rotation="true" volumetric="true" preset="day" />
+  </Entity>
+  <Entity name="ocean" id="2001000000000000006" active="true" position="-3.5 0 2.5" rotation="0 0 0 1" scale="1 1 1">
+   <render mesh_name="ocean" sub_mesh_index="0" material_name="water_fft" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </render>
+   <water>
+    <water cascade_count="4" amplitude="40" choppiness="8" displacement_scale="8" normal_strength="12" sea_level="0" />
+   </water>
   </Entity>
-  <Entity name="ocean" id="2001000000000000006" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <water cascade_count="4" amplitude="8" choppiness="2" displacement_scale="4" normal_strength="8" sea_level="0" />
+  <Entity name="platform" id="13024411762166032026" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="Cube" id="13832318846437840492" active="true" position="0 2.3 0" rotation="0 0 0 1" scale="10 1 10">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_pool" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
   </Entity>
  </Entities>
 </World>

@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ocean_common.hlsl"
 
-groupshared float4 sh_a[256];
-groupshared float4 sh_b[256];
+groupshared float4 sh_a[512];
+groupshared float4 sh_b[512];
 
 // multiply a packed pair of complex numbers by the complex twiddle factor
 float4 ocean_twiddle_mul(float2 w, float4 v)
@@ -33,7 +33,7 @@ float4 ocean_twiddle_mul(float2 w, float4 v)
     return float4(ocean_cmul(v.xy, w), ocean_cmul(v.zw, w));
 }
 
-[numthreads(256, 1, 1)]
+[numthreads(512, 1, 1)]
 void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThreadID)
 {
     uint i          = group_thread_id.x;

@@ -80,7 +80,7 @@ namespace spartan
     }
 
     // fft ocean, square spectrum resolution and the max number of cascades packed as array slices
-    const uint32_t renderer_ocean_resolution   = 256;
+    const uint32_t renderer_ocean_resolution   = 512;
     const uint32_t renderer_ocean_max_cascades = 4;
 
     // render target dimensions, fixed allocations sized for current quality budgets

@@ -27,9 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../World.h"
 #include "../../Core/Engine.h"
+#include "../../FileSystem/FileSystem.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include <SDL3/SDL_audio.h>
+#define DR_MP3_IMPLEMENTATION
+#include <SDL3/dr_mp3.h>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //==========================
@@ -79,28 +82,56 @@ namespace audio_clip_cache
             }
         }
 
-        SDL_AudioSpec wav_spec = {};
-        uint8_t* wav_buffer    = nullptr;
-        uint32_t wav_length    = 0;
-        if (!SDL_LoadWAV(file_path.c_str(), &wav_spec, &wav_buffer, &wav_length))
+        // decode into an interleaved f32 source buffer, mp3 via dr_mp3, everything else via sdl wav
+        SDL_AudioSpec source_spec = {};
+        uint8_t* source_buffer    = nullptr;
+        uint32_t source_length    = 0;
+        const bool is_mp3         = spartan::FileSystem::ConvertToUppercase(spartan::FileSystem::GetExtensionFromFilePath(file_path)) == ".MP3";
+        if (is_mp3)
         {
-            SP_LOG_ERROR("%s", SDL_GetError());
-            return nullptr;
+            drmp3_config config      = {};
+            drmp3_uint64 frame_count = 0;
+            float* pcm               = drmp3_open_file_and_read_pcm_frames_f32(file_path.c_str(), &config, &frame_count, nullptr);
+            if (!pcm)
+            {
+                SP_LOG_ERROR("Failed to decode mp3 '%s'.", file_path.c_str());
+                return nullptr;
+            }
+            source_spec.freq     = static_cast<int>(config.sampleRate);
+            source_spec.format   = SDL_AUDIO_F32;
+            source_spec.channels = static_cast<int>(config.channels);
+            source_buffer        = reinterpret_cast<uint8_t*>(pcm);
+            source_length        = static_cast<uint32_t>(frame_count * config.channels * sizeof(float));
+        }
+        else
+        {
+            if (!SDL_LoadWAV(file_path.c_str(), &source_spec, &source_buffer, &source_length))
+            {
+                SP_LOG_ERROR("%s", SDL_GetError());
+                return nullptr;
+            }
         }
 
         SDL_AudioSpec target_spec = {};
-        target_spec.freq          = wav_spec.freq;
+        target_spec.freq          = source_spec.freq;
         target_spec.format        = SDL_AUDIO_F32;
         target_spec.channels      = 1;
         uint8_t* target_buffer    = nullptr;
         int target_length         = 0;
-        if (!SDL_ConvertAudioSamples(&wav_spec, wav_buffer, static_cast<int>(wav_length), &target_spec, &target_buffer, &target_length))
+        const bool converted      = SDL_ConvertAudioSamples(&source_spec, source_buffer, static_cast<int>(source_length), &target_spec, &target_buffer, &target_length);
+        if (is_mp3)
+        {
+            drmp3_free(source_buffer, nullptr);
+        }
+        else
+        {
+            SDL_free(source_buffer);
+        }
+        if (!converted)
         {
             SP_LOG_ERROR("%s", SDL_GetError());
-            SDL_free(wav_buffer);
             return nullptr;
         }
-        SDL_free(wav_buffer);
 
         clip         = make_shared<AudioClip>();
         clip->buffer = target_buffer;
