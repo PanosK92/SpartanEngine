@@ -161,6 +161,8 @@ namespace car
         float bump_stop_threshold;
         float front_roll_center_height;
         float rear_roll_center_height;
+        // effective height for the geometric share of longitudinal weight transfer, anti dive and anti squat
+        float pitch_center_height;
 
         // aerodynamics
         float rolling_resistance;
@@ -417,6 +419,7 @@ namespace car
             bump_stop_threshold      = 0.9f;
             front_roll_center_height = 0.04f;
             rear_roll_center_height  = 0.06f;
+            pitch_center_height      = 0.08f;
 
             // aerodynamics - active flaps front/rear, flat underbody with diffuser
             // claimed downforce ~360 kg at 200 km/h, max ~3:1 downforce/drag
@@ -673,6 +676,7 @@ namespace car
             bump_stop_threshold      = 0.9f;
             front_roll_center_height = 0.03f;
             rear_roll_center_height  = 0.08f;
+            pitch_center_height      = 0.07f;
 
             // aerodynamics - swan-neck gooseneck rear wing, front splitter and diffuser
             // claimed 385 kg downforce at 200 km/h in performance setting
@@ -921,6 +925,7 @@ namespace car
             bump_stop_threshold      = 0.88f;
             front_roll_center_height = 0.05f;
             rear_roll_center_height  = 0.07f;
+            pitch_center_height      = 0.10f;
 
             // aerodynamics - stock body with factory rear spoiler
             rolling_resistance       = 0.014f;

@@ -177,6 +177,7 @@ namespace car
             READ_FLOAT(bump_stop_threshold);
             READ_FLOAT(front_roll_center_height);
             READ_FLOAT(rear_roll_center_height);
+            READ_FLOAT(pitch_center_height);
 
             READ_FLOAT(rolling_resistance);
             READ_FLOAT(drag_coeff);

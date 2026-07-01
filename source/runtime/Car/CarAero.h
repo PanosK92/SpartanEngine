@@ -247,8 +247,7 @@ namespace car
         aero_debug.velocity = vel;
         aero_debug.front_aero_pos = front_pos;
         aero_debug.rear_aero_pos = rear_pos;
-        float avg_r_aero = (cfg.front_wheel_radius + cfg.rear_wheel_radius) * 0.5f;
-        aero_debug.ride_height = cfg.suspension_height + avg_r_aero;
+        aero_debug.ride_height = cfg.suspension_height;
         aero_debug.ground_effect_factor = 1.0f;
         aero_debug.yaw_angle = 0.0f;
         aero_debug.drag_force = PxVec3(0);
@@ -275,8 +274,10 @@ namespace car
         float rear_compression  = (wheels[rear_left].compression + wheels[rear_right].compression) * 0.5f;
         float pitch_angle = (rear_compression - front_compression) * cfg.suspension_travel / PxMax(cfg.wheelbase, 0.1f);
 
+        // underbody gap proxy, adding the wheel radius here kept ride_height permanently
+        // above ground_effect_height_max so ground effect could never activate
         float avg_compression = (front_compression + rear_compression) * 0.5f;
-        float ride_height = cfg.suspension_height - avg_compression * cfg.suspension_travel + avg_r_aero;
+        float ride_height = cfg.suspension_height - avg_compression * cfg.suspension_travel;
 
         // drag (only above a tiny speed threshold to avoid normalizing the zero vector)
         PxVec3 drag_force_vec(0);
@@ -314,7 +315,8 @@ namespace car
         PxVec3 rear_downforce_vec(0);
         float ground_effect_factor = 1.0f;
 
-        if (speed > 10.0f)
+        // v squared scaling is continuous through zero, a high threshold here steps the load at the cutoff
+        if (speed > 1.0f)
         {
             float dyn_pressure = 0.5f * tuning::air_density * speed * speed;
 
@@ -361,13 +363,14 @@ namespace car
         }
 
         // per-wheel rolling resistance: higher pressure = lower rr
+        // fade through zero speed, a hard sign flip pushes a parked car with a constant force
         float rr_pressure_scale = 1.0f + (1.0f - tuning::spec.tire_pressure / PxMax(tuning::spec.tire_pressure_optimal, 0.1f)) * 0.3f;
+        float rr_direction = -PxClamp(forward_speed / 0.5f, -1.0f, 1.0f);
         for (int i = 0; i < wheel_count; i++)
         {
             if (wheels[i].grounded && wheels[i].tire_load > 0.0f)
             {
-                float rr_sign = (forward_speed > 0.0f) ? -1.0f : 1.0f;
-                PxVec3 rr_force = local_fwd * rr_sign * tuning::spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load;
+                PxVec3 rr_force = local_fwd * rr_direction * tuning::spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load;
                 PxVec3 wheel_pos = pose.transform(wheel_offsets[i]);
                 safe_add_force_at_pos(body, rr_force, wheel_pos);
             }

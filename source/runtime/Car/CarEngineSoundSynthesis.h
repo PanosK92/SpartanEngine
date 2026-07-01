@@ -106,7 +106,6 @@ namespace engine_sound
         // overrun crackle
         constexpr float crackle_threshold  = 0.15f;
         constexpr float crackle_intensity  = 0.4f;
-        constexpr float throttle_response  = 12.0f;
 
         // turbocharger
         constexpr float turbo_spool_up     = 2.5f;
@@ -114,21 +113,15 @@ namespace engine_sound
         constexpr float turbo_min_rpm      = 2500.0f;
         constexpr float turbo_full_rpm     = 6000.0f;
 
-        // compressor whine (hz)
-        constexpr float turbo_whine_min    = 4000.0f;
-        constexpr float turbo_whine_max    = 14000.0f;
-
         // flutter/surge
         constexpr float flutter_freq       = 22.0f;
         constexpr float flutter_decay      = 3.0f;
 
         // wastegate
-        constexpr float wastegate_freq     = 800.0f;
         constexpr float wastegate_decay    = 3.0f;
 
         // turbo mix levels
         constexpr float turbo_whine_level   = 0.06f;
-        constexpr float turbo_rumble_level  = 0.03f;
         constexpr float turbo_flutter_level = 0.25f;
         constexpr float wastegate_level     = 0.15f;
     }
@@ -342,46 +335,170 @@ namespace engine_sound
         void reset() { prev = 0.0f; }
     };
 
-    // direct convolution with a fixed impulse response, ring-buffer shift register
+    // iterative radix-2 cooley-tukey fft, in-place on real/imag buffers, n must be power of two
+    inline void fft_radix2(float* re, float* im, int n)
+    {
+        for (int i = 1, j = 0; i < n; ++i)
+        {
+            int bit = n >> 1;
+            for (; (j & bit) != 0; bit >>= 1) j ^= bit;
+            j ^= bit;
+            if (i < j)
+            {
+                std::swap(re[i], re[j]);
+                std::swap(im[i], im[j]);
+            }
+        }
+
+        for (int len = 2; len <= n; len <<= 1)
+        {
+            float ang = -TWO_PI / (float)len;
+            float wlen_re = cosf(ang);
+            float wlen_im = sinf(ang);
+            int half = len >> 1;
+            for (int i = 0; i < n; i += len)
+            {
+                float w_re = 1.0f, w_im = 0.0f;
+                for (int k = 0; k < half; ++k)
+                {
+                    float u_re = re[i + k];
+                    float u_im = im[i + k];
+                    float v_re = re[i + k + half] * w_re - im[i + k + half] * w_im;
+                    float v_im = re[i + k + half] * w_im + im[i + k + half] * w_re;
+                    re[i + k]        = u_re + v_re;
+                    im[i + k]        = u_im + v_im;
+                    re[i + k + half] = u_re - v_re;
+                    im[i + k + half] = u_im - v_im;
+                    float nw_re = w_re * wlen_re - w_im * wlen_im;
+                    float nw_im = w_re * wlen_im + w_im * wlen_re;
+                    w_re = nw_re;
+                    w_im = nw_im;
+                }
+            }
+        }
+    }
+
+    // uniform partitioned overlap-save convolution, cost is o(taps/block) complex macs per sample
+    // instead of o(taps) real macs, which makes engine-sim's ~10000-tap exhaust ir affordable
+    // adds block_size samples of latency (~5 ms at 48 khz), inaudible for engine audio
     struct convolution_filter
     {
-        std::vector<float> shift;
-        std::vector<float> ir;
-        int                head = 0;
+        static constexpr int block_size = 256;
+        static constexpr int fft_size   = block_size * 2;
+
+        int                partition_count = 0;
+        std::vector<float> ir_spectra_re;
+        std::vector<float> ir_spectra_im;
+        std::vector<float> input_spectra_re;
+        std::vector<float> input_spectra_im;
+        int                newest_spectrum = 0;
+        float              input_block[fft_size]    = {};
+        float              output_block[block_size] = {};
+        int                block_pos = 0;
 
         void initialize(const float* impulse, int sample_count)
         {
-            ir.assign(impulse, impulse + sample_count);
-            shift.assign(sample_count, 0.0f);
-            head = 0;
+            partition_count = (sample_count + block_size - 1) / block_size;
+            ir_spectra_re.assign((size_t)partition_count * fft_size, 0.0f);
+            ir_spectra_im.assign((size_t)partition_count * fft_size, 0.0f);
+            input_spectra_re.assign((size_t)partition_count * fft_size, 0.0f);
+            input_spectra_im.assign((size_t)partition_count * fft_size, 0.0f);
+
+            float re[fft_size];
+            float im[fft_size];
+            for (int p = 0; p < partition_count; ++p)
+            {
+                for (int i = 0; i < fft_size; ++i)
+                {
+                    int src = p * block_size + i;
+                    re[i] = (i < block_size && src < sample_count) ? impulse[src] : 0.0f;
+                    im[i] = 0.0f;
+                }
+                fft_radix2(re, im, fft_size);
+                std::copy(re, re + fft_size, ir_spectra_re.begin() + (size_t)p * fft_size);
+                std::copy(im, im + fft_size, ir_spectra_im.begin() + (size_t)p * fft_size);
+            }
+
+            reset();
         }
 
         float process(float input)
         {
-            const int n = (int)ir.size();
-            if (n == 0)
+            if (partition_count == 0)
             {
                 return input;
             }
 
-            shift[head] = input;
-
-            float sum = 0.0f;
-            int idx = head;
-            for (int i = 0; i < n; ++i)
+            input_block[block_size + block_pos] = input;
+            float out = output_block[block_pos];
+            block_pos++;
+            if (block_pos == block_size)
             {
-                sum += shift[idx] * ir[i];
-                idx = (idx == 0) ? (n - 1) : (idx - 1);
+                process_block();
+                block_pos = 0;
+            }
+            return out;
+        }
+
+        void process_block()
+        {
+            // fft of the last two blocks (overlap-save)
+            float re[fft_size];
+            float im[fft_size];
+            for (int i = 0; i < fft_size; ++i)
+            {
+                re[i] = input_block[i];
+                im[i] = 0.0f;
+            }
+            fft_radix2(re, im, fft_size);
+
+            newest_spectrum = (newest_spectrum + partition_count - 1) % partition_count;
+            std::copy(re, re + fft_size, input_spectra_re.begin() + (size_t)newest_spectrum * fft_size);
+            std::copy(im, im + fft_size, input_spectra_im.begin() + (size_t)newest_spectrum * fft_size);
+
+            // accumulate spectral products, ir partition p pairs with the input block from p blocks ago
+            float acc_re[fft_size] = {};
+            float acc_im[fft_size] = {};
+            for (int p = 0; p < partition_count; ++p)
+            {
+                const float* xr = &input_spectra_re[(size_t)((newest_spectrum + p) % partition_count) * fft_size];
+                const float* xi = &input_spectra_im[(size_t)((newest_spectrum + p) % partition_count) * fft_size];
+                const float* hr = &ir_spectra_re[(size_t)p * fft_size];
+                const float* hi = &ir_spectra_im[(size_t)p * fft_size];
+                for (int k = 0; k < fft_size; ++k)
+                {
+                    acc_re[k] += xr[k] * hr[k] - xi[k] * hi[k];
+                    acc_im[k] += xr[k] * hi[k] + xi[k] * hr[k];
+                }
             }
 
-            head = (head + 1) % n;
-            return sum;
+            // inverse fft via conjugation, the second half is the valid overlap-save output
+            for (int k = 0; k < fft_size; ++k)
+            {
+                acc_im[k] = -acc_im[k];
+            }
+            fft_radix2(acc_re, acc_im, fft_size);
+            const float inv_n = 1.0f / (float)fft_size;
+            for (int i = 0; i < block_size; ++i)
+            {
+                output_block[i] = acc_re[block_size + i] * inv_n;
+            }
+
+            // slide the current block into the overlap position
+            for (int i = 0; i < block_size; ++i)
+            {
+                input_block[i] = input_block[block_size + i];
+            }
         }
 
         void reset()
         {
-            std::fill(shift.begin(), shift.end(), 0.0f);
-            head = 0;
+            std::fill(input_spectra_re.begin(), input_spectra_re.end(), 0.0f);
+            std::fill(input_spectra_im.begin(), input_spectra_im.end(), 0.0f);
+            std::fill(std::begin(input_block), std::end(input_block), 0.0f);
+            std::fill(std::begin(output_block), std::end(output_block), 0.0f);
+            newest_spectrum = 0;
+            block_pos = 0;
         }
     };
 
@@ -426,7 +543,7 @@ namespace engine_sound
         }
     };
 
-    // loads a wav file as mono float32 at target_sample_rate, peak-normalized, trimmed to max_taps
+    // loads a wav file as mono float32 at target_sample_rate, silence-trimmed, energy-normalized, capped to max_taps
     inline std::vector<float> load_impulse_response(const char* path, int max_taps, int target_sample_rate)
     {
         std::vector<float> ir_out;
@@ -526,7 +643,6 @@ namespace engine_sound
         float    prev_pressure   = 0.0f;
         bool     is_firing       = false;
         bool     bank_left       = true;
-        float    fire_phase      = 0.0f;
         float    timing_jitter   = 0.0f;
         float    intensity_var   = 1.0f;
         float    cycle_intensity = 1.0f;
@@ -571,18 +687,23 @@ namespace engine_sound
             if (phase >= 1.0f)
             {
                 phase -= 1.0f;
-                is_firing = false;
-                // new random intensity each cycle, gives the engine an organic, alive character
-                cycle_intensity = 0.90f + rand01() * 0.20f;
             }
 
-            float effective_phase = fmodf(phase + firing_offset + timing_jitter * (1.0f - load * 0.5f), 1.0f);
+            // floor-based wrap, fmodf returns negative values for negative jitter and the
+            // envelope code below would then run with t < 0 and produce a garbage pressure blip
+            float effective_phase = phase + firing_offset + timing_jitter * (1.0f - load * 0.5f);
+            effective_phase -= floorf(effective_phase);
             float window_end = tuning::combustion_attack + tuning::combustion_hold + tuning::combustion_decay;
 
             if (effective_phase < window_end)
             {
+                // roll a new random intensity at window entry so the envelope is never rescaled
+                // mid burn, rolling at the shared phase wrap clicked all cylinders at once
+                if (!is_firing)
+                {
+                    cycle_intensity = 0.90f + rand01() * 0.20f;
+                }
                 is_firing = true;
-                fire_phase = effective_phase / window_end;
 
                 // pressure envelope
                 float env = 0.0f;
@@ -623,56 +744,14 @@ namespace engine_sound
 
         void reset()
         {
-            phase = firing_offset;
+            // phase must reset to zero, the firing offset is added inside tick and
+            // resetting to it would apply the offset twice, pairing up the firings
+            phase = 0.0f;
             pressure = prev_pressure = 0.0f;
             is_firing = false;
-            fire_phase = 0.0f;
             cycle_intensity = 1.0f;
         }
     };
-
-    // iterative radix-2 cooley-tukey fft, in-place on real/imag buffers, n must be power of two
-    inline void fft_radix2(float* re, float* im, int n)
-    {
-        for (int i = 1, j = 0; i < n; ++i)
-        {
-            int bit = n >> 1;
-            for (; (j & bit) != 0; bit >>= 1) j ^= bit;
-            j ^= bit;
-            if (i < j)
-            {
-                std::swap(re[i], re[j]);
-                std::swap(im[i], im[j]);
-            }
-        }
-
-        for (int len = 2; len <= n; len <<= 1)
-        {
-            float ang = -TWO_PI / (float)len;
-            float wlen_re = cosf(ang);
-            float wlen_im = sinf(ang);
-            int half = len >> 1;
-            for (int i = 0; i < n; i += len)
-            {
-                float w_re = 1.0f, w_im = 0.0f;
-                for (int k = 0; k < half; ++k)
-                {
-                    float u_re = re[i + k];
-                    float u_im = im[i + k];
-                    float v_re = re[i + k + half] * w_re - im[i + k + half] * w_im;
-                    float v_im = re[i + k + half] * w_im + im[i + k + half] * w_re;
-                    re[i + k]        = u_re + v_re;
-                    im[i + k]        = u_im + v_im;
-                    re[i + k + half] = u_re - v_re;
-                    im[i + k + half] = u_im - v_im;
-                    float nw_re = w_re * wlen_re - w_im * wlen_im;
-                    float nw_im = w_re * wlen_im + w_im * wlen_re;
-                    w_re = nw_re;
-                    w_im = nw_im;
-                }
-            }
-        }
-    }
 
     // writes 16-bit pcm stereo wav, samples already interleaved float in -1..1
     inline bool write_wav_int16_stereo(const char* path, const float* interleaved, int frames, int sample_rate)
@@ -779,24 +858,6 @@ namespace engine_sound
             // output dc blockers run tighter than the pre-conv ones to fully kill drift
             m_dc_block_out_l.set_r(tuning::output_dc_blocker_r);
             m_dc_block_out_r.set_r(tuning::output_dc_blocker_r);
-
-            // induction filters
-            m_induction_res.set_params(400.0f, 3.0f, m_sample_rate);
-            m_induction_body.set_params(150.0f, 0.8f, m_sample_rate);
-
-            // mechanical filters
-            m_mechanical_hp.set_params(2000.0f, 0.7f, m_sample_rate);
-            m_mechanical_lp.set_params(6000.0f, 0.7f, m_sample_rate);
-
-            // turbo filters
-            m_turbo_whine_bp.set_params(8000.0f, 6.0f, m_sample_rate);
-            m_turbo_rumble_lp.set_params(300.0f, 0.8f, m_sample_rate);
-            m_turbo_flutter_bp.set_params(100.0f, 2.0f, m_sample_rate);
-            m_wastegate_bp.set_params(tuning::wastegate_freq, 1.2f, m_sample_rate);
-
-            // output filters
-            m_output_hp.set_params(35.0f, 0.7f, m_sample_rate);
-            m_output_lp.set_params(12000.0f, 0.7f, m_sample_rate);
 
             // parameter smoothing
             m_rpm_smooth.set_cutoff(8.0f, m_sample_rate);
@@ -1270,8 +1331,6 @@ namespace engine_sound
             m_mechanical_lp.reset();
             m_crackle_filter.reset();
             m_turbo_filter.reset();
-            m_output_hp.reset();
-            m_output_lp.reset();
             m_dc_blocker.reset();
             m_rpm_smooth.reset();
             m_throttle_smooth.reset();
@@ -1289,7 +1348,6 @@ namespace engine_sound
             m_prev_boost = 0.0f;
 
             m_turbo_whine_bp.reset();
-            m_turbo_rumble_lp.reset();
             m_turbo_flutter_bp.reset();
             m_wastegate_bp.reset();
         }
@@ -1372,7 +1430,6 @@ namespace engine_sound
         svf_filter m_mechanical_hp, m_mechanical_lp;
         svf_filter m_crackle_filter;
         svf_filter m_turbo_filter;
-        svf_filter m_output_hp, m_output_lp;
 
         one_pole m_rpm_smooth;
         one_pole m_throttle_smooth;
@@ -1395,7 +1452,6 @@ namespace engine_sound
         float m_prev_boost           = 0.0f;
 
         svf_filter m_turbo_whine_bp;
-        svf_filter m_turbo_rumble_lp;
         svf_filter m_turbo_flutter_bp;
         svf_filter m_wastegate_bp;
 

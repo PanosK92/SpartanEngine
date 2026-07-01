@@ -444,10 +444,11 @@ PathSample sample_light_candidate(
             return s;
 
         // no continuation past rc, rc_L_post stays zero
+        // directional intensity is irradiance, scaling by 1/solid_angle turns it into cone radiance so the estimator integrates back to the authored energy, matches the delta sun in direct_lighting_at_vertex
         s.flags      |= PATH_FLAG_SKY | PATH_FLAG_NEE;
         s.rc_pos      = sampled;
         s.rc_normal   = -sampled;
-        s.rc_L_nee    = light.color.rgb * light.intensity;
+        s.rc_L_nee    = light.color.rgb * light.intensity * sun_cone_pdf;
         s.rc_L_post   = float3(0, 0, 0);
         source_pdf    = pick_pdf * sun_cone_pdf;
         return s;
@@ -810,7 +811,7 @@ void ray_gen()
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
     reservoir.W   = soft_clamp_w(reservoir.W, w_clamp);
 
-    float total_candidates     = n_brdf + n_light;
+    float total_candidates     = n_brdf + n_light + n_emtri;
     float sample_count_quality = saturate(reservoir.M / max(total_candidates, 1.0f));
     reservoir.confidence       = (final_target > 0.0f && !visibility_rejected) ? sample_count_quality : 0.0f;
     reservoir.age              = 0.0f;

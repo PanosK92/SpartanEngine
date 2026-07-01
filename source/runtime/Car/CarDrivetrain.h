@@ -116,6 +116,10 @@ namespace car
         {
             return 0.0f;
         }
+        if (tuning::spec.electric_motor_max_rpm > 0.0f && rpm >= tuning::spec.electric_motor_max_rpm)
+        {
+            return 0.0f;
+        }
         float tq = tuning::spec.electric_motor_torque;
         if (tq <= 0.0f)
         {
@@ -289,6 +293,25 @@ namespace car
                 return;
             }
 
+            // lugging protection: drop a gear when rpm falls below shift_down_rpm, guarded so
+            // the target gear does not land near the upshift point and cause hunting
+            if (can_shift && current_gear > 2 && engine_rpm < tuning::spec.shift_down_rpm)
+            {
+                float ratio          = fabsf(tuning::spec.gear_ratios[current_gear - 1]) * tuning::spec.final_drive;
+                float driven_r_raw   = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
+                float driven_r       = (std::isfinite(driven_r_raw) && driven_r_raw > 0.0f) ? PxMax(driven_r_raw, 0.05f) : 0.34f;
+                float potential_rpm  = (fabsf(forward_speed) / driven_r) * (60.0f / (2.0f * PxPi)) * ratio;
+                if (potential_rpm < tuning::spec.shift_up_rpm * 0.85f)
+                {
+                    current_gear--;
+                    is_shifting = true;
+                    shift_timer = tuning::spec.shift_time;
+                    last_shift_direction = -1;
+                    downshift_blip_timer = tuning::spec.downshift_blip_duration;
+                    return;
+                }
+            }
+
             // kickdown: only from cruise (below peak torque, no wheelspin)
             if (can_shift && throttle > 0.9f && current_gear > 2 && engine_rpm < tuning::spec.engine_peak_torque_rpm)
             {
@@ -341,8 +364,9 @@ namespace car
 
     inline const char* get_gear_string()
     {
-        static const char* names[] = { "R", "N", "1", "2", "3", "4", "5", "6", "7" };
-        return (current_gear >= 0 && current_gear < tuning::spec.gear_count) ? names[current_gear] : "?";
+        static const char* names[] = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+        constexpr int name_count = static_cast<int>(sizeof(names) / sizeof(names[0]));
+        return (current_gear >= 0 && current_gear < tuning::spec.gear_count && current_gear < name_count) ? names[current_gear] : "?";
     }
 
     // apply differential torque to a single axle (left/right wheel pair)
@@ -417,7 +441,9 @@ namespace car
     inline float compute_target_engine_rpm(float wheel_driven_rpm)
     {
         float blip = (downshift_blip_timer > 0.0f) ? tuning::spec.downshift_blip_amount * (downshift_blip_timer / tuning::spec.downshift_blip_duration) : 0.0f;
-        float effective_throttle_for_rpm = PxMax(input.throttle, blip);
+        // in reverse the brake pedal is the drive input, so it must also rev the engine
+        float drive_input = is_in_reverse() ? input.brake : input.throttle;
+        float effective_throttle_for_rpm = PxMax(drive_input, blip);
         float free_rev_rpm = tuning::spec.engine_idle_rpm + effective_throttle_for_rpm * (tuning::spec.engine_redline_rpm - tuning::spec.engine_idle_rpm) * 0.7f;
 
         if (is_in_neutral())
@@ -595,11 +621,17 @@ namespace car
     }
 
     // service brakes: writes brake torque into net_torque (integrated once in apply_tire_forces),
-    // while also accumulating brake heat and toggling abs per wheel. returns true if any brake
-    // torque was applied this tick.
+    // while also accumulating brake heat and toggling abs per wheel
     inline void apply_service_brakes(float forward_speed_kmh, float forward_speed_ms, float dt)
     {
         if (input.brake <= tuning::spec.input_deadzone)
+        {
+            for (int i = 0; i < wheel_count; i++) abs_active[i] = false;
+            return;
+        }
+
+        // in reverse the brake pedal is the reverse throttle, apply_drivetrain already routed the drive torque
+        if (is_in_reverse())
         {
             for (int i = 0; i < wheel_count; i++) abs_active[i] = false;
             return;
@@ -650,14 +682,8 @@ namespace car
         {
             for (int i = 0; i < wheel_count; i++) abs_active[i] = false;
 
-            if (is_in_reverse())
-            {
-                float engine_torque = get_engine_torque(engine_rpm) * input.brake * tuning::spec.reverse_power_ratio;
-                float gear_ratio    = tuning::spec.gear_ratios[0] * tuning::spec.final_drive;
-                apply_drive_torque(engine_torque * gear_ratio * clutch, dt);
-            }
             // reverse request: full stop + brake hold while in forward gear
-            else if (fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < tuning::spec.input_deadzone && is_in_forward_gear() && !is_shifting)
+            if (fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < tuning::spec.input_deadzone && is_in_forward_gear() && !is_shifting)
             {
                 current_gear = 0;
                 is_shifting  = true;
@@ -714,6 +740,10 @@ namespace car
         {
             clutch = 1.0f;
         }
+
+        // reflect the engine flywheel to the driven wheels, neutral zeroes it via its 0 gear ratio
+        float ratio_total = tuning::spec.gear_ratios[current_gear] * tuning::spec.final_drive;
+        reflected_engine_inertia = (driven_count > 0) ? tuning::spec.engine_inertia * ratio_total * ratio_total * clutch / (float)driven_count : 0.0f;
 
         update_engine_rpm(compute_target_engine_rpm(wheel_driven_rpm), dt);
 

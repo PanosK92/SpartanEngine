@@ -70,6 +70,9 @@ namespace car
         constexpr float air_density                  = 1.225f;
         constexpr float road_bump_amplitude          = 0.002f;
         constexpr float road_bump_frequency          = 0.5f;
+        // lateral grip peaks at a slightly negative camber, quadratic loss either side, per rad squared
+        constexpr float camber_optimal               = -0.0436f;
+        constexpr float camber_grip_loss             = 16.0f;
         constexpr float surface_friction_asphalt     = 1.0f;
         constexpr float surface_friction_concrete    = 0.95f;
         constexpr float surface_friction_wet_asphalt = 0.7f;
@@ -229,6 +232,8 @@ namespace car
         bool         grounded             = false;
         PxVec3       contact_point        = PxVec3(0);
         PxVec3       contact_normal       = PxVec3(0, 1, 0);
+        // ground actor under this wheel, the engine layer maps it to a surface_type per tick
+        const PxRigidActor* contact_actor = nullptr;
         float        angular_velocity     = 0.0f;
         float        rotation             = 0.0f;
         float        tire_load            = 0.0f;
@@ -314,6 +319,9 @@ namespace car
     inline bool            rev_limiter_active      = false;
     inline float           downshift_blip_timer    = 0.0f;
     inline float           driveshaft_twist        = 0.0f;
+    // engine flywheel inertia reflected to each driven wheel through the current gearing,
+    // added to wheel_moi during spin integration so low gears resist wheel speed changes
+    inline float           reflected_engine_inertia = 0.0f;
     inline bool            drs_active              = false;
     inline float           longitudinal_accel      = 0.0f;
     inline float           lateral_accel           = 0.0f;

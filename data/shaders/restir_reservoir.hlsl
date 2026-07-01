@@ -1633,6 +1633,12 @@ ShiftResult try_random_replay_shift(
     if (is_sky_sample(src))
         return result;
 
+    // nee candidates consumed their seed on light xi, replaying it as brdf xi fabricates an unrelated path, reconnection is their only valid shift
+    if (is_nee_sample(src))
+    {
+        return result;
+    }
+
     // only replay paths reconnection cannot carry, specular prefix (no rc) or near mirror primary
     // rough to rough samples with a valid rc that failed reconnection are left to fail so cost stays bounded
     float rc_min_roughness = get_restir_rc_min_roughness();

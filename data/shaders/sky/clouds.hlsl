@@ -390,7 +390,7 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     // detail erosion amplitude kept moderate so the high-frequency channel does not dominate
     // the cloud surface as grain. cumulus get their puffy character from the base shape, the
     // detail just breaks up the edges so they do not read as smooth blobs
-    float detail_mod = lerp(1.0 - detail, detail, saturate(h_norm * 4.0));
+    float detail_mod = lerp(detail, 1.0 - detail, saturate(h_norm * 4.0));
     float density    = cloud_remap(base, detail_mod * 0.30, 1.0, 0.0, 1.0);
     return saturate(density) * cumulus_density_mul;
 }
@@ -442,10 +442,13 @@ float cloud_phase(float cos_theta)
     return lerp(forward, backward, 0.4);
 }
 
-// schneider's beer-powder, edges of clouds darken when looking against the sun, interiors brighten
-float cloud_beer_powder(float density)
+// powder term derived from the sun-ray optical depth, thin crevices darken when the sun is
+// behind the viewer while thick interiors stay lit, toward the sun it converges to 1 so the
+// silver lining keeps its full forward-scatter brightness
+float cloud_powder(float sun_od, float cos_theta)
 {
-    return 2.0 * exp(-density) * (1.0 - exp(-density * 2.0));
+    float powder = 1.0 - exp(-2.0 * sun_od * cumulus_sigma_t);
+    return lerp(1.0, powder, saturate(0.5 - 0.5 * cos_theta));
 }
 
 // transmittance lut lookup matching the skysphere uv mapping, replicated here so clouds.hlsl
@@ -689,15 +692,16 @@ void cloud_march_cumulus(
             
             float h           = length(pos - cloud_earth_center) - cloud_earth_radius;
             float h_norm      = saturate((h - cumulus_bottom_alt) / cumulus_thickness);
+            // ambient rides on the transmittance-tinted sun color so clouds warm up at sunset
             float3 ambient    = lerp(cloud_ambient_bottom, cloud_ambient_top, h_norm);
-            ambient          *= max(luminance(sun_light) * cloud_ambient_factor + 0.005, 0.0);
+            ambient          *= sun_light * cloud_ambient_factor + 0.005;
             
             // night ambient floor, faint cool airglow that lights the underside of clouds even
             // on a moonless night so cumulus never go pitch black. mildly height modulated so
             // the cloud tops still read brighter than the bottoms
             ambient          += cloud_night_floor * lerp(0.7, 1.1, h_norm);
             
-            float3 direct       = (sun_scat + moon_scat) * cloud_beer_powder(density);
+            float3 direct       = (sun_scat + moon_scat) * cloud_powder(sun_od, cos_th);
             float3 luminance_in = direct + ambient;
             float3 s_int        = cloud_albedo * luminance_in * (1.0 - step_trans);
             
@@ -730,6 +734,10 @@ void cloud_march_cirrus(
     if (shell.y < 0.0) return;
     
     float t_max  = min(shell.y, 400000.0);
+    if (shell.x >= t_max)
+    {
+        return;
+    }
     float dt     = (t_max - shell.x) / cirrus_view_steps;
     float t      = shell.x + dt * jitter;
     float cos_th = dot(view_dir, sun_dir);

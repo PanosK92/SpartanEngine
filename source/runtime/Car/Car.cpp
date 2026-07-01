@@ -1430,10 +1430,13 @@ namespace spartan
             float redline_rpm = physics->GetRedlineRPM();
             float rpm_normalized = std::clamp((engine_rpm - idle_rpm) / (redline_rpm - idle_rpm), 0.0f, 1.0f);
 
-            audio_engine->SetSynthesisMode(true, [](float* buffer, int num_samples)
+            if (!audio_engine->IsSynthesisMode())
             {
-                engine_sound::generate(buffer, num_samples, true);
-            });
+                audio_engine->SetSynthesisMode(true, [](float* buffer, int num_samples)
+                {
+                    engine_sound::generate(buffer, num_samples, true);
+                });
+            }
 
             if (!audio_engine->IsPlaying())
             {
@@ -1502,10 +1505,13 @@ namespace spartan
 
             if (m_tire_squeal_volume > 0.02f)
             {
-                audio_tire->SetSynthesisMode(true, [](float* buffer, int num_samples)
+                if (!audio_tire->IsSynthesisMode())
                 {
-                    tire_squeal_sound::generate(buffer, num_samples, true);
-                });
+                    audio_tire->SetSynthesisMode(true, [](float* buffer, int num_samples)
+                    {
+                        tire_squeal_sound::generate(buffer, num_samples, true);
+                    });
+                }
 
                 if (!audio_tire->IsPlaying())
                 {

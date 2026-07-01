@@ -76,6 +76,46 @@ namespace spartan
 
         PxControllerManager* controller_manager = nullptr;
 
+        // classify a ground actor into a car surface type from its entity name
+        car::surface_type classify_ground_actor(const PxRigidActor* actor)
+        {
+            if (!actor || !actor->userData)
+            {
+                return car::surface_asphalt;
+            }
+
+            string name = static_cast<Entity*>(actor->userData)->GetObjectName();
+            for (char& c : name)
+            {
+                if (c >= 'A' && c <= 'Z')
+                {
+                    c = static_cast<char>(c - 'A' + 'a');
+                }
+            }
+
+            if (name.find("ice") != string::npos || name.find("snow") != string::npos)
+            {
+                return car::surface_ice;
+            }
+            if (name.find("grass") != string::npos || name.find("lawn") != string::npos)
+            {
+                return car::surface_grass;
+            }
+            if (name.find("gravel") != string::npos || name.find("dirt") != string::npos || name.find("sand") != string::npos)
+            {
+                return car::surface_gravel;
+            }
+            if (name.find("wet") != string::npos || name.find("puddle") != string::npos)
+            {
+                return car::surface_wet_asphalt;
+            }
+            if (name.find("concrete") != string::npos)
+            {
+                return car::surface_concrete;
+            }
+            return car::surface_asphalt;
+        }
+
         // tag all shapes on an actor with a collision type in word2
         // used by the simulation filter shader to suppress specific pairs
         void tag_actor_shapes(PxRigidActor* actor, PxU32 collision_type)
@@ -488,6 +528,22 @@ namespace spartan
         // one fixed step of the vehicle force model, the caller (PhysicsWorld fixed loop) runs this
         // immediately before scene->simulate(dt) so the forces apply over exactly this step
         car::tick(dt);
+
+        // map the ground actor under each wheel to a tire surface type (split-mu), done right
+        // after the sweep so the actor is guaranteed alive, applied on the next substep.
+        // cached per actor since classification walks the entity name
+        static const PxRigidActor* cached_actor[car::wheel_count]   = {};
+        static car::surface_type   cached_surface[car::wheel_count] = {};
+        for (int i = 0; i < car::wheel_count; i++)
+        {
+            const PxRigidActor* ground = car::wheels[i].contact_actor;
+            if (ground != cached_actor[i])
+            {
+                cached_actor[i]   = ground;
+                cached_surface[i] = classify_ground_actor(ground);
+            }
+            car::set_wheel_surface(i, cached_surface[i]);
+        }
     }
 
     void Physics::TickDynamicBodies(bool is_playing)

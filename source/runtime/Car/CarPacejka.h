@@ -25,8 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==========================================
 
 // tire math: pacejka magic formula curves, load-sensitive grip, temperature factors,
-// camber factors, per-surface friction scalars, brake efficiency. all pure functions,
-// no state mutation.
+// per-surface friction scalars, brake efficiency. all pure functions, no state mutation.
 
 namespace car
 {
@@ -34,6 +33,19 @@ namespace car
     {
         float Bx = B * slip;
         return D * sinf(C * atanf(Bx - E * (Bx - atanf(Bx))));
+    }
+
+    // slip at which the magic formula peaks, closed form with E ignored
+    inline float pacejka_peak_slip(float B, float C)
+    {
+        return tanf(PxPi / (2.0f * PxMax(C, 1.01f))) / PxMax(B, 0.1f);
+    }
+
+    // lateral grip peaks at a slightly negative camber and falls off quadratically
+    inline float get_camber_grip_factor(float camber)
+    {
+        float dev = camber - tuning::camber_optimal;
+        return PxClamp(1.0f - tuning::camber_grip_loss * dev * dev, 0.5f, 1.0f);
     }
 
     // derived from com z-offset and wheelbase, no need to store separately
@@ -63,13 +75,6 @@ namespace car
         float norm = PxClamp(dev / range, 0.0f, 1.0f);
         float penalty = norm * norm * tuning::spec.tire_grip_temp_factor;
         return 1.0f - penalty;
-    }
-
-    inline float get_camber_grip_factor(int wheel_index, float slip_angle)
-    {
-        float camber = is_front(wheel_index) ? tuning::spec.front_camber : tuning::spec.rear_camber;
-        float effective_camber = camber - slip_angle * 0.3f;
-        return 1.0f - fabsf(effective_camber) * 0.1f;
     }
 
     inline float get_surface_friction(surface_type surface)

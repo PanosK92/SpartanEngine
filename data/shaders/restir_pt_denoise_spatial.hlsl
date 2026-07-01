@@ -139,8 +139,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float luma_delta  = abs(sample_luma - center_luma) / luma_sigma;
         float luma_weight = exp(-luma_delta);
 
-        // the gi signal is albedo modulated, an albedo edge stop keeps texture detail from
-        // being blurred across surfaces that share depth and normal
+        // the gi is albedo demodulated with a 0.1 floor so dark surfaces keep residual modulation, the albedo edge stop prevents bleed across material boundaries
         float3 sample_albedo = tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).rgb;
         float  albedo_weight = exp(-length(sample_albedo - center_albedo) / 0.2f);
 

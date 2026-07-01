@@ -56,6 +56,8 @@ namespace car
             float wr_raw  = cfg.wheel_radius_for(i);
             float wr      = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
             float wmoi    = (std::isfinite(wheel_moi[i]) && wheel_moi[i] > 0.0f) ? wheel_moi[i] : 1.0f;
+            // driven wheels also carry the engine flywheel reflected through the gearing
+            float wmoi_eff = wmoi + (is_driven(i) ? reflected_engine_inertia : 0.0f);
 
             float defl = 0.0f;
             if (tuning::spec.tire_vertical_stiffness > 1000.0f)
@@ -71,7 +73,8 @@ namespace car
             w.effective_radius = wr_eff;
             w.dynamic_camber   = dyn_camb;
 
-            // airborne branch
+            // airborne branch: no tire force, but drivetrain and brake torque already sitting in
+            // net_torque still integrate so mid air throttle spins the wheels and brakes stop them
             if (!w.grounded || w.tire_load <= 0.0f)
             {
                 if (tuning::log_pacejka)
@@ -80,22 +83,23 @@ namespace car
                 }
                 w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
 
-                PxVec3 vel = body->getLinearVelocity();
-                float car_fwd_speed = vel.dot(chassis_fwd);
-                float target_w = car_fwd_speed / wr_eff;
-
+                w.net_torque -= w.angular_velocity * tuning::spec.bearing_friction * wmoi;
                 if (input.handbrake > tuning::spec.input_deadzone && is_rear(i))
                 {
-                    // progressive handbrake friction even when airborne
-                    float hb_torque = tuning::spec.handbrake_torque * input.handbrake;
-                    float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : 1.0f;
-                    float new_w = w.angular_velocity + hb_sign * hb_torque / wmoi * dt;
-                    w.angular_velocity = ((w.angular_velocity > 0.0f && new_w < 0.0f) || (w.angular_velocity < 0.0f && new_w > 0.0f)) ? 0.0f : new_w;
+                    float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : (w.angular_velocity < 0.0f) ? 1.0f : 0.0f;
+                    w.net_torque += hb_sign * tuning::spec.handbrake_torque * input.handbrake;
                 }
-                else
+
+                float new_w = w.angular_velocity + (w.net_torque / wmoi_eff) * dt;
+                bool air_braking = input.brake > tuning::spec.input_deadzone || (is_rear(i) && input.handbrake > tuning::spec.input_deadzone);
+                if (air_braking && ((w.angular_velocity > 0.0f && new_w < 0.0f) || (w.angular_velocity < 0.0f && new_w > 0.0f)))
                 {
-                    w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(5.0f, dt));
+                    new_w = 0.0f;
                 }
+
+                // airborne_wheel_decay is spin retained per 200 hz tick, raised to dt for rate independence
+                float spin_retain  = powf(PxClamp(tuning::spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
+                w.angular_velocity = new_w * spin_retain;
 
                 // airborne cooling: all zones cool at 3x rate
                 for (int z = 0; z < 3; z++)
@@ -132,7 +136,9 @@ namespace car
             float slip_v_long = fabsf(wheel_speed - vx);
             float slip_v_lat  = fabsf(vy);
             float slip_v      = sqrtf(slip_v_long * slip_v_long + slip_v_lat * slip_v_lat);
-            float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
+            // include lateral motion, otherwise a sideways slide reads as at rest and
+            // falls back to the static friction model instead of the pacejka curves
+            float max_v = PxMax(fabsf(wheel_speed), ground_speed);
 
             if (tuning::log_pacejka)
             {
@@ -140,19 +146,24 @@ namespace car
             }
 
             float wear_factor    = 1.0f - w.wear * tuning::spec.tire_grip_wear_loss;
-            float base_grip     = tuning::spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f)) * wear_factor;
-            float temp_factor   = get_tire_temp_grip_factor(w.thermal.avg_surface());
-            float eff_camb = dyn_camb - w.slip_angle * 0.3f;
-            float camber_factor = 1.0f - fabsf(eff_camb) * 0.1f;
+            float base_grip      = tuning::spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
+            float temp_factor    = get_tire_temp_grip_factor(w.thermal.avg_surface());
+            float camber_factor  = get_camber_grip_factor(dyn_camb);
             float surface_factor = get_surface_friction(w.contact_surface);
             // rear_grip_ratio scales the whole friction budget on the rear axle rather than only
             // lateral force, which kept the friction circle well-behaved under combined slip
             float axle_grip_scale = is_rear(i) ? tuning::spec.rear_grip_ratio : 1.0f;
-            float peak_force    = base_grip * temp_factor * camber_factor * surface_factor * axle_grip_scale;
+            // per direction peaks: camber mostly costs lateral grip, min_lateral_grip floors the
+            // temp and wear degradation so a cold or worn tire still steers
+            float shared_grip     = base_grip * surface_factor * axle_grip_scale;
+            float long_grip_scale = temp_factor * wear_factor;
+            float lat_grip_scale  = PxMax(temp_factor * wear_factor, tuning::spec.min_lateral_grip) * camber_factor;
+            float peak_force_long = shared_grip * long_grip_scale;
+            float peak_force_lat  = shared_grip * lat_grip_scale;
 
             if (tuning::log_pacejka)
             {
-                SP_LOG_INFO("[%s] load=%.0f, peak_force=%.0f", wheel_name, w.tire_load, peak_force);
+                SP_LOG_INFO("[%s] load=%.0f, peak_long=%.0f, peak_lat=%.0f", wheel_name, w.tire_load, peak_force_long, peak_force_lat);
             }
 
             float lat_f = 0.0f, long_f = 0.0f;
@@ -164,10 +175,9 @@ namespace car
             float pacejka_weight = blend_t * blend_t * (3.0f - 2.0f * blend_t);
 
             // static friction model (dominant at rest / very low speed)
-            float friction_force = peak_force * 0.8f;
             float friction_gain = cfg.mass * static_friction_gain_per_kg;
-            float static_lat_f  = PxClamp(-vy * friction_gain, -friction_force, friction_force);
-            float static_long_f = PxClamp(-vx * friction_gain, -friction_force, friction_force);
+            float static_lat_f  = PxClamp(-vy * friction_gain, -peak_force_lat * 0.8f, peak_force_lat * 0.8f);
+            float static_long_f = PxClamp(-vx * friction_gain, -peak_force_long * 0.8f, peak_force_long * 0.8f);
 
             // slip calculation (always runs, values approach zero smoothly at low speed)
             float abs_vx = fabsf(vx);
@@ -220,30 +230,37 @@ namespace car
 
             float long_input = w.slip_ratio;
             float lat_input  = tanf(pacejka_slip_angle);
-            float Fx0 = pacejka(long_input, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
-            float Fy0 = pacejka(lat_input,  lat_B_eff, tuning::spec.lat_C,  tuning::spec.lat_D,  tuning::spec.lat_E);
 
-            float f = sqrtf(Fx0 * Fx0 + Fy0 * Fy0);
-            if (f > 1.0f && f > 0.0f)
+            // combined slip: normalize each slip by its curve peak, evaluate both curves at the
+            // combined magnitude and project back, preserves the falloff shape past the limit
+            float s_peak    = pacejka_peak_slip(long_B_eff, tuning::spec.long_C);
+            float a_peak    = pacejka_peak_slip(lat_B_eff, tuning::spec.lat_C);
+            float norm_long = long_input / PxMax(s_peak, 0.001f);
+            float norm_lat  = lat_input / PxMax(a_peak, 0.001f);
+            float rho       = sqrtf(norm_long * norm_long + norm_lat * norm_lat);
+            float Fx0 = 0.0f;
+            float Fy0 = 0.0f;
+            if (rho > 1e-4f)
             {
-                float s = 1.0f / f;
-                Fx0 *= s;
-                Fy0 *= s;
+                Fx0 = (norm_long / rho) * pacejka(rho * s_peak, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
+                Fy0 = (norm_lat / rho)  * pacejka(rho * a_peak, lat_B_eff,  tuning::spec.lat_C,  tuning::spec.lat_D,  tuning::spec.lat_E);
             }
 
-            float dynamic_lat_f  = -Fy0 * peak_force;
-            float dynamic_long_f =  Fx0 * peak_force;
+            float dynamic_lat_f  = -Fy0 * peak_force_lat;
+            float dynamic_long_f =  Fx0 * peak_force_long;
 
             bool is_left_wheel = (i == front_left || i == rear_left);
             float camber_thrust = dyn_camb * w.tire_load * tuning::spec.camber_thrust_coeff;
             dynamic_lat_f += is_left_wheel ? -camber_thrust : camber_thrust;
 
-            float total_f = sqrtf(dynamic_lat_f * dynamic_lat_f + dynamic_long_f * dynamic_long_f);
-            if (total_f > peak_force)
+            // ellipse safety clamp, only needed because camber thrust is added on top
+            float ex = dynamic_long_f / PxMax(peak_force_long, 1.0f);
+            float ey = dynamic_lat_f / PxMax(peak_force_lat, 1.0f);
+            float e  = sqrtf(ex * ex + ey * ey);
+            if (e > 1.0f)
             {
-                float inv = peak_force / total_f;
-                dynamic_lat_f  *= inv;
-                dynamic_long_f *= inv;
+                dynamic_long_f /= e;
+                dynamic_lat_f  /= e;
             }
 
             // blend between static friction and pacejka
@@ -317,7 +334,7 @@ namespace car
 
             if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
             {
-                float sliding_f = tuning::spec.handbrake_sliding_factor * peak_force;
+                float sliding_f = tuning::spec.handbrake_sliding_factor * peak_force_long;
                 long_f = (fabsf(vx) > 0.01f) ? ((vx > 0.0f ? -1.0f : 1.0f) * sliding_f * input.handbrake) : 0.0f;
                 lat_f *= (1.0f - 0.5f * input.handbrake);
             }
@@ -334,12 +351,12 @@ namespace car
 
             if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
             {
-                float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : 1.0f;
+                float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : (w.angular_velocity < 0.0f) ? 1.0f : 0.0f;
                 w.net_torque += hb_sign * tuning::spec.handbrake_torque * input.handbrake;
             }
 
             // semi-implicit euler: compute new velocity from net torque, use new velocity for position
-            float new_w = w.angular_velocity + (w.net_torque / wmoi) * dt;
+            float new_w = w.angular_velocity + (w.net_torque / wmoi_eff) * dt;
 
             // prevent sign reversal when a brake input is locking the wheel - any sign flip
             // from brake/handbrake torque should clamp to zero rather than spin the wheel backwards
@@ -356,8 +373,10 @@ namespace car
             w.angular_velocity = new_w;
 
             // ground speed sync for undriven/coasting wheels
+            // never while braking, the sync would spin locked wheels back up and mask lockup and abs
             bool coasting = input.throttle < 0.01f && input.brake < 0.01f;
-            bool should_match = coasting || !is_driven(i) || (ground_speed < tuning::spec.min_slip_speed && (!is_driven(i) || input.throttle < 0.01f));
+            bool braking  = (input.brake >= 0.01f && !is_in_reverse()) || (is_rear(i) && input.handbrake > tuning::spec.input_deadzone);
+            bool should_match = !braking && (coasting || !is_driven(i) || (ground_speed < tuning::spec.min_slip_speed && (!is_driven(i) || input.throttle < 0.01f)));
             if (should_match)
             {
                 float target_w = vx / wr_eff;

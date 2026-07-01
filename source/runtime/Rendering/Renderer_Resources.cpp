@@ -876,7 +876,10 @@ namespace spartan
             {
                 continue;
             }
+            // the tlas declaration in common_resources.hlsl is gated behind this define so that modules
+            // built for devices without ray tracing never carry the spir-v ray query capability
             const bool needs_ray_tracing_define =
+                e.rt_only ||
                 e.id == Renderer_Shader::particle_render_p ||
                 e.id == Renderer_Shader::particle_volume_resolve_c ||
                 e.id == Renderer_Shader::particle_volume_composite_c;

@@ -34,8 +34,7 @@ namespace car
     inline void update_suspension(PxScene* scene, float dt)
     {
         PxTransform pose = body->getGlobalPose();
-        PxVec3 local_down  = pose.q.rotate(PxVec3(0, -1, 0));
-        PxVec3 local_right = pose.q.rotate(PxVec3(1, 0, 0));
+        PxVec3 local_down = pose.q.rotate(PxVec3(0, -1, 0));
 
         PxQueryFilterData filter;
         filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER;
@@ -55,7 +54,6 @@ namespace car
             w.prev_compression = w.compression;
             float wr_raw = cfg.wheel_radius_for(i);
             float wr     = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
-            float ww     = cfg.wheel_width_for(i);
 
             PxVec3 attach = wheel_offsets[i];
             attach.y += susp_travel_safe;
@@ -105,6 +103,7 @@ namespace car
                 w.grounded       = true;
                 w.contact_point  = hit.block.position;
                 w.contact_normal = sweep_normal;
+                w.contact_actor  = hit.block.actor;
 
                 float speed = body->getLinearVelocity().magnitude();
                 if (speed > 1.0f && tuning::road_bump_amplitude > 0.0f)
@@ -116,25 +115,6 @@ namespace car
                 }
 
                 w.target_compression = PxClamp(1.0f - dist_from_rest / susp_travel_safe, 0.0f, 1.0f);
-
-                PxVec3 wheel_center = world_attach + local_down * (susp_travel_safe * (1.0f - w.compression) + wr);
-                float probe_len     = wr + 0.3f;
-                float half_width    = ww * 0.4f;
-                PxVec3 probe_origins[3] = {
-                    wheel_center,
-                    wheel_center - local_right * half_width,
-                    wheel_center + local_right * half_width
-                };
-
-                for (int p = 0; p < 3; p++)
-                {
-                    PxRaycastBuffer probe;
-                    if (scene->raycast(probe_origins[p], local_down, probe_len, probe, PxHitFlag::eDEFAULT, filter, &self_filter) &&
-                        probe.block.actor)
-                    {
-                        // TODO: map probe.block.shape material to surface_type for split-mu detection
-                    }
-                }
             }
             else
             {
@@ -142,6 +122,7 @@ namespace car
                 w.grounded               = false;
                 w.target_compression     = 0.0f;
                 w.contact_normal         = PxVec3(0, 1, 0);
+                w.contact_actor          = nullptr;
                 sweep_distance[i]        = sweep_dist;
             }
 
@@ -166,6 +147,8 @@ namespace car
     inline void apply_suspension_forces(float dt)
     {
         PxTransform pose = body->getGlobalPose();
+        PxVec3 lin_vel   = body->getLinearVelocity();
+        PxVec3 ang_vel   = body->getAngularVelocity();
         float forces[wheel_count];
 
         for (int i = 0; i < wheel_count; i++)
@@ -180,7 +163,12 @@ namespace car
 
             float displacement = w.compression * cfg.suspension_travel;
             float spring_f = spring_stiffness[i] * displacement;
-            float susp_vel = PxClamp(w.compression_velocity * cfg.suspension_travel, -tuning::spec.max_damper_velocity, tuning::spec.max_damper_velocity);
+            // damp the real chassis velocity along the contact normal, the tracked compression
+            // velocity pins to zero when travel saturates, leaving bottoming-out undamped and
+            // turning every hard vertical hit into a near elastic, self sustaining bounce
+            PxVec3 attach_vel = lin_vel + ang_vel.cross(pose.q.rotate(wheel_offsets[i]));
+            float closing_vel = -attach_vel.dot(w.contact_normal);
+            float susp_vel = PxClamp(closing_vel, -tuning::spec.max_damper_velocity, tuning::spec.max_damper_velocity);
             float damper_ratio = (susp_vel > 0.0f) ? tuning::spec.damping_bump_ratio : tuning::spec.damping_rebound_ratio;
             float damper_f = spring_damping[i] * susp_vel * damper_ratio;
 
@@ -211,8 +199,8 @@ namespace car
         apply_arb(rear_left, rear_right, tuning::spec.rear_arb_stiffness);
 
         // cap per-wheel forces, then scale all wheels down if the total would
-        // produce more than ~3g of net upward acceleration (prevents launch from
-        // external impulses like the player landing on the car)
+        // produce more than chassis_force_cap_g of net upward acceleration, prevents
+        // launch from external impulses like the player landing on the car
         float total_force = 0.0f;
         for (int i = 0; i < wheel_count; i++)
         {
@@ -238,9 +226,9 @@ namespace car
 
             if (forces[i] > 0.0f && wheels[i].grounded)
             {
+                // at the contact patch, not the top mount, so roll and jacking moments are correct
                 PxVec3 force = wheels[i].contact_normal * forces[i];
-                PxVec3 pos = pose.transform(wheel_offsets[i]);
-                safe_add_force_at_pos(body, force, pos);
+                safe_add_force_at_pos(body, force, wheels[i].contact_point);
             }
         }
 
@@ -255,6 +243,12 @@ namespace car
         float rear_geo         = total_lat_force * (1.0f - wdf) * tuning::spec.rear_roll_center_height  / PxMax(track_width, 0.1f);
         float front_lat_transfer = PxClamp(front_geo, -max_lat_transfer, max_lat_transfer);
         float rear_lat_transfer  = PxClamp(rear_geo,  -max_lat_transfer, max_lat_transfer);
+        // longitudinal weight transfer, same split: the anti dive and anti squat fraction acts
+        // instantly through the pitch center, the elastic remainder arrives via the springs
+        float total_long_force = cfg.mass * longitudinal_accel;
+        float long_geo         = total_long_force * tuning::spec.pitch_center_height / PxMax(cfg.wheelbase, 0.1f);
+        float long_transfer    = PxClamp(long_geo, -max_lat_transfer, max_lat_transfer);
+
         for (int i = 0; i < wheel_count; i++)
         {
             if (wheels[i].grounded)
@@ -269,6 +263,7 @@ namespace car
                 {
                     wheels[i].tire_load -= axle_transfer;
                 }
+                wheels[i].tire_load += is_front(i) ? -long_transfer * 0.5f : long_transfer * 0.5f;
                 wheels[i].tire_load = PxMax(wheels[i].tire_load, 0.0f);
             }
         }
@@ -312,15 +307,16 @@ namespace car
             float inner = atanf(cfg.wheelbase / PxMax(turn_r - half_track, 0.1f));
             float outer = atanf(cfg.wheelbase / PxMax(turn_r + half_track, 0.1f));
 
+            // bump steer mirrors like toe: positive on the left wheel, negative on the right
             if (base > 0.0f)
             {
-                out_angles[front_right] =  inner - tuning::spec.front_toe + front_right_bump;
+                out_angles[front_right] =  inner - tuning::spec.front_toe - front_right_bump;
                 out_angles[front_left]  =  outer + tuning::spec.front_toe + front_left_bump;
             }
             else
             {
                 out_angles[front_left]  = -inner + tuning::spec.front_toe + front_left_bump;
-                out_angles[front_right] = -outer - tuning::spec.front_toe + front_right_bump;
+                out_angles[front_right] = -outer - tuning::spec.front_toe - front_right_bump;
             }
         }
         else

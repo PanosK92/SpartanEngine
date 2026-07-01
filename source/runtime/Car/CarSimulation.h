@@ -195,7 +195,8 @@ namespace car
         cfg.track_rear  = wheel_offsets[rear_right].x  - wheel_offsets[rear_left].x;
     }
 
-    // overlay only handling params, leaving the chassis and suspension geometry at engine defaults so the body does not spawn under the ground
+    // overlay the preset's physical footprint, zero fields keep the engine defaults so a
+    // sparse xml preset cannot collapse the geometry and spawn the body under the ground
     inline void apply_preset_geometry(const car_preset& spec)
     {
         if (spec.mass        > 0.0f)
@@ -213,6 +214,26 @@ namespace car
         if (spec.track_rear  > 0.0f)
         {
             cfg.track_rear = spec.track_rear;
+        }
+        if (spec.length      > 0.0f)
+        {
+            cfg.length = spec.length;
+        }
+        if (spec.width       > 0.0f)
+        {
+            cfg.width = spec.width;
+        }
+        if (spec.height      > 0.0f)
+        {
+            cfg.height = spec.height;
+        }
+        if (spec.suspension_height > 0.0f)
+        {
+            cfg.suspension_height = spec.suspension_height;
+        }
+        if (spec.suspension_travel > 0.0f)
+        {
+            cfg.suspension_travel = spec.suspension_travel;
         }
     }
 
@@ -500,6 +521,7 @@ namespace car
         rev_limiter_active = false;
         downshift_blip_timer = 0.0f;
         driveshaft_twist = 0.0f;
+        reflected_engine_inertia = 0.0f;
         tc_reduction = 0.0f;
         tc_active = false;
         abs_phase = 0.0f;

@@ -170,8 +170,14 @@ float3 taau(uint2 px_out, float2 res_out)
                 continue;
             }
 
-            float3 s_rgb_raw  = tex2[tap].rgb;
-            float3 s_rgb      = isnan(s_rgb_raw.x + s_rgb_raw.y + s_rgb_raw.z) ? 0.0f.xxx : max(s_rgb_raw, 0.0f.xxx);
+            // nan taps are rejected, inf taps are clamped to fp16 max so bright pixels stay bright
+            float3 s_rgb_raw = tex2[tap].rgb;
+            if (any(isnan(s_rgb_raw)))
+            {
+                continue;
+            }
+
+            float3 s_rgb      = clamp(s_rgb_raw, 0.0f.xxx, FLT_MAX_16U.xxx);
             float3 s_rgb_tm   = tonemap_for_taa(s_rgb);
             float3 s_ycocg_tm = rgb_to_ycocg(s_rgb_tm);
 
@@ -197,7 +203,8 @@ float3 taau(uint2 px_out, float2 res_out)
         }
     }
 
-    current_rgb_tm          = current_rgb_tm * rcp(weight_sum);
+    bool current_valid      = weight_sum > 0.0f;
+    current_rgb_tm          = current_valid ? current_rgb_tm * rcp(weight_sum) : 0.0f.xxx;
     float3 current_ycocg_tm = rgb_to_ycocg(current_rgb_tm);
 
     // history reprojection
@@ -213,7 +220,20 @@ float3 taau(uint2 px_out, float2 res_out)
         return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
     }
 
-    float3 history_rgb      = sample_history_catmull_rom(uv_prev, res_out);
+    float3 history_rgb = sample_history_catmull_rom(uv_prev, res_out);
+
+    // a stale nan in the history buffer would recirculate forever and spread through the bilinear taps
+    if (any(isnan(history_rgb)))
+    {
+        return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
+    }
+
+    // an all nan neighborhood has no current signal, carry the history through unchanged
+    if (!current_valid)
+    {
+        return saturate_16(max(history_rgb, 0.0f.xxx));
+    }
+
     float3 history_rgb_tm   = tonemap_for_taa(history_rgb);
     float3 history_ycocg_tm = rgb_to_ycocg(history_rgb_tm);
 
