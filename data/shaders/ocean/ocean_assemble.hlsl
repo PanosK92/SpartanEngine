@@ -79,31 +79,27 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float cell = length_m / (float)OCEAN_N; // world distance between neighbouring texels
     float inv2 = 1.0 / (2.0 * cell);
 
-    // horizontal displacement gradients from the choppiness term, used for normal stretch below
-    float dDx_dx = (((a_xp.z * s_xp) - (a_xm.z * s_xm)) * inv2) * chop;
-    float dDz_dz = (((b_yp.x * s_yp) - (b_ym.x * s_ym)) * inv2) * chop;
-    float dDx_dz = (((a_yp.z * s_yp) - (a_ym.z * s_ym)) * inv2) * chop;
+    // horizontal displacement gradients of the rendered surface, the displacement map applies chop and disp_scale so both belong here
+    float dDx_dx = (((a_xp.z * s_xp) - (a_xm.z * s_xm)) * inv2) * chop * disp_scale;
+    float dDz_dz = (((b_yp.x * s_yp) - (b_ym.x * s_ym)) * inv2) * chop * disp_scale;
+    float dDx_dz = (((a_yp.z * s_yp) - (a_ym.z * s_ym)) * inv2) * chop * disp_scale;
 
-    // jacobian of the horizontal displacement, foam forms where the surface folds onto itself
-    // the displacement map also scales the horizontal offset by disp_scale, so the folding metric must include it
-    float jx       = dDx_dx * disp_scale;
-    float jz       = dDz_dz * disp_scale;
-    float jxz      = dDx_dz * disp_scale;
-    float jacobian = (1.0 + jx) * (1.0 + jz) - jxz * jxz;
+    // jacobian of the horizontal displacement, it drops below 1 where the surface compresses and hits 0 where it folds onto itself
+    float jacobian = (1.0 + dDx_dx) * (1.0 + dDz_dz) - dDx_dz * dDx_dz;
 
     // choppiness folds the surface horizontally, dividing the height gradient by the horizontal stretch
     // sharpens normals on compressed crests and flattens stretched troughs, this is what makes choppiness read in the lighting
+    // the vertical displacement is scaled by disp_scale too, so the slope picks it up before the stretch division
     float stretch_x = max(1.0 + dDx_dx, 0.1);
     float stretch_z = max(1.0 + dDz_dz, 0.1);
-    slope_x        /= stretch_x;
-    slope_z        /= stretch_z;
+    slope_x         = slope_x * disp_scale / stretch_x;
+    slope_z         = slope_z * disp_scale / stretch_z;
 
-    // whitewater is a pure consequence of the surface folding onto itself, nothing artistic gates it
-    // the jacobian of the horizontal displacement passes through zero as a crest pinches and goes negative where it overhangs,
-    // so the fold depth itself is the foam intensity, steeper or choppier waves fold harder and foam more while calm water never folds and stays clear
+    // whitewater forms where the surface compresses toward folding, well before it overhangs,
+    // so foam starts once the jacobian dips below the bias and saturates as it approaches zero
     // the result is accumulated over time so it trails behind the crests as fading streaks instead of single-frame sparkle,
     // the previous value is read back from the persistent normal target whose slope channels are overwritten below
-    float inject    = saturate(-jacobian);
+    float inject    = saturate((OCEAN_FOAM_BIAS - jacobian) * OCEAN_FOAM_GAIN);
     float prev_foam = saturate(tex_ocean_normal_uav[id].z);
     float decay     = exp(-buffer_frame.delta_time * OCEAN_FOAM_DECAY);
     float foam      = max(inject, prev_foam * decay);

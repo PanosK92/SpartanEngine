@@ -2276,10 +2276,10 @@ void Properties::ShowWater(spartan::Water* water) const
             water->SetCascadeCount(cascade_index + 1);
         }
 
-        property_float("Amplitude",          &amplitude,          0.5f,  0.0f,    500.0f,   "overall wave height");
-        property_float("Choppiness",         &choppiness,         0.1f,  0.0f,    40.0f,    "horizontal sharpening of the crests");
-        property_float("Displacement Scale", &displacement_scale, 0.1f,  0.0f,    40.0f,    "scales the simulated displacement");
-        property_float("Normal Strength",    &normal_strength,    0.1f,  0.0f,    40.0f,    "steepens the surface normals so waves catch more light");
+        property_float("Amplitude",          &amplitude,          0.01f, 0.0f,    10.0f,    "linear wave height multiplier, 1 is the physical sea for the current wind");
+        property_float("Choppiness",         &choppiness,         0.01f, 0.0f,    4.0f,     "horizontal sharpening of the crests, past ~2 the surface folds and foams heavily");
+        property_float("Displacement Scale", &displacement_scale, 0.01f, 0.0f,    4.0f,     "scales the simulated displacement");
+        property_float("Normal Strength",    &normal_strength,    0.01f, 0.0f,    4.0f,     "steepens the surface normals so waves catch more light");
         property_float("Sea Level",          &sea_level,          0.1f,  -1000.0f, 1000.0f, "world height of the water surface", "%.1f m");
 
         if (amplitude != water->GetAmplitude())                  { water->SetAmplitude(amplitude); }

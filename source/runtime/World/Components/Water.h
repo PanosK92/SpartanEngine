@@ -45,9 +45,10 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
-        // simulation parameters
+        // simulation parameters, the renderer reads these directly each frame, setters re-seed the spectrum
         uint32_t GetCascadeCount() const          { return m_cascade_count; }
         void SetCascadeCount(uint32_t count)      { m_cascade_count = count; PushToRenderer(); }
+        const float* GetCascadeLengths() const    { return m_cascade_length; }
         float GetAmplitude() const                { return m_amplitude; }
         void SetAmplitude(float amplitude)        { m_amplitude = amplitude; PushToRenderer(); }
         float GetChoppiness() const               { return m_choppiness; }
@@ -65,12 +66,13 @@ namespace spartan
 
         // simulation parameters
         // four cascades spanning swells down to microwaves, each band-limited to its own range in the spectrum shader
+        // the spectrum is physically normalized, so 1.0 means the wind speed alone dictates the sea state
         uint32_t m_cascade_count    = 4;
         float m_cascade_length[4]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
-        float m_amplitude           = 60.0f;
-        float m_choppiness          = 6.0f;  // sharpens crests without tipping into stormy breaking peaks
-        float m_displacement_scale  = 6.0f;
-        float m_normal_strength     = 20.0f; // steepens the analytic slopes so the waves catch more light
+        float m_amplitude           = 1.0f;
+        float m_choppiness          = 1.5f; // sharpens crests without tipping into stormy breaking peaks
+        float m_displacement_scale  = 1.0f;
+        float m_normal_strength     = 1.0f;
         float m_sea_level           = 0.0f;
 
         // clipmap geometry

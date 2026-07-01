@@ -27,7 +27,10 @@ static const uint  OCEAN_N          = 512;
 static const uint  OCEAN_LOG2N      = 9;
 static const float OCEAN_PI         = 3.14159265359;
 static const float OCEAN_G          = 9.81;
+static const float OCEAN_PHILLIPS_A = 0.002; // base phillips constant, sized so the user amplitude is a plain height multiplier around 1
 static const float OCEAN_FOAM_DECAY = 0.6;   // foam fade rate per second, lower lingers longer
+static const float OCEAN_FOAM_BIAS  = 0.85;  // jacobian value below which the surface is compressed enough to whitecap
+static const float OCEAN_FOAM_GAIN  = 1.6;   // how fast foam saturates once past the bias
 static const float OCEAN_DIR_SPREAD = 2.0;   // cos power for wind alignment, higher is tighter
 static const float OCEAN_CAPILLARY  = 0.003; // sub-capillary cutoff in metres, only the finest ripples below this are damped
 

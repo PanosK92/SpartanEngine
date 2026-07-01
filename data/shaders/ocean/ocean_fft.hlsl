@@ -77,13 +77,12 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         GroupMemoryBarrierWithGroupSync();
     }
 
-    // each 1d pass applies a 1/N factor, the two passes together form the 1/N^2 inverse scale
-    float inv_n = 1.0 / (float)OCEAN_N;
+    // no 1/N^2 factor, tessendorf's height field is the plain sum over modes, the physical scale lives in the spectrum's dk term
 #if defined(HORIZONTAL)
     uint3 coord_store = uint3(i, line_index, cascade);
 #else
     uint3 coord_store = uint3(line_index, i, cascade);
 #endif
-    tex_ocean_fft_a_uav[coord_store] = sh_a[i] * inv_n;
-    tex_ocean_fft_b_uav[coord_store] = sh_b[i] * inv_n;
+    tex_ocean_fft_a_uav[coord_store] = sh_a[i];
+    tex_ocean_fft_b_uav[coord_store] = sh_b[i];
 }

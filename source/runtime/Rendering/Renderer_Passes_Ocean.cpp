@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Texture.h"
 #include "../World/World.h"
+#include "../World/Components/Water.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -45,7 +46,8 @@ namespace spartan
         }
 
         // keep the descriptors valid for the geometry passes that always declare the srvs, even with no water present
-        if (!m_pass_state.ocean_enabled)
+        const Water* water = m_pass_state.ocean;
+        if (!water)
         {
             tex_displacement->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
@@ -74,11 +76,11 @@ namespace spartan
         RHI_Texture* tex_fft_a    = GetRenderTarget(Renderer_RenderTarget::ocean_fft_a);
         RHI_Texture* tex_fft_b    = GetRenderTarget(Renderer_RenderTarget::ocean_fft_b);
 
-        const OceanParams& params = m_pass_state.ocean_params;
-        const uint32_t n          = renderer_ocean_resolution;
-        uint32_t cascades         = params.cascade_count;
-        cascades                  = cascades < 1 ? 1 : cascades;
-        cascades                  = cascades > renderer_ocean_max_cascades ? renderer_ocean_max_cascades : cascades;
+        const float* lengths = water->GetCascadeLengths();
+        const uint32_t n     = renderer_ocean_resolution;
+        uint32_t cascades    = water->GetCascadeCount();
+        cascades             = cascades < 1 ? 1 : cascades;
+        cascades             = cascades > renderer_ocean_max_cascades ? renderer_ocean_max_cascades : cascades;
 
         // wind comes from the world, re-seed the spectrum whenever it changes
         const Vector3 wind     = World::GetWind();
@@ -94,9 +96,9 @@ namespace spartan
 
         // shared push constants, the cascade lengths are packed across the value slots
         m_pcb_pass_cpu.set_f3_value(dir_x, dir_z, wind_speed);
-        m_pcb_pass_cpu.set_f3_value2(params.cascade_length[0], params.cascade_length[1], params.cascade_length[2]);
-        m_pcb_pass_cpu.set_f4_value(params.amplitude, params.choppiness, params.displacement_scale, params.normal_strength);
-        m_pcb_pass_cpu.set_f2_value(params.cascade_length[3], 0.0f);
+        m_pcb_pass_cpu.set_f3_value2(lengths[0], lengths[1], lengths[2]);
+        m_pcb_pass_cpu.set_f4_value(water->GetAmplitude(), water->GetChoppiness(), water->GetDisplacementScale(), water->GetNormalStrength());
+        m_pcb_pass_cpu.set_f2_value(lengths[3], 0.0f);
 
         cmd_list->BeginTimeblock("ocean");
         {

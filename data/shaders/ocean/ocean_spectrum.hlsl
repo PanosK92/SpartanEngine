@@ -73,16 +73,21 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     // the window is an energy weight, the spectrum is an amplitude so it is applied as a square root
     float w_amp = sqrt(window);
 
-    // h0(k) from the spectrum modulated by complex gaussian noise
+    // per-mode amplitude is sqrt(p(k) * dk^2) = sqrt(p(k)) * dk, the k-space cell area a cascade sample covers
+    // without this factor a band's energy scales with the patch length squared, starving the fine cascades and leaving only coarse blobs
+    float delta_k = 2.0 * OCEAN_PI / length_m;
+    float scale   = delta_k * w_amp * amplitude;
+
+    // h0(k) from the spectrum modulated by complex gaussian noise, the user amplitude scales the height linearly
     uint seed     = id.x + id.y * OCEAN_N + cascade * OCEAN_N * OCEAN_N + 0x9e3779b9u;
     float2 xi     = ocean_gauss(seed);
-    float2 h0     = (1.0 / sqrt(2.0)) * xi * sqrt(ocean_phillips(k, wind_dir, wind_speed, amplitude)) * w_amp;
+    float2 h0     = (1.0 / sqrt(2.0)) * xi * sqrt(ocean_phillips(k, wind_dir, wind_speed, OCEAN_PHILLIPS_A)) * scale;
 
     // conjugate of h0(-k), uses the mirrored texel so neighbouring cells stay consistent
     uint2 mirror   = uint2((OCEAN_N - id.x) % OCEAN_N, (OCEAN_N - id.y) % OCEAN_N);
     uint seed_m    = mirror.x + mirror.y * OCEAN_N + cascade * OCEAN_N * OCEAN_N + 0x9e3779b9u;
     float2 xi_m    = ocean_gauss(seed_m);
-    float2 h0_minus = (1.0 / sqrt(2.0)) * xi_m * sqrt(ocean_phillips(-k, wind_dir, wind_speed, amplitude)) * w_amp;
+    float2 h0_minus = (1.0 / sqrt(2.0)) * xi_m * sqrt(ocean_phillips(-k, wind_dir, wind_speed, OCEAN_PHILLIPS_A)) * scale;
     float2 h0_minus_conj = float2(h0_minus.x, -h0_minus.y);
 
     tex_ocean_spectrum_uav[id] = float4(h0, h0_minus_conj);

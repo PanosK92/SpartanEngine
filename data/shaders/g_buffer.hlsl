@@ -424,8 +424,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float L      = buffer_frame.ocean_cascade_length[c];
             float2 uv    = world_xz / L;
             float4 slope_foam = tex_ocean_normal.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float3(uv, (float)c), 0.0f);
-            slope       += slope_foam.xy;
-            foam        += slope_foam.z;
+
+            // the maps have no mips, so once a cascade's texels drop below the pixel footprint its slopes alias into sparkle, fade it out with distance
+            float fade   = 1.0f - smoothstep(L * 2.0f, L * 8.0f, distance);
+            slope       += slope_foam.xy * fade;
+            foam        += slope_foam.z * fade;
         }
 
         normal     = normalize(float3(-slope.x, 1.0f, -slope.y));

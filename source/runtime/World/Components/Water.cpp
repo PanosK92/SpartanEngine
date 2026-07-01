@@ -127,19 +127,8 @@ namespace spartan
             return;
         }
 
-        Renderer::OceanParams params;
-        params.cascade_count     = m_cascade_count;
-        params.cascade_length[0] = m_cascade_length[0];
-        params.cascade_length[1] = m_cascade_length[1];
-        params.cascade_length[2] = m_cascade_length[2];
-        params.cascade_length[3] = m_cascade_length[3];
-        params.amplitude         = m_amplitude;
-        params.choppiness        = m_choppiness;
-        params.displacement_scale = m_displacement_scale;
-        params.normal_strength   = m_normal_strength;
-        params.sea_level         = m_sea_level;
-
-        Renderer::EnableOcean(m_mesh.get(), m_material.get(), params);
+        // the renderer reads the parameters straight from this component, registering marks the spectrum dirty
+        Renderer::EnableOcean(this);
     }
 
     void Water::Save(pugi::xml_node& node)

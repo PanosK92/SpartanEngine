@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Volume.h"
 #include "../World/Components/Render.h"
+#include "../World/Components/Water.h"
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
@@ -957,15 +958,15 @@ namespace spartan
         m_cb_frame_cpu.wind                  = World::GetWind();
 
         // fft ocean, geometry samples these to displace and shade the water surface
-        if (m_pass_state.ocean_enabled)
+        if (const Water* water = m_pass_state.ocean)
         {
-            const OceanParams& ocean                = m_pass_state.ocean_params;
-            m_cb_frame_cpu.ocean_cascade_length     = Vector4(ocean.cascade_length[0], ocean.cascade_length[1], ocean.cascade_length[2], ocean.cascade_length[3]);
-            m_cb_frame_cpu.ocean_sea_level          = ocean.sea_level;
-            m_cb_frame_cpu.ocean_choppiness         = ocean.choppiness;
-            m_cb_frame_cpu.ocean_displacement_scale = ocean.displacement_scale;
-            m_cb_frame_cpu.ocean_normal_strength    = ocean.normal_strength;
-            m_cb_frame_cpu.ocean_cascade_count      = ocean.cascade_count;
+            const float* lengths                    = water->GetCascadeLengths();
+            m_cb_frame_cpu.ocean_cascade_length     = Vector4(lengths[0], lengths[1], lengths[2], lengths[3]);
+            m_cb_frame_cpu.ocean_sea_level          = water->GetSeaLevel();
+            m_cb_frame_cpu.ocean_choppiness         = water->GetChoppiness();
+            m_cb_frame_cpu.ocean_displacement_scale = water->GetDisplacementScale();
+            m_cb_frame_cpu.ocean_normal_strength    = water->GetNormalStrength();
+            m_cb_frame_cpu.ocean_cascade_count      = water->GetCascadeCount();
             m_cb_frame_cpu.ocean_enabled            = 1.0f;
         }
         else
@@ -1311,31 +1312,20 @@ namespace spartan
         return m_pass_state.grass_enabled;
     }
 
-    void Renderer::EnableOcean(Mesh* ocean_mesh, Material* ocean_material, const OceanParams& params)
+    void Renderer::EnableOcean(Water* water)
     {
-        if (!ocean_mesh || !ocean_material)
-        {
-            m_pass_state.ocean_enabled = false;
-            return;
-        }
-
-        m_pass_state.ocean_mesh           = ocean_mesh;
-        m_pass_state.ocean_material       = ocean_material;
-        m_pass_state.ocean_params         = params;
-        m_pass_state.ocean_enabled        = true;
+        m_pass_state.ocean                = water;
         m_pass_state.ocean_spectrum_dirty = true; // re-seed the spectrum whenever parameters change
     }
 
     void Renderer::DisableOcean()
     {
-        m_pass_state.ocean_enabled  = false;
-        m_pass_state.ocean_mesh     = nullptr;
-        m_pass_state.ocean_material = nullptr;
+        m_pass_state.ocean = nullptr;
     }
 
     bool Renderer::IsOceanEnabled()
     {
-        return m_pass_state.ocean_enabled;
+        return m_pass_state.ocean != nullptr;
     }
 
     void Renderer::OnFullScreenToggled()
