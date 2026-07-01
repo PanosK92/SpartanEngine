@@ -358,7 +358,6 @@ namespace spartan
             // opaque half runs with no pixel shader so the hardware uses double-speed depth, the alpha half
             // runs the alpha-test pixel shader so foliage cutouts still discard, both pull from one buffer
             // with a region base pushed in f4_value.x and first_vertex 0
-            if (m_indirect_draw_count > 0)
             {
                 const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
 
@@ -373,31 +372,36 @@ namespace spartan
                 pso.resolution_scale                 = true;
                 pso.is_multiview                     = xr_multiview;
 
-                // opaque half, no pixel shader, this draw also clears the depth target for the whole prepass
+                // opaque half, no pixel shader, this pass also clears the depth target for the whole prepass
+                // the clear runs unconditionally so the transparent ocean still tests against a fresh depth buffer when no opaque geometry is visible
                 pso.shaders[RHI_Shader_Type::Pixel]  = nullptr;
                 pso.clear_depth                      = 0.0f;
                 cmd_list->SetPipelineState(pso);
-                cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
-                cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
-                cmd_list->SetCullMode(RHI_CullMode::None);
-                m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
 
-                // alpha-tested half, alpha-test pixel shader discards cutout texels, depth already cleared so load it
-                pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::depth_prepass_indirect_alpha_test_p);
-                pso.clear_depth                      = rhi_depth_load;
-                cmd_list->SetPipelineState(pso);
-                cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
-                cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
-                cmd_list->SetCullMode(RHI_CullMode::None);
-                m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
+                if (m_indirect_draw_count > 0)
+                {
+                    cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+                    cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
+                    cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
+                    cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
+                    cmd_list->SetCullMode(RHI_CullMode::None);
+                    m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
+
+                    // alpha-tested half, alpha-test pixel shader discards cutout texels, depth already cleared so load it
+                    pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::depth_prepass_indirect_alpha_test_p);
+                    pso.clear_depth                      = rhi_depth_load;
+                    cmd_list->SetPipelineState(pso);
+                    cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+                    cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
+                    cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
+                    cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
+                    cmd_list->SetCullMode(RHI_CullMode::None);
+                    m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
+                }
             }
 
             // cpu-driven tessellated path (only tessellated still uses cpu draws, indirect path covers everything else)
@@ -471,11 +475,6 @@ namespace spartan
 
     void Renderer::Pass_GBuffer_Indirect(RHI_CommandList* cmd_list)
     {
-        if (m_indirect_draw_count == 0)
-        {
-            return;
-        }
-
         const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
 
         RHI_PipelineState pso;
@@ -509,30 +508,35 @@ namespace spartan
         m_pcb_pass_cpu.is_transparent = 0;
 
         // opaque half, reads the opaque depth the prepass wrote, clears the g-buffer targets
+        // the clear runs unconditionally so the transparent ocean composites over a fresh g-buffer when no opaque geometry is visible
         cmd_list->SetPipelineState(pso);
-        cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-        cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
-        cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
-        cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
-        cmd_list->SetCullMode(RHI_CullMode::None);
-        m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-        cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
 
-        // alpha-tested half, same equal-z pixel shader, loads the g-buffer so the opaque output survives
-        pso.clear_color[0] = rhi_color_load;
-        pso.clear_color[1] = rhi_color_load;
-        pso.clear_color[2] = rhi_color_load;
-        pso.clear_color[3] = rhi_color_load;
-        cmd_list->SetPipelineState(pso);
-        cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
-        cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
-        cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
-        cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
-        cmd_list->SetCullMode(RHI_CullMode::None);
-        m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-        cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
+        if (m_indirect_draw_count > 0)
+        {
+            cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
+            cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
+            cmd_list->SetCullMode(RHI_CullMode::None);
+            m_pcb_pass_cpu.set_f4_value(0.0f, 0.0f, 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
+
+            // alpha-tested half, same equal-z pixel shader, loads the g-buffer so the opaque output survives
+            pso.clear_color[0] = rhi_color_load;
+            pso.clear_color[1] = rhi_color_load;
+            pso.clear_color[2] = rhi_color_load;
+            pso.clear_color[3] = rhi_color_load;
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data, GetBuffer(Renderer_Buffer::IndirectDrawData));
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,  GetBuffer(Renderer_Buffer::MeshletInstances));
+            cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
+            cmd_list->SetCullMode(RHI_CullMode::None);
+            m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
+        }
     }
 
     void Renderer::Pass_GBuffer_TessellatedAndTransparent(RHI_CommandList* cmd_list, const bool is_transparent_pass)

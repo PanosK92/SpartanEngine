@@ -309,7 +309,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // brdf.x is fresnel dependent and brdf.y is fresnel independent, this matches the split sum used in light_image_based.hlsl
     float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y);
 
-    if (surface.is_transparent())
+    if (surface.is_transparent() && !surface.is_water())
     {
         // pbr glass: sum reflection paths at full strength, add (1 - F) refracted background tinted by alpha
         float3 reflection_total  = tex_uav[thread_id.xy].rgb + specular_reflection;

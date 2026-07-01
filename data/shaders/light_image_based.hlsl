@@ -82,14 +82,19 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // specular occlusion stack, three terms in sequence
 
-    // lagarde 2014 cone aperture vs ao, derives the cone aperture from roughness
-    float specular_occlusion = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
+    // water has analytic normals and an unoccluded sky view, the ao and bent normal terms run on placeholder data and wrongly crush its reflection, so the open ocean keeps only the horizon fade
+    float specular_occlusion = 1.0f;
+    if (!surface.is_water())
+    {
+        // lagarde 2014 cone aperture vs ao, derives the cone aperture from roughness
+        specular_occlusion = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
 
-    // bent normal cone overlap, jimenez 2016, weighted by smoothness^2 so it only bites near mirrors
-    float bent_dot               = saturate(dot(surface.bent_normal, dominant_specular_direction));
-    float smoothness             = 1.0f - surface.roughness;
-    float bent_reflection_factor = lerp(1.0f, bent_dot, smoothness * smoothness);
-    specular_occlusion          *= bent_reflection_factor;
+        // bent normal cone overlap, jimenez 2016, weighted by smoothness^2 so it only bites near mirrors
+        float bent_dot               = saturate(dot(surface.bent_normal, dominant_specular_direction));
+        float smoothness             = 1.0f - surface.roughness;
+        float bent_reflection_factor = lerp(1.0f, bent_dot, smoothness * smoothness);
+        specular_occlusion          *= bent_reflection_factor;
+    }
 
     // horizon fade, lagarde 2014, stops sampling the panorama below the surface plane
     float horizon       = saturate(1.0f + dot(dominant_specular_direction, surface.normal));

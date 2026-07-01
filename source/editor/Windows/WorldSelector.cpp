@@ -97,10 +97,10 @@ namespace
 
     const char* world_recency_file = "spartan_worlds.xml";
 
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/kydbsf9pzzlfuskfdmf6v/project.7z?rlkey=8uyp0ps2wmnf93fq3priooxo2&dl=1";
+    const char* assets_url          = "https://www.dropbox.com/scl/fi/ghid7xijb22iaghito2xf/project.7z?rlkey=ilsedzfwem5pn0k5tph2e3zdn&dl=1";
     const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "cc9a40b3339068f19fcc44dfbbefcc131031245fb2b2e1404b4f0dc15698aad8";
+    const char* assets_expected_sha = "278437a06354ebc7285e0e1a1cb3d4e9f20a0f73fe0f6ce31ab948a62e6d4e27";
 
     float dpi()
     {

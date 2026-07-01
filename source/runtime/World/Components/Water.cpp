@@ -101,12 +101,14 @@ namespace spartan
 
         // transparent water material, the fft passes supply displacement and normals
         // a small roughness is essential, a perfectly smooth surface gives a delta specular lobe with no visible sun glint
+        // the albedo matches the deep in-scattering tint so the sky-lit body and the refracted depths read as the same water
         m_material = make_shared<Material>();
         m_material->SetResourceName("water_fft" + string(EXTENSION_MATERIAL));
-        m_material->SetColor(Color(0.0f, 80.0f / 255.0f, 90.0f / 255.0f, 110.0f / 255.0f));
-        m_material->SetProperty(MaterialProperty::Roughness, 0.08f);
-        m_material->SetProperty(MaterialProperty::IsWater,   1.0f);
-        m_material->SetProperty(MaterialProperty::Ior,       Material::EnumToIor(MaterialIor::Water));
+        m_material->SetColor(Color(0.0f, 0.09f, 0.13f, 0.9f));
+        m_material->SetProperty(MaterialProperty::Roughness,            0.05f);
+        m_material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.3f);
+        m_material->SetProperty(MaterialProperty::IsWater,              1.0f);
+        m_material->SetProperty(MaterialProperty::Ior,                  Material::EnumToIor(MaterialIor::Water));
 
         // render the surface through the standard transparent path
         if (Render* render = GetEntity()->AddComponent<Render>())
