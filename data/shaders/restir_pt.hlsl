@@ -98,35 +98,6 @@ float light_pick_pdf_for_index(uint light_idx, float total_weight)
     return light_pick_weight(light_parameters[light_idx]) / total_weight;
 }
 
-// nee strategy density at a brdf sampled candidate in solid angle, sun cone for sky, zero otherwise
-float light_nee_pdf_for_candidate(PathSample candidate, float3 primary_pos)
-{
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    if (light_count == 0)
-        return 0.0f;
-
-    if (!is_sky_sample(candidate))
-        return 0.0f;
-
-    LightParameters p = light_parameters[0];
-    bool is_directional = (p.flags & (1u << 0)) != 0;
-    if (!is_directional || p.intensity <= 0.0f)
-        return 0.0f;
-
-    float3 sun_dir     = -p.direction;
-    float  sun_cos_max = cos(SUN_CONE_HALF_ANGLE);
-    if (dot(candidate.rc_pos, sun_dir) < sun_cos_max)
-        return 0.0f;
-
-    float total = compute_total_light_weight();
-    if (total <= 0.0f)
-        return 0.0f;
-
-    float pick_pdf     = light_pick_pdf_for_index(0u, total);
-    float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-    return pick_pdf * sun_cone_pdf;
-}
-
 // binary search over the cdf, returns the triangle whose cumulative weight first exceeds u
 uint emtri_pick_index(float u, uint count)
 {
@@ -323,8 +294,10 @@ void trace_rc_suffix(
             break;
         }
 
-        // emissive triangle hit via brdf bounce, collected single strategy
-        out_L_post += throughput * next.emission;
+        // emissive triangle hit via brdf bounce, mis against the env probe at the previous
+        // vertex which can also reach this emitter through its cosine hemisphere
+        float w_emissive = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
+        out_L_post += throughput * next.emission * w_emissive;
         // suffix vertices past rc use the full brdf
         out_L_post += throughput * direct_lighting_at_vertex(
             next.hit_position, next.hit_normal, next.geometric_normal,
@@ -425,7 +398,7 @@ PathSample sample_light_candidate(
 
     if (is_directional)
     {
-        // continuous sun cone, consistent mis with the brdf into sky branch
+        // continuous sun cone, sole owner of the sun since sky reads exclude the disc
         float3 sun_dir = -light.direction;
         if (dot(sun_dir, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
@@ -726,13 +699,8 @@ void ray_gen()
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
-                // balance heuristic, brdf density n_brdf*source_pdf vs nee density n_light*nee_pdf
-                float nee_pdf = light_nee_pdf_for_candidate(candidate, pos_ws);
-                float mix_pdf = n_brdf * source_pdf + n_light * nee_pdf;
-                if (mix_pdf > 0.0f)
-                {
-                    weight = target_pdf / mix_pdf;
-                }
+                // single strategy weight, the sun free sky is only reachable through brdf sampling
+                weight = target_pdf / (n_brdf * source_pdf);
             }
         }
 
@@ -751,20 +719,9 @@ void ray_gen()
             float target_pdf = target_pdf_self(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
-                if (is_sky_sample(light_candidate))
-                {
-                    // sun cone, balance with the brdf into sky density
-                    float  brdf_pdf_at_sun;
-                    evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, light_candidate.rc_pos, brdf_pdf_at_sun, restir_primary_specular_blend(roughness));
-                    float mix_pdf = n_light * light_source_pdf + n_brdf * brdf_pdf_at_sun;
-                    if (mix_pdf > 0.0f)
-                        light_weight = target_pdf / mix_pdf;
-                }
-                else
-                {
-                    // area light, not in the bvh, single strategy weight
-                    light_weight = target_pdf / (n_light * light_source_pdf);
-                }
+                // single strategy weight, analytic lights are not in the bvh and the sun disc
+                // is excluded from every sky read so no other strategy reaches this integrand
+                light_weight = target_pdf / (n_light * light_source_pdf);
             }
         }
 

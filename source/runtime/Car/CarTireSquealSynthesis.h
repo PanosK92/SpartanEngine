@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==========================================
 
 // procedural tire squeal synthesizer
-// the core idea: tire squeal is not a pitched tone, it's noise shaped by distortion.
-// white noise is hard-clipped and bandpass-filtered in the 1-5 khz range to produce
-// the harsh, abrasive friction character of rubber scraping on asphalt.
-// intensity controls distortion amount and spectral brightness.
+// real squeal is stick-slip: the tread grabs and releases the road hundreds of times
+// a second, driving the tire carcass into a pitched scream around 1 khz with harsh
+// harmonics, random pitch wobble and amplitude flutter. filtered noise layers sit
+// underneath for the scrub character, and the tone fades in with slip severity.
 
 namespace tire_squeal_sound
 {
@@ -42,22 +42,37 @@ namespace tire_squeal_sound
     {
         constexpr int sample_rate = 48000;
 
-        // main screech band (hz) - slightly lower than pure sandpaper for rubber weight
-        constexpr float screech_freq_low     = 1400.0f;
-        constexpr float screech_freq_high    = 3000.0f;
-
-        // upper brightness edge
-        constexpr float sibilance_freq_low   = 2800.0f;
-        constexpr float sibilance_freq_high  = 5000.0f;
+        // main screech noise band (hz), sits between the tone harmonics
+        constexpr float screech_freq_low     = 800.0f;
+        constexpr float screech_freq_high    = 1800.0f;
 
         // body - modest low-mid weight, not enough to become windy
         constexpr float body_freq_low        = 500.0f;
         constexpr float body_freq_high       = 900.0f;
 
-        // layer levels
-        constexpr float screech_level        = 0.55f;
-        constexpr float sibilance_level      = 0.20f;
-        constexpr float body_level           = 0.25f;
+        // squeal tone, matched offline to a real screech recording: two inharmonic
+        // carcass modes at ratio 1.25 (the reference shows 551 and 691 hz together),
+        // strong 2nd harmonic, energy spread 500-2500 hz, hard rolloff above 4 khz
+        constexpr float tone_freq_base       = 480.0f;
+        constexpr float tone_freq_speed      = 80.0f;
+        constexpr float tone_freq_intensity  = 120.0f;
+        constexpr float tone_mode2_ratio     = 1.25f;
+        constexpr float tone_mode2_level     = 0.8f;
+        // asymmetric shaping strength, produces the even harmonics of the reference
+        constexpr float tone_asym            = 0.70f;
+        constexpr float tone_lowpass_hz      = 4500.0f;
+        // random pitch wobble (fraction of f0), fast flutter and deep slow wah swell
+        constexpr float tone_vibrato_depth   = 0.08f;
+        constexpr float tone_flutter_depth   = 0.50f;
+        constexpr float tone_wah_depth       = 0.85f;
+        // tone fades in over this intensity range, light slip stays noisy scrub
+        constexpr float tone_onset_low       = 0.25f;
+        constexpr float tone_onset_high      = 0.65f;
+        constexpr float tone_level           = 0.55f;
+
+        // layer levels, reference has no energy above 4 khz so no sibilance layer
+        constexpr float screech_level        = 0.22f;
+        constexpr float body_level           = 0.12f;
 
         // screech distortion - warm multi-stage tanh, not crispy hard-clip
         constexpr float screech_drive_min    = 3.0f;
@@ -217,8 +232,8 @@ namespace tire_squeal_sound
         float speed_norm     = 0.0f;
         float output_level   = 0.0f;
         float output_peak    = 0.0f;
+        float tone_level     = 0.0f;
         float screech_level  = 0.0f;
-        float sibilance_lvl  = 0.0f;
         float body_level     = 0.0f;
         bool  initialized    = false;
     };
@@ -234,12 +249,11 @@ namespace tire_squeal_sound
             m_screech_pre_bp.set_params(2000.0f, 1.8f, m_sample_rate);
             m_screech_post_bp.set_params(2000.0f, 1.2f, m_sample_rate);
 
-            // sibilance
-            m_sibilance_hp.set_params(2800.0f, 0.8f, m_sample_rate);
-            m_sibilance_post_lp.set_params(5000.0f, 0.8f, m_sample_rate);
-
             // body - single band, modest contribution
             m_body_bp.set_params(700.0f, 1.0f, m_sample_rate);
+
+            // tone rolloff, the reference has no energy above 3-4 khz
+            m_tone_lp.set_params(tuning::tone_lowpass_hz, 0.7f, m_sample_rate);
 
             // output filters
             m_output_hp.set_params(350.0f, 0.7f, m_sample_rate);
@@ -248,6 +262,11 @@ namespace tire_squeal_sound
             // parameter smoothing
             m_intensity_smooth.set_cutoff(tuning::intensity_smoothing, m_sample_rate);
             m_speed_smooth.set_cutoff(tuning::speed_smoothing, m_sample_rate);
+
+            // tone modulation smoothing
+            m_vib_smooth.set_cutoff(8.0f, m_sample_rate);
+            m_flut_smooth.set_cutoff(20.0f, m_sample_rate);
+            m_wah_smooth.set_cutoff(2.5f, m_sample_rate);
 
             m_initialized = true;
             m_debug.initialized = true;
@@ -269,7 +288,7 @@ namespace tire_squeal_sound
                 return;
             }
 
-            float screech_sum = 0.0f, sibilance_sum = 0.0f, body_sum = 0.0f;
+            float screech_sum = 0.0f, body_sum = 0.0f, tone_sum = 0.0f;
             float output_sum = 0.0f, peak = 0.0f;
 
             for (int i = 0; i < num_samples; i++)
@@ -291,9 +310,8 @@ namespace tire_squeal_sound
                     continue;
                 }
 
-                float noise_w  = m_noise.white();
-                float noise_w2 = m_noise.white();
-                float noise_p  = m_noise.pink();
+                float noise_w = m_noise.white();
+                float noise_p = m_noise.pink();
 
                 // ---- screech layer ----
                 // white noise -> bandpass -> warm multi-stage saturation -> bandpass
@@ -316,16 +334,6 @@ namespace tire_squeal_sound
                 m_screech_post_bp.set_params(screech_freq * 1.05f, 1.0f, m_sample_rate);
                 screech = m_screech_post_bp.bandpass(screech);
 
-                // ---- sibilance layer ----
-                float sib_freq = tuning::sibilance_freq_low +
-                    (tuning::sibilance_freq_high - tuning::sibilance_freq_low) * intensity;
-                m_sibilance_hp.set_params(sib_freq * 0.8f, 0.8f, m_sample_rate);
-                float sibilance = m_sibilance_hp.highpass(noise_w2);
-                sibilance = tanhf(sibilance * (2.0f + intensity * 2.5f));
-
-                m_sibilance_post_lp.set_params(sib_freq, 0.7f, m_sample_rate);
-                sibilance = m_sibilance_post_lp.lowpass(sibilance);
-
                 // ---- body layer ----
                 // modest low-mid weight so it doesn't sound thin, but not enough to get windy
                 float body_freq = tuning::body_freq_low +
@@ -334,16 +342,60 @@ namespace tire_squeal_sound
                 float body = m_body_bp.bandpass(noise_p);
                 body = tanhf(body * (2.0f + intensity * 2.0f));
 
+                // ---- squeal tone layer ----
+                // random-step vibrato, fast flutter and deep slow wah, smoothed, keep the scream organic
+                if (--m_vib_countdown <= 0)
+                {
+                    m_vib_countdown = (int)(m_sample_rate * 0.07f);
+                    m_vib_target    = m_noise.white() * tuning::tone_vibrato_depth;
+                }
+                if (--m_flut_countdown <= 0)
+                {
+                    m_flut_countdown = (int)(m_sample_rate * 0.04f);
+                    m_flut_target    = 1.0f - (m_noise.white() * 0.5f + 0.5f) * tuning::tone_flutter_depth;
+                }
+                if (--m_wah_countdown <= 0)
+                {
+                    m_wah_countdown = (int)(m_sample_rate * 0.35f);
+                    m_wah_target    = 1.0f - (m_noise.white() * 0.5f + 0.5f) * tuning::tone_wah_depth;
+                }
+                float vibrato = m_vib_smooth.process(m_vib_target);
+                float flutter = m_flut_smooth.process(m_flut_target);
+                float wah     = m_wah_smooth.process(m_wah_target);
+
+                float tone_freq = (tuning::tone_freq_base + tuning::tone_freq_speed * speed_norm + tuning::tone_freq_intensity * intensity) * (1.0f + vibrato);
+                m_tone_phase += TWO_PI * tone_freq / m_sample_rate;
+                if (m_tone_phase >= TWO_PI)
+                {
+                    m_tone_phase -= TWO_PI;
+                }
+                m_tone_phase2 += TWO_PI * tone_freq * tuning::tone_mode2_ratio / m_sample_rate;
+                if (m_tone_phase2 >= TWO_PI)
+                {
+                    m_tone_phase2 -= TWO_PI;
+                }
+
+                // two inharmonic carcass modes, asymmetric waveshaping yields the full
+                // harmonic stack with the strong 2nd of the reference, s*s mean removed for dc
+                float s    = sinf(m_tone_phase) + tuning::tone_mode2_level * sinf(m_tone_phase2);
+                float tone = tanhf((s + tuning::tone_asym * (s * s - 0.5f)) * (1.0f + intensity * 2.6f));
+                tone = m_tone_lp.lowpass(tone) * flutter * wah;
+
+                // smoothstep fade-in with slip severity, light slip stays as noisy scrub
+                float onset = std::clamp((intensity - tuning::tone_onset_low) / (tuning::tone_onset_high - tuning::tone_onset_low), 0.0f, 1.0f);
+                onset = onset * onset * (3.0f - 2.0f * onset);
+                tone *= onset;
+
                 // ---- mix ----
                 float output = 0.0f;
-                output += screech   * tuning::screech_level;
-                output += sibilance * tuning::sibilance_level;
-                output += body      * tuning::body_level;
+                output += tone    * tuning::tone_level;
+                output += screech * tuning::screech_level;
+                output += body    * tuning::body_level;
 
                 // debug accumulation
-                screech_sum   += screech * screech;
-                sibilance_sum += sibilance * sibilance;
-                body_sum      += body * body;
+                tone_sum    += tone * tone;
+                screech_sum += screech * screech;
+                body_sum    += body * body;
 
                 // amplitude envelope
                 float envelope = intensity * intensity;
@@ -384,8 +436,8 @@ namespace tire_squeal_sound
             float inv_n = 1.0f / (float)num_samples;
             m_debug.intensity     = m_intensity_smooth.z1;
             m_debug.speed_norm    = m_speed_smooth.z1;
+            m_debug.tone_level    = sqrtf(tone_sum * inv_n);
             m_debug.screech_level = sqrtf(screech_sum * inv_n);
-            m_debug.sibilance_lvl = sqrtf(sibilance_sum * inv_n);
             m_debug.body_level    = sqrtf(body_sum * inv_n);
             m_debug.output_level  = sqrtf(output_sum * inv_n);
             m_debug.output_peak   = peak;
@@ -395,14 +447,24 @@ namespace tire_squeal_sound
         {
             m_screech_pre_bp.reset();
             m_screech_post_bp.reset();
-            m_sibilance_hp.reset();
-            m_sibilance_post_lp.reset();
             m_body_bp.reset();
             m_output_hp.reset();
             m_output_lp.reset();
             m_dc_blocker.reset();
             m_intensity_smooth.reset();
             m_speed_smooth.reset();
+            m_tone_lp.reset();
+            m_vib_smooth.reset();
+            m_flut_smooth.reset();
+            m_wah_smooth.reset();
+            m_tone_phase     = 0.0f;
+            m_tone_phase2    = 0.0f;
+            m_vib_target     = 0.0f;
+            m_vib_countdown  = 0;
+            m_flut_target    = 1.0f;
+            m_flut_countdown = 0;
+            m_wah_target     = 1.0f;
+            m_wah_countdown  = 0;
         }
 
         bool is_initialized() const { return m_initialized; }
@@ -415,13 +477,9 @@ namespace tire_squeal_sound
         float m_target_intensity  = 0.0f;
         float m_target_speed_norm = 0.0f;
 
-        // screech: noise -> bandpass -> hard clip -> bandpass
+        // screech: noise -> bandpass -> saturation -> bandpass
         svf_filter m_screech_pre_bp;
         svf_filter m_screech_post_bp;
-
-        // sibilance: noise -> highpass -> soft clip -> lowpass
-        svf_filter m_sibilance_hp;
-        svf_filter m_sibilance_post_lp;
 
         // body: pink noise -> bandpass -> saturation
         svf_filter m_body_bp;
@@ -434,6 +492,20 @@ namespace tire_squeal_sound
         // parameter smoothing
         one_pole m_intensity_smooth;
         one_pole m_speed_smooth;
+
+        // squeal tone oscillators with random vibrato, flutter and wah
+        float      m_tone_phase     = 0.0f;
+        float      m_tone_phase2    = 0.0f;
+        svf_filter m_tone_lp;
+        float      m_vib_target     = 0.0f;
+        int        m_vib_countdown  = 0;
+        one_pole   m_vib_smooth;
+        float      m_flut_target    = 1.0f;
+        int        m_flut_countdown = 0;
+        one_pole   m_flut_smooth;
+        float      m_wah_target     = 1.0f;
+        int        m_wah_countdown  = 0;
+        one_pole   m_wah_smooth;
 
         noise_gen m_noise;
 

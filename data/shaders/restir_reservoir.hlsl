@@ -1043,58 +1043,33 @@ static const float RESTIR_RR_CONTINUATION = 0.75f;
 static const float SKY_MIP_LEVEL             = 2.0f;
 // sun cone half angle, matches the real sun angular radius
 static const float SUN_CONE_HALF_ANGLE       = 0.0047f;
-
-// sun vs cosine hemisphere mixture weight, balance heuristic on solid angle scaled radiance
-float sun_sample_probability(bool has_sun, float sun_intensity, float3 sun_color, float sun_cos_max)
-{
-    if (!has_sun)
-    {
-        return 0.0f;
-    }
-    float sun_omega    = 2.0f * PI * (1.0f - sun_cos_max);
-    float sun_radiance = luminance(sun_color) * max(sun_intensity, 0.0f);
-    float sun_w        = sun_radiance * sun_omega;
-    // sky reference, hemispherical integral of a unit luminance probe, stable denominator
-    float sky_w        = 2.0f * PI;
-    float prob         = sun_w / max(sun_w + sky_w, 1e-6f);
-    return clamp(prob, 0.05f, 0.95f);
-}
+// the analytic directional light exclusively owns the sun, every restir sky read excludes the
+// panorama disc so its energy is never counted a second time, the exclusion radius covers the
+// disc (0.00935) plus the mip 2 blur halo, cos(0.05)
+static const float RESTIR_SUN_EXCLUSION_COS  = 0.99875f;
 
 // samples a sky color along a direction (used when a bounce misses geometry)
+// sun free, the analytic light loop delivers the sun with the correct unclamped energy
 float3 sample_sky(float3 dir)
 {
+    if ((uint)buffer_frame.restir_pt_light_count > 0)
+    {
+        LightParameters p = light_parameters[0];
+        if ((p.flags & (1u << 0)) != 0 && p.intensity > 0.0f && dot(dir, -p.direction) >= RESTIR_SUN_EXCLUSION_COS)
+        {
+            return float3(0, 0, 0);
+        }
+    }
     float2 uv  = direction_sphere_uv(dir);
     float3 sky = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, SKY_MIP_LEVEL).rgb;
     return clamp_sky_radiance(sky);
 }
 
-// env nee density at a given direction for mis against brdf bounces that miss into the sky
+// env nee density at a given direction, cosine hemisphere only, the sun is owned by the
+// analytic light loop so the env strategy no longer mixes a sun cone
 float sky_nee_pdf_at(float3 dir, float3 shading_normal)
 {
-    float3 sun_dir       = float3(0, 1, 0);
-    float  sun_intensity = 0.0f;
-    float3 sun_color     = float3(1, 1, 1);
-    bool   has_sun       = false;
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    if (light_count > 0)
-    {
-        LightParameters p = light_parameters[0];
-        if ((p.flags & (1u << 0)) != 0 && p.intensity > 0.0f)
-        {
-            sun_dir       = -p.direction;
-            sun_intensity = p.intensity;
-            sun_color     = p.color.rgb;
-            has_sun       = true;
-        }
-    }
-
-    float sun_cos_max  = cos(SUN_CONE_HALF_ANGLE);
-    float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-    float sun_prob     = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
-
-    float pdf_cos = max(dot(dir, shading_normal), 0.0f) / PI;
-    float pdf_sun = (has_sun && dot(dir, sun_dir) >= sun_cos_max) ? sun_cone_pdf : 0.0f;
-    return (1.0f - sun_prob) * pdf_cos + sun_prob * pdf_sun;
+    return max(dot(dir, shading_normal), 0.0f) / PI;
 }
 
 float3 probe_emission_estimate(MaterialParameters mat)
@@ -1235,57 +1210,14 @@ float3 direct_lighting_at_vertex(
         total += brdf * Li * mis_weight / max(light_pdf, 1e-6f);
     }
 
-    // environment probe (sun cone + cosine mixture sampling)
+    // environment nee, cosine hemisphere toward the sun free sky, the analytic loop above
+    // owns the sun so the two strategies never overlap
     {
         float2 env_xi = random_float2(seed);
+        float  env_pdf;
+        float3 env_local = sample_cosine_hemisphere(env_xi, env_pdf);
+        float3 env_dir   = local_to_world(env_local, shading_normal);
 
-        float3 sun_dir       = float3(0, 1, 0);
-        float  sun_intensity = 0.0f;
-        float3 sun_color     = float3(1, 1, 1);
-        bool   has_sun       = false;
-        if (light_count > 0)
-        {
-            LightParameters primary_light = light_parameters[0];
-            if ((primary_light.flags & (1u << 0)) != 0 && primary_light.intensity > 0.0f)
-            {
-                sun_dir       = -primary_light.direction;
-                sun_intensity = primary_light.intensity;
-                sun_color     = primary_light.color.rgb;
-                has_sun       = true;
-            }
-        }
-
-        float sun_cos_max   = cos(SUN_CONE_HALF_ANGLE);
-        float sun_cone_pdf  = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-        float sun_prob      = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
-
-        float3 env_dir;
-        float  env_pdf_cos;
-        float  env_pdf_sun;
-        float  strategy_xi = random_float(seed);
-
-        if (has_sun && strategy_xi < sun_prob)
-        {
-            float phi     = 2.0f * PI * env_xi.x;
-            float cos_th  = lerp(sun_cos_max, 1.0f, env_xi.y);
-            float sin_th  = sqrt(max(0.0f, 1.0f - cos_th * cos_th));
-            float3 local  = float3(cos(phi) * sin_th, sin(phi) * sin_th, cos_th);
-            env_dir       = local_to_world(local, sun_dir);
-
-            float cos_to_sun = dot(env_dir, sun_dir);
-            env_pdf_sun = (cos_to_sun >= sun_cos_max) ? sun_cone_pdf : 0.0f;
-            env_pdf_cos = max(dot(env_dir, shading_normal), 0.0f) / PI;
-        }
-        else
-        {
-            float3 env_local = sample_cosine_hemisphere(env_xi, env_pdf_cos);
-            env_dir = local_to_world(env_local, shading_normal);
-
-            float cos_to_sun = has_sun ? dot(env_dir, sun_dir) : -1.0f;
-            env_pdf_sun = (has_sun && cos_to_sun >= sun_cos_max) ? sun_cone_pdf : 0.0f;
-        }
-
-        float env_pdf = (1.0f - sun_prob) * env_pdf_cos + sun_prob * env_pdf_sun;
         float env_n_dot_l = dot(shading_normal, env_dir);
 
         if (env_n_dot_l > 0.0f && env_pdf > RESTIR_MIN_PDF)
@@ -1318,9 +1250,7 @@ float3 direct_lighting_at_vertex(
             }
             else
             {
-                float2 env_uv       = direction_sphere_uv(env_dir);
-                float3 env_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), env_uv, SKY_MIP_LEVEL).rgb;
-                env_radiance = clamp_sky_radiance(env_radiance);
+                float3 env_radiance = sample_sky(env_dir);
 
                 float  brdf_pdf_env;
                 float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, specular_blend);
@@ -1595,8 +1525,10 @@ float3 accumulate_replay_suffix(
             break;
         }
 
-        // emissive triangle hit via brdf bounce, collected single strategy
-        result += throughput * next.emission;
+        // emissive triangle hit via brdf bounce, mis against the env probe at the previous
+        // vertex which can also reach this emitter through its cosine hemisphere
+        float w_emissive = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
+        result += throughput * next.emission * w_emissive;
         // suffix vertices past the first use the full brdf
         result += throughput * direct_lighting_at_vertex(
             next.hit_position, next.hit_normal, next.geometric_normal,

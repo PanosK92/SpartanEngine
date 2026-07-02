@@ -90,8 +90,15 @@ namespace engine_sound
         constexpr float leveler_gain_up    = 0.0006f;
 
         // soft saturation knee, replaces hard clamp at +-1 to avoid clicks during transients
-        // tanh(x * drive) / drive gives ~unity gain at small signals, soft limiting near +-1
-        constexpr float output_soft_drive  = 1.15f;
+        // the knee hardens with throttle and rpm so the engine roars under load, makeup gain
+        // keeps the nominal level constant so only the saturation density changes
+        constexpr float output_soft_drive     = 1.15f;
+        constexpr float output_drive_throttle = 0.9f;
+        constexpr float output_drive_rpm      = 0.45f;
+
+        // idle lope, slow random rpm hunting when the throttle is closed near idle
+        constexpr float idle_lope_rpm     = 25.0f;
+        constexpr float idle_lope_rate_hz = 2.0f;
 
         // exhaust ir asset (the _short variant has had its 250ms pre-silence trimmed
         // and a clean exponential decay tail applied, see binaries/trim_ir.py)
@@ -103,9 +110,15 @@ namespace engine_sound
         constexpr float mechanical_level   = 0.12f;
         constexpr float induction_level    = 0.05f;
 
-        // overrun crackle
-        constexpr float crackle_threshold  = 0.15f;
-        constexpr float crackle_intensity  = 0.4f;
+        // throttle below this at revs counts as overrun
+        constexpr float overrun_threshold  = 0.15f;
+
+        // overrun afterfire, random firings bang (unburnt fuel igniting in the hot pipes) or
+        // miss (fuel cut) so lift-off burbles through the same distorted exhaust chain
+        constexpr float afterfire_chance    = 0.12f;
+        constexpr float afterfire_intensity = 3.5f;
+        constexpr float misfire_chance      = 0.25f;
+        constexpr float misfire_intensity   = 0.15f;
 
         // turbocharger
         constexpr float turbo_spool_up     = 2.5f;
@@ -681,7 +694,7 @@ namespace engine_sound
             phase_inc = cycles_per_second / sample_rate;
         }
 
-        float tick(float load, float rpm_norm)
+        float tick(float load, float rpm_norm, float overrun)
         {
             phase += phase_inc;
             if (phase >= 1.0f)
@@ -702,6 +715,20 @@ namespace engine_sound
                 if (!is_firing)
                 {
                     cycle_intensity = 0.90f + rand01() * 0.20f;
+
+                    // overrun: each firing either bangs (afterfire) or misses (fuel cut) at random
+                    if (overrun > 0.0f)
+                    {
+                        float r = rand01();
+                        if (r < overrun * tuning::afterfire_chance)
+                        {
+                            cycle_intensity *= tuning::afterfire_intensity;
+                        }
+                        else if (r < overrun * (tuning::afterfire_chance + tuning::misfire_chance))
+                        {
+                            cycle_intensity *= tuning::misfire_intensity;
+                        }
+                    }
                 }
                 is_firing = true;
 
@@ -863,6 +890,7 @@ namespace engine_sound
             m_rpm_smooth.set_cutoff(8.0f, m_sample_rate);
             m_throttle_smooth.set_cutoff(15.0f, m_sample_rate);
             m_load_smooth.set_cutoff(10.0f, m_sample_rate);
+            m_lope_smooth.set_cutoff(1.5f, m_sample_rate);
 
             m_initialized = true;
             m_debug.initialized = true;
@@ -901,7 +929,16 @@ namespace engine_sound
 
             for (int i = 0; i < num_samples; i++)
             {
-                float rpm      = m_rpm_smooth.process(m_target_rpm);
+                // idle lope, slow random rpm hunting so a closed-throttle idle breathes
+                if (--m_lope_countdown <= 0)
+                {
+                    m_lope_countdown = (int)(m_sample_rate / tuning::idle_lope_rate_hz);
+                    m_lope_target    = m_noise.white() * tuning::idle_lope_rpm;
+                }
+                float lope_gate = std::clamp(1.0f - (m_rpm_smooth.z1 - tuning::idle_rpm) / 600.0f, 0.0f, 1.0f) * (1.0f - m_target_throttle);
+                float lope      = m_lope_smooth.process(m_lope_target) * lope_gate;
+
+                float rpm      = m_rpm_smooth.process(m_target_rpm + lope);
                 float throttle = m_throttle_smooth.process(m_target_throttle);
                 float load     = m_load_smooth.process(m_target_load);
 
@@ -910,6 +947,9 @@ namespace engine_sound
 
                 for (auto& cyl : m_cylinders)
                     cyl.set_rpm(rpm, m_sample_rate);
+
+                // 0 at driven throttle, ramps to 1 on full lift-off at revs, feeds the afterfire rolls
+                float overrun = (throttle < tuning::overrun_threshold && rpm_norm > 0.2f) ? (1.0f - throttle / tuning::overrun_threshold) : 0.0f;
 
                 // combustion + per-bank pressure sums for v12 left/right exhausts
                 float combustion_raw = 0.0f;
@@ -921,7 +961,7 @@ namespace engine_sound
                 for (size_t ci = 0; ci < m_cylinders.size(); ++ci)
                 {
                     cylinder& cyl = m_cylinders[ci];
-                    float pulse = cyl.tick(load, rpm_norm);
+                    float pulse = cyl.tick(load, rpm_norm, overrun);
                     combustion_raw += pulse;
                     combustion_derivative += (pulse - cyl.prev_pressure);
                     if (cyl.bank_left)
@@ -985,27 +1025,6 @@ namespace engine_sound
                 // mono exhaust used by the debug meter and the mono output path
                 float exhaust = (exhaust_l + exhaust_r) * 0.5f;
 
-                // overrun crackle
-                float crackle = 0.0f;
-                if (throttle < tuning::crackle_threshold && rpm_norm > 0.25f)
-                {
-                    float crackle_intensity = (1.0f - throttle / tuning::crackle_threshold) * rpm_norm;
-
-                    if (m_noise.white() > (0.998f - crackle_intensity * 0.015f))
-                    {
-                        m_crackle_env = 1.0f;
-                        m_crackle_freq = 80.0f + m_noise.white() * 60.0f;
-                    }
-
-                    if (m_crackle_env > 0.01f)
-                    {
-                        float pop = m_noise.white() * m_crackle_env;
-                        m_crackle_filter.set_params(m_crackle_freq, 1.5f, m_sample_rate);
-                        crackle = m_crackle_filter.bandpass(pop) * tuning::crackle_intensity;
-                        m_crackle_env *= 0.95f;
-                    }
-                }
-
                 // induction
                 float induction = 0.0f;
                 if (throttle > 0.05f)
@@ -1028,7 +1047,8 @@ namespace engine_sound
                 {
                     float valve_tick = combustion_derivative * combustion_derivative * 4.0f;
 
-                    float chain_rattle = m_noise.white() * (0.3f + valve_tick * 0.7f);
+                    // noise floor rides the load so the rattle does not read as hiss on the overrun
+                    float chain_rattle = m_noise.white() * (0.1f + load * 0.2f + valve_tick * 0.7f);
                     m_mechanical_hp.set_params(800.0f + rpm_norm * 600.0f, 1.2f, m_sample_rate);
                     chain_rattle = m_mechanical_hp.bandpass(chain_rattle);
 
@@ -1177,10 +1197,9 @@ namespace engine_sound
                     turbo = tanhf(turbo * 1.5f);
                 }
 
-                // mono additive layers (combustion attack, crackle, induction, mechanical, turbo)
+                // mono additive layers (combustion attack, induction, mechanical, turbo)
                 float mono_layers = 0.0f;
                 mono_layers += combustion  * params.combustion_level;
-                mono_layers += crackle;
                 mono_layers += induction   * tuning::induction_level;
                 mono_layers += mechanical  * tuning::mechanical_level;
                 mono_layers += turbo;
@@ -1200,10 +1219,12 @@ namespace engine_sound
                 left  = m_dc_block_out_l.process(left);
                 right = m_dc_block_out_r.process(right);
 
-                // soft saturation, no hard edges, the knee starts kicking in around +-0.85
-                float drv = tuning::output_soft_drive;
-                left  = tanhf(left  * drv) / drv;
-                right = tanhf(right * drv) / drv;
+                // soft saturation, the knee hardens with throttle and rpm for extra roar under load
+                // makeup pins the leveler target level to itself so only saturation density changes
+                float drv    = tuning::output_soft_drive + throttle * tuning::output_drive_throttle + rpm_norm * tuning::output_drive_rpm;
+                float makeup = m_leveler.target / tanhf(m_leveler.target * drv);
+                left  = tanhf(left  * drv) * makeup;
+                right = tanhf(right * drv) * makeup;
 
                 float master = 0.7f + throttle * 0.2f + rpm_norm * 0.1f + params.master_offset;
                 left  *= master;
@@ -1329,14 +1350,14 @@ namespace engine_sound
             m_induction_body.reset();
             m_mechanical_hp.reset();
             m_mechanical_lp.reset();
-            m_crackle_filter.reset();
             m_turbo_filter.reset();
             m_dc_blocker.reset();
             m_rpm_smooth.reset();
             m_throttle_smooth.reset();
             m_load_smooth.reset();
-
-            m_crackle_env = 0.0f;
+            m_lope_smooth.reset();
+            m_lope_countdown = 0;
+            m_lope_target    = 0.0f;
 
             m_turbo_spool = 0.0f;
             m_turbo_target_spool = 0.0f;
@@ -1428,18 +1449,18 @@ namespace engine_sound
 
         svf_filter m_induction_res, m_induction_body;
         svf_filter m_mechanical_hp, m_mechanical_lp;
-        svf_filter m_crackle_filter;
         svf_filter m_turbo_filter;
 
         one_pole m_rpm_smooth;
         one_pole m_throttle_smooth;
         one_pole m_load_smooth;
+        one_pole m_lope_smooth;
+
+        int   m_lope_countdown = 0;
+        float m_lope_target    = 0.0f;
 
         dc_blocker m_dc_blocker;
         noise_gen m_noise;
-
-        float m_crackle_env  = 0.0f;
-        float m_crackle_freq = 100.0f;
 
         // turbo state
         float m_turbo_spool          = 0.0f;

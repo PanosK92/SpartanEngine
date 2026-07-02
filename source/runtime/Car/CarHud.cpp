@@ -1589,8 +1589,8 @@ namespace spartan::car_hud
             ImGui::SeparatorText("Tire squeal");
             const tire_squeal_sound::debug_data& tire_dbg = tire_squeal_sound::get_debug();
             ImGui::TextColored(imvec4_from_u32(accent_info), "Intensity %.0f%%  |  Speed %.0f%%", tire_dbg.intensity * 100.0f, tire_dbg.speed_norm * 100.0f);
+            draw_level_bar("Tone",       tire_dbg.tone_level,    IM_COL32(255, 160, 80, 255));
             draw_level_bar("Screech",    tire_dbg.screech_level, IM_COL32(255, 100, 180, 255));
-            draw_level_bar("Sibilance",  tire_dbg.sibilance_lvl, IM_COL32(200, 130, 255, 255));
             draw_level_bar("Body",       tire_dbg.body_level,    IM_COL32(180, 180, 100, 255));
 
             ImGui::SeparatorText("Output");

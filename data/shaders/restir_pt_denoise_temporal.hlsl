@@ -44,12 +44,13 @@ float3 sample_input(int2 pixel, uint2 resolution)
     return max(tex.Load(int3(clamped_pixel, 0)).rgb, 0.0f);
 }
 
-void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, out float3 sigma, out float3 minimum_value, out float3 maximum_value)
+void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, out float3 sigma, out float3 minimum_value, out float3 maximum_value, out float neighbor_max_luma)
 {
     float3 second_moment = 0.0f;
     mean                 = 0.0f;
     minimum_value        = float3(FLT_MAX_16U, FLT_MAX_16U, FLT_MAX_16U);
     maximum_value        = 0.0f;
+    neighbor_max_luma    = 0.0f;
 
     for (int y = -1; y <= 1; y++)
     {
@@ -61,6 +62,10 @@ void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, ou
             second_moment += sample_color * sample_color;
             minimum_value  = min(minimum_value, sample_color);
             maximum_value  = max(maximum_value, sample_color);
+            if (x != 0 || y != 0)
+            {
+                neighbor_max_luma = max(neighbor_max_luma, dot(sample_color, luminance_weights));
+            }
         }
     }
 
@@ -252,9 +257,20 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     // 3x3 mean and variance pre blur, schied 2017 4.2, gives a stable spatial sigma
     float3 mean_color, sigma_color, min_color, max_color;
-    compute_local_statistics(pixel, resolution, mean_color, sigma_color, min_color, max_color);
+    float  neighbor_max_luma;
+    compute_local_statistics(pixel, resolution, mean_color, sigma_color, min_color, max_color, neighbor_max_luma);
     float spatial_sigma_luma = dot(sigma_color, luminance_weights);
     float spatial_var_3x3    = spatial_sigma_luma * spatial_sigma_luma;
+
+    // single pixel firefly suppression, a center far brighter than its brightest neighbor
+    // survives both the ema and the luma edge stopped a-trous which reads it as an edge,
+    // pull it to the neighborhood ceiling before it enters the accumulator
+    float firefly_ceiling = max(neighbor_max_luma, 1e-4f) * 2.0f;
+    if (current_luma > firefly_ceiling)
+    {
+        current_color *= firefly_ceiling / current_luma;
+        current_luma   = firefly_ceiling;
+    }
 
     // pre ema firefly soft clamp, catches a bright pixel relative to the converged mean before the ema
     if (history_ok)

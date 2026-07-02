@@ -201,8 +201,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // correlated regions decay faster which trades a small bias for far fewer correlation blobs
     if (have_temporal)
     {
+        // linear decay to a floor that keeps several frames of history alive, the previous
+        // pow 0.1 curve collapsed the cap to single digits at the trace duplication levels
+        // spatial reuse always produces, temporal accumulation never engaged and the image boiled
         float duplication = tex2.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
-        float m_cap       = lerp(get_restir_m_cap(), 1.0f, pow(saturate(duplication), 0.1f));
+        float m_cap       = lerp(get_restir_m_cap(), 8.0f, saturate(duplication));
         clamp_reservoir_M(temporal, m_cap);
     }
 
