@@ -35,6 +35,10 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "libxess.dll"),
 }
 
+-- steamworks sdk is vendored locally by the user, not part of the downloaded archive
+local STEAM_DLL        = path.join(PROJECT_ROOT, "third_party", "steamworks", "redistributable_bin", "win64", "steam_api64.dll")
+local STEAM_APP_ID     = "480" -- valve spacewar test appid, replace with the real one
+
 local function is_windows()
     return os.host() == "windows"
 end
@@ -190,6 +194,20 @@ function setup.run()
     print("\n[4/4] copying runtime dlls into binaries...")
     for _, dll in ipairs(RUNTIME_DLLS) do
         copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
+    end
+
+    -- stage steam runtime, skipped when the sdk has not been vendored yet
+    if file_exists(STEAM_DLL) then
+        copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
+
+        local appid_path = path.join(BINARIES_DIR, "steam_appid.txt")
+        if not file_exists(appid_path) then
+            local f = io.open(appid_path, "wb")
+            f:write(STEAM_APP_ID)
+            f:close()
+        end
+    else
+        print("  steamworks sdk not found at " .. STEAM_DLL .. ", skipping steam staging")
     end
 
     print("\nsetup complete")

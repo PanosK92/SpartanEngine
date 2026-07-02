@@ -29,6 +29,9 @@ ARG_API_GRAPHICS = _ARGS[1]
 
 local setup = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "setup.lua"))
 
+-- steamworks sdk is vendored locally and optional, only wire it when the lib is present
+STEAM_ENABLED = os.isfile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "../third_party/steamworks/redistributable_bin/win64/steam_api64.lib"))
+
 newaction {
     trigger     = "setup",
     description = "download dependencies and stage runtime files",
@@ -130,6 +133,11 @@ function spartan_project_configuration()
                 "/NODEFAULTLIB:MSVCPRT.lib"
             }
             links { "Ws2_32" }
+            if STEAM_ENABLED then
+                includedirs { "../third_party/steamworks/public" }
+                libdirs     { "../third_party/steamworks/redistributable_bin/win64" }
+                links       { "steam_api64" }
+            end
             buildoptions { "/bigobj" }
 
         -- Linux includes

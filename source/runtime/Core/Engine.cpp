@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../XR/Xr.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "../MCP/McpServer.h"
+#include "../Steam/Steam.h"
 #include "Settings.h"
 //===========================================
 
@@ -84,6 +85,7 @@ namespace spartan
             Settings::Initialize();
             SmokeTest::Initialize();
             McpServer::Initialize(args);
+            Steam::Initialize();
 
             // xr is intentionally not auto initialized here, ctrl+0 brings it up on demand
             // so the openxr runtime (e.g. steamvr) is never spawned without explicit intent
@@ -110,6 +112,7 @@ namespace spartan
 
     void Engine::Shutdown()
     {
+        Steam::Shutdown();
         McpServer::Shutdown();
 
         // the thread pool can hold state from other systems
@@ -136,6 +139,7 @@ namespace spartan
         // pre-tick
         Input::PreTick();
         McpServer::Tick();
+        Steam::Tick();
 
         // ctrl+0 toggles xr on demand, once xr is up the openxr session state machine
         // in Xr::ProcessEvents handles headset on/off transitions automatically
