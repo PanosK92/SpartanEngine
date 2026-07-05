@@ -112,6 +112,8 @@ namespace spartan
         float GetTemperature() const { return m_temperature_kelvin; }
         void SetColor(const Color& rgb);
         const Color& GetColor() const { return m_color_rgb; }
+        // shading color, atmospheric sun transmittance for directional lights, authored color otherwise
+        Color GetColorEffective() const;
 
         // intensity
         void SetIntensity(const float photometric_intensity);

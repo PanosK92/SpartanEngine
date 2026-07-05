@@ -7,14 +7,14 @@
   <Entity name="physics_body_camera" id="1003000000000000001" active="true" position="17.8958 11.9803 2.9923" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <Entity name="component_camera" id="1003000000000000002" active="true" position="0 0.77 0" rotation="0.00455257 -0.758117 0.00529278 0.652081" scale="1 1 1">
-    <camera aperture="11" shutter_speed="0.00400000019" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="1" flags="17" />
+    <camera aperture="5.6" shutter_speed="0.008" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
    </Entity>
   </Entity>
   <Entity name="music" id="1003000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <audio_source path="project/music/jake_chudnow_olive.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="1" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
   <Entity name="light_directional" id="1003000000000000003" active="true" position="0 2 0" rotation="0.793353 -8.06877e-09 -8.06877e-09 0.608761" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="1" color_g="0.694902956" color_b="0.431047976" temperature="3000" intensity="8" intensity_photometric="15000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="3" light_type="0" color_r="1" color_g="0.694902956" color_b="0.431047976" temperature="3000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <script file_path="../worlds/sun.lua" rot_yaw="180" preset="dusk" override_rotation="true" rot_pitch="75" Initialize="" rot_roll="180" volumetric="false" />
   </Entity>
   <Entity name="builder" id="1003000000000000006" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">

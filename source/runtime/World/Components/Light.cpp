@@ -42,6 +42,9 @@ namespace spartan
 {
     namespace
     {
+        // top of atmosphere solar illuminance, the single master intensity for the sun
+        const float sun_illuminance_lux = 120000.0f;
+
         // directional matrix parameters
         const float cascade_near_extent    = 20.0f;
         const float cascade_far_extent     = 300.0f;
@@ -413,6 +416,11 @@ namespace spartan
         SetColor(get_sensible_color(m_light_type));
         SetRange(get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad));
 
+        if (m_light_type == LightType::Directional)
+        {
+            SetIntensity(sun_illuminance_lux);
+        }
+
         if (m_light_type != LightType::Directional)
         {
             m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
@@ -476,6 +484,63 @@ namespace spartan
         {
             m_temperature_kelvin = 5500.0f;
         }
+    }
+
+    Color Light::GetColorEffective() const
+    {
+        if (m_light_type != LightType::Directional)
+        {
+            return m_color_rgb;
+        }
+
+        // atmosphere constants mirrored from skysphere.hlsl, the atmosphere is the single ground truth for sun color
+        const float earth_radius       = 6360e3f;
+        const float atmosphere_radius  = 6460e3f;
+        const Vector3 rayleigh_scatter = Vector3(5.802e-6f, 13.558e-6f, 33.1e-6f);
+        const float rayleigh_height    = 8000.0f;
+        const float mie_extinction     = 4.4e-6f;
+        const float mie_height         = 1200.0f;
+        const Vector3 ozone_absorption = Vector3(0.65e-6f, 1.881e-6f, 0.085e-6f);
+        const float ozone_center       = 25000.0f;
+        const float ozone_width        = 15000.0f;
+        const int sample_count         = 32;
+
+        float altitude = 1.0f;
+        if (Camera* camera = World::GetCamera())
+        {
+            altitude = max(camera->GetEntity()->GetPosition().y, 1.0f);
+        }
+
+        // earth space position and sun direction, matching the shader's frame
+        const Vector3 sun_direction = -GetEntity()->GetForward();
+        const Vector3 position      = Vector3(0.0f, earth_radius + altitude, 0.0f);
+
+        const float b       = position.Dot(sun_direction);
+        const float c_earth = position.Dot(position) - earth_radius * earth_radius;
+        const float c_atmo  = position.Dot(position) - atmosphere_radius * atmosphere_radius;
+
+        // the planet occludes the sun below the horizon, direct light goes to zero like the sky does
+        const float disc_earth = b * b - c_earth;
+        if (disc_earth > 0.0f && -b - sqrt(disc_earth) > 0.0f)
+        {
+            return Color(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+
+        const float t_max = -b + sqrt(max(b * b - c_atmo, 0.0f));
+        const float dt    = t_max / static_cast<float>(sample_count);
+
+        Vector3 optical_depth = Vector3::Zero;
+        for (int i = 0; i < sample_count; i++)
+        {
+            const Vector3 sample_pos     = position + sun_direction * ((i + 0.5f) * dt);
+            const float height           = sample_pos.Length() - earth_radius;
+            const float rayleigh_density = exp(-height / rayleigh_height);
+            const float mie_density      = exp(-height / mie_height);
+            const float ozone_density    = max(0.0f, 1.0f - abs(height - ozone_center) / ozone_width);
+            optical_depth               += (rayleigh_scatter * rayleigh_density + Vector3(mie_extinction * mie_density) + ozone_absorption * ozone_density) * dt;
+        }
+
+        return Color(exp(-optical_depth.x), exp(-optical_depth.y), exp(-optical_depth.z), 1.0f);
     }
 
     void Light::SetIntensity(const LightIntensity intensity)
@@ -543,73 +608,30 @@ namespace spartan
     {
         m_preset = preset;
 
+        // a preset only moves the sun, the atmosphere derives the matching color and dimming
         float time_of_day = 0.0f;
-        float temperature = 0.0f;
-        float intensity   = 0.0f;
-        float yaw_degrees = 0.0f; // horizontal rotation around Y axis
+        float yaw_degrees = 0.0f; // horizontal rotation around y axis
 
-        // preset calibration philosophy, every value below is grounded in measured real world
-        // photometry (color temperature kelvin, illuminance lux at the receiving surface) and
-        // tuned slightly toward the cinematic end of the realistic range so the directional
-        // light's chromaticity reads clearly through hdr tonemapping instead of compressing
-        // toward neutral white, the temperatures are blackbody equivalents of the perceived
-        // sun color at ground level after atmospheric extinction, not the sun's photospheric
-        // 5778 K which appears neutral white once the blue has been scattered out
-        //
-        // illuminance references for direct sun on a horizontal surface
-        //   civil dawn / dusk, sun just above horizon  ~  500 to  2000 lx
-        //   golden hour, sun low                       ~ 5000 to 25000 lx
-        //   overcast midday                            ~10000 to 25000 lx
-        //   clear sunny noon                           ~50000 to 130000 lx
-        //   full moon                                  ~  0.1 to    0.3 lx
         switch (preset)
         {
         case LightPreset::dawn:
-            // sun just above the horizon, atmospheric extinction warms it heavily
-            // 2200 K reads as deep orange red, ~800 lx is civil dawn intensity
-            time_of_day = 0.25f; // 6:00 AM
-            temperature = 2200.0f;
-            intensity   = 800.0f;
+            time_of_day = 0.25f; // 6:00 am, sun at the horizon, the atmosphere turns it deep orange
             break;
 
         case LightPreset::day:
-            // peak direct midday sun, ~80000 lx is a clear summer noon at temperate latitudes
-            // (100000 lx is the peak summer equator value and tends to crush the tonemap into
-            // featureless white on most displays), 5000 K is the d50 illuminant aka graphic
-            // arts daylight, this is the perceived sun color at ground level once the blue
-            // and uv have been scattered out into the sky and reads as warm white rather than
-            // the neutral white of 5500 to 5800 K which loses its chromaticity through the
-            // hdr clamp and the tonemap highlight compression
-            time_of_day = 0.5f; // 12:00 PM
-            temperature = 5000.0f;
-            intensity   = 80000.0f;
+            time_of_day = 0.5f; // 12:00 pm, near white sun at peak transmittance
             break;
 
         case LightPreset::dusk:
-            // golden hour, sun low in the sky with strong warm tones
-            // 3000 K is the warm end of golden hour, ~15000 lx matches a clear sky 30 min before sunset
-            time_of_day = 0.69f; // 4:30 PM
-            temperature = 3000.0f;
-            intensity   = 15000.0f;
+            time_of_day = 0.69f; // 4:30 pm, golden hour
             break;
 
         case LightPreset::night:
-            // moonlight is sunlight reflected off the lunar surface so its spectrum is close
-            // to the sun, the perceived color shifts cooler/bluer due to the purkinje effect
-            // (rod vision peaks at shorter wavelengths in low light), 4200 K captures that
-            // shift, ~0.3 lx is full moon at the zenith on a clear night
-            time_of_day = 0.875f; // 9:00 PM
-            temperature = 4200.0f;
-            intensity   = 0.3f;
+            time_of_day = 0.875f; // 9:00 pm, sun below the horizon, moon and stars take over
             break;
 
         case LightPreset::david_lynch:
-            // stylized dreamy sunset, deep orange pink tones, intentionally low key but bright
-            // enough that scene ambient (sky ibl) is visible (the previous 5000 lx produced an
-            // almost black scene because the indirect lighting scales linearly with sun intensity)
-            time_of_day = 0.74f; // sun near horizon for sunset colors
-            temperature = 2400.0f;
-            intensity   = 12000.0f;
+            time_of_day = 0.74f;  // sun near horizon for sunset colors
             yaw_degrees = 125.0f; // rotate to avoid mountain
             break;
 
@@ -622,8 +644,7 @@ namespace spartan
         World::SetTimeOfDay(time_of_day);
 
         // set light properties
-        SetTemperature(temperature);
-        SetIntensity(intensity);
+        SetIntensity(sun_illuminance_lux);
 
         // set rotation based on time of day (only for directional lights)
         if (m_light_type == LightType::Directional)
@@ -786,20 +807,18 @@ namespace spartan
             return false;
         }
 
+        // the sky derives its color from the atmosphere, only direction and intensity affect it
         static Quaternion last_rotation           = Quaternion::Identity;
-        static Color last_color_rgb               = Color::standard_black;
         static float last_intensity_photometric   = numeric_limits<float>::max();
 
         Quaternion current_rotation = GetEntity() ? GetEntity()->GetRotation() : Quaternion::Identity;
 
         bool rotation_changed  = current_rotation != last_rotation;
-        bool color_changed     = m_color_rgb != last_color_rgb;
         bool intensity_changed = abs(m_intensity_photometric - last_intensity_photometric) > 0.01f;
 
-        if (rotation_changed || color_changed || intensity_changed)
+        if (rotation_changed || intensity_changed)
         {
-            last_rotation             = current_rotation;
-            last_color_rgb            = m_color_rgb;
+            last_rotation              = current_rotation;
             last_intensity_photometric = m_intensity_photometric;
             return true;
         }

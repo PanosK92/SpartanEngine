@@ -70,15 +70,10 @@ float3 photometric_to_radiometric(float3 value)
 /*------------------------------------------------------------------------------
     SUN RADIANCE
 ------------------------------------------------------------------------------*/
-// single source of truth for every sun energy term in the engine, the directional
-// sun is always at slot 0 in the light parameters buffer, light.color holds the
-// temperature derived chromaticity (~1.0, 0.95, 0.90 at 5778 K) and light.intensity
-// holds the authored lux already converted to radiometric on the cpu via /683
-//
-// every consumer (direct surface lighting, sky scattering, sun disc, cloud direct
-// lighting, fog haze, ibl through the baked panorama) goes through these helpers
-// so the entire scene is locked to one calibration, changing the directional light
-// color or intensity in the editor propagates to every visual term coherently
+// the atmosphere is the single ground truth for sun color, the cpu writes the atmospheric
+// transmittance toward the sun into the directional light color every frame so light.color
+// is the ground level sun tint (white at noon, deep red at sunset, black below the horizon),
+// light.intensity holds the authored top of atmosphere lux converted to radiometric via /683
 float3 get_sun_color()
 {
     return light_parameters[0].color.rgb;
@@ -89,6 +84,14 @@ float get_sun_intensity()
     return light_parameters[0].intensity;
 }
 
+// sun radiance before entering the atmosphere, neutral white, the sky and clouds apply their
+// own per path transmittance so feeding them a pre tinted color would extinct the light twice
+float3 get_sun_radiance_toa()
+{
+    return float3(1.0f, 1.0f, 1.0f) * get_sun_intensity();
+}
+
+// sun radiance after atmospheric extinction, what surfaces at the camera receive
 float3 get_sun_radiance()
 {
     return get_sun_color() * get_sun_intensity();

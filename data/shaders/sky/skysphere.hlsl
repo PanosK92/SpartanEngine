@@ -44,11 +44,10 @@ static const float ozone_center_height = 25000.0;
 static const float ozone_width         = 15000.0;
 
 // constants - sun and ground
-// sun chromaticity and intensity are no longer hardcoded here, every sun energy term
-// reads from get_sun_radiance() in common.hlsl which derives from the directional light's
-// authored color (temperature -> rgb) and intensity (lux / 683 -> radiometric), this keeps
-// the sky scatter, sun disc, cloud lighting, ibl and direct surface lighting all locked
-// to the same calibration so a single editor change propagates coherently through the scene
+// every sun energy term reads get_sun_radiance_toa() from common.hlsl, the neutral white top
+// of atmosphere radiance derived from the directional light's intensity, all tinting comes
+// from atmospheric transmittance so the sky, sun disc, clouds, ibl and direct surface
+// lighting stay locked to the atmosphere as the single ground truth for sun color
 static const float sun_angular_radius  = 0.00935;
 static const float3 ground_albedo      = float3(0.3, 0.3, 0.3);
 
@@ -317,10 +316,8 @@ float3 compute_sky_luminance(
         if (all(trans < 1e-6)) break;
     }
     
-    // multiply integrated scattering by the calibrated sun radiance, this replaces the
-    // previously hardcoded sun_illuminance constant so the sky energy automatically tracks
-    // the directional light's authored intensity and chromaticity
-    return luminance * get_sun_radiance();
+    // top of atmosphere radiance, the integral above already applied per path transmittance
+    return luminance * get_sun_radiance_toa();
 }
 
 // sun disc with limb darkening
@@ -336,11 +333,10 @@ float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
     float mu = safe_sqrt(1.0 - r * r);
     float limb = 0.3 + 0.93 * mu - 0.23 * mu * mu;
     
-    // sun disc tinted by the calibrated sun chromaticity so the disc warmth matches the
-    // direct lighting and the sky scatter, radiance is irradiance over the disc solid angle,
-    // the physically correct value which the panorama chroma clamp then compresses for storage
+    // disc radiance is toa irradiance over the disc solid angle, the transmittance argument
+    // tints it so the disc warmth matches the sky scatter and the direct lighting
     const float sun_solid_angle = PI2 * (1.0 - cos(sun_angular_radius));
-    return get_sun_radiance() * transmittance * sun_edge * limb / sun_solid_angle;
+    return get_sun_radiance_toa() * transmittance * sun_edge * limb / sun_solid_angle;
 }
 
 // =====================================================================

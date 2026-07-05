@@ -997,12 +997,12 @@ void Properties::ShowLight(spartan::Light* light) const
 
         const bool is_directional = static_cast<LightType>(selection_index) == LightType::Directional;
 
-        // sky preset for directional lights, sets time of day, color, intensity and rotation in one click
+        // sky preset for directional lights, sets time of day, intensity and rotation in one click
         if (is_directional)
         {
             static vector<string> sky_presets = { "Dawn", "Day", "Dusk", "Night", "David Lynch", "Custom" };
             uint32_t preset_index             = static_cast<uint32_t>(light->GetPreset());
-            if (property_combo("Sky Preset", sky_presets, &preset_index, "applies a full time of day setup, time, sun rotation, color and intensity"))
+            if (property_combo("Sky Preset", sky_presets, &preset_index, "applies a full time of day setup, time, sun rotation and intensity, the atmosphere derives the sun color"))
             {
                 light->SetPreset(static_cast<LightPreset>(preset_index));
                 // refresh local copies so the map-back at the bottom does not revert the new values
@@ -1015,11 +1015,12 @@ void Properties::ShowLight(spartan::Light* light) const
         layout::separator();
         layout::section_header("Appearance");
 
-        // color
-        property_color("Color", m_colorPicker_light.get(), "light color");
-
-        // temperature
-        property_float("Temperature", &temperature_kelvin, 10.0f, 1000.0f, 40000.0f, "color temperature in kelvin", "%.0f K");
+        // color and temperature are derived from atmospheric transmittance for directional lights
+        if (!is_directional)
+        {
+            property_color("Color", m_colorPicker_light.get(), "light color");
+            property_float("Temperature", &temperature_kelvin, 10.0f, 1000.0f, 40000.0f, "color temperature in kelvin", "%.0f K");
+        }
 
         // intensity
         {
@@ -1052,7 +1053,7 @@ void Properties::ShowLight(spartan::Light* light) const
             const char* unit_tooltip = "total emitted luminous flux in lumens";
             if (intensity_unit == LightIntensityUnit::Lux)
             {
-                unit_tooltip = "incident illuminance in lux";
+                unit_tooltip = "top of atmosphere illuminance in lux, the atmosphere derives the ground level color and dimming";
             }
             else if (light->GetLightType() == LightType::Spot)
             {
@@ -1164,11 +1165,11 @@ void Properties::ShowLight(spartan::Light* light) const
         {
             light->SetAreaHeight(area_height);
         }
-        if (m_colorPicker_light->GetColor() != light->GetColor())
+        if (!is_directional && m_colorPicker_light->GetColor() != light->GetColor())
         {
             light->SetColor(m_colorPicker_light->GetColor());
         }
-        if (temperature_kelvin != light->GetTemperature())
+        if (!is_directional && temperature_kelvin != light->GetTemperature())
         {
             light->SetTemperature(temperature_kelvin);
         }
