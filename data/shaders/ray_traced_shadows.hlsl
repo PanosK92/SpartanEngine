@@ -146,10 +146,15 @@ void ray_gen()
             
             TraceRay(tlas, RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 0, 1, 0, ray, payload);
             
-            if (payload.hit_distance >= 0.0f)
+            // read payload unconditionally so the compiler sees both fields accessed after trace
+            float local_hit_distance = payload.hit_distance;
+            float local_shadow_alpha = payload.shadow_alpha;
+            
+            if (local_hit_distance >= 0.0f)
             {
-                accumulated_alpha = 1.0f;
-                first_hit_dist    = payload.hit_distance;
+                // any hit in an opaque scene blocks fully, the max keeps the alpha read alive
+                accumulated_alpha = max(local_shadow_alpha, 1.0f);
+                first_hit_dist    = local_hit_distance;
             }
         }
         else
