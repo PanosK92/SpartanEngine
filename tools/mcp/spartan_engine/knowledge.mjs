@@ -73,10 +73,13 @@ export const engine_overview = [
   "Use entity_create_light for point, spot, directional, and area lights; calibrate intensity, range, and area size to the room or blockout scale.",
   "Use debug_log_read or spartan://agent/debug-log to inspect assistant prompts, engine command arguments, durations, and outputs.",
   "Use async_task_start and async_task_get for long-running MCP tools that should be reported without blocking the main client request.",
-  "Live scene edits should route through deterministic tools or generic operations and fail fast when no deterministic operation exists.",
+  "Live scene edits should route through deterministic tools when one matches, and fall back to the Cursor agent with the engine MCP tools otherwise.",
   "Treat scene construction prompts such as build a level, make rooms, backrooms, and liminal space as live scene edits, not source-code search requests.",
   "Missing deterministic capabilities should be recorded in agent memory under Problem Reports immediately.",
   "For procedural scene edits, execute_lua is the broad capability layer, but it is edit-mode guarded by default.",
+  "Splines are scriptable from Lua: entity:GetComponent(ComponentType.Spline) exposes GetPoint(t), GetTangent(t), GetLength(), GetControlPointCount(), GetClosedLoop(), and GetRoadWidth(); GetPoint returns world-space positions with t in [0, 1], ideal for placing entities along roads.",
+  "Cameras are scriptable from Lua: entity:AddComponent(ComponentType.Camera) adds a camera and the returned component exposes GetFovHorizontalDeg and SetFovHorizontalDeg.",
+  "The editor sequencer is a camera cut timeline fully controllable through sequencer_get, sequencer_set, sequencer_playback, sequencer_event_add, sequencer_event_update, and sequencer_event_remove; each event cuts to a camera at its time and stays active until the next event, and edits auto-save next to the loaded world.",
 ].join("\n");
 
 export const edit_rules = [

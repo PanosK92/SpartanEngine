@@ -6115,6 +6115,26 @@ namespace spartan
         }
     }
 
+    namespace
+    {
+        // commands registered by higher layers like the editor
+        std::unordered_map<std::string, McpCommandHandler>& get_external_commands()
+        {
+            static std::unordered_map<std::string, McpCommandHandler> commands;
+            return commands;
+        }
+    }
+
+    void RegisterMcpCommand(const std::string& name, McpCommandHandler handler)
+    {
+        get_external_commands()[name] = std::move(handler);
+    }
+
+    void UnregisterMcpCommand(const std::string& name)
+    {
+        get_external_commands().erase(name);
+    }
+
     std::string ExecuteMcpCommand(const McpRequest& request)
     {
         if (request.command == "ping")
@@ -6360,6 +6380,13 @@ namespace spartan
         if (request.command == "execute_lua")
         {
             return command_execute_lua(request);
+        }
+
+        const auto& external_commands = get_external_commands();
+        const auto it = external_commands.find(request.command);
+        if (it != external_commands.end())
+        {
+            return it->second(request);
         }
 
         return json_error("unknown command");

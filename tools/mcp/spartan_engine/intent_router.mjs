@@ -191,7 +191,8 @@ function engine_mode_from_prompt(value) {
 
 function is_engine_mode_request(value) {
   return /\b(play|run|pause|resume|unpause|edit mode|stop playing|stop simulation|start simulation)\b/.test(value) &&
-    !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
+    !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value) &&
+    !/\b(sequencer|sequence|timeline|cinematic|camera cut)\b/.test(value);
 }
 
 function is_console_request(value) {
@@ -306,10 +307,10 @@ export function route_intent(prompt) {
 
   if (is_live_scene_edit_request(value)) {
     return {
-      kind: "unsupported_live_scene_edit",
+      kind: "live_scene_edit",
       confidence: 0.82,
       live_scene_action: true,
-      allow_cursor_fallback: false,
+      allow_cursor_fallback: true,
     };
   }
 

@@ -45,7 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/RenderOptions.h"
 #include "Widgets/ScriptEditor.h"
 #include "Widgets/McpAssistant.h"
-#include "Widgets/Sequence/Sequencer.h"
+#include "Widgets/Sequencer.h"
 //===============================================
 
 //= NAMESPACES =====

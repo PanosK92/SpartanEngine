@@ -80,6 +80,7 @@ namespace spartan
         static const std::string& GetFilePath();
         static math::BoundingBox& GetBoundingBox();
         static Camera* GetCamera();
+        static void SetActiveCamera(Entity* entity);
         static Light* GetDirectionalLight();
         static uint32_t GetLightCount();
         static uint32_t GetAudioSourceCount();

@@ -441,11 +441,6 @@ async function run_source_code_search(run, prompt) {
 }
 
 export async function run_fast_path(run, intent, prompt) {
-  if (intent.kind === "unsupported_live_scene_edit") {
-    await run.report_capability_gap("No deterministic Spartan operation exists for this live scene edit intent. Add a native MCP tool or generic operation before using the assistant for this class of request.");
-    throw new Error("This live scene edit has no deterministic Spartan operation yet. Add a native tool or generic operation for this request before using the assistant for it.");
-  }
-
   if (intent.kind === "mcp_status") {
     return run_mcp_status(run);
   }

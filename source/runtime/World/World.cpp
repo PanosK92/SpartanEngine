@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Event.h"
 #include "Components/Render.h"
 #include "Components/Camera.h"
+#include "Components/Spline.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "Components/ParticleSystem.h"
@@ -81,6 +82,7 @@ namespace spartan
         bool was_loading            = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
+        Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the first-match camera
         Entity* light               = nullptr;
 
         // snapshot for play/stop state restoration (like unity's play mode)
@@ -310,6 +312,8 @@ namespace spartan
             Physics         ::RegisterForScripting(state_view);
             Light           ::RegisterForScripting(state_view);
             ParticleSystem  ::RegisterForScripting(state_view);
+            Spline          ::RegisterForScripting(state_view);
+            Camera          ::RegisterForScripting(state_view);
             WorldHelpers    ::RegisterForScripting(state_view);
 
             lua_state.new_enum("ComponentType",
@@ -321,7 +325,8 @@ namespace spartan
                 "Terrain",                  ComponentType::Terrain,
                 "Volume",                   ComponentType::Volume,
                 "Script",                   ComponentType::Script,
-                "ParticleSystem",           ComponentType::ParticleSystem
+                "ParticleSystem",           ComponentType::ParticleSystem,
+                "Spline",                   ComponentType::Spline
             );
 
             lua_state.new_enum("Intersection",
@@ -791,6 +796,11 @@ namespace spartan
             uint64_t id = (*it)->GetObjectId();
             if (pending_remove.count(id) > 0)
             {
+                if (*it == camera_override)
+                {
+                    camera_override = nullptr;
+                }
+
                 // clean up change tracking
                 entity_states.erase(id);
                 if (Material* mat = (*it)->GetComponent<Render>() ? (*it)->GetComponent<Render>()->GetMaterial() : nullptr)
@@ -840,8 +850,9 @@ namespace spartan
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)n
 
         // clear entities
-        camera = nullptr;
-        light  = nullptr;
+        camera          = nullptr;
+        camera_override = nullptr;
+        light           = nullptr;
         for (Entity* entity : entities)
         {
             delete entity;
@@ -1697,6 +1708,10 @@ namespace spartan
             {
                 camera = nullptr;
             }
+            if (entity == camera_override)
+            {
+                camera_override = nullptr;
+            }
             if (entity == light)
             {
                 light = nullptr;
@@ -1887,7 +1902,20 @@ namespace spartan
 
     Camera* World::GetCamera()
     {
+        if (camera_override && camera_override->GetActive())
+        {
+            if (Camera* component = camera_override->GetComponent<Camera>())
+            {
+                return component;
+            }
+        }
+
         return camera ? camera->GetComponent<Camera>() : nullptr;
+    }
+
+    void World::SetActiveCamera(Entity* entity)
+    {
+        camera_override = entity;
     }
 
     Light* World::GetDirectionalLight()

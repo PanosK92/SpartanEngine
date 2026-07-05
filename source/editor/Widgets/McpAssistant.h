@@ -46,6 +46,9 @@ private:
     };
 
     void SubmitPrompt();
+    void StartVoiceCapture();
+    void StopVoiceCapture();
+    void PollVoiceCapture();
     void CancelRun();
     void RefreshModels();
     void RestartAssistant();
@@ -65,6 +68,7 @@ private:
     std::vector<std::string> m_model_labels = { "Auto" };
     int m_model_index = 0;
     bool m_blocks_input = false;
+    bool m_voice_active = false;
     bool m_scroll_to_bottom = false;
     bool m_api_key_file_checked = false;
     bool m_refresh_models_after_key_load = false;

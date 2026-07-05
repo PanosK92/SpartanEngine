@@ -740,6 +740,72 @@ register_tool(
   { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
 );
 
+register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time and the sorted list of camera cut events.", {}, "sequencer_get", {
+  annotations: read_only,
+});
+
+register_tool(
+  server,
+  "sequencer_set",
+  "Set sequencer duration in seconds, loop flag, playhead time, or widget visibility. Only the arguments you pass change.",
+  {
+    duration: z.number().min(1).max(3600).optional(),
+    loop: z.boolean().optional(),
+    time: z.number().min(0).optional(),
+    visible: z.boolean().optional(),
+  },
+  "sequencer_set",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_playback",
+  "Control sequencer playback. While playing, the event under the playhead drives the render camera.",
+  {
+    action: z.enum(["play", "pause", "stop"]),
+  },
+  "sequencer_playback",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_event_add",
+  "Add a camera cut event at a time in seconds. The camera stays active from its event time until the next event. camera accepts an entity id or an entity name that has a Camera component.",
+  {
+    time: z.number().min(0),
+    camera: z.union([z.string(), z.number().int()]),
+  },
+  "sequencer_event_add",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_event_update",
+  "Change the time or camera of an existing event by index. Events are re-sorted by time, so re-read indices from the returned state.",
+  {
+    index: z.number().int().min(0),
+    time: z.number().min(0).optional(),
+    camera: z.union([z.string(), z.number().int()]).optional(),
+  },
+  "sequencer_event_update",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_event_remove",
+  "Remove one camera cut event by index, or pass all=true to clear every event.",
+  {
+    index: z.number().int().min(0).optional(),
+    all: z.boolean().optional(),
+  },
+  "sequencer_event_remove",
+  { annotations: edit_tool },
+);
+
 register_local_tool("screenshot_take", {
   title: "screenshot take",
   description: "Request a renderer screenshot and return the target PNG path. If the async save completes quickly, the PNG is also returned as image content.",

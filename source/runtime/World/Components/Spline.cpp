@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/PhysicsWorld.h"
 SP_WARNINGS_OFF
 #include "../../IO/pugixml.hpp"
+#include <sol/sol.hpp>
 SP_WARNINGS_ON
 //=======================================
 
@@ -136,6 +137,23 @@ namespace spartan
         {
             SpawnInstances();
         }
+    }
+
+    void Spline::RegisterForScripting(sol::state_view state)
+    {
+        state.new_usertype<Spline>("Spline",
+            "GetPoint",             &Spline::GetPoint,
+            "GetTangent",           &Spline::GetTangent,
+            "GetLength",            [](Spline* self) { return self->GetLength(); },
+            "GetControlPointCount", &Spline::GetControlPointCount,
+            "GetClosedLoop",        &Spline::GetClosedLoop,
+            "GetRoadWidth",         &Spline::GetRoadWidth
+        );
+    }
+
+    sol::reference Spline::AsLua(sol::state_view state)
+    {
+        return sol::make_reference(state, this);
     }
 
     void Spline::SnapshotState()

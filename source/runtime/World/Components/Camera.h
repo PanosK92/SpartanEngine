@@ -84,6 +84,10 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
+        // scripting
+        static void RegisterForScripting(sol::state_view state);
+        sol::reference AsLua(sol::state_view state) override;
+
         // matrices
         const math::Matrix& GetViewMatrix() const           { return m_view; }
         const math::Matrix& GetProjectionMatrix() const     { return m_projection; }

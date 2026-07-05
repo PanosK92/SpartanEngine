@@ -952,8 +952,9 @@ namespace spartan
 
                 // load by path first since paths are unique
                 // name-based lookup is a fallback because names like "normal" collide across materials
+                // procedural textures carry a synthetic path with no file behind it, so check existence first
                 shared_ptr<RHI_Texture> texture;
-                if (!tex_path.empty())
+                if (!tex_path.empty() && FileSystem::Exists(tex_path))
                 {
                     texture = ResourceCache::Load<RHI_Texture>(tex_path);
                 }

@@ -23,9 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================
 #include "McpQueue.h"
+#include <functional>
 //===========================
 
 namespace spartan
 {
+    // handlers run on the engine main thread via McpQueue::Tick
+    using McpCommandHandler = std::function<std::string(const McpRequest&)>;
+
     std::string ExecuteMcpCommand(const McpRequest& request);
+    void RegisterMcpCommand(const std::string& name, McpCommandHandler handler);
+    void UnregisterMcpCommand(const std::string& name);
 }

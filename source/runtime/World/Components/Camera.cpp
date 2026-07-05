@@ -30,12 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AudioSource.h"
 #include "ParticleSystem.h"
 #include "../Entity.h"
+#include "../World.h"
 #include "../../Input/Input.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
 #include "../../XR/Xr.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
+#include <sol/sol.hpp>
 SP_WARNINGS_ON
 //===================================
 
@@ -71,6 +73,21 @@ namespace spartan
     {
         Component::Initialize();
         ComputeMatrices();
+    }
+
+    void Camera::RegisterForScripting(sol::state_view state)
+    {
+        state.new_usertype<Camera>("Camera",
+            "GetFovHorizontalDeg", &Camera::GetFovHorizontalDeg,
+            "SetFovHorizontalDeg", &Camera::SetFovHorizontalDeg,
+            "GetNearPlane",        &Camera::GetNearPlane,
+            "GetFarPlane",         &Camera::GetFarPlane
+        );
+    }
+
+    sol::reference Camera::AsLua(sol::state_view state)
+    {
+        return sol::make_reference(state, this);
     }
 
     void Camera::Tick()
@@ -688,6 +705,12 @@ namespace spartan
 
     void Camera::ProcessInput()
     {
+        // only the camera the renderer is using responds to input, otherwise every camera in the world would move at once
+        if (World::GetCamera() != this)
+        {
+            return;
+        }
+
         if (GetFlag(CameraFlags::CanBeControlled))
         {
             Input_FpsControl();

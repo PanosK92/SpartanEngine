@@ -16,6 +16,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - \`async_task_start\`, \`async_task_get\`, and \`async_task_list\` provide pollable background MCP tool execution.
 - Mutating scene tools require edit mode.
 - \`execute_lua\` is the broad capability layer for procedural scene edits and is edit-mode guarded.
+- Lua can sample splines via \`entity:GetComponent(ComponentType.Spline)\` with \`GetPoint(t)\`, \`GetTangent(t)\`, \`GetLength()\`, and can add cameras via \`entity:AddComponent(ComponentType.Camera)\`.
 - \`context_snapshot\` is the fastest first read for engine status, world summary, and selection.
 - \`component_get\` exposes friendly properties, registered raw members, and metadata for ranges, units, enum values, side effects, recommended defaults, and read-only reasons.
 - \`component_action\` invokes deterministic component methods that are not simple property writes.
@@ -24,6 +25,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - \`undo_redo\` routes editor undo and redo through the command stack.
 - \`camera_set_view\`, \`viewport_frame\`, \`renderer_debug_get\`, \`renderer_debug_set\`, and \`physics_state\` cover common viewport/debug inspection.
 - \`screenshot_take\` queues a renderer screenshot and can return the saved PNG as image content for visual inspection.
+- The editor sequencer (camera cut timeline) is controlled with \`sequencer_get\`, \`sequencer_set\`, \`sequencer_playback\`, \`sequencer_event_add\`, \`sequencer_event_update\`, and \`sequencer_event_remove\`; \`camera\` accepts an entity id or name, events re-sort by time, and state auto-saves to \`sequencer.xml\` next to the loaded world.
 
 ## Good Agent Strategies
 - Start engine tasks with \`spartan_status\` or \`context_snapshot\`.
@@ -46,9 +48,9 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use \`entity_create_light\` for generic point, spot, directional, and area lights, and calibrate intensity, range, and area size to the scene scale.
 - Use \`camera_snapshot\` before interpreting camera-relative placement.
 - Use \`world_raycast\` for ground or surface-relative placement when possible.
-- Simple live scene edits should use deterministic tools or fail fast; complex blockouts can use the higher-level scene path.
+- Simple live scene edits should use deterministic tools; anything unmatched falls back to the Cursor agent with the engine MCP tools.
 - Scene construction prompts such as \`build a level\`, \`make rooms\`, \`backrooms\`, or \`liminal space\` are live scene edits, not source-code search requests.
-- Missing deterministic capabilities should be logged immediately under Problem Reports.
+- Recurring gaps worth a dedicated fast path should be logged under Problem Reports.
 - Do not route delete plus rebuild prompts to \`entity_delete\`; preserve materials first, then rebuild through a complex scene path.
 - User convention, \`physics <primitive>\` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer \`entity_create_primitive_batch\` or one focused \`execute_lua\` script.

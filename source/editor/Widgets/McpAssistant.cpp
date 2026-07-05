@@ -28,10 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Editor.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_Style.h"
+#include "../ImGui/Source/imgui_internal.h"
 #include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <iomanip>
 #include <mutex>
@@ -44,6 +46,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <Windows.h>
+    #include <sapi.h>
+    #pragma comment(lib, "ole32.lib")
 #else
     #include <arpa/inet.h>
     #include <netinet/in.h>
@@ -296,6 +300,117 @@ namespace
         std::replace(line.begin(), line.end(), '\r', ' ');
         SP_LOG_ERROR("MCP Assistant: %s", line.c_str());
     }
+
+#ifdef _WIN32
+    ISpRecognizer* voice_recognizer = nullptr;
+    ISpAudio* voice_audio = nullptr;
+    ISpRecoContext* voice_context = nullptr;
+    ISpRecoGrammar* voice_grammar = nullptr;
+
+    template <typename T>
+    void voice_release(T*& com_object)
+    {
+        if (com_object)
+        {
+            com_object->Release();
+            com_object = nullptr;
+        }
+    }
+
+    void voice_stop()
+    {
+        if (voice_grammar)
+        {
+            voice_grammar->SetDictationState(SPRS_INACTIVE);
+        }
+        if (voice_recognizer)
+        {
+            voice_recognizer->SetRecoState(SPRST_INACTIVE);
+        }
+        voice_release(voice_grammar);
+        voice_release(voice_context);
+        voice_release(voice_audio);
+        voice_release(voice_recognizer);
+    }
+
+    bool voice_start()
+    {
+        HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        if (FAILED(hr) && hr != RPC_E_CHANGED_MODE)
+        {
+            log_error("Voice input could not initialize COM.");
+            return false;
+        }
+
+        const bool started =
+            SUCCEEDED(CoCreateInstance(__uuidof(SpInprocRecognizer), nullptr, CLSCTX_ALL, __uuidof(ISpRecognizer), reinterpret_cast<void**>(&voice_recognizer))) &&
+            SUCCEEDED(CoCreateInstance(__uuidof(SpMMAudioIn), nullptr, CLSCTX_ALL, __uuidof(ISpAudio), reinterpret_cast<void**>(&voice_audio))) &&
+            SUCCEEDED(voice_recognizer->SetInput(voice_audio, TRUE)) &&
+            SUCCEEDED(voice_recognizer->CreateRecoContext(&voice_context)) &&
+            SUCCEEDED(voice_context->SetInterest(SPFEI(SPEI_RECOGNITION), SPFEI(SPEI_RECOGNITION))) &&
+            SUCCEEDED(voice_context->CreateGrammar(1, &voice_grammar)) &&
+            SUCCEEDED(voice_grammar->LoadDictation(nullptr, SPLO_STATIC)) &&
+            SUCCEEDED(voice_grammar->SetDictationState(SPRS_ACTIVE)) &&
+            SUCCEEDED(voice_recognizer->SetRecoState(SPRST_ACTIVE));
+
+        if (!started)
+        {
+            voice_stop();
+            log_error("Voice input could not start, check that a microphone and the Windows speech engine are available.");
+        }
+
+        return started;
+    }
+
+    std::string voice_poll()
+    {
+        std::string text;
+        if (!voice_context)
+        {
+            return text;
+        }
+
+        SPEVENT event = {};
+        ULONG fetched = 0;
+        while (voice_context->GetEvents(1, &event, &fetched) == S_OK && fetched == 1)
+        {
+            if (event.eEventId == SPEI_RECOGNITION && event.elParamType == SPET_LPARAM_IS_OBJECT && event.lParam != 0)
+            {
+                ISpRecoResult* result = reinterpret_cast<ISpRecoResult*>(event.lParam);
+                LPWSTR phrase = nullptr;
+                if (SUCCEEDED(result->GetText(SP_GETWHOLEPHRASE, SP_GETWHOLEPHRASE, TRUE, &phrase, nullptr)))
+                {
+                    const int utf8_size = WideCharToMultiByte(CP_UTF8, 0, phrase, -1, nullptr, 0, nullptr, nullptr);
+                    if (utf8_size > 1)
+                    {
+                        std::string utf8(static_cast<size_t>(utf8_size - 1), '\0');
+                        WideCharToMultiByte(CP_UTF8, 0, phrase, -1, utf8.data(), utf8_size, nullptr, nullptr);
+                        if (!text.empty())
+                        {
+                            text += ' ';
+                        }
+                        text += utf8;
+                    }
+                    CoTaskMemFree(phrase);
+                }
+            }
+
+            // release event payload as sapi hands over ownership
+            if (event.elParamType == SPET_LPARAM_IS_OBJECT && event.lParam != 0)
+            {
+                reinterpret_cast<IUnknown*>(event.lParam)->Release();
+            }
+            else if ((event.elParamType == SPET_LPARAM_IS_POINTER || event.elParamType == SPET_LPARAM_IS_STRING) && event.lParam != 0)
+            {
+                CoTaskMemFree(reinterpret_cast<void*>(event.lParam));
+            }
+
+            event = {};
+        }
+
+        return text;
+    }
+#endif
 
     std::string trim_copy_paste_whitespace(const std::string& value);
     void push_run_event_locked(const std::string& line);
@@ -1368,6 +1483,7 @@ McpAssistant::McpAssistant(Editor* editor) : Widget(editor)
 
 McpAssistant::~McpAssistant()
 {
+    StopVoiceCapture();
     kill_assistant_process();
 }
 
@@ -1384,6 +1500,7 @@ void McpAssistant::OnTick()
 
 void McpAssistant::OnInvisible()
 {
+    StopVoiceCapture();
     m_blocks_input = false;
     spartan::Input::SetBlockedByUi(false);
 }
@@ -1674,6 +1791,10 @@ void McpAssistant::OnTickVisible()
     if (begin_card("##mcp_composer_card"))
     {
         draw_section_title("Message");
+        if (m_voice_active)
+        {
+            PollVoiceCapture();
+        }
         ImGui::InputTextMultiline(
             "##mcp_prompt",
             m_prompt.data(),
@@ -1719,8 +1840,77 @@ void McpAssistant::OnTickVisible()
             m_messages.clear();
             set_response("");
         }
+        ImGui::SameLine();
+        if (ImGuiSp::button(m_voice_active ? "Stop voice" : "Voice"))
+        {
+            if (m_voice_active)
+            {
+                StopVoiceCapture();
+            }
+            else
+            {
+                StartVoiceCapture();
+            }
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(m_voice_active ? "Listening, click to stop." : "Dictate into the message box with the default microphone.");
+        }
+        if (m_voice_active)
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.9f, 0.35f, 0.35f, 1.0f), "listening");
+        }
     }
     end_card();
+}
+
+void McpAssistant::StartVoiceCapture()
+{
+#ifdef _WIN32
+    m_voice_active = voice_start();
+    if (m_voice_active)
+    {
+        log_info("Voice input started, dictated text is appended to the message box.");
+    }
+#else
+    log_error("Voice input is only available on Windows.");
+#endif
+}
+
+void McpAssistant::StopVoiceCapture()
+{
+#ifdef _WIN32
+    voice_stop();
+#endif
+    m_voice_active = false;
+}
+
+void McpAssistant::PollVoiceCapture()
+{
+#ifdef _WIN32
+    const std::string text = voice_poll();
+    if (text.empty())
+    {
+        return;
+    }
+
+    std::string prompt = m_prompt.data();
+    if (!prompt.empty() && prompt.back() != ' ' && prompt.back() != '\n')
+    {
+        prompt += ' ';
+    }
+    prompt += text;
+    const size_t copy_length = std::min(prompt.size(), m_prompt.size() - 1);
+    std::memcpy(m_prompt.data(), prompt.c_str(), copy_length);
+    m_prompt[copy_length] = '\0';
+
+    // if the input box is being edited it caches the buffer, release it so the new text shows
+    if (ImGui::GetActiveID() == ImGui::GetID("##mcp_prompt"))
+    {
+        ImGui::ClearActiveID();
+    }
+#endif
 }
 
 void McpAssistant::SubmitPrompt()

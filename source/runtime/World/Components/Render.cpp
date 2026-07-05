@@ -72,8 +72,10 @@ namespace spartan
 
     void Render::Save(pugi::xml_node& node)
     {
-        // mesh
-        node.append_attribute("mesh_name")      = m_mesh ? m_mesh->GetObjectName().c_str() : "";
+        // mesh, skip procedural meshes as they are not in the resource cache, their owning component regenerates them after load
+        const bool is_standard_mesh = m_mesh && m_mesh->GetObjectName().rfind("standard_", 0) == 0;
+        const bool is_resolvable    = m_mesh && (is_standard_mesh || ResourceCache::GetByName<Mesh>(m_mesh->GetObjectName()) != nullptr);
+        node.append_attribute("mesh_name")      = is_resolvable ? m_mesh->GetObjectName().c_str() : "";
         node.append_attribute("sub_mesh_index") = m_sub_mesh_index;
 
         // material
@@ -344,9 +346,9 @@ namespace spartan
 
     void Render::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
+        // a null mesh is a valid transient state, procedural meshes like roads are generated after load
         if (!m_mesh)
         {
-            SP_LOG_WARNING("Renderable::GetGeometry called with null mesh");
             return;
         }
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);

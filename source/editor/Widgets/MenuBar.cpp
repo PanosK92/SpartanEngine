@@ -40,7 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
 #include "ScriptEditor.h"
-#include "Sequence/Sequencer.h"
+#include "Sequencer.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
 #include "MCP/McpServer.h"

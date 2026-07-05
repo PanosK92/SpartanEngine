@@ -79,6 +79,10 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
+        // scripting
+        static void RegisterForScripting(sol::state_view state);
+        sol::reference AsLua(sol::state_view state) override;
+
         // evaluation - t is normalized [0, 1] across the entire spline
         math::Vector3 GetPoint(float t) const;
         math::Vector3 GetTangent(float t) const;
