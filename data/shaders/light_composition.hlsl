@@ -84,6 +84,50 @@ float3 sample_gi_bilateral(float2 uv_dst, float depth_dst_lin, float3 normal_dst
     return tex6.SampleLevel(samplers[sampler_point_clamp], uv_dst, 0).rgb;
 }
 
+// catmull rom filtered sky panorama fetch, sky pixels magnify the 4k panorama ~2.5x at a
+// typical fov so plain bilinear smears cloud edges, the 5 tap cubic keeps them crisp, the
+// neighborhood clamp suppresses ringing from the negative lobes around hdr spikes like the sun
+float3 sample_sky_catmull_rom(float2 uv)
+{
+    float2 resolution;
+    tex2.GetDimensions(resolution.x, resolution.y);
+
+    float2 sample_position = uv * resolution;
+    float2 tex_pos_1       = floor(sample_position - 0.5f) + 0.5f;
+    float2 f               = sample_position - tex_pos_1;
+
+    float2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+    float2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+    float2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+    float2 w3 = f * f * (-0.5f + 0.5f * f);
+
+    float2 w12       = w1 + w2;
+    float2 offset_12 = w2 / w12;
+
+    float2 inv_res    = 1.0f / resolution;
+    float2 tex_pos_0  = (tex_pos_1 - 1.0f) * inv_res;
+    float2 tex_pos_3  = (tex_pos_1 + 2.0f) * inv_res;
+    float2 tex_pos_12 = (tex_pos_1 + offset_12) * inv_res;
+
+    float3 s0 = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_0.y),  0.0f).rgb;
+    float3 s1 = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_0.x,  tex_pos_12.y), 0.0f).rgb;
+    float3 s2 = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_12.y), 0.0f).rgb;
+    float3 s3 = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_3.x,  tex_pos_12.y), 0.0f).rgb;
+    float3 s4 = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_3.y),  0.0f).rgb;
+
+    float3 result = 0.0f.xxx;
+    result += s0 * w12.x * w0.y;
+    result += s1 * w0.x  * w12.y;
+    result += s2 * w12.x * w12.y;
+    result += s3 * w3.x  * w12.y;
+    result += s4 * w12.x * w3.y;
+
+    float  weight_sum = w12.x + w12.y - w12.x * w12.y;
+    float3 sky_min    = min(min(min(s0, s1), min(s2, s3)), s4);
+    float3 sky_max    = max(max(max(s0, s1), max(s2, s3)), s4);
+    return clamp(result * rcp(weight_sum), sky_min, sky_max);
+}
+
 // 3x3 gaussian blur on the volumetric fog buffer to kill the per pixel raymarch jitter
 float3 sample_volumetric_smooth(float2 uv)
 {
@@ -135,7 +179,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 view_dir_sky  = surface.camera_to_pixel;
         view_dir_sky.y       = max(view_dir_sky.y, 0.0f);
         view_dir_sky         = normalize(view_dir_sky);
-        light_emissive       = tex2.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(view_dir_sky), 0).rgb;
+        light_emissive       = sample_sky_catmull_rom(direction_sphere_uv(view_dir_sky));
         alpha                = 0.0f;
         distance_from_camera = FLT_MAX_16;
     }

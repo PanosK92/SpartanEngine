@@ -23,96 +23,110 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-[numthreads(1, 1, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+// histogram based metering as described in lagarde and de rousiers, moving frostbite to pbr
+static const uint  thread_count            = 256;
+static const uint  histogram_bin_count     = 256;
+static const float histogram_log2_min      = -8.0f;  // log2 nits, histogram floor
+static const float histogram_log2_max      = 18.0f;  // log2 nits, histogram ceiling
+static const float percentile_low          = 0.5f;   // reject the darkest half so shadows don't overbrighten the frame
+static const float percentile_high         = 0.9f;   // reject the brightest tail so the sun doesn't darken the frame
+static const float avg_nits_min            = 0.01f;  // adaptation floor, keeps night scenes dark
+static const float avg_nits_max            = 20000.0f; // adaptation ceiling, sun drenched scene
+static const float metering_edge_weight    = 0.15f;  // center weighted metering falloff at the screen edges
+static const uint  metering_max_dimension  = 128;    // mip size used for metering
+static const float weight_fixed_point      = 1024.0f;
+
+groupshared uint g_histogram[histogram_bin_count];
+
+[numthreads(16, 16, 1)]
+void main_cs(uint group_index : SV_GroupIndex)
 {
-    // 1. compute a center-weighted log average from a small mip grid
-    float avg_nits = 0.0f;
+    g_histogram[group_index] = 0;
+    GroupMemoryBarrierWithGroupSync();
+
+    // pick a mip small enough to be cheap but large enough to preserve the luminance distribution
+    uint w, h, mip_count;
+    tex.GetDimensions(0, w, h, mip_count);
+    uint mip = 0;
+    while ((mip + 1) < mip_count && (w > metering_max_dimension || h > metering_max_dimension))
     {
-        uint w, h, mip_count;
-        tex.GetDimensions(0, w, h, mip_count);
-
-        // use a small grid instead of the final 1x1 average so localized highlights
-        // don't dominate the meter.
-        uint mip = 0;
-        const uint target_metering_resolution = 16;
-
-        while ((mip + 1) < mip_count && (w > target_metering_resolution || h > target_metering_resolution))
-        {
-            mip++;
-            tex.GetDimensions(mip, w, h, mip_count);
-        }
-
+        mip++;
         tex.GetDimensions(mip, w, h, mip_count);
-
-        const float min_luminance_nits      = 0.0001f;
-        const float highlight_start_nits    = 1500.0f;
-        const float highlight_end_nits      = 10000.0f;
-        const float min_highlight_weight    = 0.25f;
-        const float edge_weight             = 0.15f;
-
-        float weighted_log_sum = 0.0f;
-        float weight_sum       = 0.0f;
-
-        for (uint y = 0; y < h; y++)
-        {
-            for (uint x = 0; x < w; x++)
-            {
-                float3 col = tex.Load(int3(x, y, mip)).rgb;
-
-                float lum_nits = max(dot(radiometric_to_photometric(col), float3(0.2126f, 0.7152f, 0.0722f)), min_luminance_nits);
-
-                float2 uv = (float2(x + 0.5f, y + 0.5f) / float2(w, h)) * 2.0f - 1.0f;
-                float center_weight = lerp(edge_weight, 1.0f, exp(-dot(uv, uv) * 1.5f));
-
-                // keep very hot highlights from dragging the meter too hard.
-                float highlight_weight = 1.0f - smoothstep(highlight_start_nits, highlight_end_nits, lum_nits);
-                float sample_weight    = center_weight * lerp(min_highlight_weight, 1.0f, highlight_weight);
-
-                weighted_log_sum += log2(lum_nits) * sample_weight;
-                weight_sum       += sample_weight;
-            }
-        }
-        avg_nits = exp2(weighted_log_sum / max(weight_sum, 0.000001f));
     }
 
-    // 2. keep the existing camera-relative metering so artistic exposure choices remain intact
-    float camera_exposure   = max(buffer_frame.camera_exposure, 0.000001f);
-    float current_brightness = avg_nits * camera_exposure;
+    // build a center weighted histogram of log2 luminance in nits
+    uint texel_count = w * h;
+    for (uint i = group_index; i < texel_count; i += thread_count)
+    {
+        uint x = i % w;
+        uint y = i / w;
 
-    // 3. target middle gray using the resolved exposure that will be promoted for the next frame.
-    // the current frame keeps using the previous resolved exposure so post-processing and upscaling stay in sync.
-    const float target_luminance = 0.18f;
+        float3 color   = tex.Load(int3(x, y, mip)).rgb;
+        float lum_nits = dot(radiometric_to_photometric(color), float3(0.2126f, 0.7152f, 0.0722f));
 
-    // 4. compute the camera-relative auto exposure trim
-    float desired_exposure = target_luminance / max(current_brightness, 0.000001f);
+        // photographic center weighted metering mask
+        float2 ndc   = (float2(x + 0.5f, y + 0.5f) / float2(w, h)) * 2.0f - 1.0f;
+        float weight = lerp(metering_edge_weight, 1.0f, exp(-dot(ndc, ndc) * 1.5f));
 
-    // 5. clamp the auto exposure trim to a practical range
-    const float min_ev = -6.0f;
-    const float max_ev =  6.0f;
+        // nan resolves to the histogram floor through the max below
+        float log2_lum   = log2(max(lum_nits, exp2(histogram_log2_min)));
+        float normalized = saturate((log2_lum - histogram_log2_min) / (histogram_log2_max - histogram_log2_min));
+        uint bin         = (uint)(normalized * (histogram_bin_count - 1) + 0.5f);
 
-    float min_exposure = exp2(min_ev);
-    float max_exposure = exp2(max_ev);
+        InterlockedAdd(g_histogram[bin], (uint)(weight * weight_fixed_point));
+    }
+    GroupMemoryBarrierWithGroupSync();
 
-    desired_exposure = clamp(desired_exposure, min_exposure, max_exposure);
+    if (group_index != 0)
+    {
+        return;
+    }
 
-    // 6. resolve the final exposure and adapt it in ev space so large changes remain stable
-    float desired_total_exposure = camera_exposure * desired_exposure;
+    float total_weight = 0.0f;
+    for (uint bin = 0; bin < histogram_bin_count; bin++)
+    {
+        total_weight += g_histogram[bin];
+    }
+
+    // average log2 luminance over the percentile band, tails are excluded from the meter
+    float weight_low  = total_weight * percentile_low;
+    float weight_high = total_weight * percentile_high;
+    float log2_sum    = 0.0f;
+    float weight_sum  = 0.0f;
+    float cumulative  = 0.0f;
+    for (uint bin = 0; bin < histogram_bin_count; bin++)
+    {
+        float bin_weight  = g_histogram[bin];
+        float band_weight = max(min(cumulative + bin_weight, weight_high) - max(cumulative, weight_low), 0.0f);
+        float bin_log2    = histogram_log2_min + (bin / (float)(histogram_bin_count - 1)) * (histogram_log2_max - histogram_log2_min);
+        log2_sum         += bin_log2 * band_weight;
+        weight_sum       += band_weight;
+        cumulative       += bin_weight;
+    }
+    float avg_nits = exp2(log2_sum / max(weight_sum, 0.000001f));
+    avg_nits       = clamp(avg_nits, avg_nits_min, avg_nits_max);
+
+    // perceptual key from krawczyk et al, bright scenes render bright, dark scenes stay dark
+    float key = 1.03f - 2.0f / (2.0f + log10(avg_nits + 1.0f));
+
+    // exposure compensation is an artist controlled bias in stops, positive brightens
+    float exposure_compensation = pass_get_f3_value().y;
+
+    // map the metered average to the key in display units where 1 is paper white
+    float target_exposure = (key / avg_nits) * exp2(exposure_compensation);
+
     float prev_exposure = tex2.Load(int3(0, 0, 0)).r;
-    float adaptation_speed = pass_get_f3_value().x;
-    
-    // start from the current target to avoid a first-frame flash
     if (isnan(prev_exposure) || prev_exposure <= 0.0f)
     {
-        prev_exposure = desired_total_exposure;
+        // start from the target to avoid a first frame flash
+        prev_exposure = target_exposure;
     }
 
-    // higher values should adapt faster, so the response scales with the user-controlled speed directly
-    float prev_ev          = log2(max(prev_exposure, 0.000001f));
-    float desired_ev       = log2(max(desired_total_exposure, 0.000001f));
-    float adaptation_alpha = 1.0f - exp(-max(adaptation_speed, 0.0f) * 4.0f * buffer_frame.delta_time);
-    float exposure         = exp2(lerp(prev_ev, desired_ev, adaptation_alpha));
+    // adapt in ev space, the eye adjusts to bright scenes faster than to dark ones
+    float adaptation_speed = pass_get_f3_value().x;
+    float speed            = target_exposure < prev_exposure ? adaptation_speed * 6.0f : adaptation_speed * 2.0f;
+    float alpha            = 1.0f - exp(-speed * buffer_frame.delta_time);
+    float exposure         = exp2(lerp(log2(prev_exposure), log2(target_exposure), alpha));
 
-    // write output
     tex_uav[uint2(0, 0)] = float4(exposure, exposure, exposure, 1.0f);
 }

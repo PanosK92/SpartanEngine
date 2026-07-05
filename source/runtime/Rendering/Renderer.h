@@ -93,6 +93,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_cluster_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize_cap;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
+    extern TConsoleVar<float> cvar_auto_exposure_compensation;
 
     struct ShadowSlice
     {

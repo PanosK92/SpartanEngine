@@ -41,16 +41,16 @@ static const float3 cloud_earth_center    = float3(0.0, -cloud_earth_radius, 0.0
 static const float cumulus_bottom_alt     = 1500.0;
 static const float cumulus_top_alt        = 5000.0;
 static const float cumulus_thickness      = cumulus_top_alt - cumulus_bottom_alt;
-static const float cumulus_shape_scale    = 1.0 / 4500.0;   // one tile of the noise volume covers 4.5 km horizontally
+static const float cumulus_shape_scale    = 1.0 / 6000.0;   // one tile of the noise volume covers 6 km horizontally, big heroic forms
 static const float cumulus_detail_scale   = 1.0 / 2200.0;   // detail features now ~370m at the highest surviving octave, well above the 40m step nyquist
 static const float cumulus_coverage_scale = 1.0 / 26000.0;  // weather map domain, pushes tile repeats out toward the horizon
-static const float cumulus_coverage       = 0.34;           // 0 = no clouds, 1 = overcast, fair weather sits around 0.30 - 0.45
-static const float cumulus_density_mul    = 0.80;
-static const float cumulus_sigma_t        = 0.045;          // base extinction coefficient per meter
+static const float cumulus_coverage       = 0.38;           // 0 = no clouds, 1 = overcast, fair weather sits around 0.30 - 0.45
+static const float cumulus_density_mul    = 1.00;
+static const float cumulus_sigma_t        = 0.06;           // base extinction coefficient per meter, high enough for solid crisp cores
 
 // domain warp, breaks up the visible grid alignment of the noise volume so cloud puffs
 // do not appear in lanes and neighbouring puffs do not share shapes. the shape warp varies
-// on a scale ~5x slower than the shape tile, so whole puffs get translated organically
+// on a scale ~3.5x slower than the shape tile, so whole puffs get translated organically
 // without any internal shearing that would stretch them into strips
 static const float cumulus_warp_scale         = 1.0 / 45000.0;
 static const float cumulus_warp_amplitude     = 7000.0;
@@ -100,18 +100,21 @@ static const float cirrus_wind_speed_mul  = 5.0;
 // and shapes morph in place over time, decoupled from the horizontal wind translation. the
 // y axis is safe because cloud_weather and cloud_base_offset force uvw.y to 0.5, so this only
 // affects the 3d shape, detail and warp lookups, not the coverage map or per-cloud altitude.
-// rate is divided by the per-layer noise tile size when sampled, so the cumulus shape (4.5 km
-// tile) cycles in ~5 min and detail (2.2 km tile) cycles in ~2.5 min at the value below,
+// rate is divided by the per-layer noise tile size when sampled, so the cumulus shape (6 km
+// tile) cycles in ~6.5 min and detail (2.2 km tile) cycles in ~2.5 min at the value below,
 // matching how real cumulus billow over minutes rather than seconds, faster rates also churn
 // the sub-step detail frequencies and read as shimmer instead of evolution
 // cirrus is intentionally much slower because real cirrus shapes persist for tens of minutes
 static const float cumulus_evolve_rate    = 15.0;
 static const float cirrus_evolve_rate     = 5.0;
 
-// lighting
-static const float3 cloud_ambient_bottom  = float3(0.18, 0.22, 0.30); // cool dark base
+// lighting, high contrast between shaded bases and lit tops is what makes cumulus read as
+// sculpted volumes instead of uniformly lit fog, the bounce keeps midday undersides grey
+// blue rather than black and fades with height so tops are shaped purely by the sun
+static const float3 cloud_ambient_bottom  = float3(0.10, 0.14, 0.24); // deep cool shaded base
 static const float3 cloud_ambient_top     = float3(0.95, 0.95, 0.99); // bright lit top
-static const float  cloud_ambient_factor  = 0.15;   // ambient strength relative to sun luminance
+static const float  cloud_ambient_factor  = 0.12;   // ambient strength relative to sun luminance
+static const float3 cloud_ground_bounce   = float3(0.045, 0.038, 0.028); // warm terrain bounce onto the undersides
 static const float  cloud_albedo          = 0.97;   // single scattering albedo, near 1 for water clouds
 static const float  cloud_sun_step_base   = 30.0;   // first sun-march step length, finer to avoid noisy self-shadow
 static const float  cloud_sun_step_growth = 2.0;    // geometric growth between sun samples
@@ -348,7 +351,14 @@ float2 cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
     float3 warp  = cloud_domain_warp(noise, samp, pos_d, cumulus_warp_scale, cumulus_warp_amplitude);
     float3 wpos  = pos_d + warp;
     
-    float3 uvw_a = wpos * cumulus_coverage_scale;
+    // cloud streets, the fine coverage octave is stretched ~2x along the wind so cumulus
+    // organize into rows like real convective streets instead of an isotropic sprinkle
+    float3 wind_h    = float3(buffer_frame.wind.x, 0.0, buffer_frame.wind.z);
+    float  wind_len  = length(wind_h);
+    float3 street_ax = wind_len > 1e-3 ? wind_h / wind_len : float3(1.0, 0.0, 0.0);
+    float3 wpos_st   = wpos - street_ax * (dot(wpos, street_ax) * 0.55);
+    
+    float3 uvw_a = wpos_st * cumulus_coverage_scale;
     uvw_a.y      = 0.5;
     float4 na    = cloud_sample_noise(noise, samp, uvw_a + 0.123);
     float wa     = na.r * 0.7 + na.g * 0.3;
@@ -366,8 +376,10 @@ float2 cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
     float coverage = saturate((w - thr) * gain);
     
     // type rides a decorrelated channel of the large-scale sample and is pulled up by the
-    // coverage, so cloudy cores build into towers while fringe clouds stay low and flat
-    float type = saturate(nb.g * 0.9 + coverage * 0.45);
+    // coverage, so cloudy cores build into towers while fringe clouds stay low and flat.
+    // worley fbm concentrates around 0.35 - 0.6, the stretch expands that band to the full
+    // 0 - 1 type range, without it every cloud lands mid range and the sky shows one species
+    float type = saturate((nb.g - 0.32) * 2.4 + (coverage - 0.5) * 0.8);
     return float2(coverage, type);
 }
 
@@ -400,6 +412,10 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     // bend worley cell boundaries off the axis grid without dissolving the cumulus character
     float3 shape_warp = cloud_domain_warp(noise, samp, pos_n, cumulus_shape_warp_scale, cumulus_shape_warp);
     float3 uvw        = (pos_n + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
+    
+    // vertical anisotropy per type, sheets sample the noise faster vertically which flattens
+    // their forms into pancakes, towers stay isotropic so their bulges develop upward
+    uvw.y            *= lerp(1.6, 1.0, weather.y);
     float4 shape_n    = cloud_sample_noise(noise, samp, uvw);
     
     // base shape from low-freq perlin-worley (r), eroded by mid-frequency worley fbm (g, b)
@@ -413,21 +429,20 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
         return 0.0;
     }
     
-    // erode by mid-frequency detail at the cloud edges, gives cauliflower micro structure
-    // only the medium worley fbm channel is used, the high-frequency .b channel has features
-    // below the march nyquist rate and shows up as grain rather than as detail no matter how
-    // many samples we average temporally
-    float3 uvw_d    = (pos_n + cumulus_wind_offset * 1.7) * cumulus_detail_scale;
-    float4 detail_n = cloud_sample_noise(noise, samp, uvw_d);
-    float detail    = detail_n.g;
-    
-    // wispy edges low in the layer, harder edges high in the layer
-    // erosion is stronger on towers so congestus get crisp cauliflower structure while flat
-    // sheets keep the soft diffuse edges typical of stratocumulus
+    // two detail species per the nubis wisp and billow model, stringy perlin carves the bases
+    // into hanging tendrils, rounded worley builds cauliflower domes on the tops, the erosion
+    // flip means bottoms erode where wisp is high and tops keep material where billow is high
+    float3 uvw_d     = (pos_n + cumulus_wind_offset * 1.7) * cumulus_detail_scale;
+    float4 detail_n  = cloud_sample_noise(noise, samp, uvw_d);
+    float detail     = lerp(detail_n.a, detail_n.g, saturate(h_norm * 2.2));
     float detail_mod = lerp(detail, 1.0 - detail, saturate(h_norm * 4.0));
-    float detail_amt = lerp(0.22, 0.34, weather.y);
-    float density    = cloud_remap(base, detail_mod * detail_amt, 1.0, 0.0, 1.0);
-    return saturate(density) * cumulus_density_mul;
+    float detail_amt = lerp(0.25, 0.40, weather.y);
+    float density    = saturate(cloud_remap(base, detail_mod * detail_amt, 1.0, 0.0, 1.0));
+    
+    // silhouette sharpening, clips the low density gauze that made every cloud look like fog
+    // and saturates the cores toward full density, edges stay defined the way real cumulus do
+    density = cloud_remap(density, 0.04, 0.85, 0.0, 1.0);
+    return density * cumulus_density_mul;
 }
 
 float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
@@ -557,7 +572,7 @@ float3 cloud_multiscatter_attenuation(float3 sun_light, float optical_depth, flo
     for (int i = 0; i < 3; i++)
     {
         float a       = pow(0.5, float(i)); // extinction shrink
-        float b       = pow(0.85, float(i)); // contribution shrink, near 1 keeps deep octaves bright
+        float b       = pow(0.6, float(i)); // contribution shrink, lower than the extinction ratio so shadowed cores actually go dark and forms read as sculpted
         float g_scale = pow(0.5, float(i)); // g shrink, deeper octaves more isotropic
         float beer    = exp(-optical_depth * cumulus_sigma_t * a);
         result       += sun_light * beer * cloud_phase(cos_theta, g_scale) * b;
@@ -734,9 +749,13 @@ void cloud_march_cumulus(
             float3 ambient    = lerp(cloud_ambient_bottom, cloud_ambient_top, h_norm);
             ambient          *= sun_light * cloud_ambient_factor + 0.005;
             
+            // warm terrain bounce fills the undersides at midday so flat bases read grey blue
+            // over sunlit ground instead of dead black, fades out over the lower half
+            ambient          += sun_light * cloud_ground_bounce * saturate(1.0 - h_norm * 2.0);
+            
             // ambient occlusion proxy, samples deeper along the view ray sit deeper inside the
             // cloud where less sky light reaches, this keeps interiors shaped instead of washed
-            ambient          *= lerp(0.6, 1.0, transmittance);
+            ambient          *= lerp(0.5, 1.0, transmittance);
             
             // night ambient floor, faint cool airglow that lights the underside of clouds even
             // on a moonless night so cumulus never go pitch black. mildly height modulated so

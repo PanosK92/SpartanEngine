@@ -328,6 +328,7 @@ void RenderOptions::OnTickVisible()
                     option_value("Gamma", "r.gamma");
                     ImGui::EndDisabled();
                     option_value("Exposure adaptation speed", "r.auto_exposure_adaptation_speed", "0 or negative disables adaptation", 0.1f, -1.0f);
+                    option_value("Exposure compensation", "r.auto_exposure_compensation", "Auto exposure bias in EV stops, positive brightens", 0.1f, -10.0f, 10.0f);
                 }
 
                 if (option_header("Tone Mapping"))

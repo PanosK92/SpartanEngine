@@ -461,7 +461,7 @@ namespace spartan
         {
             cmd_list->SetPipelineState(pso);
 
-            m_pcb_pass_cpu.set_f3_value(cvar_auto_exposure_adaptation_speed.GetValue());
+            m_pcb_pass_cpu.set_f3_value(cvar_auto_exposure_adaptation_speed.GetValue(), cvar_auto_exposure_compensation.GetValue());
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
