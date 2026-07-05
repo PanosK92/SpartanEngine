@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float SUN_ANGULAR_RADIUS = 0.00465f * 2.0f; // sun disk size in radians
 
+// blockers beyond this distance are treated as non occluding, prunes traversal through the far tlas
+static const float SHADOW_RAY_MAX_DISTANCE = 1000.0f;
+
 struct [raypayload] ShadowPayload
 {
     float hit_distance : read(caller) : write(caller, closesthit, miss);
@@ -116,6 +119,9 @@ void ray_gen()
     float sum_blocker    = 0.0f;
     float blocker_weight = 0.0f;
     
+    // cpu sets x to 1 when any transparent material exists in the draw list
+    bool scene_has_transparents = pass_get_f3_value().x != 0.0f;
+    
     for (uint i = 0; i < SHADOW_SAMPLES; i++)
     {
         float2 sample_2d  = frac(xi_base + (float)i * float2(0.7548776662f, 0.5698402909f));
@@ -124,52 +130,77 @@ void ray_gen()
         
         float  accumulated_alpha = 0.0f;
         float  first_hit_dist    = -1.0f;
-        float3 current_origin    = ray_origin;
         
-        for (uint layer = 0; layer < MAX_TRANSPARENT_LAYERS; layer++)
+        if (!scene_has_transparents)
         {
+            // fully opaque scene, any hit blocks completely so first hit acceptance ends traversal early
             RayDesc ray;
-            ray.Origin    = current_origin;
+            ray.Origin    = ray_origin;
             ray.Direction = sample_dir;
             ray.TMin      = 0.001f;
-            ray.TMax      = 10000.0f;
+            ray.TMax      = SHADOW_RAY_MAX_DISTANCE;
             
             ShadowPayload payload;
             payload.hit_distance = -1.0f;
             payload.shadow_alpha = 0.0f;
             
-            // no any hit shader exists so traversal can treat all geometry as opaque
-            TraceRay(tlas, RAY_FLAG_FORCE_OPAQUE, 0xFF, 0, 1, 0, ray, payload);
+            TraceRay(tlas, RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 0, 1, 0, ray, payload);
             
-            // read payload unconditionally so the compiler sees both fields accessed after trace
-            float local_hit_distance = payload.hit_distance;
-            float local_shadow_alpha = payload.shadow_alpha;
-            
-            // no more blockers along this ray
-            if (local_hit_distance < 0.0f)
-                break;
-            
-            // track the first hit for penumbra estimation
-            if (first_hit_dist < 0.0f)
-                first_hit_dist = local_hit_distance;
-            
-            // opaque blocker, fully shadowed, no need to trace further
-            if (local_shadow_alpha >= 1.0f)
+            if (payload.hit_distance >= 0.0f)
             {
                 accumulated_alpha = 1.0f;
-                break;
+                first_hit_dist    = payload.hit_distance;
             }
+        }
+        else
+        {
+            float3 current_origin = ray_origin;
             
-            // transparent surface, accumulate opacity and continue past it
-            accumulated_alpha = 1.0f - (1.0f - accumulated_alpha) * (1.0f - local_shadow_alpha);
-            if (accumulated_alpha >= 0.99f)
+            for (uint layer = 0; layer < MAX_TRANSPARENT_LAYERS; layer++)
             {
-                accumulated_alpha = 1.0f;
-                break;
+                RayDesc ray;
+                ray.Origin    = current_origin;
+                ray.Direction = sample_dir;
+                ray.TMin      = 0.001f;
+                ray.TMax      = SHADOW_RAY_MAX_DISTANCE;
+                
+                ShadowPayload payload;
+                payload.hit_distance = -1.0f;
+                payload.shadow_alpha = 0.0f;
+                
+                // no any hit shader exists so traversal can treat all geometry as opaque
+                TraceRay(tlas, RAY_FLAG_FORCE_OPAQUE, 0xFF, 0, 1, 0, ray, payload);
+                
+                // read payload unconditionally so the compiler sees both fields accessed after trace
+                float local_hit_distance = payload.hit_distance;
+                float local_shadow_alpha = payload.shadow_alpha;
+                
+                // no more blockers along this ray
+                if (local_hit_distance < 0.0f)
+                    break;
+                
+                // track the first hit for penumbra estimation
+                if (first_hit_dist < 0.0f)
+                    first_hit_dist = local_hit_distance;
+                
+                // opaque blocker, fully shadowed, no need to trace further
+                if (local_shadow_alpha >= 1.0f)
+                {
+                    accumulated_alpha = 1.0f;
+                    break;
+                }
+                
+                // transparent surface, accumulate opacity and continue past it
+                accumulated_alpha = 1.0f - (1.0f - accumulated_alpha) * (1.0f - local_shadow_alpha);
+                if (accumulated_alpha >= 0.99f)
+                {
+                    accumulated_alpha = 1.0f;
+                    break;
+                }
+                
+                // advance past this surface
+                current_origin = current_origin + sample_dir * (local_hit_distance + 0.01f);
             }
-            
-            // advance past this surface
-            current_origin = current_origin + sample_dir * (local_hit_distance + 0.01f);
         }
         
         sum_visibility += 1.0f - accumulated_alpha;

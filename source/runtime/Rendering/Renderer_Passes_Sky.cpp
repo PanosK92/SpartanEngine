@@ -40,12 +40,31 @@ namespace spartan
         RHI_Texture* tex_skysphere                    = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
         RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
+        RHI_Texture* tex_lut_sky_view                 = GetRenderTarget(Renderer_RenderTarget::lut_sky_view);
         RHI_Texture* tex_cloud_noise                  = GetRenderTarget(Renderer_RenderTarget::cloud_noise);
 
         cmd_list->BeginTimeblock("skysphere");
         {
             if (World::GetDirectionalLight())
             {
+                // sky view lut, one small march per texel replaces the per panorama pixel
+                // atmosphere integration, rebaked every frame since it tracks the sun, the
+                // moon and the camera altitude, cost is negligible next to the cloud march
+                {
+                    RHI_PipelineState pso;
+                    pso.name             = "skysphere_sky_view_lut";
+                    pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_sky_view_lut_c);
+                    cmd_list->SetPipelineState(pso);
+
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_sky_view);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    cmd_list->Dispatch(tex_lut_sky_view);
+
+                    tex_lut_sky_view->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+                }
+
                 RHI_PipelineState pso;
                 pso.name             = "skysphere_atmospheric_scattering";
                 pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
@@ -54,6 +73,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_lut_sky_view);
                 // cloud noise volume rides the tex3d srv slot
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
 

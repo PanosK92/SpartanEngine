@@ -247,6 +247,17 @@ namespace spartan
         math::Quaternion m_lerp_from_rotation        = math::Quaternion::Identity;
         bool m_was_playing                           = false;
         Entity* m_flashlight                         = nullptr;
+
+        // physical body animation state
+        float m_gait_phase                           = 0.0f;
+        float m_gait_speed                           = 0.0f;
+        float m_breath_phase                         = 0.0f;
+        float m_fall_speed                           = 0.0f;
+        bool m_was_grounded                          = true;
+        math::Vector3 m_anim_spring_offset           = math::Vector3::Zero;
+        math::Vector3 m_anim_spring_velocity         = math::Vector3::Zero;
+        math::Vector3 m_anim_offset_previous         = math::Vector3::Zero;
+        math::Quaternion m_anim_rotation_previous    = math::Quaternion::Identity;
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
         std::vector<spartan::Entity*> m_selected_entities;

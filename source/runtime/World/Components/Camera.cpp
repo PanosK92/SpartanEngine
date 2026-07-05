@@ -703,10 +703,10 @@ namespace spartan
     {
         // parameters
         static const float jump_height       = 2.0f;  // target height in meters
-        static const float jump_acceleration = 20.0f; // acceleration to reach height (m/s^2)
-        static const float max_speed         = 5.0f;  // maximum movement speed
-        static const float acceleration      = 1.0f;  // speed increase per second
-        static const float drag              = 10.0f; // speed decrease per second
+        static const float jump_acceleration = 20.0f; // acceleration to reach height in m/s^2
+        static const float fly_speed         = 12.0f; // editor fly speed in m/s
+        static const float walk_speed        = 2.2f;  // grounded walk speed in m/s
+        static const float run_speed         = 5.5f;  // grounded sprint speed in m/s
         float delta_time                     = static_cast<float>(Timer::GetDeltaTimeSec());
 
         // input mapping
@@ -816,6 +816,20 @@ namespace spartan
         if (is_playing && !m_was_playing && has_physics_body && physics_body->GetBodyType() == BodyType::Controller)
         {
             GetEntity()->SetPositionLocal(physics_body->GetControllerTopLocal());
+        }
+
+        // reset the body animation state on mode changes so no offset leaks into the new mode
+        if (is_playing != m_was_playing)
+        {
+            GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() - m_anim_offset_previous);
+            GetEntity()->SetRotationLocal((GetEntity()->GetRotationLocal() * m_anim_rotation_previous.Inverse()).Normalized());
+            m_anim_spring_offset     = Vector3::Zero;
+            m_anim_spring_velocity   = Vector3::Zero;
+            m_anim_offset_previous   = Vector3::Zero;
+            m_anim_rotation_previous = Quaternion::Identity;
+            m_gait_phase             = 0.0f;
+            m_gait_speed             = 0.0f;
+            m_fall_speed             = 0.0f;
         }
         m_was_playing = is_playing;
 
@@ -937,65 +951,102 @@ namespace spartan
             movement_direction.Normalize();
         }
     
-        // behavior: speed adjustment
+        // behavior: velocity model, accelerate toward a target velocity and glide to a stop, framerate independent
         {
             m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
-            m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
-    
-            Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction * 4.0f;
-            if (button_sprint)
+            m_movement_scroll_accumulator  = clamp(m_movement_scroll_accumulator, -0.8f, 4.0f);
+
+            bool is_on_foot    = is_playing && has_physics_body;
+            float target_speed = is_on_foot ? (button_sprint ? run_speed : walk_speed) : fly_speed * (1.0f + m_movement_scroll_accumulator) * (button_sprint ? 3.0f : 1.0f);
+
+            // on foot the body responds fast, the editor fly is snappy on input and releases into a short glide
+            bool has_input   = movement_direction.LengthSquared() > 0.0f;
+            float accel_rate = is_on_foot ? (has_input ? 12.0f : 14.0f) : (has_input ? 20.0f : 9.0f);
+            m_movement_speed = Vector3::Lerp(m_movement_speed, movement_direction * target_speed, 1.0f - exp(-accel_rate * delta_time));
+            if (!has_input && m_movement_speed.LengthSquared() < 0.0001f)
             {
-                translation *= 3.0f;
-            }
-            m_movement_speed += translation * delta_time;
-            m_movement_speed *= clamp(1.0f - drag * delta_time, 0.1f, numeric_limits<float>::max());
-            if (m_movement_speed.Length() > max_speed)
-            {
-                m_movement_speed = m_movement_speed.Normalized() * max_speed;
+                m_movement_speed = Vector3::Zero;
             }
         }
     
-        // behavior: physical body animation (head bob when walking)
-        if (GetFlag(CameraFlags::PhysicalBodyAnimation) && is_playing && has_physics_body && is_grounded)
+        // behavior: physical body animation, the head is a damped spring excited by gait impacts instead of a plain sine wave
+        if (GetFlag(CameraFlags::PhysicalBodyAnimation) && is_playing && has_physics_body)
         {
-            static Vector3 prev_bob_offset = Vector3::Zero;
-            static float bob_timer         = 0.0f;
-            static float bob_amplitude     = 0.0f;
-            
-            const float max_amplitude    = 0.04f;
-            float velocity_magnitude     = physics_body->GetLinearVelocity().Length();
-            
-            if (velocity_magnitude > 0.1f) // walking - ramp up amplitude and advance timer
+            const float step_frequency   = 1.8f;    // steps per second at 1.4 m/s, cadence scales with the square root of speed like real gait
+            const float bob_vertical     = 0.014f;  // vertical travel in meters
+            const float bob_lateral      = 0.009f;  // lateral sway in meters
+            const float spring_stiffness = 250.0f;  // spring rate of the neck and torso
+            const float spring_damping   = 24.0f;   // slightly under critical so impacts settle with a small organic overshoot
+            const float step_impact      = 0.10f;   // downward velocity injected at each heel strike in m/s
+            const float land_impact      = 0.06f;   // fraction of fall speed turned into a landing dip
+            const float breath_frequency = 0.25f;   // breaths per second when idle
+            const float breath_amplitude = 0.0025f; // vertical breathing travel in meters
+
+            Vector3 velocity   = physics_body->GetLinearVelocity();
+            float planar_speed = Vector3(velocity.x, 0.0f, velocity.z).Length();
+            m_gait_speed       = math::lerp(m_gait_speed, is_grounded ? planar_speed : 0.0f, 1.0f - exp(-10.0f * delta_time));
+
+            // track fall speed while airborne and turn it into a dip on touchdown
+            if (!is_grounded)
             {
-                bob_timer     += delta_time * velocity_magnitude * 1.5f;
-                bob_amplitude  = min(bob_amplitude + delta_time * 0.5f, max_amplitude);
+                m_fall_speed = min(m_fall_speed, velocity.y);
             }
-            else // not walking - decay amplitude to zero (no wobble)
+            else if (!m_was_grounded)
             {
-                bob_amplitude *= 1.0f - clamp(delta_time * 8.0f, 0.0f, 1.0f);
-                if (bob_amplitude < 0.001f)
+                m_anim_spring_velocity.y += m_fall_speed * land_impact;
+                m_fall_speed              = 0.0f;
+            }
+            m_was_grounded = is_grounded;
+
+            // spring rest target, gait sway while walking, breathing when idle
+            Vector3 spring_target = Vector3::Zero;
+            if (m_gait_speed > 0.2f)
+            {
+                float cadence        = step_frequency * sqrt(m_gait_speed / 1.4f);
+                float phase_previous = m_gait_phase;
+                m_gait_phase        += pi * cadence * delta_time; // one step per pi, one full stride per two pi
+
+                // heel strike, each step injects a downward impulse that the spring recovers from
+                if (static_cast<int>(m_gait_phase / pi) > static_cast<int>(phase_previous / pi))
                 {
-                    bob_amplitude = 0.0f;
-                    bob_timer     = 0.0f;
+                    m_anim_spring_velocity.y -= step_impact * (0.4f + 0.6f * min(m_gait_speed / run_speed, 1.0f));
                 }
+                if (m_gait_phase >= pi_2)
+                {
+                    m_gait_phase -= pi_2;
+                }
+
+                // vertical rises twice per stride, sway shifts weight once per stride, together they trace the figure eight of real head motion
+                float amplitude_scale = min(m_gait_speed / walk_speed, 1.5f);
+                spring_target.y       = sin(m_gait_phase * 2.0f) * bob_vertical * amplitude_scale;
+                spring_target.x       = sin(m_gait_phase) * bob_lateral * amplitude_scale;
+                m_breath_phase        = 0.0f;
             }
-            
-            // compute bob offset
-            Vector3 bob_offset = Vector3::Zero;
-            if (bob_amplitude > 0.0f)
+            else
             {
-                bob_offset.y = sin(bob_timer) * bob_amplitude;
-                bob_offset.x = cos(bob_timer) * bob_amplitude * 0.5f;
+                m_breath_phase  += pi_2 * breath_frequency * delta_time;
+                spring_target.y  = sin(m_breath_phase) * breath_amplitude;
             }
-            
-            // apply change in bob offset (delta) to avoid drift
-            Vector3 bob_delta = bob_offset - prev_bob_offset;
-            prev_bob_offset   = bob_offset;
-            
-            if (bob_delta.LengthSquared() > 0.0000001f)
-            {
-                GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + bob_delta);
-            }
+
+            // damped spring integration, clamped dt keeps it stable across frame hitches
+            float anim_dt           = min(delta_time, 0.033f);
+            Vector3 spring_accel    = (spring_target - m_anim_spring_offset) * spring_stiffness - m_anim_spring_velocity * spring_damping;
+            m_anim_spring_velocity += spring_accel * anim_dt;
+            m_anim_spring_offset   += m_anim_spring_velocity * anim_dt;
+
+            // apply position as a delta in view relative space so nothing drifts
+            Vector3 right          = GetEntity()->GetRotationLocal() * Vector3::Right;
+            Vector3 offset         = right * m_anim_spring_offset.x + Vector3::Up * m_anim_spring_offset.y;
+            Vector3 offset_delta   = offset - m_anim_offset_previous;
+            m_anim_offset_previous = offset;
+            GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + offset_delta);
+
+            // subtle roll from weight shift and strafe lean, subtle pitch nod from vertical motion, applied as a delta like the position
+            float roll               = -m_anim_spring_offset.x * 1.2f - Vector3::Dot(velocity, right) * 0.01f;
+            float pitch              = -m_anim_spring_velocity.y * 0.03f;
+            Quaternion anim_rotation = Quaternion::FromAxisAngle(Vector3::Forward, roll) * Quaternion::FromAxisAngle(Vector3::Right, pitch);
+            GetEntity()->SetRotationLocal((GetEntity()->GetRotationLocal() * m_anim_rotation_previous.Inverse() * anim_rotation).Normalized());
+            m_anim_rotation_previous = anim_rotation;
         }
     
         // behavior: jumping
@@ -1042,12 +1093,12 @@ namespace spartan
             {
                 if (physics_body->GetBodyType() == BodyType::Controller)
                 {
-                    physics_body->Move(m_movement_speed * delta_time * 10.0f);
+                    physics_body->Move(m_movement_speed * delta_time);
                 }
                 else if (is_grounded)
                 {
                     Vector3 velocity        = physics_body->GetLinearVelocity();
-                    Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
+                    Vector3 target_velocity = Vector3(m_movement_speed.x, velocity.y, m_movement_speed.z);
                     float force_multiplier  = 50.0f;
                     if (movement_direction.LengthSquared() < 0.1f)
                     {
@@ -1059,7 +1110,7 @@ namespace spartan
             }
             else if (has_physics_body)
             {
-                physics_body->Move(m_movement_speed);
+                physics_body->Move(m_movement_speed * delta_time);
 
                 // keep the camera at eye height on the controller capsule so flying in
                 // editor mode doesn't let the local offset drift from the proper position
@@ -1070,7 +1121,7 @@ namespace spartan
             }
             else
             {
-                GetEntity()->Translate(m_movement_speed);
+                GetEntity()->Translate(m_movement_speed * delta_time);
             }
         }
 

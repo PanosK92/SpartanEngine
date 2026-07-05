@@ -117,7 +117,7 @@ static const float  cloud_ambient_factor  = 0.12;   // ambient strength relative
 static const float3 cloud_ground_bounce   = float3(0.045, 0.038, 0.028); // warm terrain bounce onto the undersides
 static const float  cloud_albedo          = 0.97;   // single scattering albedo, near 1 for water clouds
 static const float  cloud_sun_step_base   = 30.0;   // first sun-march step length, finer to avoid noisy self-shadow
-static const float  cloud_sun_step_growth = 2.0;    // geometric growth between sun samples
+static const float  cloud_sun_step_growth = 2.8;    // geometric growth between sun samples, tuned so 6 steps cover the same ~8 km as the old 8 step, growth 2 march
 
 // night lighting, faint cool blue glow so cumulus do not go pitch black after sunset. the
 // moon tint is multiplied into the moon-dir transmittance lookup, the airglow floor models
@@ -143,7 +143,11 @@ static const float  cumulus_step_max      = 625.0;
 static const float  cumulus_range_max     = 60000.0;  // haze leaves ~9 percent contribution at this distance
 static const float  cirrus_range_max      = 120000.0;
 static const int    cirrus_view_steps     = 24;
-static const int    cumulus_sun_steps     = 8;
+static const int    cumulus_sun_steps     = 6;
+
+// weather is a 26 km domain, resampling it every view step is wasted work, the cached value
+// is reused for this many steps (at most ~1.9 km at the coarsest step) before a fresh lookup
+static const int    cumulus_weather_interval = 3;
 
 // =====================================================================
 // noise generation (used by the CLOUD_NOISE compute kernel)
@@ -445,6 +449,39 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     return density * cumulus_density_mul;
 }
 
+// low frequency density for the sun shadow march, the horizon zero dawn trick, shadow rays
+// only need the coarse silhouette so the shape warp and the detail erosion are skipped which
+// halves the texture fetches of the inner loop, the slight density overestimate from the
+// missing erosion only deepens self-shadow marginally and is visually near lossless
+float cloud_density_cumulus_cheap(float3 pos, Texture3D noise, SamplerState samp, float2 weather)
+{
+    float h           = length(pos - cloud_earth_center) - cloud_earth_radius;
+    float3 pos_n      = pos + cloud_wind_drift(cumulus_wind_speed_mul) + cloud_evolve_offset(cumulus_evolve_rate);
+    float base_offset = cloud_base_offset(noise, samp, pos_n);
+    float h_norm      = (h - (cumulus_bottom_alt + base_offset)) / cumulus_thickness;
+    float cloud_top   = lerp(0.28, 1.0, weather.y);
+    float profile     = cloud_height_profile_cumulus(h_norm, cloud_top);
+    if (profile <= 0.0 || weather.x <= 0.0)
+    {
+        return 0.0;
+    }
+    
+    // shear kept so the shadow column leans with the cloud body
+    float3 wind_h    = float3(buffer_frame.wind.x, 0.0, buffer_frame.wind.z);
+    float  wind_len  = length(wind_h);
+    float3 shear_dir = wind_len > 1e-3 ? wind_h / wind_len : float3(1.0, 0.0, 0.0);
+    pos_n           -= shear_dir * (cumulus_shear * saturate(h_norm));
+    
+    float3 uvw = (pos_n + cumulus_wind_offset) * cumulus_shape_scale;
+    uvw.y     *= lerp(1.6, 1.0, weather.y);
+    float4 shape_n = cloud_sample_noise(noise, samp, uvw);
+    
+    float fbm  = shape_n.g * 0.65 + shape_n.b * 0.35;
+    float base = cloud_remap(shape_n.r, fbm - 1.0, 1.0, 0.0, 1.0);
+    base       = cloud_remap(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
+    return saturate(base) * cumulus_density_mul;
+}
+
 float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
 {
     float h         = length(pos - cloud_earth_center) - cloud_earth_radius;
@@ -540,7 +577,8 @@ float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transm
     return get_sun_radiance_toa() * trans;
 }
 
-// integrate density along the sun direction with a geometrically growing step, gives soft self-shadowing
+// integrate density along the sun direction with a geometrically growing step, gives soft
+// self-shadowing, uses the cheap low frequency density since shadow rays do not need detail
 float cloud_sun_optical_depth_cumulus(
     float3 pos, float3 sun_dir,
     Texture3D noise, SamplerState samp,
@@ -554,7 +592,7 @@ float cloud_sun_optical_depth_cumulus(
     for (int i = 0; i < cumulus_sun_steps; i++)
     {
         p             += sun_dir * step_len;
-        float d        = cloud_density_cumulus(p, noise, samp, weather);
+        float d        = cloud_density_cumulus_cheap(p, noise, samp, weather);
         optical_depth += d * step_len;
         step_len      *= cloud_sun_step_growth;
     }
@@ -708,20 +746,32 @@ void cloud_march_cumulus(
     
     float t = shell.x + step_size * jitter;
     
+    // weather varies on a 26 km domain so the lookup, itself several noise samples, is cached
+    // and reused across a few view steps instead of being resampled every 100 - 625 m
+    float2 weather   = float2(0.0, 0.0);
+    int weather_age  = cumulus_weather_interval;
+    
     [loop]
     for (int i = 0; i < cumulus_view_steps; i++)
     {
         if (transmittance < 0.01) break;
         if (t >= t_max) break;
         
-        float3 pos     = cam_pos + view_dir * t;
-        float2 weather = cloud_weather(noise_tex, samp_noise, pos);
+        float3 pos = cam_pos + view_dir * t;
+        
+        if (weather_age >= cumulus_weather_interval)
+        {
+            weather     = cloud_weather(noise_tex, samp_noise, pos);
+            weather_age = 0;
+        }
+        weather_age++;
         
         // weather is a horizontal 2d lookup with cells ~26km across, so when it returns zero
         // we can safely skip a big chunk of horizontal distance without missing any cloud
         if (weather.x <= 0.0)
         {
             t += empty_skip;
+            weather_age = cumulus_weather_interval;
             continue;
         }
         

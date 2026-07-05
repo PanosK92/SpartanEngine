@@ -416,6 +416,9 @@ namespace spartan
                 SetCommonTextures(cmd_list);
                 cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
+
+                // x tells the raygen whether transparents exist, opaque scenes take a single accept first hit ray
+                m_pcb_pass_cpu.set_f3_value(m_transparents_present ? 1.0f : 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
                 uint32_t width  = tex_shadows->GetWidth();
@@ -1095,13 +1098,13 @@ namespace spartan
     {
         RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss);
 
-        // screen space contact shadows complement the primary shadow term, light.hlsl now combines
-        // them with a min() on top of whichever primary occlusion source is active (rasterized
-        // shadow map OR ray traced shadow), so this pass runs whenever any directional light has
-        // ShadowsScreenSpace enabled, regardless of the rt shadow / restir state, restir path
-        // tracing still owns the full direct term at the primary so we skip there to avoid wasted
-        // work since light.hlsl's surface lighting block is bypassed under restir
-        if (cvar_restir_pt.GetValueAs<bool>())
+        // screen space contact shadows complement the rasterized shadow map, light.hlsl combines
+        // them with a min() on the primary term, only directional lights march here so the pass
+        // is dead work when either restir owns the full direct term or the ray traced shadow owns
+        // the sun, the rt trace already captures exact contact occlusion and light.hlsl skips the
+        // contact term in that case, the gate below must mirror is_ray_traced_shadows_enabled()
+        const bool rt_shadows_active = cvar_ray_traced_shadows.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
+        if (cvar_restir_pt.GetValueAs<bool>() || rt_shadows_active)
         {
             return;
         }

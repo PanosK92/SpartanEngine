@@ -305,7 +305,10 @@ void evaluate_light(
             L_shadow_primary = compute_shadow(surface, light);
         }
 
-        if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque())
+        // the rt shadow already resolves exact sun contact occlusion, the bend contact term is redundant there
+        bool rt_owns_contact = can_use_rt_shadows && light.is_directional();
+
+        if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque() && !rt_owns_contact)
         {
             float contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
 

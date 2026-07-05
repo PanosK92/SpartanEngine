@@ -78,6 +78,21 @@ float get_height(float3 position)
     return length(position - earth_center) - earth_radius;
 }
 
+// keep the camera inside the atmosphere shell, shared by the sky view lut and the panorama bake
+float3 clamp_camera_to_atmosphere(float3 cam_pos)
+{
+    float cam_h = get_height(cam_pos);
+    if (cam_h < 0.0)
+    {
+        return earth_center + normalize(cam_pos - earth_center) * (earth_radius + 1.0);
+    }
+    if (cam_h > atmosphere_radius - earth_radius)
+    {
+        return earth_center + normalize(cam_pos - earth_center) * (atmosphere_radius - 1.0);
+    }
+    return cam_pos;
+}
+
 // density functions
 float get_rayleigh_density(float height) { return exp(-height / rayleigh_height); }
 float get_mie_density(float height)      { return exp(-height / mie_height); }
@@ -337,6 +352,57 @@ float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
     // tints it so the disc warmth matches the sky scatter and the direct lighting
     const float sun_solid_angle = PI2 * (1.0 - cos(sun_angular_radius));
     return get_sun_radiance_toa() * transmittance * sun_edge * limb / sun_solid_angle;
+}
+
+// =====================================================================
+// sky view lut (hillaire 2020)
+// the per panorama pixel atmosphere integration is replaced by a small lut baked once per
+// frame, the sky is azimuthally symmetric about the light's vertical plane so u only needs
+// the [0, pi] azimuth difference, v is elevation with a square root warp that concentrates
+// texels at the horizon where the gradient is steepest, the texture packs two half luts
+// vertically, rows [0, h) hold the sun sky and rows [h, 2h) hold the moonlit night sky
+// =====================================================================
+
+static const float2 sky_view_lut_size = float2(192.0, 108.0); // resolution of one half
+
+// horizontal unit vector of a direction, falls back to +x when degenerate
+float2 sky_view_horizontal(float3 dir)
+{
+    float2 h   = float2(dir.x, dir.z);
+    float  len = length(h);
+    return len > 1e-5 ? h / len : float2(1.0, 0.0);
+}
+
+// forward mapping used when sampling, unit uv in [0,1]^2 for the upper hemisphere
+float2 sky_view_dir_to_unit(float3 view_dir, float3 light_dir)
+{
+    float elevation = asin(saturate(view_dir.y));
+    float v         = sqrt(elevation / (PI * 0.5));
+    float cos_az    = clamp(dot(sky_view_horizontal(view_dir), sky_view_horizontal(light_dir)), -1.0, 1.0);
+    float u         = acos(cos_az) / PI;
+    return float2(u, v);
+}
+
+// inverse mapping used by the bake kernel, texel centers span the full unit range
+float3 sky_view_unit_to_dir(float2 unit, float3 light_dir)
+{
+    float elevation = unit.y * unit.y * (PI * 0.5);
+    float azimuth   = unit.x * PI;
+    float2 fwd      = sky_view_horizontal(light_dir);
+    float2 side     = float2(-fwd.y, fwd.x);
+    float2 dir_h    = fwd * cos(azimuth) + side * sin(azimuth);
+    float  cos_el   = cos(elevation);
+    return float3(dir_h.x * cos_el, sin(elevation), dir_h.y * cos_el);
+}
+
+// bilinear fetch from the packed lut, half_index 0 samples the sun half, 1 the moon half
+float3 sample_sky_view_lut(Texture2D lut, SamplerState samp, float3 view_dir, float3 light_dir, float half_index)
+{
+    float2 unit = sky_view_dir_to_unit(view_dir, light_dir);
+    float2 uv;
+    uv.x = (unit.x * (sky_view_lut_size.x - 1.0) + 0.5) / sky_view_lut_size.x;
+    uv.y = (unit.y * (sky_view_lut_size.y - 1.0) + 0.5) / (sky_view_lut_size.y * 2.0) + half_index * 0.5;
+    return lut.SampleLevel(samp, uv, 0).rgb;
 }
 
 // =====================================================================
@@ -663,8 +729,7 @@ moon_result night_compute_moon(float3 view_dir, float3 moon_dir)
 }
 
 // night atmosphere combines a zenith to horizon gradient, a horizon airglow band and physical moonlight rayleigh scatter
-float3 night_compute_atmosphere(float3 view_dir, float3 moon_dir, float3 cam_pos,
-    Texture2D trans_lut, Texture2D ms_lut, SamplerState samp)
+float3 night_compute_atmosphere(float3 view_dir, float3 moon_dir, Texture2D sky_view_lut, SamplerState samp)
 {
     // deep navy at zenith fading to a slightly warmer indigo near the horizon
     float h = saturate(view_dir.y * 0.5 + 0.5);
@@ -677,14 +742,13 @@ float3 night_compute_atmosphere(float3 view_dir, float3 moon_dir, float3 cam_pos
     float airglow_band = exp(-(dy * dy) / 0.0050);
     float3 airglow = float3(0.0070, 0.0095, 0.0050) * airglow_band;
     
-    // moonlight rayleigh scatter, reuse the daytime atmosphere with the moon as light source
-    // result is then scaled by an empirical moon to sun irradiance ratio
+    // moonlight rayleigh scatter, the moon half of the sky view lut carries the atmosphere
+    // marched with the moon as light source, scaled by an empirical moon to sun irradiance ratio
     float moon_elev = dot(moon_dir, up_direction);
     float3 moon_scatter = float3(0, 0, 0);
     if (moon_elev > -0.10)
     {
-        float3 lum  = compute_sky_luminance(cam_pos, view_dir, moon_dir,
-            trans_lut, ms_lut, samp, 0.5);
+        float3 lum  = sample_sky_view_lut(sky_view_lut, samp, view_dir, moon_dir, 1.0);
         float fade  = smoothstep(-0.05, 0.10, moon_elev);
         moon_scatter = lum * 3.5e-5 * fade;
     }
@@ -726,6 +790,47 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float height = uv.y * (atmosphere_radius - earth_radius);
     
     tex_uav[tid.xy] = float4(compute_multiscatter(height, cos_sun, tex, GET_SAMPLER(sampler_bilinear_clamp)), 1.0);
+}
+
+#elif defined(SKY_VIEW_LUT)
+// bakes the full 32 step atmosphere march into a small direction indexed lut once per frame,
+// the panorama bake then replaces its per pixel march with one bilinear fetch, the night path
+// previously marched a second time for moon scatter which the moon half absorbs as well
+[numthreads(8, 8, 1)]
+void main_cs(uint3 tid : SV_DispatchThreadID)
+{
+    float2 res;
+    tex_uav.GetDimensions(res.x, res.y);
+    if (any(tid.xy >= uint2(res)))
+    {
+        return;
+    }
+    
+    float  half_h    = res.y * 0.5;
+    bool   moon_half = float(tid.y) >= half_h;
+    float2 texel     = float2(float(tid.x), moon_half ? float(tid.y) - half_h : float(tid.y));
+    float2 unit      = float2(texel.x / (res.x - 1.0), texel.y / (half_h - 1.0));
+    
+    Light light;
+    Surface surface;
+    light.Build(0, surface);
+    float3 sun_dir  = normalize(-light.forward);
+    float  sun_elev = dot(sun_dir, up_direction);
+    
+    // the moon half is only read when the night factor exceeds its cutoff, skip the march during the day
+    if (moon_half && sun_elev >= 0.35)
+    {
+        tex_uav[tid.xy] = float4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+    
+    float3 light_dir = moon_half ? night_apply_earth_rotation(-sun_dir, (float)buffer_frame.time) : sun_dir;
+    float3 view_dir  = sky_view_unit_to_dir(unit, light_dir);
+    float3 cam_pos   = clamp_camera_to_atmosphere(get_camera_position());
+    
+    float3 luminance = compute_sky_luminance(cam_pos, view_dir, light_dir, tex, tex2,
+                                             GET_SAMPLER(sampler_bilinear_clamp), 0.5);
+    tex_uav[tid.xy] = float4(luminance, 1.0);
 }
 
 #else
@@ -783,16 +888,10 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float day_factor = 1.0 / (1.0 + exp(-sun_elev * 20.0));
     
     // camera in atmosphere
-    float3 cam_pos = get_camera_position();
-    float cam_h = get_height(cam_pos);
-    if (cam_h < 0.0)
-        cam_pos = earth_center + normalize(cam_pos - earth_center) * (earth_radius + 1.0);
-    else if (cam_h > atmosphere_radius - earth_radius)
-        cam_pos = earth_center + normalize(cam_pos - earth_center) * (atmosphere_radius - 1.0);
+    float3 cam_pos = clamp_camera_to_atmosphere(get_camera_position());
     
-    // sky luminance
-    float3 luminance = compute_sky_luminance(cam_pos, view_dir, sun_dir, tex, tex2,
-                                              GET_SAMPLER(sampler_bilinear_clamp), 0.5);
+    // sky luminance, one fetch from the per frame sky view lut instead of a 32 step march
+    float3 luminance = sample_sky_view_lut(tex3, GET_SAMPLER(sampler_bilinear_clamp), view_dir, sun_dir, 0.0);
     
     // volumetric clouds, only marched above the actual horizon so the bottom hemisphere mirror
     // for ibl stays clean, uses orig_view because view_dir was already flipped for the mirror
@@ -851,8 +950,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         float3 celestial_view = night_apply_earth_rotation(orig_view, time_seconds);
         float3 moon_dir       = night_apply_earth_rotation(-sun_dir, time_seconds);
 
-        night_ambient = night_compute_atmosphere(view_dir, moon_dir, cam_pos,
-            tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
+        night_ambient = night_compute_atmosphere(view_dir, moon_dir, tex3, GET_SAMPLER(sampler_bilinear_clamp));
 
         if (!below_horizon)
         {
