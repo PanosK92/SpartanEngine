@@ -89,6 +89,10 @@ namespace spartan
         uint32_t GetFlags()           const { return m_flags; }
         void SetFlags(const uint32_t flags) { m_flags = flags; }
 
+        // runtime generated resources are rebuilt by code on load, world saves skip them
+        void SetPersistent(const bool persistent) { m_persistent = persistent; }
+        bool IsPersistent() const                 { return m_persistent; }
+
         // io
         virtual void SaveToFile(const std::string& file_path)   { }
         virtual void LoadFromFile(const std::string& file_path) { }
@@ -106,5 +110,6 @@ namespace spartan
 
     private:
         std::string m_resource_file_path;
+        bool m_persistent = true;
     };
 }

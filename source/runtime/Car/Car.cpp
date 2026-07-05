@@ -237,6 +237,8 @@ namespace spartan
 
             const std::string resource_name = "car_" + std::to_string(car_entity->GetObjectId()) + "_" + std::to_string(entity->GetObjectId()) + "_" + slot_name + std::string(EXTENSION_MATERIAL);
             std::shared_ptr<Material> material = source->Clone(resource_name);
+            // the prefab rebuilds these clones with fresh entity ids on every load, saving them only litters the world resources with orphans
+            material->SetPersistent(false);
             renderable->SetMaterial(material);
             return material;
         }

@@ -1205,9 +1205,27 @@ namespace spartan
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
 
-            // save resources filtered by type
+            // the windows file system is case insensitive so the uniqueness check has to be too
+            auto to_file_key = [](const string& file_name)
+            {
+                string key = file_name;
+                transform(key.begin(), key.end(), key.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+                return key;
+            };
+
+            // pass 1, give every resource a unique file inside the resource directory and repoint it now,
+            // duplicate object names used to overwrite each others files on save and made the name based
+            // lookups of Render::Load resolve the wrong resource after a round trip
+            vector<pair<IResource*, string>> pending_saves;
+            set<string> used_file_names;
             for (shared_ptr<IResource>& resource : resources)
             {
+                // runtime generated resources are rebuilt by code on load, serializing them only accumulates orphans
+                if (!resource->IsPersistent())
+                {
+                    continue;
+                }
+
                 string ext;
                 switch (resource->GetResourceType())
                 {
@@ -1227,7 +1245,47 @@ namespace spartan
                     case ResourceType::Mesh:     ext = EXTENSION_MESH;     break;
                     default: continue;
                 }
-                resource->SaveToFile(directory + resource->GetObjectName() + ext);
+
+                // strip an embedded extension so a name that already carries one does not save with it doubled
+                string name = resource->GetObjectName();
+                if (name.size() > ext.size() && name.compare(name.size() - ext.size(), ext.size(), ext) == 0)
+                {
+                    name = name.substr(0, name.size() - ext.size());
+                }
+
+                string unique_name = name;
+                uint32_t suffix    = 2;
+                while (!used_file_names.insert(to_file_key(unique_name + ext)).second)
+                {
+                    unique_name = name + "_" + to_string(suffix++);
+                }
+
+                // repoint before the entity xml below serializes any reference to this resource by name
+                const string target_path = directory + unique_name + ext;
+                resource->SetResourceFilePath(target_path);
+                pending_saves.emplace_back(resource.get(), target_path);
+            }
+
+            // pass 2, write, textures and meshes are immutable after import so files already on disk are kept,
+            // rewriting the full resource set every save is what made saving take tens of seconds
+            for (pair<IResource*, string>& pending : pending_saves)
+            {
+                const bool immutable = pending.first->GetResourceType() != ResourceType::Material;
+                if (immutable && FileSystem::Exists(pending.second))
+                {
+                    continue;
+                }
+                pending.first->SaveToFile(pending.second);
+            }
+
+            // prune files that no longer belong to this save, loading picks up every file in this directory
+            // so stale duplicates from older saves would otherwise come back and shadow the right resources
+            for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
+            {
+                if (used_file_names.find(to_file_key(FileSystem::GetFileNameFromFilePath(existing_file))) == used_file_names.end())
+                {
+                    FileSystem::Delete(existing_file);
+                }
             }
         }
 
