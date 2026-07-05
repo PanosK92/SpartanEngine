@@ -481,11 +481,11 @@ float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transm
     float h     = length(sample_pos - cloud_earth_center);
     float cos_z = dot(up, sun_dir);
 
-    float2 uv     = cloud_transmittance_uv(h, cos_z);
-    float3 trans  = transmittance_lut.SampleLevel(samp, uv, 0).rgb;
-    float horizon = smoothstep(-0.05, 0.10, cos_z);
+    // the lut stores zero for ground occluded rays, no extra horizon fade needed
+    float2 uv    = cloud_transmittance_uv(h, cos_z);
+    float3 trans = transmittance_lut.SampleLevel(samp, uv, 0).rgb;
 
-    return get_sun_radiance() * trans * horizon;
+    return get_sun_radiance() * trans;
 }
 
 // integrate density along the sun direction with a geometrically growing step, gives soft self-shadowing

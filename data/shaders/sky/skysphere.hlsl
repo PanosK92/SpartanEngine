@@ -55,7 +55,7 @@ static const float3 ground_albedo      = float3(0.3, 0.3, 0.3);
 // constants - sampling
 static const int transmittance_samples = 32;
 static const int multiscatter_samples  = 16;
-static const int scattering_samples    = 16;
+static const int scattering_samples    = 32;
 
 // utility
 float safe_sqrt(float x) { return sqrt(max(0.0, x)); }
@@ -100,12 +100,6 @@ float3 get_scattering(float height)
 float rayleigh_phase(float cos_theta)
 {
     return (3.0 / (16.0 * PI)) * (1.0 + cos_theta * cos_theta);
-}
-
-float henyey_greenstein_phase(float cos_theta, float g)
-{
-    float g2 = g * g;
-    return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_theta, 0.0001), 1.5));
 }
 
 float cornette_shanks_phase(float cos_theta, float g)
@@ -160,9 +154,10 @@ float3 compute_transmittance_to_top(float3 position, float3 direction)
     if (t_max < 0.0)
         return float3(1.0, 1.0, 1.0);
     
+    // rays that hit the planet are fully occluded, zero gives every consumer the earth shadow
     float2 ground_hit = ray_sphere_intersect(position, direction, earth_center, earth_radius);
     if (ground_hit.x > 0.0)
-        t_max = ground_hit.x;
+        return float3(0.0, 0.0, 0.0);
     
     // trapezoidal integration
     float dt = t_max / transmittance_samples;
@@ -300,22 +295,17 @@ float3 compute_sky_luminance(
         float3 up = normalize(sample_pos - earth_center);
         float cos_sun = dot(up, sun_dir);
         
-        // allow slightly below-horizon angles for proper twilight colors
-        // the transmittance lut uv mapping handles negative cos_zenith values
+        // the lut stores zero for ground occluded sun rays, earth shadow and twilight fall out naturally
         float2 sun_uv = transmittance_lut_params_to_uv(height + earth_radius, cos_sun);
         float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
-        
-        // smooth fade for sun visibility near horizon (keeps illumination gradual)
-        float sun_visible = smoothstep(-0.1, 0.05, cos_sun);
-        trans_sun *= sun_visible;
         
         // single + multi scatter
         float3 scatter_r = rayleigh_scatter * rayleigh_d * phase_r;
         float3 scatter_m = mie_scatter * mie_d * phase_m;
         float3 scattering = (scatter_r + scatter_m) * trans_sun;
         
-        float2 ms_uv = float2(max(cos_sun, 0.0) * 0.5 + 0.5, saturate(height / (atmosphere_radius - earth_radius)));
-        float3 ms = multiscatter_lut.SampleLevel(samp, ms_uv, 0).rgb * sun_visible;
+        float2 ms_uv = float2(cos_sun * 0.5 + 0.5, saturate(height / (atmosphere_radius - earth_radius)));
+        float3 ms = multiscatter_lut.SampleLevel(samp, ms_uv, 0).rgb;
         float3 ms_scatter = (rayleigh_scatter * rayleigh_d + mie_scatter * mie_d) * ms;
         
         float3 total = scattering + ms_scatter;
@@ -742,23 +732,6 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     tex_uav[tid.xy] = float4(compute_multiscatter(height, cos_sun, tex, GET_SAMPLER(sampler_bilinear_clamp)), 1.0);
 }
 
-#elif defined(LUT)
-[numthreads(8, 8, 8)]
-void main_cs(uint3 tid : SV_DispatchThreadID)
-{
-    uint3 dims;
-    tex3d_uav.GetDimensions(dims.x, dims.y, dims.z);
-    if (any(tid >= dims)) return;
-    
-    float height = float(tid.y) / (dims.y - 1) * (atmosphere_radius - earth_radius);
-    float cos_zenith = float(tid.x) / (dims.x - 1) * 2.0 - 1.0;
-    
-    float3 pos = earth_center + float3(0.0, earth_radius + height, 0.0);
-    float sin_z = safe_sqrt(1.0 - cos_zenith * cos_zenith);
-    
-    tex3d_uav[tid] = float4(compute_transmittance_to_top(pos, float3(sin_z, cos_zenith, 0.0)), 1.0);
-}
-
 #else
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 tid : SV_DispatchThreadID)
@@ -830,10 +803,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
                                               GET_SAMPLER(sampler_bilinear_clamp), 0.5);
     
     // volumetric clouds, only marched above the actual horizon so the bottom hemisphere mirror
-    // for ibl stays clean. uses orig_view because view_dir was already flipped for the mirror.
-    // cloud_in_scatter is kept out of luminance so it can survive the day_factor scaling
-    // applied below, otherwise the moon/airglow contribution baked into the cloud march would
-    // also be multiplied by ~0 at night and the clouds would still go pitch black
+    // for ibl stays clean, uses orig_view because view_dir was already flipped for the mirror
     float3 cloud_in_scatter = float3(0.0, 0.0, 0.0);
     float  cloud_trans      = 1.0;
     if (!below_horizon)
@@ -870,15 +840,8 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         sun_col          = compute_sun_disc(orig_view, sun_dir, sun_trans) * smoothstep(-0.02, 0.02, sun_elev);
     }
     
-    // intensity scaling is no longer applied here, the previous lerp divided the
-    // radiometric light.intensity (~146 for the day preset 100000 lux / 683) by the
-    // photometric value 100000, evaluating to ~0.0014 and locking the sky at the
-    // minimum 0.5x output regardless of the authored lux, get_sun_radiance() now
-    // carries the full intensity through compute_sky_luminance and compute_sun_disc
-    // so the sky already scales with the directional light energy by construction
-    luminance *= day_factor;
-    
     // night sky, atmosphere is sky-dome, celestials ride behind the atmosphere
+    // the physical sky needs no day factor, the earth shadow in the transmittance lut fades it naturally
     float night_factor      = 1.0 - day_factor;
     float3 night_ambient    = float3(0, 0, 0);
     float3 night_celestials = float3(0, 0, 0);
@@ -912,9 +875,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     }
 
     // clouds occlude the sun disc, night ambient atmosphere, stars, moon and milky way
-    // luminance carries the day sky already attenuated by cloud_trans and scaled by day_factor
-    // cloud_in_scatter is added separately so its night component (moon + airglow) survives
-    // the day_factor multiplication and clouds stay faintly visible after sunset
+    // luminance carries the physical sky already attenuated by cloud_trans
     float3 final_color = luminance + cloud_in_scatter + (night_ambient + sun_col + night_celestials) * cloud_trans;
     // chroma preserving clamp so the sun disc and any other hdr spike carry the directional
     // light's temperature into the panorama instead of clipping every channel to the cap

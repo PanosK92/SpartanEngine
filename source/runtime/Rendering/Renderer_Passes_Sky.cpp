@@ -54,8 +54,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
-                // cloud noise volume reuses the tex3d srv slot, the legacy lut_atmosphere_scatter
-                // 3d binding here was dead since the equirectangular kernel never sampled it
+                // cloud noise volume rides the tex3d srv slot
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
 
                 // values[0].x = 1.0 during the warmup burst (full panorama bake with the legacy
@@ -169,7 +168,6 @@ namespace spartan
 
     void Renderer::Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_lut_atmosphere_scatter      = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
         RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
         RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 
@@ -200,19 +198,6 @@ namespace spartan
                 cmd_list->Dispatch(tex_lut_atmosphere_multiscatter);
 
                 tex_lut_atmosphere_multiscatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            }
-
-            // legacy 3d lut
-            {
-                RHI_PipelineState pso;
-                pso.name             = "lut_atmospheric_scattering";
-                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
-                cmd_list->Dispatch(tex_lut_atmosphere_scatter);
-
-                tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             }
         }
         cmd_list->EndTimeblock();

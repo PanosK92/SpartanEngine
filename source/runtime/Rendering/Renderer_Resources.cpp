@@ -632,7 +632,6 @@ namespace spartan
         auto create_atmosphere_luts = [&]()
         {
             at(render_targets, Renderer_RenderTarget::lut_brdf_specular)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_brdf_lut, renderer_resolution_brdf_lut,  1, 1, RHI_Format::R16G16_Float,       RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_brdf_specular");
-            at(render_targets, Renderer_RenderTarget::lut_atmosphere_scatter)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1,                                                  RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_atmosphere_scatter");
             at(render_targets, Renderer_RenderTarget::lut_atmosphere_transmittance) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 64,    1, 1,                                                  RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_atmosphere_transmittance");
             at(render_targets, Renderer_RenderTarget::lut_atmosphere_multiscatter)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 32,  32,    1, 1,                                                  RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_atmosphere_multiscatter");
             at(render_targets, Renderer_RenderTarget::cloud_noise)                  = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 128, 128,  128, 1,                                                RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise");
@@ -780,7 +779,6 @@ namespace spartan
 
             // sky
             { Renderer_Shader::skysphere_c,                           RHI_Shader_Type::Compute, "sky/skysphere.hlsl"                                                         },
-            { Renderer_Shader::skysphere_lut_c,                       RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "LUT"               },
             { Renderer_Shader::skysphere_transmittance_lut_c,         RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "TRANSMITTANCE_LUT", false },
             { Renderer_Shader::skysphere_multiscatter_lut_c,          RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "MULTISCATTER_LUT",  false },
             { Renderer_Shader::clouds_noise_c,                        RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_NOISE",       false },
