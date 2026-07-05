@@ -83,11 +83,11 @@ static const float3 cirrus_wind_offset    = float3(4321.0, 0.0, 8765.0);
 // drifts faster than cumulus to match the high-altitude jet stream typically being several
 // times stronger than ground level wind. only the noise sampling is translated, the sample
 // altitude relative to the planet is unchanged so the cloud layer stays parked at its base.
-// multipliers are tuned for the calm ~3 m/s ground wind the scenes ship with, so the effective
-// drift lands at ~24 m/s for cumulus and ~75 m/s for cirrus which is fast enough to register
-// as obvious motion within a few seconds of looking at the sky on a kilometer-scale cloud
-static const float cumulus_wind_speed_mul = 8.0;
-static const float cirrus_wind_speed_mul  = 25.0;
+// the scenes ship with ~8 m/s ground wind, so the effective drift lands at ~12 m/s for
+// cumulus and ~40 m/s for cirrus, matching real winds at those altitudes, anything much
+// faster also makes the 16 frame panorama refresh visible as stepping on cloud edges
+static const float cumulus_wind_speed_mul = 1.5;
+static const float cirrus_wind_speed_mul  = 5.0;
 
 // per-layer feature evolution rate in meters per second, applied as a slow drift along the
 // vertical axis of the cloud noise volume. the volume is tileable so the slide wraps cleanly
@@ -95,10 +95,12 @@ static const float cirrus_wind_speed_mul  = 25.0;
 // y axis is safe because cloud_weather and cloud_base_offset force uvw.y to 0.5, so this only
 // affects the 3d shape, detail and warp lookups, not the coverage map or per-cloud altitude.
 // rate is divided by the per-layer noise tile size when sampled, so the cumulus shape (4.5 km
-// tile) cycles in ~2-3 min and detail (2.2 km tile) cycles in ~1 min at the value below,
+// tile) cycles in ~5 min and detail (2.2 km tile) cycles in ~2.5 min at the value below,
+// matching how real cumulus billow over minutes rather than seconds, faster rates also churn
+// the sub-step detail frequencies and read as shimmer instead of evolution
 // cirrus is intentionally much slower because real cirrus shapes persist for tens of minutes
-static const float cumulus_evolve_rate    = 30.0;
-static const float cirrus_evolve_rate     = 10.0;
+static const float cumulus_evolve_rate    = 15.0;
+static const float cirrus_evolve_rate     = 5.0;
 
 // lighting
 static const float3 cloud_ambient_bottom  = float3(0.18, 0.22, 0.30); // cool dark base
@@ -114,18 +116,23 @@ static const float  cloud_sun_step_growth = 2.0;    // geometric growth between 
 static const float3 cloud_moon_tint       = float3(0.0006, 0.0009, 0.0014);
 static const float3 cloud_night_floor     = float3(0.0018, 0.0028, 0.0050);
 
-// aerial perspective, atmospheric extinction along the camera-to-sample ray. matches a
-// roughly 30 km clear-day visibility, so distant clouds fade into the haze instead of
-// stacking up along grazing rays as a thick ring at the horizon
-static const float  cloud_aerial_falloff  = 1.0e-4;
+// aerial perspective, atmospheric extinction along the camera-to-sample ray. a 25 km mean
+// free path matches clear-day visibility, distant clouds haze out gradually toward the
+// horizon instead of vanishing a few kilometers out, which previously emptied the mid sky
+static const float  cloud_aerial_falloff  = 4.0e-5;
 
 // raymarch sample budget. the skysphere bake runs every frame on the async compute queue
-// to animate the clouds and the total skysphere pass must stay under ~5 ms, so the view
-// march is sized aggressively, 80 steps at 125 m each covers the same 10 km range with
-// 5/8 of the previous per-ray cost. the coarser per-ray density is masked by the 1/4
-// partial dispatch in skysphere.hlsl, four interleaved phases each marching at slightly
-// different angles average out into a stable image after a handful of frames
-static const int    cumulus_view_steps    = 80;
+// and the total skysphere pass must stay under ~5 ms. the cumulus step size adapts to the
+// ray's span through the cloud shell, short zenith rays get fine steps and long horizon
+// rays get coarse ones, so the whole marchable range is always covered. a fixed step was
+// the old scheme and it capped the visible cloud field at ~10 km, which left one weather
+// blob overhead and an empty sky around it. residual march noise from the coarse far steps
+// is integrated out by the temporal accumulation in skysphere.hlsl
+static const int    cumulus_view_steps    = 96;
+static const float  cumulus_step_min      = 100.0;
+static const float  cumulus_step_max      = 625.0;
+static const float  cumulus_range_max     = 60000.0;  // haze leaves ~9 percent contribution at this distance
+static const float  cirrus_range_max      = 120000.0;
 static const int    cirrus_view_steps     = 24;
 static const int    cumulus_sun_steps     = 8;
 
@@ -641,12 +648,16 @@ void cloud_march_cumulus(
         cloud_earth_radius + cumulus_top_alt    + cumulus_shell_padding);
     if (shell.y < 0.0) return;
     
-    float t_max  = min(shell.y, 100000.0); // cap at 100 km, atmospheric perspective absorbs whatever is further
-    if (shell.x >= t_max) return;
+    float t_max  = min(shell.y, cumulus_range_max);
+    if (shell.x >= t_max)
+    {
+        return;
+    }
     
     float cos_th = dot(view_dir, sun_dir);
     
-    const float step_size      = 125.0;    // fixed in-volume step, paired with cumulus_view_steps for ~10 km range
+    // adaptive step, sized so the step budget spans the whole marchable range of this ray
+    float step_size            = clamp((t_max - shell.x) / float(cumulus_view_steps), cumulus_step_min, cumulus_step_max);
     const float empty_skip     = 1600.0;   // stride when the weather map says no clouds here
     const float density_thresh = 1e-4;     // lower than before, avoids binary state flicker at edges
     
@@ -730,7 +741,7 @@ void cloud_march_cirrus(
         cloud_earth_radius + cirrus_top_alt);
     if (shell.y < 0.0) return;
     
-    float t_max  = min(shell.y, 400000.0);
+    float t_max  = min(shell.y, cirrus_range_max);
     if (shell.x >= t_max)
     {
         return;
@@ -797,7 +808,7 @@ void clouds_evaluate(
     // different ray lengths and produce sharp brightness discontinuities. fading clouds to zero
     // a few degrees above the horizon also matches the natural appearance of distant cumulus,
     // which physically vanish into atmospheric haze before they reach the geometric horizon
-    float horizon_fade = smoothstep(0.0, 0.06, view_dir.y);
+    float horizon_fade = smoothstep(0.0, 0.04, view_dir.y);
     if (horizon_fade <= 0.0) return;
     
     // cumulus is closer to the camera looking up, march it first so cirrus appears behind any gaps

@@ -2646,8 +2646,8 @@ namespace spartan
 
         // animated clouds drift with the world wind and slowly evolve in place, both of which
         // only surface on the panorama when the skysphere bake runs that frame. always re-bake
-        // when there is a directional light, the shader spreads the cost over 4 frames by only
-        // computing 1/4 of the pixels per dispatch (phase pattern keyed off buffer_frame.frame).
+        // when there is a directional light, the shader spreads the cost over 16 frames by only
+        // computing 1/16 of the pixels per dispatch (phase pattern keyed off buffer_frame.frame).
         // the warmup burst above is still honoured so sun direction changes do a full bake to
         // converge the panorama before switching to the partial-dispatch animation mode
         m_pass_state.sky_first_frame           = false;

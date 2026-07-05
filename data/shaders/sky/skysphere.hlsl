@@ -737,18 +737,14 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
 
     // bake mode, set by Pass_Skysphere via the first push constant float
     //   warmup = 1.0, the first n frames after a sun direction change or app start, the cpu
-    //            issues a full sized dispatch and every output pixel runs the full bake. the
-    //            legacy 0.1 temporal blend below fades the panorama in over ~25-30 frames
+    //            issues a full sized dispatch and every output pixel runs the full bake, the
+    //            strong temporal blend below converges the panorama in ~10 frames
     //   warmup = 0.0, steady state, the cpu issues a quarter resolution dispatch (1/16 of
     //            the waves) and each thread writes exactly one full resolution pixel chosen
-    //            from a 4x4 tile by a phase that cycles with buffer_frame.frame. at 60 fps
-    //            this means each pixel refreshes every 16 frames or ~267 ms, with the wind
-    //            drift tuned at ~24 m/s the per-pixel jump between refreshes is about 1.5
-    //            panorama pixels on a typical cloud, soft enough on the inherently fuzzy
-    //            cloud edges to read as gentle drift rather than ticking. the coarse
-    //            dispatch is the real saver, the previous early-return scheme did not skip
-    //            wave time because every wave still had one active lane running the full
-    //            cloud march and gpu lockstep execution then paid for all of them
+    //            from a 4x4 tile by a phase that cycles with buffer_frame.frame, so every
+    //            pixel refreshes every 16 frames or ~267 ms at 60 fps. the coarse dispatch
+    //            is the real saver, an early-return scheme does not skip wave time because
+    //            gpu lockstep execution pays for every wave with one active lane
     const bool warmup = buffer_pass.values[0].x > 0.5;
     uint2 pixel;
     if (warmup)
@@ -757,9 +753,9 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     }
     else
     {
-        const uint  phase = buffer_frame.frame & 15u;
-        const uint2 ofs   = uint2(phase & 3u, (phase >> 2u) & 3u);
-        pixel             = tid.xy * 4u + ofs;
+        // bayer ordered refresh, decorrelates staleness inside each 4x4 tile so cloud motion reads as soft noise instead of a raster combing pattern
+        static const uint2 bayer_order[16] = { uint2(0, 0), uint2(2, 2), uint2(2, 0), uint2(0, 2), uint2(1, 1), uint2(3, 3), uint2(3, 1), uint2(1, 3), uint2(1, 0), uint2(3, 2), uint2(3, 0), uint2(1, 2), uint2(0, 1), uint2(2, 3), uint2(2, 1), uint2(0, 3) };
+        pixel = tid.xy * 4u + bayer_order[buffer_frame.frame & 15u];
     }
     if (any(pixel >= uint2(res))) return;
 
@@ -804,7 +800,14 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float  cloud_trans      = 1.0;
     if (!below_horizon)
     {
-        float cloud_jitter = noise_interleaved_gradient(float2(pixel));
+        // spatial ign plus a golden ratio sequence keyed to the refresh cycle, so every rebake
+        // of a pixel marches with a fresh offset and the temporal blend averages the march
+        // noise out. the shared ign helper cycles with frame mod 16 which is synchronized with
+        // the 16 frame refresh phase, that handed each pixel the same jitter on every refresh
+        // and froze the noise pattern permanently into the panorama
+        float ign          = frac(52.9829189 * frac(dot(float2(pixel), float2(0.06711056, 0.00583715))));
+        uint  jitter_cycle = warmup ? buffer_frame.frame : (buffer_frame.frame >> 4u);
+        float cloud_jitter = frac(ign + float(jitter_cycle & 255u) * 0.6180339887);
         clouds_evaluate(cam_pos, orig_view, sun_dir,
             tex3d, tex,
             GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp),
@@ -878,19 +881,14 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     final_color        = hdr_clamp_chroma(final_color, 100.0);
 
     // temporal accumulation, behaviour depends on bake mode
-    //   warmup, low blend factor integrates ~10 frames of jittered samples per converged pixel
-    //   so the underlying ign pattern that drives the cloud march origin gets fully averaged out,
-    //   instead of leaving a visible high-frequency texture on the cloud surface. converges over
-    //   ~25-30 frames after a sun direction change which is still under half a second at 60 fps
-    //   steady, the partial dispatch already gives 3-frame staleness on neighbouring pixels, an
-    //   additional low pass would drag visible cloud motion behind the actual cloud field by ten
-    //   frames or more. write the fresh sample directly, the per pixel ign jitter pattern was
-    //   the only thing the accumulator was averaging and it does not move between frames anyway
-    if (warmup)
-    {
-        float4 prev = tex_uav[pixel];
-        final_color = lerp(prev.rgb, final_color, 0.1);
-    }
+    //   warmup, low blend factor integrates ~10 frames of jittered full bakes per pixel so the
+    //   panorama converges from scratch in under half a second after a sun direction change
+    //   steady, moderate blend averages the last few refreshes of each pixel, the march jitter
+    //   cycles between refreshes so cloud march noise integrates out instead of being written
+    //   raw, which previously let the frozen jitter pattern surface as the clouds evolved. at
+    //   one refresh per 16 frames the induced lag is ~3 refreshes, a few meters of cloud drift
+    float4 prev = tex_uav[pixel];
+    final_color = lerp(prev.rgb, final_color, warmup ? 0.1 : 0.35);
 
     tex_uav[pixel] = float4(final_color, 1.0);
 }
