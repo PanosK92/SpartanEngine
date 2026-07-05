@@ -77,6 +77,7 @@ Use these first:
 - `resource_load`, `resource_reload`, `resource_save`, `resource_remove`, and `material_create` for resource lifecycle work.
 - `camera_set_view` and `viewport_frame` for editor camera positioning and framing.
 - `renderer_debug_get`, `renderer_debug_set`, and `physics_state` for debug overlays and physics inspection.
+- `profiler_snapshot` for frame timing, fps, stutter flags, rhi counters, and per-pass CPU/GPU time blocks to find optimization targets.
 - `selection_update`, `entity_clone`, and `entity_move_index` for editor selection and hierarchy operations.
 - `prefab_types`, `prefab_save`, and `prefab_load` for prefab discovery and file prefab workflows.
 - `screenshot_take` when visual confirmation is useful; it can return image content after the next rendered frame.

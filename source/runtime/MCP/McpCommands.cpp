@@ -2339,6 +2339,120 @@ namespace spartan
             return json;
         }
 
+        const char* queue_type_to_name(RHI_Queue_Type type)
+        {
+            switch (type)
+            {
+            case RHI_Queue_Type::Graphics:
+                return "graphics";
+            case RHI_Queue_Type::Compute:
+                return "compute";
+            case RHI_Queue_Type::Copy:
+                return "copy";
+            default:
+                return "none";
+            }
+        }
+
+        std::string command_profiler_snapshot(const McpRequest& request)
+        {
+            // optional filters, type is cpu, gpu or all, sort is duration or timeline
+            std::string type_filter = "all";
+            if (const std::optional<std::string> value = get_argument(request, "type"))
+            {
+                type_filter = to_lower_copy(*value);
+            }
+
+            bool sort_by_duration = true;
+            if (const std::optional<std::string> value = get_argument(request, "sort"))
+            {
+                sort_by_duration = to_lower_copy(*value) != "timeline";
+            }
+
+            uint32_t top = 0;
+            if (const std::optional<std::string> value = get_argument(request, "top"))
+            {
+                uint64_t parsed = 0;
+                if (parse_uint64(*value, parsed))
+                {
+                    top = static_cast<uint32_t>(parsed);
+                }
+            }
+
+            std::vector<const TimeBlock*> blocks;
+            for (const TimeBlock& block : Profiler::GetTimeBlocks())
+            {
+                if (!block.IsComplete())
+                {
+                    continue;
+                }
+
+                const bool is_cpu = block.GetType() == TimeBlockType::Cpu;
+                if (type_filter == "cpu" && !is_cpu)
+                {
+                    continue;
+                }
+                if (type_filter == "gpu" && is_cpu)
+                {
+                    continue;
+                }
+
+                blocks.push_back(&block);
+            }
+
+            if (sort_by_duration)
+            {
+                std::sort(blocks.begin(), blocks.end(), [](const TimeBlock* a, const TimeBlock* b)
+                {
+                    return a->GetDuration() > b->GetDuration();
+                });
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"fps\":" + std::to_string(Profiler::GetFps());
+            json += ",\"frame_ms\":" + std::to_string(Profiler::GetFrameDurationMs());
+            json += ",\"cpu_ms\":" + std::to_string(Profiler::GetTimeCpuLast());
+            json += ",\"gpu_ms\":" + std::to_string(Profiler::GetTimeGpuLast());
+            json += ",\"frame_ms_last\":" + std::to_string(Profiler::GetTimeFrameLast());
+            json += ",\"cpu_stuttering\":" + json_bool(Profiler::IsCpuStuttering());
+            json += ",\"gpu_stuttering\":" + json_bool(Profiler::IsGpuStuttering());
+            json += ",\"update_interval_sec\":" + std::to_string(Profiler::GetUpdateInterval());
+            json += ",\"visualized\":" + json_bool(Profiler::IsVisualized());
+
+            json += ",\"rhi\":{";
+            json += "\"draw_calls\":" + std::to_string(Profiler::m_rhi_draw);
+            json += ",\"instance_count\":" + std::to_string(Profiler::m_rhi_instance_count);
+            json += ",\"timeblock_count\":" + std::to_string(Profiler::m_rhi_timeblock_count);
+            json += ",\"pipeline_barriers\":" + std::to_string(Profiler::m_rhi_pipeline_barriers);
+            json += ",\"pipeline_bindings\":" + std::to_string(Profiler::m_rhi_bindings_pipeline);
+            json += ",\"descriptor_set_count\":" + std::to_string(Profiler::m_rhi_descriptor_set_count);
+            json += "}";
+
+            const size_t limit = (top > 0 && top < blocks.size()) ? top : blocks.size();
+            json += ",\"time_block_count\":" + std::to_string(blocks.size());
+            json += ",\"time_blocks\":[";
+            for (size_t i = 0; i < limit; i++)
+            {
+                const TimeBlock* block = blocks[i];
+                if (i != 0)
+                {
+                    json += ",";
+                }
+
+                json += "{\"name\":" + json_string(block->GetName() ? block->GetName() : "");
+                json += ",\"type\":" + json_string(block->GetType() == TimeBlockType::Cpu ? "cpu" : "gpu");
+                json += ",\"queue\":" + json_string(queue_type_to_name(block->GetQueueType()));
+                json += ",\"duration_ms\":" + std::to_string(block->GetDuration());
+                json += ",\"start_ms\":" + std::to_string(block->GetStartMs());
+                json += ",\"end_ms\":" + std::to_string(block->GetEndMs());
+                json += ",\"tree_depth\":" + std::to_string(block->GetTreeDepth());
+                json += "}";
+            }
+            json += "]";
+            json += "}";
+            return json;
+        }
+
         std::string command_camera_snapshot()
         {
             if (ProgressTracker::IsLoading())
@@ -6010,6 +6124,10 @@ namespace spartan
         if (request.command == "engine_status")
         {
             return command_engine_status();
+        }
+        if (request.command == "profiler_snapshot")
+        {
+            return command_profiler_snapshot(request);
         }
         if (request.command == "engine_set_mode")
         {

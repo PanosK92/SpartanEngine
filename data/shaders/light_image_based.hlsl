@@ -113,6 +113,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_ibl       = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl      = specular_skysphere * specular_energy * specular_occlusion;
 
+    // the water body is shaded as in-scatter inside the refraction composite, a sky lambert layer
+    // on top double counts it and reads as a flat cyan sheet, the specular sky reflection stays
+    if (surface.is_water())
+    {
+        diffuse_ibl = 0.0f;
+    }
+
     // restir owns indirect so drop both ibl terms, otherwise rt reflections owns specular
     if (is_restir_pt_enabled())
     {

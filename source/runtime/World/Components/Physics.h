@@ -90,6 +90,9 @@ namespace spartan
         // static cleanup (call before physics world shutdown)
         static void Shutdown();
 
+        // fft water buoyancy, runs once per fixed physics step for every dynamic body
+        static void TickBuoyancy();
+
         // mass
         constexpr static inline float mass_from_volume = FLT_MAX;
         float GetMass() const { return m_mass; }
@@ -308,6 +311,8 @@ namespace spartan
         void TickCloth(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
+        void ApplyBuoyancy();
+        float ComputeVolume();
 
         void UpdateWheelTransforms();
         void Create();

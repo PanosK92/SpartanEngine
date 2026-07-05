@@ -185,6 +185,8 @@ namespace spartan
         static void EnableOcean(Water* water);
         static void DisableOcean();
         static bool IsOceanEnabled();
+        // world space wave height at (x, z) from the readback of the gpu displacement, false when no ocean is active
+        static bool GetOceanHeight(const float x, const float z, float& height);
 
         // viewport
         static const RHI_Viewport& GetViewport();

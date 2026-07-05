@@ -336,6 +336,9 @@ namespace spartan
                         vehicle_step_callback(fixed_time_step);
                     }
 
+                    // buoyancy from the fft water, applied per step so the force integrates consistently
+                    Physics::TickBuoyancy();
+
                     scene->simulate(fixed_time_step);
                     scene->fetchResults(true); // block
                     accumulated_time -= fixed_time_step;

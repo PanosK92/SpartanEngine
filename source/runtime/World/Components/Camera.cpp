@@ -1093,6 +1093,9 @@ namespace spartan
             renderable->SetMesh(MeshType::Cube);
             renderable->SetDefaultMaterial();
 
+            // the default material projects its texture in world space, override to object space so the texture sticks to the cube as it moves
+            renderable->GetMaterialOverrideMutable().uv_world_space = 0.0f;
+
             // add physics
             Physics* physics = entity->AddComponent<Physics>();
             physics->SetBodyType(BodyType::Box);

@@ -97,6 +97,11 @@ float3 get_sun_radiance()
     return get_sun_color() * get_sun_intensity();
 }
 
+// fft ocean water body optics, shared by the refraction composite and the underwater ambient fill
+// so the water column and the objects submerged in it agree on the same color and falloff
+static const float3 ocean_scatter_albedo = float3(0.0f, 0.09f, 0.13f);                // deep blue-green in-scattering albedo, lit by the downwelling light
+static const float3 ocean_extinction     = float3(0.45f, 0.15f, 0.08f) * 0.45f;       // per channel beer lambert extinction, red dies first and blue persists
+
 // chromaticity preserving hdr clamp, the engine sky panorama is clamped to keep huge sun
 // radiance values inside the 16 bit storage range, a channel wise min(color, cap) would
 // saturate every channel to the cap whenever any single channel exceeded it which is the

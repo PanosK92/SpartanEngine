@@ -66,6 +66,7 @@ export const engine_overview = [
   "Use resource_load, resource_reload, resource_save, resource_remove, and material_create for asset cache lifecycle work.",
   "Use undo_redo for editor command-stack undo and redo.",
   "Use camera_set_view and viewport_frame for editor camera positioning; use renderer_debug_set and physics_state for debug inspection.",
+  "Use profiler_snapshot to read frame timing, fps, stutter flags, rhi counters, and per-pass CPU/GPU time blocks; sort by duration and inspect the top blocks to find optimization targets.",
   "Use selection_update, entity_clone, entity_move_index, prefab_types, prefab_save, and prefab_load before Lua for common editor hierarchy and prefab workflows.",
   "Use screenshot_take when visual verification is useful; it waits briefly for the async save and can return the PNG as image content.",
   "Before destructive rebuilds that should preserve appearance, call entity_render_materials and reuse the returned material names on new render geometry.",

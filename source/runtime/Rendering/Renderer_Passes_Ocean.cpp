@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Buffer.h"
 #include "../World/World.h"
 #include "../World/Components/Water.h"
 //===========================================
@@ -179,6 +180,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement, tex_displacement);
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_normal, tex_normal);
+                cmd_list->SetBuffer(Renderer_BindingsUav::ocean_heights, GetBuffer(Renderer_Buffer::OceanHeights));
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(n / 8, n / 8, cascades);
             }
@@ -187,5 +189,44 @@ namespace spartan
             tex_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
+    }
+
+    bool Renderer::GetOceanHeight(const float x, const float z, float& height)
+    {
+        const Water* water   = m_pass_state.ocean;
+        RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::OceanHeights);
+        const float* heights = buffer ? static_cast<const float*>(buffer->GetMappedData()) : nullptr;
+        if (!water || !heights)
+        {
+            return false;
+        }
+
+        // mirror the gpu sampler, uv = world_xz / cascade_length with wrap addressing and bilinear filtering
+        const int n          = static_cast<int>(renderer_ocean_resolution);
+        const float* lengths = water->GetCascadeLengths();
+        uint32_t cascades    = water->GetCascadeCount();
+        cascades             = cascades > renderer_ocean_max_cascades ? renderer_ocean_max_cascades : cascades;
+        height               = water->GetSeaLevel();
+        for (uint32_t c = 0; c < cascades; c++)
+        {
+            const float* slice = heights + c * n * n;
+            const float fx     = x / lengths[c] * n - 0.5f;
+            const float fz     = z / lengths[c] * n - 0.5f;
+            const int x0       = static_cast<int>(floorf(fx));
+            const int z0       = static_cast<int>(floorf(fz));
+            const float tx     = fx - x0;
+            const float tz     = fz - z0;
+            const int x0w      = x0 & (n - 1);
+            const int x1w      = (x0 + 1) & (n - 1);
+            const int z0w      = z0 & (n - 1);
+            const int z1w      = (z0 + 1) & (n - 1);
+            const float h00    = slice[z0w * n + x0w];
+            const float h10    = slice[z0w * n + x1w];
+            const float h01    = slice[z1w * n + x0w];
+            const float h11    = slice[z1w * n + x1w];
+            height            += (h00 * (1.0f - tx) + h10 * tx) * (1.0f - tz) + (h01 * (1.0f - tx) + h11 * tx) * tz;
+        }
+
+        return true;
     }
 }

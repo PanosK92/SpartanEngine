@@ -76,6 +76,18 @@ namespace spartan
 
         PxControllerManager* controller_manager = nullptr;
 
+        // fft water buoyancy, applied once per fixed physics step to every submerged dynamic body
+        namespace buoyancy
+        {
+            const float water_density   = 1000.0f; // kg per cubic meter
+            const float max_accel       = 30.0f;   // cap so featherweight bodies don't rocket out of the water
+            const float drag_horizontal = 2.0f;    // velocity damping per second at full submersion
+            const float drag_vertical   = 20.0f;   // near critical for the buoyancy spring, floats settle onto the surface instead of bouncing
+            const float drag_angular    = 4.0f;    // spin damping per second at full submersion
+            const float align_gain      = 10.0f;   // angular acceleration per radian of tilt toward the wave normal, makes floats pitch and roll with the swell
+            vector<Physics*> bodies;               // guarded by the physx mutex
+        }
+
         // classify a ground actor into a car surface type from its entity name
         car::surface_type classify_ground_actor(const PxRigidActor* actor)
         {
@@ -205,10 +217,18 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_velocity, Vector3);
         // runtime physx handles must not be copied through generic component attributes
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_body_type, SetBodyType, BodyType);
+
+        lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+        buoyancy::bodies.push_back(this);
     }
 
     Physics::~Physics()
     {
+        {
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+            buoyancy::bodies.erase(remove(buoyancy::bodies.begin(), buoyancy::bodies.end(), this), buoyancy::bodies.end());
+        }
+
         Remove();
     }
 
@@ -407,6 +427,23 @@ namespace spartan
         {
             // apply gravity
             m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
+
+            // buoyancy, the fft water pushes the capsule up toward a waterline above its center, drag damps the bob
+            {
+                PxExtendedVec3 position = controller->getPosition();
+                float water_height      = 0.0f;
+                if (Renderer::GetOceanHeight(static_cast<float>(position.x), static_cast<float>(position.z), water_height))
+                {
+                    const float waterline = 0.25f; // meters above the capsule center the water settles at
+                    const float depth     = water_height - (static_cast<float>(position.y) + waterline);
+                    if (depth > 0.0f)
+                    {
+                        const float buoyancy_gain = 30.0f; // upward acceleration per meter of submersion
+                        const float water_drag    = 11.0f; // near critical damping for the gain above, settles without bobbing past the waterline
+                        m_velocity.y += (depth * buoyancy_gain - m_velocity.y * water_drag) * delta_time;
+                    }
+                }
+            }
 
             // move controller
             PxControllerFilters filters;
@@ -621,6 +658,105 @@ namespace spartan
                     dynamic->setAngularVelocity(PxVec3(0, 0, 0));
                 }
             }
+        }
+    }
+
+    void Physics::TickBuoyancy()
+    {
+        // called from the fixed step loop which already holds the physx mutex
+        for (Physics* body : buoyancy::bodies)
+        {
+            body->ApplyBuoyancy();
+        }
+    }
+
+    void Physics::ApplyBuoyancy()
+    {
+        if (!m_enabled || m_is_static || m_is_kinematic)
+        {
+            return;
+        }
+
+        // the controller floats in TickController, vehicles and cloth have their own force models
+        if (m_body_type == BodyType::Controller || m_body_type == BodyType::Vehicle || m_body_type == BodyType::Cloth || m_body_type == BodyType::Plane)
+        {
+            return;
+        }
+
+        const float volume = ComputeVolume();
+        if (volume <= 0.0f)
+        {
+            return;
+        }
+
+        const float gravity = -PhysicsWorld::GetGravity().y;
+        for (void* entry : m_actors)
+        {
+            PxRigidActor* actor     = static_cast<PxRigidActor*>(entry);
+            PxRigidDynamic* dynamic = actor ? actor->is<PxRigidDynamic>() : nullptr;
+            if (!dynamic)
+            {
+                continue;
+            }
+
+            const PxBounds3 bounds  = actor->getWorldBounds();
+            const PxVec3 center     = bounds.getCenter();
+            const PxVec3 extents    = bounds.getExtents();
+            const float body_height = max(bounds.getDimensions().y, 0.01f);
+
+            // four sample points around the footprint, each carries a quarter of the displaced volume,
+            // applied off center so a wave slope produces torque and the body pitches and rolls with the swell
+            const float span_x = max(extents.x * 0.7f, 0.25f);
+            const float span_z = max(extents.z * 0.7f, 0.25f);
+            const PxVec3 offsets[4] =
+            {
+                PxVec3( span_x, 0.0f, 0.0f),
+                PxVec3(-span_x, 0.0f, 0.0f),
+                PxVec3(0.0f, 0.0f,  span_z),
+                PxVec3(0.0f, 0.0f, -span_z)
+            };
+
+            // archimedes capped so light bodies stay stable, split across the sample points
+            const float force_per_point = min(buoyancy::water_density * gravity * volume, dynamic->getMass() * buoyancy::max_accel) * 0.25f;
+
+            float submersion = 0.0f;
+            float heights[4] = {};
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                const PxVec3 point = center + offsets[i];
+                if (!Renderer::GetOceanHeight(point.x, point.z, heights[i]))
+                {
+                    return;
+                }
+
+                const float depth = heights[i] - bounds.minimum.y;
+                if (depth <= 0.0f)
+                {
+                    continue;
+                }
+
+                const float point_submersion = min(depth / body_height, 1.0f);
+                submersion                  += point_submersion * 0.25f;
+                PxRigidBodyExt::addForceAtPos(*dynamic, PxVec3(0.0f, force_per_point * point_submersion, 0.0f), point, PxForceMode::eFORCE);
+            }
+
+            if (submersion <= 0.0f)
+            {
+                continue;
+            }
+
+            // the per point force differential is too weak to visibly rotate a small body, so also steer the
+            // body up axis toward the wave normal built from the same samples, this is what makes floats wobble
+            PxVec3 water_normal = PxVec3((heights[1] - heights[0]) / (2.0f * span_x), 1.0f, (heights[3] - heights[2]) / (2.0f * span_z));
+            water_normal        = water_normal.getNormalized();
+            const PxVec3 up     = dynamic->getGlobalPose().q.getBasisVector1();
+            dynamic->addTorque(up.cross(water_normal) * buoyancy::align_gain * submersion, PxForceMode::eACCELERATION);
+
+            // water resistance, heave is damped near critically so floats ride the surface instead of oscillating past it
+            const PxVec3 velocity = dynamic->getLinearVelocity();
+            const PxVec3 drag     = PxVec3(velocity.x * buoyancy::drag_horizontal, velocity.y * buoyancy::drag_vertical, velocity.z * buoyancy::drag_horizontal);
+            dynamic->addForce(drag * -submersion, PxForceMode::eACCELERATION);
+            dynamic->addTorque(dynamic->getAngularVelocity() * -buoyancy::drag_angular * submersion, PxForceMode::eACCELERATION);
         }
     }
 
@@ -891,93 +1027,28 @@ namespace spartan
         // approximate mass from volume
         if (mass == mass_from_volume)
         {
-            constexpr float density = 1000.0f; // kg/m³ (default density, e.g., water)
-            float volume            = 0.0f;
-            Vector3 scale           = GetEntity()->GetScale();
-
             if (m_body_type == BodyType::Max)
             {
                 SP_LOG_WARNING("This call will be ignored. You need to set the body type before setting mass from volume.");
                 return;
             }
 
-            switch (m_body_type)
+            if (m_body_type == BodyType::Plane)
             {
-                case BodyType::Box:
-                {
-                    // volume = x * y * z
-                    volume = scale.x * scale.y * scale.z;
-                    break;
-                }
-                case BodyType::Sphere:
-                {
-                    // volume = (4/3) * π * r³, radius = max(x, y, z) / 2
-                    float radius = max(max(scale.x, scale.y), scale.z) * 0.5f;
-                    volume       = (4.0f / 3.0f) * math::pi * radius * radius * radius;
-                    break;
-                }
-                case BodyType::Capsule:
-                {
-                    // volume             = cylinder (π * r² * h) + two hemispheres ((4/3) * π * r³)
-                    float radius          = max(scale.x, scale.z) * 0.5f;
-                    float cylinder_height = max(0.0f, scale.y - 2.0f * radius); // height of cylindrical part (clamp to avoid negative)
-                    float cylinder_volume = math::pi * radius * radius * cylinder_height;
-                    float sphere_volume   = (4.0f / 3.0f) * math::pi * radius * radius * radius;
-                    volume                = cylinder_volume + sphere_volume;
-                    break;
-                }
-                case BodyType::Mesh:
-                {
-                    // approximate using bounding box volume
-                    Render* renderable = GetEntity()->GetComponent<Render>();
-                    if (renderable)
-                    {
-                        BoundingBox bbox = renderable->GetBoundingBox();
-                        Vector3 extents = bbox.GetExtents();
-                        volume = extents.x * extents.y * extents.z * 8.0f; // extents are half-size
-                    }
-                    else
-                    {
-                        volume = 1.0f; // fallback volume (1 m³)
-                    }
-                    break;
-                }
-                case BodyType::Cloth:
-                {
-                    // approximate using bounding box volume (thin surface)
-                    Render* renderable = GetEntity()->GetComponent<Render>();
-                    if (renderable)
-                    {
-                        BoundingBox bbox = renderable->GetBoundingBox();
-                        Vector3 extents  = bbox.GetExtents();
-                        volume = extents.x * extents.y * extents.z * 8.0f;
-                    }
-                    else
-                    {
-                        volume = 0.01f;
-                    }
-                    break;
-                }
-                case BodyType::Plane:
-                {
-                    // infinite plane, use default mass
-                    mass   = 1.0f;
-                    volume = 0.0f; // skip volume-based calculation
-                    break;
-                }
-                case BodyType::Controller:
-                {
-                    // controller, use default mass (e.g., human-like)
-                    mass   = 70.0f; // approximate human mass
-                    volume = 0.0f;  // skip volume-based calculation
-                    break;
-                }
+                mass = 1.0f; // infinite plane, use default mass
             }
-
-            // calculate mass from volume if applicable
-            if (volume > 0.0f)
+            else if (m_body_type == BodyType::Controller)
             {
-                mass = volume * density;
+                mass = 70.0f; // approximate human mass
+            }
+            else
+            {
+                constexpr float density = 1000.0f; // kg per cubic meter, water
+                float volume            = ComputeVolume();
+                if (volume > 0.0f)
+                {
+                    mass = volume * density;
+                }
             }
         }
 
@@ -1296,6 +1367,45 @@ namespace spartan
         }
 
         return nullptr;
+    }
+
+    float Physics::ComputeVolume()
+    {
+        Vector3 scale = GetEntity()->GetScale();
+
+        switch (m_body_type)
+        {
+            case BodyType::Box:
+            {
+                return scale.x * scale.y * scale.z;
+            }
+            case BodyType::Sphere:
+            {
+                // 4/3 pi r cubed, radius is the largest axis halved
+                float radius = max(max(scale.x, scale.y), scale.z) * 0.5f;
+                return (4.0f / 3.0f) * math::pi * radius * radius * radius;
+            }
+            case BodyType::Capsule:
+            {
+                return GetCapsuleVolume();
+            }
+            case BodyType::Mesh:
+            case BodyType::MeshConvex:
+            case BodyType::Cloth:
+            {
+                // approximate with the bounding box, extents are half size
+                if (Render* renderable = GetEntity()->GetComponent<Render>())
+                {
+                    Vector3 extents = renderable->GetBoundingBox().GetExtents();
+                    return extents.x * extents.y * extents.z * 8.0f;
+                }
+                return m_body_type == BodyType::Cloth ? 0.01f : 1.0f;
+            }
+            default:
+            {
+                return 0.0f;
+            }
+        }
     }
 
     float Physics::GetCapsuleVolume()

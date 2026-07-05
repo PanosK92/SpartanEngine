@@ -206,6 +206,41 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (!is_restir_pt_debug())
                 light_gi *= max(surface.albedo, 0.1f);
         }
+
+        // the water body is shaded as in-scatter inside the refraction composite, a lambert albedo
+        // layer on top double counts it and washes the fresnel structure to a flat albedo sheet,
+        // the analytic sun glint in light_specular is real surface response and stays
+        if (surface.is_water())
+        {
+            light_diffuse = 0.0f;
+            light_gi      = 0.0f;
+        }
+
+        // submerged geometry sits inside a glowing scattering medium but the refraction source is
+        // copied before ibl runs, so it only ever receives direct sun and faces away from it read
+        // pitch black through the surface, fill them with the water body radiance they are immersed
+        // in, same optics as the refraction composite so object and column agree, fading with depth
+        if (pass_is_opaque() && buffer_frame.ocean_enabled > 0.5f)
+        {
+            // actual displaced wave height above this point, not the flat sea level plane, so the
+            // waterline on geometry follows the swell, the horizontal choppiness shift is ignored
+            // which is fine for a soft ambient band
+            float water_height = buffer_frame.ocean_sea_level;
+            [loop] for (uint c = 0; c < buffer_frame.ocean_cascade_count; ++c)
+            {
+                float2 cascade_uv = surface.position.xz / buffer_frame.ocean_cascade_length[c];
+                water_height     += tex_ocean_displacement.SampleLevel(samplers[sampler_bilinear_wrap], float3(cascade_uv, (float)c), 0.0f).y;
+            }
+
+            float depth_below = water_height - surface.position.y;
+            if (depth_below > 0.0f)
+            {
+                float3 sky_down    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(float3(0.0f, 1.0f, 0.0f)), 7).rgb;
+                float3 downwelling = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI) + sky_down;
+                // ease in over the first 20cm so the waterline is a soft lap line instead of a hard cut
+                light_diffuse     += ocean_scatter_albedo * downwelling * exp(-ocean_extinction * depth_below) * saturate(depth_below / 0.2f);
+            }
+        }
     }
     
     // fog

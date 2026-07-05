@@ -239,6 +239,8 @@ namespace spartan
         grass_indirect_args    = 52,
         particle_volume_density = 53,
         particle_volume_color   = 54,
+        // fft ocean vertical displacement per texel, host visible so the cpu can sample wave height for buoyancy
+        ocean_heights          = 56,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -489,6 +491,7 @@ namespace spartan
         ClusterLightIndices,       // flat list of light indices, sliced by cluster in chunks of CLUSTER_MAX_LIGHTS
         ClusterStats,              // tiny stats buffer for the cluster assign pass (overflow counter)
         VolumetricLightIndices,    // compact list of volumetric light indices, built on cpu each frame
+        OceanHeights,              // fft ocean vertical displacement per cascade texel, host visible for cpu buoyancy queries
         // restir path tracing emissive triangle nee pool, rebuilt each frame from renderables with non-zero emission
         EmissiveTriangles,
         // gpu-driven particles

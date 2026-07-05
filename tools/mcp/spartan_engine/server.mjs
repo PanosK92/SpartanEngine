@@ -637,6 +637,19 @@ register_tool(server, "engine_status", "Read editor/runtime status, frame metric
 
 register_tool(
   server,
+  "profiler_snapshot",
+  "Read profiler frame metrics and CPU/GPU time blocks with per-pass timings for performance analysis and optimization.",
+  {
+    type: z.enum(["all", "cpu", "gpu"]).optional(),
+    sort: z.enum(["duration", "timeline"]).optional(),
+    top: z.number().int().min(1).optional(),
+  },
+  "profiler_snapshot",
+  { annotations: read_only, outputSchema: output_schemas.profiler_snapshot },
+);
+
+register_tool(
+  server,
   "engine_set_mode",
   "Set play, edit, pause, resume, or individual engine flags.",
   {

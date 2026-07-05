@@ -25,13 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // refraction and transparency constants
-static const float refraction_strength_water  = 0.8f;   // water refraction strength
 static const float ior_water                  = 1.333f; // water IOR
 static const float ior_glass                  = 1.5f;   // glass IOR
 static const float ior_air                    = 1.0f;   // air IOR
 static const float chromatic_aberration       = 0.02f;  // chromatic aberration strength
-static const float absorption_scale           = 0.45f;  // water absorption scale
-static const float3 water_body_color          = float3(0.0f, 0.09f, 0.13f); // deep blue-green in-scattering tint
 
 // ray traced reflections now jitter the ray across the ggx lobe by surface roughness and a
 // spatiotemporal denoiser reconstructs a roughness proportional blur, so rough surfaces show a
@@ -59,16 +56,14 @@ float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_in
     return F_Schlick(F0, get_f90(), cos_theta);
 }
 
-// Apply water absorption using Beer-Lambert law, with depth-driven in-scattering toward the body color
-float3 apply_water_absorption(float3 color, float depth)
+// beer lambert water column, the closed form of single scattering in a homogeneous medium
+// one extinction drives both the transmitted background and the in-scatter fill, per channel,
+// so the fill takes over exactly as fast as the background fades, red dies first and blue persists,
+// a separate scatter rate here made every channel converge to the body color at the same depth which read as flat milk
+float3 apply_water_absorption(float3 color, float depth, float3 body_radiance)
 {
-    // wavelength-dependent extinction, red dies first and blue persists, so the column tints toward blue-green with depth
-    float3 extinction  = float3(0.45f, 0.15f, 0.08f) * absorption_scale;
-    float3 transmitted = color * exp(-extinction * depth);
-    
-    // in-scattered body color fills in as the column deepens, so deep water reads opaque and colored instead of like thin glass
-    float scatter = 1.0f - exp(-depth * 0.35f);
-    return lerp(transmitted, water_body_color, scatter);
+    float3 transmittance = exp(-ocean_extinction * depth);
+    return color * transmittance + body_radiance * (1.0f - transmittance);
 }
 
 // Compute refracted direction using Snell's law (returns zero if total internal reflection)
@@ -136,37 +131,6 @@ float3 compute_refraction_raymarch(float3 surface_pos_ws, float3 refracted_dir_w
     return found_intersection ? refracted_color : tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
 }
 
-// Compute refraction with chromatic aberration (2D offset method for water)
-void compute_refraction_with_chromatic_aberration(
-    float2 uv, float3 refracted_dir, float camera_to_pixel_length, float refraction_strength,
-    out float3 refracted_color, out float2 base_uv_offset, out float2 refracted_uv)
-{
-    // compute base refraction offset
-    float inv_dist        = saturate(1.0f / (camera_to_pixel_length + FLT_MIN));
-    float3 refracted_view = world_to_view(refracted_dir, false);
-    base_uv_offset        = refracted_view.xy * refraction_strength * inv_dist;
-    
-    // chromatic aberration: different offsets for RGB channels
-    float2 offset_r = base_uv_offset * (1.0f + chromatic_aberration);
-    float2 offset_g = base_uv_offset;
-    float2 offset_b = base_uv_offset * (1.0f - chromatic_aberration);
-    
-    // sample refracted color with chromatic aberration
-    float2 uv_r = clamp(uv + offset_r, 0.0f, 1.0f);
-    float2 uv_g = clamp(uv + offset_g, 0.0f, 1.0f);
-    float2 uv_b = clamp(uv + offset_b, 0.0f, 1.0f);
-    
-    float3 refracted_r = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv_r, 0.0f).rgb;
-    float3 refracted_g = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv_g, 0.0f).rgb;
-    float3 refracted_b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv_b, 0.0f).rgb;
-    
-    // combine RGB channels
-    refracted_color = float3(refracted_r.r, refracted_g.g, refracted_b.b);
-    
-    // base offset for depth checking
-    refracted_uv = clamp(uv + base_uv_offset, 0.0f, 1.0f);
-}
-
 // smooth value noise, used to carve the coarse jacobian foam into finer whitewater
 float ocean_value_noise(float2 p)
 {
@@ -219,12 +183,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float2 uv = world_xz / buffer_frame.ocean_cascade_length[c];
             foam += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f).z;
         }
-        foam = saturate(foam);
+        // the jacobian mask is 512 texels per cascade so up close it magnifies into soft blobs, use it as
+        // coverage that erodes a fine world locked fbm instead of multiplying it, the visible edges then
+        // come from the noise frequency rather than the map resolution, dense coverage reads as near solid
+        // whitewater with small holes and decaying coverage breaks apart into sparse lacy flecks
+        float coverage = saturate(foam);
+        float lace     = ocean_value_noise(world_xz * 4.0f) * 0.45f + ocean_value_noise(world_xz * 13.0f) * 0.35f + ocean_value_noise(world_xz * 41.0f) * 0.2f;
+        float eroded   = saturate((lace + coverage - 1.0f) * 3.0f);
 
-        // the jacobian foam is low frequency and reads as coarse blobs, carve it with two octaves of fine
-        // world locked noise so it breaks into bubbly whitewater, sampled in the undisplaced domain so the detail rides the surface
-        float detail = ocean_value_noise(world_xz * 6.0f) * 0.6f + ocean_value_noise(world_xz * 18.0f) * 0.4f;
-        foam         = saturate(foam * (0.5f + detail));
+        // the fine octaves go subpixel with distance and would alias, ease back to the plain
+        // coverage mask out there, the cascade resolution is adequate at that magnification anyway
+        foam = lerp(eroded, coverage, saturate(surface.camera_to_pixel_length / 100.0f));
     }
 
     // get background color
@@ -261,28 +230,50 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             if (surface.is_water())
             {
-                // water: use 2D offset method with chromatic aberration (works well for flat surfaces)
-                float3 refracted;
-                float2 base_uv_offset;
-                float2 refracted_uv;
-                compute_refraction_with_chromatic_aberration(
-                    uv, refracted_dir, surface.camera_to_pixel_length, refraction_strength_water,
-                    refracted, base_uv_offset, refracted_uv
-                );
-                
-                // check depth to ensure valid geometry
-                float depth_opaque = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).r);
-                
-                // depth validation: geometry must exist behind surface
-                float depth_diff = depth_opaque - depth_transparent;
-                float depth_valid = float(depth_diff > 0.0f);
-                
-                float use_refraction = depth_valid * screen_fade(refracted_uv);
-                refraction = lerp(background, refracted, use_refraction);
-                
-                // apply water absorption
-                float water_depth = max(depth_opaque - depth_transparent, 0.0f);
-                refraction = apply_water_absorption(refraction, water_depth);
+                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).r);
+                float thickness        = clamp(depth_background - depth_transparent, 0.0f, 10.0f);
+
+                // a physically bent ray shifts the whole underwater image systematically in one direction,
+                // and wherever the shifted sample is unavailable in screen space the pixel has to fall back
+                // toward the straight view, a constant shift next to its own fallback reads as two copies of
+                // the object, so distort with the zero mean wave slope instead, the image wobbles around its
+                // true position and always stays one object, the offset still grows with the water column so
+                // it vanishes at the waterline and deeper content shimmers more
+                float2 offset = surface.normal.xz * 0.05f * saturate(thickness * 0.5f);
+
+                // the wobble can still land on geometry in front of the water, e.g. the part of a pillar
+                // above the surface, halve it until the sample is submerged, the offset is small so the
+                // collapse is invisible when it happens
+                float2 refracted_uv = uv;
+                float depth_shown   = depth_background;
+                float scale         = 1.0f;
+                [unroll]
+                for (int i = 0; i < 4; i++)
+                {
+                    float2 uv_try   = uv + offset * scale;
+                    float depth_try = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], uv_try, 0.0f).r);
+                    if (depth_try > depth_transparent && all(uv_try == saturate(uv_try)))
+                    {
+                        refracted_uv = uv_try;
+                        depth_shown  = depth_try;
+                        break;
+                    }
+                    scale *= 0.5f;
+                }
+
+                // chromatic aberration along the refraction delta
+                float2 delta = refracted_uv - uv;
+                refraction.r = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f + chromatic_aberration), 0.0f).r;
+                refraction.g = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).g;
+                refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - chromatic_aberration), 0.0f).b;
+
+                // the body color is an albedo, light it with the downwelling sun and the reflected sky, a constant radiance glows at night and reads black at noon
+                float3 downwelling   = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI) + tex[thread_id.xy].rgb;
+                float3 body_radiance = ocean_scatter_albedo * downwelling;
+
+                // absorption follows the water column of the sample actually shown so brightness stays consistent with the offset chosen above
+                float water_depth = max(depth_shown - depth_transparent, 0.0f);
+                refraction        = apply_water_absorption(refraction, water_depth, body_radiance);
             }
             else
             {
