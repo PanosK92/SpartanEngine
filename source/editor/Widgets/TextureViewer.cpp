@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureViewer.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "Rendering/Material.h"
+#include "Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES =========
@@ -748,6 +749,43 @@ namespace
         return content + style.WindowPadding.x * 2.0f + style.ScrollbarSize + 4.0f;
     }
 
+    void draw_debug_writer()
+    {
+        // controls which pass writes the debug_output render target, only one writer runs at a time
+        static const std::vector<std::string> debug_texture_modes =
+        {
+            "Off",
+            "Meshlets: color by meshlet id",
+            "Meshlets: wireframe by meshlet id",
+            "Meshlets: color by post-cull draw id",
+            "Meshlets: wireframe by post-cull draw id",
+            "Clusters: lights per cluster (heatmap)",
+            "Clusters: z slice"
+        };
+
+        uint32_t meshlet_mode = spartan::cvar_meshlet_visualize.GetValueAs<uint32_t>();
+        uint32_t cluster_mode = spartan::cvar_cluster_visualize.GetValueAs<uint32_t>();
+        uint32_t combined_mode =
+            meshlet_mode > 0 ? meshlet_mode :
+            cluster_mode > 0 ? (4u + cluster_mode) :
+            0u;
+
+        ImGui::TextDisabled("Writer");
+        ImGuiSp::tooltip("Picks which pass writes this texture, only one is active at a time");
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        if (ImGuiSp::combo_box("##debug_writer", debug_texture_modes, &combined_mode))
+        {
+            uint32_t new_meshlet = (combined_mode >= 1u && combined_mode <= 4u) ? combined_mode      : 0u;
+            uint32_t new_cluster = (combined_mode >= 5u && combined_mode <= 6u) ? combined_mode - 4u : 0u;
+            spartan::ConsoleRegistry::Get().SetValueFromString("r.meshlet_visualize", std::to_string(static_cast<float>(new_meshlet)));
+            spartan::ConsoleRegistry::Get().SetValueFromString("r.cluster_visualize", std::to_string(static_cast<float>(new_cluster)));
+        }
+
+        // cluster overflow telemetry, surfaces the gpu side overflow counter so bad worlds are visible
+        uint32_t overflow = spartan::Renderer::GetClusterOverflowCount();
+        ImGui::TextDisabled("Cluster overflow: %u", overflow);
+    }
+
     void draw_inspector_panel(float width, float height)
     {
         ImGui::BeginChild("##inspector_panel", ImVec2(width, height), true);
@@ -872,6 +910,15 @@ namespace
             ImGuiSp::tooltip("Take the absolute value before display");
             ImGui::Checkbox("Point sampling",     &s.point_sampling);
             ImGuiSp::tooltip("Use nearest neighbour sampling, useful when zoomed in");
+        }
+
+        // debug writer control lives here since it drives what this specific render target shows
+        if (tex == spartan::Renderer::GetRenderTarget(spartan::Renderer_RenderTarget::debug_output))
+        {
+            if (ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                draw_debug_writer();
+            }
         }
 
         ImGui::EndChild();
