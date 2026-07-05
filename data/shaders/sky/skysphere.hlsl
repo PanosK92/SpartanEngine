@@ -347,10 +347,10 @@ float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
     float limb = 0.3 + 0.93 * mu - 0.23 * mu * mu;
     
     // sun disc tinted by the calibrated sun chromaticity so the disc warmth matches the
-    // direct lighting and the sky scatter, the 1000x scale brings the disc into the visible
-    // hdr range before the global panorama clamp, the disc's solar radiance is many orders
-    // of magnitude higher than the surrounding sky and this is the conventional engine scale
-    return get_sun_radiance() * transmittance * sun_edge * limb * 1000.0;
+    // direct lighting and the sky scatter, radiance is irradiance over the disc solid angle,
+    // the physically correct value which the panorama chroma clamp then compresses for storage
+    const float sun_solid_angle = PI2 * (1.0 - cos(sun_angular_radius));
+    return get_sun_radiance() * transmittance * sun_edge * limb / sun_solid_angle;
 }
 
 // =====================================================================

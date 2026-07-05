@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<Material>
+	<gltf>0</gltf>
+	<world_space_height>0</world_space_height>
+	<world_space_width>1</world_space_width>
+	<world_space_uv>0</world_space_uv>
+	<tessellation>0</tessellation>
+	<color_r>1</color_r>
+	<color_g>1</color_g>
+	<color_b>1</color_b>
+	<color_a>1</color_a>
+	<roughness>1</roughness>
+	<metalness>0</metalness>
+	<normal>0</normal>
+	<height>0</height>
+	<clearcoat>0</clearcoat>
+	<clearcoat_roughness>0</clearcoat_roughness>
+	<anisotropic>0</anisotropic>
+	<anisotropic_rotation>0</anisotropic_rotation>
+	<sheen>0</sheen>
+	<subsurface_scattering>0</subsurface_scattering>
+	<flake_strength>0</flake_strength>
+	<flake_scale>120</flake_scale>
+	<pearl_strength>0</pearl_strength>
+	<pearl_color_r>1</pearl_color_r>
+	<pearl_color_g>1</pearl_color_g>
+	<pearl_color_b>1</pearl_color_b>
+	<coat_tint_r>1</coat_tint_r>
+	<coat_tint_g>1</coat_tint_g>
+	<coat_tint_b>1</coat_tint_b>
+	<coat_tint_strength>0</coat_tint_strength>
+	<ior>1.51999998</ior>
+	<paint_preset>0</paint_preset>
+	<surface_preset>0</surface_preset>
+	<normal_from_albedo>0</normal_from_albedo>
+	<emissive_from_albedo>1</emissive_from_albedo>
+	<texture_tiling_x>1</texture_tiling_x>
+	<texture_tiling_y>1</texture_tiling_y>
+	<texture_offset_x>0</texture_offset_x>
+	<texture_offset_y>0</texture_offset_y>
+	<texture_invert_x>0</texture_invert_x>
+	<texture_invert_y>0</texture_invert_y>
+	<texture_rotation>0</texture_rotation>
+	<texture_slope_based>0</texture_slope_based>
+	<is_grass_blade>0</is_grass_blade>
+	<is_flower>0</is_flower>
+	<wind_animation>0</wind_animation>
+	<color_variation_from_instance>0</color_variation_from_instance>
+	<vertex_animate_water>0</vertex_animate_water>
+	<cull_mode>0</cull_mode>
+	<textures count="36">
+		<texture_0 texture_type="0" texture_slot="0" texture_name="" texture_path="" />
+		<texture_1 texture_type="0" texture_slot="1" texture_name="" texture_path="" />
+		<texture_2 texture_type="0" texture_slot="2" texture_name="" texture_path="" />
+		<texture_3 texture_type="0" texture_slot="3" texture_name="" texture_path="" />
+		<texture_4 texture_type="1" texture_slot="0" texture_name="" texture_path="" />
+		<texture_5 texture_type="1" texture_slot="1" texture_name="" texture_path="" />
+		<texture_6 texture_type="1" texture_slot="2" texture_name="" texture_path="" />
+		<texture_7 texture_type="1" texture_slot="3" texture_name="" texture_path="" />
+		<texture_8 texture_type="2" texture_slot="0" texture_name="" texture_path="" />
+		<texture_9 texture_type="2" texture_slot="1" texture_name="" texture_path="" />
+		<texture_10 texture_type="2" texture_slot="2" texture_name="" texture_path="" />
+		<texture_11 texture_type="2" texture_slot="3" texture_name="" texture_path="" />
+		<texture_12 texture_type="3" texture_slot="0" texture_name="" texture_path="" />
+		<texture_13 texture_type="3" texture_slot="1" texture_name="" texture_path="" />
+		<texture_14 texture_type="3" texture_slot="2" texture_name="" texture_path="" />
+		<texture_15 texture_type="3" texture_slot="3" texture_name="" texture_path="" />
+		<texture_16 texture_type="4" texture_slot="0" texture_name="" texture_path="" />
+		<texture_17 texture_type="4" texture_slot="1" texture_name="" texture_path="" />
+		<texture_18 texture_type="4" texture_slot="2" texture_name="" texture_path="" />
+		<texture_19 texture_type="4" texture_slot="3" texture_name="" texture_path="" />
+		<texture_20 texture_type="5" texture_slot="0" texture_name="" texture_path="" />
+		<texture_21 texture_type="5" texture_slot="1" texture_name="" texture_path="" />
+		<texture_22 texture_type="5" texture_slot="2" texture_name="" texture_path="" />
+		<texture_23 texture_type="5" texture_slot="3" texture_name="" texture_path="" />
+		<texture_24 texture_type="6" texture_slot="0" texture_name="" texture_path="" />
+		<texture_25 texture_type="6" texture_slot="1" texture_name="" texture_path="" />
+		<texture_26 texture_type="6" texture_slot="2" texture_name="" texture_path="" />
+		<texture_27 texture_type="6" texture_slot="3" texture_name="" texture_path="" />
+		<texture_28 texture_type="7" texture_slot="0" texture_name="" texture_path="" />
+		<texture_29 texture_type="7" texture_slot="1" texture_name="" texture_path="" />
+		<texture_30 texture_type="7" texture_slot="2" texture_name="" texture_path="" />
+		<texture_31 texture_type="7" texture_slot="3" texture_name="" texture_path="" />
+	</textures>
+</Material>

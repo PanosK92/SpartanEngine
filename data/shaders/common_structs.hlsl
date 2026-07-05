@@ -200,10 +200,14 @@ struct Light
 
     float compute_attenuation_range(const float distance_to_light)
     {
-        if (far <= 0.0f || distance_to_light >= far)
+        if (far <= 0.0f)
             return 0.0f;
 
-        return 1.0f;
+        // smooth window so lights fade out instead of popping at the range boundary
+        float ratio  = distance_to_light / far;
+        float ratio2 = ratio * ratio;
+        float window = saturate(1.0f - ratio2 * ratio2);
+        return window * window;
     }
 
     float compute_attenuation_inverse_square(const float distance_to_light)
@@ -308,7 +312,10 @@ struct Light
         float emission_cos  = saturate(dot(forward, direction_ws));
         float emitter_area  = max(area_width * area_height, 0.0001f);
 
-        return compute_attenuation_inverse_square(d) * compute_attenuation_range(d) * emission_cos * emitter_area;
+        // intensity holds radiance, irradiance from a lambertian emitter cannot exceed pi * radiance
+        // (emitter filling the whole hemisphere), so cap the near field where a * cos / d^2 diverges
+        float attenuation = compute_attenuation_inverse_square(d) * compute_attenuation_range(d) * emission_cos * emitter_area;
+        return min(attenuation, PI);
     }
 
     float compute_attenuation(const float3 surface_position)
@@ -361,6 +368,7 @@ struct Light
                 float emitter_area = max(area_width * area_height, 0.0001f);
                 float3 to_vol = dist_to_vol > 0.0001f ? (vol_position - position) / dist_to_vol : forward;
                 atten *= saturate(dot(forward, to_vol)) * emitter_area;
+                atten  = min(atten, PI);
             }
         }
 

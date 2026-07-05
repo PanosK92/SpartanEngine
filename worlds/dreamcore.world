@@ -4,14 +4,14 @@
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="-0.490087 3.04642 -1.32933" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="2001000000000000001" active="true" position="2.27225 3.2679 0.869284" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="0.013371 -0.911963 0.0298147 0.408969" scale="1 1 1">
+   <Entity name="component_camera" id="2001000000000000002" active="true" position="0 0.77 0" rotation="0.00713423 -0.907252 0.0154005 0.420244" scale="1 1 1">
     <camera aperture="11" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
   </Entity>
-  <Entity name="ocean_sound" id="2001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+  <Entity name="ambient_music" id="2001000000000000007" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <audio_source path="project/music/leberch-meditative-ambient-509385.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
   <Entity name="platform" id="13024411762166032026" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="top" id="13832318846437840492" active="true" position="0 0 0" rotation="0 0 0 1" scale="10 1 10">
@@ -45,10 +45,10 @@
     </render>
    </Entity>
   </Entity>
-  <Entity name="ambient_music" id="2001000000000000007" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/leberch-meditative-ambient-509385.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.5" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+  <Entity name="ocean_sound" id="2001000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <audio_source path="project/music/ocean.mp3" is_3d="false" mute="false" loop="true" play_on_start="true" volume="0.649999976" pitch="1" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
   </Entity>
-  <Entity name="ocean" id="2001000000000000006" active="true" position="-0.5 0 -1.5" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="ocean" id="2001000000000000006" active="true" position="2 0 0.5" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="ocean" sub_mesh_index="0" material_name="water_fft" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </render>
@@ -57,8 +57,8 @@
    </water>
   </Entity>
   <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.277816 0.364972 -0.115075 0.88112" scale="1 1 1">
-   <light flags="7" light_type="0" color_r="1" color_g="0.894166708" color_b="0.807570279" temperature="5000" intensity="8" intensity_photometric="80000" range="3.40282347e+38" angle="0.52359879" index="0" preset="1" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <script file_path="../worlds/sun.lua" Initialize="" rot_roll="0" preset="day" rot_yaw="45" volumetric="true" rot_pitch="35" override_rotation="true" />
+   <light flags="7" light_type="0" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="80000" range="3.40282347e+38" angle="0.52359879" index="0" preset="1" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <script file_path="../worlds/sun.lua" override_rotation="true" preset="day" rot_yaw="45" rot_roll="0" volumetric="true" rot_pitch="35" Initialize="" />
   </Entity>
  </Entities>
 </World>

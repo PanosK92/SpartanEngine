@@ -313,8 +313,9 @@ float3 agx(float3 color)
         { -0.0774967775043101, -0.1468813165635330, 1.2244001486462500 }
     };
 
-    const float min_ev = -10.0f;
-    const float max_ev = 6.5f;
+    // canonical agx log2 encoding range, places mid gray 0.18 at the reference position
+    const float min_ev = -12.47393f;
+    const float max_ev = 4.026069f;
 
     color = mul(agx_mat_inset, color);
     color = max(color, 1e-10f); // prevent log(0)
@@ -384,14 +385,6 @@ float3 linear_rec2020_to_hdr10(float3 color)
 float3 linear_rec709_to_hdr10(float3 color)
 {
     return linear_rec2020_to_hdr10(gt7_to_rec2020(color));
-}
-
-float3 linear_to_sdr_srgb(float3 color)
-{
-    float3 srgb_low  = color * 12.92;
-    float3 srgb_high = 1.055 * pow(color, 1.0 / 2.2) - 0.055;
-    float3 is_high   = step(0.00313066844250063, color);
-    return lerp(srgb_low, srgb_high, is_high);
 }
 
 // ==============================================================================================
@@ -472,7 +465,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     else
     {
         // sdr gamma correction (linear -> srgb)
-        color.rgb = force_sdr ? linear_to_sdr_srgb(color.rgb) : linear_to_srgb(color.rgb);
+        color.rgb = linear_to_srgb(color.rgb);
     }
 
     color.a = 1.0f;

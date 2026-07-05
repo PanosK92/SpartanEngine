@@ -57,6 +57,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
 - A small receipt after each meaningful engine action helps the editor assistant UI stay understandable.
+- To make a surface emissive white, create a material with material_create (defaults to white albedo), set emissive_from_albedo to 1 with material_set_property, then assign it via component_set property material on the render component; the albedo color drives the emissive color.
 
 ## Corrections
 - Add corrections here when a previous note turns out to be wrong or incomplete.

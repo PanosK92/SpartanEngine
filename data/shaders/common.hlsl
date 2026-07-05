@@ -488,7 +488,8 @@ float2 direction_sphere_uv(float3 direction)
 /*------------------------------------------------------------------------------
     LUMINANCE
 ------------------------------------------------------------------------------*/
-static const float3 srgb_color_space_coefficient = float3(0.299f, 0.587f, 0.114f);
+// rec.709 luminance weights, correct for the engine's linear srgb working space
+static const float3 srgb_color_space_coefficient = float3(0.2126f, 0.7152f, 0.0722f);
 
 float luminance(float3 color)
 {

@@ -144,10 +144,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         light_diffuse        = tex3.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
         light_specular       = tex4.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
-        // hdr boost so emission crosses the bloom threshold, albedo emission needs a stronger boost
+        // emissive is authored as a 0-1 scalar, calibrate it in physical luminance, 1.0 maps to
+        // the nits below and converts to the radiometric scene units like every other light source
         bool        is_emissive_from_albedo = (surface.flags & uint(1U << 15)) != 0;
-        const float emission_strength       = is_emissive_from_albedo ? 250.0f : 25.0f;
-        light_emissive       = surface.emissive * surface.albedo * emission_strength;
+        const float emissive_nits           = is_emissive_from_albedo ? 100000.0f : 10000.0f;
+        light_emissive       = surface.emissive * surface.albedo * photometric_to_radiometric(emissive_nits);
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
 

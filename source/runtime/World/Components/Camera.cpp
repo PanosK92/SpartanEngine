@@ -143,29 +143,37 @@ namespace spartan
     {
         m_preset = preset;
 
+        // apertures included so each preset lands on its real world ev100,
+        // daylight ~15, overcast ~12, golden hour ~10, interior ~6, night ~2, cinematic ~7
         switch (preset)
         {
         case CameraPreset::daylight:
+            m_aperture           = 11.0f;
             m_shutter_speed      = 1.0f / 250.0f;
             m_iso                = 100.0f;
             break;
         case CameraPreset::overcast:
+            m_aperture           = 8.0f;
             m_shutter_speed      = 1.0f / 125.0f;
             m_iso                = 200.0f;
             break;
         case CameraPreset::golden_hour:
+            m_aperture           = 5.6f;
             m_shutter_speed      = 1.0f / 125.0f;
             m_iso                = 400.0f;
             break;
         case CameraPreset::interior:
+            m_aperture           = 2.8f;
             m_shutter_speed      = 1.0f / 60.0f;
             m_iso                = 800.0f;
             break;
         case CameraPreset::night:
+            m_aperture           = 1.4f;
             m_shutter_speed      = 1.0f / 30.0f;
             m_iso                = 1600.0f;
             break;
         case CameraPreset::cinematic:
+            m_aperture           = 2.8f;
             m_shutter_speed      = 1.0f / 48.0f;
             m_iso                = 400.0f;
             break;

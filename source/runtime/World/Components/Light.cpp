@@ -70,7 +70,8 @@ namespace spartan
             }
             else if (type == LightType::Area)
             {
-                const float denominator = 2.0f * pi * illuminance_cutoff_lux;
+                // on axis illuminance of a lambertian emitter falls off as flux / (pi * d^2)
+                const float denominator = pi * illuminance_cutoff_lux;
                 return max(min_range, sqrt(max(photometric_intensity, 0.0f) / denominator));
             }
 

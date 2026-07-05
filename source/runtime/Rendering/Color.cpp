@@ -80,6 +80,24 @@ namespace spartan
         r = clamp(r / 255.0f, 0.0f, 1.0f);
         g = clamp(g / 255.0f, 0.0f, 1.0f);
         b = clamp(b / 255.0f, 0.0f, 1.0f);
+
+        // the helland fit outputs srgb encoded values, convert to linear light
+        auto srgb_to_linear = [](const float c)
+        {
+            return c <= 0.04045f ? c / 12.92f : pow((c + 0.055f) / 1.055f, 2.4f);
+        };
+        r = srgb_to_linear(r);
+        g = srgb_to_linear(g);
+        b = srgb_to_linear(b);
+
+        // normalize to unit luminance so the authored lux/lumens are delivered exactly
+        const float lum = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+        if (lum > 0.0f)
+        {
+            r /= lum;
+            g /= lum;
+            b /= lum;
+        }
     }
 
     Color::Color(const float r, const float g, const float b, const float a /*= 1.0f*/)

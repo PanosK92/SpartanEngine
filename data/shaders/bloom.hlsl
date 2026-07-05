@@ -79,11 +79,13 @@ float3 downsample_stable(Texture2D<float4> src, float2 uv, float2 texel_size)
 
 float3 threshold(float3 color)
 {
-    // config: threshold in watts
-    const float THRESHOLD = 0.366f; 
+    // threshold in display referred space, 1.0 is display white after exposure,
+    // so bloom always starts the same number of stops above white regardless of scene brightness
+    const float THRESHOLD = 1.0f;
     const float KNEE      = THRESHOLD * 0.5f;
 
-    float brightness = get_luminance(color);
+    // manual camera exposure is used as the reference, matching the light contribution cull
+    float brightness = get_luminance(radiometric_to_photometric(color)) * buffer_frame.camera_exposure;
 
     // soft knee curve
     float soft = brightness - THRESHOLD + KNEE;

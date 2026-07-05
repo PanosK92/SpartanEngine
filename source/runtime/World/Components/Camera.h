@@ -116,7 +116,12 @@ namespace spartan
         float GetAperture() const { return m_aperture; }
         void SetAperture(const float aperture)
         {
-            m_aperture = std::max(aperture, 0.01f);
+            const float aperture_new = std::max(aperture, 0.01f);
+            if (m_aperture != aperture_new)
+            {
+                m_preset = CameraPreset::custom;
+            }
+            m_aperture = aperture_new;
         }
 
         // shutter speed

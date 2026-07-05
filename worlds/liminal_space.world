@@ -4,13 +4,19 @@
   <Variable name="r.restir_pt" value="1.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="96622692557092671" active="true" position="8.41707 2.99584 -0.532601" rotation="0 0 0 1" scale="1 1 1">
-   <audio_source path="project/music/footsteps_carpet.wav" is_3d="false" mute="false" loop="false" play_on_start="false" volume="0.5" pitch="1.00473332" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
+  <Entity name="physics_body_camera" id="96622692557092671" active="true" position="-40.3457 6.70206 57.4194" rotation="0 0 0 1" scale="1 1 1">
+   <audio_source path="project/music/footsteps_carpet.wav" is_3d="false" mute="false" loop="false" play_on_start="false" volume="0.5" pitch="1.16626024" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <Entity name="component_camera" id="96799266697307222" active="true" position="0 0.77 0" rotation="-0.186493 -0.686195 -0.188959 0.677238" scale="1 1 1">
-    <camera aperture="11" shutter_speed="0.0166666675" iso="800" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="4" flags="49" />
+   <Entity name="component_camera" id="96799266697307222" active="true" position="0 0.77 0" rotation="0.00738476 -0.963831 -0.0268561 -0.265056" scale="1 1 1">
+    <camera aperture="11" shutter_speed="0.0166666675" iso="800" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="4" flags="17" />
     <script file_path="../worlds/footsteps.lua" Tick="" />
    </Entity>
+  </Entity>
+  <Entity name="Cylinder" id="11499718562595756533" active="true" position="6.8 6.2 -9.4" rotation="0 0 0 1" scale="1 12.32 1">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+   <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
   </Entity>
   <Entity name="light_directional" id="312454911112735887" active="true" position="0 2.01 0.08" rotation="-0.93468 -0.0931935 -0.340548 -0.0414238" scale="1 -6.67 -42.99">
    <light flags="3" light_type="0" color_r="1" color_g="0.72007829" color_b="0.482821107" temperature="3200" intensity="8" intensity_photometric="0" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
@@ -95,26 +101,47 @@
     </render>
    </Entity>
   </Entity>
-  <Entity name="Area" id="15433749284114940480" active="true" position="0 9.1 0" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="0" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="244020" range="82.8000031" angle="0.52359879" index="1" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   <Entity name="Quad" id="8912128754646494019" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
-  <Entity name="Cylinder" id="11499718562595756533" active="true" position="6.8 6.2 -9.4" rotation="0 0 0 1" scale="1 12.32 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
   <Entity name="Cylinder_1" id="3020511838369535700" active="true" position="-29.6 6.2 0" rotation="0 0 0 1" scale="1 12.32 1">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </render>
+  </Entity>
+  <Entity name="Area" id="15433749284114940480" active="true" position="0 9.1 0" rotation="0.707282 0 0 0.706931" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="244020" range="82.8000031" angle="0.52359879" index="1" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <Entity name="Quad" id="8912128754646494019" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+  </Entity>
+  <Entity name="Area_1" id="4344178989790944211" active="true" position="19.1 9.1 48.1" rotation="0.707282 0 0 0.706931" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="2" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <Entity name="Quad" id="4344273018838813361" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+  </Entity>
+  <Entity name="Area_1_1" id="2540919726110367087" active="true" position="19.1 9.1 0" rotation="0.707282 0 0 0.706931" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="3" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <Entity name="Quad" id="2540684954478654846" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+  </Entity>
+  <Entity name="Area_1_2" id="13774301228040694663" active="true" position="-44.9 9.1 48.1" rotation="0.707282 0 0 0.706931" scale="1 1 1">
+   <light flags="0" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="4" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <Entity name="Quad" id="13774430438290159076" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
   </Entity>
  </Entities>
 </World>
