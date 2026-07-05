@@ -699,11 +699,9 @@ namespace spartan
                 m_pass_state.grass_args_baked = true;
             }
 
-            // clear the per-lod atomic counters, one uint per lod, populate compute will bump them
+            // clear the per lod counters on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops its grass for a frame
             uint32_t zero_counts[renderer_max_grass_lod_count] = { 0u, 0u, 0u };
-            buf_count->ResetOffset();
-            buf_count->Update(cmd_list, &zero_counts[0], static_cast<uint32_t>(sizeof(zero_counts)));
-            cmd_list->InsertBarrier(buf_count);
+            cmd_list->UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0]);
 
             // camera position used as the anchor for the ring grid, the populate shader snaps it to the cell grid
             Camera* camera = World::GetCamera();

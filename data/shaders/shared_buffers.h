@@ -229,6 +229,7 @@ struct MaterialParameters
     bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
     bool has_texture_metalness() { return (flags & (1 << 4))  != 0; }
     bool has_texture_emissive()  { return (flags & (1 << 6))  != 0; }
+    bool is_terrain()            { return (flags & (1 << 8))  != 0; }
     bool emissive_from_albedo()  { return (flags & (1 << 15)) != 0; }
     bool is_alpha_tested()       { return (flags & (1 << 16)) != 0; }
     bool is_albedo_srgb()        { return (flags & (1 << 17)) != 0; }

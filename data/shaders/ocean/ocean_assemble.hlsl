@@ -54,8 +54,12 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float3 displacement            = float3(dx * chop, height, dz * chop) * disp_scale;
     tex_ocean_displacement_uav[id] = float4(displacement, 0.0);
 
-    // mirror the vertical displacement into a host visible buffer, the cpu samples it for buoyancy
-    ocean_heights[cascade * OCEAN_N * OCEAN_N + id.y * OCEAN_N + id.x] = displacement.y;
+    // mirror the vertical displacement into a host visible buffer at quarter resolution, the cpu samples it for buoyancy
+    if ((id.x & 3u) == 0u && (id.y & 3u) == 0u)
+    {
+        const uint hn = OCEAN_N / 4u;
+        ocean_heights[cascade * hn * hn + (id.y >> 2u) * hn + (id.x >> 2u)] = displacement.y;
+    }
 
     // analytic surface slope carried through the ifft, full spectral detail unlike a finite difference of the height
     float slope_x = b.z * s;

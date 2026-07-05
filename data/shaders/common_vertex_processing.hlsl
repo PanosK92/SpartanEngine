@@ -549,6 +549,12 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float4 position_local    = float4(input.position, 1.0f);
     float3 position          = mul(position_local, transform).xyz;
     float3 position_previous = mul(position_local, transform_previous).xyz;
+
+    // terrain maps planar world xz with tiling as repeats per meter, the half precision vertex uv quantizes under heavy tiling and collapses into stripes of repeated texels
+    if (surface.is_terrain())
+    {
+        vertex.uv_misc.xy = position.xz * uv_tiling;
+    }
     
     // transform normal and tangent to world space (extract 3x3 rotation/scale matrix)
     vertex.normal  = normalize(mul(input_normal,  (float3x3)transform));

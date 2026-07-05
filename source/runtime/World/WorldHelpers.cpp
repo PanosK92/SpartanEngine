@@ -239,8 +239,9 @@ namespace spartan
                 shared_ptr<Material> material = terrain->GetMaterial();
                 material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
                 material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                material->SetProperty(MaterialProperty::TextureTilingX, 2000.0f);
-                material->SetProperty(MaterialProperty::TextureTilingY, 2000.0f);
+                // terrain tiling is texture repeats per meter, the shader maps planar world xz
+                material->SetProperty(MaterialProperty::TextureTilingX, 0.33f);
+                material->SetProperty(MaterialProperty::TextureTilingY, 0.33f);
 
                 material->SetTexture(MaterialTextureType::Color,     "project/materials/whispy_grass_meadow/albedo.png",    0);
                 material->SetTexture(MaterialTextureType::Normal,    "project/materials/whispy_grass_meadow/normal.png",    0);

@@ -227,12 +227,12 @@ namespace spartan
             rhi_max_array_size, nullptr, true, "volumetric_light_indices"
         );
 
-        // fft ocean vertical displacement per cascade texel, written by the assemble pass
+        // fft ocean vertical displacement per cascade, quarter resolution, written by the assemble pass
         // host visible so the cpu can sample wave height for buoyancy without a fence stall,
         // like cluster_stats the value may lag a frame on discrete gpus which is fine for physics
         at(buffers, Renderer_Buffer::OceanHeights) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(float)),
-            renderer_ocean_resolution * renderer_ocean_resolution * renderer_ocean_max_cascades, nullptr, true, "ocean_heights"
+            renderer_ocean_heights_resolution * renderer_ocean_heights_resolution * renderer_ocean_max_cascades, nullptr, true, "ocean_heights"
         );
         // zero so cpu samples taken before the first gpu write read a flat sea instead of garbage
         memset(at(buffers, Renderer_Buffer::OceanHeights)->GetMappedData(), 0, at(buffers, Renderer_Buffer::OceanHeights)->GetObjectSize());

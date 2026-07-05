@@ -1326,7 +1326,12 @@ void inline_pull_hit_data(
     float3   tangent_world    = normalize(mul(tangent_object, obj_to_world_3x3));
 
     float3 hit_position = ray_origin + ray_dir * hit_t;
-    if (geo.uv_world_space > 0.0f)
+    if (mat.is_terrain())
+    {
+        // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
+        texcoord = hit_position.xz;
+    }
+    else if (geo.uv_world_space > 0.0f)
     {
         texcoord = compute_world_space_uv(hit_position, normal_world);
     }

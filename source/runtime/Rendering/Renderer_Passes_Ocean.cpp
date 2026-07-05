@@ -37,6 +37,15 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        // gpu mapped memory is write combined and uncached, scattered reads from it stall for the
+        // full memory latency each time, buoyancy samples per body per 200hz substep so it must
+        // read a cached ram copy, refreshed with one bulk memcpy per rendered frame
+        vector<float> ocean_heights_cache;
+        uint64_t ocean_heights_cache_frame = numeric_limits<uint64_t>::max();
+    }
+
     void Renderer::Pass_Ocean(RHI_CommandList* cmd_list)
     {
         RHI_Texture* tex_displacement = GetRenderTarget(Renderer_RenderTarget::ocean_displacement);
@@ -193,16 +202,24 @@ namespace spartan
 
     bool Renderer::GetOceanHeight(const float x, const float z, float& height)
     {
-        const Water* water   = m_pass_state.ocean;
-        RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::OceanHeights);
-        const float* heights = buffer ? static_cast<const float*>(buffer->GetMappedData()) : nullptr;
-        if (!water || !heights)
+        const Water* water = m_pass_state.ocean;
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::OceanHeights);
+        if (!water || !buffer || !buffer->GetMappedData())
         {
             return false;
         }
 
+        // refresh the cached ram copy once per rendered frame, see comment at the top of the file
+        const int n = static_cast<int>(renderer_ocean_heights_resolution);
+        if (ocean_heights_cache_frame != m_frame_num)
+        {
+            ocean_heights_cache.resize(static_cast<size_t>(n) * n * renderer_ocean_max_cascades);
+            memcpy(ocean_heights_cache.data(), buffer->GetMappedData(), ocean_heights_cache.size() * sizeof(float));
+            ocean_heights_cache_frame = m_frame_num;
+        }
+        const float* heights = ocean_heights_cache.data();
+
         // mirror the gpu sampler, uv = world_xz / cascade_length with wrap addressing and bilinear filtering
-        const int n          = static_cast<int>(renderer_ocean_resolution);
         const float* lengths = water->GetCascadeLengths();
         uint32_t cascades    = water->GetCascadeCount();
         cascades             = cascades > renderer_ocean_max_cascades ? renderer_ocean_max_cascades : cascades;

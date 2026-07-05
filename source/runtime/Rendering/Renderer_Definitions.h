@@ -80,8 +80,9 @@ namespace spartan
     }
 
     // fft ocean, square spectrum resolution and the max number of cascades packed as array slices
-    const uint32_t renderer_ocean_resolution   = 512;
-    const uint32_t renderer_ocean_max_cascades = 4;
+    const uint32_t renderer_ocean_resolution         = 512;
+    const uint32_t renderer_ocean_max_cascades       = 4;
+    const uint32_t renderer_ocean_heights_resolution = renderer_ocean_resolution / 4; // cpu readback for buoyancy, coarser than the render cascades
 
     // render target dimensions, fixed allocations sized for current quality budgets
     const uint32_t renderer_resolution_shadow_atlas = 8192; // total shadow atlas, packed by row of square slices

@@ -841,16 +841,17 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
 
     // full uv state is per-renderable, fetched from geometry_infos[InstanceIndex()]
-    if (geo.uv_world_space > 0.0f)
+    float3 hit_position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    if (mat.is_terrain())
     {
-        float3 hit_position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-        texcoord            = compute_world_space_uv(hit_position, normal_world);
-        texcoord            = texcoord * geo.uv_tiling + geo.uv_offset;
+        // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
+        texcoord = hit_position.xz;
     }
-    else
+    else if (geo.uv_world_space > 0.0f)
     {
-        texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
+        texcoord = compute_world_space_uv(hit_position, normal_world);
     }
+    texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
 
     if (geo.uv_rotation != 0.0f)
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
@@ -942,8 +943,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     {
         emission += albedo;
     }
-
-    float3 hit_position = WorldRayOrigin() + WorldRayDirection() * dist;
 
     payload.hit_position     = hit_position;
     payload.hit_normal       = normal_world;

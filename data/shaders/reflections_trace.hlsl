@@ -200,7 +200,12 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     
     // world space uv, full uv state is per renderable from geometry_infos[InstanceIndex()]
     float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    if (geo.uv_world_space > 0.0f)
+    if (mat.is_terrain())
+    {
+        // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
+        texcoord = hit_pos.xz * geo.uv_tiling + geo.uv_offset;
+    }
+    else if (geo.uv_world_space > 0.0f)
     {
         float2 uv_world = compute_world_space_uv(hit_pos, normal_world);
         uv_world        = uv_world * geo.uv_tiling + geo.uv_offset;
