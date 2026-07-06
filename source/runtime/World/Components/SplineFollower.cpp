@@ -70,26 +70,8 @@ namespace spartan
             return;
         }
 
-        // resolve the spline entity pointer if needed
-        if (!m_spline_entity)
-        {
-            ResolveSplineEntity();
-            if (!m_spline_entity)
-            {
-                return;
-            }
-        }
-
-        // grab the spline component from the referenced entity
-        Spline* spline = m_spline_entity->GetComponent<Spline>();
-        if (!spline || spline->GetControlPointCount() < 2)
-        {
-            return;
-        }
-
-        // compute arc length so speed is in world units per second
-        float spline_length = spline->GetLength();
-        if (spline_length <= 0.0f)
+        Spline* spline = GetValidSpline();
+        if (!spline)
         {
             return;
         }
@@ -97,7 +79,7 @@ namespace spartan
         float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
 
         // advance progress
-        m_progress += (m_speed * delta_time * m_direction) / spline_length;
+        m_progress += (m_speed * delta_time * m_direction) / spline->GetLength();
 
         // apply follow mode
         switch (m_follow_mode)
@@ -130,6 +112,24 @@ namespace spartan
             break;
         }
 
+        ApplyProgress(spline);
+    }
+
+    void SplineFollower::SetTime(float seconds)
+    {
+        Spline* spline = GetValidSpline();
+        if (!spline)
+        {
+            return;
+        }
+
+        // deterministic mapping so scrubbing backwards works too
+        m_progress = max(0.0f, min((m_speed * seconds) / spline->GetLength(), 1.0f));
+        ApplyProgress(spline);
+    }
+
+    void SplineFollower::ApplyProgress(Spline* spline)
+    {
         // set position along the spline
         Vector3 position = spline->GetPoint(m_progress);
         GetEntity()->SetPosition(position);
@@ -144,6 +144,34 @@ namespace spartan
                 GetEntity()->SetRotation(Quaternion::FromLookRotation(tangent, Vector3::Up));
             }
         }
+    }
+
+    Spline* SplineFollower::GetValidSpline()
+    {
+        // resolve the spline entity pointer if needed
+        if (!m_spline_entity)
+        {
+            ResolveSplineEntity();
+            if (!m_spline_entity)
+            {
+                return nullptr;
+            }
+        }
+
+        // grab the spline component from the referenced entity
+        Spline* spline = m_spline_entity->GetComponent<Spline>();
+        if (!spline || spline->GetControlPointCount() < 2)
+        {
+            return nullptr;
+        }
+
+        // arc length is needed to convert speed to normalized progress
+        if (spline->GetLength() <= 0.0f)
+        {
+            return nullptr;
+        }
+
+        return spline;
     }
 
     void SplineFollower::Save(pugi::xml_node& node)

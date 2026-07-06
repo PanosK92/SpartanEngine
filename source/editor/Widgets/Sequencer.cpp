@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/World.h"
 #include "World/Entity.h"
 #include "World/Components/Camera.h"
+#include "World/Components/SplineFollower.h"
 #include "MCP/McpCommands.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_Style.h"
@@ -54,10 +55,10 @@ namespace
         return buffer;
     }
 
-    string get_camera_name(uint64_t entity_id)
+    string get_entity_name(uint64_t entity_id)
     {
         Entity* entity = World::GetEntityById(entity_id);
-        return entity ? entity->GetObjectName() : "missing camera";
+        return entity ? entity->GetObjectName() : "missing";
     }
 
     // list every camera entity in the world as menu items, returns the clicked one
@@ -81,6 +82,28 @@ namespace
             ImGui::TextDisabled("no cameras in the world");
         }
         return clicked;
+    }
+
+    // list active root entities as lock targets, returns true when a choice was made
+    bool draw_target_menu_items(uint64_t& target_id)
+    {
+        bool changed = false;
+        if (ImGui::MenuItem("(none)", nullptr, target_id == 0))
+        {
+            target_id = 0;
+            changed   = true;
+        }
+        vector<Entity*> roots;
+        World::GetRootEntities(roots);
+        for (Entity* entity : roots)
+        {
+            if (entity->GetActive() && ImGui::MenuItem(entity->GetObjectName().c_str(), nullptr, target_id == entity->GetObjectId()))
+            {
+                target_id = entity->GetObjectId();
+                changed   = true;
+            }
+        }
+        return changed;
     }
 
     const char* mcp_command_names[] = { "sequencer_get", "sequencer_set", "sequencer_playback", "sequencer_event_add", "sequencer_event_update", "sequencer_event_remove" };
@@ -124,6 +147,26 @@ namespace
         for (Entity* entity : World::GetEntities())
         {
             if (entity->GetComponent<Camera>() && entity->GetObjectName() == value)
+            {
+                return entity;
+            }
+        }
+        return nullptr;
+    }
+
+    // accepts an entity id or an entity name, any entity qualifies as a lock target
+    Entity* resolve_entity(const string& value)
+    {
+        if (!value.empty() && value.find_first_not_of("0123456789") == string::npos)
+        {
+            if (Entity* entity = World::GetEntityById(strtoull(value.c_str(), nullptr, 10)))
+            {
+                return entity;
+            }
+        }
+        for (Entity* entity : World::GetEntities())
+        {
+            if (entity->GetObjectName() == value)
             {
                 return entity;
             }
@@ -233,6 +276,15 @@ void Sequencer::RegisterMcpCommands()
         CameraEvent event;
         event.time             = clamp(strtof(time->c_str(), nullptr), 0.0f, m_duration);
         event.camera_entity_id = entity->GetObjectId();
+        if (const string* target = get_arg(request, "target"))
+        {
+            Entity* target_entity = resolve_entity(*target);
+            if (!target_entity)
+            {
+                return mcp_error("no entity matches '" + *target + "'");
+            }
+            event.target_entity_id = target_entity->GetObjectId();
+        }
         m_events.push_back(event);
         sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
         m_selected = -1;
@@ -260,6 +312,22 @@ void Sequencer::RegisterMcpCommands()
                 return mcp_error("no camera entity matches '" + *camera + "'");
             }
             m_events[index].camera_entity_id = entity->GetObjectId();
+        }
+        if (const string* target = get_arg(request, "target"))
+        {
+            if (target->empty() || *target == "none")
+            {
+                m_events[index].target_entity_id = 0;
+            }
+            else
+            {
+                Entity* target_entity = resolve_entity(*target);
+                if (!target_entity)
+                {
+                    return mcp_error("no entity matches '" + *target + "'");
+                }
+                m_events[index].target_entity_id = target_entity->GetObjectId();
+            }
         }
         if (const string* time = get_arg(request, "time"))
         {
@@ -317,7 +385,9 @@ string Sequencer::GetMcpState() const
         json += "{\"index\":" + to_string(i);
         json += ",\"time\":" + to_string(m_events[i].time);
         json += ",\"camera_entity_id\":\"" + to_string(m_events[i].camera_entity_id) + "\"";
-        json += ",\"camera_name\":\"" + json_escape(get_camera_name(m_events[i].camera_entity_id)) + "\"}";
+        json += ",\"camera_name\":\"" + json_escape(get_entity_name(m_events[i].camera_entity_id)) + "\"";
+        json += ",\"target_entity_id\":\"" + to_string(m_events[i].target_entity_id) + "\"";
+        json += ",\"target_name\":\"" + (m_events[i].target_entity_id != 0 ? json_escape(get_entity_name(m_events[i].target_entity_id)) : "") + "\"}";
     }
     json += "]}";
     return json;
@@ -341,6 +411,31 @@ void Sequencer::OnTick()
     {
         int index = GetEventIndexAtTime(m_time);
         World::SetActiveCamera(index != -1 ? World::GetEntityById(m_events[index].camera_entity_id) : nullptr);
+
+        // the timeline drives every spline follower so the sequence stays deterministic when scrubbing
+        for (Entity* entity : World::GetEntities())
+        {
+            if (SplineFollower* follower = entity->GetComponent<SplineFollower>())
+            {
+                follower->SetTime(m_time);
+            }
+        }
+
+        // a locked camera pans to keep its target in view
+        if (index != -1 && m_events[index].target_entity_id != 0)
+        {
+            Entity* camera = World::GetEntityById(m_events[index].camera_entity_id);
+            Entity* target = World::GetEntityById(m_events[index].target_entity_id);
+            if (camera && target)
+            {
+                math::Vector3 direction = target->GetPosition() - camera->GetPosition();
+                if (direction.LengthSquared() > 0.0f)
+                {
+                    direction.Normalize();
+                    camera->SetRotation(math::Quaternion::FromLookRotation(direction, math::Vector3::Up));
+                }
+            }
+        }
     }
     else if (m_was_previewing)
     {
@@ -545,8 +640,13 @@ void Sequencer::DrawTimeline()
             draw->AddRect(seg_min, seg_max, col_playhead, 3.0f, i == m_selected ? 2.0f : 1.0f);
         }
 
+        string label = get_entity_name(m_events[i].camera_entity_id);
+        if (m_events[i].target_entity_id != 0)
+        {
+            label += " @ " + get_entity_name(m_events[i].target_entity_id);
+        }
         draw->PushClipRect(seg_min, seg_max, true);
-        draw->AddText(ImVec2(seg_min.x + 6.0f, seg_min.y + (seg_max.y - seg_min.y - ImGui::GetFontSize()) * 0.5f), col_text, get_camera_name(m_events[i].camera_entity_id).c_str());
+        draw->AddText(ImVec2(seg_min.x + 6.0f, seg_min.y + (seg_max.y - seg_min.y - ImGui::GetFontSize()) * 0.5f), col_text, label.c_str());
         draw->PopClipRect();
     }
 
@@ -591,6 +691,14 @@ void Sequencer::DrawPopups()
                 if (Entity* entity = draw_camera_menu_items())
                 {
                     m_events[m_selected].camera_entity_id = entity->GetObjectId();
+                    Save();
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("look at"))
+            {
+                if (draw_target_menu_items(m_events[m_selected].target_entity_id))
+                {
                     Save();
                 }
                 ImGui::EndMenu();
@@ -646,6 +754,7 @@ void Sequencer::Save() const
         pugi::xml_node node = root.append_child("event");
         node.append_attribute("time")             = event.time;
         node.append_attribute("camera_entity_id") = event.camera_entity_id;
+        node.append_attribute("target_entity_id") = event.target_entity_id;
     }
     doc.save_file(file_path.c_str());
 }
@@ -677,6 +786,7 @@ void Sequencer::Load()
         CameraEvent event;
         event.time             = node.attribute("time").as_float(0.0f);
         event.camera_entity_id = node.attribute("camera_entity_id").as_ullong(0);
+        event.target_entity_id = node.attribute("target_entity_id").as_ullong(0);
         m_events.push_back(event);
     }
     sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });

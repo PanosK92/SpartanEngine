@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    class Spline;
+
     // behavior when the follower reaches the end of the spline
     enum class SplineFollowMode : uint8_t
     {
@@ -67,9 +69,18 @@ namespace spartan
         // read-only runtime state
         float GetProgress() const                     { return m_progress; }
 
+        // drive the follower externally, maps seconds from the start to a spline position
+        void SetTime(float seconds);
+
     private:
         // try to resolve the runtime entity pointer from the stored id
         void ResolveSplineEntity();
+
+        // resolve and validate the spline, returns null if it can't be followed
+        Spline* GetValidSpline();
+
+        // apply the current progress to the entity transform
+        void ApplyProgress(Spline* spline);
 
         // id of the entity that has the spline component (persisted)
         uint64_t m_spline_entity_id = 0;

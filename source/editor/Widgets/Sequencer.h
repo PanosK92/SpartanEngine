@@ -43,6 +43,7 @@ private:
     {
         float time                = 0.0f;
         uint64_t camera_entity_id = 0;
+        uint64_t target_entity_id = 0; // optional, the camera pans to look at this entity
     };
 
     void DrawToolbar();
