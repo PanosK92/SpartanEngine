@@ -238,7 +238,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 float3 sky_down    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(float3(0.0f, 1.0f, 0.0f)), 7).rgb;
                 float3 downwelling = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI) + sky_down;
                 // ease in over the first 20cm so the waterline is a soft lap line instead of a hard cut
-                light_diffuse     += ocean_scatter_albedo * downwelling * exp(-ocean_extinction * depth_below) * saturate(depth_below / 0.2f);
+                float lap_band     = saturate(depth_below / 0.2f);
+                light_diffuse     += ocean_scatter_albedo * downwelling * exp(-ocean_extinction * depth_below) * lap_band;
+
+                // sun caustics, the wave focused beams land where the slant sun path meets the surface,
+                // extinction along that path kills them with depth and distance fades the sub texel sparkle
+                float3 to_sun = -light_parameters[0].direction;
+                if (buffer_frame.ocean_caustics_intensity > 0.0f && to_sun.y > 0.01f)
+                {
+                    float  sun_path      = depth_below / to_sun.y;
+                    float2 entry_xz      = surface.position.xz + to_sun.xz * sun_path;
+                    float  n_dot_l       = saturate(dot(surface.normal, to_sun));
+                    float  distance_fade = 1.0f - saturate(surface.camera_to_pixel_length / 200.0f);
+                    float3 sun_incident  = get_sun_radiance() * n_dot_l * (1.0f / PI) * exp(-ocean_extinction * sun_path);
+                    light_diffuse       += sun_incident * get_ocean_caustic(entry_xz, sun_path) * buffer_frame.ocean_caustics_intensity * distance_fade * lap_band;
+                }
             }
         }
     }

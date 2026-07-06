@@ -968,6 +968,8 @@ namespace spartan
             m_cb_frame_cpu.ocean_normal_strength    = water->GetNormalStrength();
             m_cb_frame_cpu.ocean_cascade_count      = water->GetCascadeCount();
             m_cb_frame_cpu.ocean_enabled            = 1.0f;
+            m_cb_frame_cpu.ocean_turbidity          = water->GetTurbidity();
+            m_cb_frame_cpu.ocean_caustics_intensity = water->GetCausticsIntensity();
         }
         else
         {

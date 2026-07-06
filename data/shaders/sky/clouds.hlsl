@@ -268,6 +268,16 @@ float cloud_remap(float v, float old_min, float old_max, float new_min, float ne
 // noise sampling at run time
 // =====================================================================
 
+// cloud field time, snapped to the start of the 16 frame panorama refresh cycle, the bake
+// rewrites each pixel once per cycle so a live time would hand neighbouring pixels cloud
+// states up to 16 frames apart, which decorrelates them and reads as crawling noise whenever
+// the field drifts or evolves, with the snap every pixel of a cycle samples one identical
+// field and motion becomes a small coherent step that the temporal blend crossfades away
+float cloud_time()
+{
+    return (float)buffer_frame.time - buffer_frame.delta_time * float(buffer_frame.frame & 15u);
+}
+
 // horizontal drift applied to the cloud noise sampling positions. negative wind*time so a
 // positive wind vector translates the cloud field in the +wind direction over time. the
 // returned offset is meant to be added to the position before any noise lookup, never to a
@@ -275,8 +285,7 @@ float cloud_remap(float v, float old_min, float old_max, float new_min, float ne
 float3 cloud_wind_drift(float speed_mul)
 {
     float3 wind = buffer_frame.wind * speed_mul;
-    float  t    = (float)buffer_frame.time;
-    return -wind * t;
+    return -wind * cloud_time();
 }
 
 // pure vertical drift through the cloud noise volume, used to morph cloud shapes in place
@@ -285,7 +294,7 @@ float3 cloud_wind_drift(float speed_mul)
 // cloud regions stable on the sky while individual puffs billow and reshape inside them
 float3 cloud_evolve_offset(float rate)
 {
-    return float3(0.0, rate * (float)buffer_frame.time, 0.0);
+    return float3(0.0, rate * cloud_time(), 0.0);
 }
 
 // the 3d cloud noise volume is bound at the tex3d slot during the skysphere pass
@@ -579,21 +588,26 @@ float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transm
 
 // integrate density along the sun direction with a geometrically growing step, gives soft
 // self-shadowing, uses the cheap low frequency density since shadow rays do not need detail
+// each segment samples at a jittered position inside itself rather than at its end, the
+// fixed end positions quantized the optical depth into discrete shells that showed up as
+// terraced slices across the shadowed side of every cloud, the jitter cycles with the
+// panorama refresh so the segment quantization integrates out temporally instead
 float cloud_sun_optical_depth_cumulus(
     float3 pos, float3 sun_dir,
     Texture3D noise, SamplerState samp,
-    float2 weather)
+    float2 weather, float jitter)
 {
     float optical_depth = 0.0;
     float step_len      = cloud_sun_step_base;
-    float3 p            = pos;
+    float t             = 0.0;
     
     [unroll]
     for (int i = 0; i < cumulus_sun_steps; i++)
     {
-        p             += sun_dir * step_len;
+        float3 p       = pos + sun_dir * (t + step_len * jitter);
         float d        = cloud_density_cumulus_cheap(p, noise, samp, weather);
         optical_depth += d * step_len;
+        t             += step_len;
         step_len      *= cloud_sun_step_growth;
     }
     return optical_depth;
@@ -711,11 +725,13 @@ float2 cloud_ray_shell(float3 origin, float3 dir, float radius_low, float radius
 }
 
 // raymarch a single cloud layer, accumulating in_scatter and modulating transmittance
-// uses a fixed-step march with weather-driven empty-space skipping. the weather function is
-// a 2d horizontal lookup so where it is zero there are no clouds for kilometres horizontally
-// regardless of altitude, and we can safely stride past those regions cheaply. the fixed step
-// inside cloud-bearing regions avoids the state-flipping artifacts of a coarse/fine state
-// machine that would otherwise produce thin dark cracks at the boundaries
+// two-phase march with weather-driven empty-space skipping. the weather function is a 2d
+// horizontal lookup so where it is zero there are no clouds for kilometres horizontally and
+// the ray strides past cheaply. through clear air inside cloudy weather the ray moves at the
+// coarse step, when a coarse sample lands in cloud that span is rewound and re-marched with
+// fine steps, long horizon rays previously sampled interiors every 625 m which sliced cloud
+// bodies and their shadow gradients into visible slabs. every sample integrates exactly the
+// span it advances so the coarse to fine handoff cannot leak cracks or double count
 void cloud_march_cumulus(
     float3 cam_pos, float3 view_dir, float3 sun_dir,
     Texture3D noise_tex, Texture2D transmittance_lut,
@@ -739,12 +755,17 @@ void cloud_march_cumulus(
     
     float cos_th = dot(view_dir, sun_dir);
     
-    // adaptive step, sized so the step budget spans the whole marchable range of this ray
-    float step_size            = clamp((t_max - shell.x) / float(cumulus_view_steps), cumulus_step_min, cumulus_step_max);
+    // coarse step sized so the budget spans the whole marchable range, fine step resolves
+    // interiors, floored at the minimum so short zenith rays keep their existing quality
+    float step_coarse          = clamp((t_max - shell.x) / float(cumulus_view_steps), cumulus_step_min, cumulus_step_max);
+    float step_fine            = max(step_coarse * 0.25, cumulus_step_min);
     const float empty_skip     = 1600.0;   // stride when the weather map says no clouds here
     const float density_thresh = 1e-4;     // lower than before, avoids binary state flicker at edges
+    const int   exit_run       = 3;        // consecutive empty fine samples before returning to coarse
     
-    float t = shell.x + step_size * jitter;
+    float step_size = step_coarse;
+    float t         = shell.x;
+    int   empty_run = 0;
     
     // weather varies on a 26 km domain so the lookup, itself several noise samples, is cached
     // and reused across a few view steps instead of being resampled every 100 - 625 m
@@ -755,9 +776,13 @@ void cloud_march_cumulus(
     for (int i = 0; i < cumulus_view_steps; i++)
     {
         if (transmittance < 0.01) break;
-        if (t >= t_max) break;
         
-        float3 pos = cam_pos + view_dir * t;
+        // jitter inside the current span so residual step banding decorrelates across the
+        // panorama refresh cycles and the temporal blend averages it away
+        float t_s = t + step_size * jitter;
+        if (t_s >= t_max) break;
+        
+        float3 pos = cam_pos + view_dir * t_s;
         
         if (weather_age >= cumulus_weather_interval)
         {
@@ -772,17 +797,28 @@ void cloud_march_cumulus(
         {
             t += empty_skip;
             weather_age = cumulus_weather_interval;
+            step_size   = step_coarse;
+            empty_run   = 0;
             continue;
         }
         
         float density = cloud_density_cumulus(pos, noise_tex, samp_noise, weather);
         
+        // a coarse hit only proves the span holds material somewhere, rewind and re-march
+        // the same span finely so nothing between the coarse samples is skipped
+        if (density > density_thresh && step_size > step_fine)
+        {
+            step_size = step_fine;
+            continue;
+        }
+        
         if (density > density_thresh)
         {
+            empty_run = 0;
             float ext         = density * cumulus_sigma_t;
             float step_trans  = exp(-ext * step_size);
             
-            float sun_od      = cloud_sun_optical_depth_cumulus(pos, sun_dir, noise_tex, samp_noise, weather);
+            float sun_od      = cloud_sun_optical_depth_cumulus(pos, sun_dir, noise_tex, samp_noise, weather, jitter);
             float3 sun_light  = cloud_sun_illuminance(pos, sun_dir, transmittance_lut, samp_lut);
             float3 sun_scat   = cloud_multiscatter_attenuation(sun_light, sun_od, cos_th);
             
@@ -820,11 +856,22 @@ void cloud_march_cumulus(
             // less because the haze in front of them fills in whatever silhouette they would
             // have cut. without this, grazing horizon rays integrate kilometres of cloud and
             // produce a thick ring around the camera that does not exist in real life
-            float aerial_t      = exp(-t * cloud_aerial_falloff);
+            float aerial_t      = exp(-t_s * cloud_aerial_falloff);
             float effective_trans = lerp(1.0, step_trans, aerial_t);
             
             in_scatter    += transmittance * s_int * aerial_t;
             transmittance *= effective_trans;
+        }
+        else if (step_size < step_coarse)
+        {
+            // fine mode ran off the back of the cloud, a short empty run confirms the exit
+            // before dropping back to coarse so a single noise dip cannot flip the state
+            empty_run++;
+            if (empty_run >= exit_run)
+            {
+                step_size = step_coarse;
+                empty_run = 0;
+            }
         }
         
         t += step_size;

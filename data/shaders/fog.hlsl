@@ -189,7 +189,11 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     const float sigma_t        = sigma_s; // pure scattering, no absorption
     const float total_distance = surface.camera_to_pixel_length;
 
-    if (total_distance < 0.1f || sigma_s <= 0.0f)
+    // the sun marches through the water body even when atmospheric fog is off, the shafts are
+    // only visible from inside the water so a dry camera never pays for them
+    const bool ocean_march = light.is_directional() && buffer_frame.ocean_enabled > 0.5f && buffer_frame.ocean_turbidity > 0.0f && get_camera_position().y < buffer_frame.ocean_sea_level;
+
+    if (total_distance < 0.1f || (sigma_s <= 0.0f && !ocean_march))
         return 0.0f;
 
     const float3 ray_origin    = get_camera_position();
@@ -219,14 +223,21 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
             return 0.0f;
     }
 
+    // underwater the extinction makes anything past this range invisible, keep the march short
+    if (ocean_march)
+    {
+        march_end = min(march_end, 40.0f);
+    }
+
     const float march_length = march_end - march_start;
     if (march_length < 0.1f)
         return 0.0f;
 
     // step count proportional to march length, capped on both ends
+    // the water body is a smooth medium so the underwater march affords far coarser steps, the temporal jitter below resolves the difference
     const uint  min_steps        = 24;
     const uint  max_steps        = 96;
-    const float target_step      = 0.65f;
+    const float target_step      = ocean_march ? 2.0f : 0.65f;
     const float step_count_float = clamp(march_length / target_step, (float)min_steps, (float)max_steps);
     const uint  step_count       = (uint)step_count_float;
     const float step_length      = march_length / step_count_float;
@@ -256,6 +267,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     }
 
     // start with the extinction accumulated over the unmarched segment from camera to march_start
+    // the water absorption along the view path is applied by the underwater post pass, not here
     float3 inscatter     = 0.0f;
     float  transmittance = exp(-sigma_t * march_start);
 
@@ -283,10 +295,27 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 
         if (local_atten > 0.0f)
         {
-            float visibility = visible(ray_pos, light, pixel_pos);
+            // underwater samples scatter through the suspended particles, the flat sea level is a good enough waterline since the waves average out over the march
+            bool  in_water  = ocean_march && ray_pos.y < buffer_frame.ocean_sea_level;
+            float sigma_dt  = in_water ? 0.05f * buffer_frame.ocean_turbidity * step_length : sigma_s_dt;
 
-            // single scattering integrand, sigma_s * phase * incident_radiance * transmittance * dt
-            inscatter += phase * visibility * local_atten * transmittance * sigma_s_dt;
+            // steps that scatter nothing skip the shadow fetch, fully shadowed steps skip the caustic samples
+            if (sigma_dt > 0.0f)
+            {
+                float visibility = visible(ray_pos, light, pixel_pos);
+                if (visibility > 0.0f)
+                {
+                    // single scattering integrand, sigma_s * phase * incident_radiance * transmittance * dt
+                    float3 tint = 1.0f;
+                    if (in_water)
+                    {
+                        float sun_path = (buffer_frame.ocean_sea_level - ray_pos.y) / max(dir_light_dir.y, 0.05f);
+                        tint           = exp(-ocean_extinction * sun_path) * (0.2f + 0.8f * get_ocean_caustic(ray_pos.xz + dir_light_dir.xz * sun_path, sun_path));
+                    }
+
+                    inscatter += phase * visibility * local_atten * transmittance * sigma_dt * tint;
+                }
+            }
         }
 
         transmittance *= step_transmittance;
@@ -297,8 +326,10 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     float3 result = inscatter * light.intensity * light.color;
 
     // fade by surface distance for non sky pixels so the haze does not flood close geometry,
-    // sky pixels keep the full inscatter so the beams stay visible against the horizon
-    if (!surface.is_sky())
+    // sky pixels keep the full inscatter so the beams stay visible against the horizon,
+    // a submerged camera skips it since the underwater post pass already absorbs with distance
+    bool camera_underwater = ocean_march && ray_origin.y < buffer_frame.ocean_sea_level;
+    if (!surface.is_sky() && !camera_underwater)
     {
         const float fade_rate = light.is_directional() ? 0.04f : 0.02f;
         result *= exp(-total_distance * fade_rate);

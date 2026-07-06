@@ -146,8 +146,8 @@ struct FrameBufferData
     SHARED_FLOAT  ocean_normal_strength;
     SHARED_UINT   ocean_cascade_count;
     SHARED_FLOAT  ocean_enabled;
-    SHARED_FLOAT  ocean_padding0;
-    SHARED_FLOAT  ocean_padding1;
+    SHARED_FLOAT  ocean_turbidity;
+    SHARED_FLOAT  ocean_caustics_intensity;
 
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)

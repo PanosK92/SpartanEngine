@@ -102,6 +102,37 @@ float3 get_sun_radiance()
 static const float3 ocean_scatter_albedo = float3(0.0f, 0.09f, 0.13f);                // deep blue-green in-scattering albedo, lit by the downwelling light
 static const float3 ocean_extinction     = float3(0.45f, 0.15f, 0.08f) * 0.45f;       // per channel beer lambert extinction, red dies first and blue persists
 
+// caustics as refracted ray density from the two finest slope cascades, the slope gradient is the jacobian of the sun ray footprint after travelling through the water, rays converge into bright ribbons where it shrinks and spread into soft dimming where it grows, the mean stays near one at any sea state so the pattern never washes to flat or clamps to black
+float get_ocean_caustic(float2 world_xz, float travel)
+{
+    uint count = buffer_frame.ocean_cascade_count;
+    uint start = count > 2u ? count - 2u : 0u;
+
+    // the suns angular size smears the pattern with distance, cap the sharpening travel
+    travel = min(travel, 8.0f);
+
+    // finite difference spacing, about one texel of the finest cascade
+    const float eps = 0.05f;
+    float2 slope_c  = 0.0f;
+    float2 slope_x  = 0.0f;
+    float2 slope_z  = 0.0f;
+    [loop] for (uint c = start; c < count; ++c)
+    {
+        float inv_length = 1.0f / buffer_frame.ocean_cascade_length[c];
+        slope_c         += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3(world_xz * inv_length, (float)c), 0.0f).xy;
+        slope_x         += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3((world_xz + float2(eps, 0.0f)) * inv_length, (float)c), 0.0f).xy;
+        slope_z         += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3((world_xz + float2(0.0f, eps)) * inv_length, (float)c), 0.0f).xy;
+    }
+
+    // snell bends the refracted ray by roughly a quarter of the surface slope, air to water
+    const float bend = 0.25f;
+    float jacobian_x = 1.0f + bend * travel * (slope_x.x - slope_c.x) / eps;
+    float jacobian_z = 1.0f + bend * travel * (slope_z.y - slope_c.y) / eps;
+
+    // one over the jacobian is the ray density, capped where rays fold onto themselves
+    return 1.0f / max(abs(jacobian_x * jacobian_z), 0.1f);
+}
+
 // chromaticity preserving hdr clamp, the engine sky panorama is clamped to keep huge sun
 // radiance values inside the 16 bit storage range, a channel wise min(color, cap) would
 // saturate every channel to the cap whenever any single channel exceeded it which is the

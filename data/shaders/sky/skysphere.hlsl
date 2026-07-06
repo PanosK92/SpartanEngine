@@ -981,12 +981,14 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     // temporal accumulation, behaviour depends on bake mode
     //   warmup, low blend factor integrates ~10 frames of jittered full bakes per pixel so the
     //   panorama converges from scratch in under half a second after a sun direction change
-    //   steady, moderate blend averages the last few refreshes of each pixel, the march jitter
+    //   steady, gentle blend averages the last ~7 refreshes of each pixel, the march jitter
     //   cycles between refreshes so cloud march noise integrates out instead of being written
-    //   raw, which previously let the frozen jitter pattern surface as the clouds evolved. at
-    //   one refresh per 16 frames the induced lag is ~3 refreshes, a few meters of cloud drift
+    //   raw, and the cloud field time is snapped per refresh cycle in clouds.hlsl so every
+    //   refresh of a cycle sees one coherent field, motion then arrives as a small step that
+    //   this blend crossfades. at one refresh per 16 frames the lag is ~2 s, under 25 m of
+    //   cloud drift at the shipped wind speeds, invisible for slow evolving cumulus
     float4 prev = tex_uav[pixel];
-    final_color = lerp(prev.rgb, final_color, warmup ? 0.1 : 0.35);
+    final_color = lerp(prev.rgb, final_color, warmup ? 0.1 : 0.15);
 
     tex_uav[pixel] = float4(final_color, 1.0);
 }

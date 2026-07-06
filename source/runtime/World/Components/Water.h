@@ -59,6 +59,10 @@ namespace spartan
         void SetNormalStrength(float strength)    { m_normal_strength = strength; PushToRenderer(); }
         float GetSeaLevel() const                 { return m_sea_level; }
         void SetSeaLevel(float level)             { m_sea_level = level; PushToRenderer(); }
+        float GetTurbidity() const                { return m_turbidity; }
+        void SetTurbidity(float turbidity)        { m_turbidity = turbidity; }
+        float GetCausticsIntensity() const        { return m_caustics_intensity; }
+        void SetCausticsIntensity(float intensity) { m_caustics_intensity = intensity; }
 
     private:
         void BuildSurface();
@@ -74,6 +78,10 @@ namespace spartan
         float m_displacement_scale  = 1.0f;
         float m_normal_strength     = 1.0f;
         float m_sea_level           = 0.0f;
+
+        // water body optics, read by the renderer each frame, they do not touch the spectrum
+        float m_turbidity           = 1.0f; // suspended particle density, scales the underwater light shafts
+        float m_caustics_intensity  = 1.0f; // brightness of the sun caustics on submerged geometry
 
         // clipmap geometry
         uint32_t m_clipmap_resolution = 128;

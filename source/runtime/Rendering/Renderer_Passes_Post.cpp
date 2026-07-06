@@ -102,6 +102,22 @@ namespace spartan
             swap(tex_in, tex_out);
         };
 
+        // underwater tint and waterline meniscus, only runs when the camera is near or below the waves
+        if (Camera* camera = World::GetCamera())
+        {
+            const Vector3 camera_position = camera->GetEntity()->GetPosition();
+            float ocean_height            = 0.0f;
+            if (GetOceanHeight(camera_position.x, camera_position.z, ocean_height) && camera_position.y < ocean_height + 1.0f)
+            {
+                run_effect("underwater", Renderer_Shader::underwater_c, [&]()
+                {
+                    SetCommonTextures(cmd_list, eye_layer);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::skysphere));
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                });
+            }
+        }
+
         if (cvar_depth_of_field.GetValueAs<bool>())
         {
             run_effect("depth_of_field", Renderer_Shader::depth_of_field_c, [&]()

@@ -2270,6 +2270,8 @@ void Properties::ShowWater(spartan::Water* water) const
         float displacement_scale = water->GetDisplacementScale();
         float normal_strength    = water->GetNormalStrength();
         float sea_level          = water->GetSeaLevel();
+        float turbidity          = water->GetTurbidity();
+        float caustics_intensity = water->GetCausticsIntensity();
 
         uint32_t cascade_index = water->GetCascadeCount() - 1;
         if (property_combo("Detail Cascades", { "1", "2", "3", "4" }, &cascade_index, "number of band-limited scales, more cascades adds finer microwaves"))
@@ -2282,12 +2284,16 @@ void Properties::ShowWater(spartan::Water* water) const
         property_float("Displacement Scale", &displacement_scale, 0.01f, 0.0f,    4.0f,     "scales the simulated displacement");
         property_float("Normal Strength",    &normal_strength,    0.01f, 0.0f,    4.0f,     "steepens the surface normals so waves catch more light");
         property_float("Sea Level",          &sea_level,          0.1f,  -1000.0f, 1000.0f, "world height of the water surface", "%.1f m");
+        property_float("Turbidity",          &turbidity,          0.01f, 0.0f,    4.0f,     "suspended particle density, higher makes the underwater light shafts more vivid");
+        property_float("Caustics Intensity", &caustics_intensity, 0.01f, 0.0f,    4.0f,     "brightness of the sun caustics dancing on submerged geometry");
 
         if (amplitude != water->GetAmplitude())                  { water->SetAmplitude(amplitude); }
         if (choppiness != water->GetChoppiness())                { water->SetChoppiness(choppiness); }
         if (displacement_scale != water->GetDisplacementScale()) { water->SetDisplacementScale(displacement_scale); }
         if (normal_strength != water->GetNormalStrength())       { water->SetNormalStrength(normal_strength); }
         if (sea_level != water->GetSeaLevel())                   { water->SetSeaLevel(sea_level); }
+        if (turbidity != water->GetTurbidity())                  { water->SetTurbidity(turbidity); }
+        if (caustics_intensity != water->GetCausticsIntensity()) { water->SetCausticsIntensity(caustics_intensity); }
     }
     component_end();
 }

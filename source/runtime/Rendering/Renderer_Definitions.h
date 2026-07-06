@@ -261,6 +261,7 @@ namespace spartan
         depth_of_field_c,
         chromatic_aberration_c,
         vhs_c,
+        underwater_c,
         bloom_luminance_c,
         bloom_blend_frame_c,
         bloom_upsample_blend_mip_c,

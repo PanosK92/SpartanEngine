@@ -51,6 +51,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_displacement_scale, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_strength,   float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sea_level,         float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_turbidity,         float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_caustics_intensity, float);
     }
 
     Water::~Water()
@@ -140,6 +142,8 @@ namespace spartan
         water.append_attribute("displacement_scale") = m_displacement_scale;
         water.append_attribute("normal_strength")   = m_normal_strength;
         water.append_attribute("sea_level")         = m_sea_level;
+        water.append_attribute("turbidity")         = m_turbidity;
+        water.append_attribute("caustics_intensity") = m_caustics_intensity;
     }
 
     void Water::Load(pugi::xml_node& node)
@@ -156,6 +160,8 @@ namespace spartan
         m_displacement_scale = water.attribute("displacement_scale").as_float(m_displacement_scale);
         m_normal_strength    = water.attribute("normal_strength").as_float(m_normal_strength);
         m_sea_level          = water.attribute("sea_level").as_float(m_sea_level);
+        m_turbidity          = water.attribute("turbidity").as_float(m_turbidity);
+        m_caustics_intensity = water.attribute("caustics_intensity").as_float(m_caustics_intensity);
 
         PushToRenderer();
     }
