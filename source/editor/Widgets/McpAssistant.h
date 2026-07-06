@@ -69,6 +69,8 @@ private:
     int m_model_index = 0;
     bool m_blocks_input = false;
     bool m_voice_active = false;
+    int m_voice_history_index = 0;
+    std::array<float, 64> m_voice_history = {};
     bool m_scroll_to_bottom = false;
     bool m_api_key_file_checked = false;
     bool m_refresh_models_after_key_load = false;

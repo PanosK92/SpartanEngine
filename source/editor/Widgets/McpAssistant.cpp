@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Style.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
@@ -46,8 +47,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <Windows.h>
-    #include <sapi.h>
+    #include <mmdeviceapi.h>
+    #include <endpointvolume.h>
+    #include <winrt/Windows.Foundation.h>
+    #include <winrt/Windows.Foundation.Collections.h>
+    #include <winrt/Windows.Media.SpeechRecognition.h>
     #pragma comment(lib, "ole32.lib")
+    #pragma comment(lib, "advapi32.lib")
+    #pragma comment(lib, "windowsapp.lib")
 #else
     #include <arpa/inet.h>
     #include <netinet/in.h>
@@ -302,113 +309,152 @@ namespace
     }
 
 #ifdef _WIN32
-    ISpRecognizer* voice_recognizer = nullptr;
-    ISpAudio* voice_audio = nullptr;
-    ISpRecoContext* voice_context = nullptr;
-    ISpRecoGrammar* voice_grammar = nullptr;
+    std::thread voice_thread;
+    std::atomic<bool> voice_stop_flag = false;
+    std::atomic<bool> voice_listening = false;
+    std::atomic<bool> voice_failed = false;
+    std::atomic<float> voice_level = 0.0f;
+    std::mutex voice_text_mutex;
+    std::string voice_text_pending;
 
-    template <typename T>
-    void voice_release(T*& com_object)
+    void voice_accept_speech_privacy_policy()
     {
-        if (com_object)
+        // pressing the voice button is the consent, newer windows builds no longer show the settings toggle
+        HKEY key = nullptr;
+        if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Speech_OneCore\\Settings\\OnlineSpeechPrivacy", 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key, nullptr) == ERROR_SUCCESS)
         {
-            com_object->Release();
-            com_object = nullptr;
+            const DWORD accepted = 1;
+            RegSetValueExW(key, L"HasAccepted", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&accepted), sizeof(accepted));
+            RegCloseKey(key);
         }
     }
 
-    void voice_stop()
+    void voice_run()
     {
-        if (voice_grammar)
-        {
-            voice_grammar->SetDictationState(SPRS_INACTIVE);
-        }
-        if (voice_recognizer)
-        {
-            voice_recognizer->SetRecoState(SPRST_INACTIVE);
-        }
-        voice_release(voice_grammar);
-        voice_release(voice_context);
-        voice_release(voice_audio);
-        voice_release(voice_recognizer);
-    }
+        namespace speech = winrt::Windows::Media::SpeechRecognition;
 
-    bool voice_start()
-    {
-        HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-        if (FAILED(hr) && hr != RPC_E_CHANGED_MODE)
+        voice_accept_speech_privacy_policy();
+        speech::SpeechRecognizer recognizer;
+        recognizer.Constraints().Append(speech::SpeechRecognitionTopicConstraint(speech::SpeechRecognitionScenario::Dictation, L"dictation"));
+        const auto compile_status = recognizer.CompileConstraintsAsync().get().Status();
+        if (compile_status != speech::SpeechRecognitionResultStatus::Success)
         {
-            log_error("Voice input could not initialize COM.");
-            return false;
+            voice_failed.store(true);
+            log_error("Voice input could not compile the dictation grammar, status " + std::to_string(static_cast<int>(compile_status)) + ".");
+            return;
         }
 
-        const bool started =
-            SUCCEEDED(CoCreateInstance(__uuidof(SpInprocRecognizer), nullptr, CLSCTX_ALL, __uuidof(ISpRecognizer), reinterpret_cast<void**>(&voice_recognizer))) &&
-            SUCCEEDED(CoCreateInstance(__uuidof(SpMMAudioIn), nullptr, CLSCTX_ALL, __uuidof(ISpAudio), reinterpret_cast<void**>(&voice_audio))) &&
-            SUCCEEDED(voice_recognizer->SetInput(voice_audio, TRUE)) &&
-            SUCCEEDED(voice_recognizer->CreateRecoContext(&voice_context)) &&
-            SUCCEEDED(voice_context->SetInterest(SPFEI(SPEI_RECOGNITION), SPFEI(SPEI_RECOGNITION))) &&
-            SUCCEEDED(voice_context->CreateGrammar(1, &voice_grammar)) &&
-            SUCCEEDED(voice_grammar->LoadDictation(nullptr, SPLO_STATIC)) &&
-            SUCCEEDED(voice_grammar->SetDictationState(SPRS_ACTIVE)) &&
-            SUCCEEDED(voice_recognizer->SetRecoState(SPRST_ACTIVE));
-
-        if (!started)
+        auto session = recognizer.ContinuousRecognitionSession();
+        session.AutoStopSilenceTimeout(std::chrono::minutes(30));
+        session.ResultGenerated([](auto const&, speech::SpeechContinuousRecognitionResultGeneratedEventArgs const& args)
         {
-            voice_stop();
-            log_error("Voice input could not start, check that a microphone and the Windows speech engine are available.");
-        }
-
-        return started;
-    }
-
-    std::string voice_poll()
-    {
-        std::string text;
-        if (!voice_context)
-        {
-            return text;
-        }
-
-        SPEVENT event = {};
-        ULONG fetched = 0;
-        while (voice_context->GetEvents(1, &event, &fetched) == S_OK && fetched == 1)
-        {
-            if (event.eEventId == SPEI_RECOGNITION && event.elParamType == SPET_LPARAM_IS_OBJECT && event.lParam != 0)
+            const std::string text = winrt::to_string(args.Result().Text());
+            if (!text.empty())
             {
-                ISpRecoResult* result = reinterpret_cast<ISpRecoResult*>(event.lParam);
-                LPWSTR phrase = nullptr;
-                if (SUCCEEDED(result->GetText(SP_GETWHOLEPHRASE, SP_GETWHOLEPHRASE, TRUE, &phrase, nullptr)))
+                std::lock_guard<std::mutex> lock(voice_text_mutex);
+                if (!voice_text_pending.empty())
                 {
-                    const int utf8_size = WideCharToMultiByte(CP_UTF8, 0, phrase, -1, nullptr, 0, nullptr, nullptr);
-                    if (utf8_size > 1)
-                    {
-                        std::string utf8(static_cast<size_t>(utf8_size - 1), '\0');
-                        WideCharToMultiByte(CP_UTF8, 0, phrase, -1, utf8.data(), utf8_size, nullptr, nullptr);
-                        if (!text.empty())
-                        {
-                            text += ' ';
-                        }
-                        text += utf8;
-                    }
-                    CoTaskMemFree(phrase);
+                    voice_text_pending += ' ';
+                }
+                voice_text_pending += text;
+            }
+        });
+        session.Completed([](auto const&, speech::SpeechContinuousRecognitionCompletedEventArgs const& args)
+        {
+            if (!voice_stop_flag.load())
+            {
+                voice_failed.store(true);
+                log_error("Voice input session ended unexpectedly, status " + std::to_string(static_cast<int>(args.Status())) + ".");
+            }
+        });
+        session.StartAsync().get();
+        voice_listening.store(true);
+        log_info("Voice input is listening, dictated text is appended to the message box.");
+
+        // default microphone peak meter for the ui
+        winrt::com_ptr<IMMDeviceEnumerator> enumerator;
+        winrt::com_ptr<IMMDevice> device;
+        winrt::com_ptr<IAudioMeterInformation> meter;
+        if (SUCCEEDED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), enumerator.put_void())))
+        {
+            if (SUCCEEDED(enumerator->GetDefaultAudioEndpoint(eCapture, eConsole, device.put())))
+            {
+                device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr, meter.put_void());
+            }
+        }
+
+        while (!voice_stop_flag.load())
+        {
+            if (meter)
+            {
+                float peak = 0.0f;
+                if (SUCCEEDED(meter->GetPeakValue(&peak)))
+                {
+                    voice_level.store(peak);
                 }
             }
-
-            // release event payload as sapi hands over ownership
-            if (event.elParamType == SPET_LPARAM_IS_OBJECT && event.lParam != 0)
-            {
-                reinterpret_cast<IUnknown*>(event.lParam)->Release();
-            }
-            else if ((event.elParamType == SPET_LPARAM_IS_POINTER || event.elParamType == SPET_LPARAM_IS_STRING) && event.lParam != 0)
-            {
-                CoTaskMemFree(reinterpret_cast<void*>(event.lParam));
-            }
-
-            event = {};
+            std::this_thread::sleep_for(std::chrono::milliseconds(33));
         }
 
-        return text;
+        try
+        {
+            session.StopAsync().get();
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // the session may have already completed on its own
+        }
+    }
+
+    void voice_thread_main()
+    {
+        winrt::init_apartment();
+        try
+        {
+            voice_run();
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            voice_failed.store(true);
+            if (error.code() == static_cast<winrt::hresult>(0x80045509))
+            {
+                log_error("Voice input needs online speech recognition enabled, turn it on in the settings page that just opened.");
+                spartan::FileSystem::OpenUrl("ms-settings:privacy-speech");
+            }
+            else
+            {
+                log_error("Voice input failed: " + winrt::to_string(error.message()) + " Check microphone access and online speech recognition in windows privacy settings.");
+            }
+        }
+        voice_listening.store(false);
+        voice_level.store(0.0f);
+        winrt::uninit_apartment();
+    }
+
+    void draw_voice_meter(const std::array<float, 64>& history, int head)
+    {
+        const float scale = ui_scale();
+        const ImVec2 size = ImVec2(110.0f * scale, ImGui::GetFrameHeight());
+        const ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(size);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        const int bar_count = static_cast<int>(history.size());
+        const float bar_stride = size.x / static_cast<float>(bar_count);
+        const float bar_width = std::max(1.0f, bar_stride - 1.0f * scale);
+        const float center_y = pos.y + size.y * 0.5f;
+        const bool ready = voice_listening.load();
+        const ImU32 color = ImGui::GetColorU32(ready ? ImVec4(0.35f, 0.8f, 0.45f, 1.0f) : ImVec4(0.5f, 0.5f, 0.5f, 0.6f));
+        for (int i = 0; i < bar_count; i++)
+        {
+            const float value = history[(head + i) % bar_count];
+            const float half_height = std::max(1.0f * scale, value * size.y * 0.5f);
+            const float x = pos.x + bar_stride * static_cast<float>(i);
+            draw_list->AddRectFilled(ImVec2(x, center_y - half_height), ImVec2(x + bar_width, center_y + half_height), color, bar_width * 0.5f);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(ready ? "Microphone level." : "Starting the speech engine...");
+        }
     }
 #endif
 
@@ -1856,11 +1902,13 @@ void McpAssistant::OnTickVisible()
         {
             ImGui::SetTooltip(m_voice_active ? "Listening, click to stop." : "Dictate into the message box with the default microphone.");
         }
+#ifdef _WIN32
         if (m_voice_active)
         {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.9f, 0.35f, 0.35f, 1.0f), "listening");
+            draw_voice_meter(m_voice_history, m_voice_history_index);
         }
+#endif
     }
     end_card();
 }
@@ -1868,11 +1916,26 @@ void McpAssistant::OnTickVisible()
 void McpAssistant::StartVoiceCapture()
 {
 #ifdef _WIN32
-    m_voice_active = voice_start();
     if (m_voice_active)
     {
-        log_info("Voice input started, dictated text is appended to the message box.");
+        return;
     }
+
+    if (voice_thread.joinable())
+    {
+        voice_thread.join();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(voice_text_mutex);
+        voice_text_pending.clear();
+    }
+    voice_stop_flag.store(false);
+    voice_failed.store(false);
+    voice_level.store(0.0f);
+    m_voice_history.fill(0.0f);
+    voice_thread = std::thread(voice_thread_main);
+    m_voice_active = true;
 #else
     log_error("Voice input is only available on Windows.");
 #endif
@@ -1881,7 +1944,11 @@ void McpAssistant::StartVoiceCapture()
 void McpAssistant::StopVoiceCapture()
 {
 #ifdef _WIN32
-    voice_stop();
+    voice_stop_flag.store(true);
+    if (voice_thread.joinable())
+    {
+        voice_thread.join();
+    }
 #endif
     m_voice_active = false;
 }
@@ -1889,7 +1956,23 @@ void McpAssistant::StopVoiceCapture()
 void McpAssistant::PollVoiceCapture()
 {
 #ifdef _WIN32
-    const std::string text = voice_poll();
+    if (voice_failed.load())
+    {
+        StopVoiceCapture();
+        return;
+    }
+
+    // scroll the level history so the meter animates, decay so bars fall between events
+    const float level = voice_level.load();
+    m_voice_history[m_voice_history_index] = level;
+    m_voice_history_index = (m_voice_history_index + 1) % static_cast<int>(m_voice_history.size());
+    voice_level.store(level * 0.92f);
+
+    std::string text;
+    {
+        std::lock_guard<std::mutex> lock(voice_text_mutex);
+        text.swap(voice_text_pending);
+    }
     if (text.empty())
     {
         return;
