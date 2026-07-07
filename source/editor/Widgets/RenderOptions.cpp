@@ -445,6 +445,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Transform snapping", "r.transform_snap");
                     option_check_box("Selection outline", "r.selection_outline");
                     option_check_box("Lights", "r.lights");
+                    option_check_box("Cameras", "r.cameras");
                     option_check_box("Audio sources", "r.audio_sources");
                     option_check_box("Grid", "r.grid");
                     option_check_box("Picking ray", "r.picking_ray");

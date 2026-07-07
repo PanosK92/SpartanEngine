@@ -151,6 +151,7 @@ namespace spartan
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
     TConsoleVar<float> cvar_lights                         ("r.lights",                         1.0f,                                                    "draw light icons");
     TConsoleVar<float> cvar_audio_sources                  ("r.audio_sources",                  1.0f,                                                    "draw audio source icons");
+    TConsoleVar<float> cvar_cameras                        ("r.cameras",                        1.0f,                                                    "draw camera frustums");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "show performance metrics",                on_performance_metrics_change);
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");

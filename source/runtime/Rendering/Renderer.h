@@ -59,6 +59,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_selection_outline;
     extern TConsoleVar<float> cvar_lights;
     extern TConsoleVar<float> cvar_audio_sources;
+    extern TConsoleVar<float> cvar_cameras;
     extern TConsoleVar<float> cvar_performance_metrics;
     extern TConsoleVar<float> cvar_physics;
     extern TConsoleVar<float> cvar_wireframe;

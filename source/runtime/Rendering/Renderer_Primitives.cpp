@@ -296,6 +296,70 @@ namespace spartan
             }
         }
         
+        if (cvar_cameras.GetValueAs<bool>())
+        {
+            if (Camera* camera = World::GetCamera())
+            {
+                for (Entity* entity : camera->GetSelectedEntities())
+                {
+                    if (!entity)
+                    {
+                        continue;
+                    }
+
+                    Camera* view = entity->GetComponent<Camera>();
+                    if (!view || view == camera)
+                    {
+                        continue;
+                    }
+
+                    const Vector3 position = entity->GetPosition();
+                    const Vector3 forward  = entity->GetForward();
+                    const Vector3 right    = entity->GetRight();
+                    const Vector3 up       = entity->GetUp();
+
+                    if (view->GetProjectionType() == Projection_Orthographic)
+                    {
+                        DrawDirectionalArrow(position, position + forward * 5.0f, 0.5f);
+                        continue;
+                    }
+
+                    // the far plane is usually kilometers away, clamp the drawn cone to a readable reach
+                    const float reach = min(view->GetFarPlane(), 30.0f);
+                    const float tan_h = tan(view->GetFovHorizontalRad() * 0.5f);
+                    const float tan_v = tan(view->GetFovVerticalRad()   * 0.5f);
+
+                    auto rect_corners = [&](float distance, Vector3* corners)
+                    {
+                        const Vector3 center = position + forward * distance;
+                        const Vector3 half_r = right * distance * tan_h;
+                        const Vector3 half_u = up    * distance * tan_v;
+                        corners[0] = center - half_r + half_u;
+                        corners[1] = center + half_r + half_u;
+                        corners[2] = center + half_r - half_u;
+                        corners[3] = center - half_r - half_u;
+                    };
+
+                    Vector3 near_corners[4];
+                    Vector3 reach_corners[4];
+                    rect_corners(view->GetNearPlane(), near_corners);
+                    rect_corners(reach, reach_corners);
+
+                    for (uint32_t i = 0; i < 4; i++)
+                    {
+                        const uint32_t next = (i + 1) % 4;
+                        DrawLine(near_corners[i], near_corners[next]);
+                        DrawLine(reach_corners[i], reach_corners[next]);
+                        DrawLine(position, reach_corners[i]);
+                    }
+
+                    // diagonals on the end rect mark the view center
+                    DrawLine(reach_corners[0], reach_corners[2]);
+                    DrawLine(reach_corners[1], reach_corners[3]);
+                }
+            }
+        }
+
         if (cvar_aabb.GetValueAs<bool>())
         {
             auto get_color = [](Render* renderable)
