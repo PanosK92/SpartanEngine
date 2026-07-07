@@ -183,7 +183,6 @@ namespace spartan
         std::vector<Entity*> descendants;
         car->GetDescendants(&descendants);
 
-        const Quaternion car_rot_inverse = car->GetRotation().Inverse();
         float radius_estimate = 0.0f;
         for (Entity* entity : descendants)
         {
@@ -194,7 +193,9 @@ namespace spartan
 
             WheelState wheel;
             wheel.entity      = entity;
-            wheel.rest_offset = car_rot_inverse * entity->GetRotation();
+            // canonical rest pose from the spawn convention, wheels on the positive local x side are flipped 180 degrees,
+            // reading the live rotation here would bake in any steer or roll that got saved with the world or left over from a previous run
+            wheel.rest_offset = entity->GetPositionLocal().x > 0.0f ? Quaternion::FromAxisAngle(Vector3::Up, math::pi) : Quaternion::Identity;
             wheel.is_front    = entity->HasTag("wheel_front");
             m_wheels.push_back(wheel);
 
