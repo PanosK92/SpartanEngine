@@ -740,7 +740,7 @@ register_tool(
   { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
 );
 
-register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time and the sorted list of camera cut events.", {}, "sequencer_get", {
+register_tool(server, "sequencer_get", "Read the sequencer state: duration, loop, playback time, the sorted list of camera cut events, and the spline_events track (each with start_time, end_time and the follower entity driven along its spline during that window).", {}, "sequencer_get", {
   annotations: read_only,
 });
 
@@ -842,6 +842,45 @@ register_tool(
     all: z.boolean().optional(),
   },
   "sequencer_event_remove",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_spline_add",
+  "Add a spline follower event on the second track. During the window from start to end (seconds) the follower entity is driven along its spline by the timeline, so it moves only while the playhead is inside the window and holds at the edges otherwise. follower accepts an entity id or an entity name that has a SplineFollower component.",
+  {
+    start: z.number().min(0),
+    end: z.number().min(0),
+    follower: z.union([z.string(), z.number().int()]),
+  },
+  "sequencer_spline_add",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_spline_update",
+  "Change the start, end or follower of an existing spline event by index. Only the arguments you pass change.",
+  {
+    index: z.number().int().min(0),
+    start: z.number().min(0).optional(),
+    end: z.number().min(0).optional(),
+    follower: z.union([z.string(), z.number().int()]).optional(),
+  },
+  "sequencer_spline_update",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "sequencer_spline_remove",
+  "Remove one spline follower event by index, or pass all=true to clear every spline event.",
+  {
+    index: z.number().int().min(0).optional(),
+    all: z.boolean().optional(),
+  },
+  "sequencer_spline_remove",
   { annotations: edit_tool },
 );
 

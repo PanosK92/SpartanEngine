@@ -5,4 +5,5 @@
 	<event time="13.0200005" camera_entity_id="235406234545498890" target_entity_id="5723169428173956022" />
 	<event time="21.7399998" camera_entity_id="235336573997620476" target_entity_id="5723169428173956022" />
 	<event time="30.4500008" camera_entity_id="235352816968247820" target_entity_id="5723169428173956022" />
+	<spline_event start="0" end="35" follower_entity_id="5723169428173956022" />
 </sequencer>

@@ -2710,6 +2710,9 @@ void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
         float progress      = follower->GetProgress();
         uint64_t spline_id  = follower->GetSplineEntityId();
         Entity* spline_ent  = follower->GetSplineEntity();
+        bool animate_wheels = follower->GetAnimateWheels();
+        float wheel_radius  = follower->GetWheelRadius();
+        float steer_angle   = follower->GetMaxSteerAngle();
         //==================================================
 
         layout::section_header("Spline Reference");
@@ -2775,6 +2778,27 @@ void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
         char progress_buf[32];
         snprintf(progress_buf, sizeof(progress_buf), "%.1f%%", progress * 100.0f);
         property_text("Progress", progress_buf, "current position along the spline");
+
+        layout::separator();
+        layout::section_header("Wheels");
+
+        // animate wheels, auto finds child entities named tire or wheel
+        if (property_toggle("Animate Wheels", &animate_wheels, "roll every wheel with speed and steer the front wheels into turns, wheels are auto detected from child entities named tire or wheel"))
+        {
+            follower->SetAnimateWheels(animate_wheels);
+        }
+
+        // wheel radius, 0 auto estimates from the mesh
+        if (property_float("Wheel Radius", &wheel_radius, 0.01f, 0.0f, 5.0f, "wheel radius in meters, 0 auto estimates it from the wheel mesh", "%.2f"))
+        {
+            follower->SetWheelRadius(wheel_radius);
+        }
+
+        // max steering angle for the front wheels
+        if (property_float("Max Steer Angle", &steer_angle, 0.5f, 0.0f, 90.0f, "maximum steering angle of the front wheels in degrees", "%.0f"))
+        {
+            follower->SetMaxSteerAngle(steer_angle);
+        }
     }
     component_end();
 }

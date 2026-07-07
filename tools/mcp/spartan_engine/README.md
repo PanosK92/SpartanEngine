@@ -76,7 +76,7 @@ Use these first:
 - `resource_list`, `material_get`, `material_set_property`, and `material_set_texture` for cached asset/material inspection and edits.
 - `resource_load`, `resource_reload`, `resource_save`, `resource_remove`, and `material_create` for resource lifecycle work.
 - `camera_set_view` and `viewport_frame` for editor camera positioning and framing.
-- `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_event_add`, `sequencer_event_update`, and `sequencer_event_remove` for the editor camera cut timeline.
+- `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_event_add`, `sequencer_event_update`, and `sequencer_event_remove` for the editor camera cut timeline, plus `sequencer_spline_add`, `sequencer_spline_update`, and `sequencer_spline_remove` for the spline follower track.
 - `renderer_debug_get`, `renderer_debug_set`, and `physics_state` for debug overlays and physics inspection.
 - `profiler_snapshot` for frame timing, fps, stutter flags, rhi counters, and per-pass CPU/GPU time blocks to find optimization targets.
 - `selection_update`, `entity_clone`, and `entity_move_index` for editor selection and hierarchy operations.

@@ -21,9 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====
+//= INCLUDES =====================
 #include "Component.h"
-//================
+#include "../../Math/Quaternion.h"
+#include <vector>
+//================================
 
 namespace spartan
 {
@@ -72,6 +74,14 @@ namespace spartan
         float GetProgress() const                     { return m_progress; }
         void SetProgress(float progress)              { m_progress = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress); }
 
+        // wheel animation, rolls every wheel with speed and steers the front wheels into the turns
+        bool GetAnimateWheels() const                 { return m_animate_wheels; }
+        void SetAnimateWheels(bool enable)            { m_animate_wheels = enable; }
+        float GetWheelRadius() const                  { return m_wheel_radius; }
+        void SetWheelRadius(float radius)             { m_wheel_radius = radius < 0.0f ? 0.0f : radius; } // 0 auto estimates from the mesh
+        float GetMaxSteerAngle() const                { return m_max_steer_angle; }
+        void SetMaxSteerAngle(float degrees)          { m_max_steer_angle = degrees; }
+
         // drive the follower externally, maps seconds from the start to a spline position
         void SetTime(float seconds);
 
@@ -84,6 +94,15 @@ namespace spartan
 
         // apply the current progress to the entity transform
         void ApplyProgress(Spline* spline);
+
+        // find the wheel entities under the follower and classify them front or rear
+        void ResolveWheels();
+
+        // roll every wheel with the travelled distance and steer the front wheels into the turn
+        void UpdateWheels(Spline* spline, float t);
+
+        // signed steer angle in radians derived from the upcoming spline curvature
+        float ComputeSteerAngle(Spline* spline, float t) const;
 
         // id of the entity that has the spline component (persisted)
         uint64_t m_spline_entity_id = 0;
@@ -108,5 +127,27 @@ namespace spartan
 
         // travel direction: +1 forward, -1 backward (used by ping-pong)
         float m_direction = 1.0f;
+
+        // roll every wheel with speed and steer the front wheels into the turns
+        bool m_animate_wheels = true;
+
+        // wheel radius in meters, 0 auto estimates it from the wheel mesh bounds
+        float m_wheel_radius = 0.0f;
+
+        // maximum steering angle of the front wheels in degrees
+        float m_max_steer_angle = 35.0f;
+
+        // a resolved wheel and its orientation relative to the car body
+        struct WheelState
+        {
+            Entity* entity                  = nullptr;
+            math::Quaternion rest_offset    = math::Quaternion::Identity;
+            bool is_front                   = false;
+        };
+
+        // runtime wheel cache, not persisted, rebuilt on demand
+        std::vector<WheelState> m_wheels;
+        bool m_wheels_resolved     = false;
+        float m_wheel_radius_active = 0.35f;
     };
 }
