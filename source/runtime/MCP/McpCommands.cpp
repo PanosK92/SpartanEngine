@@ -2311,6 +2311,23 @@ namespace spartan
             return json;
         }
 
+        std::string entity_tags_json(Entity* entity)
+        {
+            std::string json = "[";
+            bool first = true;
+            for (const std::string& tag : entity->GetTags())
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(tag);
+            }
+            json += "]";
+            return json;
+        }
+
         std::string entity_to_json_compact(Entity* entity)
         {
             std::string json = "{";
@@ -2323,6 +2340,10 @@ namespace spartan
             json += parent ? json_string(std::to_string(parent->GetObjectId())) : "null";
 
             json += ",\"components\":" + entity_components_json(entity);
+            if (!entity->GetTags().empty())
+            {
+                json += ",\"tags\":" + entity_tags_json(entity);
+            }
             json += ",\"position\":" + json_vector3(entity->GetPosition());
             json += ",\"rotation_euler\":" + json_vector3(entity->GetRotation().ToEulerAngles());
             json += ",\"scale\":" + json_vector3(entity->GetScale());
@@ -2357,6 +2378,10 @@ namespace spartan
             json += parent ? json_string(std::to_string(parent->GetObjectId())) : "null";
 
             json += ",\"components\":" + entity_components_json(entity);
+            if (!entity->GetTags().empty())
+            {
+                json += ",\"tags\":" + entity_tags_json(entity);
+            }
 
             json += ",\"position\":" + json_vector3(entity->GetPosition());
             json += ",\"position_local\":" + json_vector3(entity->GetPositionLocal());
@@ -3026,9 +3051,10 @@ namespace spartan
             }
 
             const std::optional<std::string> name = get_argument(request, "name");
-            if (!name || name->empty())
+            const std::optional<std::string> tag  = get_argument(request, "tag");
+            if ((!name || name->empty()) && (!tag || tag->empty()))
             {
-                return json_error("missing name");
+                return json_error("missing name or tag");
             }
 
             std::string match = get_argument(request, "match").value_or("contains");
@@ -3049,7 +3075,7 @@ namespace spartan
                 limit = static_cast<uint32_t>(parsed);
             }
 
-            const std::string query = to_lower_copy(*name);
+            const std::string query = to_lower_copy(name.value_or(""));
             std::string json = "{\"ok\":true,\"matches\":[";
             bool first = true;
             uint32_t count = 0;
@@ -3060,9 +3086,17 @@ namespace spartan
                     continue;
                 }
 
-                const std::string entity_name = to_lower_copy(entity->GetObjectName());
-                const bool is_match = match == "exact" ? entity_name == query : entity_name.find(query) != std::string::npos;
-                if (!is_match)
+                if (!query.empty())
+                {
+                    const std::string entity_name = to_lower_copy(entity->GetObjectName());
+                    const bool is_match = match == "exact" ? entity_name == query : entity_name.find(query) != std::string::npos;
+                    if (!is_match)
+                    {
+                        continue;
+                    }
+                }
+
+                if (tag && !tag->empty() && !entity->HasTag(*tag))
                 {
                     continue;
                 }
@@ -3169,6 +3203,12 @@ namespace spartan
                 }
 
                 entity->SetParent(parent);
+                changed = true;
+            }
+
+            if (const std::optional<std::string> tags = get_argument(request, "tags"))
+            {
+                entity->SetTagsString(*tags);
                 changed = true;
             }
 

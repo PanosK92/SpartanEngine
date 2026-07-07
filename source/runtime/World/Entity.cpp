@@ -110,6 +110,7 @@ namespace spartan
             clone->SetPosition(entity->GetPositionLocal());
             clone->SetRotation(entity->GetRotationLocal());
             clone->SetScale(entity->GetScaleLocal());
+            clone->SetTagsString(entity->GetTagsString());
 
             // clone all the components
             for (shared_ptr<Component> component_original : entity->GetAllComponents())
@@ -172,6 +173,56 @@ namespace spartan
     Entity* Entity::Clone()
     {
         return clone_entity_and_descendants(this);
+    }
+
+    void Entity::AddTag(const string& tag)
+    {
+        if (!tag.empty() && !HasTag(tag))
+        {
+            m_tags.push_back(tag);
+        }
+    }
+
+    void Entity::RemoveTag(const string& tag)
+    {
+        m_tags.erase(remove(m_tags.begin(), m_tags.end(), tag), m_tags.end());
+    }
+
+    bool Entity::HasTag(const string& tag) const
+    {
+        return find(m_tags.begin(), m_tags.end(), tag) != m_tags.end();
+    }
+
+    string Entity::GetTagsString() const
+    {
+        string result;
+        for (const string& tag : m_tags)
+        {
+            if (!result.empty())
+            {
+                result += ",";
+            }
+            result += tag;
+        }
+        return result;
+    }
+
+    void Entity::SetTagsString(const string& comma_separated)
+    {
+        m_tags.clear();
+        stringstream ss(comma_separated);
+        string tag;
+        while (getline(ss, tag, ','))
+        {
+            // trim spaces around each tag
+            const size_t first = tag.find_first_not_of(' ');
+            if (first == string::npos)
+            {
+                continue;
+            }
+            const size_t last = tag.find_last_not_of(' ');
+            AddTag(tag.substr(first, last - first + 1));
+        }
     }
 
     void Entity::RegisterForScripting(sol::state_view State)
@@ -332,6 +383,11 @@ namespace spartan
             node.append_attribute("id")     = m_object_id;
             node.append_attribute("active") = m_is_active;
             save_transform(node, m_position_local, m_rotation_local, m_scale_local);
+
+            if (!m_tags.empty())
+            {
+                node.append_attribute("tags") = GetTagsString().c_str();
+            }
 
             // save the prefab reference first so it is recreated before any user-added components are loaded
             if (HasPrefabData())
@@ -531,6 +587,7 @@ namespace spartan
             m_is_active   = node.attribute("active").as_bool(true);
             m_object_id   = node.attribute("id").as_ullong();
             m_object_name = node.attribute("name").as_string(m_object_name.c_str());
+            SetTagsString(node.attribute("tags").as_string(""));
 
             {
                 string pos_str = node.attribute("position").as_string();

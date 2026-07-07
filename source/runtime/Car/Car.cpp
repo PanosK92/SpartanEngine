@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarTireSquealSynthesis.h"
 #include "../Input/Input.h"
 #include "../Core/Window.h"
+#include "../FileSystem/FileSystem.h"
 #include "../Rendering/Material.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
@@ -120,6 +121,52 @@ namespace spartan
             }
 
             return MaterialPaintPreset::Metallic;
+        }
+
+        void tag_wheel(Entity* wheel, bool is_front, bool is_left)
+        {
+            wheel->AddTag("wheel");
+            wheel->AddTag(is_front ? "wheel_front" : "wheel_rear");
+            wheel->AddTag(is_left ? "wheel_left" : "wheel_right");
+        }
+
+        // physics-free version of ScaleWheelEntityToRadius for prop wheels
+        void scale_wheel_to_radius(Entity* wheel_entity, float target_radius)
+        {
+            Render* renderable = wheel_entity->GetComponent<Render>();
+            if (!renderable || !std::isfinite(target_radius) || target_radius <= 0.0f)
+            {
+                return;
+            }
+
+            renderable->Tick();
+            const math::Vector3 extents = renderable->GetBoundingBox().GetExtents();
+            const float measured_radius = std::max({ extents.x, extents.y, extents.z });
+            if (!std::isfinite(measured_radius) || measured_radius <= 1e-5f)
+            {
+                return;
+            }
+
+            wheel_entity->SetScale(wheel_entity->GetScaleLocal() * (target_radius / measured_radius));
+        }
+
+        std::string resolve_car_file(const std::string& file)
+        {
+            const std::string relative = file.empty() ? "cars/ferrari_laferrari.car" : file;
+
+            // paths in world files are relative to the world file directory
+            const std::string& world_path = World::GetFilePath();
+            if (!world_path.empty())
+            {
+                const std::string candidate = FileSystem::GetDirectoryFromFilePath(world_path) + relative;
+                if (FileSystem::Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            // fall back to the path as given, relative to the working directory
+            return relative;
         }
 
         std::string get_material_context(Entity* entity, Render* renderable)
@@ -246,7 +293,19 @@ namespace spartan
 
     Car* Car::Create(const Config& config)
     {
+        // the .car file is the single source of truth for the car
+        const ::car::car_definition* definition = ::car::load_car_file(config.car_file);
+        if (!definition)
+        {
+            SP_LOG_ERROR("failed to load car file: %s", config.car_file.c_str());
+            return nullptr;
+        }
+
+        // register sibling car files so the hud preset selector can switch between them
+        ::car::load_car_directory(FileSystem::GetDirectoryFromFilePath(config.car_file));
+
         Car* car = new Car();
+        car->m_definition     = definition;
         car->m_spawn_position = config.position;
         car->m_show_telemetry = config.show_telemetry;
         car->m_is_drivable    = config.drivable;
@@ -255,10 +314,22 @@ namespace spartan
 
         if (config.drivable)
         {
+            // the definition's performance drives the simulation
+            ::car::load_car(definition->performance);
+            for (int i = 0; i < ::car::preset_count; i++)
+            {
+                if (::car::preset_registry[i].instance == &definition->performance)
+                {
+                    ::car::active_preset_index = i;
+                    break;
+                }
+            }
+
             // create vehicle entity with physics
             car->m_vehicle_entity = World::CreateEntity();
             car->m_vehicle_entity->SetObjectName("vehicle");
             car->m_vehicle_entity->SetPosition(config.position);
+            car->m_vehicle_entity->AddTag("car");
 
             Physics* physics = car->m_vehicle_entity->AddComponent<Physics>();
             physics->SetStatic(false);
@@ -268,9 +339,9 @@ namespace spartan
             physics->SetBodyType(BodyType::Vehicle);
             physics->SetCar(car);  // car ticks automatically through entity system
 
-            // create car body (without its original wheels)
+            // create car body (without its baked in wheels)
             std::vector<Entity*> excluded_wheel_entities;
-            car->m_body_entity = car->CreateBody(true, &excluded_wheel_entities);
+            car->m_body_entity = car->CreateBody(&excluded_wheel_entities);
             if (car->m_body_entity)
             {
                 car->m_body_entity->SetParent(car->m_vehicle_entity);
@@ -294,29 +365,40 @@ namespace spartan
         }
         else
         {
-            // non-drivable display car
-            car->m_body_entity = car->CreateBody(false);
+            // non-drivable display car: same deterministic hierarchy as the drivable one,
+            // a root with the body bolted on and free spinning wheels, just without physics
+            car->m_vehicle_entity = World::CreateEntity();
+            car->m_vehicle_entity->SetObjectName("vehicle");
+            car->m_vehicle_entity->SetPosition(config.position);
+            car->m_vehicle_entity->AddTag("car");
+
+            std::vector<Entity*> baked_wheel_entities;
+            car->m_body_entity = car->CreateBody(&baked_wheel_entities);
             if (car->m_body_entity)
             {
-                car->m_body_entity->SetPosition(config.position);
+                car->m_body_entity->SetParent(car->m_vehicle_entity);
+                car->m_body_entity->SetPositionLocal(math::Vector3::Zero);
+            }
 
-                if (config.static_physics)
+            // spawn real wheel entities where the baked in tires were
+            car->CreatePropWheels(car->m_vehicle_entity, baked_wheel_entities);
+
+            if (config.static_physics && car->m_body_entity)
+            {
+                std::vector<Entity*> car_parts;
+                car->m_body_entity->GetDescendants(&car_parts);
+                for (Entity* car_part : car_parts)
                 {
-                    std::vector<Entity*> car_parts;
-                    car->m_body_entity->GetDescendants(&car_parts);
-                    for (Entity* car_part : car_parts)
+                    if (car_part->GetComponent<Render>())
                     {
-                        if (car_part->GetComponent<Render>())
-                        {
-                            Physics* physics_body = car_part->AddComponent<Physics>();
-                            physics_body->SetKinematic(true);
-                            physics_body->SetBodyType(BodyType::Mesh);
-                        }
+                        Physics* physics_body = car_part->AddComponent<Physics>();
+                        physics_body->SetKinematic(true);
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
             }
 
-            car->CreateAudioSources(car->m_body_entity);
+            car->CreateAudioSources(car->m_vehicle_entity);
             default_car = car->m_body_entity;
         }
 
@@ -333,6 +415,7 @@ namespace spartan
     {
         Config config;
         config.position       = parent ? parent->GetPosition() : math::Vector3::Zero;
+        config.car_file       = resolve_car_file(node.attribute("file").as_string(""));
         config.drivable       = node.attribute("drivable").as_bool(false);
         config.static_physics = node.attribute("static_physics").as_bool(false);
         config.show_telemetry = node.attribute("telemetry").as_bool(false);
@@ -342,12 +425,6 @@ namespace spartan
         config.paint_color.g  = node.attribute("paint_color_g").as_float(config.paint_color.g);
         config.paint_color.b  = node.attribute("paint_color_b").as_float(config.paint_color.b);
         config.paint_color.a  = node.attribute("paint_color_a").as_float(config.paint_color.a);
-
-        const char* preset_path = node.attribute("preset_path").as_string("");
-        if (::car::load_presets_from_xml(preset_path) && ::car::preset_count > 0)
-        {
-            ::car::load_car(*::car::preset_registry[::car::active_preset_index].instance);
-        }
 
         Car* car = Create(config);
         if (car && parent)
@@ -788,13 +865,19 @@ namespace spartan
         return combined;
     }
 
-    Entity* Car::CreateBody(bool remove_wheels, std::vector<Entity*>* out_excluded_entities)
+    Entity* Car::CreateBody(std::vector<Entity*>* out_excluded_entities)
     {
+        // a car without a body model still spawns four wheels
+        if (!m_definition || m_definition->body_model.empty())
+        {
+            return nullptr;
+        }
+
         uint32_t mesh_flags  = Mesh::GetDefaultFlags();
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
 
-        std::shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags);
+        std::shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>(m_definition->body_model, mesh_flags);
         if (!mesh_car)
         {
             return nullptr;
@@ -807,14 +890,17 @@ namespace spartan
         }
 
         // mesh root is shared via the resource cache, clone so every car instance gets its own hierarchy
+        // the root itself is transient so it never leaks into the world file on save
         Entity* car_entity = mesh_root->Clone();
         car_entity->SetActive(true);
         mesh_root->SetActive(false);
+        mesh_root->SetTransient(true);
 
-        car_entity->SetObjectName("ferrari_laferrari");
-        car_entity->SetScale(2.0f);
+        car_entity->SetObjectName(FileSystem::GetFileNameWithoutExtensionFromFilePath(m_definition->file_path));
+        car_entity->SetScale(m_definition->body_scale);
+        car_entity->AddTag("body");
 
-        // sync tire and brake disc active state with remove_wheels so cloned bodies match the requested config
+        // deactivate the baked in parts the definition hides, the spawned wheel entities replace them
         {
             std::vector<Entity*> descendants;
             car_entity->GetDescendants(&descendants);
@@ -823,17 +909,21 @@ namespace spartan
             {
                 std::string entity_name = to_lower_copy(descendant->GetObjectName());
 
-                bool is_excluded_part = entity_name.find("tire 1")    != std::string::npos ||
-                                       entity_name.find("tire 2")    != std::string::npos ||
-                                       entity_name.find("tire 3")    != std::string::npos ||
-                                       entity_name.find("tire 4")    != std::string::npos ||
-                                       entity_name.find("brakerear") != std::string::npos;
+                bool is_excluded_part = false;
+                for (const std::string& part : m_definition->body_hide_parts)
+                {
+                    if (entity_name.find(to_lower_copy(part)) != std::string::npos)
+                    {
+                        is_excluded_part = true;
+                        break;
+                    }
+                }
 
                 if (is_excluded_part)
                 {
-                    descendant->SetActive(!remove_wheels);
+                    descendant->SetActive(false);
 
-                    if (remove_wheels && out_excluded_entities)
+                    if (out_excluded_entities)
                     {
                         out_excluded_entities->push_back(descendant);
                     }
@@ -987,46 +1077,79 @@ namespace spartan
         return car_entity;
     }
 
-    void Car::CreateWheels(Entity* vehicle_ent, Physics* physics)
+    Entity* Car::SpawnWheelBase()
     {
+        if (!m_definition || m_definition->wheel_model.empty())
+        {
+            return nullptr;
+        }
+
         uint32_t mesh_flags  = Mesh::GetDefaultFlags();
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
 
-        std::shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend", mesh_flags);
+        std::shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(m_definition->wheel_model, mesh_flags);
         if (!mesh)
         {
-            return;
+            return nullptr;
         }
 
         Entity* wheel_root = mesh->GetRootEntity();
         if (!wheel_root)
         {
-            return;
+            return nullptr;
         }
 
-        Entity* wheel_base = wheel_root->GetChildByIndex(0);
-        if (!wheel_base)
+        Entity* wheel_source = wheel_root->GetChildByIndex(0);
+        if (!wheel_source)
         {
-            return;
+            return nullptr;
         }
 
+        // the mesh root is shared via the resource cache, clone so every car gets its own wheels
+        // the root itself is transient so it never leaks into the world file on save
+        Entity* wheel_base = wheel_source->Clone();
         wheel_base->SetParent(nullptr);
-        World::RemoveEntityImmediate(wheel_root);
-        mesh->SetRootEntity(nullptr);
-        // start at unit scale so ScaleWheelEntityToRadius can measure the natural mesh size
-        // and rescale it to match the preset's target wheel radius. a hardcoded 0.2 here was
-        // undersizing the wheel to ~0.21 m so the cooked sweep cylinder could never reach the
-        // ground and target_compression was permanently clamped to zero in steady state
+        wheel_base->SetActive(true);
+        wheel_root->SetActive(false);
+        wheel_root->SetTransient(true);
+
+        // start at unit scale so radius scaling can measure the natural mesh size.
+        // a hardcoded 0.2 here was undersizing the wheel to ~0.21 m so the cooked sweep
+        // cylinder could never reach the ground and target_compression was permanently
+        // clamped to zero in steady state
         wheel_base->SetScale(1.0f);
 
         if (Render* renderable = wheel_base->GetComponent<Render>())
         {
             Material* material = renderable->GetMaterial();
-            material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
-            material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
-            material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
-            material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+            if (!m_definition->wheel_albedo.empty())
+            {
+                material->SetTexture(MaterialTextureType::Color, m_definition->wheel_albedo);
+            }
+            if (!m_definition->wheel_metalness.empty())
+            {
+                material->SetTexture(MaterialTextureType::Metalness, m_definition->wheel_metalness);
+            }
+            if (!m_definition->wheel_normal.empty())
+            {
+                material->SetTexture(MaterialTextureType::Normal, m_definition->wheel_normal);
+            }
+            if (!m_definition->wheel_roughness.empty())
+            {
+                material->SetTexture(MaterialTextureType::Roughness, m_definition->wheel_roughness);
+            }
+        }
+
+        return wheel_base;
+    }
+
+    void Car::CreateWheels(Entity* vehicle_ent, Physics* physics)
+    {
+        Entity* wheel_base = SpawnWheelBase();
+        if (!wheel_base)
+        {
+            return;
         }
 
         // rescale wheel mesh so its visual radius matches the physics target radius.
@@ -1056,6 +1179,7 @@ namespace spartan
         wheel_fl->SetObjectName("wheel_front_left");
         wheel_fl->SetParent(vehicle_ent);
         wheel_fl->SetPositionLocal(math::Vector3(-half_track_front, wheel_y, front_z));
+        tag_wheel(wheel_fl, true, true);
 
         // front right
         Entity* wheel_fr = wheel_base->Clone();
@@ -1063,12 +1187,14 @@ namespace spartan
         wheel_fr->SetParent(vehicle_ent);
         wheel_fr->SetPositionLocal(math::Vector3(half_track_front, wheel_y, front_z));
         wheel_fr->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
+        tag_wheel(wheel_fr, true, false);
 
         // rear left
         Entity* wheel_rl = wheel_base->Clone();
         wheel_rl->SetObjectName("wheel_rear_left");
         wheel_rl->SetParent(vehicle_ent);
         wheel_rl->SetPositionLocal(math::Vector3(-half_track_rear, wheel_y, rear_z));
+        tag_wheel(wheel_rl, false, true);
 
         // rear right
         Entity* wheel_rr = wheel_base->Clone();
@@ -1076,11 +1202,130 @@ namespace spartan
         wheel_rr->SetParent(vehicle_ent);
         wheel_rr->SetPositionLocal(math::Vector3(half_track_rear, wheel_y, rear_z));
         wheel_rr->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
+        tag_wheel(wheel_rr, false, false);
 
         physics->SetWheelEntity(WheelIndex::FrontLeft,  wheel_fl);
         physics->SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
         physics->SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
         physics->SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
+    }
+
+    void Car::CreatePropWheels(Entity* root, const std::vector<Entity*>& baked_wheel_entities)
+    {
+        if (!m_definition)
+        {
+            return;
+        }
+
+        // where the nose of the body model points along its local z axis
+        const float forward_z = m_definition->body_forward_z < 0.0f ? -1.0f : 1.0f;
+
+        // measure the baked in tires so the spawned wheels land exactly in the wheel arches
+        struct WheelSpot
+        {
+            math::Vector3 position_local;
+            float radius   = 0.0f;
+            bool  is_front = false;
+        };
+        std::vector<WheelSpot> spots;
+
+        const math::Matrix root_inverse = root->GetMatrix().Inverted();
+        for (Entity* baked : baked_wheel_entities)
+        {
+            if (to_lower_copy(baked->GetObjectName()).find("tire") == std::string::npos)
+            {
+                continue;
+            }
+
+            // the renderable can live on a child node, merge every render bound under the part
+            math::BoundingBox aabb = math::BoundingBox::Zero;
+            std::vector<Entity*> parts;
+            parts.push_back(baked);
+            baked->GetDescendants(&parts);
+            for (Entity* part : parts)
+            {
+                if (Render* renderable = part->GetComponent<Render>())
+                {
+                    renderable->Tick();
+                    if (aabb == math::BoundingBox::Zero)
+                    {
+                        aabb = renderable->GetBoundingBox();
+                    }
+                    else
+                    {
+                        aabb.Merge(renderable->GetBoundingBox());
+                    }
+                }
+            }
+
+            const math::Vector3 extents = aabb.GetExtents();
+            if (aabb == math::BoundingBox::Zero || !extents.IsFinite() || extents.y <= 0.01f)
+            {
+                continue;
+            }
+
+            WheelSpot spot;
+            spot.position_local = root_inverse * aabb.GetCenter();
+            spot.radius         = extents.y; // half the tire height is its radius
+            spots.push_back(spot);
+        }
+
+        // wheels only car or unexpected model, fall back to the performance geometry
+        if (spots.size() != 4)
+        {
+            spots.clear();
+            const ::car::car_preset& performance = m_definition->performance;
+            const float wheelbase   = performance.wheelbase   > 0.0f ? performance.wheelbase   : 2.6f;
+            const float track_front = performance.track_front > 0.0f ? performance.track_front : 1.6f;
+            const float track_rear  = performance.track_rear  > 0.0f ? performance.track_rear  : 1.6f;
+            const float front_z     = wheelbase * 0.5f * forward_z;
+            const float rear_z      = -front_z;
+            spots.push_back({ math::Vector3(-track_front * 0.5f, 0.0f, front_z), 0.34f });
+            spots.push_back({ math::Vector3( track_front * 0.5f, 0.0f, front_z), 0.34f });
+            spots.push_back({ math::Vector3(-track_rear  * 0.5f, 0.0f, rear_z),  0.34f });
+            spots.push_back({ math::Vector3( track_rear  * 0.5f, 0.0f, rear_z),  0.34f });
+        }
+
+        // the pair on the nose side of the axle midpoint is the front axle
+        float mid_z = 0.0f;
+        for (const WheelSpot& spot : spots)
+        {
+            mid_z += spot.position_local.z;
+        }
+        mid_z /= static_cast<float>(spots.size());
+        for (WheelSpot& spot : spots)
+        {
+            spot.is_front = (spot.position_local.z - mid_z) * forward_z > 0.0f;
+        }
+
+        Entity* wheel_base = SpawnWheelBase();
+        if (!wheel_base)
+        {
+            return;
+        }
+
+        for (size_t i = 0; i < spots.size(); i++)
+        {
+            const WheelSpot& spot = spots[i];
+            Entity* wheel         = (i == spots.size() - 1) ? wheel_base : wheel_base->Clone();
+
+            scale_wheel_to_radius(wheel, spot.radius);
+            wheel->SetParent(root);
+            wheel->SetPositionLocal(spot.position_local);
+
+            // rims face outward, the outboard side follows the x sign
+            const bool is_left = (spot.position_local.x * forward_z) < 0.0f;
+            if (spot.position_local.x > 0.0f)
+            {
+                wheel->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
+            }
+
+            std::string name = "wheel_";
+            name += spot.is_front ? "front_" : "rear_";
+            name += is_left ? "left" : "right";
+            wheel->SetObjectName(name);
+            tag_wheel(wheel, spot.is_front, is_left);
+        }
     }
 
     void Car::CreateAudioSources(Entity* parent_entity)

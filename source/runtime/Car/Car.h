@@ -35,6 +35,11 @@ namespace pugi
     class xml_node;
 }
 
+namespace car
+{
+    struct car_definition;
+}
+
 namespace spartan
 {
     class Entity;
@@ -57,6 +62,7 @@ namespace spartan
         struct Config
         {
             math::Vector3 position       = math::Vector3::Zero;
+            std::string   car_file;                // .car definition file, the single source of truth for the car
             bool          drivable       = false;  // creates vehicle physics with wheels
             bool          static_physics = false;  // kinematic physics on the body (for display)
             bool          show_telemetry = false;  // shows vehicle telemetry hud
@@ -121,8 +127,10 @@ namespace spartan
         math::BoundingBox GetCarAABB() const;
 
         // creation helpers
-        Entity* CreateBody(bool remove_wheels, std::vector<Entity*>* out_excluded_entities = nullptr);
+        Entity* CreateBody(std::vector<Entity*>* out_excluded_entities = nullptr);
+        Entity* SpawnWheelBase();
         void CreateWheels(Entity* vehicle_ent, Physics* physics);
+        void CreatePropWheels(Entity* root, const std::vector<Entity*>& baked_wheel_entities);
         void CreateAudioSources(Entity* parent_entity);
 
         // camera view helpers
@@ -171,6 +179,7 @@ namespace spartan
         static constexpr float mouse_orbit_sensitivity_pitch = 0.004f;
 
         // instance state
+        const ::car::car_definition* m_definition = nullptr; // loaded from the .car file
         Entity*           m_vehicle_entity  = nullptr;  // root entity for drivable cars
         Entity*           m_body_entity     = nullptr;  // car body mesh entity
         Entity*           m_window_entity   = nullptr;  // car window entity (for hiding when inside)

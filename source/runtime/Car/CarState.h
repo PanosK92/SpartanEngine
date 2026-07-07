@@ -63,8 +63,8 @@ namespace car
 
     namespace tuning
     {
-        // active car specification - swap this to change the car
-        inline car_preset spec = laferrari_preset();
+        // active car specification, load_car applies a definition loaded from a .car file
+        inline car_preset spec = car_preset();
 
         // simulation-level parameters (not part of car spec)
         constexpr float air_density                  = 1.225f;

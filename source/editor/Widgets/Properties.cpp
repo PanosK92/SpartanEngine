@@ -833,6 +833,16 @@ void Properties::ShowEntity(Entity* entity) const
             entity->SetActive(is_active);
         }
 
+        // tags, comma separated labels systems can query (e.g. wheel, wheel_front)
+        {
+            string tags = entity->GetTagsString();
+            property_input_text("Tags", &tags, false, "comma separated labels, e.g. wheel, wheel_front");
+            if (tags != entity->GetTagsString())
+            {
+                entity->SetTagsString(tags);
+            }
+        }
+
         layout::separator();
         layout::section_header("Transform");
 

@@ -178,21 +178,16 @@ namespace spartan
             return;
         }
 
+        // cars spawned from a .car file tag their wheels, so finding them is trivial
         Entity* car = GetEntity();
         std::vector<Entity*> descendants;
         car->GetDescendants(&descendants);
 
-        // gather every part whose name marks it as a wheel or tire
-        // the imported car nests the renderable on a child, so match by name and read bounds from any renderable under it
         const Quaternion car_rot_inverse = car->GetRotation().Inverse();
-        const Vector3 car_position       = car->GetPosition();
-        std::vector<float> local_forward;
         float radius_estimate = 0.0f;
         for (Entity* entity : descendants)
         {
-            std::string name = entity->GetObjectName();
-            transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
-            if (name.find("tire") == std::string::npos && name.find("wheel") == std::string::npos)
+            if (!entity->HasTag("wheel"))
             {
                 continue;
             }
@@ -200,50 +195,15 @@ namespace spartan
             WheelState wheel;
             wheel.entity      = entity;
             wheel.rest_offset = car_rot_inverse * entity->GetRotation();
+            wheel.is_front    = entity->HasTag("wheel_front");
             m_wheels.push_back(wheel);
 
-            // forward position in the car local frame, used to split front from rear
-            local_forward.push_back((car_rot_inverse * (entity->GetPosition() - car_position)).z);
-
             // estimate the wheel radius from the largest half extent of the wheel bounds
-            Render* render = entity->GetComponent<Render>();
-            if (!render)
-            {
-                std::vector<Entity*> wheel_parts;
-                entity->GetDescendants(&wheel_parts);
-                for (Entity* wheel_part : wheel_parts)
-                {
-                    if ((render = wheel_part->GetComponent<Render>()))
-                    {
-                        break;
-                    }
-                }
-            }
-            if (render)
+            if (Render* render = entity->GetComponent<Render>())
             {
                 const Vector3 extents = render->GetBoundingBox().GetExtents();
                 radius_estimate       = max(radius_estimate, max(extents.x, max(extents.y, extents.z)));
             }
-        }
-
-        if (m_wheels.empty())
-        {
-            return;
-        }
-
-        // wheels ahead of the midpoint are the steering front wheels
-        float forward_min = local_forward[0];
-        float forward_max = local_forward[0];
-        for (float value : local_forward)
-        {
-            forward_min = min(forward_min, value);
-            forward_max = max(forward_max, value);
-        }
-        const float forward_mid = (forward_min + forward_max) * 0.5f;
-        const float travel_sign = m_flip_forward ? -1.0f : 1.0f;
-        for (size_t i = 0; i < m_wheels.size(); i++)
-        {
-            m_wheels[i].is_front = (local_forward[i] * travel_sign) > (forward_mid * travel_sign);
         }
 
         m_wheel_radius_active = m_wheel_radius > 0.0f ? m_wheel_radius : (radius_estimate > 0.0f ? radius_estimate : 0.35f);

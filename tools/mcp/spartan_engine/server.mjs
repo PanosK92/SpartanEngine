@@ -1005,9 +1005,10 @@ register_tool(
 register_tool(
   server,
   "entity_find",
-  "Find entities by name without listing the whole scene.",
+  "Find entities by name and/or tag without listing the whole scene. Tags mark roles, e.g. car parts carry wheel, wheel_front, wheel_left tags.",
   {
-    name: z.string(),
+    name: z.string().optional(),
+    tag: z.string().optional(),
     match: z.enum(["exact", "contains"]).optional(),
     limit: z.number().int().min(1).max(100).optional(),
   },
@@ -1271,12 +1272,13 @@ register_local_tool(
 register_tool(
   server,
   "entity_update",
-  "Rename, activate, deactivate, or reparent an entity in edit mode. Use parent_id root to detach.",
+  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags is a comma separated list that replaces all tags.",
   {
     id: z.string(),
     name: z.string().optional(),
     active: z.boolean().optional(),
     parent_id: z.string().optional(),
+    tags: z.string().optional(),
   },
   "entity_update",
   { annotations: edit_tool, outputSchema: output_schemas.entity },

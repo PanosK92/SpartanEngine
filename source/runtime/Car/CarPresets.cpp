@@ -279,78 +279,118 @@ namespace car
         }
     }
 
-    bool load_presets_from_xml(const char* file_path)
+    namespace
     {
-        if (!file_path || file_path[0] == '\0')
+        string normalize_path(const string& path)
         {
-            return false;
+            string result = path;
+            replace(result.begin(), result.end(), '\\', '/');
+            return result;
         }
 
-        if (!spartan::FileSystem::Exists(file_path))
+        void split_csv(const string& value, vector<string>& out)
         {
-            SP_LOG_WARNING("car preset file not found: %s", file_path);
-            return false;
+            stringstream stream(value);
+            string token;
+            while (getline(stream, token, ','))
+            {
+                const size_t first = token.find_first_not_of(' ');
+                if (first == string::npos)
+                {
+                    continue;
+                }
+                const size_t last = token.find_last_not_of(' ');
+                out.push_back(token.substr(first, last - first + 1));
+            }
+        }
+    }
+
+    const car_definition* load_car_file(const string& file_path)
+    {
+        const string path = normalize_path(file_path);
+
+        // cached by path
+        for (const car_definition& definition : definitions)
+        {
+            if (definition.file_path == path)
+            {
+                return &definition;
+            }
+        }
+
+        if (!spartan::FileSystem::Exists(path))
+        {
+            SP_LOG_WARNING("car file not found: %s", path.c_str());
+            return nullptr;
         }
 
         pugi::xml_document doc;
-        pugi::xml_parse_result result = doc.load_file(file_path);
+        pugi::xml_parse_result result = doc.load_file(path.c_str());
         if (!result)
         {
-            SP_LOG_ERROR("failed to parse car preset file: %s, %s", file_path, result.description());
-            return false;
+            SP_LOG_ERROR("failed to parse car file: %s, %s", path.c_str(), result.description());
+            return nullptr;
         }
 
-        pugi::xml_node root = doc.child("car_presets");
+        pugi::xml_node root = doc.child("car");
         if (!root)
         {
-            root = doc.child("CarPresets");
+            SP_LOG_ERROR("car file missing car root node: %s", path.c_str());
+            return nullptr;
         }
 
-        if (!root)
+        car_definition definition;
+        definition.file_path = path;
+        definition.name      = root.attribute("name").as_string("unnamed car");
+
+        if (pugi::xml_node body = root.child("body"))
         {
-            SP_LOG_ERROR("car preset file missing car_presets root: %s", file_path);
-            return false;
+            definition.body_model     = body.attribute("model").as_string("");
+            definition.body_scale     = body.attribute("scale").as_float(1.0f);
+            definition.body_forward_z = body.attribute("forward_z").as_float(1.0f);
+            split_csv(body.attribute("hide_parts").as_string(""), definition.body_hide_parts);
         }
 
-        vector<car_preset> loaded_presets;
-        vector<string> loaded_names;
-
-        for (pugi::xml_node node = root.child("preset"); node; node = node.next_sibling("preset"))
+        if (pugi::xml_node wheels = root.child("wheels"))
         {
-            string name = node.attribute("name").as_string();
-            if (name.empty())
-            {
-                SP_LOG_WARNING("skipping unnamed car preset in: %s", file_path);
-                continue;
-            }
-
-            car_preset preset;
-            load_preset(node, preset);
-            loaded_names.push_back(name);
-            loaded_presets.push_back(preset);
+            definition.wheel_model     = wheels.attribute("model").as_string("");
+            definition.wheel_albedo    = wheels.attribute("albedo").as_string("");
+            definition.wheel_metalness = wheels.attribute("metalness").as_string("");
+            definition.wheel_normal    = wheels.attribute("normal").as_string("");
+            definition.wheel_roughness = wheels.attribute("roughness").as_string("");
         }
 
-        if (loaded_presets.empty())
+        if (pugi::xml_node performance = root.child("performance"))
         {
-            SP_LOG_ERROR("car preset file has no presets: %s", file_path);
-            return false;
+            load_preset(performance, definition.performance);
         }
 
-        external_presets     = std::move(loaded_presets);
-        external_preset_names = std::move(loaded_names);
-        preset_registry.clear();
-        preset_registry.reserve(external_presets.size());
+        definitions.push_back(std::move(definition));
+        car_definition& stored = definitions.back();
 
-        for (size_t i = 0; i < external_presets.size(); i++)
-        {
-            external_presets[i].name = external_preset_names[i].c_str();
-            preset_registry.push_back({ external_presets[i].name, &external_presets[i] });
-        }
-
+        // register for the hud preset selector
+        stored.performance.name = stored.name.c_str();
+        preset_registry.push_back({ stored.name.c_str(), &stored.performance });
         preset_count        = static_cast<int>(preset_registry.size());
         active_preset_index = std::clamp(active_preset_index, 0, preset_count - 1);
 
-        SP_LOG_INFO("loaded %d car presets from: %s", preset_count, file_path);
-        return true;
+        SP_LOG_INFO("loaded car: %s (%s)", stored.name.c_str(), path.c_str());
+        return &stored;
+    }
+
+    void load_car_directory(const string& directory)
+    {
+        if (!spartan::FileSystem::IsDirectory(directory))
+        {
+            return;
+        }
+
+        for (const string& file : spartan::FileSystem::GetFilesInDirectory(directory))
+        {
+            if (spartan::FileSystem::GetExtensionFromFilePath(file) == ".car")
+            {
+                load_car_file(file);
+            }
+        }
     }
 }

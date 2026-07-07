@@ -199,6 +199,16 @@ namespace spartan
         void SetTransient(bool transient)  { m_transient = transient; }
         bool IsTransient() const           { return m_transient; }
 
+        //= TAGS ==========================================================================
+        // free-form labels (e.g. wheel, wheel_front) so systems can find parts by role
+        void AddTag(const std::string& tag);
+        void RemoveTag(const std::string& tag);
+        bool HasTag(const std::string& tag) const;
+        const std::vector<std::string>& GetTags() const { return m_tags; }
+        std::string GetTagsString() const;
+        void SetTagsString(const std::string& comma_separated);
+        //=================================================================================
+
     private:
         std::atomic<bool> m_is_active = true;
         bool m_transient              = false; // transient entities are not serialized
@@ -235,6 +245,9 @@ namespace spartan
         std::mutex m_mutex_children;
         std::mutex m_mutex_parent;
         float m_time_since_last_transform_sec = 0.0f;
+
+        // free-form labels, serialized as a comma separated attribute
+        std::vector<std::string> m_tags;
 
         // prefab data (if this entity was created from a prefab)
         std::string m_prefab_type;

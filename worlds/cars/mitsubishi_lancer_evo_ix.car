@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<car name="Mitsubishi Lancer Evolution IX">
+    <!-- placeholder body, swap the model when a real evo asset is added -->
+    <body model="project\models\ferrari_laferrari\scene.gltf" scale="2.0" forward_z="-1"
+        hide_parts="tire 1,tire 2,tire 3,tire 4,brakerear" />
+
+    <wheels model="project\models\wheel\model.blend"
+        albedo="project\models\wheel\albedo.jpeg" metalness="project\models\wheel\metalness.png"
+        normal="project\models\wheel\normal.png" roughness="project\models\wheel\roughness.png" />
+
+    <performance
+        mass="1420" length="4.49" width="1.77" height="1.45" wheelbase="2.625" track_front="1.515" track_rear="1.515" suspension_height="0.36" suspension_travel="0.15"
+        engine_idle_rpm="800" engine_redline_rpm="7000" engine_max_rpm="7200" engine_peak_torque="392" engine_peak_torque_rpm="3000" engine_inertia="0.3" engine_friction="0.025" engine_rpm_smoothing="5" downshift_blip_amount="0.35" downshift_blip_duration="0.15"
+        gear_ratios="-3.416,0,2.928,1.95,1.407,1.031,0.72,0,0,0,0" gear_count="7" final_drive="4.529" shift_up_rpm="6500" shift_down_rpm="3000" shift_time="0.25" clutch_engagement_rate="12" drivetrain_efficiency="0.82" manual_transmission="true"
+        upshift_speed_base="0,0,40,70,105,145,0,0,0,0,0" upshift_speed_sport="0,0,55,95,140,195,0,0,0,0,0" downshift_speeds="0,0,0,20,45,75,110,0,0,0,0"
+        brake_force="7500" brake_bias_front="0.6" reverse_power_ratio="0.5" brake_ambient_temp="30" brake_optimal_temp="350" brake_fade_temp="650" brake_max_temp="850" brake_heat_coefficient="0.015" brake_cooling_base="8" brake_cooling_airflow="1.2" brake_thermal_mass="5.5"
+        throttle_smoothing="8" brake_smoothing="8"
+        lat_B="10.5" lat_C="1.3" lat_D="1" lat_E="-0.6" long_B="16" long_C="1.4" long_D="1" long_E="-0.3" load_B_scale_min="0.5" pneumatic_trail_max="0.04" pneumatic_trail_peak="0.14"
+        tire_friction="1.3" min_slip_speed="0.5" load_sensitivity="0.9" load_reference="4500" rear_grip_ratio="1.05" slip_angle_deadband="0.01" min_lateral_grip="0.35" camber_thrust_coeff="0.012" max_slip_angle="0.38" tire_pressure="2.4" tire_pressure_optimal="2.4"
+        tire_ambient_temp="45" tire_optimal_temp="85" tire_temp_range="45" tire_heat_from_slip="22" tire_heat_from_rolling="0.15" tire_cooling_rate="2" tire_cooling_airflow="0.04" tire_grip_temp_factor="0.15" tire_min_temp="10" tire_max_temp="300" tire_relaxation_length="0.35" tire_wear_rate="0.000012" tire_wear_heat_mult="2" tire_grip_wear_loss="0.3" tire_core_transfer_rate="0.5" tire_surface_response="3"
+        front_spring_freq="2.4" rear_spring_freq="2.2" front_damping_ratio="0.63" rear_damping_ratio="0.67" damping_bump_ratio="0.7" damping_rebound_ratio="1.3" front_arb_stiffness="15000" rear_arb_stiffness="12500" max_susp_force="30000" max_damper_velocity="5" bump_stop_stiffness="80000" bump_stop_threshold="0.88" front_roll_center_height="0.05" rear_roll_center_height="0.07" pitch_center_height="0.10"
+        rolling_resistance="0.014" drag_coeff="0.34" frontal_area="2.15" lift_coeff_front="-0.05" lift_coeff_rear="-0.12" drs_enabled="false" drs_rear_cl_factor="0.3" side_area="3.5" ground_effect_enabled="false" ground_effect_multiplier="1" ground_effect_height_ref="0.12" ground_effect_height_max="0.3" yaw_aero_enabled="true" yaw_drag_multiplier="2" yaw_side_force_coeff="1" pitch_aero_enabled="true" pitch_sensitivity="0.4" aero_center_height="0.3" aero_center_front_z="0" aero_center_rear_z="0"
+        center_of_mass_x="0" center_of_mass_y="-0.08" center_of_mass_z="0.184"
+        max_steer_angle="0.62" high_speed_steer_reduction="0.45" steering_rate="1.6" self_align_gain="0.45" steering_linearity="1.2" front_camber="-0.0261799" rear_camber="-0.0174533" front_toe="0" rear_toe="0.00349066" front_bump_steer="-0.015" rear_bump_steer="0.01" front_camber_gain="-0.9" rear_camber_gain="-0.3" tire_vertical_stiffness="160000" lsd_viscous="120" abs_load_sensitivity="0.25" steer_compliance="0.05"
+        airborne_wheel_decay="0.99" bearing_friction="0.2" ground_match_rate="8" handbrake_sliding_factor="0.8" handbrake_torque="6000"
+        drivetrain_type="2" torque_split_front="0.5" lsd_preload="100" lsd_lock_ratio_accel="0.45" lsd_lock_ratio_decel="0.2" diff_type="2" driveshaft_stiffness="5000"
+        input_deadzone="0.01" steering_deadzone="0.001" braking_speed_threshold="3" linear_damping="0.001" angular_damping="0.08" yaw_damping="3000"
+        abs_enabled="false" abs_slip_threshold="0.15" abs_release_rate="0.7" abs_pulse_frequency="12" tc_enabled="false" tc_slip_threshold="0.1" tc_power_reduction="0.7" tc_response_rate="12"
+        turbo_enabled="true" boost_max_pressure="1.35" boost_spool_rate="3.5" boost_wastegate_rpm="6000" boost_torque_mult="0.25" boost_min_rpm="2800"
+        engine_stage_max="3" suspension_stage_max="2" tires_stage_max="2" brakes_stage_max="2" aero_stage_max="1" weight_stage_max="2" />
+</car>
