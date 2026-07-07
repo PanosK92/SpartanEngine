@@ -406,6 +406,8 @@ namespace spartan
 
                 if (!all_tree_transforms.empty() && mesh_tree)
                 {
+                    // the cached import root is only a template, keep it out of world saves
+                    mesh_tree->GetRootEntity()->SetTransient(true);
                     Entity* entity = mesh_tree->GetRootEntity()->Clone();
                     entity->SetObjectName("tree");
                     entity->SetParent(terrain_entity);
@@ -454,6 +456,8 @@ namespace spartan
 
                 if (!all_rock_transforms.empty() && mesh_rock)
                 {
+                    // the cached import root is only a template, keep it out of world saves
+                    mesh_rock->GetRootEntity()->SetTransient(true);
                     Entity* entity = mesh_rock->GetRootEntity()->Clone();
                     entity->SetObjectName("rock");
                     entity->SetParent(terrain_entity);

@@ -1538,6 +1538,8 @@ namespace spartan
         {
             Entity* entity = World::CreateEntity();
             entity->SetObjectName("tile_" + to_string(tile_index + 1));
+            // tiles are rebuilt by Load via Generate, saving them would stack duplicates
+            entity->SetTransient(true);
             entity->SetParent(GetEntity());
             entity->SetPosition(m_tile_offsets[tile_index]);
 

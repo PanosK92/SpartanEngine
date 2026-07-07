@@ -360,9 +360,17 @@ namespace car
             definition.wheel_roughness = wheels.attribute("roughness").as_string("");
         }
 
-        if (pugi::xml_node performance = root.child("performance"))
+        // performance attributes can live in any number of thematic sections,
+        // chassis, engine, transmission, etc, each section is read with the full
+        // attribute list so grouping is free form and purely for human readability
+        for (pugi::xml_node section : root.children())
         {
-            load_preset(performance, definition.performance);
+            const string section_name = section.name();
+            if (section_name == "body" || section_name == "wheels")
+            {
+                continue;
+            }
+            load_preset(section, definition.performance);
         }
 
         definitions.push_back(std::move(definition));

@@ -130,7 +130,8 @@ namespace spartan
             wheel->AddTag(is_left ? "wheel_left" : "wheel_right");
         }
 
-        // physics-free version of ScaleWheelEntityToRadius for prop wheels
+        // physics-free version of ScaleWheelEntityToRadius for prop wheels,
+        // measures the mesh bounds directly so it works regardless of active state
         void scale_wheel_to_radius(Entity* wheel_entity, float target_radius)
         {
             Render* renderable = wheel_entity->GetComponent<Render>();
@@ -139,9 +140,9 @@ namespace spartan
                 return;
             }
 
-            renderable->Tick();
-            const math::Vector3 extents = renderable->GetBoundingBox().GetExtents();
-            const float measured_radius = std::max({ extents.x, extents.y, extents.z });
+            const math::BoundingBox aabb = renderable->GetBoundingBoxMesh() * wheel_entity->GetMatrix();
+            const math::Vector3 extents  = aabb.GetExtents();
+            const float measured_radius  = std::max({ extents.x, extents.y, extents.z });
             if (!std::isfinite(measured_radius) || measured_radius <= 1e-5f)
             {
                 return;
@@ -1237,7 +1238,10 @@ namespace spartan
                 continue;
             }
 
-            // the renderable can live on a child node, merge every render bound under the part
+            // the renderable can live on a child node, merge every render bound under the part.
+            // world bounds are built from the mesh bbox and the entity matrix directly because
+            // Render::UpdateAabb falls back to an identity transform on inactive entities and
+            // these tires were just deactivated by CreateBody
             math::BoundingBox aabb = math::BoundingBox::Zero;
             std::vector<Entity*> parts;
             parts.push_back(baked);
@@ -1246,14 +1250,14 @@ namespace spartan
             {
                 if (Render* renderable = part->GetComponent<Render>())
                 {
-                    renderable->Tick();
+                    const math::BoundingBox part_aabb = renderable->GetBoundingBoxMesh() * part->GetMatrix();
                     if (aabb == math::BoundingBox::Zero)
                     {
-                        aabb = renderable->GetBoundingBox();
+                        aabb = part_aabb;
                     }
                     else
                     {
-                        aabb.Merge(renderable->GetBoundingBox());
+                        aabb.Merge(part_aabb);
                     }
                 }
             }
