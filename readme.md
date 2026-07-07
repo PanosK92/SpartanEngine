@@ -27,7 +27,7 @@
 
 Spartan started as a university project. Ten years of nights and weekends later, its rendering technology runs in **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, ships in a **published programming book**, and anchors a community of **600+** engineers on Discord.
 
-It is built around one philosophy: **favor real-time over baked, dynamic over static, modern over safe.** Every system here exists to serve that.
+This is what a codebase looks like when a single person owns every line for a decade: no legacy committees, no half-migrated architectures, no "we'll fix it in the next version." One philosophy applied without compromise: **favor real-time over baked, dynamic over static, modern over safe.** Every system here exists to serve that.
 
 **There is a destination that gives all this tech a purpose.** Curious? **[Read the plan →](https://github.com/PanosK92/SpartanEngine/blob/master/plan.md)**
 
@@ -43,7 +43,7 @@ It is built around one philosophy: **favor real-time over baked, dynamic over st
 
 <img align="left" width="420" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection_4.png"/>
 
-Launch the engine and choose from a selection of default worlds. Each is physics-enabled—walk around, pick up objects with your mouse, or take a car for a spin.
+Launch the engine and choose from a selection of default worlds. Nothing is a canned demo—every world is physics-enabled. Walk around, pick up objects with your mouse, or take a car for a spin.
 
 <br clear="left"/>
 
@@ -87,8 +87,8 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 
 ### Lighting and Global Illumination
 
-- **Clustered deferred shading** with a GPU-built logarithmic-Z grid and cone-vs-AABB culling for spots, scales to many local lights at near-constant per-pixel cost
 - **ReSTIR path tracing** with spatiotemporal reservoir resampling for real-time multi-bounce global illumination
+- **Clustered deferred shading** with a GPU-built logarithmic-Z grid and cone-vs-AABB culling for spots, scales to many local lights at near-constant per-pixel cost
 - **Hardware ray-traced reflections and shadows** via ray queries
 - **Atmospheric scattering** and image-based lighting with bent normals
 - **Volumetric clouds** (Nubis-style) baked into the sky panorama, with cumulus and cirrus layers, multi-scatter lighting and aerial perspective
@@ -116,7 +116,7 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 
 ## Car Simulation — 200Hz
 
-A full vehicle dynamics simulation running inside the PhysX fixed-timestep loop.
+A full vehicle dynamics simulation running inside the PhysX fixed-timestep loop. Not a gameplay approximation—the kind of model you'd expect from a dedicated racing sim, embedded in a general-purpose engine.
 
 | System              | Details                                                                                            |
 | ------------------- | -------------------------------------------------------------------------------------------------- |
@@ -145,6 +145,8 @@ A full vehicle dynamics simulation running inside the PhysX fixed-timestep loop.
 | **Audio**         | 3D positional audio, streaming, reverb, procedural synthesis via SDL3                             |
 | **Input**         | Keyboard, mouse, controllers, and steering wheels with haptic feedback                            |
 | **Entity system** | Component-based with transform hierarchies, prefabs, and XML serialization                        |
+| **Procedural roads** | Catmull-Rom spline roads with extruded profiles, terrain conforming, instanced prop placement, and path followers |
+| **Cinematics**    | Camera cut sequencer with entity tracking, spline-driven movement, and exact cut timing           |
 | **Threading**     | Hardware-aware thread pool with parallel loops and nested parallelism detection                   |
 | **VR (WIP)**      | OpenXR with Vulkan multiview single-pass stereo across the full pipeline                          |
 | **Profiling**     | Nsight/RGP-style timeline with separate graphics and async compute lanes, RenderDoc integration   |
