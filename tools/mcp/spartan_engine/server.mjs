@@ -772,10 +772,11 @@ register_tool(
 register_tool(
   server,
   "sequencer_event_add",
-  "Add a camera cut event at a time in seconds. The camera stays active from its event time until the next event. camera accepts an entity id or an entity name that has a Camera component.",
+  "Add a camera cut event at a time in seconds. The camera stays active from its event time until the next event. camera accepts an entity id or an entity name that has a Camera component. target optionally locks the camera onto an entity (id or name) so it pans to keep it in view while the event is active.",
   {
     time: z.number().min(0),
     camera: z.union([z.string(), z.number().int()]),
+    target: z.union([z.string(), z.number().int()]).optional(),
   },
   "sequencer_event_add",
   { annotations: edit_tool },
@@ -784,13 +785,51 @@ register_tool(
 register_tool(
   server,
   "sequencer_event_update",
-  "Change the time or camera of an existing event by index. Events are re-sorted by time, so re-read indices from the returned state.",
+  "Change the time, camera or lock target of an existing event by index. Pass target 'none' to clear the lock. Events are re-sorted by time, so re-read indices from the returned state.",
   {
     index: z.number().int().min(0),
     time: z.number().min(0).optional(),
     camera: z.union([z.string(), z.number().int()]).optional(),
+    target: z.union([z.string(), z.number().int()]).optional(),
   },
   "sequencer_event_update",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "spline_query",
+  [
+    "Read everything needed for spline math in one call: arc length in meters, closed loop flag, world space control points, and every spline_follower entity driving along it with speed, follow mode, progress and travel_time_seconds (length / speed).",
+    "Omit id to auto-pick the spline that has followers. By default every camera in the world is projected onto the spline; pass closest_to as a comma separated list of entity ids or names to project specific entities instead.",
+    "Each closest entry has arc_distance from the start and pass_time_seconds (arc_distance / follower speed), which are the exact sequencer camera cut moments, no sampling needed on your side.",
+  ].join(" "),
+  {
+    id: z.union([z.string(), z.number().int()]).optional(),
+    closest_to: z.string().optional(),
+  },
+  "spline_query",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "spline_distribute",
+  [
+    "Spread entities evenly along a spline by arc length in one call, no math needed on your side.",
+    "Omit id to auto-pick the first spline entity. Omit entities to distribute every camera child of the spline entity; or pass entities as a comma separated list of ids or names.",
+    "Entities keep their order along the road and their lateral offset and framing relative to it, so cameras stay aimed sensibly. Returns each entity with its new arc_distance and position.",
+    "To move entities off the road use edge_offset: signed meters beyond the road edge (positive = right of travel, negative = left), tracking the road width at each point, so edge_offset 2 always clears the asphalt even when the width varies.",
+    "Optional lateral_offset is signed meters from the road centerline instead (ignores road width); optional height places entities that many meters above the road surface.",
+  ].join(" "),
+  {
+    id: z.union([z.string(), z.number().int()]).optional(),
+    entities: z.string().optional(),
+    edge_offset: z.number().optional(),
+    lateral_offset: z.number().optional(),
+    height: z.number().optional(),
+  },
+  "spline_distribute",
   { annotations: edit_tool },
 );
 
@@ -942,12 +981,27 @@ register_tool(
   "entity_find_by_component",
   "Find entities that have a specific component type.",
   {
-    type: component_type,
+    type: z.string().optional(),
+    component_type: z.string().optional(),
     limit: z.number().int().min(1).max(1000).optional(),
     offset: z.number().int().min(0).optional(),
   },
   "entity_find_by_component",
-  { annotations: read_only, outputSchema: output_schemas.entity_list },
+  {
+    annotations: read_only,
+    outputSchema: output_schemas.entity_list,
+    map_args: (args) => {
+      const raw = args.type ?? args.component_type;
+      if (raw === undefined) {
+        throw new Error("missing type");
+      }
+      const type = String(raw).toLowerCase();
+      if (!component_type.options.includes(type)) {
+        throw new Error(`unknown component type '${raw}', expected one of ${component_type.options.join(", ")}`);
+      }
+      return { type, limit: args.limit, offset: args.offset };
+    },
+  },
 );
 
 register_tool(
@@ -966,12 +1020,24 @@ register_tool(
 register_tool(
   server,
   "entity_get",
-  "Read a single entity by id.",
+  "Read a single entity by id or name.",
   {
-    id: z.string(),
+    id: z.string().optional(),
+    entity: z.string().optional(),
+    name: z.string().optional(),
   },
   "entity_get",
-  { annotations: read_only, outputSchema: output_schemas.entity },
+  {
+    annotations: read_only,
+    outputSchema: output_schemas.entity,
+    map_args: (args) => {
+      const id = args.id ?? args.entity ?? args.name;
+      if (id === undefined) {
+        throw new Error("missing id");
+      }
+      return { id: String(id) };
+    },
+  },
 );
 
 register_tool(server, "selection_get", "Read the selected entity ids.", {}, "selection_get", {
@@ -1593,10 +1659,21 @@ register_tool(
     "Runs on the engine main thread. Use print(...) for diagnostics (read it back with console_read) and return a short summary string describing what you built.",
   ].join(" "),
   {
-    code: z.string(),
+    code: z.string().optional(),
+    script: z.string().optional(),
   },
   "execute_lua",
-  { annotations: destructive_tool, outputSchema: output_schemas.lua_result },
+  {
+    annotations: destructive_tool,
+    outputSchema: output_schemas.lua_result,
+    map_args: (args) => {
+      const code = args.code ?? args.script;
+      if (code === undefined) {
+        throw new Error("missing code");
+      }
+      return { code };
+    },
+  },
 );
 
 function register_text_resource(name, uri, title, description, read_text, mime_type = "text/markdown") {

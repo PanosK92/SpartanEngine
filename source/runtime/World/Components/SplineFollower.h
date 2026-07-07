@@ -65,9 +65,12 @@ namespace spartan
         void SetFollowMode(SplineFollowMode mode)     { m_follow_mode = mode; }
         bool GetAlignToSpline() const                 { return m_align_to_spline; }
         void SetAlignToSpline(bool align)             { m_align_to_spline = align; }
+        bool GetFlipForward() const                   { return m_flip_forward; }
+        void SetFlipForward(bool flip)                { m_flip_forward = flip; }
 
-        // read-only runtime state
+        // normalized position along the spline [0, 1]
         float GetProgress() const                     { return m_progress; }
+        void SetProgress(float progress)              { m_progress = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress); }
 
         // drive the follower externally, maps seconds from the start to a spline position
         void SetTime(float seconds);
@@ -96,6 +99,9 @@ namespace spartan
 
         // orient the entity along the spline tangent
         bool m_align_to_spline = true;
+
+        // rotate 180 degrees for meshes whose forward axis points backwards
+        bool m_flip_forward = false;
 
         // current normalized position along the spline [0, 1]
         float m_progress = 0.0f;

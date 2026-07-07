@@ -20,7 +20,7 @@ const engine_port = Number.parseInt(read_arg("engine-port", process.env.SPARTAN_
 const engine_host = read_arg("engine-host", process.env.SPARTAN_ENGINE_HOST ?? "127.0.0.1");
 const run_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_RUN_TIMEOUT_MS ?? "180000", 10);
 const context_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_CONTEXT_TIMEOUT_MS ?? "2500", 10);
-const engine_first_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_ENGINE_FIRST_TIMEOUT_MS ?? "25000", 10);
+const engine_first_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_ENGINE_FIRST_TIMEOUT_MS ?? "60000", 10);
 const read_only_mode = process.argv.includes("--read-only") || ["1", "true", "yes", "on"].includes(String(process.env.SPARTAN_ASSISTANT_READ_ONLY ?? process.env.SPARTAN_MCP_READ_ONLY ?? "").toLowerCase());
 const mutating_tools = new Set([
   "engine_set_mode",

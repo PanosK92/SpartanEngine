@@ -342,6 +342,11 @@ function activity_from_event(event) {
     return "";
   }
 
+  if (event.type === "thinking") {
+    const text = activity_text_from_value(event.text ?? event);
+    return text && !is_generic_activity(text) ? `Thinking: ${text}` : "";
+  }
+
   if (event.type === "assistant" || event.type === "assistantMessage") {
     const text = activity_text_from_value(event);
     if (!text || is_generic_activity(text)) {
@@ -442,7 +447,10 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
   let engine_tool_seen = false;
   let cancel_message = "";
   let guard_timer = null;
+  let idle_timer = null;
+  let last_activity_at = Date.now();
   const observe = async (event) => {
+    last_activity_at = Date.now();
     if (!engine_tool_seen && is_engine_tool_event(event)) {
       engine_tool_seen = true;
       run.event("stage_note", { text: "engine tool interaction confirmed" });
@@ -463,17 +471,22 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
     const agent = await run.stage("Prepare Cursor", "starting or reusing the Cursor agent", () => get_agent({ api_key, model_id, engine_host, engine_port, run }));
     const snapshot = await run.stage("Read Context", "reading engine state for Cursor", () => run.tool("context_snapshot"));
     const cursor_result = await run.stage("Plan And Act", "waiting for Cursor to use Spartan tools", async () => {
-      guard_timer = setTimeout(() => {
+      // thinking and streaming count as activity, only a fully silent run that never touched an engine tool gets cancelled
+      guard_timer = setInterval(() => {
         if (engine_tool_seen || cancel_message) {
+          clearInterval(guard_timer);
+          return;
+        }
+        if (Date.now() - last_activity_at < engine_first_timeout_ms) {
           return;
         }
 
-        cancel_message = `cancelled, no Spartan engine tool was used within ${engine_first_timeout_ms}ms`;
+        cancel_message = `cancelled, no Spartan engine tool was used and the run was silent for ${engine_first_timeout_ms}ms`;
         run.event("stage_note", { text: cancel_message });
         if (cursor_run?.supports?.("cancel")) {
           void cursor_run.cancel();
         }
-      }, engine_first_timeout_ms);
+      }, 1000);
       guard_timer.unref?.();
 
       cursor_run = await agent.send(build_prompt(prompt, snapshot), {
@@ -489,9 +502,17 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
         }
       })().catch(() => {}) : Promise.resolve();
 
+      // an active run is never killed, only one that stopped producing events for timeout_ms
       const result = await Promise.race([
         cursor_run.wait(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`Cursor did not return a final message within ${timeout_ms}ms.`)), timeout_ms)),
+        new Promise((_, reject) => {
+          idle_timer = setInterval(() => {
+            if (Date.now() - last_activity_at >= timeout_ms) {
+              reject(new Error(`Cursor produced no activity within ${timeout_ms}ms.`));
+            }
+          }, 1000);
+          idle_timer.unref?.();
+        }),
       ]);
       await Promise.race([stream_task, new Promise((resolve) => setTimeout(resolve, 1000))]);
       return result;
@@ -526,6 +547,9 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
   } finally {
     if (guard_timer) {
       clearTimeout(guard_timer);
+    }
+    if (idle_timer) {
+      clearInterval(idle_timer);
     }
   }
 }

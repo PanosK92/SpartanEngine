@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Render.h"
 #include "../World/Components/Script.h"
 #include "../World/Components/Spline.h"
+#include "../World/Components/SplineFollower.h"
 #include "../World/Components/Terrain.h"
 #include "../World/Prefab.h"
 #include "../Resource/ResourceCache.h"
@@ -871,6 +872,39 @@ namespace spartan
             return std::nullopt;
         }
 
+        std::string spline_follow_mode_to_name(SplineFollowMode mode)
+        {
+            switch (mode)
+            {
+            case SplineFollowMode::Clamp:
+                return "clamp";
+            case SplineFollowMode::Loop:
+                return "loop";
+            case SplineFollowMode::PingPong:
+                return "ping_pong";
+            default:
+                return "unknown";
+            }
+        }
+
+        std::optional<SplineFollowMode> spline_follow_mode_from_name(const std::string& name)
+        {
+            if (name == "clamp" || name == "0")
+            {
+                return SplineFollowMode::Clamp;
+            }
+            if (name == "loop" || name == "1")
+            {
+                return SplineFollowMode::Loop;
+            }
+            if (name == "ping_pong" || name == "2")
+            {
+                return SplineFollowMode::PingPong;
+            }
+
+            return std::nullopt;
+        }
+
         std::optional<ParticlePreset> particle_preset_from_name(const std::string& name)
         {
             if (name == "custom" || name == "0")
@@ -1560,6 +1594,11 @@ namespace spartan
             });
         }
 
+        std::string spline_follow_mode_enum_values_json()
+        {
+            return enum_values_json({ { "clamp", "0" }, { "loop", "1" }, { "ping_pong", "2" } });
+        }
+
         std::string particle_preset_enum_values_json()
         {
             return enum_values_json({
@@ -1619,7 +1658,8 @@ namespace spartan
             }
             if (type == typeid(uint64_t))
             {
-                return std::to_string(std::any_cast<uint64_t>(value));
+                // as a string, uint64 entity ids survive json parsers that use doubles
+                return json_string(std::to_string(std::any_cast<uint64_t>(value)));
             }
             if (type == typeid(std::string))
             {
@@ -1668,6 +1708,10 @@ namespace spartan
             if (type == typeid(SplineAttachMode))
             {
                 return json_string(spline_attach_mode_to_name(std::any_cast<SplineAttachMode>(value)));
+            }
+            if (type == typeid(SplineFollowMode))
+            {
+                return json_string(spline_follow_mode_to_name(std::any_cast<SplineFollowMode>(value)));
             }
             if (type == typeid(ParticlePreset))
             {
@@ -1721,6 +1765,7 @@ namespace spartan
                 type == typeid(LightType) ||
                 type == typeid(SplineProfile) ||
                 type == typeid(SplineAttachMode) ||
+                type == typeid(SplineFollowMode) ||
                 type == typeid(ParticlePreset) ||
                 type == typeid(ParticleBlendMode) ||
                 type == typeid(ParticleLightingMode);
@@ -1922,6 +1967,17 @@ namespace spartan
                 parsed = *result;
                 return true;
             }
+            if (type == typeid(SplineFollowMode))
+            {
+                const std::optional<SplineFollowMode> result = spline_follow_mode_from_name(value);
+                if (!result)
+                {
+                    error = "invalid spline_follow_mode";
+                    return false;
+                }
+                parsed = *result;
+                return true;
+            }
             if (type == typeid(ParticlePreset))
             {
                 uint32_t result = 0;
@@ -2037,6 +2093,12 @@ namespace spartan
                 metadata.enum_values = spline_attach_mode_enum_values_json();
                 metadata.side_effects.emplace_back("changes how the spline samples its source spline");
             }
+            else if (property == "follow_mode")
+            {
+                metadata.type = "enum";
+                metadata.enum_values = spline_follow_mode_enum_values_json();
+                metadata.side_effects.emplace_back("changes what happens when the follower reaches the end of the spline");
+            }
             else if (property == "preset")
             {
                 metadata.type = "enum";
@@ -2124,9 +2186,18 @@ namespace spartan
             {
                 metadata.note = "internal dirty flag, prefer component_action generate_road_mesh";
             }
-            if (property == "source_spline_entity_id" || property == "instance_template_id")
+            if (property == "source_spline_entity_id" || property == "instance_template_id" || property == "spline_entity_id")
             {
                 metadata.unit = "entity id";
+            }
+            if (property == "progress")
+            {
+                metadata.unit = "normalized";
+                metadata.range = range_json(0.0f, 1.0f);
+            }
+            if (property == "flip_forward")
+            {
+                metadata.note = "set true when the mesh drives backwards along the spline, rotates it 180 degrees";
             }
         }
 
@@ -6070,6 +6141,468 @@ namespace spartan
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
         }
 
+        std::string command_spline_query(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            Entity* entity = nullptr;
+            if (get_argument(request, "id"))
+            {
+                std::string error;
+                entity = get_entity_from_request(request, error);
+                if (entity == nullptr)
+                {
+                    return json_error(error);
+                }
+            }
+            else
+            {
+                // no id given, prefer the spline that has followers, fall back to any spline
+                Entity* any_spline = nullptr;
+                for (Entity* candidate : World::GetEntities())
+                {
+                    if (SplineFollower* follower = candidate->GetComponent<SplineFollower>())
+                    {
+                        if (Entity* followed = World::GetEntityById(follower->GetSplineEntityId()))
+                        {
+                            entity = followed;
+                            break;
+                        }
+                    }
+                    if (!any_spline && candidate->GetComponent<Spline>())
+                    {
+                        any_spline = candidate;
+                    }
+                }
+                if (entity == nullptr)
+                {
+                    entity = any_spline;
+                }
+                if (entity == nullptr)
+                {
+                    return json_error("no spline entity in the world, pass id to pick one");
+                }
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (spline == nullptr)
+            {
+                return json_error("entity does not have a spline component");
+            }
+
+            const float length = spline->GetLength();
+
+            std::string json = "{\"ok\":true";
+            json += ",\"id\":" + json_string(std::to_string(entity->GetObjectId()));
+            json += ",\"name\":" + json_string(entity->GetObjectName());
+            json += ",\"length\":" + std::to_string(length);
+            json += ",\"closed_loop\":" + json_bool(spline->GetClosedLoop());
+
+            const std::vector<math::Vector3> control_points = spline->GetControlPoints();
+            json += ",\"control_points\":[";
+            for (size_t i = 0; i < control_points.size(); i++)
+            {
+                if (i > 0)
+                {
+                    json += ",";
+                }
+                json += json_vector3(control_points[i]);
+            }
+            json += "]";
+
+            // every follower that is set to follow this spline, travel time makes camera cut math trivial
+            float follower_speed = 0.0f;
+            json += ",\"followers\":[";
+            bool first = true;
+            for (Entity* candidate : World::GetEntities())
+            {
+                SplineFollower* follower = candidate->GetComponent<SplineFollower>();
+                if (!follower || follower->GetSplineEntityId() != entity->GetObjectId())
+                {
+                    continue;
+                }
+                if (follower_speed == 0.0f)
+                {
+                    follower_speed = follower->GetSpeed();
+                }
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += "{\"id\":" + json_string(std::to_string(candidate->GetObjectId()));
+                json += ",\"name\":" + json_string(candidate->GetObjectName());
+                json += ",\"speed\":" + std::to_string(follower->GetSpeed());
+                json += ",\"follow_mode\":" + json_string(spline_follow_mode_to_name(follower->GetFollowMode()));
+                json += ",\"align_to_spline\":" + json_bool(follower->GetAlignToSpline());
+                json += ",\"flip_forward\":" + json_bool(follower->GetFlipForward());
+                json += ",\"progress\":" + std::to_string(follower->GetProgress());
+                json += ",\"position\":" + json_vector3(candidate->GetPosition());
+                json += ",\"travel_time_seconds\":" + (follower->GetSpeed() > 0.0f ? std::to_string(length / follower->GetSpeed()) : std::string("null"));
+                json += "}";
+            }
+            json += "]";
+
+            // targets to project onto the spline, explicit list or every camera in the world by default
+            std::vector<Entity*> targets;
+            std::vector<std::string> unresolved;
+            if (const std::optional<std::string> closest_to = get_argument(request, "closest_to"))
+            {
+                std::stringstream tokens(*closest_to);
+                std::string token;
+                while (std::getline(tokens, token, ','))
+                {
+                    if (token.empty())
+                    {
+                        continue;
+                    }
+
+                    Entity* target = nullptr;
+                    uint64_t target_id = 0;
+                    if (parse_uint64(token, target_id))
+                    {
+                        target = World::GetEntityById(target_id);
+                    }
+                    else
+                    {
+                        std::string resolve_error;
+                        target = find_entity_by_name_unique(token, true, resolve_error);
+                        if (target == nullptr)
+                        {
+                            target = find_entity_by_name_unique(token, false, resolve_error);
+                        }
+                    }
+
+                    if (target != nullptr)
+                    {
+                        targets.push_back(target);
+                    }
+                    else
+                    {
+                        unresolved.push_back(token);
+                    }
+                }
+            }
+            else
+            {
+                for (Entity* candidate : World::GetEntities())
+                {
+                    if (candidate->GetComponent<Camera>())
+                    {
+                        targets.push_back(candidate);
+                    }
+                }
+            }
+
+            // closest point on the spline for each target, arc distance and pass time give exact camera cut moments
+            if (!targets.empty() || !unresolved.empty())
+            {
+                const uint32_t sample_count = 512;
+
+                // sample once, keep cumulative arc length per sample
+                std::vector<math::Vector3> samples(sample_count + 1);
+                std::vector<float> arc_lengths(sample_count + 1, 0.0f);
+                for (uint32_t i = 0; i <= sample_count; i++)
+                {
+                    samples[i] = spline->GetPoint(static_cast<float>(i) / static_cast<float>(sample_count));
+                    if (i > 0)
+                    {
+                        arc_lengths[i] = arc_lengths[i - 1] + samples[i].Distance(samples[i - 1]);
+                    }
+                }
+
+                json += ",\"closest\":[";
+                first = true;
+                for (const std::string& token : unresolved)
+                {
+                    if (!first)
+                    {
+                        json += ",";
+                    }
+                    first = false;
+                    json += "{\"query\":" + json_string(token) + ",\"error\":\"entity not found\"}";
+                }
+                for (Entity* target : targets)
+                {
+                    if (!first)
+                    {
+                        json += ",";
+                    }
+                    first = false;
+
+                    const math::Vector3 target_position = target->GetPosition();
+                    uint32_t best_index = 0;
+                    float best_distance_sq = std::numeric_limits<float>::max();
+                    for (uint32_t i = 0; i <= sample_count; i++)
+                    {
+                        const float distance_sq = (samples[i] - target_position).LengthSquared();
+                        if (distance_sq < best_distance_sq)
+                        {
+                            best_distance_sq = distance_sq;
+                            best_index       = i;
+                        }
+                    }
+
+                    json += "{\"id\":" + json_string(std::to_string(target->GetObjectId()));
+                    json += ",\"name\":" + json_string(target->GetObjectName());
+                    json += ",\"position\":" + json_vector3(target_position);
+                    json += ",\"t\":" + std::to_string(static_cast<float>(best_index) / static_cast<float>(sample_count));
+                    json += ",\"arc_distance\":" + std::to_string(arc_lengths[best_index]);
+                    json += ",\"distance_to_spline\":" + std::to_string((samples[best_index] - target_position).Length());
+                    json += ",\"spline_position\":" + json_vector3(samples[best_index]);
+                    json += ",\"pass_time_seconds\":" + (follower_speed > 0.0f ? std::to_string(arc_lengths[best_index] / follower_speed) : std::string("null"));
+                    json += "}";
+                }
+                json += "]";
+            }
+
+            json += "}";
+            return json;
+        }
+
+        std::string command_spline_distribute(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("distributing entities requires edit mode");
+            }
+
+            Entity* entity = nullptr;
+            if (get_argument(request, "id"))
+            {
+                std::string error;
+                entity = get_entity_from_request(request, error);
+                if (entity == nullptr)
+                {
+                    return json_error(error);
+                }
+            }
+            else
+            {
+                for (Entity* candidate : World::GetEntities())
+                {
+                    if (candidate->GetComponent<Spline>())
+                    {
+                        entity = candidate;
+                        break;
+                    }
+                }
+                if (entity == nullptr)
+                {
+                    return json_error("no spline entity in the world, pass id to pick one");
+                }
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (spline == nullptr)
+            {
+                return json_error("entity does not have a spline component");
+            }
+
+            const float length = spline->GetLength();
+            if (length <= 0.0f)
+            {
+                return json_error("spline has no length");
+            }
+
+            // targets, explicit comma separated list or every camera child of the spline entity
+            std::vector<Entity*> targets;
+            if (const std::optional<std::string> entities = get_argument(request, "entities"))
+            {
+                std::stringstream tokens(*entities);
+                std::string token;
+                while (std::getline(tokens, token, ','))
+                {
+                    if (token.empty())
+                    {
+                        continue;
+                    }
+
+                    Entity* target = nullptr;
+                    uint64_t target_id = 0;
+                    if (parse_uint64(token, target_id))
+                    {
+                        target = World::GetEntityById(target_id);
+                    }
+                    else
+                    {
+                        std::string resolve_error;
+                        target = find_entity_by_name_unique(token, true, resolve_error);
+                        if (target == nullptr)
+                        {
+                            target = find_entity_by_name_unique(token, false, resolve_error);
+                        }
+                    }
+
+                    if (target == nullptr)
+                    {
+                        return json_error("entity not found: " + token);
+                    }
+                    targets.push_back(target);
+                }
+            }
+            else
+            {
+                for (Entity* child : entity->GetChildren())
+                {
+                    if (child->GetComponent<Camera>())
+                    {
+                        targets.push_back(child);
+                    }
+                }
+            }
+
+            if (targets.size() < 2)
+            {
+                return json_error("need at least two entities to distribute");
+            }
+
+            // sample once for closest point lookups
+            const uint32_t sample_count = 512;
+            std::vector<math::Vector3> samples(sample_count + 1);
+            std::vector<float> arc_lengths(sample_count + 1, 0.0f);
+            for (uint32_t i = 0; i <= sample_count; i++)
+            {
+                samples[i] = spline->GetPoint(static_cast<float>(i) / static_cast<float>(sample_count));
+                if (i > 0)
+                {
+                    arc_lengths[i] = arc_lengths[i - 1] + samples[i].Distance(samples[i - 1]);
+                }
+            }
+
+            auto closest_arc_distance = [&](const math::Vector3& position)
+            {
+                uint32_t best_index = 0;
+                float best_distance_sq = std::numeric_limits<float>::max();
+                for (uint32_t i = 0; i <= sample_count; i++)
+                {
+                    const float distance_sq = (samples[i] - position).LengthSquared();
+                    if (distance_sq < best_distance_sq)
+                    {
+                        best_distance_sq = distance_sq;
+                        best_index       = i;
+                    }
+                }
+                return arc_lengths[best_index];
+            };
+
+            // keep the order the entities already have along the road
+            std::sort(targets.begin(), targets.end(), [&](Entity* a, Entity* b)
+            {
+                return closest_arc_distance(a->GetPosition()) < closest_arc_distance(b->GetPosition());
+            });
+
+            // optional overrides, lateral is signed meters from the centerline, positive is the right of travel
+            float lateral_override = 0.0f;
+            bool has_lateral = false;
+            if (const std::optional<std::string> lateral_arg = get_argument(request, "lateral_offset"))
+            {
+                if (!parse_float(*lateral_arg, lateral_override))
+                {
+                    return json_error("invalid lateral_offset");
+                }
+                has_lateral = true;
+            }
+
+            // edge offset is signed meters beyond the road edge, it tracks the varying road width so entities always clear the asphalt
+            float edge_offset = 0.0f;
+            bool has_edge = false;
+            if (const std::optional<std::string> edge_arg = get_argument(request, "edge_offset"))
+            {
+                if (!parse_float(*edge_arg, edge_offset))
+                {
+                    return json_error("invalid edge_offset");
+                }
+                has_edge = true;
+            }
+            float height_override = 0.0f;
+            bool has_height = false;
+            if (const std::optional<std::string> height_arg = get_argument(request, "height"))
+            {
+                if (!parse_float(*height_arg, height_override))
+                {
+                    return json_error("invalid height");
+                }
+                has_height = true;
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"id\":" + json_string(std::to_string(entity->GetObjectId()));
+            json += ",\"name\":" + json_string(entity->GetObjectName());
+            json += ",\"length\":" + std::to_string(length);
+            json += ",\"placed\":[";
+
+            // closed loops space n slots, open splines include both ends
+            const float step = spline->GetClosedLoop() ? length / static_cast<float>(targets.size()) : length / static_cast<float>(targets.size() - 1);
+            for (size_t i = 0; i < targets.size(); i++)
+            {
+                Entity* target = targets[i];
+
+                // preserve each entity offset relative to the spline frame so framing survives the move
+                const math::Vector3 old_position = target->GetPosition();
+                const float old_t                = spline->GetTAtDistance(closest_arc_distance(old_position), 32);
+                const math::Vector3 old_point    = spline->GetPoint(old_t);
+                math::Vector3 old_tangent        = spline->GetTangent(old_t);
+                old_tangent.Normalize();
+
+                const float new_distance      = static_cast<float>(i) * step;
+                const float new_t             = spline->GetTAtDistance(new_distance, 32);
+                const math::Vector3 new_point = spline->GetPoint(new_t);
+                math::Vector3 new_tangent     = spline->GetTangent(new_t);
+                new_tangent.Normalize();
+
+                const math::Quaternion old_frame = math::Quaternion::FromLookRotation(old_tangent, math::Vector3::Up);
+                const math::Quaternion new_frame = math::Quaternion::FromLookRotation(new_tangent, math::Vector3::Up);
+                const math::Quaternion delta     = new_frame * old_frame.Inverse();
+
+                if (has_lateral || has_edge || has_height)
+                {
+                    math::Vector3 old_right = old_tangent.Cross(math::Vector3::Up);
+                    old_right.Normalize();
+                    math::Vector3 new_right = new_tangent.Cross(math::Vector3::Up);
+                    new_right.Normalize();
+
+                    float lateral = has_lateral ? lateral_override : old_right.Dot(old_position - old_point);
+                    if (has_edge)
+                    {
+                        // road width interpolates from start to end, sidewalk extends the surface further
+                        float half_width = (spline->GetRoadWidth() + (spline->GetRoadWidthEnd() - spline->GetRoadWidth()) * new_t) * 0.5f;
+                        if (spline->GetSidewalkEnabled())
+                        {
+                            half_width += spline->GetSidewalkWidth();
+                        }
+                        lateral = (edge_offset < 0.0f ? -1.0f : 1.0f) * half_width + edge_offset;
+                    }
+                    const float height = has_height ? height_override : old_position.y - old_point.y;
+                    target->SetPosition(new_point + new_right * lateral + math::Vector3::Up * height);
+                }
+                else
+                {
+                    target->SetPosition(new_point + delta * (old_position - old_point));
+                }
+                target->SetRotation(delta * target->GetRotation());
+
+                if (i > 0)
+                {
+                    json += ",";
+                }
+                json += "{\"id\":" + json_string(std::to_string(target->GetObjectId()));
+                json += ",\"name\":" + json_string(target->GetObjectName());
+                json += ",\"arc_distance\":" + std::to_string(new_distance);
+                json += ",\"position\":" + json_vector3(target->GetPosition());
+                json += "}";
+            }
+            json += "]}";
+            return json;
+        }
+
         std::string command_execute_lua(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -6376,6 +6909,14 @@ namespace spartan
         if (request.command == "prefab_load")
         {
             return command_prefab_load(request);
+        }
+        if (request.command == "spline_query")
+        {
+            return command_spline_query(request);
+        }
+        if (request.command == "spline_distribute")
+        {
+            return command_spline_distribute(request);
         }
         if (request.command == "execute_lua")
         {

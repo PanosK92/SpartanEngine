@@ -40,8 +40,12 @@ namespace spartan
 {
     SplineFollower::SplineFollower(Entity* entity) : Component(entity)
     {
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetSplineEntityId, SetSplineEntityId, uint64_t);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetSpeed,          SetSpeed,          float);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetFollowMode,     SetFollowMode,     SplineFollowMode);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetAlignToSpline,  SetAlignToSpline,  bool);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetFlipForward,    SetFlipForward,    bool);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetProgress,       SetProgress,       float);
     }
 
     void SplineFollower::SetSplineEntityId(uint64_t id)
@@ -130,17 +134,24 @@ namespace spartan
 
     void SplineFollower::ApplyProgress(Spline* spline)
     {
+        // progress is a distance fraction, convert to parametric t so world speed stays constant on uneven control points
+        float t = spline->GetTAtDistance(m_progress * spline->GetLength(), 32);
+
         // set position along the spline
-        Vector3 position = spline->GetPoint(m_progress);
+        Vector3 position = spline->GetPoint(t);
         GetEntity()->SetPosition(position);
 
         // optionally orient the entity along the tangent
         if (m_align_to_spline)
         {
-            Vector3 tangent = spline->GetTangent(m_progress);
+            Vector3 tangent = spline->GetTangent(t);
             if (tangent.LengthSquared() > 0.0f)
             {
                 tangent.Normalize();
+                if (m_flip_forward)
+                {
+                    tangent = -tangent;
+                }
                 GetEntity()->SetRotation(Quaternion::FromLookRotation(tangent, Vector3::Up));
             }
         }
@@ -180,6 +191,7 @@ namespace spartan
         node.append_attribute("speed")            = m_speed;
         node.append_attribute("follow_mode")      = static_cast<uint32_t>(m_follow_mode);
         node.append_attribute("align_to_spline")  = m_align_to_spline;
+        node.append_attribute("flip_forward")     = m_flip_forward;
     }
 
     void SplineFollower::Load(pugi::xml_node& node)
@@ -188,6 +200,7 @@ namespace spartan
         m_speed            = node.attribute("speed").as_float(5.0f);
         m_follow_mode      = static_cast<SplineFollowMode>(node.attribute("follow_mode").as_uint(static_cast<uint32_t>(SplineFollowMode::Loop)));
         m_align_to_spline  = node.attribute("align_to_spline").as_bool(true);
+        m_flip_forward     = node.attribute("flip_forward").as_bool(false);
 
         // the entity pointer will be resolved on the first tick or when play starts
         m_spline_entity = nullptr;

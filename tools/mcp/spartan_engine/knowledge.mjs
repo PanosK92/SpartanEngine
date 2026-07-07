@@ -28,8 +28,8 @@ export const component_property_catalog = {
     notes: "controls spline shape, generated mesh settings, source attachment, and instanced placement",
   },
   spline_follower: {
-    properties: ["speed", "align_to_spline"],
-    notes: "controls runtime movement along a spline",
+    properties: ["spline_entity_id", "speed", "follow_mode", "align_to_spline", "flip_forward", "progress"],
+    notes: "controls runtime movement along a spline, use spline_query on the spline entity for length, travel time, and closest point math, set flip_forward when the mesh faces backwards while driving",
   },
   terrain: {
     properties: ["min_y", "max_y", "level_sea", "level_snow", "smoothing", "density", "scale", "create_border", "width", "height", "area_km2", "height_samples", "vertex_count", "index_count", "triangle_count"],
@@ -77,9 +77,14 @@ export const engine_overview = [
   "Treat scene construction prompts such as build a level, make rooms, backrooms, and liminal space as live scene edits, not source-code search requests.",
   "Missing deterministic capabilities should be recorded in agent memory under Problem Reports immediately.",
   "For procedural scene edits, execute_lua is the broad capability layer, but it is edit-mode guarded by default.",
-  "Splines are scriptable from Lua: entity:GetComponent(ComponentType.Spline) exposes GetPoint(t), GetTangent(t), GetLength(), GetControlPointCount(), GetClosedLoop(), and GetRoadWidth(); GetPoint returns world-space positions with t in [0, 1], ideal for placing entities along roads.",
+  "Splines are scriptable from Lua: entity:GetComponent(ComponentType.Spline) exposes GetPoint(t), GetTangent(t), GetLength(), GetTAtDistance(distance), GetControlPointCount(), GetClosedLoop(), and GetRoadWidth(); GetPoint returns world-space positions with t in [0, 1], ideal for placing entities along roads.",
   "Cameras are scriptable from Lua: entity:AddComponent(ComponentType.Camera) adds a camera and the returned component exposes GetFovHorizontalDeg and SetFovHorizontalDeg.",
   "The editor sequencer is a camera cut timeline fully controllable through sequencer_get, sequencer_set, sequencer_playback, sequencer_event_add, sequencer_event_update, and sequencer_event_remove; each event cuts to a camera at its time and stays active until the next event, and edits auto-save next to the loaded world.",
+  "Sequencer events optionally carry a lock target: pass target on sequencer_event_add or sequencer_event_update and the camera pans to keep that entity in view while the event is active; while the sequencer plays or scrubs it also drives every spline_follower with the timeline time (position = speed * time along the spline, clamped to the end).",
+  "Use spline_query for camera cut math: call it with no arguments and it auto-picks the followed spline, projects every camera in the world onto it, and returns per camera arc_distance and pass_time_seconds (the exact moment the follower passes that camera); all cut times come from one call, never sample the spline yourself.",
+  "Use spline_distribute to spread entities evenly along a spline: with no arguments it takes every camera child of the spline entity and respaces them by arc length, preserving their order, lateral offset, and framing; one call replaces any manual placement math or Lua.",
+  "spline_distribute also repositions relative to the road: edge_offset is signed meters beyond the road edge (positive = right of travel, tracks varying road width so entities always clear the asphalt), lateral_offset is signed meters from the centerline, height is meters above the road surface; e.g. edge_offset 2 with height 2 puts all cameras just off the right side of the road so the car never drives through them.",
+  "spline_follower is fully editable through component_get and component_set: spline_entity_id (entity id), speed (meters per second), follow_mode (clamp, loop, ping_pong), align_to_spline, flip_forward (true when the mesh drives backwards, rotates it 180 degrees), and progress (normalized 0 to 1).",
 ].join("\n");
 
 export const edit_rules = [

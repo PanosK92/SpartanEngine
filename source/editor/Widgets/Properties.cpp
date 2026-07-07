@@ -2706,6 +2706,7 @@ void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
         float speed         = follower->GetSpeed();
         uint32_t mode       = static_cast<uint32_t>(follower->GetFollowMode());
         bool align          = follower->GetAlignToSpline();
+        bool flip           = follower->GetFlipForward();
         float progress      = follower->GetProgress();
         uint64_t spline_id  = follower->GetSplineEntityId();
         Entity* spline_ent  = follower->GetSplineEntity();
@@ -2762,6 +2763,12 @@ void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
         if (property_toggle("Align To Spline", &align, "orient the entity along the spline tangent"))
         {
             follower->SetAlignToSpline(align);
+        }
+
+        // flip forward
+        if (property_toggle("Flip Forward", &flip, "rotate 180 degrees for meshes whose forward axis points backwards"))
+        {
+            follower->SetFlipForward(flip);
         }
 
         // progress (read-only)

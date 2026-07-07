@@ -18,6 +18,10 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - `camera_set_view`, `viewport_frame`, `renderer_debug_get`, `renderer_debug_set`, and `physics_state` cover common viewport/debug inspection.
 - `screenshot_take` queues a renderer screenshot and can return the saved PNG as image content for visual inspection.
 - The editor sequencer (camera cut timeline) is controlled with `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_event_add`, `sequencer_event_update`, and `sequencer_event_remove`; `camera` accepts an entity id or name, events re-sort by time, and state auto-saves to `sequencer.xml` next to the loaded world.
+- `spline_query` with no arguments auto-picks the followed spline and projects every camera in the world onto it, returning per camera `arc_distance` and `pass_time_seconds` (when the follower passes that camera); this is the whole camera cut calculation in one call, never sample the spline manually with Lua.
+- `spline_distribute` with no arguments respaces every camera child of the spline entity evenly along it by arc length, keeping order, lateral offset, and framing; use it for any request like spread or place cameras evenly along the road, never compute placements yourself.
+- `spline_distribute` takes optional `edge_offset` (signed meters beyond the road edge, positive = right of travel, tracks varying road width), `lateral_offset` (signed meters from centerline), and `height` (meters above the road); requests like move cameras to the side of the road are one call, use `edge_offset` 2 so they clear the asphalt regardless of road width.
+- Spline followers move at constant world speed (progress is arc-length based), so `pass_time_seconds` from `spline_query` is exact.
 
 ## Good Agent Strategies
 - Start engine tasks with `spartan_status` or `context_snapshot`.
@@ -60,9 +64,11 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
 - A small receipt after each meaningful engine action helps the editor assistant UI stay understandable.
 - To make a surface emissive white, create a material with material_create (defaults to white albedo), set emissive_from_albedo to 1 with material_set_property, then assign it via component_set property material on the render component; the albedo color drives the emissive color.
+- To sync sequencer cuts to a spline follower, set the follower speed, run `spline_query` for per camera `pass_time_seconds`, then place each cut at the midpoint between consecutive pass times; every camera then sees the car arrive, pass centered in its shot, and leave before the next cut.
 
 ## Corrections
 - Add corrections here when a previous note turns out to be wrong or incomplete.
+- `spline_distribute` `edge_offset` 2 is too wide on roads with side walls (plan.world); cameras land outside the walls looking at them, use `edge_offset` 1 there.
 
 ## Advice To Future Agents
 - Treat this file as advice, not absolute truth.
@@ -76,5 +82,3 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Problem Reports
 - Add specific recurring friction here, with the file/tool involved and why it matters.
-- `engine_set_mode` can apply the requested mode while its MCP response fails structured output validation; verify with `context_snapshot` before retrying scene edits.
-- All sequencer_* tools execute correctly engine-side but their MCP responses fail structured output validation, data must NOT have additional properties, same class of bug as engine_set_mode; verify results via debug_log_read instead of retrying, maintainer should align sequencer output schemas in server.mjs with actual engine response fields such as playing.

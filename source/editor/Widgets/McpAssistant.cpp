@@ -93,6 +93,7 @@ namespace
     };
 
     AssistantRunState assistant_run;
+    bool assistant_spawned_this_session = false;
 #ifdef _WIN32
     uint32_t tracked_assistant_pid = 0;
 #endif
@@ -459,7 +460,7 @@ namespace
 #endif
 
     std::string trim_copy_paste_whitespace(const std::string& value);
-    void push_run_event_locked(const std::string& line);
+    void set_run_status_locked(const std::string& status);
 
     bool is_generic_activity(const std::string& activity)
     {
@@ -501,7 +502,7 @@ namespace
             }
             else
             {
-                assistant_run.status = visible_activity;
+                set_run_status_locked(visible_activity);
             }
         }
     }
@@ -515,11 +516,7 @@ namespace
         assistant_run.failed = failed;
         assistant_run.cancelled = cancelled;
         assistant_run.summary = summary;
-        assistant_run.status = cancelled ? "cancelled" : (failed ? "failed" : "done");
-        if (!summary.empty())
-        {
-            push_run_event_locked(summary);
-        }
+        set_run_status_locked(cancelled ? "cancelled" : (failed ? "failed" : "done"));
     }
 
     void start_local_run(const std::string& prompt, const std::string& status)
@@ -536,18 +533,25 @@ namespace
         assistant_activity = status;
     }
 
-    void push_run_event_locked(const std::string& line)
+    void set_run_status_locked(const std::string& status)
     {
-        if (line.empty())
+        if (status.empty() || status == assistant_run.status)
         {
             return;
         }
 
-        assistant_run.event_lines.emplace_back(line);
-        if (assistant_run.event_lines.size() > 8)
+        // the previous status becomes history, so the status line accumulates over time
+        if (!assistant_run.status.empty() && assistant_run.status != "starting")
         {
-            assistant_run.event_lines.erase(assistant_run.event_lines.begin());
+            assistant_run.event_lines.emplace_back(assistant_run.status);
+            if (assistant_run.event_lines.size() > 256)
+            {
+                assistant_run.event_lines.erase(assistant_run.event_lines.begin());
+            }
         }
+
+        assistant_run.status = status;
+        assistant_activity = status;
     }
 
     AssistantRunState get_run_snapshot()
@@ -587,64 +591,42 @@ namespace
         {
             const std::string title = json_get_string(json, "title");
             const std::string status = json_get_string(json, "status");
-            assistant_run.status = status.empty() ? title : status;
-            assistant_activity = assistant_run.status;
+            set_run_status_locked(status.empty() ? title : status);
         }
         else if (type == "stage_finished")
         {
             if (json_get_string(json, "status") == "failed")
             {
-                const std::string error = json_get_string(json, "error");
-                if (!error.empty())
-                {
-                    assistant_run.status = error;
-                    assistant_activity = error;
-                }
-            }
-            else
-            {
-                const std::string title = json_get_string(json, "title");
-                if (!title.empty())
-                {
-                    push_run_event_locked("done " + title);
-                }
+                set_run_status_locked(json_get_string(json, "error"));
             }
         }
         else if (type == "tool_started")
         {
             const std::string name = json_get_string(json, "name");
-            assistant_run.status = "running " + name;
-            assistant_activity = assistant_run.status;
+            if (!name.empty())
+            {
+                set_run_status_locked("running " + name);
+            }
         }
         else if (type == "tool_finished")
         {
             const std::string name = json_get_string(json, "name");
-            const int duration_ms = json_get_int(json, "duration_ms");
-            const std::string prefix = json.find("\"ok\":false") == std::string::npos ? "finished " : "failed ";
             if (!name.empty())
             {
-                assistant_run.status = prefix + name;
-                assistant_activity = assistant_run.status;
-                push_run_event_locked(assistant_run.status + " in " + std::to_string(duration_ms) + "ms");
+                const std::string prefix = json.find("\"ok\":false") == std::string::npos ? "finished " : "failed ";
+                set_run_status_locked(prefix + name);
             }
         }
         else if (type == "receipt")
         {
-            const std::string title = json_get_string(json, "title");
-            if (!title.empty())
-            {
-                assistant_run.status = title;
-                assistant_activity = title;
-                push_run_event_locked(title);
-            }
+            set_run_status_locked(json_get_string(json, "title"));
         }
         else if (type == "heartbeat" || type == "stage_note")
         {
             const std::string status = json_get_string(json, type == "stage_note" ? "text" : "status");
-            if (!status.empty() && !is_generic_activity(status))
+            if (!is_generic_activity(status))
             {
-                assistant_run.status = status;
-                assistant_activity = status;
+                set_run_status_locked(status);
             }
         }
         else if (type == "run_finished")
@@ -652,7 +634,7 @@ namespace
             assistant_run.active = false;
             assistant_run.summary = json_get_string(json, "summary");
             assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
-            assistant_run.status = "done";
+            set_run_status_locked("done");
         }
         else if (type == "run_failed")
         {
@@ -660,7 +642,7 @@ namespace
             assistant_run.failed = true;
             assistant_run.summary = json_get_string(json, "summary");
             assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
-            assistant_run.status = "failed";
+            set_run_status_locked("failed");
         }
         else if (type == "run_cancelled")
         {
@@ -668,7 +650,7 @@ namespace
             assistant_run.cancelled = true;
             assistant_run.summary = json_get_string(json, "summary");
             assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
-            assistant_run.status = "cancelled";
+            set_run_status_locked("cancelled");
         }
 
         assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms", assistant_run.elapsed_ms);
@@ -1099,7 +1081,14 @@ namespace
         std::lock_guard<std::mutex> start_lock(assistant_start_mutex);
         if (is_assistant_ready())
         {
-            return true;
+            if (assistant_spawned_this_session)
+            {
+                return true;
+            }
+
+            // an assistant left over from a previous session runs stale code, replace it
+            log_info("Replacing an assistant from a previous session so the current code is loaded.");
+            kill_assistant_process();
         }
 
         std::filesystem::path script_path;
@@ -1154,6 +1143,7 @@ namespace
             terminate_tracked_assistant_process();
             return false;
         }
+        assistant_spawned_this_session = true;
         return true;
     #else
         const std::string shell_command = command + " >/dev/null 2>&1 &";
@@ -1162,7 +1152,8 @@ namespace
             return false;
         }
 
-        return wait_for_assistant_ready();
+        assistant_spawned_this_session = wait_for_assistant_ready();
+        return assistant_spawned_this_session;
     #endif
     }
 
@@ -2246,17 +2237,26 @@ void McpAssistant::DrawAssistantRun()
         }
 
         ImGui::Spacing();
-        ImGui::TextDisabled("status");
-        if (!run.status.empty())
+        const float line_height    = ImGui::GetTextLineHeightWithSpacing();
+        const float history_height = std::min(static_cast<float>(run.event_lines.size() + 2), 12.0f) * line_height;
+        if (ImGui::BeginChild("##assistant_run_history", ImVec2(0.0f, history_height)))
         {
-            ImGui::SameLine();
-            ImGui::TextWrapped("%s", run.status.c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+            for (const std::string& line : run.event_lines)
+            {
+                ImGui::TextWrapped("%s", line.c_str());
+            }
+            ImGui::PopStyleColor();
+            ImGui::TextWrapped("%s", run.status.empty() ? "working on request" : run.status.c_str());
+
+            // stick to the latest status unless the user scrolled up to read history
+            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - line_height)
+            {
+                ImGui::SetScrollHereY(1.0f);
+            }
         }
-        else
-        {
-            ImGui::SameLine();
-            ImGui::TextWrapped("working on request");
-        }
+        ImGui::EndChild();
+
         int elapsed_ms = run.elapsed_ms;
         if (run.active && run.started_at.time_since_epoch().count() != 0)
         {
@@ -2269,16 +2269,6 @@ void McpAssistant::DrawAssistantRun()
             ImGui::Spacing();
             ImGui::TextWrapped("%s", run.summary.c_str());
         }
-
-        if (!run.event_lines.empty())
-        {
-            ImGui::Spacing();
-            for (const std::string& line : run.event_lines)
-            {
-                ImGui::TextDisabled("%s", line.c_str());
-            }
-        }
-
     }
     end_card();
     ImGui::PopID();

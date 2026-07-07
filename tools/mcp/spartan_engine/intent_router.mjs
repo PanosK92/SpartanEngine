@@ -201,8 +201,9 @@ function is_console_request(value) {
 }
 
 function is_mcp_status_request(value) {
-  return /\b(mcp|assistant|agent|bridge|index|tools?)\b/.test(value) &&
-    /\b(status|health|ready|working|connected|slow|broken|diagnose|check)\b/.test(value);
+  return /\b(mcp|assistant|bridge|code index)\b/.test(value) &&
+    /\b(status|health|ready|connected|broken|diagnose)\b/.test(value) &&
+    !/\b(car|camera|cut|cuts|spline|sequencer|sequence|speed|entity|scene|world)\b/.test(value);
 }
 
 function is_source_code_request(value) {
@@ -212,26 +213,31 @@ function is_source_code_request(value) {
   return asks_about_code && !live_scene_action;
 }
 
+// fast paths exist for terse commands, long prompts describe real work and must reach the full agent
+const fast_path_max_length = 160;
+
 export function route_intent(prompt) {
   const value = normalized(prompt);
   if (!value) {
     return { kind: "none", confidence: 0 };
   }
 
-  if (is_simple_read_request(value)) {
+  const is_terse = value.length <= fast_path_max_length;
+
+  if (is_terse && is_simple_read_request(value)) {
     return { kind: "simple_read", confidence: 0.92 };
   }
 
-  if (is_mcp_status_request(value)) {
+  if (is_terse && is_mcp_status_request(value)) {
     return { kind: "mcp_status", confidence: 0.94 };
   }
 
-  if (is_console_request(value)) {
+  if (is_terse && is_console_request(value)) {
     const minimum_type = /\berrors?\b/.test(value) ? "error" : /\bwarnings?\b/.test(value) ? "warning" : undefined;
     return { kind: "console_read", confidence: 0.93, minimum_type };
   }
 
-  if (is_engine_mode_request(value)) {
+  if (is_terse && is_engine_mode_request(value)) {
     return { kind: "engine_mode", confidence: 0.9, mode: engine_mode_from_prompt(value) };
   }
 
@@ -259,7 +265,7 @@ export function route_intent(prompt) {
     };
   }
 
-  if (is_create_primitive_request(value)) {
+  if (is_terse && is_create_primitive_request(value)) {
     const mesh = primitive_from_prompt(value);
     const with_physics = /\b(physics|physical|rigidbody|rigid body|collision|collider|dynamic)\b/.test(value);
     const position_constraints = primitive_position_constraints(value);
@@ -279,7 +285,7 @@ export function route_intent(prompt) {
     };
   }
 
-  if (is_delete_children_request(value)) {
+  if (is_terse && is_delete_children_request(value)) {
     return {
       kind: "delete_children",
       confidence: 0.95,
@@ -290,7 +296,7 @@ export function route_intent(prompt) {
     };
   }
 
-  if (is_delete_entity_request(value)) {
+  if (is_terse && is_delete_entity_request(value)) {
     return {
       kind: "delete_entity",
       confidence: 0.95,
@@ -301,7 +307,7 @@ export function route_intent(prompt) {
     };
   }
 
-  if (is_source_code_request(value)) {
+  if (is_terse && is_source_code_request(value)) {
     return { kind: "source_code", confidence: 0.9 };
   }
 

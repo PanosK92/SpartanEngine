@@ -87,9 +87,11 @@ namespace spartan
         math::Vector3 GetPoint(float t) const;
         math::Vector3 GetTangent(float t) const;
         float GetLength(uint32_t samples_per_span = 10) const;
+        float GetTAtDistance(float distance, uint32_t samples_per_span = 10) const;
 
         // control point management (children of the owning entity)
         uint32_t GetControlPointCount() const;
+        std::vector<math::Vector3> GetControlPoints() const;
         void AddControlPoint(const math::Vector3& local_position = math::Vector3::Zero);
         void RemoveLastControlPoint();
 
@@ -201,9 +203,6 @@ namespace spartan
     private:
         // regenerate the mesh after the world finishes loading
         void OnWorldLoaded();
-
-        // gather control point world positions from child entities
-        std::vector<math::Vector3> GetControlPoints() const;
 
         // gather control point positions local to the spline entity
         std::vector<math::Vector3> GetControlPointsLocal() const;

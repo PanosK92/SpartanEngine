@@ -11,7 +11,8 @@ const source_match = z.object({
 });
 
 function with_error_fields(shape = {}) {
-  return {
+  // loose objects keep additionalProperties open, engine results carry extra fields
+  return z.looseObject({
     ok: z.boolean(),
     request_id: z.string().optional(),
     error: z.string().optional(),
@@ -19,7 +20,7 @@ function with_error_fields(shape = {}) {
     retryable: z.boolean().optional(),
     suggested_action: z.string().optional(),
     ...shape,
-  };
+  });
 }
 
 export const output_schemas = {
@@ -306,14 +307,18 @@ export function normalize_result(result) {
   };
 }
 
+function is_zod_schema(value) {
+  return Boolean(value?._zod);
+}
+
 export function json_schema_from_raw_shape(shape) {
-  if (shape?.type === "object" && shape.properties) {
+  if (!is_zod_schema(shape) && shape?.type === "object" && shape.properties) {
     return shape;
   }
 
   if (typeof z.toJSONSchema === "function") {
     try {
-      return z.toJSONSchema(z.object(shape ?? {}));
+      return z.toJSONSchema(is_zod_schema(shape) ? shape : z.object(shape ?? {}));
     } catch {
     }
   }
@@ -325,11 +330,11 @@ export function json_schema_from_raw_shape(shape) {
 }
 
 export function parse_raw_shape(shape, args) {
-  if (!shape || Object.keys(shape).length === 0) {
+  if (!shape || (!is_zod_schema(shape) && Object.keys(shape).length === 0)) {
     return { ok: true, value: {} };
   }
 
-  const parsed = z.object(shape).safeParse(args ?? {});
+  const parsed = (is_zod_schema(shape) ? shape : z.object(shape)).safeParse(args ?? {});
   if (parsed.success) {
     return { ok: true, value: parsed.data };
   }

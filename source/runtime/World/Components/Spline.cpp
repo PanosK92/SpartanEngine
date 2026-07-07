@@ -145,6 +145,7 @@ namespace spartan
             "GetPoint",             &Spline::GetPoint,
             "GetTangent",           &Spline::GetTangent,
             "GetLength",            [](Spline* self) { return self->GetLength(); },
+            "GetTAtDistance",       [](Spline* self, float distance) { return self->GetTAtDistance(distance); },
             "GetControlPointCount", &Spline::GetControlPointCount,
             "GetClosedLoop",        &Spline::GetClosedLoop,
             "GetRoadWidth",         &Spline::GetRoadWidth
@@ -539,6 +540,36 @@ namespace spartan
         }
 
         return length;
+    }
+
+    float Spline::GetTAtDistance(float distance, uint32_t samples_per_span) const
+    {
+        // spans are unevenly spaced so parametric t is not proportional to distance, walk the arc length to invert it
+        uint32_t span_count    = m_closed_loop ? GetControlPointCount() : (GetControlPointCount() > 0 ? GetControlPointCount() - 1 : 0);
+        uint32_t total_samples = max(2u, span_count * samples_per_span);
+
+        if (distance <= 0.0f)
+        {
+            return 0.0f;
+        }
+
+        float accumulated  = 0.0f;
+        Vector3 prev_point = GetPoint(0.0f);
+        for (uint32_t i = 1; i <= total_samples; i++)
+        {
+            float t             = static_cast<float>(i) / static_cast<float>(total_samples);
+            Vector3 curr_point  = GetPoint(t);
+            float segment       = prev_point.Distance(curr_point);
+            if (accumulated + segment >= distance && segment > 0.0f)
+            {
+                float prev_t = static_cast<float>(i - 1) / static_cast<float>(total_samples);
+                return prev_t + (t - prev_t) * ((distance - accumulated) / segment);
+            }
+            accumulated += segment;
+            prev_point   = curr_point;
+        }
+
+        return 1.0f;
     }
 
     uint32_t Spline::GetControlPointCount() const
