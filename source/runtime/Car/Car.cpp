@@ -1238,6 +1238,22 @@ namespace spartan
                 continue;
             }
 
+            // the hide filter also catches the children of a tire group (tread, rim, disc),
+            // measure only the top level group so each wheel yields exactly one spot
+            bool is_nested_tire_part = false;
+            for (Entity* ancestor = baked->GetParent(); ancestor; ancestor = ancestor->GetParent())
+            {
+                if (to_lower_copy(ancestor->GetObjectName()).find("tire") != std::string::npos)
+                {
+                    is_nested_tire_part = true;
+                    break;
+                }
+            }
+            if (is_nested_tire_part)
+            {
+                continue;
+            }
+
             // the renderable can live on a child node, merge every render bound under the part.
             // world bounds are built from the mesh bbox and the entity matrix directly because
             // Render::UpdateAabb falls back to an identity transform on inactive entities and
@@ -1277,6 +1293,10 @@ namespace spartan
         // wheels only car or unexpected model, fall back to the performance geometry
         if (spots.size() != 4)
         {
+            if (!spots.empty())
+            {
+                SP_LOG_WARNING("expected 4 tire groups but measured %zu, using preset geometry for the wheels", spots.size());
+            }
             spots.clear();
             const ::car::car_preset& performance = m_definition->performance;
             const float wheelbase   = performance.wheelbase   > 0.0f ? performance.wheelbase   : 2.6f;
