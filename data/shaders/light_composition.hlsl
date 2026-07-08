@@ -207,10 +207,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 light_gi *= max(surface.albedo, 0.1f);
         }
 
-        // the water body is shaded as in-scatter inside the refraction composite, a lambert albedo
-        // layer on top double counts it and washes the fresnel structure to a flat albedo sheet,
-        // the analytic sun glint in light_specular is real surface response and stays
-        if (surface.is_water())
+        // water and glass are shaded from reflection and transmission inside the refraction
+        // composite, a lambert albedo layer on top double counts and washes the fresnel structure
+        // to a flat albedo sheet, the analytic specular in light_specular is real and stays
+        if (surface.is_water() || surface.is_transparent())
         {
             light_diffuse = 0.0f;
             light_gi      = 0.0f;

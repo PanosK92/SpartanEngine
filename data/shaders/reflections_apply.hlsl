@@ -26,9 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // refraction and transparency constants
 static const float ior_water                  = 1.333f; // water IOR
-static const float ior_glass                  = 1.5f;   // glass IOR
 static const float ior_air                    = 1.0f;   // air IOR
-static const float chromatic_aberration       = 0.02f;  // chromatic aberration strength
+static const float chromatic_aberration       = 0.02f;  // water chromatic aberration strength
+static const float glass_dispersion           = 0.03f;  // per channel ior spread for glass
+static const float glass_absorption_density   = 2.0f;   // beer lambert density at alpha 1
+static const uint  glass_frost_taps           = 8;      // frosted transmission disc taps
 
 // ray traced reflections now jitter the ray across the ggx lobe by surface roughness and a
 // spatiotemporal denoiser reconstructs a roughness proportional blur, so rough surfaces show a
@@ -83,52 +85,37 @@ float3 compute_refracted_dir(float3 incident_dir, float3 normal, float ior_outer
     return normalize(ior_ratio * incident_dir + (ior_ratio * cos_theta_i - cos_theta_t) * normal);
 }
 
-// Screen-space raymarching for refraction (handles curved glass correctly)
-float3 compute_refraction_raymarch(float3 surface_pos_ws, float3 refracted_dir_ws, float depth_transparent, float2 uv)
+// screen space raymarch along the refracted direction, returns the hit uv or the straight through uv, handles curved glass correctly
+float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, float depth_transparent, float2 uv)
 {
     // convert to view space
-    float3 ray_pos = world_to_view(surface_pos_ws);
-    float3 ray_dir = world_to_view(refracted_dir_ws, false);
-    
-    // compute ray step
+    float3 ray_pos  = world_to_view(surface_pos_ws);
+    float3 ray_dir  = world_to_view(refracted_dir_ws, false);
     float3 ray_step = ray_dir * g_refraction_step_length;
-    
-    // offset starting position slightly to avoid self-intersection with glass surface
+
+    // offset starting position slightly to avoid self-intersection with the glass surface
     ray_pos += ray_dir * 0.02f;
-    
-    // ray march along refracted direction
-    float3 refracted_color = float3(0.0f, 0.0f, 0.0f);
-    bool found_intersection = false;
-    
+
     for (uint i = 0; i < g_refraction_max_steps; i++)
     {
-        // step the ray
-        ray_pos += ray_step;
-        float2 ray_uv = view_to_uv(ray_pos);
-        
-        // check if UV is valid
+        ray_pos       += ray_step;
+        float2 ray_uv  = view_to_uv(ray_pos);
+
         if (!is_valid_uv(ray_uv))
             break;
-        
-        // get depth at ray position
-        float depth_z = get_linear_depth(ray_uv);
+
+        // check if the ray passed through the glass and hit geometry behind it
+        float depth_z     = get_linear_depth(ray_uv);
         float depth_delta = ray_pos.z - depth_z;
-        
-        // check if ray passed through glass and hit geometry behind it
         if (depth_delta > 0.0f && depth_delta < g_refraction_thickness && depth_z > depth_transparent + 0.01f)
-        {
-            // we've found an intersection behind the glass
-            refracted_color = tex2.SampleLevel(samplers[sampler_bilinear_clamp], ray_uv, 0.0f).rgb;
-            found_intersection = true;
-            break;
-        }
-        
-        // early exit if ray is too far from any surface
+            return ray_uv;
+
+        // early exit if the ray is too far from any surface
         if (abs(depth_delta) > g_refraction_thickness * 10.0f && i > 4)
             break;
     }
-    
-    return found_intersection ? refracted_color : tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
+
+    return uv;
 }
 
 // smooth value noise, used to carve the coarse jacobian foam into finer whitewater
@@ -277,9 +264,35 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             }
             else
             {
-                // glass: use screen-space raymarching (handles curved surfaces correctly)
-                float3 refracted = compute_refraction_raymarch(surface.position, refracted_dir, depth_transparent, uv);
-                refraction = lerp(background, refracted, screen_fade(uv));
+                float2 refracted_uv = compute_refraction_uv(surface.position, refracted_dir, depth_transparent, uv);
+                float2 delta        = refracted_uv - uv;
+
+                // dispersion, the ior rises toward blue so each channel bends by a slightly different amount
+                refraction.r = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f - glass_dispersion), 0.0f).r;
+                refraction.g = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).g;
+                refraction.b = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv + delta * (1.0f + glass_dispersion), 0.0f).b;
+
+                // frosted glass, the ggx transmission lobe widens with roughness and the blur grows with the distance traveled behind the pane
+                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).r);
+                float thickness        = clamp(depth_background - depth_transparent, 0.0f, 4.0f);
+                float blur_radius      = min(surface.roughness_alpha * thickness / max(depth_transparent, 0.5f), 0.03f);
+                if (blur_radius > 0.0002f)
+                {
+                    // golden angle disc with a per pixel rotation, taa resolves the residual noise
+                    float  rotation = noise_interleaved_gradient(thread_id.xy) * PI2;
+                    float3 sum      = 0.0f;
+                    [unroll]
+                    for (uint t = 0; t < glass_frost_taps; t++)
+                    {
+                        float  angle  = (t + 0.5f) * 2.399963f + rotation;
+                        float  radius = blur_radius * sqrt((t + 0.5f) / glass_frost_taps);
+                        float2 tap_uv = refracted_uv + float2(cos(angle), sin(angle)) * radius;
+                        sum          += tex2.SampleLevel(samplers[sampler_bilinear_clamp], tap_uv, 0.0f).rgb;
+                    }
+                    refraction = sum / glass_frost_taps;
+                }
+
+                refraction = lerp(background, refraction, screen_fade(refracted_uv));
             }
         }
     }
@@ -302,9 +315,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (surface.is_transparent() && !surface.is_water())
     {
-        // pbr glass: sum reflection paths at full strength, add (1 - F) refracted background tinted by alpha
+        // pbr glass, sum reflection paths at full strength, add (1 - F) refracted background
+        // beer lambert through the pane, albedo is the dye color and alpha the dye density, a plain
+        // lerp toward the albedo washes saturated tints like taillight red into pastel, exponential
+        // absorption keeps the hue while clear glass with alpha near zero stays untinted
         float3 reflection_total  = tex_uav[thread_id.xy].rgb + specular_reflection;
-        float3 transmission_tint = lerp(float3(1.0f, 1.0f, 1.0f), surface.albedo, surface.alpha);
+        float3 transmission_tint = pow(max(surface.albedo, 0.02f), surface.alpha * glass_absorption_density);
         float3 kT                = float3(1.0f, 1.0f, 1.0f) - F;
         float3 transmission      = refraction * kT * transmission_tint;
         tex_uav[thread_id.xy]    = validate_output(float4(reflection_total + transmission, 1.0f));
