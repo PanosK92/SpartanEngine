@@ -80,6 +80,8 @@ namespace spartan
         bool was_in_editor_mode     = false;
         // tracks observed loading transition so the WorldLoaded event fires exactly once per load
         bool was_loading            = false;
+        // rejects re-entrant loads, a second load would run Shutdown on the main thread while the first load's workers are still building the world
+        atomic<bool> load_in_progress = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the first-match camera
@@ -1369,11 +1371,21 @@ namespace spartan
 
     bool World::LoadFromFile(const string& file_path_)
     {
+        // reject re-entrant loads, the second Shutdown below would tear down the world while the first load's workers are still building it
+        bool expected = false;
+        if (!load_in_progress.compare_exchange_strong(expected, true))
+        {
+            return false;
+        }
+
         // ensure prefabs are registered before loading
         Car::RegisterPrefabs();
 
         // shutdown synchronously before async loading
         Shutdown();
+
+        // publish the loading state now so the progress ui shows this frame instead of only once the worker task starts
+        ProgressTracker::SetGlobalLoadingState(true);
 
         // copy path for the lambda capture
         string path_copy = file_path_;
@@ -1381,7 +1393,12 @@ namespace spartan
         // load asynchronously
         ThreadPool::AddTask([path_copy]()
         {
-            ProgressTracker::SetGlobalLoadingState(true);
+            // clears the loading state and releases the guard, must run on every exit path
+            auto finish = []()
+            {
+                ProgressTracker::SetGlobalLoadingState(false);
+                load_in_progress.store(false, memory_order_release);
+            };
 
             file_path  = path_copy;
             world_name = FileSystem::GetFileNameFromFilePath(file_path);
@@ -1493,7 +1510,7 @@ namespace spartan
             if (!result)
             {
                 SP_LOG_ERROR("Failed to load XML file: %s", result.description());
-                ProgressTracker::SetGlobalLoadingState(false);
+                finish();
                 return;
             }
 
@@ -1502,7 +1519,7 @@ namespace spartan
             if (!world_node)
             {
                 SP_LOG_ERROR("No 'World' node found.");
-                ProgressTracker::SetGlobalLoadingState(false);
+                finish();
                 return;
             }
 
@@ -1537,7 +1554,7 @@ namespace spartan
                 if (!entities_node)
                 {
                     SP_LOG_ERROR("No 'Entities' node found.");
-                    ProgressTracker::SetGlobalLoadingState(false);
+                    finish();
                     return;
                 }
 
@@ -1596,7 +1613,7 @@ namespace spartan
             // report time
             SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
-            ProgressTracker::SetGlobalLoadingState(false);
+            finish();
         });
 
         return true;

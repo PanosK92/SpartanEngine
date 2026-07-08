@@ -713,6 +713,7 @@ namespace spartan
             {
                 SP_LOG_ERROR("Failed to open native texture %s", file_path.c_str());
                 Breadcrumbs::EndMarker(); // texture_load
+                ProgressTracker::SetGlobalLoadingState(false);
                 return;
             }
 
@@ -721,6 +722,7 @@ namespace spartan
             {
                 SP_LOG_ERROR("Failed to read header for %s", file_path.c_str());
                 Breadcrumbs::EndMarker(); // texture_load
+                ProgressTracker::SetGlobalLoadingState(false);
                 return;
             }
 
@@ -751,6 +753,7 @@ namespace spartan
                     {
                         SP_LOG_ERROR("Failed to read size for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load
+                        ProgressTracker::SetGlobalLoadingState(false);
                         return;
                     }
 
@@ -760,6 +763,7 @@ namespace spartan
                     {
                         SP_LOG_ERROR("Failed to read data for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load
+                        ProgressTracker::SetGlobalLoadingState(false);
                         return;
                     }
                 }

@@ -140,8 +140,9 @@ namespace spartan
         {
             anonymous_jobs++;
         }
-        else
+        else if (anonymous_jobs > 0)
         {
+            // guard against underflow, an unbalanced decrement would wrap to a huge value and leave IsLoading stuck true forever
             anonymous_jobs--;
         }
     }

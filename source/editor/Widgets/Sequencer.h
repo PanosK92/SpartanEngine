@@ -73,6 +73,14 @@ private:
     void DrawCameraTrack(float origin_x, float track_y, float width, float pixels_per_sec);
     void DrawSplineTrack(float origin_x, float track_y, float width, float pixels_per_sec);
     void DrawPopups();
+    void DrawInspector();
+    void ClampToDuration();
+    void AddCameraAtPlayhead();
+    void AddMotionAtPlayhead();
+    void DeleteSelectedCamera();
+    void DeleteSelectedSpline();
+    void DuplicateSelectedCamera();
+    void DuplicateSelectedSpline();
     void RegisterMcpCommands();
     std::string GetMcpState() const;
     int GetEventIndexAtTime(float time) const;

@@ -1267,7 +1267,12 @@ namespace spartan
         cmd_list->WaitForExecution();
 
         uint32_t qi = static_cast<uint32_t>(cmd_list->GetQueue()->GetType());
-        immediate_execution::is_executing[qi] = false;
+
+        // clear the flag under the lock, releasing it without the mutex races with the waiter in ImmediateExecutionBegin and loses the wakeup
+        {
+            lock_guard<mutex> lock(immediate_execution::mutexes[qi]);
+            immediate_execution::is_executing[qi] = false;
+        }
         immediate_execution::condition_vars[qi].notify_one();
     }
 

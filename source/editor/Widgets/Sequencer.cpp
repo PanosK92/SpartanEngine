@@ -133,6 +133,149 @@ namespace
         return changed;
     }
 
+    // the first camera entity in the world, used when adding a cut from the toolbar
+    Entity* first_camera()
+    {
+        for (Entity* entity : World::GetEntities())
+        {
+            if (entity->GetComponent<Camera>())
+            {
+                return entity;
+            }
+        }
+        return nullptr;
+    }
+
+    // the first spline follower entity in the world, used when adding a motion from the toolbar
+    Entity* first_follower()
+    {
+        for (Entity* entity : World::GetEntities())
+        {
+            if (entity->GetComponent<SplineFollower>())
+            {
+                return entity;
+            }
+        }
+        return nullptr;
+    }
+
+    const float inspector_label_ratio = 0.40f;
+
+    // draws a dimmed label then places the next widget in the value column
+    void inspector_label(const char* label, float full_width)
+    {
+        ImGui::AlignTextToFramePadding();
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.70f, 0.70f, 1.0f));
+        ImGui::TextUnformatted(label);
+        ImGui::PopStyleColor();
+        const float column = full_width * inspector_label_ratio;
+        ImGui::SameLine(column);
+        ImGui::SetNextItemWidth(full_width - column);
+    }
+
+    // bold sub heading inside the inspector
+    void inspector_section(const char* title)
+    {
+        ImGui::PushFont(Editor::font_bold, 0.0f);
+        ImGui::TextUnformatted(title);
+        ImGui::PopFont();
+        ImGui::Dummy(ImVec2(0.0f, 4.0f));
+    }
+
+    // combo listing every camera entity, returns true when the choice changed
+    bool camera_combo(const char* label, uint64_t& camera_id)
+    {
+        bool changed         = false;
+        const string preview = camera_id != 0 ? get_entity_name(camera_id) : "(none)";
+        if (ImGui::BeginCombo(label, preview.c_str()))
+        {
+            for (Entity* entity : World::GetEntities())
+            {
+                if (!entity->GetComponent<Camera>())
+                {
+                    continue;
+                }
+                const bool selected = entity->GetObjectId() == camera_id;
+                if (ImGui::Selectable(entity->GetObjectName().c_str(), selected))
+                {
+                    camera_id = entity->GetObjectId();
+                    changed   = true;
+                }
+                if (selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        return changed;
+    }
+
+    // combo listing every spline follower entity, returns true when the choice changed
+    bool follower_combo(const char* label, uint64_t& follower_id)
+    {
+        bool changed         = false;
+        const string preview = follower_id != 0 ? get_entity_name(follower_id) : "(none)";
+        if (ImGui::BeginCombo(label, preview.c_str()))
+        {
+            for (Entity* entity : World::GetEntities())
+            {
+                if (!entity->GetComponent<SplineFollower>())
+                {
+                    continue;
+                }
+                const bool selected = entity->GetObjectId() == follower_id;
+                if (ImGui::Selectable(entity->GetObjectName().c_str(), selected))
+                {
+                    follower_id = entity->GetObjectId();
+                    changed     = true;
+                }
+                if (selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        return changed;
+    }
+
+    // combo listing none plus every active root entity as a look at target
+    bool target_combo(const char* label, uint64_t& target_id)
+    {
+        bool changed         = false;
+        const string preview = target_id != 0 ? get_entity_name(target_id) : "(none)";
+        if (ImGui::BeginCombo(label, preview.c_str()))
+        {
+            if (ImGui::Selectable("(none)", target_id == 0))
+            {
+                target_id = 0;
+                changed   = true;
+            }
+            vector<Entity*> roots;
+            World::GetRootEntities(roots);
+            for (Entity* entity : roots)
+            {
+                if (!entity->GetActive())
+                {
+                    continue;
+                }
+                const bool selected = entity->GetObjectId() == target_id;
+                if (ImGui::Selectable(entity->GetObjectName().c_str(), selected))
+                {
+                    target_id = entity->GetObjectId();
+                    changed   = true;
+                }
+                if (selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        return changed;
+    }
+
     const char* mcp_command_names[] = { "sequencer_get", "sequencer_set", "sequencer_playback", "sequencer_event_add", "sequencer_event_update", "sequencer_event_remove", "sequencer_spline_add", "sequencer_spline_update", "sequencer_spline_remove" };
 
     string json_escape(const string& value)
@@ -642,24 +785,40 @@ void Sequencer::OnTick()
 void Sequencer::OnTickVisible()
 {
     DrawToolbar();
+    ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+    // the timeline fills the window and reserves a fixed panel on the right for the inspector
+    const float spacing       = 6.0f;
+    const float inspector_w   = 280.0f;
+    const float avail         = ImGui::GetContentRegionAvail().x;
+    const bool show_inspector = avail - inspector_w - spacing > 220.0f;
+    const float timeline_w    = show_inspector ? avail - inspector_w - spacing : 0.0f;
+
+    // popups live in the same child that opens them so their id scope matches
+    ImGui::BeginChild("##seq_timeline", ImVec2(timeline_w, 0.0f), ImGuiChildFlags_None);
     DrawTimeline();
     DrawPopups();
+    ImGui::EndChild();
+
+    if (show_inspector)
+    {
+        ImGui::SameLine(0.0f, spacing);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+        ImGui::BeginChild("##seq_inspector", ImVec2(inspector_w, 0.0f), ImGuiChildFlags_Borders);
+        DrawInspector();
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+    }
 
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Delete))
     {
         if (m_selected != -1)
         {
-            const State before = CaptureState();
-            m_events.erase(m_events.begin() + m_selected);
-            m_selected = -1;
-            CommitState(before);
+            DeleteSelectedCamera();
         }
         else if (m_spline_selected != -1)
         {
-            const State before = CaptureState();
-            m_spline_events.erase(m_spline_events.begin() + m_spline_selected);
-            m_spline_selected = -1;
-            CommitState(before);
+            DeleteSelectedSpline();
         }
     }
 }
@@ -721,6 +880,24 @@ void Sequencer::DrawToolbar()
     ImGuiSp::tooltip("loop");
 
     ImGui::SameLine();
+    ImGui::BeginDisabled(first_camera() == nullptr);
+    if (ImGuiSp::button("+ camera"))
+    {
+        AddCameraAtPlayhead();
+    }
+    ImGui::EndDisabled();
+    ImGuiSp::tooltip("add a camera cut at the playhead");
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(first_follower() == nullptr);
+    if (ImGuiSp::button("+ motion"))
+    {
+        AddMotionAtPlayhead();
+    }
+    ImGui::EndDisabled();
+    ImGuiSp::tooltip("add a spline motion at the playhead");
+
+    ImGui::SameLine();
     ImGui::AlignTextToFramePadding();
     ImGui::Text("%s / %s", format_time(m_time).c_str(), format_time(m_duration).c_str());
 
@@ -736,19 +913,10 @@ void Sequencer::DrawToolbar()
     }
     if (ImGui::IsItemDeactivatedAfterEdit())
     {
-        for (CameraEvent& event : m_events)
-        {
-            event.time = min(event.time, m_duration);
-        }
-        for (SplineEvent& event : m_spline_events)
-        {
-            event.start_time = min(event.start_time, m_duration);
-            event.end_time   = min(event.end_time, m_duration);
-        }
-        m_time = min(m_time, m_duration);
+        ClampToDuration();
         CommitState(m_drag_undo_state);
     }
-    ImGuiSp::tooltip("duration in seconds");
+    ImGuiSp::tooltip("total sequence length in seconds");
 }
 
 void Sequencer::DrawTimeline()
@@ -847,7 +1015,8 @@ void Sequencer::DrawCameraTrack(float origin_x, float track_y, float width, floa
     }
     else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
-        m_selected = hovered_event;
+        m_selected        = hovered_event;
+        m_spline_selected = -1;
         if (m_selected != -1)
         {
             m_dragging        = m_selected;
@@ -861,7 +1030,13 @@ void Sequencer::DrawCameraTrack(float origin_x, float track_y, float width, floa
         m_selected = hovered_event;
         if (m_selected != -1)
         {
+            m_spline_selected = -1;
             ImGui::OpenPopup("##sequencer_event");
+        }
+        else
+        {
+            m_popup_time = mouse_time;
+            ImGui::OpenPopup("##sequencer_add");
         }
     }
 
@@ -917,7 +1092,7 @@ void Sequencer::DrawCameraTrack(float origin_x, float track_y, float width, floa
 
     if (m_events.empty())
     {
-        const char* hint  = "double click to add a camera event";
+        const char* hint  = "double click or right click to add a camera cut";
         const ImVec2 size = ImGui::CalcTextSize(hint);
         draw->AddText(ImVec2(track_min.x + (width - size.x) * 0.5f, track_min.y + (track_height - size.y) * 0.5f), col_tick, hint);
     }
@@ -973,6 +1148,7 @@ void Sequencer::DrawSplineTrack(float origin_x, float track_y, float width, floa
     else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
     {
         m_spline_selected = hovered_event;
+        m_selected        = -1;
         if (m_spline_selected != -1)
         {
             m_spline_dragging    = m_spline_selected;
@@ -987,7 +1163,13 @@ void Sequencer::DrawSplineTrack(float origin_x, float track_y, float width, floa
         m_spline_selected = hovered_event;
         if (m_spline_selected != -1)
         {
+            m_selected = -1;
             ImGui::OpenPopup("##sequencer_spline_event");
+        }
+        else
+        {
+            m_spline_popup_time = mouse_time;
+            ImGui::OpenPopup("##sequencer_spline_add");
         }
     }
 
@@ -1061,7 +1243,7 @@ void Sequencer::DrawSplineTrack(float origin_x, float track_y, float width, floa
 
     if (m_spline_events.empty())
     {
-        const char* hint  = "double click to add a spline follower event";
+        const char* hint  = "double click or right click to add a spline motion";
         const ImVec2 size = ImGui::CalcTextSize(hint);
         draw->AddText(ImVec2(track_min.x + (width - size.x) * 0.5f, track_min.y + (track_height - size.y) * 0.5f), col_tick, hint);
     }
@@ -1081,7 +1263,8 @@ void Sequencer::DrawPopups()
             event.camera_entity_id = entity->GetObjectId();
             m_events.push_back(event);
             sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
-            m_selected = GetEventIndexAtTime(m_popup_time);
+            m_selected        = GetEventIndexAtTime(m_popup_time);
+            m_spline_selected = -1;
             CommitState(before);
         }
         ImGui::EndPopup();
@@ -1110,12 +1293,14 @@ void Sequencer::DrawPopups()
                 }
                 ImGui::EndMenu();
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("duplicate"))
+            {
+                DuplicateSelectedCamera();
+            }
             if (ImGui::MenuItem("delete"))
             {
-                const State before = CaptureState();
-                m_events.erase(m_events.begin() + m_selected);
-                m_selected = -1;
-                CommitState(before);
+                DeleteSelectedCamera();
             }
         }
         ImGui::EndPopup();
@@ -1134,6 +1319,7 @@ void Sequencer::DrawPopups()
             event.follower_entity_id = entity->GetObjectId();
             m_spline_events.push_back(event);
             m_spline_selected = static_cast<int>(m_spline_events.size()) - 1;
+            m_selected        = -1;
             CommitState(before);
         }
         ImGui::EndPopup();
@@ -1153,16 +1339,335 @@ void Sequencer::DrawPopups()
                 }
                 ImGui::EndMenu();
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("duplicate"))
+            {
+                DuplicateSelectedSpline();
+            }
             if (ImGui::MenuItem("delete"))
             {
-                const State before = CaptureState();
-                m_spline_events.erase(m_spline_events.begin() + m_spline_selected);
-                m_spline_selected = -1;
-                CommitState(before);
+                DeleteSelectedSpline();
             }
         }
         ImGui::EndPopup();
     }
+}
+
+void Sequencer::DrawInspector()
+{
+    const float width = ImGui::GetContentRegionAvail().x;
+
+    // a camera shot is selected
+    if (m_selected != -1 && m_selected < static_cast<int>(m_events.size()))
+    {
+        inspector_section("camera shot");
+        CameraEvent& event = m_events[m_selected];
+
+        // camera
+        {
+            uint64_t camera_id = event.camera_entity_id;
+            inspector_label("camera", width);
+            if (camera_combo("##seq_i_camera", camera_id))
+            {
+                const State before     = CaptureState();
+                event.camera_entity_id = camera_id;
+                CommitState(before);
+            }
+        }
+
+        // look at target, the camera pans to keep it in view while this shot is live
+        {
+            uint64_t target_id = event.target_entity_id;
+            inspector_label("look at", width);
+            if (target_combo("##seq_i_target", target_id))
+            {
+                const State before     = CaptureState();
+                event.target_entity_id = target_id;
+                CommitState(before);
+            }
+        }
+
+        // start time, clamped between the neighboring cuts so the order never changes
+        {
+            const float t_min = m_selected > 0 ? m_events[m_selected - 1].time + min_event_gap : 0.0f;
+            const float t_max = max(t_min, m_selected < static_cast<int>(m_events.size()) - 1 ? m_events[m_selected + 1].time - min_event_gap : m_duration);
+            float start_time  = event.time;
+            inspector_label("start", width);
+            if (ImGui::DragFloat("##seq_i_start", &start_time, 0.05f, t_min, t_max, "%.2f s"))
+            {
+                event.time = clamp(start_time, t_min, t_max);
+            }
+            if (ImGui::IsItemActivated())
+            {
+                m_drag_undo_state = CaptureState();
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                CommitState(m_drag_undo_state);
+            }
+        }
+
+        // duration, the last shot extends the sequence end, others push the next cut
+        {
+            const bool is_last   = m_selected == static_cast<int>(m_events.size()) - 1;
+            const float end_time = is_last ? m_duration : m_events[m_selected + 1].time;
+            float duration       = end_time - event.time;
+            inspector_label("duration", width);
+            if (ImGui::DragFloat("##seq_i_duration", &duration, 0.05f, min_event_gap, 3600.0f, "%.2f s"))
+            {
+                duration = max(duration, min_event_gap);
+                if (is_last)
+                {
+                    m_duration = event.time + duration;
+                    ClampToDuration();
+                }
+                else
+                {
+                    const float lower             = event.time + min_event_gap;
+                    const float upper             = max(lower, m_selected + 2 < static_cast<int>(m_events.size()) ? m_events[m_selected + 2].time - min_event_gap : m_duration);
+                    m_events[m_selected + 1].time = clamp(event.time + duration, lower, upper);
+                }
+            }
+            if (ImGui::IsItemActivated())
+            {
+                m_drag_undo_state = CaptureState();
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                CommitState(m_drag_undo_state);
+            }
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, 8.0f));
+        const float button_w = (width - 6.0f) * 0.5f;
+        if (ImGuiSp::button("duplicate", ImVec2(button_w, 0.0f)))
+        {
+            DuplicateSelectedCamera();
+        }
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.18f, 0.18f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.60f, 0.22f, 0.22f, 1.0f));
+        if (ImGuiSp::button("delete", ImVec2(button_w, 0.0f)))
+        {
+            DeleteSelectedCamera();
+        }
+        ImGui::PopStyleColor(2);
+        return;
+    }
+
+    // a spline motion is selected
+    if (m_spline_selected != -1 && m_spline_selected < static_cast<int>(m_spline_events.size()))
+    {
+        inspector_section("motion");
+        SplineEvent& event = m_spline_events[m_spline_selected];
+
+        // follower
+        {
+            uint64_t follower_id = event.follower_entity_id;
+            inspector_label("follower", width);
+            if (follower_combo("##seq_i_follower", follower_id))
+            {
+                const State before       = CaptureState();
+                event.follower_entity_id = follower_id;
+                CommitState(before);
+            }
+        }
+
+        // start
+        {
+            float start_time = event.start_time;
+            inspector_label("start", width);
+            if (ImGui::DragFloat("##seq_i_sstart", &start_time, 0.05f, 0.0f, event.end_time - min_event_gap, "%.2f s"))
+            {
+                event.start_time = clamp(start_time, 0.0f, event.end_time - min_event_gap);
+            }
+            if (ImGui::IsItemActivated())
+            {
+                m_drag_undo_state = CaptureState();
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                CommitState(m_drag_undo_state);
+            }
+        }
+
+        // end
+        {
+            const float e_min = event.start_time + min_event_gap;
+            const float e_max = max(e_min, m_duration);
+            float end_time    = event.end_time;
+            inspector_label("end", width);
+            if (ImGui::DragFloat("##seq_i_send", &end_time, 0.05f, e_min, e_max, "%.2f s"))
+            {
+                event.end_time = clamp(end_time, e_min, e_max);
+            }
+            if (ImGui::IsItemActivated())
+            {
+                m_drag_undo_state = CaptureState();
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                CommitState(m_drag_undo_state);
+            }
+        }
+
+        // duration, moves the end while keeping the start fixed
+        {
+            float duration    = event.end_time - event.start_time;
+            const float d_min = event.start_time + min_event_gap;
+            const float d_max = max(d_min, m_duration);
+            inspector_label("duration", width);
+            if (ImGui::DragFloat("##seq_i_sduration", &duration, 0.05f, min_event_gap, m_duration, "%.2f s"))
+            {
+                event.end_time = clamp(event.start_time + max(duration, min_event_gap), d_min, d_max);
+            }
+            if (ImGui::IsItemActivated())
+            {
+                m_drag_undo_state = CaptureState();
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                CommitState(m_drag_undo_state);
+            }
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, 8.0f));
+        const float button_w = (width - 6.0f) * 0.5f;
+        if (ImGuiSp::button("duplicate", ImVec2(button_w, 0.0f)))
+        {
+            DuplicateSelectedSpline();
+        }
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.45f, 0.18f, 0.18f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.60f, 0.22f, 0.22f, 1.0f));
+        if (ImGuiSp::button("delete", ImVec2(button_w, 0.0f)))
+        {
+            DeleteSelectedSpline();
+        }
+        ImGui::PopStyleColor(2);
+        return;
+    }
+
+    // nothing selected
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextDisabled("select a shot on the timeline to edit it, or use + camera and + motion to add one");
+    ImGui::PopTextWrapPos();
+}
+
+void Sequencer::ClampToDuration()
+{
+    for (CameraEvent& event : m_events)
+    {
+        event.time = min(event.time, m_duration);
+    }
+    for (SplineEvent& event : m_spline_events)
+    {
+        event.start_time = min(event.start_time, m_duration);
+        event.end_time   = min(event.end_time, m_duration);
+    }
+    m_time = min(m_time, m_duration);
+}
+
+void Sequencer::AddCameraAtPlayhead()
+{
+    Entity* camera = first_camera();
+    if (!camera)
+    {
+        return;
+    }
+    const State before     = CaptureState();
+    CameraEvent event;
+    event.time             = m_time;
+    event.camera_entity_id = camera->GetObjectId();
+    m_events.push_back(event);
+    sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
+    m_selected        = GetEventIndexAtTime(m_time);
+    m_spline_selected = -1;
+    CommitState(before);
+}
+
+void Sequencer::AddMotionAtPlayhead()
+{
+    Entity* follower = first_follower();
+    if (!follower)
+    {
+        return;
+    }
+    const State before       = CaptureState();
+    SplineEvent event;
+    event.start_time         = m_time;
+    event.end_time           = min(m_time + 5.0f, m_duration);
+    if (event.end_time < event.start_time + min_event_gap)
+    {
+        event.end_time = min(event.start_time + min_event_gap, m_duration);
+    }
+    event.follower_entity_id = follower->GetObjectId();
+    m_spline_events.push_back(event);
+    m_spline_selected = static_cast<int>(m_spline_events.size()) - 1;
+    m_selected        = -1;
+    CommitState(before);
+}
+
+void Sequencer::DeleteSelectedCamera()
+{
+    if (m_selected < 0 || m_selected >= static_cast<int>(m_events.size()))
+    {
+        return;
+    }
+    const State before = CaptureState();
+    m_events.erase(m_events.begin() + m_selected);
+    m_selected = -1;
+    CommitState(before);
+}
+
+void Sequencer::DeleteSelectedSpline()
+{
+    if (m_spline_selected < 0 || m_spline_selected >= static_cast<int>(m_spline_events.size()))
+    {
+        return;
+    }
+    const State before = CaptureState();
+    m_spline_events.erase(m_spline_events.begin() + m_spline_selected);
+    m_spline_selected = -1;
+    CommitState(before);
+}
+
+void Sequencer::DuplicateSelectedCamera()
+{
+    if (m_selected < 0 || m_selected >= static_cast<int>(m_events.size()))
+    {
+        return;
+    }
+    const State before    = CaptureState();
+    const float next_time = m_selected < static_cast<int>(m_events.size()) - 1 ? m_events[m_selected + 1].time : m_duration;
+    CameraEvent copy      = m_events[m_selected];
+    copy.time             = clamp((m_events[m_selected].time + next_time) * 0.5f, 0.0f, m_duration);
+    m_events.push_back(copy);
+    sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
+    m_selected        = GetEventIndexAtTime(copy.time);
+    m_spline_selected = -1;
+    CommitState(before);
+}
+
+void Sequencer::DuplicateSelectedSpline()
+{
+    if (m_spline_selected < 0 || m_spline_selected >= static_cast<int>(m_spline_events.size()))
+    {
+        return;
+    }
+    const State before = CaptureState();
+    SplineEvent copy   = m_spline_events[m_spline_selected];
+    const float span   = copy.end_time - copy.start_time;
+    copy.start_time    = min(copy.end_time, m_duration);
+    copy.end_time      = min(copy.start_time + span, m_duration);
+    if (copy.end_time < copy.start_time + min_event_gap)
+    {
+        copy.end_time = min(copy.start_time + min_event_gap, m_duration);
+    }
+    m_spline_events.push_back(copy);
+    m_spline_selected = static_cast<int>(m_spline_events.size()) - 1;
+    m_selected        = -1;
+    CommitState(before);
 }
 
 int Sequencer::GetEventIndexAtTime(float time) const
