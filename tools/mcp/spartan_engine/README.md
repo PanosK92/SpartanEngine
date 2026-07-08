@@ -90,7 +90,7 @@ Use these first:
 - `component_set_batch` for multiple edits on one component.
 - `component_action` for supported component methods before using Lua.
 - `search_codebase`, then `read_source_file`, for source questions.
-- `entity_create_primitive_batch` or `execute_lua` for repeated scene work.
+- `entity_create_primitive_batch` for blockouts and repeated geometry; use `execute_lua` only for focused scripts with known bindings, never for API probing.
 - `entity_set_transform_batch` for repositioning many entities in one call.
 - `agent_memory_append` after a durable lesson, correction, recurring problem, or maintainer improvement idea.
 

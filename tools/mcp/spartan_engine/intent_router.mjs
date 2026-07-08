@@ -6,8 +6,88 @@ export function should_use_selected_entity(prompt) {
   return /\b(this|selected|current)\s+entity\b/.test(normalized(prompt));
 }
 
+const target_name_stopwords = new Set([
+  "this", "selected", "current", "the", "an", "a", "entity", "entities", "children", "child", "contents",
+  "parent", "under", "called", "named", "existing", "new", "area", "scene", "world", "level", "blockout",
+  "there", "is", "are", "its", "it's", "their", "our", "your", "my", "some", "any", "all",
+]);
+
+function clean_target_name(raw) {
+  const value = String(raw ?? "").trim().replace(/^["'`]+|["'`]+$/g, "").replace(/\s+/g, " ");
+  if (!value)
+  {
+    return "";
+  }
+
+  const tokens = value.toLowerCase().split(/[\s-]+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.every((token) => target_name_stopwords.has(token)))
+  {
+    return "";
+  }
+
+  if (tokens.length === 1)
+  {
+    return tokens[0];
+  }
+
+  // prefer snake_case style names, drop leading filler words like parent under an
+  const meaningful = tokens.filter((token) => !target_name_stopwords.has(token));
+  if (meaningful.length === 1)
+  {
+    return meaningful[0];
+  }
+  if (meaningful.length > 1 && meaningful.every((token) => /^[a-z][a-z0-9]*$/.test(token)))
+  {
+    return meaningful.join("_");
+  }
+
+  return "";
+}
+
 export function target_name_from_prompt(prompt) {
   const value = normalized(prompt);
+
+  const quoted_match = value.match(/\b(?:entity|parent|root)?\s*(?:called|named)\s+["']([a-z0-9 _-]+)["']/i)
+    || value.match(/["']([a-z][a-z0-9]*(?:_[a-z0-9]+)+)["']/);
+  if (quoted_match?.[1])
+  {
+    const cleaned = clean_target_name(quoted_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
+    }
+  }
+
+  const called_match = value.match(/\b(?:entity|parent|root)?\s*(?:called|named)\s+([a-z][a-z0-9_-]*)\b/);
+  if (called_match?.[1])
+  {
+    const cleaned = clean_target_name(called_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
+    }
+  }
+
+  const under_match = value.match(/\b(?:parent(?:ed)?\s+)?under\s+(?:an?\s+)?(?:entity\s+)?(?:called|named)\s+([a-z][a-z0-9_-]*)\b/);
+  if (under_match?.[1])
+  {
+    const cleaned = clean_target_name(under_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
+    }
+  }
+
+  const existing_match = value.match(/\b(?:existing|the)\s+entity\s+["']?([a-z][a-z0-9_-]*)["']?\b/);
+  if (existing_match?.[1])
+  {
+    const cleaned = clean_target_name(existing_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
+    }
+  }
+
   const explicit_entity_match = value.match(/\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/);
   if (explicit_entity_match?.[1])
   {
@@ -15,26 +95,43 @@ export function target_name_from_prompt(prompt) {
   }
 
   const named_match = value.match(/\bnamed\s+["']?([a-z0-9 _-]+?)["']?(?:\s|,|\.|$)/);
-  if (named_match?.[1]) {
-    return named_match[1].trim();
+  if (named_match?.[1])
+  {
+    const cleaned = clean_target_name(named_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
+    }
   }
 
   const children_match = value.match(/children\s+of\s+(?:the\s+)?([a-z0-9 _-]+?)\s+entity\b/);
-  if (children_match?.[1] && !["this", "selected", "current"].includes(children_match[1].trim())) {
-    return children_match[1].trim();
+  if (children_match?.[1])
+  {
+    const cleaned = clean_target_name(children_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
+    }
   }
 
   const delete_match = value.match(/\b(?:delete|remove|destroy)\s+(?:the\s+)?["']?([a-z0-9 _-]+?)["']?(?:\s+entity)?(?:\s|,|\.|$)/);
-  if (delete_match?.[1]) {
-    const target = delete_match[1].trim();
-    if (!["this", "selected", "current", "the", "entity", "children", "child", "contents"].includes(target)) {
-      return target;
+  if (delete_match?.[1])
+  {
+    const cleaned = clean_target_name(delete_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
     }
   }
 
   const entity_match = value.match(/\b([a-z0-9 _-]+?)\s+entity\b/);
-  if (entity_match?.[1] && !["this", "selected", "current", "the"].includes(entity_match[1].trim())) {
-    return entity_match[1].trim();
+  if (entity_match?.[1])
+  {
+    const cleaned = clean_target_name(entity_match[1]);
+    if (cleaned)
+    {
+      return cleaned;
+    }
   }
 
   return "";

@@ -290,7 +290,17 @@ namespace spartan
             "IsActive",                 &Entity::IsActive,
             "GetActive",                &Entity::GetActive,
             "SetActive",                &Entity::SetActive,
-            "GetChildren",              &Entity::GetChildren,
+            "GetChildren", [](Entity* Self) -> sol::table
+            {
+                sol::state_view lua = World::GetLuaState();
+                sol::table result = lua.create_table();
+                const std::vector<Entity*>& children = Self->GetChildren();
+                for (size_t i = 0; i < children.size(); i++)
+                {
+                    result[i + 1] = children[i];
+                }
+                return result;
+            },
             "HasChildren",              &Entity::HasChildren,
             "SetParent",                &Entity::SetParent,
             "GetParent",                &Entity::GetParent,

@@ -1251,7 +1251,7 @@ register_local_tool(
   "entity_create_primitive_batch",
   {
     title: "entity create primitive batch",
-    description: "Create many primitive render entities in edit mode through one native engine batch command.",
+    description: "Create many primitive render entities in one native engine batch. Preferred path for blockouts, docks, rooms, props, and any repeated geometry. Parent with parent_id, set mesh/position/scale/material/physics per item, keep count under 64.",
     inputSchema: {
       items: z.array(z.object(primitive_create_args)).min(1).max(64),
     },
@@ -1733,9 +1733,10 @@ register_tool(
   server,
   "execute_lua",
   [
-    "Run a Lua script inside the engine in a single call, using the engine's Lua bindings (World, Entity, Render, Physics, Light, ParticleSystem, WorldHelpers, Timer, ComponentType, etc.).",
-    "Best for procedural or multi-step scene work: write ONE script with loops and math (grids, repeated props, whole layouts) instead of many individual tool calls.",
-    "Runs on the engine main thread. Use print(...) for diagnostics (read it back with console_read) and return a short summary string describing what you built.",
+    "Run one focused Lua script inside the engine using known bindings (World, Entity, Renderable, Light, MeshType, LightType, ComponentType, WorldHelpers, etc.).",
+    "Do not use this for API discovery, pairs/next probing, method listing, or exploratory scripts.",
+    "For blockouts and repeated primitives prefer entity_create_primitive_batch; for lights prefer entity_create_light.",
+    "Use this only when a native batch tool cannot express the edit. Keep the script bounded, use print(...) for diagnostics, and return a short summary string.",
   ].join(" "),
   {
     code: z.string().optional(),

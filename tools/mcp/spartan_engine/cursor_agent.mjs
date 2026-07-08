@@ -410,8 +410,8 @@ function is_tool_event(value) {
   });
 }
 
-function build_prompt(prompt, snapshot) {
-  return [
+function build_prompt(prompt, snapshot, intent = null) {
+  const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
     "Read agent_memory_read early when available, and treat it as project advice rather than absolute truth.",
     "For engine-control requests, use Spartan MCP tools first and keep tool calls minimal.",
@@ -424,18 +424,34 @@ function build_prompt(prompt, snapshot) {
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
     "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
     "Use entity_create_light for lights, including area lights on ceilings, and set intensity, range, and area size to fit the room or blockout scale instead of leaving weak defaults.",
-    "For repeated scene work, use one execute_lua script or a native batch tool.",
+    "Blockouts and area construction must use native tools: entity_resolve or entity_create_empty for the parent, then entity_create_primitive_batch for geometry, then entity_create_light for lights.",
+    "Do not use execute_lua for API discovery, pairs/next probing, method listing, or exploratory scripts. Those crash or hang the engine.",
+    "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
+    "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Renderable|Light|...), Renderable:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
     "When you learn a durable lesson, correction, recurring problem, or maintainer improvement idea, update agent memory concisely.",
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
+  ];
+
+  if (intent?.target_name)
+  {
+    lines.push(`Resolved parent entity name from the request: ${intent.target_name}. Resolve it with entity_resolve, create it with entity_create_empty if missing, then parent all new blockout parts under that entity id.`);
+  }
+  if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
+  {
+    lines.push("This is a live scene construction request. Build readable blockout geometry with cubes, cylinders, and lights under the parent. Do not search source code and do not invent Lua APIs.");
+  }
+
+  lines.push(
     "Engine state snapshot:",
     JSON.stringify(snapshot),
     "",
     "User request:",
     prompt,
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
-export async function run_cursor_fallback({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms }) {
+export async function run_cursor_fallback({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
   if (!api_key) {
     return {
       ok: false,
@@ -489,7 +505,7 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
       }, 1000);
       guard_timer.unref?.();
 
-      cursor_run = await agent.send(build_prompt(prompt, snapshot), {
+      cursor_run = await agent.send(build_prompt(prompt, snapshot, intent), {
         onStep: ({ step }) => {
           void observe(step);
         },

@@ -15,8 +15,9 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Bridge requests carry request ids that are echoed in engine responses and debug logs.
 - \`async_task_start\`, \`async_task_get\`, and \`async_task_list\` provide pollable background MCP tool execution.
 - Mutating scene tools require edit mode.
-- \`execute_lua\` is the broad capability layer for procedural scene edits and is edit-mode guarded.
+- \`execute_lua\` is available for focused procedural edits, but native batch tools are preferred for blockouts; exploratory Lua API probing has crashed the engine.
 - Lua can sample splines via \`entity:GetComponent(ComponentType.Spline)\` with \`GetPoint(t)\`, \`GetTangent(t)\`, \`GetLength()\`, and can add cameras via \`entity:AddComponent(ComponentType.Camera)\`.
+- \`World.GetEntities()\`, \`World.GetEntitiesLights()\`, and \`entity:GetChildren()\` return 1-based Lua tables; prefer \`ForEachChild\` for iteration.
 - \`context_snapshot\` is the fastest first read for engine status, world summary, and selection.
 - \`component_get\` exposes friendly properties, registered raw members, and metadata for ranges, units, enum values, side effects, recommended defaults, and read-only reasons.
 - \`component_action\` invokes deterministic component methods that are not simple property writes.
@@ -54,6 +55,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Do not route delete plus rebuild prompts to \`entity_delete\`; preserve materials first, then rebuild through a complex scene path.
 - User convention, \`physics <primitive>\` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer \`entity_create_primitive_batch\` or one focused \`execute_lua\` script.
+- For blockouts, resolve or create the parent first, then build with \`entity_create_primitive_batch\` and \`entity_create_light\`; do not probe Lua APIs.
 - For source questions, use \`search_codebase\`, then \`read_source_file\` for focused context.
 
 ## Gotchas

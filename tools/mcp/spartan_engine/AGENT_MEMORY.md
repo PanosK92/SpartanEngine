@@ -7,8 +7,9 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Bridge requests carry request ids that are echoed in engine responses and debug logs.
 - `async_task_start`, `async_task_get`, and `async_task_list` provide pollable background MCP tool execution.
 - Mutating scene tools require edit mode.
-- `execute_lua` is the broad capability layer for procedural scene edits and is edit-mode guarded.
+- `execute_lua` is available for focused procedural edits, but native batch tools are preferred for blockouts; exploratory Lua API probing has crashed the engine.
 - Lua can sample splines via `entity:GetComponent(ComponentType.Spline)` with `GetPoint(t)`, `GetTangent(t)`, `GetLength()`, and can add cameras via `entity:AddComponent(ComponentType.Camera)`.
+- `World.GetEntities()`, `World.GetEntitiesLights()`, and `entity:GetChildren()` return 1-based Lua tables; prefer `ForEachChild` for iteration.
 - `context_snapshot` is the fastest first read for engine status, world summary, and selection.
 - `component_get` exposes friendly properties, registered raw members, and metadata for ranges, units, enum values, side effects, recommended defaults, and read-only reasons.
 - `component_action` invokes deterministic component methods that are not simple property writes.
@@ -52,6 +53,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Simple primitive creation, such as `create a physics cone`, should route directly to `entity_create_primitive`.
 - User convention, `physics <primitive>` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer `entity_create_primitive_batch` or one focused `execute_lua` script.
+- For blockouts, resolve or create the parent first, then build with `entity_create_primitive_batch` and `entity_create_light`; do not probe Lua APIs.
 - For repositioning many entities, use `entity_set_transform_batch` instead of one `entity_set_transform` call per entity.
 - For source questions, use `search_codebase`, then `read_source_file` for focused context.
 
@@ -62,16 +64,21 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Tool errors are advisory data for recovery, not transport failures.
 - Sphere, cylinder, and cone primitives have radius 1, so diameter is 2x the xz scale, while cube and quad are 1x1x1 per scale unit; halve xz scale versus a cube for the same footprint. Lua has `World.GetEntityByName(name)` (exact match) and `World.GetEntityById(id_string)`; ids exceed lua number precision, so pass them as strings.
 - Batch positions are parent-local when `parent_id` is set. Lua entities expose `GetName`, and the render enum is `ComponentType.Renderable`, not Render.
+- Prompt phrases like `parent under an entity called dockyard` must resolve to `dockyard`, not filler text such as `parent under an`.
+- Do not call `pairs()` or `next()` on raw C++ entity containers from Lua; use the table wrappers or `ForEachChild`.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
 - A small receipt after each meaningful engine action helps the editor assistant UI stay understandable.
 - To make a surface emissive white, create a material with material_create (defaults to white albedo), set emissive_from_albedo to 1 with material_set_property, then assign it via component_set property material on the render component; the albedo color drives the emissive color.
 - To sync sequencer cuts to a spline follower, set the follower speed, run `spline_query` for per camera `pass_time_seconds`, then place each cut at the midpoint between consecutive pass times; every camera then sees the car arrive, pass centered in its shot, and leave before the next cut.
+- Gas-station style blockouts succeed with `entity_resolve` then one `entity_create_primitive_batch`; dockyard failed when the agent fell into Lua API probing instead.
+- Dockyard blockout (2026-07-08 retry): succeeded with entity_create_empty at ground via world_raycast, then entity_create_primitive_batch for pad/warehouse/containers/crane/fences and entity_create_light for pole/area/spot lights. No Lua.
 
 ## Corrections
 - Add corrections here when a previous note turns out to be wrong or incomplete.
 - `spline_distribute` `edge_offset` 2 is too wide on roads with side walls (plan.world); cameras land outside the walls looking at them, use `edge_offset` 1 there.
+- Target name extraction used to steal phrases ending in `entity` such as `parent under an`; it now prefers `called`/`named` names and filters stopwords.
 
 ## Advice To Future Agents
 - Treat this file as advice, not absolute truth.
@@ -82,6 +89,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 ## Advice To Maintainers
 - Add native engine tools when agents repeatedly need the same multi-step command sequence.
 - Keep MCP schemas close to engine component metadata so tool descriptions do not drift.
+- Scene construction prompts should keep steering agents toward `entity_create_primitive_batch` rather than open-ended Lua discovery.
 
 ## Problem Reports
-- Add specific recurring friction here, with the file/tool involved and why it matters.
+- Dockyard blockout (2026-07-08): intent resolved target as `parent under an`, Cursor fell back to exploratory `execute_lua` (`pairs` on entities, Light/Render probing), then the engine connection closed. Fix path is native batch primitives under a correctly resolved parent, not Lua discovery.

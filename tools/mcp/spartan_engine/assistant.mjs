@@ -357,6 +357,7 @@ async function execute_prompt(socket, payload) {
         run,
         timeout_ms: run_timeout_ms,
         engine_first_timeout_ms,
+        intent,
       });
       if (!result.ok) {
         throw new Error(result.text);

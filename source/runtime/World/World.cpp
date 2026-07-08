@@ -398,8 +398,28 @@ namespace spartan
             WorldTable["GetName"]                   = &World::GetName;
             WorldTable["GetFilePath"]               = &World::GetFilePath;
             WorldTable["GetBoundingBox"]            = &World::GetBoundingBox;
-            WorldTable["GetEntities"]               = &World::GetEntities;
-            WorldTable["GetEntitiesLights"]         = &World::GetEntitiesLights;
+            WorldTable["GetEntities"]               = []() -> sol::table
+            {
+                sol::state_view lua = World::GetLuaState();
+                sol::table result = lua.create_table();
+                const std::vector<Entity*>& entities = World::GetEntities();
+                for (size_t i = 0; i < entities.size(); i++)
+                {
+                    result[i + 1] = entities[i];
+                }
+                return result;
+            };
+            WorldTable["GetEntitiesLights"]         = []() -> sol::table
+            {
+                sol::state_view lua = World::GetLuaState();
+                sol::table result = lua.create_table();
+                const std::vector<Entity*>& entities = World::GetEntitiesLights();
+                for (size_t i = 0; i < entities.size(); i++)
+                {
+                    result[i + 1] = entities[i];
+                }
+                return result;
+            };
             WorldTable["CreateEntity"]              = &World::CreateEntity;
             WorldTable["RemoveEntity"]              = &World::RemoveEntity;
             WorldTable["GetLightCount"]             = &World::GetLightCount;
