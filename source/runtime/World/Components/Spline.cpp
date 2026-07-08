@@ -148,7 +148,11 @@ namespace spartan
             "GetTAtDistance",       [](Spline* self, float distance) { return self->GetTAtDistance(distance); },
             "GetControlPointCount", &Spline::GetControlPointCount,
             "GetClosedLoop",        &Spline::GetClosedLoop,
-            "GetRoadWidth",         &Spline::GetRoadWidth
+            "GetRoadWidth",         &Spline::GetRoadWidth,
+            "AddControlPoint",      &Spline::AddControlPoint,
+            "RemoveLastControlPoint", &Spline::RemoveLastControlPoint,
+            "GenerateRoadMesh",     &Spline::GenerateRoadMesh,
+            "ClearRoadMesh",        &Spline::ClearRoadMesh
         );
     }
 

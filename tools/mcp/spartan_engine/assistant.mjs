@@ -30,6 +30,12 @@ const mutating_tools = new Set([
   "world_set_environment",
   "entity_create_empty",
   "entity_create_light",
+  "lights_calibrate",
+  "spline_create_road",
+  "spline_set_control_points",
+  "spline_connect",
+  "spline_junction",
+  "spline_decorate",
   "entity_create_primitive",
   "entity_create_primitive_batch",
   "entity_update",
@@ -40,6 +46,7 @@ const mutating_tools = new Set([
   "entity_add_component",
   "entity_remove_component",
   "component_set",
+  "component_set_batch",
   "execute_lua",
 ]);
 

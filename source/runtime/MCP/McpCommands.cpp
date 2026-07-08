@@ -3560,15 +3560,15 @@ namespace spartan
                 add({ "light_type", "", "enum", true, "", "", light_type_enum_values_json(), { "resets sensible range and shadow mode compatibility" }, "", json_string("point") });
                 add({ "color", "", "color", true, "linear rgba", range_json(0.0f, std::nullopt), "", { "updates light color and marks renderer lighting data dirty" }, "", "[1,1,1,1]" });
                 add({ "temperature", "", "float", true, "kelvin", range_json(1000.0f, 40000.0f), "", { "updates light color from blackbody temperature" }, "", "6500" });
-                add({ "intensity", "", "float", true, "lux for directional, lumens otherwise", range_json(0.0f, std::nullopt), "", { "updates photometric and radiometric light intensity" }, "", "1000" });
-                add({ "range", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects light culling and shadow coverage" }, "", "10" });
+                add({ "intensity", "", "float", true, "lux for directional, lumens otherwise", range_json(0.0f, std::nullopt), "", { "updates photometric and radiometric light intensity" }, "point/spot 8500, area 12000, directional 120000 for visible blockouts", "8500" });
+                add({ "range", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects light culling and shadow coverage" }, "point 30, spot 35, area 40", "30" });
                 add({ "angle_degrees", "", "float", true, "degrees", range_json(0.1f, 179.0f), "", { "affects spot light cone and shadow projection" }, "", "45" });
-                add({ "area_width", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects area light emitter size" }, "", "1" });
-                add({ "area_height", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects area light emitter size" }, "", "1" });
+                add({ "area_width", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects area light emitter size" }, "", "6" });
+                add({ "area_height", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects area light emitter size" }, "", "3" });
                 add({ "shadows", "", "bool", true, "", "", "", { "allocates and renders shadow maps when enabled" }, "", "true" });
                 add({ "volumetric", "", "bool", true, "", "", "", { "enables volumetric lighting contribution" }, "", "false" });
-                add({ "draw_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects light icon and debug drawing visibility" }, "", "0" });
-                add({ "shadow_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects shadow rendering distance" }, "", "0" });
+                add({ "draw_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects light icon and debug drawing visibility" }, "", "60" });
+                add({ "shadow_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects shadow rendering distance" }, "", "45" });
                 add({ "volumetric_distance", "", "float", true, "meters", range_json(0.0f, std::nullopt), "", { "affects volumetric contribution distance" }, "", "0" });
             }
             else if (type == ComponentType::Camera)
@@ -6733,6 +6733,1518 @@ namespace spartan
             return json;
         }
 
+        bool parse_vector3_list(const std::string& value, std::vector<math::Vector3>& points)
+        {
+            std::vector<float> values;
+            std::stringstream stream(value);
+            std::string part;
+            while (std::getline(stream, part, ','))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(part, parsed))
+                {
+                    return false;
+                }
+                values.emplace_back(parsed);
+            }
+
+            if (values.empty() || (values.size() % 3) != 0)
+            {
+                return false;
+            }
+
+            points.clear();
+            points.reserve(values.size() / 3);
+            for (size_t i = 0; i + 2 < values.size(); i += 3)
+            {
+                const math::Vector3 point(values[i], values[i + 1], values[i + 2]);
+                if (!point.IsFinite())
+                {
+                    return false;
+                }
+                points.emplace_back(point);
+            }
+            return !points.empty();
+        }
+
+        std::vector<std::string> split_csv_tokens(const std::string& value)
+        {
+            std::vector<std::string> tokens;
+            std::stringstream stream(value);
+            std::string part;
+            while (std::getline(stream, part, ','))
+            {
+                // trim spaces
+                size_t start = 0;
+                while (start < part.size() && std::isspace(static_cast<unsigned char>(part[start])))
+                {
+                    start++;
+                }
+                size_t end = part.size();
+                while (end > start && std::isspace(static_cast<unsigned char>(part[end - 1])))
+                {
+                    end--;
+                }
+                if (end > start)
+                {
+                    tokens.emplace_back(part.substr(start, end - start));
+                }
+            }
+            return tokens;
+        }
+
+        Entity* resolve_entity_token(const std::string& token, std::string& error)
+        {
+            uint64_t id = 0;
+            if (parse_uint64(token, id))
+            {
+                Entity* entity = World::GetEntityById(id);
+                if (entity == nullptr)
+                {
+                    error = "entity id not found";
+                    return nullptr;
+                }
+                return entity;
+            }
+
+            Entity* entity = find_entity_by_name_unique(token, true, error);
+            if (entity != nullptr)
+            {
+                return entity;
+            }
+            return find_entity_by_name_unique(token, false, error);
+        }
+
+        math::Vector3 world_to_local_point(Entity* entity, const math::Vector3& world_position)
+        {
+            if (entity == nullptr)
+            {
+                return world_position;
+            }
+            return entity->GetMatrix().Inverted() * world_position;
+        }
+
+        void clear_spline_control_points(Entity* entity)
+        {
+            if (entity == nullptr)
+            {
+                return;
+            }
+
+            for (uint32_t pass = 0; pass < 64; pass++)
+            {
+                entity->AcquireChildren();
+                std::vector<Entity*> to_remove;
+                for (Entity* child : entity->GetChildren())
+                {
+                    if (child == nullptr || !World::EntityExists(child))
+                    {
+                        continue;
+                    }
+                    if (child->GetObjectName().find("spline_point_") == 0)
+                    {
+                        to_remove.push_back(child);
+                    }
+                }
+                if (to_remove.empty())
+                {
+                    break;
+                }
+                for (Entity* child : to_remove)
+                {
+                    World::RemoveEntityImmediate(child);
+                }
+            }
+        }
+
+        bool subtree_render_bounds(Entity* root, math::BoundingBox& out_bounds)
+        {
+            bool has_bounds = false;
+            out_bounds = math::BoundingBox::Zero;
+            if (root == nullptr)
+            {
+                return false;
+            }
+
+            std::vector<Entity*> entities;
+            entities.push_back(root);
+            root->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                if (entity == nullptr)
+                {
+                    continue;
+                }
+                if (Render* renderable = entity->GetComponent<Render>())
+                {
+                    const math::BoundingBox& box = renderable->GetBoundingBox();
+                    if (box.GetMin().IsFinite() && box.GetMax().IsFinite() && box.GetSize().LengthSquared() > 0.0f)
+                    {
+                        if (!has_bounds)
+                        {
+                            out_bounds = box;
+                            has_bounds = true;
+                        }
+                        else
+                        {
+                            out_bounds.Merge(box);
+                        }
+                    }
+                }
+            }
+            return has_bounds;
+        }
+
+        bool is_landmark_noise(Entity* entity)
+        {
+            if (entity == nullptr)
+            {
+                return true;
+            }
+
+            const std::string name = to_lower_copy(entity->GetObjectName());
+            if (
+                name == "ground" || name == "default_ground" || name == "sun" || name == "directional_light" ||
+                name == "camera" || name == "editor_camera" || name == "sky" || name.empty()
+            )
+            {
+                return true;
+            }
+            if (entity->GetComponent<Camera>() != nullptr && entity->GetParent() == nullptr && entity->GetChildrenCount() == 0)
+            {
+                return true;
+            }
+            if (entity->GetComponent<Light>() != nullptr && entity->GetParent() == nullptr && entity->GetChildrenCount() == 0)
+            {
+                // bare root lights are not city landmarks
+                if (name.find("light") != std::string::npos || name.find("sun") != std::string::npos)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        std::string spline_road_receipt(Entity* entity, Spline* spline)
+        {
+            std::string json = "{\"ok\":true";
+            json += ",\"entity\":" + entity_to_json_compact(entity);
+            json += ",\"point_count\":" + std::to_string(spline->GetControlPointCount());
+            json += ",\"length\":" + std::to_string(spline->GetLength());
+            json += ",\"road_width\":" + std::to_string(spline->GetRoadWidth());
+            json += ",\"profile\":" + json_string(spline_profile_to_name(spline->GetProfile()));
+            json += ",\"conform_to_terrain\":" + json_bool(spline->GetConformToTerrain());
+            json += ",\"closed_loop\":" + json_bool(spline->GetClosedLoop());
+            json += ",\"mesh_enabled\":" + json_bool(spline->GetMeshEnabled());
+            json += "}";
+            return json;
+        }
+
+        bool apply_spline_road_properties(Spline* spline, const McpRequest& request, std::string& error, bool apply_defaults)
+        {
+            if (const std::optional<std::string> profile = get_argument(request, "profile"))
+            {
+                const std::optional<SplineProfile> parsed = spline_profile_from_name(*profile);
+                if (!parsed)
+                {
+                    error = "invalid profile";
+                    return false;
+                }
+                spline->SetProfile(*parsed);
+            }
+            else if (apply_defaults)
+            {
+                spline->SetProfile(SplineProfile::Road);
+            }
+
+            if (const std::optional<std::string> road_width = get_argument(request, "road_width"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*road_width, parsed) || parsed <= 0.0f)
+                {
+                    error = "invalid road_width";
+                    return false;
+                }
+                spline->SetRoadWidth(parsed);
+            }
+
+            if (const std::optional<std::string> conform_to_terrain = get_argument(request, "conform_to_terrain"))
+            {
+                bool conform = true;
+                if (!parse_bool(*conform_to_terrain, conform))
+                {
+                    error = "invalid conform_to_terrain";
+                    return false;
+                }
+                spline->SetConformToTerrain(conform);
+            }
+            else if (apply_defaults)
+            {
+                spline->SetConformToTerrain(true);
+            }
+
+            if (const std::optional<std::string> closed = get_argument(request, "closed_loop"))
+            {
+                bool closed_loop = false;
+                if (!parse_bool(*closed, closed_loop))
+                {
+                    error = "invalid closed_loop";
+                    return false;
+                }
+                spline->SetClosedLoop(closed_loop);
+            }
+            else if (apply_defaults)
+            {
+                spline->SetClosedLoop(false);
+            }
+
+            if (const std::optional<std::string> mesh = get_argument(request, "mesh_enabled"))
+            {
+                bool mesh_enabled = true;
+                if (!parse_bool(*mesh, mesh_enabled))
+                {
+                    error = "invalid mesh_enabled";
+                    return false;
+                }
+                spline->SetMeshEnabled(mesh_enabled);
+            }
+            else if (apply_defaults)
+            {
+                spline->SetMeshEnabled(true);
+            }
+
+            if (const std::optional<std::string> sidewalk = get_argument(request, "sidewalk_enabled"))
+            {
+                bool sidewalk_enabled = false;
+                if (!parse_bool(*sidewalk, sidewalk_enabled))
+                {
+                    error = "invalid sidewalk_enabled";
+                    return false;
+                }
+                spline->SetSidewalkEnabled(sidewalk_enabled);
+            }
+
+            if (const std::optional<std::string> sidewalk_width = get_argument(request, "sidewalk_width"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*sidewalk_width, parsed) || parsed < 0.0f)
+                {
+                    error = "invalid sidewalk_width";
+                    return false;
+                }
+                spline->SetSidewalkWidth(parsed);
+                if (parsed > 0.0f)
+                {
+                    spline->SetSidewalkEnabled(true);
+                }
+            }
+            return true;
+        }
+
+        bool set_spline_control_points_world(Entity* entity, Spline* spline, const std::vector<math::Vector3>& world_points, bool append, std::string& error)
+        {
+            if (entity == nullptr || spline == nullptr)
+            {
+                error = "missing spline entity";
+                return false;
+            }
+            if (world_points.size() < 2 && !append)
+            {
+                error = "need at least 2 control points";
+                return false;
+            }
+            if (world_points.empty())
+            {
+                error = "missing control points";
+                return false;
+            }
+
+            if (!append)
+            {
+                clear_spline_control_points(entity);
+            }
+
+            for (const math::Vector3& world_point : world_points)
+            {
+                spline->AddControlPoint(world_to_local_point(entity, world_point));
+            }
+
+            if (spline->GetControlPointCount() < 2)
+            {
+                error = "need at least 2 control points";
+                return false;
+            }
+
+            if (spline->GetMeshEnabled())
+            {
+                spline->GenerateRoadMesh();
+            }
+            return true;
+        }
+
+        struct RoadObstacle
+        {
+            math::BoundingBox box;
+            std::string name;
+            uint64_t entity_id = 0;
+        };
+
+        math::BoundingBox expand_box_xz(const math::BoundingBox& box, float clearance)
+        {
+            math::Vector3 min = box.GetMin();
+            math::Vector3 max = box.GetMax();
+            min.x -= clearance;
+            min.z -= clearance;
+            max.x += clearance;
+            max.z += clearance;
+            return math::BoundingBox(min, max);
+        }
+
+        bool point_in_box_xz(const math::Vector3& point, const math::BoundingBox& box)
+        {
+            return point.x >= box.GetMin().x && point.x <= box.GetMax().x &&
+                   point.z >= box.GetMin().z && point.z <= box.GetMax().z;
+        }
+
+        math::Vector3 approach_point_outside_box(const math::Vector3& from, const math::BoundingBox& box, float standoff, float y)
+        {
+            const math::Vector3 min = box.GetMin();
+            const math::Vector3 max = box.GetMax();
+            const math::Vector3 center((min.x + max.x) * 0.5f, y, (min.z + max.z) * 0.5f);
+            math::Vector3 dir = from - center;
+            dir.y = 0.0f;
+            if (dir.LengthSquared() < 0.0001f)
+            {
+                dir = math::Vector3(1.0f, 0.0f, 0.0f);
+            }
+            else
+            {
+                dir.Normalize();
+            }
+
+            // pick the face the approach comes from, then stand off outside that face
+            const float half_x = (max.x - min.x) * 0.5f;
+            const float half_z = (max.z - min.z) * 0.5f;
+            math::Vector3 approach = center;
+            if (std::fabs(dir.x) * half_z >= std::fabs(dir.z) * half_x)
+            {
+                approach.x = center.x + dir.x * (half_x + standoff);
+                approach.z = std::clamp(from.z, min.z, max.z);
+            }
+            else
+            {
+                approach.z = center.z + dir.z * (half_z + standoff);
+                approach.x = std::clamp(from.x, min.x, max.x);
+            }
+            approach.y = y;
+
+            // if still inside due to clamp, push fully outside on the dominant axis
+            if (point_in_box_xz(approach, box))
+            {
+                approach = center + dir * (std::max(half_x, half_z) + standoff);
+                approach.y = y;
+            }
+            return approach;
+        }
+
+        bool landmark_approach_point(Entity* landmark, const math::Vector3& from, float standoff, math::Vector3& out_point)
+        {
+            if (landmark == nullptr)
+            {
+                return false;
+            }
+
+            math::BoundingBox bounds;
+            if (!subtree_render_bounds(landmark, bounds))
+            {
+                out_point = landmark->GetPosition();
+                return true;
+            }
+
+            const math::Vector3 size = bounds.GetSize();
+            // tiny landmarks can use their origin; districts must be approached at the edge
+            if (size.x < 8.0f && size.z < 8.0f)
+            {
+                out_point = landmark->GetPosition();
+                return true;
+            }
+
+            out_point = approach_point_outside_box(from, bounds, standoff, landmark->GetPosition().y);
+            return true;
+        }
+
+        bool segment_intersects_box_xz(const math::Vector3& a, const math::Vector3& b, const math::BoundingBox& box)
+        {
+            if (point_in_box_xz(a, box) || point_in_box_xz(b, box))
+            {
+                return true;
+            }
+
+            const float min_x = box.GetMin().x;
+            const float max_x = box.GetMax().x;
+            const float min_z = box.GetMin().z;
+            const float max_z = box.GetMax().z;
+            const math::Vector3 corners[4] = {
+                { min_x, 0.0f, min_z },
+                { max_x, 0.0f, min_z },
+                { max_x, 0.0f, max_z },
+                { min_x, 0.0f, max_z },
+            };
+
+            auto orient = [](const math::Vector3& p, const math::Vector3& q, const math::Vector3& r)
+            {
+                const float value = (q.z - p.z) * (r.x - q.x) - (q.x - p.x) * (r.z - q.z);
+                if (std::fabs(value) < 0.0001f)
+                {
+                    return 0;
+                }
+                return value > 0.0f ? 1 : 2;
+            };
+            auto on_segment = [](const math::Vector3& p, const math::Vector3& q, const math::Vector3& r)
+            {
+                return q.x <= std::max(p.x, r.x) && q.x >= std::min(p.x, r.x) &&
+                       q.z <= std::max(p.z, r.z) && q.z >= std::min(p.z, r.z);
+            };
+            auto segments_intersect = [&](const math::Vector3& p1, const math::Vector3& q1, const math::Vector3& p2, const math::Vector3& q2)
+            {
+                const int o1 = orient(p1, q1, p2);
+                const int o2 = orient(p1, q1, q2);
+                const int o3 = orient(p2, q2, p1);
+                const int o4 = orient(p2, q2, q1);
+                if (o1 != o2 && o3 != o4)
+                {
+                    return true;
+                }
+                if (o1 == 0 && on_segment(p1, p2, q1))
+                {
+                    return true;
+                }
+                if (o2 == 0 && on_segment(p1, q2, q1))
+                {
+                    return true;
+                }
+                if (o3 == 0 && on_segment(p2, p1, q2))
+                {
+                    return true;
+                }
+                if (o4 == 0 && on_segment(p2, q1, q2))
+                {
+                    return true;
+                }
+                return false;
+            };
+
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                if (segments_intersect(a, b, corners[i], corners[(i + 1) % 4]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool segment_blocked(const math::Vector3& a, const math::Vector3& b, const std::vector<RoadObstacle>& obstacles)
+        {
+            for (const RoadObstacle& obstacle : obstacles)
+            {
+                if (segment_intersects_box_xz(a, b, obstacle.box))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        std::vector<RoadObstacle> collect_road_obstacles(const std::vector<uint64_t>& ignore_ids, float clearance)
+        {
+            std::vector<RoadObstacle> obstacles;
+            for (Entity* entity : World::GetEntities())
+            {
+                if (entity == nullptr || entity->GetParent() != nullptr)
+                {
+                    continue;
+                }
+                if (is_landmark_noise(entity))
+                {
+                    continue;
+                }
+                if (entity->GetComponent<Spline>() != nullptr)
+                {
+                    continue;
+                }
+
+                bool ignored = false;
+                for (uint64_t ignore_id : ignore_ids)
+                {
+                    if (entity->GetObjectId() == ignore_id)
+                    {
+                        ignored = true;
+                        break;
+                    }
+                }
+                if (ignored)
+                {
+                    continue;
+                }
+
+                math::BoundingBox bounds;
+                if (!subtree_render_bounds(entity, bounds))
+                {
+                    continue;
+                }
+
+                const math::Vector3 size = bounds.GetSize();
+                // skip tiny props and the giant ground plane
+                if (size.x < 4.0f && size.z < 4.0f)
+                {
+                    continue;
+                }
+                if (size.x > 5000.0f || size.z > 5000.0f)
+                {
+                    continue;
+                }
+
+                RoadObstacle obstacle;
+                obstacle.box = expand_box_xz(bounds, clearance);
+                obstacle.name = entity->GetObjectName();
+                obstacle.entity_id = entity->GetObjectId();
+                obstacles.push_back(obstacle);
+            }
+            return obstacles;
+        }
+
+        bool find_detour_point(const math::Vector3& a, const math::Vector3& b, const std::vector<RoadObstacle>& obstacles, float clearance, math::Vector3& out_point)
+        {
+            math::Vector3 delta = b - a;
+            delta.y = 0.0f;
+            const float length = delta.Length();
+            if (length < 0.1f)
+            {
+                return false;
+            }
+
+            const math::Vector3 dir = delta / length;
+            const math::Vector3 perp(-dir.z, 0.0f, dir.x);
+            const math::Vector3 mid((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f, (a.z + b.z) * 0.5f);
+
+            float max_extent = clearance * 8.0f;
+            for (const RoadObstacle& obstacle : obstacles)
+            {
+                if (!segment_intersects_box_xz(a, b, obstacle.box))
+                {
+                    continue;
+                }
+                const math::Vector3 size = obstacle.box.GetMax() - obstacle.box.GetMin();
+                max_extent = std::max(max_extent, std::max(size.x, size.z) * 0.75f + clearance);
+            }
+
+            const float offsets[10] = {
+                clearance * 1.5f, -clearance * 1.5f,
+                clearance * 3.0f, -clearance * 3.0f,
+                clearance * 5.0f, -clearance * 5.0f,
+                max_extent * 0.5f, -max_extent * 0.5f,
+                max_extent, -max_extent
+            };
+
+            for (float offset : offsets)
+            {
+                math::Vector3 candidate = mid + perp * offset;
+                candidate.y = mid.y;
+                if (!segment_blocked(a, candidate, obstacles) && !segment_blocked(candidate, b, obstacles))
+                {
+                    out_point = candidate;
+                    return true;
+                }
+            }
+
+            // fall back to expanded box corners of the first blocking obstacle
+            for (const RoadObstacle& obstacle : obstacles)
+            {
+                if (!segment_intersects_box_xz(a, b, obstacle.box))
+                {
+                    continue;
+                }
+
+                const math::Vector3 min = obstacle.box.GetMin();
+                const math::Vector3 max = obstacle.box.GetMax();
+                const float pad = std::max(clearance, 4.0f);
+                const math::Vector3 corners[8] = {
+                    { min.x - pad, mid.y, min.z - pad },
+                    { max.x + pad, mid.y, min.z - pad },
+                    { max.x + pad, mid.y, max.z + pad },
+                    { min.x - pad, mid.y, max.z + pad },
+                    { min.x - pad, mid.y, (min.z + max.z) * 0.5f },
+                    { max.x + pad, mid.y, (min.z + max.z) * 0.5f },
+                    { (min.x + max.x) * 0.5f, mid.y, min.z - pad },
+                    { (min.x + max.x) * 0.5f, mid.y, max.z + pad },
+                };
+
+                float best_score = std::numeric_limits<float>::max();
+                bool found = false;
+                for (const math::Vector3& corner : corners)
+                {
+                    if (segment_blocked(a, corner, obstacles) || segment_blocked(corner, b, obstacles))
+                    {
+                        continue;
+                    }
+                    const float score = (corner - a).Length() + (b - corner).Length();
+                    if (score < best_score)
+                    {
+                        best_score = score;
+                        out_point = corner;
+                        found = true;
+                    }
+                }
+                if (found)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        std::vector<math::Vector3> avoid_obstacles_on_path(const std::vector<math::Vector3>& input, const std::vector<RoadObstacle>& obstacles, float clearance)
+        {
+            if (input.size() < 2 || obstacles.empty())
+            {
+                return input;
+            }
+
+            std::vector<math::Vector3> path = input;
+            for (uint32_t pass = 0; pass < 6; pass++)
+            {
+                bool changed = false;
+                std::vector<math::Vector3> next;
+                next.reserve(path.size() * 2);
+                next.push_back(path.front());
+                for (size_t i = 0; i + 1 < path.size(); i++)
+                {
+                    const math::Vector3& a = next.back();
+                    const math::Vector3& b = path[i + 1];
+                    if (segment_blocked(a, b, obstacles))
+                    {
+                        math::Vector3 detour;
+                        if (find_detour_point(a, b, obstacles, clearance, detour))
+                        {
+                            next.push_back(detour);
+                            changed = true;
+                        }
+                    }
+                    next.push_back(b);
+                }
+                path = std::move(next);
+                if (!changed)
+                {
+                    break;
+                }
+            }
+            return path;
+        }
+
+        std::string flat_points_string(const std::vector<math::Vector3>& points)
+        {
+            std::string flat;
+            for (size_t i = 0; i < points.size(); i++)
+            {
+                if (i > 0)
+                {
+                    flat += ",";
+                }
+                flat += std::to_string(points[i].x) + "," + std::to_string(points[i].y) + "," + std::to_string(points[i].z);
+            }
+            return flat;
+        }
+
+        std::string command_world_landmarks(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            uint32_t limit = 200;
+            if (const std::optional<std::string> limit_arg = get_argument(request, "limit"))
+            {
+                uint64_t parsed = 0;
+                if (!parse_uint64(*limit_arg, parsed) || parsed == 0 || parsed > 1000)
+                {
+                    return json_error("limit must be between 1 and 1000");
+                }
+                limit = static_cast<uint32_t>(parsed);
+            }
+
+            bool include_tagged = true;
+            if (const std::optional<std::string> tagged = get_argument(request, "include_tagged"))
+            {
+                if (!parse_bool(*tagged, include_tagged))
+                {
+                    return json_error("invalid include_tagged");
+                }
+            }
+
+            std::string json = "{\"ok\":true,\"landmarks\":[";
+            bool first = true;
+            uint32_t count = 0;
+            for (Entity* entity : World::GetEntities())
+            {
+                if (entity == nullptr || count >= limit)
+                {
+                    continue;
+                }
+
+                const bool is_root = entity->GetParent() == nullptr;
+                const bool is_tagged = include_tagged && entity->HasTag("landmark");
+                if (!is_root && !is_tagged)
+                {
+                    continue;
+                }
+                if (is_landmark_noise(entity) && !is_tagged)
+                {
+                    continue;
+                }
+
+                entity->AcquireChildren();
+                math::BoundingBox bounds;
+                const bool has_bounds = subtree_render_bounds(entity, bounds);
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                count++;
+                json += "{";
+                json += "\"id\":" + json_string(std::to_string(entity->GetObjectId()));
+                json += ",\"name\":" + json_string(entity->GetObjectName());
+                json += ",\"position\":" + json_vector3(entity->GetPosition());
+                json += ",\"child_count\":" + std::to_string(entity->GetChildrenCount());
+                json += ",\"is_root\":" + json_bool(is_root);
+                json += ",\"tagged_landmark\":" + json_bool(is_tagged);
+                if (!entity->GetTags().empty())
+                {
+                    json += ",\"tags\":" + entity_tags_json(entity);
+                }
+                if (has_bounds)
+                {
+                    json += ",\"bounding_box\":" + json_bounding_box(bounds);
+                }
+                json += "}";
+            }
+            json += "],\"count\":" + std::to_string(count) + "}";
+            return json;
+        }
+
+        std::string command_spline_create_road(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("road creation requires edit mode");
+            }
+
+            const std::optional<std::string> points_arg = get_argument(request, "points");
+            if (!points_arg || points_arg->empty())
+            {
+                return json_error("missing points");
+            }
+
+            std::vector<math::Vector3> world_points;
+            if (!parse_vector3_list(*points_arg, world_points) || world_points.size() < 2)
+            {
+                return json_error("points must be a flat xyz list with at least 2 points");
+            }
+
+            Entity* parent = nullptr;
+            if (const std::optional<std::string> parent_id = get_argument(request, "parent_id"))
+            {
+                uint64_t parsed_parent_id = 0;
+                if (!parse_uint64(*parent_id, parsed_parent_id))
+                {
+                    return json_error("invalid parent_id");
+                }
+                parent = World::GetEntityById(parsed_parent_id);
+                if (parent == nullptr)
+                {
+                    return json_error("parent entity not found");
+                }
+            }
+
+            Entity* entity = World::CreateEntity();
+            if (entity == nullptr)
+            {
+                return json_error("failed to create entity");
+            }
+
+            if (const std::optional<std::string> name = get_argument(request, "name"))
+            {
+                entity->SetObjectName(*name);
+            }
+            else
+            {
+                entity->SetObjectName("spline_road");
+            }
+
+            if (parent != nullptr)
+            {
+                entity->SetParent(parent);
+            }
+
+            // place the road root at the first point so local control points stay readable
+            entity->SetPosition(world_points[0]);
+
+            Spline* spline = entity->AddComponent<Spline>();
+            if (spline == nullptr)
+            {
+                return json_error("failed to add spline component");
+            }
+
+            std::string error;
+            if (!apply_spline_road_properties(spline, request, error, true))
+            {
+                return json_error(error);
+            }
+            if (!set_spline_control_points_world(entity, spline, world_points, false, error))
+            {
+                return json_error(error);
+            }
+
+            return spline_road_receipt(entity, spline);
+        }
+
+        std::string command_spline_set_control_points(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("spline edits require edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (spline == nullptr)
+            {
+                return json_error("entity does not have a spline component");
+            }
+
+            const std::optional<std::string> points_arg = get_argument(request, "points");
+            if (!points_arg || points_arg->empty())
+            {
+                return json_error("missing points");
+            }
+
+            std::vector<math::Vector3> world_points;
+            if (!parse_vector3_list(*points_arg, world_points))
+            {
+                return json_error("points must be a flat xyz list");
+            }
+
+            bool append = false;
+            if (const std::optional<std::string> append_arg = get_argument(request, "append"))
+            {
+                if (!parse_bool(*append_arg, append))
+                {
+                    return json_error("invalid append");
+                }
+            }
+
+            if (!apply_spline_road_properties(spline, request, error, false))
+            {
+                return json_error(error);
+            }
+            if (!set_spline_control_points_world(entity, spline, world_points, append, error))
+            {
+                return json_error(error);
+            }
+
+            return spline_road_receipt(entity, spline);
+        }
+
+        std::string command_spline_connect(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("road creation requires edit mode");
+            }
+
+            const std::optional<std::string> landmarks_arg = get_argument(request, "landmarks");
+            if (!landmarks_arg || landmarks_arg->empty())
+            {
+                return json_error("missing landmarks");
+            }
+
+            const std::vector<std::string> tokens = split_csv_tokens(*landmarks_arg);
+            if (tokens.size() < 2)
+            {
+                return json_error("landmarks needs at least 2 names or ids");
+            }
+
+            struct LandmarkStop
+            {
+                Entity* entity = nullptr;
+                std::string name;
+                uint64_t id = 0;
+                math::Vector3 position;
+            };
+
+            std::vector<LandmarkStop> stops;
+            stops.reserve(tokens.size());
+            for (const std::string& token : tokens)
+            {
+                std::string resolve_error;
+                Entity* landmark = resolve_entity_token(token, resolve_error);
+                if (landmark == nullptr)
+                {
+                    return json_error("landmark not found: " + token + (resolve_error.empty() ? "" : (", " + resolve_error)));
+                }
+                LandmarkStop stop;
+                stop.entity = landmark;
+                stop.name = landmark->GetObjectName();
+                stop.id = landmark->GetObjectId();
+                stop.position = landmark->GetPosition();
+                stops.push_back(std::move(stop));
+            }
+
+            bool avoid_obstacles = true;
+            if (const std::optional<std::string> avoid_arg = get_argument(request, "avoid_obstacles"))
+            {
+                if (!parse_bool(*avoid_arg, avoid_obstacles))
+                {
+                    return json_error("invalid avoid_obstacles");
+                }
+            }
+
+            float clearance = 12.0f;
+            if (const std::optional<std::string> clearance_arg = get_argument(request, "clearance"))
+            {
+                if (!parse_float(*clearance_arg, clearance) || clearance < 0.0f || clearance > 200.0f)
+                {
+                    return json_error("clearance must be between 0 and 200");
+                }
+            }
+
+            float standoff = clearance + 4.0f;
+            if (const std::optional<std::string> standoff_arg = get_argument(request, "standoff"))
+            {
+                if (!parse_float(*standoff_arg, standoff) || standoff < 0.0f || standoff > 200.0f)
+                {
+                    return json_error("standoff must be between 0 and 200");
+                }
+            }
+
+            // approach district edges, never aim at landmark centers (that drives through runways/yards)
+            std::vector<math::Vector3> world_points;
+            std::vector<std::string> resolved_names;
+            world_points.reserve(stops.size());
+            resolved_names.reserve(stops.size());
+            for (size_t i = 0; i < stops.size(); i++)
+            {
+                math::Vector3 toward = stops[i].position;
+                if (i + 1 < stops.size())
+                {
+                    toward = stops[i + 1].position;
+                }
+                else if (i > 0)
+                {
+                    toward = stops[i - 1].position;
+                }
+
+                math::Vector3 approach;
+                if (!landmark_approach_point(stops[i].entity, toward, standoff, approach))
+                {
+                    approach = stops[i].position;
+                }
+                world_points.push_back(approach);
+                resolved_names.push_back(stops[i].name);
+            }
+
+            if (const std::optional<std::string> via = get_argument(request, "via"))
+            {
+                std::vector<math::Vector3> via_points;
+                if (!parse_vector3_list(*via, via_points))
+                {
+                    return json_error("via must be a flat xyz list");
+                }
+                if (world_points.size() >= 2 && !via_points.empty())
+                {
+                    std::vector<math::Vector3> merged;
+                    merged.push_back(world_points.front());
+                    merged.insert(merged.end(), via_points.begin(), via_points.end());
+                    for (size_t i = 1; i < world_points.size(); i++)
+                    {
+                        merged.push_back(world_points[i]);
+                    }
+                    world_points = std::move(merged);
+                }
+            }
+
+            const size_t points_before_avoid = world_points.size();
+            uint32_t obstacle_count = 0;
+            if (avoid_obstacles)
+            {
+                // include destination districts as obstacles so paths skirt them instead of crossing
+                const std::vector<uint64_t> ignore_ids;
+                const std::vector<RoadObstacle> obstacles = collect_road_obstacles(ignore_ids, clearance);
+                obstacle_count = static_cast<uint32_t>(obstacles.size());
+                world_points = avoid_obstacles_on_path(world_points, obstacles, clearance);
+            }
+
+            McpRequest create_request = request;
+            create_request.arguments["points"] = flat_points_string(world_points);
+            if (!get_argument(create_request, "name"))
+            {
+                std::string auto_name = "road";
+                for (const std::string& name : resolved_names)
+                {
+                    auto_name += "_";
+                    auto_name += name;
+                }
+                create_request.arguments["name"] = auto_name;
+            }
+
+            std::string result = command_spline_create_road(create_request);
+            if (result.find("\"ok\":true") == std::string::npos)
+            {
+                return result;
+            }
+
+            if (!result.empty() && result.back() == '}')
+            {
+                result.pop_back();
+                result += ",\"landmarks\":[";
+                for (size_t i = 0; i < resolved_names.size(); i++)
+                {
+                    if (i > 0)
+                    {
+                        result += ",";
+                    }
+                    result += json_string(resolved_names[i]);
+                }
+                result += "],\"avoid_obstacles\":" + json_bool(avoid_obstacles);
+                result += ",\"clearance\":" + std::to_string(clearance);
+                result += ",\"standoff\":" + std::to_string(standoff);
+                result += ",\"obstacle_count\":" + std::to_string(obstacle_count);
+                result += ",\"detour_points_added\":" + std::to_string(world_points.size() > points_before_avoid ? world_points.size() - points_before_avoid : 0);
+                result += "}";
+            }
+            return result;
+        }
+
+        std::string command_spline_junction(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("junction edits require edit mode");
+            }
+
+            const std::optional<std::string> roads_arg = get_argument(request, "roads");
+            if (!roads_arg || roads_arg->empty())
+            {
+                return json_error("missing roads");
+            }
+
+            const std::vector<std::string> tokens = split_csv_tokens(*roads_arg);
+            if (tokens.size() < 2)
+            {
+                return json_error("roads needs at least 2 names or ids");
+            }
+
+            struct RoadEnd
+            {
+                Entity* entity = nullptr;
+                Spline* spline = nullptr;
+                std::vector<math::Vector3> points;
+                std::string name;
+            };
+
+            std::vector<RoadEnd> roads;
+            roads.reserve(tokens.size());
+            for (const std::string& token : tokens)
+            {
+                std::string resolve_error;
+                Entity* entity = resolve_entity_token(token, resolve_error);
+                if (entity == nullptr)
+                {
+                    return json_error("road not found: " + token + (resolve_error.empty() ? "" : (", " + resolve_error)));
+                }
+                Spline* spline = entity->GetComponent<Spline>();
+                if (spline == nullptr)
+                {
+                    return json_error("entity is not a spline road: " + token);
+                }
+                std::vector<math::Vector3> points = spline->GetControlPoints();
+                if (points.size() < 2)
+                {
+                    return json_error("road needs at least 2 control points: " + token);
+                }
+                RoadEnd road;
+                road.entity = entity;
+                road.spline = spline;
+                road.points = std::move(points);
+                road.name = entity->GetObjectName();
+                roads.push_back(std::move(road));
+            }
+
+            math::Vector3 junction;
+            bool has_explicit_point = false;
+            std::vector<bool> snap_start(roads.size(), false);
+
+            if (const std::optional<std::string> point_arg = get_argument(request, "point"))
+            {
+                std::vector<math::Vector3> points;
+                if (!parse_vector3_list(*point_arg, points) || points.size() != 1)
+                {
+                    return json_error("point must be a single xyz triple");
+                }
+                junction = points[0];
+                has_explicit_point = true;
+                for (size_t i = 0; i < roads.size(); i++)
+                {
+                    const float dist_start = (roads[i].points.front() - junction).Length();
+                    const float dist_end = (roads[i].points.back() - junction).Length();
+                    snap_start[i] = dist_start <= dist_end;
+                }
+            }
+            else
+            {
+                // pick the closest endpoint pair across the first two roads, then fold in the rest
+                float best_dist = std::numeric_limits<float>::max();
+                bool best_a_start = true;
+                bool best_b_start = true;
+                const math::Vector3 ends_a[2] = { roads[0].points.front(), roads[0].points.back() };
+                const math::Vector3 ends_b[2] = { roads[1].points.front(), roads[1].points.back() };
+                for (size_t ia = 0; ia < 2; ia++)
+                {
+                    for (size_t ib = 0; ib < 2; ib++)
+                    {
+                        const float dist = (ends_a[ia] - ends_b[ib]).Length();
+                        if (dist < best_dist)
+                        {
+                            best_dist = dist;
+                            best_a_start = ia == 0;
+                            best_b_start = ib == 0;
+                        }
+                    }
+                }
+                snap_start[0] = best_a_start;
+                snap_start[1] = best_b_start;
+
+                for (size_t i = 2; i < roads.size(); i++)
+                {
+                    math::Vector3 seed = math::Vector3::Zero;
+                    for (size_t j = 0; j < i; j++)
+                    {
+                        seed += snap_start[j] ? roads[j].points.front() : roads[j].points.back();
+                    }
+                    seed = seed / static_cast<float>(i);
+                    const float dist_start = (roads[i].points.front() - seed).Length();
+                    const float dist_end = (roads[i].points.back() - seed).Length();
+                    snap_start[i] = dist_start <= dist_end;
+                }
+
+                junction = math::Vector3::Zero;
+                for (size_t i = 0; i < roads.size(); i++)
+                {
+                    junction += snap_start[i] ? roads[i].points.front() : roads[i].points.back();
+                }
+                junction = junction / static_cast<float>(roads.size());
+            }
+
+            std::string json = "{\"ok\":true,\"junction\":{\"x\":" + std::to_string(junction.x) +
+                ",\"y\":" + std::to_string(junction.y) +
+                ",\"z\":" + std::to_string(junction.z) +
+                "},\"explicit_point\":" + json_bool(has_explicit_point) +
+                ",\"roads\":[";
+
+            for (size_t i = 0; i < roads.size(); i++)
+            {
+                RoadEnd& road = roads[i];
+                if (snap_start[i])
+                {
+                    road.points.front() = junction;
+                }
+                else
+                {
+                    road.points.back() = junction;
+                }
+
+                std::string error;
+                if (!set_spline_control_points_world(road.entity, road.spline, road.points, false, error))
+                {
+                    return json_error("failed to update " + road.name + ": " + error);
+                }
+
+                if (i > 0)
+                {
+                    json += ",";
+                }
+                json += "{";
+                json += "\"id\":" + json_string(std::to_string(road.entity->GetObjectId()));
+                json += ",\"name\":" + json_string(road.name);
+                json += ",\"snapped\":" + json_string(snap_start[i] ? "start" : "end");
+                json += ",\"point_count\":" + std::to_string(road.spline->GetControlPointCount());
+                json += ",\"length\":" + std::to_string(road.spline->GetLength());
+                json += "}";
+            }
+
+            json += "],\"count\":" + std::to_string(roads.size()) + "}";
+            return json;
+        }
+
+        void clear_road_decoration(Entity* entity)
+        {
+            if (entity == nullptr)
+            {
+                return;
+            }
+
+            for (uint32_t pass = 0; pass < 64; pass++)
+            {
+                entity->AcquireChildren();
+                std::vector<Entity*> to_remove;
+                for (Entity* child : entity->GetChildren())
+                {
+                    if (child == nullptr || !World::EntityExists(child))
+                    {
+                        continue;
+                    }
+                    const std::string& name = child->GetObjectName();
+                    if (name.find("road_light_") == 0 || name.find("road_prop_") == 0)
+                    {
+                        to_remove.push_back(child);
+                    }
+                }
+                if (to_remove.empty())
+                {
+                    break;
+                }
+                for (Entity* child : to_remove)
+                {
+                    World::RemoveEntity(child);
+                }
+            }
+        }
+
+        std::string command_spline_decorate(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("road decoration requires edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (spline == nullptr)
+            {
+                return json_error("entity does not have a spline component");
+            }
+
+            const float length = spline->GetLength();
+            if (length <= 1.0f)
+            {
+                return json_error("spline has no usable length");
+            }
+
+            float spacing = 28.0f;
+            if (const std::optional<std::string> spacing_arg = get_argument(request, "spacing"))
+            {
+                if (!parse_float(*spacing_arg, spacing) || spacing < 5.0f || spacing > 200.0f)
+                {
+                    return json_error("spacing must be between 5 and 200");
+                }
+            }
+
+            bool lights = true;
+            if (const std::optional<std::string> lights_arg = get_argument(request, "lights"))
+            {
+                if (!parse_bool(*lights_arg, lights))
+                {
+                    return json_error("invalid lights");
+                }
+            }
+
+            bool props = true;
+            if (const std::optional<std::string> props_arg = get_argument(request, "props"))
+            {
+                if (!parse_bool(*props_arg, props))
+                {
+                    return json_error("invalid props");
+                }
+            }
+
+            bool sidewalks = true;
+            if (const std::optional<std::string> sidewalks_arg = get_argument(request, "sidewalks"))
+            {
+                if (!parse_bool(*sidewalks_arg, sidewalks))
+                {
+                    return json_error("invalid sidewalks");
+                }
+            }
+
+            bool replace = true;
+            if (const std::optional<std::string> replace_arg = get_argument(request, "replace"))
+            {
+                if (!parse_bool(*replace_arg, replace))
+                {
+                    return json_error("invalid replace");
+                }
+            }
+
+            if (const std::optional<std::string> road_width = get_argument(request, "road_width"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*road_width, parsed) || parsed <= 0.0f)
+                {
+                    return json_error("invalid road_width");
+                }
+                spline->SetRoadWidth(parsed);
+            }
+
+            if (sidewalks)
+            {
+                spline->SetSidewalkEnabled(true);
+                float sidewalk_width = 2.0f;
+                if (const std::optional<std::string> width_arg = get_argument(request, "sidewalk_width"))
+                {
+                    if (!parse_float(*width_arg, sidewalk_width) || sidewalk_width < 0.0f)
+                    {
+                        return json_error("invalid sidewalk_width");
+                    }
+                }
+                spline->SetSidewalkWidth(sidewalk_width);
+            }
+
+            if (spline->GetMeshEnabled())
+            {
+                spline->GenerateRoadMesh();
+            }
+
+            if (replace)
+            {
+                clear_road_decoration(entity);
+            }
+
+            const float half_width = spline->GetRoadWidth() * 0.5f;
+            const float light_lateral = half_width + (spline->GetSidewalkEnabled() ? spline->GetSidewalkWidth() : 0.0f) + 1.2f;
+            const float prop_lateral = half_width + 0.6f;
+            const uint32_t count = std::max(2u, static_cast<uint32_t>(std::ceil(length / spacing)) + 1u);
+
+            uint32_t light_count = 0;
+            uint32_t prop_count = 0;
+            for (uint32_t i = 0; i < count; i++)
+            {
+                const float t = static_cast<float>(i) / static_cast<float>(count - 1);
+                const math::Vector3 point = spline->GetPoint(t);
+                math::Vector3 tangent = spline->GetTangent(t);
+                tangent.y = 0.0f;
+                if (tangent.LengthSquared() < 0.0001f)
+                {
+                    tangent = math::Vector3(1.0f, 0.0f, 0.0f);
+                }
+                else
+                {
+                    tangent.Normalize();
+                }
+                math::Vector3 right = tangent.Cross(math::Vector3::Up);
+                if (right.LengthSquared() < 0.0001f)
+                {
+                    right = math::Vector3(1.0f, 0.0f, 0.0f);
+                }
+                else
+                {
+                    right.Normalize();
+                }
+
+                const float side = (i % 2 == 0) ? 1.0f : -1.0f;
+                if (lights)
+                {
+                    Entity* pole = World::CreateEntity();
+                    pole->SetObjectName("road_light_pole_" + std::to_string(light_count));
+                    pole->SetParent(entity);
+                    pole->SetPosition(point + right * (light_lateral * side) + math::Vector3(0.0f, 3.0f, 0.0f));
+                    pole->SetScale(math::Vector3(0.25f, 6.0f, 0.25f));
+                    if (Render* renderable = pole->AddComponent<Render>())
+                    {
+                        renderable->SetMesh(MeshType::Cylinder);
+                        renderable->SetDefaultMaterial();
+                    }
+
+                    Entity* lamp = World::CreateEntity();
+                    lamp->SetObjectName("road_light_" + std::to_string(light_count));
+                    lamp->SetParent(pole);
+                    lamp->SetPositionLocal(math::Vector3(0.0f, 0.55f, 0.0f));
+                    if (Light* light = lamp->AddComponent<Light>())
+                    {
+                        light->SetLightType(LightType::Point);
+                        light->SetColor(Color(1.0f, 0.92f, 0.78f, 1.0f));
+                        light->SetTemperature(3200.0f);
+                        light->SetIntensity(8500.0f);
+                        light->SetRange(30.0f);
+                        light->SetFlag(LightFlags::Shadows, true);
+                        light->SetDrawDistance(60.0f);
+                        light->SetShadowDistance(45.0f);
+                    }
+                    light_count++;
+                }
+
+                if (props && i > 0 && i + 1 < count && (i % 2 == 1))
+                {
+                    Entity* barrier = World::CreateEntity();
+                    barrier->SetObjectName("road_prop_barrier_" + std::to_string(prop_count));
+                    barrier->SetParent(entity);
+                    barrier->SetPosition(point + right * (prop_lateral * -side) + math::Vector3(0.0f, 0.4f, 0.0f));
+                    barrier->SetScale(math::Vector3(0.35f, 0.8f, 1.6f));
+                    barrier->SetRotation(math::Quaternion::FromLookRotation(tangent, math::Vector3::Up));
+                    if (Render* renderable = barrier->AddComponent<Render>())
+                    {
+                        renderable->SetMesh(MeshType::Cube);
+                        renderable->SetDefaultMaterial();
+                    }
+                    prop_count++;
+                }
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"entity\":" + entity_to_json_compact(entity);
+            json += ",\"length\":" + std::to_string(length);
+            json += ",\"spacing\":" + std::to_string(spacing);
+            json += ",\"lights\":" + std::to_string(light_count);
+            json += ",\"props\":" + std::to_string(prop_count);
+            json += ",\"sidewalks\":" + json_bool(spline->GetSidewalkEnabled());
+            json += ",\"road_width\":" + std::to_string(spline->GetRoadWidth());
+            json += "}";
+            return json;
+        }
+
         std::string command_execute_lua(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -7051,6 +8563,30 @@ namespace spartan
         if (request.command == "spline_distribute")
         {
             return command_spline_distribute(request);
+        }
+        if (request.command == "world_landmarks")
+        {
+            return command_world_landmarks(request);
+        }
+        if (request.command == "spline_create_road")
+        {
+            return command_spline_create_road(request);
+        }
+        if (request.command == "spline_set_control_points")
+        {
+            return command_spline_set_control_points(request);
+        }
+        if (request.command == "spline_connect")
+        {
+            return command_spline_connect(request);
+        }
+        if (request.command == "spline_junction")
+        {
+            return command_spline_junction(request);
+        }
+        if (request.command == "spline_decorate")
+        {
+            return command_spline_decorate(request);
         }
         if (request.command == "execute_lua")
         {

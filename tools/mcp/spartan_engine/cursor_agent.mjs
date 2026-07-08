@@ -38,6 +38,13 @@ const engine_tool_names = new Set([
   "selection_get",
   "entity_create_empty",
   "entity_create_light",
+  "lights_calibrate",
+  "world_landmarks",
+  "spline_create_road",
+  "spline_set_control_points",
+  "spline_connect",
+  "spline_junction",
+  "spline_decorate",
   "entity_create_primitive",
   "entity_create_primitive_batch",
   "entity_update",
@@ -423,7 +430,17 @@ function build_prompt(prompt, snapshot, intent = null) {
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
     "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
-    "Use entity_create_light for lights, including area lights on ceilings, and set intensity, range, and area size to fit the room or blockout scale instead of leaving weak defaults.",
+    "Use entity_create_light for every light. Never hand-roll lights with entity_create_empty + entity_add_component light + component_set; that path leaves weak invisible lights.",
+    "entity_create_light fully initializes the light: intensity is lux for directional and lumens otherwise. Visible blockout defaults are point/spot 8500, area 12000, directional 120000, plus range, angle, area size, shadows, and draw/shadow distances.",
+    "Do not pass tiny intensities like 25-100 for blockout lights. If you omit intensity, the tool calibrates it. Only set calibrated false when you intentionally want a dim light.",
+    "To calibrate existing scene lights, call lights_calibrate once. Do not write execute_lua or dozens of component_set calls for that.",
+    "For city development: this is city planning, not a complete graph of straight lines. Scan landmarks and their bounding boxes first.",
+    "City planning rules: never drive through an airway/runway, dockyard footprint, or building mass. Approach the outside edge of a district, not its center.",
+    "Prefer an arterial highway that skirts large districts, then spur branches to gas_station / dockyard / airway edges, with junctions where spurs meet the arterial. Do not connect every landmark to every other landmark in a triangle.",
+    "City workflow: world_landmarks -> read bounding boxes and invent a road plan -> spline_create_road or spline_connect with via points for the arterial -> spur legs to district edges -> spline_junction -> spline_decorate.",
+    "Use via / explicit control points when a road must go around the back of the airport or past a yard. Obstacle avoidance helps, but you still choose the network topology.",
+    "spline_decorate adds sidewalks, street lights, and roadside props. After that, add intentional junction accents if useful. Never stop at bare undecorated lines.",
+    "Never hand-build spline_point_* children. Do not search source code for city prompts. Do not invent Lua APIs.",
     "Blockouts and area construction must use native tools: entity_resolve or entity_create_empty for the parent, then entity_create_primitive_batch for geometry, then entity_create_light for lights.",
     "Do not use execute_lua for API discovery, pairs/next probing, method listing, or exploratory scripts. Those crash or hang the engine.",
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
@@ -435,6 +452,14 @@ function build_prompt(prompt, snapshot, intent = null) {
   if (intent?.target_name)
   {
     lines.push(`Resolved parent entity name from the request: ${intent.target_name}. Resolve it with entity_resolve, create it with entity_create_empty if missing, then parent all new blockout parts under that entity id.`);
+  }
+  if (intent?.kind === "city_develop")
+  {
+    lines.push("This is a city-planning request. Do not draw a triangle of center-to-center roads. Invent an arterial that skirts the airport/runway, branch spurs to district edges, join real junctions, decorate streets, and keep roads outside large footprints.");
+    if (Array.isArray(intent.landmarks) && intent.landmarks.length > 0)
+    {
+      lines.push(`Landmarks mentioned in the prompt: ${intent.landmarks.join(", ")}. Prefer these, but still scan world_landmarks and use their bounding boxes for edge approaches.`);
+    }
   }
   if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
   {

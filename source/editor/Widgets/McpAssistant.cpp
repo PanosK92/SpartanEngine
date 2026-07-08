@@ -2333,16 +2333,10 @@ void McpAssistant::DrawChatMessage(const ChatMessage& message, int index)
 
 void McpAssistant::UpdateInputOwnership()
 {
-    const bool owns_input =
-        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) ||
-        ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+    // only steal game/camera input while typing in the prompt or api key field
+    const bool typing_in_mcp = ImGui::GetIO().WantTextInput &&
+        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 
-    m_blocks_input = owns_input;
-    spartan::Input::SetBlockedByUi(owns_input);
-
-    if (owns_input)
-    {
-        ImGui::SetNextFrameWantCaptureKeyboard(true);
-        ImGui::SetNextFrameWantCaptureMouse(true);
-    }
+    m_blocks_input = typing_in_mcp;
+    spartan::Input::SetBlockedByUi(typing_in_mcp);
 }

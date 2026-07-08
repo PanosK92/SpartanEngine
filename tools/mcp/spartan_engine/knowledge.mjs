@@ -9,7 +9,7 @@ export const component_property_catalog = {
   },
   light: {
     properties: ["light_type", "color", "temperature", "intensity", "range", "angle_degrees", "area_width", "area_height", "shadows", "volumetric", "draw_distance", "shadow_distance", "volumetric_distance"],
-    notes: "controls light type, photometric values, color, range, angle, area size, and shadow or volumetric flags",
+    notes: "intensity is lux for directional and lumens otherwise; visible blockout defaults are point/spot 8500, area 12000, directional 120000; prefer entity_create_light so type, intensity, range, angle, and area size are all initialized",
   },
   camera: {
     properties: ["fov_degrees", "aperture", "shutter_speed", "iso", "projection", "controllable", "flashlight"],
@@ -76,7 +76,12 @@ export const engine_overview = [
   "Use selection_update, entity_clone, entity_move_index, prefab_types, prefab_save, and prefab_load before Lua for common editor hierarchy and prefab workflows.",
   "Use screenshot_take when visual verification is useful; it waits briefly for the async save and can return the PNG as image content.",
   "Before destructive rebuilds that should preserve appearance, call entity_render_materials and reuse the returned material names on new render geometry.",
-  "Use entity_create_light for point, spot, directional, and area lights; calibrate intensity, range, and area size to the room or blockout scale.",
+  "Use entity_create_light for every light; it fully initializes type, color, temperature, intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.",
+  "Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible and get replaced by calibrated defaults.",
+  "Use lights_calibrate to fix existing scene lights in one call; it keeps specialty car lights dim and lifts weak blockout lights.",
+  "For city development this is city planning: world_landmarks with bounding boxes, invent an arterial that skirts large districts, spur branches to district edges, spline_junction, then spline_decorate. Never connect every landmark in a triangle through centers.",
+  "Never drive through an airway/runway or yard footprint. spline_connect approaches landmark edges and skirts obstacles; use via points when the arterial must go around the back of a district.",
+  "spline_decorate adds sidewalks, street lights, and roadside props. Add intentional extras near junctions if useful. Bare center-to-center lines are wrong.",
   "Use debug_log_read or spartan://agent/debug-log to inspect assistant prompts, engine command arguments, durations, and outputs.",
   "Use async_task_start and async_task_get for long-running MCP tools that should be reported without blocking the main client request.",
   "Live scene edits should route through deterministic tools when one matches, and fall back to the Cursor agent with the engine MCP tools otherwise.",

@@ -11,6 +11,7 @@ import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_schema_markdown, edit_rules, engine_overview, search_capability_catalog } from "./knowledge.mjs";
 import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
 import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
+import { resolve_light_properties, calibrate_existing_light } from "./light_calibration.mjs";
 
 const project_root = get_project_root();
 await ensure_agent_memory();
@@ -253,56 +254,6 @@ const primitive_create_args = {
   physics_friction: z.number().optional(),
   physics_restitution: z.number().optional(),
 };
-
-function calibrated_light_defaults(type)
-{
-  if (type === "area")
-  {
-    return {
-      light_type: "area",
-      color: [1.0, 0.93, 0.82, 1.0],
-      temperature: 3200,
-      intensity: 5000,
-      range: 24,
-      area_width: 5,
-      area_height: 3,
-      shadows: true,
-    };
-  }
-
-  if (type === "spot")
-  {
-    return {
-      light_type: "spot",
-      color: [1.0, 0.94, 0.84, 1.0],
-      temperature: 3500,
-      intensity: 2500,
-      range: 24,
-      angle_degrees: 45,
-      shadows: true,
-    };
-  }
-
-  if (type === "directional")
-  {
-    return {
-      light_type: "directional",
-      color: [1.0, 0.96, 0.9, 1.0],
-      temperature: 5500,
-      intensity: 8,
-      shadows: true,
-    };
-  }
-
-  return {
-    light_type: "point",
-    color: [1.0, 0.92, 0.78, 1.0],
-    temperature: 3200,
-    intensity: 1200,
-    range: 14,
-    shadows: true,
-  };
-}
 
 const server = new McpServer({
   name: "spartan-engine",
@@ -843,6 +794,134 @@ register_tool(
 
 register_tool(
   server,
+  "world_landmarks",
+  [
+    "Scan the world for city-scale landmarks in one call: root entities plus any entity tagged landmark.",
+    "Returns id, name, position, child_count, optional subtree bounding_box, and filters out ground/camera/sun noise.",
+    "Use this before city development prompts such as connecting gas_station, dockyard, and airway with roads.",
+  ].join(" "),
+  {
+    limit: z.number().int().min(1).max(1000).optional(),
+    include_tagged: z.boolean().optional(),
+  },
+  "world_landmarks",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "spline_create_road",
+  [
+    "Create a driveable spline road in one call from world-space control points.",
+    "points is a flat xyz list with at least two points, e.g. x0,y0,z0,x1,y1,z1. Defaults: profile road, conform_to_terrain true, mesh_enabled true.",
+    "Prefer this over hand-building spline_point_* children. Returns entity receipt, point_count, and length.",
+  ].join(" "),
+  {
+    points: z.string().describe("flat comma separated world xyz list, at least two points"),
+    name: z.string().optional(),
+    parent_id: z.string().optional(),
+    road_width: z.number().optional(),
+    profile: z.enum(["road", "wall", "tube", "fence", "channel"]).optional(),
+    conform_to_terrain: z.boolean().optional(),
+    closed_loop: z.boolean().optional(),
+    sidewalk_enabled: z.boolean().optional(),
+    sidewalk_width: z.number().optional(),
+    mesh_enabled: z.boolean().optional(),
+  },
+  "spline_create_road",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "spline_set_control_points",
+  [
+    "Replace or append world-space control points on an existing spline, then regenerate the road mesh when mesh_enabled.",
+    "points is a flat xyz list. append false replaces all spline_point_* children; append true adds more points.",
+  ].join(" "),
+  {
+    id: z.union([z.string(), z.number().int()]),
+    points: z.string().describe("flat comma separated world xyz list"),
+    append: z.boolean().optional(),
+    road_width: z.number().optional(),
+    profile: z.enum(["road", "wall", "tube", "fence", "channel"]).optional(),
+    conform_to_terrain: z.boolean().optional(),
+    closed_loop: z.boolean().optional(),
+    mesh_enabled: z.boolean().optional(),
+  },
+  "spline_set_control_points",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "spline_connect",
+  [
+    "Connect ordered landmarks with one spline road. landmarks is a comma separated list of entity names or ids, at least two.",
+    "Approaches district edges instead of centers, so roads do not drive through runways, yards, or building footprints.",
+    "Skirts large root AABBs by default (avoid_obstacles true, clearance 12, standoff clearance+4). Optional via adds explicit midpoints for arterial routing.",
+    "For a network, prefer one arterial with spur branches and junctions, not a complete triangle between every landmark.",
+  ].join(" "),
+  {
+    landmarks: z.string().describe("comma separated entity names or ids, at least two"),
+    name: z.string().optional(),
+    parent_id: z.string().optional(),
+    via: z.string().optional().describe("optional flat xyz midpoints for planned arterial routing"),
+    avoid_obstacles: z.boolean().optional().describe("default true, detour around large root entity bounds including destinations"),
+    clearance: z.number().optional().describe("meters of padding around obstacles, default 12"),
+    standoff: z.number().optional().describe("meters outside landmark bounds for approach points, default clearance+4"),
+    road_width: z.number().optional(),
+    profile: z.enum(["road", "wall", "tube", "fence", "channel"]).optional(),
+    conform_to_terrain: z.boolean().optional(),
+    closed_loop: z.boolean().optional(),
+    sidewalk_enabled: z.boolean().optional(),
+    sidewalk_width: z.number().optional(),
+    mesh_enabled: z.boolean().optional(),
+  },
+  "spline_connect",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "spline_junction",
+  [
+    "Snap two or more existing spline roads so their nearest endpoints share one junction point and regenerate meshes.",
+    "roads is a comma separated list of road entity names or ids. Optional point is an explicit world xyz junction; otherwise the nearest endpoints are averaged.",
+    "Use after spline_connect legs so a network meets cleanly at shared intersections.",
+  ].join(" "),
+  {
+    roads: z.string().describe("comma separated spline road names or ids, at least two"),
+    point: z.string().optional().describe("optional single world xyz junction point"),
+  },
+  "spline_junction",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "spline_decorate",
+  [
+    "Turn a bare spline road into a readable street: optional sidewalks, street-light poles with calibrated point lights, and roadside barrier props.",
+    "Pass the road id. Defaults: sidewalks on, lights on, props on, spacing 28m, replace previous road_light_* / road_prop_* decoration.",
+    "Call this after spline_connect / spline_junction. For richer custom decoration, still use entity_create_primitive_batch under a roadside parent.",
+  ].join(" "),
+  {
+    id: z.union([z.string(), z.number().int()]),
+    spacing: z.number().optional().describe("meters between light poles, default 28"),
+    lights: z.boolean().optional(),
+    props: z.boolean().optional(),
+    sidewalks: z.boolean().optional(),
+    sidewalk_width: z.number().optional(),
+    road_width: z.number().optional(),
+    replace: z.boolean().optional(),
+  },
+  "spline_decorate",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
   "sequencer_event_remove",
   "Remove one camera cut event by index, or pass all=true to clear every event.",
   {
@@ -1132,27 +1211,32 @@ register_local_tool(
   "entity_create_light",
   {
     title: "entity create light",
-    description: "Create a light entity in edit mode and configure common light properties in one generic operation. By default, omitted light values are calibrated to usable per-type values; pass calibrated false to leave engine defaults.",
+    description: [
+      "Create a fully initialized light in one call. Always prefer this over entity_create_empty + entity_add_component light + component_set.",
+      "intensity is lux for directional and lumens for point/spot/area. Visible blockout defaults: point/spot 8500, area 12000, directional 120000.",
+      "Values below the per-type floor are replaced with calibrated defaults unless calibrated is false.",
+      "Also initializes color, temperature, range, angle_degrees, area size, shadows, and draw/shadow distances for the light type.",
+    ].join(" "),
     inputSchema: {
       name: z.string().optional(),
       parent_id: z.string().optional(),
       position: vector3.optional(),
       rotation_euler: vector3.optional(),
       scale: vector3.optional(),
-      light_type: light_type.optional(),
+      light_type: light_type.optional().describe("point, spot, area, or directional"),
       color: vector4.optional(),
-      temperature: z.number().optional(),
-      intensity: z.number().optional(),
-      range: z.number().optional(),
-      angle_degrees: z.number().optional(),
-      area_width: z.number().optional(),
-      area_height: z.number().optional(),
+      temperature: z.number().optional().describe("kelvin"),
+      intensity: z.number().optional().describe("lux for directional, lumens otherwise; weak values are replaced by calibrated defaults"),
+      range: z.number().optional().describe("meters, point/spot/area"),
+      angle_degrees: z.number().optional().describe("spot cone degrees"),
+      area_width: z.number().optional().describe("area light width in meters"),
+      area_height: z.number().optional().describe("area light height in meters"),
       shadows: z.boolean().optional(),
       volumetric: z.boolean().optional(),
       draw_distance: z.number().optional(),
       shadow_distance: z.number().optional(),
       volumetric_distance: z.number().optional(),
-      calibrated: z.boolean().optional(),
+      calibrated: z.boolean().optional().describe("default true; set false only to keep raw engine defaults or intentionally weak lights"),
     },
     outputSchema: output_schemas.entity,
     annotations: edit_tool,
@@ -1201,24 +1285,7 @@ register_local_tool(
       return tool_result(added);
     }
 
-    const effective_light_type = args.light_type ?? "point";
-    const defaults = args.calibrated === false ? {} : calibrated_light_defaults(effective_light_type);
-    const properties = {
-      light_type: args.light_type ?? defaults.light_type,
-      color: args.color ?? defaults.color,
-      temperature: args.temperature ?? defaults.temperature,
-      intensity: args.intensity ?? defaults.intensity,
-      range: args.range ?? defaults.range,
-      angle_degrees: args.angle_degrees ?? defaults.angle_degrees,
-      area_width: args.area_width ?? defaults.area_width,
-      area_height: args.area_height ?? defaults.area_height,
-      shadows: args.shadows ?? defaults.shadows,
-      volumetric: args.volumetric ?? defaults.volumetric,
-      draw_distance: args.draw_distance ?? defaults.draw_distance,
-      shadow_distance: args.shadow_distance ?? defaults.shadow_distance,
-      volumetric_distance: args.volumetric_distance ?? defaults.volumetric_distance,
-    };
-
+    const properties = resolve_light_properties(args);
     for (const [property, value] of Object.entries(properties))
     {
       if (value === undefined || value === null)
@@ -1235,6 +1302,125 @@ register_local_tool(
 
     const final_entity = await send_engine_command("entity_get", { id });
     return tool_result(final_entity.ok ? final_entity : created);
+  },
+);
+
+register_local_tool(
+  "lights_calibrate",
+  {
+    title: "lights calibrate",
+    description: [
+      "Calibrate every light in the scene, or lights under an optional parent, using photometric defaults based on light type and entity name role.",
+      "Sets color, temperature, intensity, range, and type-specific fields. Specialty car lights stay intentionally dim: brake ~180 lm, exhaust ~90 lm, headlights ~3200 lm.",
+      "Blockout/yard/warehouse/canopy lights use visible lumen defaults. Prefer this over execute_lua or many component_set calls.",
+    ].join(" "),
+    inputSchema: {
+      parent_id: z.string().optional().describe("optional parent entity id; when set, only lights under that hierarchy are calibrated"),
+      limit: z.number().int().min(1).max(1000).optional(),
+    },
+    outputSchema: output_schemas.batch_receipt,
+    annotations: edit_tool,
+  },
+  async (args) => {
+    const limit = args.limit ?? 1000;
+    const found = await send_engine_command("entity_find_by_component", { type: "light", limit });
+    if (!found.ok)
+    {
+      return tool_result(found);
+    }
+
+    const entities = Array.isArray(found.entities) ? found.entities : [];
+    const role_counts = {};
+    const updated = [];
+    let skipped = 0;
+
+    for (const entity of entities)
+    {
+      const id = entity?.id;
+      if (!id)
+      {
+        skipped++;
+        continue;
+      }
+
+      if (args.parent_id)
+      {
+        let current = entity;
+        let under_parent = current.id === args.parent_id;
+        let guard = 0;
+        while (!under_parent && current?.parent_id && guard < 32)
+        {
+          if (current.parent_id === args.parent_id)
+          {
+            under_parent = true;
+            break;
+          }
+          const parent = await send_engine_command("entity_get", { id: current.parent_id });
+          if (!parent.ok || !parent.entity)
+          {
+            break;
+          }
+          current = parent.entity;
+          under_parent = current.id === args.parent_id;
+          guard++;
+        }
+        if (!under_parent)
+        {
+          skipped++;
+          continue;
+        }
+      }
+
+      const component = await send_engine_command("component_get", { id, type: "light" });
+      if (!component.ok)
+      {
+        skipped++;
+        continue;
+      }
+
+      const properties = component.component?.properties ?? component.properties ?? {};
+      const plan = calibrate_existing_light(entity.name, properties);
+      const items = Object.entries(plan.updates).map(([property, value]) => ({ property, value }));
+      if (items.length === 0)
+      {
+        skipped++;
+        continue;
+      }
+
+      const mapped = {
+        id,
+        type: "light",
+        count: items.length,
+      };
+      for (let i = 0; i < items.length; i++)
+      {
+        mapped[`property_${i}`] = items[i].property;
+        mapped[`value_${i}`] = items[i].value;
+      }
+
+      const result = await send_engine_command("component_set_batch", mapped);
+      if (!result.ok)
+      {
+        return tool_result({
+          ...result,
+          updated_count: updated.length,
+          skipped_count: skipped,
+          role_counts,
+          failed_id: id,
+        });
+      }
+
+      role_counts[plan.role] = (role_counts[plan.role] ?? 0) + 1;
+      updated.push({ id, name: entity.name, role: plan.role, light_type: plan.light_type, intensity: plan.updates.intensity, range: plan.updates.range });
+    }
+
+    return tool_result({
+      ok: true,
+      updated_count: updated.length,
+      skipped_count: skipped,
+      role_counts,
+      updated: updated.slice(0, 32),
+    });
   },
 );
 

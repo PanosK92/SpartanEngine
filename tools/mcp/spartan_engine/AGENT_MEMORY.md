@@ -42,7 +42,10 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `renderer_debug_set` and `physics_state` for visual debugging and vehicle/rigid body inspection.
 - Use `screenshot_take` when visual verification matters; it waits briefly for the async save and returns the image when ready.
 - Before deleting or rebuilding geometry that should preserve look, call `entity_render_materials` on the target and reuse material names.
-- Use `entity_create_light` for generic point, spot, directional, and area lights, and calibrate intensity, range, and area size to the scene scale.
+- Use `entity_create_light` for every light; it fully initializes intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.
+- Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible.
+- Use `lights_calibrate` to fix existing scene lights in one call; specialty car lights stay dim, blockout lights get lifted.
+- For city roads: scan `world_landmarks` and bounding boxes, invent an arterial that skirts large districts, spur to edges, `spline_junction`, then `spline_decorate`. Never triangle center-to-center through an airway. Never hand-build `spline_point_*` children.
 - Use `camera_snapshot` before interpreting camera-relative placement.
 - Use `world_raycast` for ground or surface-relative placement when possible.
 - Simple live scene edits should use deterministic tools; anything unmatched falls back to the Cursor agent with the engine MCP tools.
@@ -66,6 +69,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Batch positions are parent-local when `parent_id` is set. Lua entities expose `GetName`, and the render enum is `ComponentType.Renderable`, not Render.
 - Prompt phrases like `parent under an entity called dockyard` must resolve to `dockyard`, not filler text such as `parent under an`.
 - Do not call `pairs()` or `next()` on raw C++ entity containers from Lua; use the table wrappers or `ForEachChild`.
+- spline_junction snaps nearest endpoints only, not mid-spline points. For a mid-route T, split the arterial into two legs that both end at the junction, then join those ends with the spur.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
@@ -73,7 +77,9 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - To make a surface emissive white, create a material with material_create (defaults to white albedo), set emissive_from_albedo to 1 with material_set_property, then assign it via component_set property material on the render component; the albedo color drives the emissive color.
 - To sync sequencer cuts to a spline follower, set the follower speed, run `spline_query` for per camera `pass_time_seconds`, then place each cut at the midpoint between consecutive pass times; every camera then sees the car arrive, pass centered in its shot, and leave before the next cut.
 - Gas-station style blockouts succeed with `entity_resolve` then one `entity_create_primitive_batch`; dockyard failed when the agent fell into Lua API probing instead.
+- Dockyard lights were hand-rolled at 25-55 lumens and looked invisible; always use `entity_create_light`, which calibrates photometric intensity and related properties.
 - Dockyard blockout (2026-07-08 retry): succeeded with entity_create_empty at ground via world_raycast, then entity_create_primitive_batch for pad/warehouse/containers/crane/fences and entity_create_light for pole/area/spot lights. No Lua.
+- Bulk light calibration: use one execute_lua over World.GetEntitiesLights with SetIntensity/SetRange/SetTemperature/SetAngle by name and LightType. Color is not Lua-bound, so RGB-specific lights (brake, exhaust) need component_set_batch. Light:SetAngle takes half-angle radians, so degrees * pi/180 with no extra 0.5. Role defaults used on plan.world: directional 120000 lux 2400K; highway Spot 18000 lm range 42 2700K 30deg; yard points 8500/35/3200K; warehouse/gs canopy area 12000; car headlights 3200 lm range 45 5000K 24deg; brakes 180 lm red range 3.5; exhaust 90 lm orange range 0.6.
 
 ## Corrections
 - Add corrections here when a previous note turns out to be wrong or incomplete.
@@ -93,3 +99,6 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Problem Reports
 - Dockyard blockout (2026-07-08): intent resolved target as `parent under an`, Cursor fell back to exploratory `execute_lua` (`pairs` on entities, Light/Render probing), then the engine connection closed. Fix path is native batch primitives under a correctly resolved parent, not Lua discovery.
+- Dockyard lights (2026-07-08 retry): agent skipped `entity_create_light` and set intensity 25-55 lumens via `component_set`, so lights were invisible. Always use `entity_create_light` with calibrated photometric defaults.
+- Scene light calibration (2026-07-08): Cursor used Lua then batches; next time route to `lights_calibrate`. Car specialty lights (brake/exhaust) should stay intentionally dim.
+- City road networks: arterial + spurs, approach district edges, skirt runways/yards, then decorate. Triangle graphs through landmark centers are wrong. Manual `spline_point_*` recipes are obsolete.

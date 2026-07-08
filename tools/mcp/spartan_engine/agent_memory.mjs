@@ -46,7 +46,10 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use \`renderer_debug_set\` and \`physics_state\` for visual debugging and vehicle/rigid body inspection.
 - Use \`screenshot_take\` when visual verification matters; it waits briefly for the async save and returns the image when ready.
 - Before deleting or rebuilding geometry that should preserve look, call \`entity_render_materials\` on the target and reuse material names.
-- Use \`entity_create_light\` for generic point, spot, directional, and area lights, and calibrate intensity, range, and area size to the scene scale.
+- Use \`entity_create_light\` for every light; it fully initializes intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.
+- Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible.
+- Use \`lights_calibrate\` to fix existing scene lights in one call; specialty car lights stay dim, blockout lights get lifted.
+- For city roads: scan \`world_landmarks\` and bounding boxes, invent an arterial that skirts large districts, spur to edges, \`spline_junction\`, then \`spline_decorate\`. Never triangle center-to-center through an airway. Never hand-build \`spline_point_*\` children.
 - Use \`camera_snapshot\` before interpreting camera-relative placement.
 - Use \`world_raycast\` for ground or surface-relative placement when possible.
 - Simple live scene edits should use deterministic tools; anything unmatched falls back to the Cursor agent with the engine MCP tools.

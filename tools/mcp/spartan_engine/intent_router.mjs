@@ -303,6 +303,61 @@ function is_mcp_status_request(value) {
     !/\b(car|camera|cut|cuts|spline|sequencer|sequence|speed|entity|scene|world)\b/.test(value);
 }
 
+function is_calibrate_lights_request(value) {
+  const mentions_lights = /\blights?\b/.test(value);
+  const wants_calibrate = /\b(calibrat\w*|fix|tune|adjust|boost|strengthen|make (?:them |the lights )?visible)\b/.test(value);
+  const all_or_scene = /\b(all|every|scene|world|existing)\b/.test(value) || /\bbased on (?:their|its) nature\b/.test(value);
+  return mentions_lights && wants_calibrate && (all_or_scene || /\bnature\b/.test(value));
+}
+
+function is_city_develop_request(value) {
+  const wants_city = /\b(road|roads|spline|highway|street|connect|link|network|district|landmark|city)\b/.test(value);
+  const constructive = /\b(create|make|build|connect|link|lay|add|generate|scan|decorate|develop)\b/.test(value);
+  const has_targets = /\b(gas_station|dockyard|airway|airport|playground|landmark|between|from|to|map|world|areas?)\b/.test(value) || /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/.test(value);
+  return wants_city && constructive && has_targets && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
+}
+
+function landmarks_from_prompt(prompt) {
+  const value = normalized(prompt);
+  const found = [];
+  const push = (name) =>
+  {
+    if (name && !found.includes(name))
+    {
+      found.push(name);
+    }
+  };
+
+  if (/\bgas[_\s-]?station\b/.test(value))
+  {
+    push("gas_station");
+  }
+  if (/\bdock[_\s-]?yard\b/.test(value))
+  {
+    push("dockyard");
+  }
+  if (/\b(airway|airport)\b/.test(value))
+  {
+    push("airway");
+  }
+  if (/\bplayground\b/.test(value))
+  {
+    push("playground");
+  }
+
+  const snake = value.match(/\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/g) ?? [];
+  for (const name of snake)
+  {
+    if (["spline_road", "road_width", "control_point"].includes(name))
+    {
+      continue;
+    }
+    push(name);
+  }
+
+  return found;
+}
+
 function is_source_code_request(value) {
   const asks_about_code = /\b(source|code|file|files|cpp|c\+\+|javascript|script|compile|compilation|build error|build failed|build system|git|diff|commit|bug|crash|stack|log|function|class|where|implementation)\b/.test(value);
   const live_scene_action = /\b(entity|world|scene|selection|selected|create|delete|spawn|ramp|cone|room|rooms|level|levels|area|environment|hallway|hallways|corridor|corridors|backrooms|liminal)\b/.test(value) &&
@@ -336,6 +391,29 @@ export function route_intent(prompt) {
 
   if (is_terse && is_engine_mode_request(value)) {
     return { kind: "engine_mode", confidence: 0.9, mode: engine_mode_from_prompt(value) };
+  }
+
+  if (is_calibrate_lights_request(value))
+  {
+    return {
+      kind: "calibrate_lights",
+      confidence: 0.94,
+      live_scene_action: true,
+      allow_cursor_fallback: false,
+      target_name: target_name_from_prompt(prompt),
+      use_selected: should_use_selected_entity(prompt),
+    };
+  }
+
+  if (is_city_develop_request(value))
+  {
+    return {
+      kind: "city_develop",
+      confidence: 0.92,
+      live_scene_action: true,
+      allow_cursor_fallback: true,
+      landmarks: landmarks_from_prompt(prompt),
+    };
   }
 
   if (is_rebuild_scene_request(value))

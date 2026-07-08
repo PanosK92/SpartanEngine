@@ -417,6 +417,37 @@ async function run_engine_mode(run, intent) {
   return `Engine mode set to ${intent.mode}.`;
 }
 
+async function run_calibrate_lights(run, intent) {
+  const args = {};
+  if (intent.target_name || intent.use_selected)
+  {
+    const entity = await run.stage("Resolve Parent", "resolving optional light parent", () => resolve_target(run, intent));
+    args.parent_id = entity.id;
+    run.receipt("light parent", {
+      id: entity.id,
+      name: entity.name,
+    });
+  }
+
+  const result = await run.stage("Calibrate Lights", "applying photometric defaults to scene lights", () => run.tool("lights_calibrate", args, 60000));
+  if (!result.ok)
+  {
+    throw new Error(result.error ?? "lights_calibrate failed");
+  }
+
+  run.receipt("lights calibrated", {
+    updated_count: result.updated_count ?? 0,
+    skipped_count: result.skipped_count ?? 0,
+    role_counts: result.role_counts ?? {},
+  });
+
+  const roles = result.role_counts && typeof result.role_counts === "object"
+    ? Object.entries(result.role_counts).map(([role, count]) => `${role}=${count}`).join(", ")
+    : "";
+  const role_text = roles ? ` (${roles})` : "";
+  return `Calibrated ${result.updated_count ?? 0} lights${role_text}.`;
+}
+
 async function run_source_code_search(run, prompt) {
   const results = await run.stage("Search Codebase", "searching the local source index directly", async () => codebase.search(prompt, 8));
   run.receipt("source matches", {
@@ -473,5 +504,11 @@ export async function run_fast_path(run, intent, prompt) {
     return run_delete_entity(run, intent);
   }
 
+  if (intent.kind === "calibrate_lights")
+  {
+    return run_calibrate_lights(run, intent);
+  }
+
+  // city road / district prompts always escalate so the agent can plan, decorate, and design
   return null;
 }
