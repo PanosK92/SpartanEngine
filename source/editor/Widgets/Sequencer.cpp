@@ -182,6 +182,19 @@ namespace
         ImGui::Dummy(ImVec2(0.0f, 4.0f));
     }
 
+    // panel title with a subtle underline, labels the timeline and properties panels
+    void panel_header(const char* title)
+    {
+        ImGui::PushFont(Editor::font_bold, 0.0f);
+        ImGui::TextUnformatted(title);
+        ImGui::PopFont();
+        ImGui::Dummy(ImVec2(0.0f, 3.0f));
+        const ImVec2 p     = ImGui::GetCursorScreenPos();
+        const float line_w = ImGui::GetContentRegionAvail().x;
+        ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + line_w, p.y), IM_COL32(255, 255, 255, 20), 1.0f);
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+    }
+
     // combo listing every camera entity, returns true when the choice changed
     bool camera_combo(const char* label, uint64_t& camera_id)
     {
@@ -795,7 +808,9 @@ void Sequencer::OnTickVisible()
     const float timeline_w    = show_inspector ? avail - inspector_w - spacing : 0.0f;
 
     // popups live in the same child that opens them so their id scope matches
-    ImGui::BeginChild("##seq_timeline", ImVec2(timeline_w, 0.0f), ImGuiChildFlags_None);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+    ImGui::BeginChild("##seq_timeline", ImVec2(timeline_w, 0.0f), ImGuiChildFlags_Borders);
+    panel_header("timeline");
     DrawTimeline();
     DrawPopups();
     ImGui::EndChild();
@@ -803,12 +818,12 @@ void Sequencer::OnTickVisible()
     if (show_inspector)
     {
         ImGui::SameLine(0.0f, spacing);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
         ImGui::BeginChild("##seq_inspector", ImVec2(inspector_w, 0.0f), ImGuiChildFlags_Borders);
+        panel_header("properties");
         DrawInspector();
         ImGui::EndChild();
-        ImGui::PopStyleVar();
     }
+    ImGui::PopStyleVar();
 
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) && ImGui::IsKeyPressed(ImGuiKey_Delete))
     {
@@ -826,34 +841,10 @@ void Sequencer::OnTickVisible()
 void Sequencer::DrawToolbar()
 {
     const float icon_size = ImGui::GetFontSize();
-    bool transport_toggle = false;
-    if (m_playing)
-    {
-        // pause glyph drawn to match the main transport toolbar
-        const ImVec2 pad = ImGui::GetStyle().FramePadding;
-        ImGui::PushID("##seq_pause");
-        transport_toggle = ImGui::InvisibleButton("##pause", ImVec2(icon_size + pad.x * 2.0f, icon_size + pad.y * 2.0f));
-        ImGui::PopID();
 
-        const ImVec2 min_pos = ImGui::GetItemRectMin();
-        const ImVec2 max_pos = ImGui::GetItemRectMax();
-        const float cx       = (min_pos.x + max_pos.x) * 0.5f;
-        const float cy       = (min_pos.y + max_pos.y) * 0.5f;
-        const float bar_h    = icon_size * 0.56f;
-        const float bar_w    = max(2.0f, icon_size * 0.13f);
-        const float gap      = icon_size * 0.18f;
-        const ImU32 col      = ImGui::GetColorU32(ImGui::Style::color_accent_1);
-        ImDrawList* draw     = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(ImVec2(cx - gap - bar_w, cy - bar_h * 0.5f), ImVec2(cx - gap, cy + bar_h * 0.5f), col);
-        draw->AddRectFilled(ImVec2(cx + gap, cy - bar_h * 0.5f), ImVec2(cx + gap + bar_w, cy + bar_h * 0.5f), col);
-        ImGuiSp::tooltip("pause");
-    }
-    else
-    {
-        transport_toggle = ImGuiSp::image_button(IconType::Play, math::Vector2(icon_size, icon_size), false, ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
-        ImGuiSp::tooltip("play");
-    }
-    if (transport_toggle)
+    // play pause toggle, uses the shared icon atlas
+    const IconType transport_icon = m_playing ? IconType::Pause : IconType::Play;
+    if (ImGuiSp::image_button(transport_icon, math::Vector2(icon_size, icon_size), false, ImVec4(0.9f, 0.9f, 0.9f, 1.0f)))
     {
         if (!m_playing && m_time >= m_duration)
         {
@@ -861,13 +852,7 @@ void Sequencer::DrawToolbar()
         }
         m_playing = !m_playing;
     }
-
-    ImGui::SameLine();
-    if (ImGuiSp::button("[]", ImVec2(30.0f, 0.0f)))
-    {
-        m_playing = false;
-        m_time    = 0.0f;
-    }
+    ImGuiSp::tooltip(m_playing ? "pause" : "play");
 
     ImGui::SameLine();
     const ImVec4 loop_tint = m_loop ? ImGui::Style::color_accent_1 : ImVec4(0.9f, 0.9f, 0.9f, 1.0f);

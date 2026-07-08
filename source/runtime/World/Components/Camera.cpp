@@ -1185,44 +1185,68 @@ namespace spartan
     void Camera::Input_LerpToEntity()
     {
         // set focused entity as a lerp target
-        if (Input::GetKeyDown(KeyCode::F))
+        const bool focus_requested = Input::GetKeyDown(KeyCode::F);
+        if (focus_requested)
         {
             FocusOnSelectedEntity();
         }
 
-        // lerp
-        if (m_lerp_to_target_p || m_lerp_to_target_r)
+        if (!m_lerp_to_target_p && !m_lerp_to_target_r)
         {
-            // lerp duration: 2.0 seconds + [0.0 - 2.0] seconds based on distance
-            const float lerp_duration = 2.0f + clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
+            return;
+        }
 
-            // alpha
-            m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
-            float alpha = clamp(m_lerp_to_target_alpha, 0.0f, 1.0f);
+        auto stop = [this]()
+        {
+            m_lerp_to_target_p        = false;
+            m_lerp_to_target_r        = false;
+            m_lerp_to_target_alpha    = 0.0f;
+            m_lerp_to_target_position = Vector3::Zero;
+            m_movement_speed          = Vector3::Zero;
+        };
 
-            // position - interpolate between the stored start and target (fixed endpoints)
-            if (m_lerp_to_target_p)
-            {
-                const Vector3 interpolated_position = Vector3::Lerp(m_lerp_from_position, m_lerp_to_target_position, alpha);
-                GetEntity()->SetPosition(interpolated_position);
-            }
+        // any user interaction stops the lerp at the pose the camera has currently reached, so control is handed over from there instead of snapping
+        const bool user_interacted =
+            GetFlag(CameraFlags::IsControlled)                                                                          ||
+            Input::GetMouseDelta()      != Vector2::Zero                                                                ||
+            Input::GetMouseWheelDelta() != Vector2::Zero                                                                ||
+            Input::GetKey(KeyCode::W) || Input::GetKey(KeyCode::A) || Input::GetKey(KeyCode::S) || Input::GetKey(KeyCode::D) ||
+            Input::GetKey(KeyCode::Q) || Input::GetKey(KeyCode::E)                                                      ||
+            Input::GetKey(KeyCode::Click_Left) || Input::GetKey(KeyCode::Click_Middle) || Input::GetKey(KeyCode::Click_Right) ||
+            (Input::IsGamepadConnected() && (Input::GetGamepadThumbStickLeft().Length() > 0.1f || Input::GetGamepadThumbStickRight().Length() > 0.1f));
 
-            // rotation - interpolate between the stored start and target (fixed endpoints)
-            if (m_lerp_to_target_r)
-            {
-                const Quaternion interpolated_rotation = Quaternion::Lerp(m_lerp_from_rotation, m_lerp_to_target_rotation, alpha);
-                GetEntity()->SetRotation(interpolated_rotation);
-            }
+        // ignore interaction on the frame focus was requested, the f keypress itself must not cancel the lerp it just started
+        if (!focus_requested && user_interacted)
+        {
+            stop();
+            return;
+        }
 
-            // if the lerp has completed or the user has initiated fps control, stop lerping
-            if (m_lerp_to_target_alpha >= 1.0f || GetFlag(CameraFlags::IsControlled))
-            {
-                m_lerp_to_target_p        = false;
-                m_lerp_to_target_r        = false;
-                m_lerp_to_target_alpha    = 0.0f;
-                m_lerp_to_target_position = Vector3::Zero;
-                m_movement_speed          = Vector3::Zero;
-            }
+        // lerp duration: 2.0 seconds + [0.0 - 2.0] seconds based on distance
+        const float lerp_duration = 2.0f + clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
+
+        // alpha
+        m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
+        float alpha = clamp(m_lerp_to_target_alpha, 0.0f, 1.0f);
+
+        // position - interpolate between the stored start and target (fixed endpoints)
+        if (m_lerp_to_target_p)
+        {
+            const Vector3 interpolated_position = Vector3::Lerp(m_lerp_from_position, m_lerp_to_target_position, alpha);
+            GetEntity()->SetPosition(interpolated_position);
+        }
+
+        // rotation - interpolate between the stored start and target (fixed endpoints)
+        if (m_lerp_to_target_r)
+        {
+            const Quaternion interpolated_rotation = Quaternion::Lerp(m_lerp_from_rotation, m_lerp_to_target_rotation, alpha);
+            GetEntity()->SetRotation(interpolated_rotation);
+        }
+
+        // stop once the lerp completes
+        if (m_lerp_to_target_alpha >= 1.0f)
+        {
+            stop();
         }
     }
 
