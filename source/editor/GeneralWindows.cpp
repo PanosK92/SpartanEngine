@@ -744,7 +744,7 @@ void GeneralWindows::Tick()
     }
 
     // shortcuts
-    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::P))
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::P) && !ImGuiSp::editor_shortcuts_blocked())
     {
         controls::visible = !controls::visible;
     }

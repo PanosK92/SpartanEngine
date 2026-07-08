@@ -345,7 +345,7 @@ void Viewport::OnTickVisible()
     }
 
     // Ctrl+D to duplicate selected entities
-    if (camera && ImGui::IsWindowFocused() && Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::D))
+    if (camera && ImGui::IsWindowFocused() && Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::D) && !ImGuiSp::editor_shortcuts_blocked())
     {
         const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
         if (!selected_entities.empty())

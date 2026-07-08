@@ -28,9 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Definitions.h"
 #include "Logging/Log.h"
 #include "Window.h"
+#include "Engine.h"
 #include "RHI/RHI_Texture.h"
 #include "Rendering/Renderer.h"
 #include "World/World.h"
+#include "World/Components/Camera.h"
 #include "Resource/ResourceCache.h"
 #include "Core/ThreadPool.h"
 #include "Display/Display.h"
@@ -72,6 +74,27 @@ namespace ImGuiSp
     };
 
     static const ImVec4 default_tint(1, 1, 1, 1);
+
+    // true while typing, flying the camera or playing, game input owns the keyboard so editor shortcuts must not fire
+    static bool editor_shortcuts_blocked()
+    {
+        if (ImGui::GetIO().WantTextInput)
+        {
+            return true;
+        }
+
+        if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
+        {
+            return true;
+        }
+
+        if (spartan::Camera* camera = spartan::World::GetCamera())
+        {
+            return camera->GetFlag(spartan::CameraFlags::IsControlled);
+        }
+
+        return false;
+    }
 
     // Collapsing header
     static bool collapsing_header(const char* label, ImGuiTreeNodeFlags flags = 0)

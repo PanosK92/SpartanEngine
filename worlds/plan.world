@@ -8,10 +8,10 @@
   <Variable name="r.chromatic_aberration" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="-12.3376 17.5832 122.041" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="0.057328 1.23451 2.85784" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="-0.0703069 -0.876039 0.132884 -0.458209" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57106805" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
+   <Entity name="component_camera" id="17524583551347340245" active="true" position="3.30887e-07 0.771509 7.29544e-10" rotation="-0.000369461 0.9854 -0.170251 0.00118253" scale="1 1 1">
+    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57079935" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
    </Entity>
   </Entity>
   <Entity name="spline_road" id="10358794943034623506" active="true" position="103.487 0.516045 109.618" rotation="0 -0.675137 0 0.737693" scale="1 1 1">
@@ -103,23 +103,6 @@
     </render>
    </Entity>
    <Entity name="city_building_5" id="13303141593489650101" active="true" position="275 12 55" rotation="0 0 0 1" scale="14 24 14">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
-  <Entity name="lamp_post" id="12478962241913596005" active="true" position="12.9 0.8 95.4" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="Cube" id="7851991609679687089" active="true" position="-0.1 4 0.599998" rotation="0 0 0 1" scale="0.18 9.6 0.1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="Spot" id="12508816975450551640" active="true" position="0 8.9 1.3" rotation="0.573862 0 0 0.818952" scale="1 1 1">
-    <light flags="5" light_type="2" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="80000" range="30" angle="0.52359879" index="1" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-   </Entity>
-   <Entity name="Cube_1" id="6210913045995889543" active="true" position="0.0799999 8.85 0.900002" rotation="0.707107 0 0 0.707107" scale="0.18 0.48 0.1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
@@ -219,6 +202,23 @@
     </render>
    </Entity>
    <Entity name="exit_road_barrier_left" id="15352894423597569040" active="true" position="38 0.6 21.8" rotation="0 0 0 1" scale="2 1.2 64">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+  </Entity>
+  <Entity name="lamp_post" id="12478962241913596005" active="true" position="12.9 0.8 95.4" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="Cube" id="7851991609679687089" active="true" position="-0.1 4 0.599998" rotation="0 0 0 1" scale="0.18 9.6 0.1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="Spot" id="12508816975450551640" active="true" position="0 8.9 1.3" rotation="0.573862 0 0 0.818952" scale="1 1 1">
+    <light flags="5" light_type="2" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="80000" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   </Entity>
+   <Entity name="Cube_1" id="6210913045995889543" active="true" position="0.0799999 8.85 0.900002" rotation="0.707107 0 0 0.707107" scale="0.18 0.48 0.1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
@@ -564,130 +564,6 @@
     </render>
    </Entity>
   </Entity>
-  <Entity name="player_car" id="2411005043703651744" active="true" position="-12.5 1.2 102.8" rotation="3.72529e-09 0.679444 -6.7025e-09 0.733727" scale="1 1 1">
-   <prefab type="car" file="cars/ferrari_laferrari.car" telemetry="true" drivable="true" camera_follows="true" paint_color_a="1" paint_preset="metallic" paint_color_b="0" paint_color_r="0.392156869" paint_color_g="0" />
-   <prefab_override path="vehicle" position="-21.1954 -0.566725 -65.3291" rotation="-0.00149634 -0.68256 -0.00139751 0.730828" scale="1 1 1">
-    <script file_path="../worlds/tire_smoke.lua" Tick="" />
-    <skid_marks slip_threshold="0.349999994" min_segment_distance="0.0500000007" max_segments="512" opacity="0.75" z_offset="0.0199999996" uv_tiling="0.5" fade_distance="0.5" />
-    <Entity name="headlight_left" id="1000000000000000010" active="true" position="-0.736877 0.0115197 1.71746" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="5" light_type="2" color_r="1" color_g="0.959999979" color_b="0.879999995" temperature="0" intensity="8" intensity_photometric="0" range="85" angle="0.419999987" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="45" />
-    </Entity>
-    <Entity name="headlight_right" id="1000000000000000011" active="true" position="0.770164 0.0181681 1.71581" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="5" light_type="2" color_r="1" color_g="0.959999979" color_b="0.879999995" temperature="0" intensity="8" intensity_photometric="0" range="85" angle="0.419999987" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="45" />
-    </Entity>
-    <Entity name="brake_left" id="1000000000000000012" active="true" position="-0.722748 0.115637 -1.94466" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="0" light_type="1" color_r="1" color_g="0.0199999996" color_b="0.0199999996" temperature="0" intensity="8" intensity_photometric="0" range="4" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-    </Entity>
-    <Entity name="brake_right" id="1000000000000000013" active="true" position="0.714302 0.102154 -1.96398" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="0" light_type="1" color_r="1" color_g="0.0199999996" color_b="0.0199999996" temperature="0" intensity="8" intensity_photometric="0" range="4" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-    </Entity>
-    <Entity name="car_lights" id="1000000000000000014" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-     <script file_path="../worlds/car_lights.lua" Tick="" />
-    </Entity>
-    <Entity name="exhaust_fx" id="1000000000000000015" active="true" position="0.0306854 -0.6 0.398821" rotation="0 0 0 1" scale="1 1 1">
-     <script file_path="../worlds/exhaust_fx.lua" Tick="" />
-     <Entity name="exhaust_fx_left" id="1000000000000000022" active="true" position="-0.689171 0.342551 -2.38851" rotation="0 0 0 1" scale="1 1 1">
-      <Entity name="exhaust_smoke" id="1000000000000000016" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-       <particle_system preset="0" max_particles="4000" emission_rate="39.9101105" lifetime="0.942359447" start_speed="0.537193298" start_size="0.0465971008" end_size="0.27958262" start_color_r="0.660208702" start_color_g="0.650208712" start_color_b="0.645208716" start_color_a="0.333194196" end_color_r="0.319999993" end_color_g="0.319999993" end_color_b="0.300000012" end_color_a="0" gravity_modifier="-0.0326966196" emission_radius="0.0426966175" emission_direction_x="0.00849265233" emission_direction_y="0.0927933007" emission_direction_z="-0.995649159" emission_cone_angle="0.455184549" directional_blend="0.680000007" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="18" volume_density="0.967592299" volume_anisotropy="0.349999994" volume_shadowing="0.550000012" drag="1.30497587" turbulence_strength="0.274975836" wind_influence="0.220015377" velocity_inheritance="0.819999993" velocity_stretch="0.220021516" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_smoke.particle" texture_path="project/materials/smoke/exhaust_smoke.png" />
-      </Entity>
-      <Entity name="exhaust_fire" id="1000000000000000018" active="true" position="0 0 -0.035" rotation="0 0 0 1" scale="1 1 1">
-       <particle_system preset="0" max_particles="1800" emission_rate="0" lifetime="0.0549999997" start_speed="2.5999999" start_size="0.0900000036" end_size="0.0179999992" start_color_r="0.550000012" start_color_g="0.779999971" start_color_b="1" start_color_a="0.300000012" end_color_r="1" end_color_g="0.379999995" end_color_b="0.0500000007" end_color_a="0" gravity_modifier="0" emission_radius="0.0120000001" emission_direction_x="0.00852774829" emission_direction_y="0.0199962575" emission_direction_z="-0.999763668" emission_cone_angle="0.25999999" directional_blend="0.879999995" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="8" soft_depth_scale="30" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.349999994" turbulence_strength="0.180000007" wind_influence="0.0399999991" velocity_inheritance="0.949999988" velocity_stretch="0.850000024" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_fire.particle" texture_path="project/materials/smoke/exhaust_fire.png" />
-      </Entity>
-      <Entity name="exhaust_embers" id="1000000000000000024" active="true" position="0 0 -0.055" rotation="0 0 0 1" scale="1 1 1">
-       <particle_system preset="0" max_particles="1200" emission_rate="0" lifetime="0.219999999" start_speed="1.79999995" start_size="0.0179999992" end_size="0.00200000009" start_color_r="1" start_color_g="0.479999989" start_color_b="0.0799999982" start_color_a="0.899999976" end_color_r="1" end_color_g="0.119999997" end_color_b="0.0199999996" end_color_a="0" gravity_modifier="-0.400000006" emission_radius="0.0179999992" emission_direction_x="0.00850228872" emission_direction_y="0.0797462389" emission_direction_z="-0.996778965" emission_cone_angle="0.340000004" directional_blend="0.800000012" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="10" soft_depth_scale="28" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.550000012" turbulence_strength="0.550000012" wind_influence="0.180000007" velocity_inheritance="0.800000012" velocity_stretch="1.20000005" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_embers.particle" texture_path="data/textures/smoke.png" />
-      </Entity>
-      <Entity name="exhaust_light" id="1000000000000000020" active="true" position="0 0.00029723 -0.0699997" rotation="0 0 0 1" scale="1 1 1">
-       <light flags="0" light_type="1" color_r="1" color_g="0.419999987" color_b="0.0799999982" temperature="0" intensity="8" intensity_photometric="0" range="0.5" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="96" distance_shadows="16" distance_volumetric="16" />
-      </Entity>
-     </Entity>
-     <Entity name="exhaust_fx_right" id="1000000000000000023" active="true" position="0.633911 0.343785 -2.38808" rotation="0 0 0 1" scale="1 1 1">
-      <Entity name="exhaust_smoke" id="1000000000000000017" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-       <particle_system preset="0" max_particles="4000" emission_rate="44.4798927" lifetime="0.942359447" start_speed="0.537193298" start_size="0.0465971008" end_size="0.27958262" start_color_r="0.660208702" start_color_g="0.650208712" start_color_b="0.645208716" start_color_a="0.333194196" end_color_r="0.319999993" end_color_g="0.319999993" end_color_b="0.300000012" end_color_a="0" gravity_modifier="-0.0326966196" emission_radius="0.0426966175" emission_direction_x="0.00849265233" emission_direction_y="0.0927933007" emission_direction_z="-0.995649159" emission_cone_angle="0.455184549" directional_blend="0.680000007" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="18" volume_density="0.967592299" volume_anisotropy="0.349999994" volume_shadowing="0.550000012" drag="1.30497587" turbulence_strength="0.274975836" wind_influence="0.220015377" velocity_inheritance="0.819999993" velocity_stretch="0.220021516" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_smoke.particle" texture_path="project/materials/smoke/exhaust_smoke.png" />
-      </Entity>
-      <Entity name="exhaust_fire" id="1000000000000000019" active="true" position="0 0 -0.035" rotation="0 0 0 1" scale="1 1 1">
-       <particle_system preset="0" max_particles="1800" emission_rate="0" lifetime="0.0549999997" start_speed="2.5999999" start_size="0.0900000036" end_size="0.0179999992" start_color_r="0.550000012" start_color_g="0.779999971" start_color_b="1" start_color_a="0.300000012" end_color_r="1" end_color_g="0.379999995" end_color_b="0.0500000007" end_color_a="0" gravity_modifier="0" emission_radius="0.0120000001" emission_direction_x="0.00852774829" emission_direction_y="0.0199962575" emission_direction_z="-0.999763668" emission_cone_angle="0.25999999" directional_blend="0.879999995" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="8" soft_depth_scale="30" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.349999994" turbulence_strength="0.180000007" wind_influence="0.0399999991" velocity_inheritance="0.949999988" velocity_stretch="0.850000024" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_fire.particle" texture_path="project/materials/smoke/exhaust_fire.png" />
-      </Entity>
-      <Entity name="exhaust_embers" id="1000000000000000025" active="true" position="0 -1.08778e-06 -0.0547256" rotation="0 0 0 1" scale="1 1 1">
-       <particle_system preset="0" max_particles="1200" emission_rate="0" lifetime="0.219999999" start_speed="1.79999995" start_size="0.0179999992" end_size="0.00200000009" start_color_r="1" start_color_g="0.479999989" start_color_b="0.0799999982" start_color_a="0.899999976" end_color_r="1" end_color_g="0.119999997" end_color_b="0.0199999996" end_color_a="0" gravity_modifier="-0.400000006" emission_radius="0.0179999992" emission_direction_x="0.00850228872" emission_direction_y="0.0797462389" emission_direction_z="-0.996778965" emission_cone_angle="0.340000004" directional_blend="0.800000012" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="10" soft_depth_scale="28" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.550000012" turbulence_strength="0.550000012" wind_influence="0.180000007" velocity_inheritance="0.800000012" velocity_stretch="1.20000005" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_embers.particle" texture_path="data/textures/smoke.png" />
-      </Entity>
-      <Entity name="exhaust_light" id="1000000000000000021" active="true" position="0 0 -0.07" rotation="0 0 0 1" scale="1 1 1">
-       <light flags="0" light_type="1" color_r="1" color_g="0.419999987" color_b="0.0799999982" temperature="0" intensity="8" intensity_photometric="0" range="0.5" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="96" distance_shadows="16" distance_volumetric="16" />
-      </Entity>
-     </Entity>
-    </Entity>
-   </prefab_override>
-   <prefab_override path="vehicle/ferrari_laferrari" position="0 -0.57 0" rotation="0.707107 0 0 0.707107" scale="1 1 1" />
-   <prefab_override path="vehicle/wheel_front_left" position="-0.828 -0.298697 1.325" rotation="0.999784 0 0 -0.0208023" scale="0.19949 0.19949 0.19949">
-    <Entity name="tire_smoke" id="1000000000000000003" active="true" position="0 1.47772 -0.0554199" rotation="0 0 0 1" scale="1 1 1">
-     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.862890065" start_speed="0.213894859" start_size="0.0907987058" end_size="0.431538999" start_color_r="0.74829787" start_color_g="0.728297889" start_color_b="0.688297868" start_color_a="0.152053818" end_color_r="0.343319148" end_color_g="0.353319138" end_color_b="0.342489362" end_color_a="0" gravity_modifier="-0.0956275538" emission_radius="0.0745622814" emission_direction_x="0.409721583" emission_direction_y="0.0114262421" emission_direction_z="-0.912139058" emission_cone_angle="1.15566421" directional_blend="0.424335837" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.55399358" turbulence_strength="0.201825604" wind_influence="0.222127661" velocity_inheritance="0.588723421" velocity_stretch="0.228404254" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
-    </Entity>
-   </prefab_override>
-   <prefab_override path="vehicle/wheel_front_right" position="0.828 -0.298697 1.325" rotation="4.24681e-08 -0.236804 -0.971557 1.0351e-08" scale="0.19949 0.19949 0.19949">
-    <Entity name="tire_smoke" id="1000000000000000004" active="true" position="-3.05176e-05 1.31012 -0.685791" rotation="0 0 0 1" scale="1 1 1">
-     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.860959709" start_speed="0.210872754" start_size="0.0908083916" end_size="0.429879427" start_color_r="0.747785866" start_color_g="0.727785885" start_color_b="0.687785864" start_color_a="0.152078718" end_color_r="0.343114346" end_color_g="0.353114367" end_color_b="0.342335761" end_color_a="0" gravity_modifier="-0.0956351608" emission_radius="0.074575156" emission_direction_x="-0.53524524" emission_direction_y="0.0121791689" emission_direction_z="-0.844608903" emission_cone_angle="1.15561163" directional_blend="0.424388409" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.55404198" turbulence_strength="0.201847747" wind_influence="0.220762372" velocity_inheritance="0.586334109" velocity_stretch="0.225417674" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
-    </Entity>
-   </prefab_override>
-   <prefab_override path="vehicle/wheel_rear_left" position="-0.82 -0.287845 -1.325" rotation="0.996425 0 0 0.0844766" scale="0.19949 0.19949 0.19949">
-    <Entity name="tire_smoke" id="1000000000000000001" active="true" position="3.05176e-05 1.45663 0.254944" rotation="0 0 0 1" scale="1 1 1">
-     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.852866769" start_speed="0.187585548" start_size="0.0916612223" end_size="0.418647766" start_color_r="0.778173685" start_color_g="0.758173704" start_color_b="0.718173683" start_color_a="0.154271722" end_color_r="0.355269462" end_color_g="0.365269482" end_color_b="0.351452112" end_color_a="0" gravity_modifier="-0.0963052437" emission_radius="0.0942505151" emission_direction_x="-0.650412917" emission_direction_y="0.0302269962" emission_direction_z="0.758979201" emission_cone_angle="1.1509819" directional_blend="0.42901808" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.5583061" turbulence_strength="0.203797087" wind_influence="0.208463162" velocity_inheritance="0.564810514" velocity_stretch="0.198513165" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
-    </Entity>
-   </prefab_override>
-   <prefab_override path="vehicle/wheel_rear_right" position="0.82 -0.287846 -1.325" rotation="-1.02616e-08 0.972054 0.234758 -4.24898e-08" scale="0.19949 0.19949 0.19949">
-    <Entity name="tire_smoke" id="1000000000000000002" active="true" position="6.10352e-05 -1.31854 -0.669495" rotation="0 0 0 1" scale="1 1 1">
-     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.844660342" start_speed="0.184625536" start_size="0.0909459591" end_size="0.415572762" start_color_r="0.778293431" start_color_g="0.75829345" start_color_b="0.718293428" start_color_a="0.152432457" end_color_r="0.355317384" end_color_g="0.365317374" end_color_b="0.351488024" end_color_a="0" gravity_modifier="-0.0957432538" emission_radius="0.0930662379" emission_direction_x="-0.644231439" emission_direction_y="0.0288383905" emission_direction_z="0.764286697" emission_cone_angle="1.15486479" directional_blend="0.425135195" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.55472982" turbulence_strength="0.202162191" wind_influence="0.208782494" velocity_inheritance="0.565369368" velocity_stretch="0.199211702" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
-    </Entity>
-   </prefab_override>
-  </Entity>
-  <Entity name="city_block_3" id="14751705689595926315" active="true" position="1428.7 0 804.3" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="city_building_2" id="14751703843088675392" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_street_barrier_1" id="14751312387305718363" active="true" position="240 0.4 15" rotation="0 0 0 1" scale="80 0.8 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_4" id="14751790983488330092" active="true" position="255 25 50" rotation="0 0 0 1" scale="10 50 10">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_1" id="14751697683074792810" active="true" position="240 20 30" rotation="0 0 0 1" scale="15 40 15">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_6_skyscraper" id="14751603143481737861" active="true" position="300 45 40" rotation="0 0 0 1" scale="16 90 16">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_3" id="14752042321185016330" active="true" position="280 15 35" rotation="0 0 0 1" scale="18 30 18">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_street_barrier_2" id="14752065604670701399" active="true" position="206.4 0.4 -4.8" rotation="0 1 0 0.000871244" scale="40 0.8 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_5" id="14751659278119378702" active="true" position="275 12 55" rotation="0 0 0 1" scale="14 24 14">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
   <Entity name="city_block_2" id="4718050751349431674" active="true" position="802.8 0 320.7" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="city_building_2" id="4717945679901426165" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
@@ -738,11 +614,79 @@
     </render>
    </Entity>
   </Entity>
-  <Entity name="ground" id="7677335530244238779" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 5000 5000">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="asphalt" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+  <Entity name="player_car" id="2411005043703651744" active="true" position="-12.5 1.2 102.8" rotation="3.72529e-09 0.679444 -6.7025e-09 0.733727" scale="1 1 1">
+   <prefab type="car" file="cars/ferrari_laferrari.car" telemetry="true" drivable="true" camera_follows="true" paint_color_a="1" paint_preset="metallic" paint_color_b="0" paint_color_r="0.392156869" paint_color_g="0" />
+   <prefab_override path="vehicle" position="103.458 -0.61696 4.57709" rotation="-0.00149021 -0.679439 -0.0014354 0.73373" scale="1 1 1">
+    <script file_path="../worlds/tire_smoke.lua" Tick="" physics="" wheels="" />
+    <skid_marks slip_threshold="0.349999994" min_segment_distance="0.0500000007" max_segments="512" opacity="0.75" z_offset="0.0199999996" uv_tiling="0.5" fade_distance="0.5" />
+    <Entity name="headlight_left" id="1000000000000000010" active="true" position="-0.736877 0.0115197 1.71746" rotation="0 0 0 1" scale="1 1 1">
+     <light flags="5" light_type="2" color_r="1" color_g="0.959999979" color_b="0.879999995" temperature="0" intensity="8" intensity_photometric="0" range="85" angle="0.419999987" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="45" />
+    </Entity>
+    <Entity name="headlight_right" id="1000000000000000011" active="true" position="0.770164 0.0181681 1.71581" rotation="0 0 0 1" scale="1 1 1">
+     <light flags="5" light_type="2" color_r="1" color_g="0.959999979" color_b="0.879999995" temperature="0" intensity="8" intensity_photometric="0" range="85" angle="0.419999987" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="45" />
+    </Entity>
+    <Entity name="brake_left" id="1000000000000000012" active="true" position="-0.722748 0.115637 -1.94466" rotation="0 0 0 1" scale="1 1 1">
+     <light flags="0" light_type="1" color_r="1" color_g="0.0199999996" color_b="0.0199999996" temperature="0" intensity="8" intensity_photometric="0" range="4" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+    </Entity>
+    <Entity name="brake_right" id="1000000000000000013" active="true" position="0.714302 0.102154 -1.96398" rotation="0 0 0 1" scale="1 1 1">
+     <light flags="0" light_type="1" color_r="1" color_g="0.0199999996" color_b="0.0199999996" temperature="0" intensity="8" intensity_photometric="0" range="4" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+    </Entity>
+    <Entity name="car_lights" id="1000000000000000014" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <script file_path="../worlds/car_lights.lua" Tick="" physics="" headlight_mode="0" headlights="" brakes="" />
+    </Entity>
+    <Entity name="exhaust_fx" id="1000000000000000015" active="true" position="0.0306854 -0.6 0.398821" rotation="0 0 0 1" scale="1 1 1">
+     <script file_path="../worlds/exhaust_fx.lua" Tick="" was_shifting="false" prev_boost="0" pipes="" ember_intensity="0" vehicle="" time="17" fire_intensity="0" prev_gear="2" physics="" prev_throttle="0" />
+     <Entity name="exhaust_fx_left" id="1000000000000000022" active="true" position="-0.689171 0.342551 -2.38851" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="exhaust_smoke" id="1000000000000000016" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <particle_system preset="0" max_particles="4000" emission_rate="39.2166214" lifetime="0.94239527" start_speed="0.537199199" start_size="0.0465996638" end_size="0.279597968" start_color_r="0.660201013" start_color_g="0.650201023" start_color_b="0.645201027" start_color_a="0.333199322" end_color_r="0.319999993" end_color_g="0.319999993" end_color_b="0.300000012" end_color_a="0" gravity_modifier="-0.0326996073" emission_radius="0.042699609" emission_direction_x="-1.02115919e-05" emission_direction_y="0.0927979648" emission_direction_z="-0.995684981" emission_cone_angle="0.455198199" directional_blend="0.680000007" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="18" volume_density="0.967599094" volume_anisotropy="0.349999994" volume_shadowing="0.550000012" drag="1.30499721" turbulence_strength="0.274997205" wind_influence="0.220001787" velocity_inheritance="0.819999993" velocity_stretch="0.220002502" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_smoke.particle" texture_path="project/materials/smoke/exhaust_smoke.png" />
+      </Entity>
+      <Entity name="exhaust_fire" id="1000000000000000018" active="true" position="0 0 -0.035" rotation="0 0 0 1" scale="1 1 1">
+       <particle_system preset="0" max_particles="1800" emission_rate="0" lifetime="0.0549999997" start_speed="2.5999999" start_size="0.0900000036" end_size="0.0179999992" start_color_r="0.550000012" start_color_g="0.779999971" start_color_b="1" start_color_a="0.300000012" end_color_r="1" end_color_g="0.379999995" end_color_b="0.0500000007" end_color_a="0" gravity_modifier="0" emission_radius="0.0120000001" emission_direction_x="-1.02537952e-05" emission_direction_y="0.0199961718" emission_direction_z="-0.999800086" emission_cone_angle="0.25999999" directional_blend="0.879999995" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="8" soft_depth_scale="30" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.349999994" turbulence_strength="0.180000007" wind_influence="0.0399999991" velocity_inheritance="0.949999988" velocity_stretch="0.850000024" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_fire.particle" texture_path="project/materials/smoke/exhaust_fire.png" />
+      </Entity>
+      <Entity name="exhaust_embers" id="1000000000000000024" active="true" position="0 0 -0.055" rotation="0 0 0 1" scale="1 1 1">
+       <particle_system preset="0" max_particles="1200" emission_rate="0" lifetime="0.219999999" start_speed="1.79999995" start_size="0.0179999992" end_size="0.00200000009" start_color_r="1" start_color_g="0.479999989" start_color_b="0.0799999982" start_color_a="0.899999976" end_color_r="1" end_color_g="0.119999997" end_color_b="0.0199999996" end_color_a="0" gravity_modifier="-0.400000006" emission_radius="0.0179999992" emission_direction_x="-1.02231834e-05" emission_direction_y="0.0797459036" emission_direction_z="-0.996815205" emission_cone_angle="0.340000004" directional_blend="0.800000012" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="10" soft_depth_scale="28" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.550000012" turbulence_strength="0.550000012" wind_influence="0.180000007" velocity_inheritance="0.800000012" velocity_stretch="1.20000005" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_embers.particle" texture_path="data/textures/smoke.png" />
+      </Entity>
+      <Entity name="exhaust_light" id="1000000000000000020" active="true" position="0 0.00029723 -0.0699997" rotation="0 0 0 1" scale="1 1 1">
+       <light flags="0" light_type="1" color_r="1" color_g="0.419999987" color_b="0.0799999982" temperature="0" intensity="8" intensity_photometric="0" range="0.5" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="96" distance_shadows="16" distance_volumetric="16" />
+      </Entity>
+     </Entity>
+     <Entity name="exhaust_fx_right" id="1000000000000000023" active="true" position="0.633911 0.343785 -2.38808" rotation="0 0 0 1" scale="1 1 1">
+      <Entity name="exhaust_smoke" id="1000000000000000017" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+       <particle_system preset="0" max_particles="4000" emission_rate="39.2149277" lifetime="0.94239527" start_speed="0.537199199" start_size="0.0465996638" end_size="0.279597968" start_color_r="0.660201013" start_color_g="0.650201023" start_color_b="0.645201027" start_color_a="0.333199322" end_color_r="0.319999993" end_color_g="0.319999993" end_color_b="0.300000012" end_color_a="0" gravity_modifier="-0.0326996073" emission_radius="0.042699609" emission_direction_x="-1.02115919e-05" emission_direction_y="0.0927979648" emission_direction_z="-0.995684981" emission_cone_angle="0.455198199" directional_blend="0.680000007" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="18" volume_density="0.967599094" volume_anisotropy="0.349999994" volume_shadowing="0.550000012" drag="1.30499721" turbulence_strength="0.274997205" wind_influence="0.220001787" velocity_inheritance="0.819999993" velocity_stretch="0.220002502" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_smoke.particle" texture_path="project/materials/smoke/exhaust_smoke.png" />
+      </Entity>
+      <Entity name="exhaust_fire" id="1000000000000000019" active="true" position="0 0 -0.035" rotation="0 0 0 1" scale="1 1 1">
+       <particle_system preset="0" max_particles="1800" emission_rate="0" lifetime="0.0549999997" start_speed="2.5999999" start_size="0.0900000036" end_size="0.0179999992" start_color_r="0.550000012" start_color_g="0.779999971" start_color_b="1" start_color_a="0.300000012" end_color_r="1" end_color_g="0.379999995" end_color_b="0.0500000007" end_color_a="0" gravity_modifier="0" emission_radius="0.0120000001" emission_direction_x="-1.02537952e-05" emission_direction_y="0.0199961718" emission_direction_z="-0.999800086" emission_cone_angle="0.25999999" directional_blend="0.879999995" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="8" soft_depth_scale="30" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.349999994" turbulence_strength="0.180000007" wind_influence="0.0399999991" velocity_inheritance="0.949999988" velocity_stretch="0.850000024" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_fire.particle" texture_path="project/materials/smoke/exhaust_fire.png" />
+      </Entity>
+      <Entity name="exhaust_embers" id="1000000000000000025" active="true" position="0 -1.08778e-06 -0.0547256" rotation="0 0 0 1" scale="1 1 1">
+       <particle_system preset="0" max_particles="1200" emission_rate="0" lifetime="0.219999999" start_speed="1.79999995" start_size="0.0179999992" end_size="0.00200000009" start_color_r="1" start_color_g="0.479999989" start_color_b="0.0799999982" start_color_a="0.899999976" end_color_r="1" end_color_g="0.119999997" end_color_b="0.0199999996" end_color_a="0" gravity_modifier="-0.400000006" emission_radius="0.0179999992" emission_direction_x="-1.02231834e-05" emission_direction_y="0.0797459036" emission_direction_z="-0.996815205" emission_cone_angle="0.340000004" directional_blend="0.800000012" blend_mode="2" lighting_mode="2" render_mode="0" emissive_strength="10" soft_depth_scale="28" volume_density="1" volume_anisotropy="0.349999994" volume_shadowing="0.5" drag="0.550000012" turbulence_strength="0.550000012" wind_influence="0.180000007" velocity_inheritance="0.800000012" velocity_stretch="1.20000005" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/exhaust_embers.particle" texture_path="data/textures/smoke.png" />
+      </Entity>
+      <Entity name="exhaust_light" id="1000000000000000021" active="true" position="0 0 -0.07" rotation="0 0 0 1" scale="1 1 1">
+       <light flags="0" light_type="1" color_r="1" color_g="0.419999987" color_b="0.0799999982" temperature="0" intensity="8" intensity_photometric="0" range="0.5" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="96" distance_shadows="16" distance_volumetric="16" />
+      </Entity>
+     </Entity>
+    </Entity>
+   </prefab_override>
+   <prefab_override path="vehicle/ferrari_laferrari" position="0 -0.57 0" rotation="0.707107 0 0 0.707107" scale="1 1 1" />
+   <prefab_override path="vehicle/wheel_front_left" position="-0.828 -0.248517 1.325" rotation="-0.0013329 0 0 0.999999" scale="0.19949 0.19949 0.19949">
+    <Entity name="tire_smoke" id="1000000000000000003" active="true" position="0.000121593 -1.47911 -0.0100622" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.862890065" start_speed="0.213894859" start_size="0.0907987058" end_size="0.431538999" start_color_r="0.74829787" start_color_g="0.728297889" start_color_b="0.688297868" start_color_a="0.152053818" end_color_r="0.343319148" end_color_g="0.353319138" end_color_b="0.342489362" end_color_a="0" gravity_modifier="-0.0956275538" emission_radius="0.0745622814" emission_direction_x="0.409721583" emission_direction_y="0.0114262421" emission_direction_z="-0.912139058" emission_cone_angle="1.15566421" directional_blend="0.424335837" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.55399358" turbulence_strength="0.201825604" wind_influence="0.222127661" velocity_inheritance="0.588723421" velocity_stretch="0.228404254" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
+    </Entity>
+   </prefab_override>
+   <prefab_override path="vehicle/wheel_front_right" position="0.828 -0.248522 1.325" rotation="-1.15561e-10 0.999996 0.00264373 -4.37112e-08" scale="0.19949 0.19949 0.19949">
+    <Entity name="tire_smoke" id="1000000000000000004" active="true" position="-0.000120163 -1.47844 -0.00170088" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.860959709" start_speed="0.210872754" start_size="0.0908083916" end_size="0.429879427" start_color_r="0.747785866" start_color_g="0.727785885" start_color_b="0.687785864" start_color_a="0.152078718" end_color_r="0.343114346" end_color_g="0.353114367" end_color_b="0.342335761" end_color_a="0" gravity_modifier="-0.0956351608" emission_radius="0.074575156" emission_direction_x="-0.53524524" emission_direction_y="0.0121791689" emission_direction_z="-0.844608903" emission_cone_angle="1.15561163" directional_blend="0.424388409" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.55404198" turbulence_strength="0.201847747" wind_influence="0.220762372" velocity_inheritance="0.586334109" velocity_stretch="0.225417674" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
+    </Entity>
+   </prefab_override>
+   <prefab_override path="vehicle/wheel_rear_left" position="-0.82 -0.237551 -1.325" rotation="-2.73567e-05 0 0 1" scale="0.19949 0.19949 0.19949">
+    <Entity name="tire_smoke" id="1000000000000000001" active="true" position="0.000119686 -1.47913 -0.00620127" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.852866769" start_speed="0.187585548" start_size="0.0916612223" end_size="0.418647766" start_color_r="0.778173685" start_color_g="0.758173704" start_color_b="0.718173683" start_color_a="0.154271722" end_color_r="0.355269462" end_color_g="0.365269482" end_color_b="0.351452112" end_color_a="0" gravity_modifier="-0.0963052437" emission_radius="0.0942505151" emission_direction_x="-0.650412917" emission_direction_y="0.0302269962" emission_direction_z="0.758979201" emission_cone_angle="1.1509819" directional_blend="0.42901808" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.5583061" turbulence_strength="0.203797087" wind_influence="0.208463162" velocity_inheritance="0.564810514" velocity_stretch="0.198513165" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
+    </Entity>
+   </prefab_override>
+   <prefab_override path="vehicle/wheel_rear_right" position="0.82 -0.237557 -1.325" rotation="-3.03573e-12 1 6.94493e-05 -4.37114e-08" scale="0.19949 0.19949 0.19949">
+    <Entity name="tire_smoke" id="1000000000000000002" active="true" position="-0.00012064 -1.47844 0.00591135" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="0" max_particles="9000" emission_rate="0" lifetime="0.844660342" start_speed="0.184625536" start_size="0.0909459591" end_size="0.415572762" start_color_r="0.778293431" start_color_g="0.75829345" start_color_b="0.718293428" start_color_a="0.152432457" end_color_r="0.355317384" end_color_g="0.365317374" end_color_b="0.351488024" end_color_a="0" gravity_modifier="-0.0957432538" emission_radius="0.0930662379" emission_direction_x="-0.644231439" emission_direction_y="0.0288383905" emission_direction_z="0.764286697" emission_cone_angle="1.15486479" directional_blend="0.425135195" blend_mode="1" lighting_mode="0" render_mode="1" emissive_strength="0" soft_depth_scale="14" volume_density="0.519999981" volume_anisotropy="0.119999997" volume_shadowing="0.779999971" drag="1.55472982" turbulence_strength="0.202162191" wind_influence="0.208782494" velocity_inheritance="0.565369368" velocity_stretch="0.199211702" spawn_burst="0" flipbook_rows="1" flipbook_columns="1" flipbook_fps="0" effect_path="worlds/tire_smoke.particle" texture_path="project/materials/smoke/tire_smoke.png" />
+    </Entity>
+   </prefab_override>
   </Entity>
   <Entity name="city_block_4" id="4395537439310658697" active="true" position="399.3 0 88.1" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="city_building_2" id="4395537121065186199" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
@@ -794,56 +738,6 @@
     </render>
    </Entity>
   </Entity>
-  <Entity name="city_block" id="7711119780604685580" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <Entity name="city_building_2" id="15352894423597569101" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_street_barrier_1" id="15352894423597569110" active="true" position="240 0.4 15" rotation="0 0 0 1" scale="80 0.8 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_4" id="15352894423597569103" active="true" position="255 25 50" rotation="0 0 0 1" scale="10 50 10">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_1" id="15352894423597569100" active="true" position="240 20 30" rotation="0 0 0 1" scale="15 40 15">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_6_skyscraper" id="15352894423597569105" active="true" position="300 45 40" rotation="0 0 0 1" scale="16 90 16">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_3" id="15352894423597569102" active="true" position="280 15 35" rotation="0 0 0 1" scale="18 30 18">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_street_barrier_2" id="15352894423597569111" active="true" position="206.4 0.4 -4.8" rotation="0 1 0 0.000871244" scale="40 0.8 1">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-   <Entity name="city_building_5" id="15352894423597569104" active="true" position="275 12 55" rotation="0 0 0 1" scale="14 24 14">
-    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-     <Instances />
-    </render>
-   </Entity>
-  </Entity>
   <Entity name="gas_station" id="9892640812457796454" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
    <Entity name="gas_station_canopy" id="15352894423597569120" active="true" position="230 4 5" rotation="0 0 0 1" scale="12 1 8">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
@@ -882,27 +776,54 @@
     </render>
    </Entity>
   </Entity>
-  <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.461521 0.0278618 -0.886573 0.0145039" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="1" color_g="0.607858837" color_b="0.237299785" temperature="2400" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-  </Entity>
-  <Entity name="spline_car" id="5723169428173956022" active="true" position="10.9173 0.48708 106.08" rotation="0.000992491 -0.827233 0.00146126 0.561857" scale="1 1 1">
-   <prefab type="car" file="cars/ferrari_laferrari.car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_b="0" paint_color_g="0" paint_color_a="1" />
-   <spline_follower spline_entity_id="10358794943034623506" speed="60" follow_mode="0" align_to_spline="true" flip_forward="true" animate_wheels="true" wheel_radius="0" max_steer_angle="35" />
-   <prefab_override path="vehicle/wheel_front_right" position="-1.5779 0.622236 -2.43117" rotation="-0.609222 0.23134 0.192052 -0.733789" scale="0.367346 0.367346 0.367346" />
-   <prefab_override path="vehicle/wheel_front_left" position="1.58809 0.629028 -2.42616" rotation="-0.192052 -0.733789 -0.609222 -0.23134" scale="0.367346 0.367346 0.367346" />
-   <prefab_override path="vehicle/wheel_rear_right" position="-1.57159 0.655991 2.60003" rotation="-0.638777 4.17174e-07 -2.98023e-08 -0.769392" scale="0.38736 0.38736 0.38736" />
-   <prefab_override path="vehicle/wheel_rear_left" position="1.56764 0.662726 2.60504" rotation="1.19209e-07 -0.769392 -0.638777 -4.47035e-07" scale="0.38736 0.38736 0.38736" />
-   <Entity name="camera_wheel" id="5723169428173957001" active="true" position="-3.06563 1.1557 -4.06346" rotation="0.105288 0.315711 -0.0364062 0.942293" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+  <Entity name="city_block_3" id="14751705689595926315" active="true" position="1428.7 0 804.3" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="city_building_2" id="14751703843088675392" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
    </Entity>
-   <Entity name="camera_hood" id="5723169428173957002" active="true" position="0.283028 1.70274 -2.47828" rotation="0 1 0 0" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+   <Entity name="city_street_barrier_1" id="14751312387305718363" active="true" position="240 0.4 15" rotation="0 0 0 1" scale="80 0.8 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
    </Entity>
-   <Entity name="camera_dash" id="5723169428173957003" active="true" position="0.646301 1.67173 -0.0544891" rotation="0 1 0 0" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+   <Entity name="city_building_4" id="14751790983488330092" active="true" position="255 25 50" rotation="0 0 0 1" scale="10 50 10">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
    </Entity>
-   <Entity name="camera_rear" id="5723169428173957004" active="true" position="0.0113678 1.9244 1.79459" rotation="0 0 0 1" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+   <Entity name="city_building_1" id="14751697683074792810" active="true" position="240 20 30" rotation="0 0 0 1" scale="15 40 15">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_6_skyscraper" id="14751603143481737861" active="true" position="300 45 40" rotation="0 0 0 1" scale="16 90 16">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_3" id="14752042321185016330" active="true" position="280 15 35" rotation="0 0 0 1" scale="18 30 18">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_street_barrier_2" id="14752065604670701399" active="true" position="206.4 0.4 -4.8" rotation="0 1 0 0.000871244" scale="40 0.8 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_5" id="14751659278119378702" active="true" position="275 12 55" rotation="0 0 0 1" scale="14 24 14">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
    </Entity>
   </Entity>
   <Entity name="playground" id="18000000000000000001" active="true" position="-181.358 -0.025 215.31" rotation="0 0 0 1" scale="1 1 1">
@@ -990,79 +911,79 @@
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 1" id="18428882412446710365" active="true" position="44 0.950017 -122" rotation="0 0 6.80354e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 1" id="18428882412446710365" active="true" position="44 0.950017 -122" rotation="0 0 6.80699e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 2" id="127062012848441762" active="true" position="50 0.950016 -114" rotation="0 0 6.80353e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 2" id="127062012848441762" active="true" position="50 0.950016 -114" rotation="0 0 6.8071e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 3" id="126917999066891185" active="true" position="56 0.950016 -122" rotation="0 0 6.80351e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 3" id="126917999066891185" active="true" position="56 0.950016 -122" rotation="0 0 6.80684e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 4" id="127188115879116169" active="true" position="62 0.950015 -114" rotation="0 0 6.80348e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 4" id="127188115879116169" active="true" position="62 0.950015 -114" rotation="0 0 6.80687e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 5" id="127184768615767462" active="true" position="68 0.950014 -122" rotation="0 0 6.80349e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 5" id="127184768615767462" active="true" position="68 0.950014 -122" rotation="0 0 6.80703e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 6" id="127221548873563558" active="true" position="74 0.950013 -114" rotation="0 0 6.80346e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 6" id="127221548873563558" active="true" position="74 0.950013 -114" rotation="0 0 6.80708e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 7" id="127094151771440075" active="true" position="80 0.950013 -122" rotation="0 0 6.80348e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 7" id="127094151771440075" active="true" position="80 0.950013 -122" rotation="0 0 6.8069e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 8" id="127134250997746155" active="true" position="86 0.950012 -114" rotation="0 0 6.80345e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 8" id="127134250997746155" active="true" position="86 0.950012 -114" rotation="0 0 6.8069e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 9" id="125988612211777290" active="true" position="92 0.950011 -122" rotation="0 0 6.80346e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 9" id="125988612211777290" active="true" position="92 0.950011 -122" rotation="0 0 6.80705e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 10" id="126026732854073062" active="true" position="98 0.950011 -114" rotation="0 0 6.8034e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 10" id="126026732854073062" active="true" position="98 0.950011 -114" rotation="0 0 6.80673e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 11" id="125887582502832531" active="true" position="104 1.645 -122" rotation="0 0 4.02361e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 11" id="125887582502832531" active="true" position="104 0.95001 -122" rotation="0 0 4.09464e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 12" id="125877275807555933" active="true" position="110 0.950009 -114" rotation="0 0 6.80338e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 12" id="125877275807555933" active="true" position="110 0.950009 -114" rotation="0 0 6.80689e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="slalom cone 13" id="126148645238092670" active="true" position="116 0.950008 -122" rotation="0 0 6.80339e-08 1" scale="0.75 1.1 0.75">
+   <Entity name="slalom cone 13" id="126148645238092670" active="true" position="116 0.950008 -122" rotation="0 0 6.807e-08 1" scale="0.75 1.1 0.75">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
@@ -1362,61 +1283,61 @@
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 1" id="101595857640838365" active="true" position="97 0.850011 -75" rotation="0 0 5.33478e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 1" id="101595857640838365" active="true" position="97 0.850011 -75" rotation="0 0 5.33702e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 2" id="107357917905883331" active="true" position="99.4 0.85001 -69" rotation="0 0 5.33472e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 2" id="107357917905883331" active="true" position="99.4 0.85001 -69" rotation="0 0 5.33716e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 3" id="107417647076835061" active="true" position="101.8 0.85001 -75" rotation="0 0 5.3347e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 3" id="107417647076835061" active="true" position="101.8 0.85001 -75" rotation="0 0 5.33706e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 4" id="107284744405518593" active="true" position="104.2 0.85001 -69" rotation="0 0 5.33476e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 4" id="107284744405518593" active="true" position="104.2 0.85001 -69" rotation="0 0 5.33703e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 5" id="107331016298043983" active="true" position="106.6 0.85001 -75" rotation="0 0 5.33472e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 5" id="107331016298043983" active="true" position="106.6 0.85001 -75" rotation="0 0 5.33693e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 6" id="107551261445090363" active="true" position="109 0.850009 -69" rotation="0 0 5.33442e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 6" id="107551261445090363" active="true" position="109 0.850009 -69" rotation="0 0 5.33683e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 7" id="107588994597373615" active="true" position="111.4 0.850009 -75" rotation="0 0 5.33471e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 7" id="107588994597373615" active="true" position="111.4 0.850009 -75" rotation="0 0 5.33704e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 8" id="107447366046420797" active="true" position="113.8 0.850009 -69" rotation="0 0 5.33469e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 8" id="107447366046420797" active="true" position="113.8 0.850009 -69" rotation="0 0 5.33692e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 9" id="107486154675322726" active="true" position="116.2 0.850008 -75" rotation="0 0 5.33475e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 9" id="107486154675322726" active="true" position="116.2 0.850008 -75" rotation="0 0 5.33719e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="tight chicane cone 10" id="107482269922351948" active="true" position="118.6 0.850008 -69" rotation="0 0 5.33475e-08 1" scale="0.65 1 0.65">
+   <Entity name="tight chicane cone 10" id="107482269922351948" active="true" position="118.6 0.850008 -69" rotation="0 0 5.33712e-08 1" scale="0.65 1 0.65">
     <physics mass="1.5" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cone" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
@@ -1584,59 +1505,138 @@
      <Instances />
     </render>
    </Entity>
-   <Entity name="loose test ball 1" id="75398704849434588" active="true" position="115 0.825008 -124" rotation="0 0 1.08002e-09 1" scale="1.6 1.6 1.6">
+   <Entity name="loose test ball 1" id="75398704849434588" active="true" position="115 0.825008 -124" rotation="0 0 1.13994e-09 1" scale="1.6 1.6 1.6">
     <physics mass="4" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_sphere" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="loose test ball 2" id="86638040883121570" active="true" position="119 0.675007 -120" rotation="0 0 1.83737e-10 1" scale="1.3 1.3 1.3">
+   <Entity name="loose test ball 2" id="86638040883121570" active="true" position="119 0.675007 -120" rotation="0 0 2.22172e-10 1" scale="1.3 1.3 1.3">
     <physics mass="3" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_sphere" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="loose test ball 3" id="86579653153418211" active="true" position="111 0.575008 -118" rotation="0 0 3.21884e-10 1" scale="1.1 1.1 1.1">
+   <Entity name="loose test ball 3" id="86579653153418211" active="true" position="111 0.575008 -118" rotation="0 0 3.43903e-10 1" scale="1.1 1.1 1.1">
     <physics mass="2" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="1" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_sphere" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="movable crate 1" id="86826801461285045" active="true" position="113.159 0.625008 -104.988" rotation="2.90688e-07 -0.0013259 4.83081e-07 0.999999" scale="1.2 1.2 1.2">
+   <Entity name="movable crate 1" id="86826801461285045" active="true" position="113.159 0.625008 -104.988" rotation="-4.23129e-07 -0.0013294 2.9478e-07 0.999999" scale="1.2 1.2 1.2">
     <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="movable crate 2" id="91071147012327915" active="true" position="116.359 0.625008 -104.988" rotation="-1.96197e-06 -0.0013274 3.05421e-07 0.999999" scale="1.2 1.2 1.2">
+   <Entity name="movable crate 2" id="91071147012327915" active="true" position="116.359 0.625008 -104.988" rotation="-4.50101e-07 -0.00132998 2.88143e-07 0.999999" scale="1.2 1.2 1.2">
     <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="movable crate 3" id="91121491637448768" active="true" position="109.959 0.625008 -104.988" rotation="-4.09575e-07 -0.00133584 2.71383e-07 0.999999" scale="1.2 1.2 1.2">
+   <Entity name="movable crate 3" id="91121491637448768" active="true" position="109.959 0.625008 -104.988" rotation="-4.19055e-07 -0.00133854 3.04606e-07 0.999999" scale="1.2 1.2 1.2">
     <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="movable crate 4" id="91345098365718701" active="true" position="113.159 0.625008 -101.788" rotation="-7.50596e-07 -0.0013277 3.34681e-07 0.999999" scale="1.2 1.2 1.2">
+   <Entity name="movable crate 4" id="91345098365718701" active="true" position="113.159 0.625008 -101.788" rotation="-4.26724e-07 -0.00133252 3.01916e-07 0.999999" scale="1.2 1.2 1.2">
     <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="movable crate 5" id="91384618211714890" active="true" position="116.359 0.625008 -101.788" rotation="1.68836e-07 -0.00132759 1.1805e-07 0.999999" scale="1.2 1.2 1.2">
+   <Entity name="movable crate 5" id="91384618211714890" active="true" position="116.359 0.625008 -101.788" rotation="-4.39026e-07 -0.00133231 2.9696e-07 0.999999" scale="1.2 1.2 1.2">
     <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
-   <Entity name="movable crate 6" id="91280266383570684" active="true" position="109.959 0.625008 -101.788" rotation="5.23316e-07 -0.00133565 3.18092e-07 0.999999" scale="1.2 1.2 1.2">
+   <Entity name="movable crate 6" id="91280266383570684" active="true" position="109.959 0.625008 -101.788" rotation="-4.4758e-07 -0.00133946 2.89288e-07 0.999999" scale="1.2 1.2 1.2">
     <physics mass="6" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_cube" sub_mesh_index="0" material_name="empty" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.461521 0.0278618 -0.886573 0.0145039" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="1" color_g="0.607858837" color_b="0.237299785" temperature="2400" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="ground" id="7677335530244238779" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 5000 5000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="asphalt" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="city_block" id="7711119780604685580" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="city_building_2" id="15352894423597569101" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_street_barrier_1" id="15352894423597569110" active="true" position="240 0.4 15" rotation="0 0 0 1" scale="80 0.8 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_4" id="15352894423597569103" active="true" position="255 25 50" rotation="0 0 0 1" scale="10 50 10">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_1" id="15352894423597569100" active="true" position="240 20 30" rotation="0 0 0 1" scale="15 40 15">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_6_skyscraper" id="15352894423597569105" active="true" position="300 45 40" rotation="0 0 0 1" scale="16 90 16">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_3" id="15352894423597569102" active="true" position="280 15 35" rotation="0 0 0 1" scale="18 30 18">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_street_barrier_2" id="15352894423597569111" active="true" position="206.4 0.4 -4.8" rotation="0 1 0 0.000871244" scale="40 0.8 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+   <Entity name="city_building_5" id="15352894423597569104" active="true" position="275 12 55" rotation="0 0 0 1" scale="14 24 14">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+    <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </render>
+   </Entity>
+  </Entity>
+  <Entity name="spline_car" id="5723169428173956022" active="true" position="978.296 4.59368 411.832" rotation="0.00100153 -0.826492 0.0014704 0.562945" scale="1 1 1">
+   <prefab type="car" file="cars/ferrari_laferrari.car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_b="0" paint_color_g="0" paint_color_a="1" />
+   <spline_follower spline_entity_id="10358794943034623506" speed="60" follow_mode="0" align_to_spline="true" flip_forward="true" animate_wheels="true" wheel_radius="0" max_steer_angle="35" />
+   <prefab_override path="vehicle/wheel_front_right" position="-1.5779 0.622236 -2.43117" rotation="-0.719776 3.28711e-05 -3.40343e-05 -0.694207" scale="0.367346 0.367346 0.367346" />
+   <prefab_override path="vehicle/wheel_front_left" position="1.58809 0.629028 -2.42616" rotation="3.40641e-05 -0.694207 -0.719776 -3.28422e-05" scale="0.367346 0.367346 0.367346" />
+   <prefab_override path="vehicle/wheel_rear_right" position="-1.57159 0.655991 2.60003" rotation="-0.719776 8.93488e-08 -2.98023e-08 -0.694207" scale="0.38736 0.38736 0.38736" />
+   <prefab_override path="vehicle/wheel_rear_left" position="1.56764 0.662726 2.60504" rotation="5.96046e-08 -0.694207 -0.719776 -5.96046e-08" scale="0.38736 0.38736 0.38736" />
+   <Entity name="camera_wheel" id="5723169428173957001" active="true" position="-3.06563 1.1557 -4.06346" rotation="0.105288 0.315711 -0.0364062 0.942293" scale="1 1 1">
+    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+   </Entity>
+   <Entity name="camera_hood" id="5723169428173957002" active="true" position="0.283028 1.70274 -2.47828" rotation="0 1 0 0" scale="1 1 1">
+    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+   </Entity>
+   <Entity name="camera_dash" id="5723169428173957003" active="true" position="0.646301 1.67173 -0.0544891" rotation="0 1 0 0" scale="1 1 1">
+    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+   </Entity>
+   <Entity name="camera_rear" id="5723169428173957004" active="true" position="0.0113678 1.9244 1.79459" rotation="0 0 0 1" scale="1 1 1">
+    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
    </Entity>
   </Entity>
  </Entities>

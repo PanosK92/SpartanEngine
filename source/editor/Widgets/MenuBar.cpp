@@ -870,7 +870,7 @@ void MenuBar::Tick()
 
             const bool ctrl  = ImGui::GetIO().KeyCtrl;
             const bool shift = ImGui::GetIO().KeyShift;
-            if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
+            if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false) && !ImGuiSp::editor_shortcuts_blocked())
             {
                 if (shift)
                 {

@@ -120,8 +120,10 @@ namespace ImGui::TransformGizmo
         }
 
         // switch between position, rotation and scale operations, with W, E and R respectively
+        // blocked while flying, playing or typing, those keys move the camera or write text
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
-        if (!camera->GetFlag(spartan::CameraFlags::IsControlled))
+        const bool gizmo_keys_blocked = camera->GetFlag(spartan::CameraFlags::IsControlled) || spartan::Engine::IsFlagSet(spartan::EngineMode::Playing) || ImGui::GetIO().WantTextInput;
+        if (!gizmo_keys_blocked)
         {
             if (spartan::Input::GetKeyDown(spartan::KeyCode::W))
             {

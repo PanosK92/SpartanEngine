@@ -1012,8 +1012,8 @@ void WorldViewer::PopupContextMenu() const
 
 void WorldViewer::HandleKeyShortcuts()
 {
-    // skip engine shortcuts while inline rename input or any other text field is active
-    if (rename_entity_id != 0 || ImGui::GetIO().WantTextInput)
+    // skip engine shortcuts while renaming, typing, flying the camera or playing
+    if (rename_entity_id != 0 || ImGuiSp::editor_shortcuts_blocked())
     {
         return;
     }
@@ -1036,20 +1036,7 @@ void WorldViewer::HandleKeyShortcuts()
         }
     }
 
-    // Save: Ctrl + S
-    if (Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::S))
-    {
-        const string& file_path = World::GetFilePath();
-
-        if (file_path.empty())
-        {
-            m_editor->GetWidget<MenuBar>()->ShowWorldSaveDialog();
-        }
-        else
-        {
-            World::SaveToFile(file_path);
-        }
-    }
+    // ctrl s is owned by the menu bar, handling it here too fired two saves per press
 
     // Load: Ctrl + L
     if (Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::L))
