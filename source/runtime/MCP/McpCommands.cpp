@@ -1317,17 +1317,9 @@ namespace spartan
             {
                 return "r.selection_outline";
             }
-            if (name == "lights")
+            if (name == "entity_icons")
             {
-                return "r.lights";
-            }
-            if (name == "audio_sources")
-            {
-                return "r.audio_sources";
-            }
-            if (name == "cameras")
-            {
-                return "r.cameras";
+                return "r.entity_icons";
             }
             if (name == "performance_metrics")
             {
@@ -1355,7 +1347,7 @@ namespace spartan
 
         std::string renderer_debug_options_json()
         {
-            return "[\"aabb\",\"picking_ray\",\"grid\",\"transform_handle\",\"selection_outline\",\"lights\",\"cameras\",\"audio_sources\",\"performance_metrics\",\"physics\",\"wireframe\",\"meshlet_visualize\",\"cluster_visualize\"]";
+            return "[\"aabb\",\"picking_ray\",\"grid\",\"transform_handle\",\"selection_outline\",\"entity_icons\",\"performance_metrics\",\"physics\",\"wireframe\",\"meshlet_visualize\",\"cluster_visualize\"]";
         }
 
         Material* get_material_from_request(const McpRequest& request, std::string& error)
@@ -4276,7 +4268,7 @@ namespace spartan
             bool first = true;
             const std::vector<std::string> options =
             {
-                "aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "lights", "cameras", "audio_sources", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"
+                "aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"
             };
 
             for (const std::string& option : options)

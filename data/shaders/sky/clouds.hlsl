@@ -149,7 +149,7 @@ static const float  cloud_aerial_falloff  = 4.0e-5;
 // blob overhead and an empty sky around it. residual march noise from the coarse far steps
 // is integrated out by the temporal accumulation in skysphere.hlsl
 static const int    cumulus_view_steps    = 128;
-static const float  cumulus_step_min      = 100.0;
+static const float  cumulus_step_min      = 60.0;   // fine enough to resolve thin edges against the ~47 m shape texel and ~17 m detail texel
 static const float  cumulus_step_max      = 470.0;
 static const float  cumulus_range_max     = 60000.0;  // haze leaves ~9 percent contribution at this distance
 static const float  cirrus_range_max      = 80000.0;  // haze leaves ~4 percent here, the old 120 km tail sampled 5 km apart and striped the horizon
@@ -284,6 +284,15 @@ float cloud_remap(float v, float old_min, float old_max, float new_min, float ne
     return new_min + saturate((v - old_min) / max(old_max - old_min, 1e-6)) * (new_max - new_min);
 }
 
+// soft remap, same range stretch as cloud_remap but the ends are quintic faded so a density
+// that sits near a threshold does not flip on and off across neighbouring noise texel planes
+float cloud_remap_soft(float v, float old_min, float old_max, float new_min, float new_max)
+{
+    float t = saturate((v - old_min) / max(old_max - old_min, 1e-6));
+    t = t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+    return new_min + t * (new_max - new_min);
+}
+
 // =====================================================================
 // noise sampling at run time
 // =====================================================================
@@ -319,9 +328,23 @@ float3 cloud_evolve_offset(float rate)
 
 // the 3d cloud noise volume is bound at the tex3d slot during the skysphere pass
 // channels: r = low-freq perlin-worley, g = worley fbm mid, b = worley fbm high, a = high-freq perlin
+// matches the cloud_noise render target allocation in Renderer_Resources.cpp
+static const float cloud_noise_dims = 128.0;
+
+// quintic fade the intra-texel fraction before the hardware trilinear fetch, plain trilinear is
+// derivative discontinuous at every texel boundary and the sun march integrates the horizontal
+// boundary planes coherently along near horizon rays, the exponential lighting then amplified
+// those kinks into stacked horizontal slices across sunlit cloud faces at dawn and dusk.
+// cubic smoothstep is only c1, residual second derivative kinks still terraced thin edges and
+// fringe clouds where density sits near a remap threshold, the perlin quintic is c2 so those go
 float4 cloud_sample_noise(Texture3D noise, SamplerState samp, float3 uvw)
 {
-    return noise.SampleLevel(samp, frac(uvw), 0);
+    float3 t = uvw * cloud_noise_dims - 0.5;
+    float3 i = floor(t);
+    float3 f = t - i;
+    f        = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float3 s = (i + 0.5 + f) / cloud_noise_dims;
+    return noise.SampleLevel(samp, frac(s), 0);
 }
 
 // low-frequency domain warp, returns a meter-space offset that we add to the sample position
@@ -448,16 +471,18 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     float3 uvw        = (pos_n + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
     
     // vertical anisotropy per type, sheets sample the noise faster vertically which flattens
-    // their forms into pancakes, towers stay isotropic so their bulges develop upward
-    uvw.y            *= lerp(1.6, 1.0, weather.y);
+    // their forms into pancakes, towers stay isotropic so their bulges develop upward.
+    // kept mild so sheet clouds do not pack noise texel planes densely enough to reintroduce
+    // altitude terraces on thin fringes after the lighting remap
+    uvw.y            *= lerp(1.35, 1.0, weather.y);
     float4 shape_n    = cloud_sample_noise(noise, samp, uvw);
     
     // base shape from low-freq perlin-worley (r), eroded by mid-frequency worley fbm (g, b)
     // channel a is the high-freq perlin used by cirrus, mixing it here gave a wispy smudge
     // instead of distinct cumulus puffs, so it stays out of the cumulus pipeline
     float fbm       = shape_n.g * 0.65 + shape_n.b * 0.35;
-    float base      = cloud_remap(shape_n.r, fbm - 1.0, 1.0, 0.0, 1.0);
-    base            = cloud_remap(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
+    float base      = cloud_remap_soft(shape_n.r, fbm - 1.0, 1.0, 0.0, 1.0);
+    base            = cloud_remap_soft(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
     if (base <= 0.0)
     {
         return 0.0;
@@ -471,11 +496,11 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     float detail     = lerp(detail_n.a, detail_n.g, saturate(h_norm * 2.2));
     float detail_mod = lerp(detail, 1.0 - detail, saturate(h_norm * 4.0));
     float detail_amt = lerp(0.25, 0.40, weather.y);
-    float density    = saturate(cloud_remap(base, detail_mod * detail_amt, 1.0, 0.0, 1.0));
+    float density    = saturate(cloud_remap_soft(base, detail_mod * detail_amt, 1.0, 0.0, 1.0));
     
-    // silhouette sharpening, clips the low density gauze that made every cloud look like fog
-    // and saturates the cores toward full density, edges stay defined the way real cumulus do
-    density = cloud_remap(density, 0.04, 0.85, 0.0, 1.0);
+    // silhouette sharpening, soft ends so thin edges and fringe clouds do not terrace when a
+    // residual noise kink crosses the old hard 0.04 clip, cores still saturate toward full density
+    density = cloud_remap_soft(density, 0.04, 0.85, 0.0, 1.0);
     return density * cumulus_density_mul;
 }
 
@@ -503,12 +528,12 @@ float cloud_density_cumulus_cheap(float3 pos, Texture3D noise, SamplerState samp
     pos_n           -= shear_dir * (cumulus_shear * saturate(h_norm));
     
     float3 uvw = (pos_n + cumulus_wind_offset) * cumulus_shape_scale;
-    uvw.y     *= lerp(1.6, 1.0, weather.y);
+    uvw.y     *= lerp(1.35, 1.0, weather.y);
     float4 shape_n = cloud_sample_noise(noise, samp, uvw);
     
     float fbm  = shape_n.g * 0.65 + shape_n.b * 0.35;
-    float base = cloud_remap(shape_n.r, fbm - 1.0, 1.0, 0.0, 1.0);
-    base       = cloud_remap(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
+    float base = cloud_remap_soft(shape_n.r, fbm - 1.0, 1.0, 0.0, 1.0);
+    base       = cloud_remap_soft(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
     return saturate(base) * cumulus_density_mul;
 }
 
@@ -536,7 +561,7 @@ float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
     float4 n        = cloud_sample_noise(noise, samp, uvw);
     float wisp      = n.a * 0.7 + n.b * 0.3;
     
-    float density   = saturate(cloud_remap(wisp, 1.0 - cloud_coverage_cirrus(), 1.0, 0.0, 1.0));
+    float density   = saturate(cloud_remap_soft(wisp, 1.0 - cloud_coverage_cirrus(), 1.0, 0.0, 1.0));
     return density * profile * cirrus_density_mul;
 }
 
@@ -1021,46 +1046,18 @@ float2 cloud_shadow_plane_uv(float3 pos, float3 sun_dir, float3 cam_pos)
 }
 
 // transmittance toward the sun at a world position, fades to unshadowed at the map border so
-// the clamped edge texel does not smear one shadow value across the world beyond the extent
-// filtered with a bicubic b-spline built from four bilinear taps, plain bilinear magnified
-// the texel grid into visible diamonds on the ground, the b-spline kernel has continuous
-// derivatives so the projected shadow reads as a smooth cloud silhouette. the filter runs on
-// a grid coarsened by the scale below, each tap then averages a texel neighbourhood and the
-// kernel widens to ~60 m on the ground, which hides the point sampled bake's edge staircase
-// and matches the soft penumbra real cloud shadows get from the sun's disc and sky scatter
-static const float cloud_shadow_filter_scale = 2.0;
-
+// the clamped edge texel does not smear one shadow value across the world beyond the extent.
+// the map is soft blurred after bake and carries a mip chain, so a single trilinear fetch is
+// enough, distance based lod kills the screen space moire that sharp texel edges produced when
+// the projected map was minified on the ground
 float cloud_shadow_sample(Texture2D shadow_map, SamplerState samp, float3 pos, float3 sun_dir, float3 cam_pos)
 {
     float2 uv     = cloud_shadow_plane_uv(pos, sun_dir, cam_pos);
     float2 border = min(uv, 1.0 - uv);
     float  inside = smoothstep(0.0, 0.04, min(border.x, border.y));
     
-    float2 res;
-    shadow_map.GetDimensions(res.x, res.y);
-    res      /= cloud_shadow_filter_scale;
-    float2 tc = uv * res - 0.5;
-    float2 f  = frac(tc);
-    tc       -= f;
-    
-    float2 f2 = f * f;
-    float2 f3 = f2 * f;
-    float2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
-    float2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
-    float2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
-    float2 w3 = f3 / 6.0;
-    
-    // fold the sixteen texel kernel into four bilinear fetches at weighted offsets
-    float2 s0 = w0 + w1;
-    float2 s1 = w2 + w3;
-    float2 t0 = (tc - 0.5 + w1 / s0) / res;
-    float2 t1 = (tc + 1.5 + w3 / s1) / res;
-    
-    float trans = shadow_map.SampleLevel(samp, float2(t0.x, t0.y), 0).r * s0.x * s0.y;
-    trans      += shadow_map.SampleLevel(samp, float2(t1.x, t0.y), 0).r * s1.x * s0.y;
-    trans      += shadow_map.SampleLevel(samp, float2(t0.x, t1.y), 0).r * s0.x * s1.y;
-    trans      += shadow_map.SampleLevel(samp, float2(t1.x, t1.y), 0).r * s1.x * s1.y;
-    
+    float lod   = log2(max(length(pos.xz - cam_pos.xz) * 0.0015, 1.0));
+    float trans = shadow_map.SampleLevel(samp, uv, lod).r;
     return lerp(1.0, trans, inside);
 }
 
@@ -1117,7 +1114,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 sun_dir = normalize(-light.forward);
     if (sun_dir.y <= 0.0)
     {
-        tex_uav[tid.xy] = 1.0;
+        tex_uav[tid.xy] = float4(1.0, 1.0, 1.0, 1.0);
         return;
     }
     
@@ -1161,7 +1158,8 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         }
     }
     
-    tex_uav[tid.xy] = exp(-optical_depth * cumulus_sigma_t);
+    float trans = exp(-optical_depth * cumulus_sigma_t);
+    tex_uav[tid.xy] = float4(trans, trans, trans, 1.0);
 }
 #endif
 

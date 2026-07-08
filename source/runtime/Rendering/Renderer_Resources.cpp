@@ -648,8 +648,9 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::lut_sky_view)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 192, 216,   1, 1,                                                  RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_sky_view");
             // 16-bit, the density remaps amplify by up to the inverse coverage so 8-bit steps showed as contour stripes on cloud bulbs
             at(render_targets, Renderer_RenderTarget::cloud_noise)                  = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 128, 128,  128, 1,                                                RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise");
-            // cumulus transmittance toward the sun, projected on the cloud base plane, read by the volumetric fog march
-            at(render_targets, Renderer_RenderTarget::cloud_shadow)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, 1,                                                 RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_shadow");
+            // cumulus transmittance toward the sun, projected on the cloud base plane, read by lighting and fog
+            // float4 so the shared gaussian blur can soften it in place, mips kill distant screen-space moire
+            at(render_targets, Renderer_RenderTarget::cloud_shadow)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, compute_mip_count(1024, 1024, 16),                 RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "cloud_shadow");
 
             at(render_targets, Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_blur_scratch, renderer_resolution_blur_scratch, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
@@ -773,6 +774,7 @@ namespace spartan
             { Renderer_Shader::light_c,                               RHI_Shader_Type::Compute, "light.hlsl",                                 RHI_Vertex_Type::Max, rt ? "RAY_TRACING_ENABLED" : nullptr },
             { Renderer_Shader::light_cluster_assign_c,                RHI_Shader_Type::Compute, "light_cluster_assign.hlsl"                                                  },
             { Renderer_Shader::light_cluster_visualize_c,             RHI_Shader_Type::Compute, "light_cluster_visualize.hlsl"                                               },
+            { Renderer_Shader::light_flare_c,                         RHI_Shader_Type::Compute, "light_flare.hlsl"                                                           },
             { Renderer_Shader::light_composition_c,                   RHI_Shader_Type::Compute, "light_composition.hlsl"                                                     },
             { Renderer_Shader::light_image_based_c,                   RHI_Shader_Type::Compute, "light_image_based.hlsl"                                                     },
 
@@ -973,6 +975,7 @@ namespace spartan
             at(standard_textures, Renderer_StandardTexture::Gizmo_light_point)       = make_shared<RHI_Texture>(dir_texture + "light_bulb.png");
             at(standard_textures, Renderer_StandardTexture::Gizmo_light_spot)        = make_shared<RHI_Texture>(dir_texture + "flashlight.png");
             at(standard_textures, Renderer_StandardTexture::Gizmo_audio_source)      = make_shared<RHI_Texture>(dir_texture + "audio.png");
+            at(standard_textures, Renderer_StandardTexture::Gizmo_camera)            = make_shared<RHI_Texture>(dir_icon + "camera.png");
             at(standard_textures, Renderer_StandardTexture::Gizmo_particle)          = make_shared<RHI_Texture>(dir_icon + "particle.png");
         }
 

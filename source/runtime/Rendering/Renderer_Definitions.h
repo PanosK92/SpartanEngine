@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    const uint32_t renderer_max_draw_calls         = 20000;
+    // world draw entries plus imgui draw cmds share this buffer, leave headroom for the editor ui
+    const uint32_t renderer_max_draw_calls         = 32768;
     const uint32_t renderer_max_instance_count     = 1024;
     const uint32_t renderer_editor_icon_size_px    = 48;
     // hard cap on the restir nee pool, the cpu walker stops appending once this many emissive
@@ -272,6 +273,7 @@ namespace spartan
         light_c,
         light_cluster_assign_c,
         light_cluster_visualize_c,
+        light_flare_c,
         light_composition_c,
         light_image_based_c,
         line_v,
@@ -525,6 +527,7 @@ namespace spartan
         Gizmo_light_point,
         Gizmo_light_spot,
         Gizmo_audio_source,
+        Gizmo_camera,
         Gizmo_particle,
         Black,
         White,

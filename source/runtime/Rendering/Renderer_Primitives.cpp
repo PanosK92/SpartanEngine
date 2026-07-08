@@ -221,7 +221,7 @@ namespace spartan
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * World::GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
-        if (cvar_lights.GetValueAs<bool>())
+        if (cvar_entity_icons.GetValueAs<bool>())
         {
             if (Camera* camera = World::GetCamera())
             {
@@ -231,80 +231,63 @@ namespace spartan
                     {
                         continue;
                     }
-                        
-                    Light* light = entity->GetComponent<Light>();
-                    if (!light)
+
+                    if (Light* light = entity->GetComponent<Light>())
                     {
-                        continue;
-                    }
+                        if (light->GetLightType() == LightType::Directional)
+                        {
+                            Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * FLT_MAX;
+                            DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
+                        }
+                        else if (light->GetLightType() == LightType::Point)
+                        {
+                            Vector3 center         = light->GetEntity()->GetPosition();
+                            float radius           = light->GetRange();
+                            uint32_t segment_count = 64;
 
-                    if (light->GetLightType() == LightType::Directional)
-                    {
-                        Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * FLT_MAX;
-                        DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
-                    }
-                    else if (light->GetLightType() == LightType::Point)
-                    {
-                        Vector3 center         = light->GetEntity()->GetPosition();
-                        float radius           = light->GetRange();
-                        uint32_t segment_count = 64;
+                            DrawCircle(center, Vector3::Up,      radius, segment_count);
+                            DrawCircle(center, Vector3::Right,   radius, segment_count);
+                            DrawCircle(center, Vector3::Forward, radius, segment_count);
+                        }
+                        else if (light->GetLightType() == LightType::Spot)
+                        {
+                            float opposite = light->GetRange() * tan(light->GetAngle());
 
-                        DrawCircle(center, Vector3::Up,      radius, segment_count);
-                        DrawCircle(center, Vector3::Right,   radius, segment_count);
-                        DrawCircle(center, Vector3::Forward, radius, segment_count);
-                    }
-                    else if (light->GetLightType() == LightType::Spot)
-                    {
-                        float opposite = light->GetRange() * tan(light->GetAngle());
+                            Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
+                            Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp()    * opposite;
+                            Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
+                            Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown()  * opposite;
+                            Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft()  * opposite;
 
-                        Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
-                        Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp()    * opposite;
-                        Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
-                        Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown()  * opposite;
-                        Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft()  * opposite;
+                            Vector3 pos_start = light->GetEntity()->GetPosition();
+                            DrawLine(pos_start, pos_start + pos_end_center);
+                            DrawLine(pos_start, pos_start + pos_end_up);
+                            DrawLine(pos_start, pos_start + pos_end_right);
+                            DrawLine(pos_start, pos_start + pos_end_down);
+                            DrawLine(pos_start, pos_start + pos_end_left);
+                        }
+                        else if (light->GetLightType() == LightType::Area)
+                        {
+                            Vector3 center    = light->GetEntity()->GetPosition();
+                            Vector3 right     = light->GetEntity()->GetRight();
+                            Vector3 up        = light->GetEntity()->GetUp();
+                            Vector3 forward   = light->GetEntity()->GetForward();
+                            float half_width  = light->GetAreaWidth()  * 0.5f;
+                            float half_height = light->GetAreaHeight() * 0.5f;
 
-                        Vector3 pos_start = light->GetEntity()->GetPosition();
-                        DrawLine(pos_start, pos_start + pos_end_center);
-                        DrawLine(pos_start, pos_start + pos_end_up);
-                        DrawLine(pos_start, pos_start + pos_end_right);
-                        DrawLine(pos_start, pos_start + pos_end_down);
-                        DrawLine(pos_start, pos_start + pos_end_left);
-                    }
-                    else if (light->GetLightType() == LightType::Area)
-                    {
-                        Vector3 center    = light->GetEntity()->GetPosition();
-                        Vector3 right     = light->GetEntity()->GetRight();
-                        Vector3 up        = light->GetEntity()->GetUp();
-                        Vector3 forward   = light->GetEntity()->GetForward();
-                        float half_width  = light->GetAreaWidth()  * 0.5f;
-                        float half_height = light->GetAreaHeight() * 0.5f;
+                            Vector3 corner_tl = center - right * half_width + up * half_height;
+                            Vector3 corner_tr = center + right * half_width + up * half_height;
+                            Vector3 corner_br = center + right * half_width - up * half_height;
+                            Vector3 corner_bl = center - right * half_width - up * half_height;
 
-                        Vector3 corner_tl = center - right * half_width + up * half_height;
-                        Vector3 corner_tr = center + right * half_width + up * half_height;
-                        Vector3 corner_br = center + right * half_width - up * half_height;
-                        Vector3 corner_bl = center - right * half_width - up * half_height;
+                            DrawLine(corner_tl, corner_tr);
+                            DrawLine(corner_tr, corner_br);
+                            DrawLine(corner_br, corner_bl);
+                            DrawLine(corner_bl, corner_tl);
 
-                        DrawLine(corner_tl, corner_tr);
-                        DrawLine(corner_tr, corner_br);
-                        DrawLine(corner_br, corner_bl);
-                        DrawLine(corner_bl, corner_tl);
-
-                        float arrow_length = min(half_width, half_height) * 0.5f;
-                        DrawDirectionalArrow(center, center + forward * arrow_length, arrow_length * 0.3f);
-                    }
-                }
-            }
-        }
-        
-        if (cvar_cameras.GetValueAs<bool>())
-        {
-            if (Camera* camera = World::GetCamera())
-            {
-                for (Entity* entity : camera->GetSelectedEntities())
-                {
-                    if (!entity)
-                    {
-                        continue;
+                            float arrow_length = min(half_width, half_height) * 0.5f;
+                            DrawDirectionalArrow(center, center + forward * arrow_length, arrow_length * 0.3f);
+                        }
                     }
 
                     Camera* view = entity->GetComponent<Camera>();

@@ -1265,6 +1265,62 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_LightFlares(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    {
+        if (!cvar_light_flares.GetValueAs<bool>() || m_count_active_lights <= 1)
+        {
+            return;
+        }
+
+        RHI_Shader* shader = GetShader(Renderer_Shader::light_flare_c);
+        if (!shader || !shader->IsCompiled())
+        {
+            return;
+        }
+
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        if (!tex_out)
+        {
+            return;
+        }
+
+        cmd_list->BeginTimeblock("light_flares");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "light_flares";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
+
+            SetCommonTextures(cmd_list, eye_layer);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+
+            const float near_distance   = clamp(cvar_light_flares_near_distance.GetValue(), 0.0f, 500.0f);
+            const float fade_length     = clamp(cvar_light_flares_fade_length.GetValue(), 0.1f, 500.0f);
+            const float size_scale      = clamp(cvar_light_flares_size_scale.GetValue(), 0.01f, 5.0f);
+            const float intensity_scale = clamp(cvar_light_flares_intensity_scale.GetValue(), 0.01f, 5.0f);
+            const float max_size_px     = clamp(cvar_light_flares_max_size_px.GetValue(), 1.0f, 16.0f);
+            const float occlusion       = cvar_light_flares_occlusion.GetValueAs<bool>() ? 1.0f : 0.0f;
+
+            const float disc_size_px  = min(max_size_px * 2.0f + 2.0f, 128.0f);
+            const uint32_t thread_dim = 8;
+            const uint32_t groups     = (static_cast<uint32_t>(disc_size_px) + thread_dim - 1) / thread_dim;
+
+            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
+
+            // one dispatch per light with a barrier between them, same pattern as editor icons
+            for (uint32_t i = 1; i < m_count_active_lights; i++)
+            {
+                m_pcb_pass_cpu.set_f3_value(near_distance, size_scale, intensity_scale);
+                m_pcb_pass_cpu.set_f3_value2(max_size_px, occlusion, static_cast<float>(i));
+                m_pcb_pass_cpu.set_f2_value(disc_size_px, fade_length);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                cmd_list->Dispatch(groups, groups, 1);
+                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
+            }
+        }
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);

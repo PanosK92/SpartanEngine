@@ -80,6 +80,12 @@ namespace spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                     cmd_list->Dispatch(tex_cloud_shadow);
 
+                    // soft penumbra plus anti-moire, the raw bake carries texel-rate edges that
+                    // beat against the screen grid on the ground, a few texels of blur and a mip
+                    // chain remove that high frequency before lighting samples the map
+                    Pass_Blur(cmd_list, tex_cloud_shadow, false, 4.0f, 0);
+                    Pass_Downscale(cmd_list, tex_cloud_shadow, Renderer_DownsampleFilter::Average);
+
                     tex_cloud_shadow->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
                 }
 

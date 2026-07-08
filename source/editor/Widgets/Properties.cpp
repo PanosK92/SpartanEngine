@@ -1365,19 +1365,11 @@ void Properties::ShowRender(spartan::Render* renderable) const
 
             float button_width = 28.0f;
             float input_width  = layout::value_width() - button_width * 2 - design::spacing_sm * 2;
+            const ImVec2 drop_min = ImGui::GetCursorScreenPos();
 
             ImGui::PushItemWidth(input_width);
             ImGui::InputText("##Material", &name_material, ImGuiInputTextFlags_ReadOnly);
             ImGui::PopItemWidth();
-
-            // drag drop for material
-            if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
-            {
-                if (payload->path[0] != '\0')
-                {
-                    renderable->SetMaterial(payload->path);
-                }
-            }
 
             // browse
             ImGui::SameLine(0, design::spacing_sm);
@@ -1406,6 +1398,17 @@ void Properties::ShowRender(spartan::Render* renderable) const
                 ImGui::BeginTooltip();
                 ImGui::TextUnformatted("reset to default material");
                 ImGui::EndTooltip();
+            }
+
+            // drop over the whole value row, not just the text field, and apply on mouse release
+            // so imgui's two frame delivery cannot miss the assignment
+            const ImVec2 drop_max = ImVec2(drop_min.x + layout::value_width(), drop_min.y + ImGui::GetFrameHeight());
+            if (auto payload = ImGuiSp::receive_drag_drop_payload_rect(ImGuiSp::DragPayloadType::Material, drop_min, drop_max, ImGui::GetID("##material_drop")))
+            {
+                if (payload->path[0] != '\0' && FileSystem::IsEngineMaterialFile(payload->path))
+                {
+                    renderable->SetMaterial(payload->path);
+                }
             }
         }
 

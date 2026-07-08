@@ -57,13 +57,19 @@ namespace spartan
     extern TConsoleVar<float> cvar_transform_handle;
     extern TConsoleVar<float> cvar_transform_snap;
     extern TConsoleVar<float> cvar_selection_outline;
-    extern TConsoleVar<float> cvar_lights;
-    extern TConsoleVar<float> cvar_audio_sources;
-    extern TConsoleVar<float> cvar_cameras;
+    extern TConsoleVar<float> cvar_entity_icons;
     extern TConsoleVar<float> cvar_performance_metrics;
     extern TConsoleVar<float> cvar_physics;
     extern TConsoleVar<float> cvar_wireframe;
     extern TConsoleVar<float> cvar_bloom;
+    extern TConsoleVar<float> cvar_light_flares;
+    extern TConsoleVar<float> cvar_light_flares_near_distance;
+    extern TConsoleVar<float> cvar_light_flares_fade_length;
+    extern TConsoleVar<float> cvar_light_flares_max_distance;
+    extern TConsoleVar<float> cvar_light_flares_size_scale;
+    extern TConsoleVar<float> cvar_light_flares_intensity_scale;
+    extern TConsoleVar<float> cvar_light_flares_max_size_px;
+    extern TConsoleVar<float> cvar_light_flares_occlusion;
     extern TConsoleVar<float> cvar_fog;
     extern TConsoleVar<float> cvar_ssao;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
@@ -162,7 +168,7 @@ namespace spartan
         static bool Screenshot(const std::string& file_path);
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
-        // write a draw data entry and return its index
+        // write a draw data entry and return its index, or uint32_max when the per frame budget is full
         // when renderable is non-null its uv overrides are resolved against the material defaults,
         // otherwise an identity uv transform (tiling 1, offset 0, rotation 0, no invert) is written
         static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* renderable = nullptr);
@@ -293,6 +299,7 @@ namespace spartan
         // passes - lighting
         static void Pass_LightClusterAssign(RHI_CommandList* cmd_list);
         static void Pass_LightClusterVisualize(RHI_CommandList* cmd_list);
+        static void Pass_LightFlares(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light_Ibl(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);

@@ -95,6 +95,10 @@ void main_cs(uint3 cluster_id : SV_GroupID, uint thread_index : SV_GroupIndex)
         if (light.intensity <= 0.0f)
             continue;
 
+        // flare-only lights past draw distance never shade surfaces
+        if ((light.flags & uint(1U << 7)) != 0)
+            continue;
+
         if (!light_intersects_cluster(light, gs_aabb_min, gs_aabb_max))
             continue;
 

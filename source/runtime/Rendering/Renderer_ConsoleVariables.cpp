@@ -149,14 +149,20 @@ namespace spartan
     TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,                                                    "draw transform handles");
     TConsoleVar<float> cvar_transform_snap                 ("r.transform_snap",                 1.0f,                                                    "snap transform handles");
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
-    TConsoleVar<float> cvar_lights                         ("r.lights",                         1.0f,                                                    "draw light icons");
-    TConsoleVar<float> cvar_audio_sources                  ("r.audio_sources",                  1.0f,                                                    "draw audio source icons");
-    TConsoleVar<float> cvar_cameras                        ("r.cameras",                        1.0f,                                                    "draw camera frustums");
+    TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,                                                    "draw entity icons and debug visuals");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "show performance metrics",                on_performance_metrics_change);
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");
     // post-processing
     TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "bloom intensity, 0 to disable");
+    TConsoleVar<float> cvar_light_flares                   ("r.light_flares",                   1.0f,                                                    "distant light corona flares");
+    TConsoleVar<float> cvar_light_flares_near_distance     ("r.light_flares_near_distance",     25.0f,                                                   "camera distance in meters where flares are fully gone");
+    TConsoleVar<float> cvar_light_flares_fade_length       ("r.light_flares_fade_length",       20.0f,                                                   "meters over which flares fade from full to gone as they approach");
+    TConsoleVar<float> cvar_light_flares_max_distance      ("r.light_flares_max_distance",      2000.0f,                                                 "max distance in meters for flare-only lights past lighting draw distance");
+    TConsoleVar<float> cvar_light_flares_size_scale        ("r.light_flares_size_scale",        1.0f,                                                    "global light flare size multiplier");
+    TConsoleVar<float> cvar_light_flares_intensity_scale   ("r.light_flares_intensity_scale",   1.0f,                                                    "global light flare brightness multiplier");
+    TConsoleVar<float> cvar_light_flares_max_size_px       ("r.light_flares_max_size_px",       6.0f,                                                    "maximum light flare radius in pixels");
+    TConsoleVar<float> cvar_light_flares_occlusion         ("r.light_flares_occlusion",         1.0f,                                                    "depth occlusion for light flares");
     TConsoleVar<float> cvar_fog                            ("r.fog",                            1.0f,                                                    "fog intensity/particle density");
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,                                                    "screen space ambient occlusion");
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections",                  on_ray_traced_reflections_change);

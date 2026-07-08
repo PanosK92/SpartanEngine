@@ -525,7 +525,12 @@ namespace ImGui::RHI
                                 0.0f, 0.0f, 0.0f, 1.0f
                             );
 
-                            rhi_resources->push_constant_buffer_pass.draw_index = Renderer::WriteDrawData(projection);
+                            const uint32_t draw_index = Renderer::WriteDrawData(projection);
+                            if (draw_index == numeric_limits<uint32_t>::max())
+                            {
+                                continue;
+                            }
+                            rhi_resources->push_constant_buffer_pass.draw_index = draw_index;
                         }
 
                         cmd_list->PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);

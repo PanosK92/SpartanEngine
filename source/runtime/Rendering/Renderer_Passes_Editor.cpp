@@ -47,7 +47,7 @@ namespace spartan
         {
             icons_frame = m_frame_num;
 
-            if (!Engine::IsFlagSet(EngineMode::Playing))
+            if (!Engine::IsFlagSet(EngineMode::Playing) && cvar_entity_icons.GetValueAs<bool>())
             {
                 Vector3 pos_camera = World::GetCamera() ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
                 for (Entity* entity : World::GetEntities())
@@ -60,10 +60,11 @@ namespace spartan
 
                     if (entity->GetComponent<AudioSource>())
                     {
-                        if (cvar_audio_sources.GetValueAs<bool>())
-                        {
-                            m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
-                        }
+                        m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
+                    }
+                    else if (entity->GetComponent<Camera>())
+                    {
+                        m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_camera), entity->GetPosition()));
                     }
                     else if (entity->GetComponent<ParticleSystem>())
                     {
@@ -71,26 +72,23 @@ namespace spartan
                     }
                     else if (Light* light = entity->GetComponent<Light>())
                     {
-                        if (cvar_lights.GetValueAs<bool>())
+                        RHI_Texture* texture = nullptr;
+                        if (light->GetLightType() == LightType::Directional)
                         {
-                            RHI_Texture* texture = nullptr;
-                            if (light->GetLightType() == LightType::Directional)
-                            {
-                                texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
-                            }
-                            else if (light->GetLightType() == LightType::Point)
-                            {
-                                texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
-                            }
-                            else if (light->GetLightType() == LightType::Spot)
-                            {
-                                texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
-                            }
+                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
+                        }
+                        else if (light->GetLightType() == LightType::Point)
+                        {
+                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
+                        }
+                        else if (light->GetLightType() == LightType::Spot)
+                        {
+                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
+                        }
 
-                            if (texture)
-                            {
-                                m_icons.emplace_back(make_tuple(texture, entity->GetPosition()));
-                            }
+                        if (texture)
+                        {
+                            m_icons.emplace_back(make_tuple(texture, entity->GetPosition()));
                         }
                     }
                 }
@@ -170,8 +168,13 @@ namespace spartan
                 floor(camera_position.z / grid_spacing) * grid_spacing
             );
 
-            Matrix grid_transform       = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
+            Matrix grid_transform     = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
             m_pcb_pass_cpu.draw_index = WriteDrawData(grid_transform);
+            if (m_pcb_pass_cpu.draw_index == numeric_limits<uint32_t>::max())
+            {
+                cmd_list->EndTimeblock();
+                return;
+            }
             cmd_list->PushConstants(m_pcb_pass_cpu);
         }
 
@@ -276,7 +279,12 @@ namespace spartan
                                 continue;
                             }
 
-                            m_pcb_pass_cpu.draw_index = WriteDrawData(entity_selected->GetMatrix());
+                            const uint32_t draw_index = WriteDrawData(entity_selected->GetMatrix());
+                            if (draw_index == numeric_limits<uint32_t>::max())
+                            {
+                                continue;
+                            }
+                            m_pcb_pass_cpu.draw_index = draw_index;
                             m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
                             cmd_list->PushConstants(m_pcb_pass_cpu);
 

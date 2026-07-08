@@ -366,7 +366,7 @@ namespace spartan
     Entity* Camera::FindIconUnderCursor() const
     {
         // overlay icons are only drawn in the editor, not while playing
-        if (Engine::IsFlagSet(EngineMode::Playing))
+        if (Engine::IsFlagSet(EngineMode::Playing) || !cvar_entity_icons.GetValueAs<bool>())
         {
             return nullptr;
         }
@@ -388,11 +388,12 @@ namespace spartan
                 continue;
             }
 
-            // only entities that draw an icon, gated by the same cvars as the icon pass
-            bool draws_audio = entity->GetComponent<AudioSource>() != nullptr && cvar_audio_sources.GetValueAs<bool>();
-            bool draws_light = entity->GetComponent<Light>()       != nullptr && cvar_lights.GetValueAs<bool>();
-            bool draws_particle = entity->GetComponent<ParticleSystem>() != nullptr;
-            if (!draws_audio && !draws_light && !draws_particle)
+            // only entities that draw an icon, matches the icon pass
+            bool draws_icon = entity->GetComponent<AudioSource>() != nullptr ||
+                              entity->GetComponent<Camera>() != nullptr ||
+                              entity->GetComponent<Light>() != nullptr ||
+                              entity->GetComponent<ParticleSystem>() != nullptr;
+            if (!draws_icon)
             {
                 continue;
             }

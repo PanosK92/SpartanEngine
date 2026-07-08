@@ -43,12 +43,12 @@ float3 gaussian_blur(const uint2 pos, float2 resolution_in, float2 resolution_ou
     float weights = 0.0f;
     for (int i = -radius; i < radius; i++)
     {
-        float2 sample_uv     = uv + (i * direction_texel);
-        float sample_depth   = get_linear_depth(sample_uv);
-        float3 sample_normal = get_normal(sample_uv);
+        float2 sample_uv = uv + (i * direction_texel);
 
-        float depth_awareness = 1.0f; 
+        float depth_awareness = 1.0f;
         #if PASS_BLUR_GAUSSIAN_BILATERAL
+        float sample_depth     = get_linear_depth(sample_uv);
+        float3 sample_normal   = get_normal(sample_uv);
         float awareness_depth  = saturate(0.1f - abs(center_depth - sample_depth));
         float awareness_normal = saturate(dot(center_normal, sample_normal)) + FLT_MIN; // FLT_MIN prevents NaN
         depth_awareness        = awareness_normal * awareness_depth;

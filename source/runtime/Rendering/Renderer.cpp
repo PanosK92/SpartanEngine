@@ -1463,7 +1463,19 @@ namespace spartan
 
     uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* renderable)
     {
-        SP_ASSERT(m_draw_data_count < renderer_max_draw_calls);
+        // soft fail, world draws and imgui share this buffer so a busy scene plus a dense asset
+        // browser can hit the ceiling, asserting here crashed the editor on folder navigation
+        if (m_draw_data_count >= renderer_max_draw_calls)
+        {
+            static bool logged = false;
+            if (!logged)
+            {
+                SP_LOG_WARNING("draw data budget exhausted (%u), dropping further draws this frame", renderer_max_draw_calls);
+                logged = true;
+            }
+            return numeric_limits<uint32_t>::max();
+        }
+
         uint32_t index = m_draw_data_count++;
 
         Sb_DrawData& entry       = m_draw_data_cpu[index];
@@ -1688,6 +1700,7 @@ namespace spartan
             light_buffer_entry.flags                            |= has_screen_space_shadows                                  ? (1 << 4) : 0;
             light_buffer_entry.flags                            |= volumetric_effective                                      ? (1 << 5) : 0;
             light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Area        ? (1 << 6) : 0;
+            // bit 7 is set by the caller for flare-only lights past draw distance
 
             // build the compact volumetric index list, the light shader scans this instead of every light
             // slot 0 is the directional sun which is evaluated unconditionally in the first evaluate_light call,
@@ -1736,6 +1749,11 @@ namespace spartan
         }
     
         // remaining lights
+        Camera* camera = World::GetCamera();
+        const Vector3 camera_pos = camera ? camera->GetEntity()->GetPosition() : Vector3::Zero;
+        const float flare_max_distance = cvar_light_flares.GetValueAs<bool>() ? max(cvar_light_flares_max_distance.GetValue(), 0.0f) : 0.0f;
+        const float flare_max_distance_sq = flare_max_distance * flare_max_distance;
+
         for (Entity* entity : World::GetEntitiesLights())
         {
             if (Light* light_component = entity->GetComponent<Light>())
@@ -1756,16 +1774,36 @@ namespace spartan
                 {
                     continue;
                 }
-    
-                if (Camera* camera = World::GetCamera())
+
+                const bool within_draw_distance = light_component->IsActiveByDistance();
+                if (!within_draw_distance)
                 {
-                    if (!camera->IsInViewFrustum(light_component->GetBoundingBox()))
+                    // past lighting draw distance, keep the light only for distant coronas
+                    if (flare_max_distance <= 0.0f || !camera)
                     {
                         continue;
                     }
+
+                    const float distance_sq = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
+                    if (distance_sq > flare_max_distance_sq)
+                    {
+                        continue;
+                    }
+
+                    // point test so a tiny lighting aabb does not frustum-cull a visible distant bulb
+                    const Vector3 light_pos = light_component->GetEntity()->GetPosition();
+                    const BoundingBox flare_bounds(light_pos - Vector3(1.0f, 1.0f, 1.0f), light_pos + Vector3(1.0f, 1.0f, 1.0f));
+                    if (!camera->IsInViewFrustum(flare_bounds))
+                    {
+                        continue;
+                    }
+
+                    fill_light(light_component);
+                    m_bindless_lights[light_component->GetIndex()].flags |= (1u << 7);
+                    continue;
                 }
     
-                if (!light_component->IsActiveByDistance())
+                if (camera && !camera->IsInViewFrustum(light_component->GetBoundingBox()))
                 {
                     continue;
                 }
@@ -1874,6 +1912,11 @@ namespace spartan
                 m_transparents_present = true;
             }
 
+            if (m_draw_call_count >= renderer_max_draw_calls)
+            {
+                break;
+            }
+
             uint32_t draw_data_index = WriteDrawData(
                 entity->GetMatrix(),
                 entity->GetMatrixPrevious(),
@@ -1881,6 +1924,10 @@ namespace spartan
                 material->IsTransparent() ? 1 : 0,
                 renderable
             );
+            if (draw_data_index == numeric_limits<uint32_t>::max())
+            {
+                break;
+            }
 
             Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
             draw_call.renderable         = renderable;
@@ -2835,6 +2882,7 @@ namespace spartan
         Pass_Reflections_Denoise(cmd_list, eye_layer);
 
         Pass_Reflections_Apply(cmd_list, eye_layer);
+        Pass_LightFlares(cmd_list, eye_layer);
         Pass_AA_Upscale(cmd_list, eye_layer);
         Pass_PostProcess(cmd_list, eye_layer);
 

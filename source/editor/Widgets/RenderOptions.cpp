@@ -358,6 +358,14 @@ void RenderOptions::OnTickVisible()
                 ImGui::TableHeadersRow();
 
                 option_value("Bloom intensity", "r.bloom", "Blend factor, set to 0 to disable", 0.01f);
+                option_check_box("Light flares", "r.light_flares", "Distant light coronas");
+                option_value("Flare near distance", "r.light_flares_near_distance", "Meters from camera where flares are fully gone", 1.0f, 0.0f, 500.0f);
+                option_value("Flare fade length", "r.light_flares_fade_length", "Meters over which flares fade in as they get farther", 1.0f, 0.1f, 500.0f);
+                option_value("Flare max distance", "r.light_flares_max_distance", "How far flare-only lights stay visible past draw distance", 10.0f, 100.0f, 10000.0f);
+                option_value("Flare size", "r.light_flares_size_scale", "Global flare size multiplier", 0.05f, 0.01f, 5.0f);
+                option_value("Flare intensity", "r.light_flares_intensity_scale", "Global flare brightness multiplier", 0.05f, 0.01f, 5.0f);
+                option_value("Flare max size", "r.light_flares_max_size_px", "Maximum flare radius in pixels", 0.5f, 1.0f, 16.0f);
+                option_check_box("Flare occlusion", "r.light_flares_occlusion", "Hide flares behind geometry");
                 option_check_box("Motion blur", "r.motion_blur", "Controlled by camera shutter speed");
                 option_check_box("Depth of field", "r.depth_of_field", "Controlled by camera aperture");
                 option_check_box("Film grain", "r.film_grain", "Simulates old film camera noise");
@@ -444,9 +452,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Transform handles", "r.transform_handle");
                     option_check_box("Transform snapping", "r.transform_snap");
                     option_check_box("Selection outline", "r.selection_outline");
-                    option_check_box("Lights", "r.lights");
-                    option_check_box("Cameras", "r.cameras");
-                    option_check_box("Audio sources", "r.audio_sources");
+                    option_check_box("Entity icons", "r.entity_icons");
                     option_check_box("Grid", "r.grid");
                     option_check_box("Picking ray", "r.picking_ray");
                     option_check_box("Physics", "r.physics");
