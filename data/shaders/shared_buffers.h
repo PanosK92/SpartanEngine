@@ -106,7 +106,8 @@ struct FrameBufferData
     // only, when non zero a third strategy area samples a random emissive triangle and the
     // balance heuristic mis denominator includes its solid angle pdf, see restir_pt.hlsl
     SHARED_FLOAT restir_pt_emissive_tri_count;
-    SHARED_FLOAT padding_a;
+    // cumulus horizontal coverage, 0 = clear sky, 1 = overcast, authored on the directional light
+    SHARED_FLOAT cloud_coverage;
     SHARED_FLOAT padding_b;
 
     // vr stereo - right eye matrices (left eye uses the primary matrices above)

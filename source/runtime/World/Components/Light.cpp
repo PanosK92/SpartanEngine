@@ -213,6 +213,7 @@ namespace spartan
         node.append_attribute("draw_distance")       = m_draw_distance;
         node.append_attribute("distance_shadows")    = m_distance_shadows;
         node.append_attribute("distance_volumetric") = m_distance_volumetric;
+        node.append_attribute("cloud_coverage")      = m_cloud_coverage;
     }
 
     void Light::Load(pugi::xml_node& node)
@@ -246,6 +247,7 @@ namespace spartan
         m_draw_distance        = node.attribute("draw_distance").as_float(m_draw_distance);
         m_distance_shadows     = node.attribute("distance_shadows").as_float(m_distance_shadows);
         m_distance_volumetric  = node.attribute("distance_volumetric").as_float(m_distance_volumetric);
+        m_cloud_coverage       = node.attribute("cloud_coverage").as_float(m_cloud_coverage);
         m_screen_space_shadows_slice_index = 0;
 
         if (m_light_type != LightType::Directional || !(m_flags & LightFlags::Shadows))
@@ -349,6 +351,9 @@ namespace spartan
             "GetFlag",                      &Light::GetFlag,
             "SetPreset",                    &Light::SetPreset,
             "GetPreset",                    &Light::GetPreset,
+            "SetTimeOfDay",                 [](Light& Self, float time_of_day) { Self.SetTimeOfDay(time_of_day); },
+            "SetCloudCoverage",             &Light::SetCloudCoverage,
+            "GetCloudCoverage",             &Light::GetCloudCoverage,
 
             "NeedsSkysphereUpdate",         &Light::NeedsSkysphereUpdate,
             "GetSliceCount",                &Light::GetSliceCount,
@@ -606,8 +611,6 @@ namespace spartan
 
     void Light::SetPreset(const LightPreset preset)
     {
-        m_preset = preset;
-
         // a preset only moves the sun, the atmosphere derives the matching color and dimming
         float time_of_day = 0.0f;
         float yaw_degrees = 0.0f; // horizontal rotation around y axis
@@ -637,14 +640,21 @@ namespace spartan
 
         case LightPreset::custom:
             // do nothing, keep current settings
+            m_preset = preset;
             return;
         }
 
-        // set time of day
-        World::SetTimeOfDay(time_of_day);
-
-        // set light properties
+        SetTimeOfDay(time_of_day, yaw_degrees);
         SetIntensity(sun_illuminance_lux);
+        m_preset = preset;
+    }
+
+    void Light::SetTimeOfDay(const float time_of_day, const float yaw_degrees)
+    {
+        // moving the sun manually invalidates any named preset
+        m_preset = LightPreset::custom;
+
+        World::SetTimeOfDay(time_of_day);
 
         // set rotation based on time of day (only for directional lights)
         if (m_light_type == LightType::Directional)
@@ -660,6 +670,11 @@ namespace spartan
             GetEntity()->SetRotation(yaw * elevation);
             UpdateMatrices();
         }
+    }
+
+    void Light::SetCloudCoverage(const float coverage)
+    {
+        m_cloud_coverage = clamp(coverage, 0.0f, 1.0f);
     }
 
     float Light::GetIntensityRadiometric() const
@@ -807,19 +822,22 @@ namespace spartan
             return false;
         }
 
-        // the sky derives its color from the atmosphere, only direction and intensity affect it
+        // the sky derives its color from the atmosphere, direction, intensity and cloud coverage affect it
         static Quaternion last_rotation           = Quaternion::Identity;
         static float last_intensity_photometric   = numeric_limits<float>::max();
+        static float last_cloud_coverage          = numeric_limits<float>::max();
 
         Quaternion current_rotation = GetEntity() ? GetEntity()->GetRotation() : Quaternion::Identity;
 
         bool rotation_changed  = current_rotation != last_rotation;
         bool intensity_changed = abs(m_intensity_photometric - last_intensity_photometric) > 0.01f;
+        bool coverage_changed  = abs(m_cloud_coverage - last_cloud_coverage) > 0.001f;
 
-        if (rotation_changed || intensity_changed)
+        if (rotation_changed || intensity_changed || coverage_changed)
         {
             last_rotation              = current_rotation;
             last_intensity_photometric = m_intensity_photometric;
+            last_cloud_coverage        = m_cloud_coverage;
             return true;
         }
 

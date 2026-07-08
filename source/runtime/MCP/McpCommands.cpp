@@ -4242,19 +4242,29 @@ namespace spartan
                 }
                 entity->SetRotation(math::Quaternion::FromEulerAngles(parsed));
             }
-            else if (const std::optional<std::string> target = get_argument(request, "target"))
+            else
             {
-                math::Vector3 parsed;
-                if (!parse_vector3(*target, parsed))
+                // look_at is an accepted alias for target
+                std::optional<std::string> target = get_argument(request, "target");
+                if (!target)
                 {
-                    return json_error("invalid target");
+                    target = get_argument(request, "look_at");
                 }
-                const math::Vector3 direction = parsed - entity->GetPosition();
-                if (direction.LengthSquared() <= std::numeric_limits<float>::epsilon())
+
+                if (target)
                 {
-                    return json_error("target must differ from camera position");
+                    math::Vector3 parsed;
+                    if (!parse_vector3(*target, parsed))
+                    {
+                        return json_error("invalid target");
+                    }
+                    const math::Vector3 direction = parsed - entity->GetPosition();
+                    if (direction.LengthSquared() <= std::numeric_limits<float>::epsilon())
+                    {
+                        return json_error("target must differ from camera position");
+                    }
+                    entity->SetRotation(math::Quaternion::FromLookRotation(direction));
                 }
-                entity->SetRotation(math::Quaternion::FromLookRotation(direction));
             }
 
             return command_camera_snapshot();
@@ -4736,6 +4746,31 @@ namespace spartan
             return "{\"ok\":true,\"path\":" + json_string(*path) + ",\"entity\":" + entity_to_json(parent, true) + "}";
         }
 
+        bool assign_render_material(Render* renderable, const std::string& name_or_path, std::string& error)
+        {
+            if (name_or_path == "default")
+            {
+                renderable->SetDefaultMaterial();
+                return true;
+            }
+
+            // prefer the cached resource so both resource names and paths bind
+            if (std::shared_ptr<IResource> cached = get_resource_shared_by_name_or_path(name_or_path, ResourceType::Material))
+            {
+                renderable->SetMaterial(std::static_pointer_cast<Material>(cached));
+                return true;
+            }
+
+            if (FileSystem::IsFile(name_or_path))
+            {
+                renderable->SetMaterial(name_or_path);
+                return true;
+            }
+
+            error = "material not found by cached name, cached path, or file path: " + name_or_path;
+            return false;
+        }
+
         bool set_render_property(Render* renderable, const std::string& property, const std::string& value, std::string& error)
         {
             if (property == "mesh")
@@ -4751,15 +4786,7 @@ namespace spartan
             }
             if (property == "material")
             {
-                if (value == "default")
-                {
-                    renderable->SetDefaultMaterial();
-                }
-                else
-                {
-                    renderable->SetMaterial(value);
-                }
-                return true;
+                return assign_render_material(renderable, value, error);
             }
             if (property == "default_material")
             {
@@ -5950,13 +5977,10 @@ namespace spartan
             }
             if (const std::optional<std::string> material = get_argument(request, "material"))
             {
-                if (*material == "default")
+                std::string material_error;
+                if (!assign_render_material(renderable, *material, material_error))
                 {
-                    renderable->SetDefaultMaterial();
-                }
-                else
-                {
-                    renderable->SetMaterial(*material);
+                    return json_error(material_error);
                 }
             }
 
@@ -6183,6 +6207,76 @@ namespace spartan
             }
 
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
+        }
+
+        std::string command_entity_set_transform_batch(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("transform requires edit mode");
+            }
+
+            const std::optional<std::string> count_arg = get_argument(request, "count");
+            uint64_t count = 0;
+            if (!count_arg || !parse_uint64(*count_arg, count) || count == 0 || count > 64)
+            {
+                return json_error("count must be between 1 and 64");
+            }
+
+            const std::vector<std::string> keys =
+            {
+                "id",
+                "position",
+                "rotation",
+                "rotation_euler",
+                "scale"
+            };
+
+            std::string updated_json = "[";
+            uint32_t updated_count = 0;
+            for (uint64_t i = 0; i < count; i++)
+            {
+                McpRequest item_request;
+                item_request.command = "entity_set_transform";
+                for (const std::string& key : keys)
+                {
+                    const std::string batch_key = "item_" + std::to_string(i) + "_" + key;
+                    const auto it = request.arguments.find(batch_key);
+                    if (it != request.arguments.end())
+                    {
+                        item_request.arguments[key] = it->second;
+                    }
+                }
+
+                const std::string item_result = command_entity_set_transform(item_request);
+                if (item_result.find("\"ok\":true") == std::string::npos)
+                {
+                    updated_json += "]";
+                    std::string json = "{\"ok\":false,\"error\":\"failed to set transform batch item\"";
+                    json += ",\"updated\":" + updated_json;
+                    json += ",\"updated_count\":" + std::to_string(updated_count);
+                    json += ",\"failed_index\":" + std::to_string(i);
+                    json += ",\"failure\":" + item_result;
+                    json += "}";
+                    return json;
+                }
+
+                if (updated_count > 0)
+                {
+                    updated_json += ",";
+                }
+                updated_json += item_result;
+                updated_count++;
+            }
+
+            std::string json = "{\"ok\":true,\"updated\":" + updated_json + "]";
+            json += ",\"updated_count\":" + std::to_string(updated_count);
+            json += "}";
+            return json;
         }
 
         std::string command_spline_query(const McpRequest& request)
@@ -6865,6 +6959,10 @@ namespace spartan
         if (request.command == "entity_set_transform")
         {
             return command_entity_set_transform(request);
+        }
+        if (request.command == "entity_set_transform_batch")
+        {
+            return command_entity_set_transform_batch(request);
         }
         if (request.command == "entity_add_component")
         {

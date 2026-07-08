@@ -61,6 +61,8 @@ export const engine_overview = [
   "Use entity_find_by_component to locate all entities with a given component type without listing the whole scene.",
   "Read component_get property_metadata and member_metadata for ranges, units, enum values, side effects, recommended defaults, and read-only reasons before unfamiliar component writes.",
   "Use component_set_batch when changing multiple properties on the same component.",
+  "Use entity_set_transform_batch when repositioning many entities; one call replaces a run of entity_set_transform calls.",
+  "Lua resolves entities with World.GetEntityByName(name) for exact names or World.GetEntityById(id) with the id as a string.",
   "Use component_action for deterministic component methods such as terrain generation, spline mesh/instance operations, particle presets/bursts, physics forces, audio playback, light fitting, and camera focus.",
   "Use resource_list and material_get to inspect cached assets and material state; use material_set_property and material_set_texture for material edits.",
   "Use resource_load, resource_reload, resource_save, resource_remove, and material_create for asset cache lifecycle work.",

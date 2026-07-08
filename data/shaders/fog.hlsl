@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES =============
 #include "common.hlsl"
-//====================
+#include "sky/clouds.hlsl"
+//========================
 
 // atmospheric fog using exponential height based falloff
 float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
@@ -303,6 +304,14 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
             if (sigma_dt > 0.0f)
             {
                 float visibility = visible(ray_pos, light, pixel_pos);
+
+                // clouds occlude the sun along the shaft, the sun-projected transmittance map
+                // bound on tex5 is what carves the crepuscular rays through the cloud gaps
+                if (is_dir && visibility > 0.0f)
+                {
+                    visibility *= cloud_shadow_sample(tex5, GET_SAMPLER(sampler_bilinear_clamp), ray_pos, dir_light_dir, ray_origin);
+                }
+
                 if (visibility > 0.0f)
                 {
                     // single scattering integrand, sigma_s * phase * incident_radiance * transmittance * dt

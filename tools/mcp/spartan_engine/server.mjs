@@ -230,6 +230,13 @@ const component_type = z.enum([
 ]);
 const component_value = z.union([z.string(), z.number(), z.boolean(), numeric_array]);
 const light_type = z.enum(["directional", "point", "spot", "area"]);
+const transform_set_args = {
+  id: z.string(),
+  position: vector3.optional(),
+  rotation: quaternion.optional(),
+  rotation_euler: vector3.optional(),
+  scale: vector3.optional(),
+};
 const primitive_create_args = {
   mesh: mesh_type.optional(),
   name: z.string().optional(),
@@ -237,7 +244,7 @@ const primitive_create_args = {
   position: vector3.optional(),
   rotation_euler: vector3.optional(),
   scale: vector3.optional(),
-  material: z.string().optional(),
+  material: z.string().optional().describe("cached material name, cached path, material file path, or default"),
   with_physics: z.boolean().optional(),
   body_type: body_type.optional(),
   physics_static: z.boolean().optional(),
@@ -730,11 +737,12 @@ register_tool(server, "camera_snapshot", "Read the live editor camera position a
 register_tool(
   server,
   "camera_set_view",
-  "Set the editor camera position and rotation, or look at a target point.",
+  "Set the editor camera position and rotation, or look at a target point. look_at is an alias for target.",
   {
     position: vector3.optional(),
     rotation_euler: vector3.optional(),
     target: vector3.optional(),
+    look_at: vector3.optional(),
   },
   "camera_set_view",
   { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
@@ -1367,6 +1375,36 @@ register_tool(
   },
   "entity_set_transform",
   { annotations: edit_tool, outputSchema: output_schemas.entity },
+);
+
+register_local_tool(
+  "entity_set_transform_batch",
+  {
+    title: "entity set transform batch",
+    description: "Set many entity local transforms in edit mode through one native engine batch command.",
+    inputSchema: {
+      items: z.array(z.object(transform_set_args)).min(1).max(64),
+    },
+    outputSchema: output_schemas.transform_batch_receipt,
+    annotations: edit_tool,
+  },
+  async ({ items }) => {
+    const args = { count: items.length };
+    const keys = Object.keys(transform_set_args);
+    for (let i = 0; i < items.length; i++) {
+      for (const key of keys) {
+        if (items[i][key] !== undefined && items[i][key] !== null) {
+          args[`item_${i}_${key}`] = items[i][key];
+        }
+      }
+    }
+
+    const result = await send_engine_command("entity_set_transform_batch", args);
+    return tool_result({
+      ...result,
+      updated_count: result.updated_count ?? result.updated?.length ?? 0,
+    });
+  },
 );
 
 register_tool(

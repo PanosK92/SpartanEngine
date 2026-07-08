@@ -52,6 +52,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Simple primitive creation, such as `create a physics cone`, should route directly to `entity_create_primitive`.
 - User convention, `physics <primitive>` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer `entity_create_primitive_batch` or one focused `execute_lua` script.
+- For repositioning many entities, use `entity_set_transform_batch` instead of one `entity_set_transform` call per entity.
 - For source questions, use `search_codebase`, then `read_source_file` for focused context.
 
 ## Gotchas
@@ -59,6 +60,8 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - `component_set` supports friendly properties and registered raw component member names for all component types; metadata is advisory and the engine still validates writes.
 - Long Lua scripts run on the main thread, so they should do a bounded amount of work and return a short summary.
 - Tool errors are advisory data for recovery, not transport failures.
+- Sphere, cylinder, and cone primitives have radius 1, so diameter is 2x the xz scale, while cube and quad are 1x1x1 per scale unit; halve xz scale versus a cube for the same footprint. Lua has `World.GetEntityByName(name)` (exact match) and `World.GetEntityById(id_string)`; ids exceed lua number precision, so pass them as strings.
+- Batch positions are parent-local when `parent_id` is set. Lua entities expose `GetName`, and the render enum is `ComponentType.Renderable`, not Render.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.

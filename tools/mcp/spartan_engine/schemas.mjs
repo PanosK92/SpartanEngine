@@ -222,6 +222,12 @@ export const output_schemas = {
     failed_index: z.number().int().optional(),
     failure: any_object.optional(),
   }),
+  transform_batch_receipt: with_error_fields({
+    updated_count: z.number().int().optional(),
+    updated: z.array(any_object).optional(),
+    failed_index: z.number().int().optional(),
+    failure: any_object.optional(),
+  }),
   delete_receipt: with_error_fields({
     id: z.string().optional(),
     name: z.string().optional(),

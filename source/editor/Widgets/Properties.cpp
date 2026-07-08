@@ -1099,18 +1099,42 @@ void Properties::ShowLight(spartan::Light* light) const
             layout::section_header("Day/Night");
 
             bool day_night_cycle = light->GetFlag(spartan::LightFlags::DayNightCycle);
+            bool real_time_cycle = light->GetFlag(spartan::LightFlags::RealTimeCycle);
+
+            // time of day slider, scrubs the sun from midnight through noon and back
+            {
+                float time_of_day = World::GetTimeOfDay(day_night_cycle && real_time_cycle);
+                char time_label[8];
+                snprintf(time_label, sizeof(time_label), "%02d:%02d", static_cast<int>(time_of_day * 24.0f), static_cast<int>(time_of_day * 1440.0f) % 60);
+                layout::begin_property("Time of Day", "drag the sun from night to day, the atmosphere derives the matching color and intensity");
+                ImGui::BeginDisabled(day_night_cycle && real_time_cycle);
+                if (ImGui::SliderFloat("##time_of_day", &time_of_day, 0.0f, 1.0f, time_label))
+                {
+                    light->SetTimeOfDay(time_of_day);
+                }
+                ImGui::EndDisabled();
+            }
+
             if (property_toggle("Day/Night Cycle", &day_night_cycle, "automatic sun movement"))
             {
                 light->SetFlag(spartan::LightFlags::DayNightCycle, day_night_cycle);
             }
 
             ImGui::BeginDisabled(!day_night_cycle);
-            bool real_time_cycle = light->GetFlag(spartan::LightFlags::RealTimeCycle);
             if (property_toggle("Real Time", &real_time_cycle, "sync with actual time"))
             {
                 light->SetFlag(spartan::LightFlags::RealTimeCycle, real_time_cycle);
             }
             ImGui::EndDisabled();
+
+            layout::separator();
+            layout::section_header("Weather");
+
+            float cloud_coverage = light->GetCloudCoverage();
+            if (property_float("Cloud Coverage", &cloud_coverage, 0.005f, 0.0f, 1.0f, "how cloudy the day is, 0 = clear sky, 0.38 = fair weather, 1 = overcast", "%.2f"))
+            {
+                light->SetCloudCoverage(cloud_coverage);
+            }
         }
 
         // range (point/spot/area)

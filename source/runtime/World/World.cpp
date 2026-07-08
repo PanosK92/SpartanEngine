@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Physics.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Input/Input.h"
+#include <cstdlib>
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
@@ -412,6 +413,23 @@ namespace spartan
             {
                 Camera* camera = World::GetCamera();
                 return camera ? camera->GetEntity() : nullptr;
+            };
+            WorldTable["GetEntityByName"] = [](const std::string& name) -> Entity*
+            {
+                for (Entity* entity : World::GetEntities())
+                {
+                    if (entity && entity->GetObjectName() == name)
+                    {
+                        return entity;
+                    }
+                }
+
+                return nullptr;
+            };
+            // ids exceed lua number precision, so they pass as strings
+            WorldTable["GetEntityById"] = [](const std::string& id) -> Entity*
+            {
+                return World::GetEntityById(std::strtoull(id.c_str(), nullptr, 10));
             };
             WorldTable["Raycast"] = [](const Vector3& origin, const Vector3& direction, float max_distance) -> sol::object
             {

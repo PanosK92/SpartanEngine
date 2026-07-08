@@ -956,6 +956,7 @@ namespace spartan
         m_cb_frame_cpu.camera_exposure       = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind                  = World::GetWind();
+        m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverage() : 0.0f;
 
         // fft ocean, geometry samples these to displace and shade the water surface
         if (const Water* water = m_pass_state.ocean)
@@ -2640,6 +2641,12 @@ namespace spartan
         // capture this frame's warmup status before we decrement, so Pass_Skysphere can pick
         // between the full-burst and the partial-dispatch mode on the same frame
         m_pass_state.sky_warmup_this_frame = m_pass_state.sky_frames_remaining > 0;
+
+        // progressive average blend, the n-th warmup frame weighs 1/n so the first frame fully
+        // replaces the panorama, no ghost of the previous cloudscape survives a coverage or sun
+        // change, and the following frames converge to the exact mean of the jittered bakes
+        const uint32_t warmup_frame_index = temporal_convergence_frames - m_pass_state.sky_frames_remaining;
+        m_pass_state.sky_warmup_blend     = 1.0f / static_cast<float>(warmup_frame_index + 1);
 
         if (m_pass_state.sky_frames_remaining > 0)
         {

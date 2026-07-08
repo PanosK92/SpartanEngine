@@ -305,6 +305,13 @@ void evaluate_light(
             L_shadow_primary = compute_shadow(surface, light);
         }
 
+        // clouds shade the ground through the same sun-projected transmittance map the fog
+        // march samples, so the shafts in the air and the shade on the ground agree exactly
+        if (light.is_directional())
+        {
+            L_shadow_primary *= cloud_shadow_sample(tex5, GET_SAMPLER(sampler_bilinear_clamp), surface.position, normalize(-light.forward), get_camera_position());
+        }
+
         // the rt shadow already resolves exact sun contact occlusion, the bend contact term is redundant there
         bool rt_owns_contact = can_use_rt_shadows && light.is_directional();
 

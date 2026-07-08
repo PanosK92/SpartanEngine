@@ -1135,10 +1135,8 @@ namespace spartan
 
     string Material::GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot)
     {
-        if (!HasTextureOfType(texture_type))
-            return "";
-
-        return m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture + slot]->GetResourceFilePath();;
+        RHI_Texture* texture = m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture + slot];
+        return texture ? texture->GetResourceFilePath() : "";
     }
 
     vector<string> Material::GetTexturePaths()

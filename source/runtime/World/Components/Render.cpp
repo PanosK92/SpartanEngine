@@ -297,13 +297,30 @@ namespace spartan
                 [](Render& self, Mesh* mesh, uint32_t sub_mesh_index) { self.SetMesh(mesh, sub_mesh_index); },
                 [](Render& self, MeshType type)                       { self.SetMesh(type); }
             ),
-            "SetMaterial",                  [](Render& self, std::shared_ptr<Material> material)
-            {
-                if (material)
+            "SetMaterial", sol::overload(
+                [](Render& self, std::shared_ptr<Material> material)
                 {
-                    self.SetMaterial(material);
+                    if (material)
+                    {
+                        self.SetMaterial(material);
+                    }
+                },
+                [](Render& self, Material* material)
+                {
+                    // accepts the raw pointer that GetMaterial returns by resolving the cached shared_ptr
+                    if (material)
+                    {
+                        if (std::shared_ptr<Material> cached = ResourceCache::GetByName<Material>(material->GetObjectName()))
+                        {
+                            self.SetMaterial(cached);
+                        }
+                    }
+                },
+                [](Render& self, const std::string& file_path)
+                {
+                    self.SetMaterial(file_path);
                 }
-            },
+            ),
             "SetDefaultMaterial",           &Render::SetDefaultMaterial,
             "SetMaxRenderDistance",         &Render::SetMaxRenderDistance,
             "SetMaxShadowDistance",         &Render::SetMaxShadowDistance,

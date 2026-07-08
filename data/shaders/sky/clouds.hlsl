@@ -44,8 +44,20 @@ static const float cumulus_thickness      = cumulus_top_alt - cumulus_bottom_alt
 static const float cumulus_shape_scale    = 1.0 / 6000.0;   // one tile of the noise volume covers 6 km horizontally, big heroic forms
 static const float cumulus_detail_scale   = 1.0 / 2200.0;   // detail features now ~370m at the highest surviving octave, well above the 40m step nyquist
 static const float cumulus_coverage_scale = 1.0 / 26000.0;  // weather map domain, pushes tile repeats out toward the horizon
-static const float cumulus_coverage       = 0.38;           // 0 = no clouds, 1 = overcast, fair weather sits around 0.30 - 0.45
 static const float cumulus_density_mul    = 1.00;
+
+// coverage is authored on the directional light component, 0 = clear sky, 1 = overcast,
+// fair weather sits around 0.30 - 0.45, cirrus rides along at a fixed ratio so both layers
+// clear out together, at the 0.38 default the ratio lands on the classic 0.22 cirrus value
+float cloud_coverage_cumulus()
+{
+    return buffer_frame.cloud_coverage;
+}
+
+float cloud_coverage_cirrus()
+{
+    return buffer_frame.cloud_coverage * 0.58;
+}
 static const float cumulus_sigma_t        = 0.06;           // base extinction coefficient per meter, high enough for solid crisp cores
 
 // domain warp, breaks up the visible grid alignment of the noise volume so cloud puffs
@@ -74,7 +86,6 @@ static const float cirrus_bottom_alt      = 6500.0;
 static const float cirrus_top_alt         = 8000.0;
 static const float cirrus_thickness       = cirrus_top_alt - cirrus_bottom_alt;
 static const float cirrus_noise_scale     = 1.0 / 12000.0;
-static const float cirrus_coverage        = 0.22;
 static const float cirrus_density_mul     = 0.05;
 static const float cirrus_sigma_t         = 0.03;
 static const float3 cirrus_streak_axis    = float3(1.0, 0.0, 0.0); // direction of the wispy streaks
@@ -117,7 +128,7 @@ static const float  cloud_ambient_factor  = 0.12;   // ambient strength relative
 static const float3 cloud_ground_bounce   = float3(0.045, 0.038, 0.028); // warm terrain bounce onto the undersides
 static const float  cloud_albedo          = 0.97;   // single scattering albedo, near 1 for water clouds
 static const float  cloud_sun_step_base   = 30.0;   // first sun-march step length, finer to avoid noisy self-shadow
-static const float  cloud_sun_step_growth = 2.8;    // geometric growth between sun samples, tuned so 6 steps cover the same ~8 km as the old 8 step, growth 2 march
+static const float  cloud_sun_step_growth = 2.0;    // geometric growth between sun samples, 8 steps cover ~7.7 km, the old 6 step growth 2.8 march quantized the optical depth into shells that striped the shaded side of thick bulbs
 
 // night lighting, faint cool blue glow so cumulus do not go pitch black after sunset. the
 // moon tint is multiplied into the moon-dir transmittance lookup, the airglow floor models
@@ -137,17 +148,26 @@ static const float  cloud_aerial_falloff  = 4.0e-5;
 // the old scheme and it capped the visible cloud field at ~10 km, which left one weather
 // blob overhead and an empty sky around it. residual march noise from the coarse far steps
 // is integrated out by the temporal accumulation in skysphere.hlsl
-static const int    cumulus_view_steps    = 96;
+static const int    cumulus_view_steps    = 128;
 static const float  cumulus_step_min      = 100.0;
-static const float  cumulus_step_max      = 625.0;
+static const float  cumulus_step_max      = 470.0;
 static const float  cumulus_range_max     = 60000.0;  // haze leaves ~9 percent contribution at this distance
-static const float  cirrus_range_max      = 120000.0;
-static const int    cirrus_view_steps     = 24;
-static const int    cumulus_sun_steps     = 6;
+static const float  cirrus_range_max      = 80000.0;  // haze leaves ~4 percent here, the old 120 km tail sampled 5 km apart and striped the horizon
+static const int    cirrus_view_steps     = 32;
+static const int    cumulus_sun_steps     = 8;
 
 // weather is a 26 km domain, resampling it every view step is wasted work, the cached value
 // is reused for this many steps (at most ~1.9 km at the coarsest step) before a fresh lookup
 static const int    cumulus_weather_interval = 3;
+
+// cloud shadow map, cumulus transmittance toward the sun stored as a 2d map indexed by where
+// the sun ray crosses the cloud base plane, baked once per frame by the CLOUD_SHADOW kernel
+// and sampled by the volumetric fog march so the sun shafts thread through the cloud gaps
+// 8 km half extent over a 1024 map gives ~16 m texels, anything visible on the ground sits
+// well inside that range and the border fade hands the rest of the world back to unshadowed
+static const float cloud_shadow_half_extent = 8000.0;
+static const int   cloud_shadow_steps       = 32;
+static const float cloud_shadow_min_sun_y   = 0.087; // ~5 degrees, keeps the projection bounded at grazing sun
 
 // =====================================================================
 // noise generation (used by the CLOUD_NOISE compute kernel)
@@ -349,7 +369,7 @@ float cloud_height_profile_cirrus(float h_norm)
 }
 
 // 2d procedural weather term, low-frequency horizontal coverage, drives where cumulus exists
-// cumulus_coverage directly controls the fraction of horizontal area that has cloud, the
+// the light-authored coverage directly controls the fraction of horizontal area that has cloud, the
 // (1 - coverage) threshold carves large clear regions instead of just biasing toward more cloud
 // the position is domain-warped before sampling so the underlying noise tile grid does not
 // appear as lanes of identical clumps across the sky, and a second much larger octave is
@@ -384,8 +404,9 @@ float2 cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
     float wb     = nb.r;
     
     float w        = lerp(wa, wb, 0.35);
-    float thr      = 1.0 - cumulus_coverage;
-    float gain     = 1.0 / max(cumulus_coverage, 0.05);
+    float cov      = cloud_coverage_cumulus();
+    float thr      = 1.0 - cov;
+    float gain     = 1.0 / max(cov, 0.05);
     float coverage = saturate((w - thr) * gain);
     
     // type rides a decorrelated channel of the large-scale sample and is pulled up by the
@@ -515,7 +536,7 @@ float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
     float4 n        = cloud_sample_noise(noise, samp, uvw);
     float wisp      = n.a * 0.7 + n.b * 0.3;
     
-    float density   = saturate(cloud_remap(wisp, 1.0 - cirrus_coverage, 1.0, 0.0, 1.0));
+    float density   = saturate(cloud_remap(wisp, 1.0 - cloud_coverage_cirrus(), 1.0, 0.0, 1.0));
     return density * profile * cirrus_density_mul;
 }
 
@@ -604,7 +625,10 @@ float cloud_sun_optical_depth_cumulus(
     [unroll]
     for (int i = 0; i < cumulus_sun_steps; i++)
     {
-        float3 p       = pos + sun_dir * (t + step_len * jitter);
+        // per segment golden ratio offset, one shared jitter moved every sample shell in
+        // lockstep and left concentric stripes across the shadowed side of thick bulbs
+        float jitter_i = frac(jitter + float(i) * 0.6180339887);
+        float3 p       = pos + sun_dir * (t + step_len * jitter_i);
         float d        = cloud_density_cumulus_cheap(p, noise, samp, weather);
         optical_depth += d * step_len;
         t             += step_len;
@@ -980,6 +1004,67 @@ void clouds_evaluate(
 }
 
 // =====================================================================
+// cloud shadow map
+// =====================================================================
+
+// projects a world position along the sun onto the cloud base plane, the crossing point is
+// the shadow map's index so every altitude below the clouds gets correct shadow parallax.
+// the map is centered on the camera's own crossing so nearby samples land mid map, both the
+// bake and every consumer derive the mapping from camera and sun alone, no cpu plumbing
+float2 cloud_shadow_plane_uv(float3 pos, float3 sun_dir, float3 cam_pos)
+{
+    float  sun_y    = max(sun_dir.y, cloud_shadow_min_sun_y);
+    float2 slope    = sun_dir.xz / sun_y;
+    float2 crossing = pos.xz     + slope * (cumulus_bottom_alt - pos.y);
+    float2 anchor   = cam_pos.xz + slope * (cumulus_bottom_alt - cam_pos.y);
+    return (crossing - anchor) / (2.0 * cloud_shadow_half_extent) + 0.5;
+}
+
+// transmittance toward the sun at a world position, fades to unshadowed at the map border so
+// the clamped edge texel does not smear one shadow value across the world beyond the extent
+// filtered with a bicubic b-spline built from four bilinear taps, plain bilinear magnified
+// the texel grid into visible diamonds on the ground, the b-spline kernel has continuous
+// derivatives so the projected shadow reads as a smooth cloud silhouette. the filter runs on
+// a grid coarsened by the scale below, each tap then averages a texel neighbourhood and the
+// kernel widens to ~60 m on the ground, which hides the point sampled bake's edge staircase
+// and matches the soft penumbra real cloud shadows get from the sun's disc and sky scatter
+static const float cloud_shadow_filter_scale = 2.0;
+
+float cloud_shadow_sample(Texture2D shadow_map, SamplerState samp, float3 pos, float3 sun_dir, float3 cam_pos)
+{
+    float2 uv     = cloud_shadow_plane_uv(pos, sun_dir, cam_pos);
+    float2 border = min(uv, 1.0 - uv);
+    float  inside = smoothstep(0.0, 0.04, min(border.x, border.y));
+    
+    float2 res;
+    shadow_map.GetDimensions(res.x, res.y);
+    res      /= cloud_shadow_filter_scale;
+    float2 tc = uv * res - 0.5;
+    float2 f  = frac(tc);
+    tc       -= f;
+    
+    float2 f2 = f * f;
+    float2 f3 = f2 * f;
+    float2 w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
+    float2 w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+    float2 w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
+    float2 w3 = f3 / 6.0;
+    
+    // fold the sixteen texel kernel into four bilinear fetches at weighted offsets
+    float2 s0 = w0 + w1;
+    float2 s1 = w2 + w3;
+    float2 t0 = (tc - 0.5 + w1 / s0) / res;
+    float2 t1 = (tc + 1.5 + w3 / s1) / res;
+    
+    float trans = shadow_map.SampleLevel(samp, float2(t0.x, t0.y), 0).r * s0.x * s0.y;
+    trans      += shadow_map.SampleLevel(samp, float2(t1.x, t0.y), 0).r * s1.x * s0.y;
+    trans      += shadow_map.SampleLevel(samp, float2(t0.x, t1.y), 0).r * s0.x * s1.y;
+    trans      += shadow_map.SampleLevel(samp, float2(t1.x, t1.y), 0).r * s1.x * s1.y;
+    
+    return lerp(1.0, trans, inside);
+}
+
+// =====================================================================
 // compute kernel - bake the 3d noise volume once at startup
 // =====================================================================
 
@@ -1008,6 +1093,75 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float a           = cloud_perlin_fbm(uvw, 8);
     
     tex3d_uav[tid] = float4(saturate(r), saturate(g), saturate(b), saturate(a));
+}
+#endif
+
+// =====================================================================
+// compute kernel - bake the sun-projected cloud shadow map once per frame
+// =====================================================================
+
+#if defined(CLOUD_SHADOW)
+[numthreads(8, 8, 1)]
+void main_cs(uint3 tid : SV_DispatchThreadID)
+{
+    float2 res;
+    tex_uav.GetDimensions(res.x, res.y);
+    if (any(tid.xy >= uint2(res)))
+    {
+        return;
+    }
+    
+    Light light;
+    Surface surface;
+    light.Build(0, surface);
+    float3 sun_dir = normalize(-light.forward);
+    if (sun_dir.y <= 0.0)
+    {
+        tex_uav[tid.xy] = 1.0;
+        return;
+    }
+    
+    // texel to base plane crossing, inverse of cloud_shadow_plane_uv with pos on the plane
+    float3 cam_pos  = get_camera_position();
+    float  sun_y    = max(sun_dir.y, cloud_shadow_min_sun_y);
+    float2 slope    = sun_dir.xz / sun_y;
+    float2 anchor   = cam_pos.xz + slope * (cumulus_bottom_alt - cam_pos.y);
+    float2 uv       = (float2(tid.xy) + 0.5) / res;
+    float2 crossing = anchor + (uv - 0.5) * (2.0 * cloud_shadow_half_extent);
+    
+    // march the padded shell along the sun ray passing through the crossing point, the cheap
+    // low frequency density is enough since the fog only needs the coarse shadow silhouette
+    float3 dir   = normalize(float3(slope.x, 1.0, slope.y));
+    float  t_pad = cumulus_shell_padding / dir.y;
+    float3 p0    = float3(crossing.x, cumulus_bottom_alt, crossing.y) - dir * t_pad;
+    float  span  = (cumulus_thickness + 2.0 * cumulus_shell_padding) / dir.y;
+    float  dt    = span / float(cloud_shadow_steps);
+    
+    // coherent midpoint sampling, a per-texel jitter decorrelates neighbouring texels and
+    // prints a dot grid onto the ground, without it any residual march error stays smooth
+    float optical_depth = 0.0;
+    float2 weather      = float2(0.0, 0.0);
+    int weather_age     = cumulus_weather_interval * 2;
+    
+    [loop]
+    for (int i = 0; i < cloud_shadow_steps; i++)
+    {
+        float3 p = p0 + dir * ((float(i) + 0.5) * dt);
+        
+        if (weather_age >= cumulus_weather_interval * 2)
+        {
+            weather     = cloud_weather(tex3d, GET_SAMPLER(sampler_bilinear_wrap), p);
+            weather_age = 0;
+        }
+        weather_age++;
+        
+        if (weather.x > 0.0)
+        {
+            optical_depth += cloud_density_cumulus_cheap(p, tex3d, GET_SAMPLER(sampler_bilinear_wrap), weather) * dt;
+        }
+    }
+    
+    tex_uav[tid.xy] = exp(-optical_depth * cumulus_sigma_t);
 }
 #endif
 

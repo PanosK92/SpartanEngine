@@ -841,16 +841,19 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     tex_uav.GetDimensions(res.x, res.y);
 
     // bake mode, set by Pass_Skysphere via the first push constant float
-    //   warmup = 1.0, the first n frames after a sun direction change or app start, the cpu
+    //   warmup > 0, the first n frames after a sun, coverage or app start change, the cpu
     //            issues a full sized dispatch and every output pixel runs the full bake, the
-    //            strong temporal blend below converges the panorama in ~10 frames
+    //            value is the progressive blend for that frame (1, 1/2, 1/3 ...) so the first
+    //            frame fully replaces the panorama, no ghost of the old sky survives, and the
+    //            burst converges to the exact mean of the jittered bakes
     //   warmup = 0.0, steady state, the cpu issues a quarter resolution dispatch (1/16 of
     //            the waves) and each thread writes exactly one full resolution pixel chosen
     //            from a 4x4 tile by a phase that cycles with buffer_frame.frame, so every
     //            pixel refreshes every 16 frames or ~267 ms at 60 fps. the coarse dispatch
     //            is the real saver, an early-return scheme does not skip wave time because
     //            gpu lockstep execution pays for every wave with one active lane
-    const bool warmup = buffer_pass.values[0].x > 0.5;
+    const float warmup_blend = buffer_pass.values[0].x;
+    const bool  warmup       = warmup_blend > 0.0;
     uint2 pixel;
     if (warmup)
     {
@@ -899,14 +902,16 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float  cloud_trans      = 1.0;
     if (!below_horizon)
     {
-        // spatial ign plus a golden ratio sequence keyed to the refresh cycle, so every rebake
-        // of a pixel marches with a fresh offset and the temporal blend averages the march
-        // noise out. the shared ign helper cycles with frame mod 16 which is synchronized with
-        // the 16 frame refresh phase, that handed each pixel the same jitter on every refresh
-        // and froze the noise pattern permanently into the panorama
-        float ign          = frac(52.9829189 * frac(dot(float2(pixel), float2(0.06711056, 0.00583715))));
+        // white noise spatial phase plus a golden ratio sequence keyed to the refresh cycle,
+        // every rebake of a pixel marches with a fresh offset and the temporal blend averages
+        // the march noise out. the phase used to be interleaved gradient noise, which carries
+        // diagonal line structure by construction, and because neighbouring pixels keep phase
+        // correlated residual errors through the blend those diagonals printed into the
+        // panorama as permanent stripes across every cloud, a full avalanche integer hash has
+        // no spatial structure so the residual error reads as fine unstructured grain instead
+        float phase        = float(cloud_hash_uint(pixel.x + cloud_hash_uint(pixel.y))) / 4294967295.0;
         uint  jitter_cycle = warmup ? buffer_frame.frame : (buffer_frame.frame >> 4u);
-        float cloud_jitter = frac(ign + float(jitter_cycle & 255u) * 0.6180339887);
+        float cloud_jitter = frac(phase + float(jitter_cycle & 255u) * 0.6180339887);
         clouds_evaluate(cam_pos, orig_view, sun_dir,
             tex3d, tex,
             GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp),
@@ -979,16 +984,18 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     final_color        = hdr_clamp_chroma(final_color, 100.0);
 
     // temporal accumulation, behaviour depends on bake mode
-    //   warmup, low blend factor integrates ~10 frames of jittered full bakes per pixel so the
-    //   panorama converges from scratch in under half a second after a sun direction change
-    //   steady, gentle blend averages the last ~7 refreshes of each pixel, the march jitter
+    //   warmup, progressive average of the jittered full bakes, frame n blends at 1/n so the
+    //   first frame fully replaces the panorama and the burst lands on the exact mean, the
+    //   old fixed 0.1 blend left ~43 percent of the previous sky in the history after the
+    //   burst, which is what smeared ghost cloud stamps across the sky after coverage changes
+    //   steady, gentle blend averages the last ~16 refreshes of each pixel, the march jitter
     //   cycles between refreshes so cloud march noise integrates out instead of being written
     //   raw, and the cloud field time is snapped per refresh cycle in clouds.hlsl so every
     //   refresh of a cycle sees one coherent field, motion then arrives as a small step that
-    //   this blend crossfades. at one refresh per 16 frames the lag is ~2 s, under 25 m of
+    //   this blend crossfades. at one refresh per 16 frames the lag is ~4.5 s, under 60 m of
     //   cloud drift at the shipped wind speeds, invisible for slow evolving cumulus
     float4 prev = tex_uav[pixel];
-    final_color = lerp(prev.rgb, final_color, warmup ? 0.1 : 0.15);
+    final_color = lerp(prev.rgb, final_color, warmup ? warmup_blend : 0.06);
 
     tex_uav[pixel] = float4(final_color, 1.0);
 }

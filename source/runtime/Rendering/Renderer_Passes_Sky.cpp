@@ -42,6 +42,7 @@ namespace spartan
         RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
         RHI_Texture* tex_lut_sky_view                 = GetRenderTarget(Renderer_RenderTarget::lut_sky_view);
         RHI_Texture* tex_cloud_noise                  = GetRenderTarget(Renderer_RenderTarget::cloud_noise);
+        RHI_Texture* tex_cloud_shadow                 = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
 
         cmd_list->BeginTimeblock("skysphere");
         {
@@ -65,6 +66,23 @@ namespace spartan
                     tex_lut_sky_view->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
                 }
 
+                // cloud shadow map, cumulus transmittance along the sun projected on the cloud
+                // base plane, rebaked every frame since it tracks the camera and the sun, the
+                // volumetric fog march samples it to carve the sun shafts through cloud gaps
+                {
+                    RHI_PipelineState pso;
+                    pso.name             = "cloud_shadow";
+                    pso.shaders[Compute] = GetShader(Renderer_Shader::clouds_shadow_c);
+                    cmd_list->SetPipelineState(pso);
+
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_cloud_shadow);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    cmd_list->Dispatch(tex_cloud_shadow);
+
+                    tex_cloud_shadow->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+                }
+
                 RHI_PipelineState pso;
                 pso.name             = "skysphere_atmospheric_scattering";
                 pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
@@ -77,9 +95,10 @@ namespace spartan
                 // cloud noise volume rides the tex3d srv slot
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
 
-                // values[0].x = 1.0 during the warmup burst (full panorama bake with the legacy
-                // 0.1 temporal fade-in), 0.0 in steady state (partial dispatch animation mode)
-                m_pcb_pass_cpu.set_f3_value(m_pass_state.sky_warmup_this_frame ? 1.0f : 0.0f);
+                // values[0].x carries the warmup blend during the burst (1, 1/2, 1/3 ... so the
+                // full bakes average progressively with no ghost of the previous sky), 0.0 in
+                // steady state which selects the partial dispatch animation mode in the shader
+                m_pcb_pass_cpu.set_f3_value(m_pass_state.sky_warmup_this_frame ? m_pass_state.sky_warmup_blend : 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
                 if (m_pass_state.sky_warmup_this_frame)

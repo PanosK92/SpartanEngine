@@ -129,6 +129,13 @@ namespace spartan
         void SetPreset(const LightPreset preset);
         LightPreset GetPreset() const { return m_preset; }
 
+        // time of day, 0.0 = midnight, 0.5 = noon, 1.0 = next midnight, positions the sun for directional lights
+        void SetTimeOfDay(const float time_of_day, const float yaw_degrees = 0.0f);
+
+        // cloud coverage, 0 = clear sky, 1 = overcast, drives the cumulus weather map for directional lights
+        void SetCloudCoverage(const float coverage);
+        float GetCloudCoverage() const { return m_cloud_coverage; }
+
         // range
         void SetRange(float range);
         auto GetRange() const { return m_range; }
@@ -204,6 +211,7 @@ namespace spartan
         LightPreset m_preset             = LightPreset::custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
+        float m_cloud_coverage           = 0.38f; // fair weather default, matches the old hardcoded shader constant
         float m_area_width               = 1.0f;  // area light width in meters
         float m_area_height              = 1.0f;  // area light height in meters
         uint32_t m_index                 = 0;
