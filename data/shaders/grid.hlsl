@@ -53,6 +53,11 @@ PixelInput main_vs(Vertex_PosUvNorTan_Cpu input)
 
 float4 main_ps(PixelInput input) : SV_TARGET
 {
+    if (is_occluded_by_scene(input.position))
+    {
+        discard;
+    }
+
     float3 world_pos = input.position_world.xyz;
 
     // grid test normal

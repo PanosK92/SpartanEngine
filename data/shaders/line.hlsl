@@ -39,5 +39,10 @@ vertex main_vs(vertex input)
 
 float4 main_ps(vertex input) : SV_TARGET
 {
+    if (is_occluded_by_scene(input.position))
+    {
+        discard;
+    }
+
     return input.color;
 }

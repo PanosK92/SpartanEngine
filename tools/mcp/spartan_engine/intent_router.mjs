@@ -311,9 +311,9 @@ function is_calibrate_lights_request(value) {
 }
 
 function is_city_develop_request(value) {
-  const wants_city = /\b(road|roads|spline|highway|street|connect|link|network|district|landmark|city)\b/.test(value);
-  const constructive = /\b(create|make|build|connect|link|lay|add|generate|scan|decorate|develop)\b/.test(value);
-  const has_targets = /\b(gas_station|dockyard|airway|airport|playground|landmark|between|from|to|map|world|areas?)\b/.test(value) || /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/.test(value);
+  const wants_city = /\b(road|roads|spline|highway|street|connect|link|network|district|landmark|city|blockout|market|downtown|skyscraper|park|industrial|residential|plaza|parking)\b/.test(value);
+  const constructive = /\b(create|make|build|connect|link|lay|add|generate|scan|decorate|develop|block\s*out|plan)\b/.test(value);
+  const has_targets = /\b(gas_station|dockyard|airway|airport|playground|landmark|between|from|to|map|world|areas?|districts?|city|around)\b/.test(value) || /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/.test(value);
   return wants_city && constructive && has_targets && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
 }
 

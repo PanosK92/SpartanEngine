@@ -153,10 +153,10 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
         pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
         pso.render_target_color_textures[0]  = tex_out;
-        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
         cmd_list->SetPipelineState(pso);
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
 
         // follow camera in world-unit increments so the grid appears stationary
         {
@@ -202,12 +202,12 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Wireframe);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
             pso.render_target_color_textures[0]  = tex_out;
             pso.clear_color[0]                   = rhi_color_load;
-            pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
             pso.primitive_topology               = RHI_PrimitiveTopology::LineList;
             cmd_list->SetPipelineState(pso);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
 
             if (vertex_count > m_lines_vertex_buffer->GetElementCount())
             {

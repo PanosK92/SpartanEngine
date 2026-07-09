@@ -43,8 +43,11 @@ const engine_tool_names = new Set([
   "spline_create_road",
   "spline_set_control_points",
   "spline_connect",
+  "spline_reroute",
   "spline_junction",
   "spline_decorate",
+  "district_blockout",
+  "city_blockout",
   "entity_create_primitive",
   "entity_create_primitive_batch",
   "entity_update",
@@ -434,14 +437,15 @@ function build_prompt(prompt, snapshot, intent = null) {
     "entity_create_light fully initializes the light: intensity is lux for directional and lumens otherwise. Visible blockout defaults are point/spot 8500, area 12000, directional 120000, plus range, angle, area size, shadows, and draw/shadow distances.",
     "Do not pass tiny intensities like 25-100 for blockout lights. If you omit intensity, the tool calibrates it. Only set calibrated false when you intentionally want a dim light.",
     "To calibrate existing scene lights, call lights_calibrate once. Do not write execute_lua or dozens of component_set calls for that.",
-    "For city development: this is city planning, not a complete graph of straight lines. Scan landmarks and their bounding boxes first.",
-    "City planning rules: never drive through an airway/runway, dockyard footprint, or building mass. Approach the outside edge of a district, not its center.",
-    "Prefer an arterial highway that skirts large districts, then spur branches to gas_station / dockyard / airway edges, with junctions where spurs meet the arterial. Do not connect every landmark to every other landmark in a triangle.",
-    "City workflow: world_landmarks -> read bounding boxes and invent a road plan -> spline_create_road or spline_connect with via points for the arterial -> spur legs to district edges -> spline_junction -> spline_decorate.",
-    "Use via / explicit control points when a road must go around the back of the airport or past a yard. Obstacle avoidance helps, but you still choose the network topology.",
-    "spline_decorate adds sidewalks, street lights, and roadside props. After that, add intentional junction accents if useful. Never stop at bare undecorated lines.",
+    "For city development: massing first, roads second. Use city_blockout / district_blockout for districts; never hand-place hundreds of cubes for a city.",
+    "district_blockout presets: market, downtown/skyscrapers, park, industrial, residential, parking, plaza, gas_station. city_blockout lays several districts with corridor gaps and avoid_existing landmarks.",
+    "Architect rules: leave corridors between districts for arterials; do not stamp on runway/existing landmarks; vary density by preset.",
+    "Road pass after massing: world_landmarks -> arterial that skirts large districts -> spur branches to district edges -> spline_junction -> spline_decorate. Never triangle center-to-center through an airway.",
+    "To fix an existing road that cuts through buildings or other roads, call spline_reroute on it. It skirts obstacles and redistributes lights/cameras/props along the new path without deleting them.",
+    "Never drive through an airway/runway, dockyard footprint, or building mass. Approach district edges, not centers. Use via points when an arterial must go around a district.",
+    "spline_decorate adds sidewalks, street lights, and roadside props. Never stop at bare undecorated lines.",
     "Never hand-build spline_point_* children. Do not search source code for city prompts. Do not invent Lua APIs.",
-    "Blockouts and area construction must use native tools: entity_resolve or entity_create_empty for the parent, then entity_create_primitive_batch for geometry, then entity_create_light for lights.",
+    "Single-area custom blockouts still use entity_resolve or entity_create_empty, then entity_create_primitive_batch, then entity_create_light. Prefer district_blockout when a preset fits.",
     "Do not use execute_lua for API discovery, pairs/next probing, method listing, or exploratory scripts. Those crash or hang the engine.",
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
     "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Renderable|Light|...), Renderable:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
@@ -455,7 +459,7 @@ function build_prompt(prompt, snapshot, intent = null) {
   }
   if (intent?.kind === "city_develop")
   {
-    lines.push("This is a city-planning request. Do not draw a triangle of center-to-center roads. Invent an arterial that skirts the airport/runway, branch spurs to district edges, join real junctions, decorate streets, and keep roads outside large footprints.");
+    lines.push("This is a city-planning request. If the user wants districts/areas/blockout, use city_blockout or district_blockout first. If they want roads, plan an arterial that skirts large footprints and spur to edges — never a triangle through centers. Massing and roads can be separate passes.");
     if (Array.isArray(intent.landmarks) && intent.landmarks.length > 0)
     {
       lines.push(`Landmarks mentioned in the prompt: ${intent.landmarks.join(", ")}. Prefer these, but still scan world_landmarks and use their bounding boxes for edge approaches.`);

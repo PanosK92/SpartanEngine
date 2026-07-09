@@ -45,6 +45,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `entity_create_light` for every light; it fully initializes intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.
 - Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible.
 - Use `lights_calibrate` to fix existing scene lights in one call; specialty car lights stay dim, blockout lights get lifted.
+- For city massing: `city_blockout` / `district_blockout` (market, downtown, park, industrial, residential, parking, plaza, gas_station). Never hundreds of manual cubes.
 - For city roads: scan `world_landmarks` and bounding boxes, invent an arterial that skirts large districts, spur to edges, `spline_junction`, then `spline_decorate`. Never triangle center-to-center through an airway. Never hand-build `spline_point_*` children.
 - Use `camera_snapshot` before interpreting camera-relative placement.
 - Use `world_raycast` for ground or surface-relative placement when possible.
@@ -70,6 +71,8 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Prompt phrases like `parent under an entity called dockyard` must resolve to `dockyard`, not filler text such as `parent under an`.
 - Do not call `pairs()` or `next()` on raw C++ entity containers from Lua; use the table wrappers or `ForEachChild`.
 - spline_junction snaps nearest endpoints only, not mid-spline points. For a mid-route T, split the arterial into two legs that both end at the junction, then join those ends with the spur.
+- spline_reroute is implemented in the engine and MCP server source, but Cursor may not expose it until the MCP server session is restarted. Workaround: call EngineClient.command('spline_reroute', ...) directly. set_spline_control_points_world replaces spline_point_* children and can drop non-captured children if keep/redistribute misses them.
+- spline_reroute reclaim can steal other roads: named road_light poles under arterials get reparented, and if the pole parent has Render the whole arterial is pulled under the target. After reclaim, restore foreign arterials to root and re-run spline_decorate replace on them. Prefer keep_children only for true children until reclaim filters exclude other spline roads.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
@@ -85,6 +88,8 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Add corrections here when a previous note turns out to be wrong or incomplete.
 - `spline_distribute` `edge_offset` 2 is too wide on roads with side walls (plan.world); cameras land outside the walls looking at them, use `edge_offset` 1 there.
 - Target name extraction used to steal phrases ending in `entity` such as `parent under an`; it now prefers `called`/`named` names and filters stopwords.
+- `city_blockout`, `district_blockout`, and `spline_reroute` are native MCP tools after rebuild. If you see `unknown command`, rebuild the engine and restart the MCP assistant.
+- Use `spline_reroute` to fix an existing arterial that cuts through buildings/roads; it preserves and redistributes lights/cameras.
 
 ## Advice To Future Agents
 - Treat this file as advice, not absolute truth.
@@ -101,4 +106,5 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Dockyard blockout (2026-07-08): intent resolved target as `parent under an`, Cursor fell back to exploratory `execute_lua` (`pairs` on entities, Light/Render probing), then the engine connection closed. Fix path is native batch primitives under a correctly resolved parent, not Lua discovery.
 - Dockyard lights (2026-07-08 retry): agent skipped `entity_create_light` and set intensity 25-55 lumens via `component_set`, so lights were invisible. Always use `entity_create_light` with calibrated photometric defaults.
 - Scene light calibration (2026-07-08): Cursor used Lua then batches; next time route to `lights_calibrate`. Car specialty lights (brake/exhaust) should stay intentionally dim.
-- City road networks: arterial + spurs, approach district edges, skirt runways/yards, then decorate. Triangle graphs through landmark centers are wrong. Manual `spline_point_*` recipes are obsolete.
+- City massing: `city_blockout` / `district_blockout` first. City roads: arterial + spurs, approach district edges, skirt runways/yards, then decorate. Use `spline_reroute` to fix roads that cut through geometry while keeping lights/cameras. Triangle graphs through landmark centers are wrong. Manual `spline_point_*` recipes are obsolete.
+- Capability gap: if MCP returns `unknown command` for a newly added tool, rebuild the engine binary and restart the assistant/MCP bridge before retrying.

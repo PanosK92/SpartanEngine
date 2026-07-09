@@ -93,7 +93,8 @@ Use these first:
 - `entity_create_primitive_batch` for blockouts and repeated geometry; use `execute_lua` only for focused scripts with known bindings, never for API probing.
 - `entity_create_light` for every light; it fully initializes intensity (lux/lumens), range, angle, area size, shadows, and distances. Do not hand-roll lights.
 - `lights_calibrate` to fix existing scene lights in one call.
-- City planning: `world_landmarks` + bounding boxes, arterial that skirts districts, spur to edges, `spline_junction`, `spline_decorate`. Never triangle through landmark centers / runways.
+- City massing: `city_blockout` / `district_blockout` (market, downtown, park, industrial, residential, parking, plaza, gas_station).
+- City roads: `world_landmarks` + bounding boxes, arterial that skirts districts, spur to edges, `spline_junction`, `spline_decorate`. Use `spline_reroute` to fix existing roads that cut through buildings while keeping lights/cameras. Never triangle through landmark centers / runways.
 - `entity_set_transform_batch` for repositioning many entities in one call.
 - `agent_memory_append` after a durable lesson, correction, recurring problem, or maintainer improvement idea.
 

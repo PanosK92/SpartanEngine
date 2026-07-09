@@ -7259,43 +7259,56 @@ namespace spartan
         std::vector<RoadObstacle> collect_road_obstacles(const std::vector<uint64_t>& ignore_ids, float clearance)
         {
             std::vector<RoadObstacle> obstacles;
+            auto is_ignored = [&](uint64_t id)
+            {
+                for (uint64_t ignore_id : ignore_ids)
+                {
+                    if (id == ignore_id)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
             for (Entity* entity : World::GetEntities())
             {
                 if (entity == nullptr || entity->GetParent() != nullptr)
                 {
                     continue;
                 }
-                if (is_landmark_noise(entity))
-                {
-                    continue;
-                }
-                if (entity->GetComponent<Spline>() != nullptr)
-                {
-                    continue;
-                }
-
-                bool ignored = false;
-                for (uint64_t ignore_id : ignore_ids)
-                {
-                    if (entity->GetObjectId() == ignore_id)
-                    {
-                        ignored = true;
-                        break;
-                    }
-                }
-                if (ignored)
+                if (is_landmark_noise(entity) || is_ignored(entity->GetObjectId()))
                 {
                     continue;
                 }
 
                 math::BoundingBox bounds;
-                if (!subtree_render_bounds(entity, bounds))
+                if (Spline* spline = entity->GetComponent<Spline>())
+                {
+                    // other roads are obstacles too, use control point span so we do not cross them
+                    const std::vector<math::Vector3> points = spline->GetControlPoints();
+                    if (points.size() < 2)
+                    {
+                        continue;
+                    }
+                    bounds = math::BoundingBox(points.data(), static_cast<uint32_t>(points.size()));
+                    math::Vector3 min = bounds.GetMin();
+                    math::Vector3 max = bounds.GetMax();
+                    const float half_width = std::max(2.0f, spline->GetRoadWidth() * 0.5f + clearance * 0.25f);
+                    min.x -= half_width;
+                    min.z -= half_width;
+                    max.x += half_width;
+                    max.z += half_width;
+                    min.y -= 2.0f;
+                    max.y += 2.0f;
+                    bounds = math::BoundingBox(min, max);
+                }
+                else if (!subtree_render_bounds(entity, bounds))
                 {
                     continue;
                 }
 
                 const math::Vector3 size = bounds.GetSize();
-                // skip tiny props and the giant ground plane
                 if (size.x < 4.0f && size.z < 4.0f)
                 {
                     continue;
@@ -7669,6 +7682,393 @@ namespace spartan
             }
 
             return spline_road_receipt(entity, spline);
+        }
+
+        struct SplineChildPlacement
+        {
+            Entity* entity = nullptr;
+            float lateral = 0.0f;
+            float height = 0.0f;
+            float old_arc = 0.0f;
+        };
+
+        std::vector<SplineChildPlacement> capture_spline_child_placements(Entity* entity, Spline* spline)
+        {
+            std::vector<SplineChildPlacement> placements;
+            if (entity == nullptr || spline == nullptr || spline->GetLength() <= 0.1f)
+            {
+                return placements;
+            }
+
+            const uint32_t sample_count = 512;
+            std::vector<math::Vector3> samples(sample_count + 1);
+            std::vector<float> arc_lengths(sample_count + 1, 0.0f);
+            for (uint32_t i = 0; i <= sample_count; i++)
+            {
+                samples[i] = spline->GetPoint(static_cast<float>(i) / static_cast<float>(sample_count));
+                if (i > 0)
+                {
+                    arc_lengths[i] = arc_lengths[i - 1] + samples[i].Distance(samples[i - 1]);
+                }
+            }
+            auto closest_index = [&](const math::Vector3& position)
+            {
+                uint32_t best = 0;
+                float best_dist = std::numeric_limits<float>::max();
+                for (uint32_t i = 0; i <= sample_count; i++)
+                {
+                    const float dist = samples[i].Distance(position);
+                    if (dist < best_dist)
+                    {
+                        best_dist = dist;
+                        best = i;
+                    }
+                }
+                return best;
+            };
+
+            auto already_captured = [&](Entity* candidate)
+            {
+                for (const SplineChildPlacement& placement : placements)
+                {
+                    if (placement.entity == candidate)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            auto add_placement = [&](Entity* child)
+            {
+                if (child == nullptr || !World::EntityExists(child) || already_captured(child))
+                {
+                    return;
+                }
+                const math::Vector3 position = child->GetPosition();
+                const uint32_t index = closest_index(position);
+                const float t = static_cast<float>(index) / static_cast<float>(sample_count);
+                const math::Vector3 point = samples[index];
+                math::Vector3 tangent = spline->GetTangent(t);
+                tangent.y = 0.0f;
+                if (tangent.LengthSquared() < 0.0001f)
+                {
+                    tangent = math::Vector3(1.0f, 0.0f, 0.0f);
+                }
+                else
+                {
+                    tangent.Normalize();
+                }
+                math::Vector3 right = tangent.Cross(math::Vector3::Up);
+                if (right.LengthSquared() < 0.0001f)
+                {
+                    right = math::Vector3(1.0f, 0.0f, 0.0f);
+                }
+                else
+                {
+                    right.Normalize();
+                }
+
+                SplineChildPlacement placement;
+                placement.entity = child;
+                placement.lateral = right.Dot(position - point);
+                placement.height = position.y - point.y;
+                placement.old_arc = arc_lengths[index];
+                placements.push_back(placement);
+            };
+
+            // 1) every direct child except control points (poles carry nested lights)
+            entity->AcquireChildren();
+            for (Entity* child : entity->GetChildren())
+            {
+                if (child == nullptr)
+                {
+                    continue;
+                }
+                if (child->GetObjectName().find("spline_point_") == 0)
+                {
+                    continue;
+                }
+                add_placement(child);
+            }
+
+            // 2) reclaim road furniture near the current path, and stranded road_* furniture left behind by earlier edits
+            const float grab_radius = std::max(18.0f, spline->GetRoadWidth() * 2.0f + 8.0f);
+            for (Entity* candidate : World::GetEntities())
+            {
+                if (candidate == nullptr || candidate == entity || !World::EntityExists(candidate))
+                {
+                    continue;
+                }
+                if (candidate->GetParent() == entity)
+                {
+                    continue;
+                }
+
+                Entity* root = candidate;
+                while (root->GetParent() != nullptr)
+                {
+                    root = root->GetParent();
+                }
+                if (root != candidate && root != entity)
+                {
+                    const std::string root_name = to_lower_copy(root->GetObjectName());
+                    if (root->HasTag("landmark") || root->HasTag("district") ||
+                        root_name.find("gas") != std::string::npos || root_name.find("dock") != std::string::npos ||
+                        root_name.find("airway") != std::string::npos || root_name.find("market") != std::string::npos ||
+                        root_name.find("downtown") != std::string::npos || root_name.find("park") != std::string::npos ||
+                        root_name.find("industrial") != std::string::npos || root_name.find("residential") != std::string::npos)
+                    {
+                        continue;
+                    }
+                }
+
+                const std::string name = to_lower_copy(candidate->GetObjectName());
+                const bool is_road_named =
+                    name.find("road_light") != std::string::npos ||
+                    name.find("road_prop") != std::string::npos ||
+                    name.find("street_light") != std::string::npos ||
+                    name.find("streetlight") != std::string::npos;
+                const bool looks_like_furniture =
+                    is_road_named ||
+                    candidate->GetComponent<Camera>() != nullptr ||
+                    (candidate->GetComponent<Light>() != nullptr && (name.find("light") != std::string::npos || name.find("pole") != std::string::npos)) ||
+                    (name.find("pole") != std::string::npos && name.find("light") != std::string::npos) ||
+                    name.find("camera") != std::string::npos;
+                if (!looks_like_furniture)
+                {
+                    continue;
+                }
+
+                const uint32_t index = closest_index(candidate->GetPosition());
+                const float distance = samples[index].Distance(candidate->GetPosition());
+                // named road furniture is reclaimed even if stranded far from the new path
+                if (!is_road_named && distance > grab_radius)
+                {
+                    continue;
+                }
+
+                Entity* move_root = candidate;
+                if (candidate->GetParent() != nullptr && candidate->GetParent() != entity)
+                {
+                    Entity* parent = candidate->GetParent();
+                    const std::string parent_name = to_lower_copy(parent->GetObjectName());
+                    if (parent->GetComponent<Render>() != nullptr || parent_name.find("pole") != std::string::npos ||
+                        parent_name.find("road_light") != std::string::npos)
+                    {
+                        move_root = parent;
+                    }
+                }
+                if (move_root->GetParent() != entity)
+                {
+                    move_root->SetParent(entity);
+                }
+                add_placement(move_root);
+            }
+
+            std::sort(placements.begin(), placements.end(), [](const SplineChildPlacement& a, const SplineChildPlacement& b)
+            {
+                return a.old_arc < b.old_arc;
+            });
+            return placements;
+        }
+
+        uint32_t apply_spline_child_placements(Spline* spline, const std::vector<SplineChildPlacement>& placements)
+        {
+            if (spline == nullptr || placements.empty())
+            {
+                return 0;
+            }
+
+            const float length = spline->GetLength();
+            if (length <= 0.1f)
+            {
+                return 0;
+            }
+
+            const float step = spline->GetClosedLoop()
+                ? length / static_cast<float>(placements.size())
+                : (placements.size() == 1 ? length * 0.5f : length / static_cast<float>(placements.size() - 1));
+
+            uint32_t moved = 0;
+            for (size_t i = 0; i < placements.size(); i++)
+            {
+                Entity* target = placements[i].entity;
+                if (target == nullptr || !World::EntityExists(target))
+                {
+                    continue;
+                }
+                const float new_distance = placements.size() == 1 ? step : static_cast<float>(i) * step;
+                const float new_t = spline->GetTAtDistance(new_distance, 32);
+                const math::Vector3 new_point = spline->GetPoint(new_t);
+                math::Vector3 new_tangent = spline->GetTangent(new_t);
+                new_tangent.y = 0.0f;
+                if (new_tangent.LengthSquared() < 0.0001f)
+                {
+                    new_tangent = math::Vector3(1.0f, 0.0f, 0.0f);
+                }
+                else
+                {
+                    new_tangent.Normalize();
+                }
+                math::Vector3 new_right = new_tangent.Cross(math::Vector3::Up);
+                if (new_right.LengthSquared() < 0.0001f)
+                {
+                    new_right = math::Vector3(1.0f, 0.0f, 0.0f);
+                }
+                else
+                {
+                    new_right.Normalize();
+                }
+                target->SetPosition(new_point + new_right * placements[i].lateral + math::Vector3::Up * placements[i].height);
+                target->SetRotation(math::Quaternion::FromLookRotation(new_tangent, math::Vector3::Up));
+                moved++;
+            }
+            return moved;
+        }
+
+        std::string command_spline_reroute(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("spline reroute requires edit mode");
+            }
+
+            std::string error;
+            Entity* entity = nullptr;
+            if (get_argument(request, "id") || get_argument(request, "entity_id"))
+            {
+                entity = get_entity_from_request(request, error);
+            }
+            if (entity == nullptr)
+            {
+                if (const std::optional<std::string> name = get_argument(request, "name"))
+                {
+                    entity = resolve_entity_token(*name, error);
+                }
+                else if (const std::optional<std::string> id_as_name = get_argument(request, "id"))
+                {
+                    entity = resolve_entity_token(*id_as_name, error);
+                }
+            }
+            if (entity == nullptr)
+            {
+                // last resort: first root named spline_road
+                entity = resolve_entity_token("spline_road", error);
+            }
+            if (entity == nullptr)
+            {
+                return json_error(error.empty() ? "missing spline id or name" : error);
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (spline == nullptr)
+            {
+                return json_error("entity does not have a spline component");
+            }
+
+            std::vector<math::Vector3> world_points = spline->GetControlPoints();
+            if (world_points.size() < 2)
+            {
+                return json_error("spline needs at least 2 control points");
+            }
+
+            if (const std::optional<std::string> from_arg = get_argument(request, "from"))
+            {
+                Entity* from_entity = resolve_entity_token(*from_arg, error);
+                if (from_entity == nullptr)
+                {
+                    return json_error("from landmark not found: " + *from_arg);
+                }
+                math::Vector3 approach;
+                if (!landmark_approach_point(from_entity, world_points.back(), 16.0f, approach))
+                {
+                    approach = from_entity->GetPosition();
+                }
+                world_points.front() = approach;
+            }
+            if (const std::optional<std::string> to_arg = get_argument(request, "to"))
+            {
+                Entity* to_entity = resolve_entity_token(*to_arg, error);
+                if (to_entity == nullptr)
+                {
+                    return json_error("to landmark not found: " + *to_arg);
+                }
+                math::Vector3 approach;
+                if (!landmark_approach_point(to_entity, world_points.front(), 16.0f, approach))
+                {
+                    approach = to_entity->GetPosition();
+                }
+                world_points.back() = approach;
+            }
+
+            if (const std::optional<std::string> via = get_argument(request, "via"))
+            {
+                std::vector<math::Vector3> via_points;
+                if (!parse_vector3_list(*via, via_points))
+                {
+                    return json_error("via must be a flat xyz list");
+                }
+                if (!via_points.empty())
+                {
+                    std::vector<math::Vector3> merged;
+                    merged.push_back(world_points.front());
+                    merged.insert(merged.end(), via_points.begin(), via_points.end());
+                    merged.push_back(world_points.back());
+                    world_points = std::move(merged);
+                }
+            }
+
+            float clearance = 14.0f;
+            if (const std::optional<std::string> clearance_arg = get_argument(request, "clearance"))
+            {
+                if (!parse_float(*clearance_arg, clearance) || clearance < 0.0f || clearance > 200.0f)
+                {
+                    return json_error("clearance must be between 0 and 200");
+                }
+            }
+
+            bool keep_children = true;
+            if (const std::optional<std::string> keep_arg = get_argument(request, "keep_children"))
+            {
+                if (!parse_bool(*keep_arg, keep_children))
+                {
+                    return json_error("invalid keep_children");
+                }
+            }
+
+            const std::vector<SplineChildPlacement> child_placements = keep_children
+                ? capture_spline_child_placements(entity, spline)
+                : std::vector<SplineChildPlacement>{};
+
+            const size_t points_before = world_points.size();
+            const std::vector<uint64_t> ignore_ids = { entity->GetObjectId() };
+            const std::vector<RoadObstacle> obstacles = collect_road_obstacles(ignore_ids, clearance);
+            world_points = avoid_obstacles_on_path(world_points, obstacles, clearance);
+            world_points = avoid_obstacles_on_path(world_points, obstacles, clearance);
+
+            if (!set_spline_control_points_world(entity, spline, world_points, false, error))
+            {
+                return json_error(error);
+            }
+
+            const uint32_t redistributed = apply_spline_child_placements(spline, child_placements);
+
+            std::string result = spline_road_receipt(entity, spline);
+            if (!result.empty() && result.back() == '}')
+            {
+                result.pop_back();
+                result += ",\"clearance\":" + std::to_string(clearance);
+                result += ",\"obstacle_count\":" + std::to_string(obstacles.size());
+                result += ",\"detour_points_added\":" + std::to_string(world_points.size() > points_before ? world_points.size() - points_before : 0);
+                result += ",\"children_redistributed\":" + std::to_string(redistributed);
+                result += "}";
+            }
+            return result;
         }
 
         std::string command_spline_connect(const McpRequest& request)
@@ -8245,6 +8645,1012 @@ namespace spartan
             return json;
         }
 
+        enum class DistrictPreset
+        {
+            Market,
+            Downtown,
+            Park,
+            Industrial,
+            Residential,
+            Parking,
+            Plaza,
+            GasStation
+        };
+
+        std::optional<DistrictPreset> district_preset_from_name(const std::string& name)
+        {
+            const std::string value = to_lower_copy(name);
+            if (value == "market")
+            {
+                return DistrictPreset::Market;
+            }
+            if (value == "downtown" || value == "skyscrapers" || value == "towers")
+            {
+                return DistrictPreset::Downtown;
+            }
+            if (value == "park")
+            {
+                return DistrictPreset::Park;
+            }
+            if (value == "industrial" || value == "dockyard")
+            {
+                return DistrictPreset::Industrial;
+            }
+            if (value == "residential" || value == "housing")
+            {
+                return DistrictPreset::Residential;
+            }
+            if (value == "parking" || value == "parking_lot")
+            {
+                return DistrictPreset::Parking;
+            }
+            if (value == "plaza" || value == "civic")
+            {
+                return DistrictPreset::Plaza;
+            }
+            if (value == "gas_station" || value == "gasstation")
+            {
+                return DistrictPreset::GasStation;
+            }
+            return std::nullopt;
+        }
+
+        std::string district_preset_to_name(DistrictPreset preset)
+        {
+            switch (preset)
+            {
+            case DistrictPreset::Market: return "market";
+            case DistrictPreset::Downtown: return "downtown";
+            case DistrictPreset::Park: return "park";
+            case DistrictPreset::Industrial: return "industrial";
+            case DistrictPreset::Residential: return "residential";
+            case DistrictPreset::Parking: return "parking";
+            case DistrictPreset::Plaza: return "plaza";
+            case DistrictPreset::GasStation: return "gas_station";
+            }
+            return "market";
+        }
+
+        float district_density_scale(const std::string& density)
+        {
+            const std::string value = to_lower_copy(density);
+            if (value == "low")
+            {
+                return 0.65f;
+            }
+            if (value == "high")
+            {
+                return 1.35f;
+            }
+            return 1.0f;
+        }
+
+        struct DistrictRng
+        {
+            uint32_t state = 1;
+
+            explicit DistrictRng(uint32_t seed)
+            {
+                state = seed == 0 ? 1u : seed;
+            }
+
+            uint32_t next_u32()
+            {
+                state = state * 1664525u + 1013904223u;
+                return state;
+            }
+
+            float next_01()
+            {
+                return static_cast<float>(next_u32() & 0x00FFFFFFu) / static_cast<float>(0x01000000u);
+            }
+
+            float range(float min_value, float max_value)
+            {
+                return min_value + (max_value - min_value) * next_01();
+            }
+
+            int range_int(int min_value, int max_value)
+            {
+                if (max_value <= min_value)
+                {
+                    return min_value;
+                }
+                return min_value + static_cast<int>(next_u32() % static_cast<uint32_t>(max_value - min_value + 1));
+            }
+        };
+
+        struct DistrictBuildContext
+        {
+            Entity* parent = nullptr;
+            DistrictRng* rng = nullptr;
+            float width = 40.0f;
+            float depth = 40.0f;
+            float density = 1.0f;
+            bool lights = true;
+            uint32_t part_count = 0;
+            uint32_t light_count = 0;
+        };
+
+        void clear_entity_children(Entity* entity)
+        {
+            if (entity == nullptr)
+            {
+                return;
+            }
+            for (uint32_t pass = 0; pass < 64; pass++)
+            {
+                entity->AcquireChildren();
+                std::vector<Entity*> children = entity->GetChildren();
+                if (children.empty())
+                {
+                    break;
+                }
+                bool deleted_any = false;
+                for (Entity* child : children)
+                {
+                    if (child == nullptr || !World::EntityExists(child))
+                    {
+                        continue;
+                    }
+                    World::RemoveEntityImmediate(child);
+                    deleted_any = true;
+                }
+                if (!deleted_any)
+                {
+                    break;
+                }
+            }
+            entity->AcquireChildren();
+        }
+
+        Entity* blockout_part(DistrictBuildContext& ctx, const std::string& name, MeshType mesh, const math::Vector3& local_pos, const math::Vector3& local_scale, const math::Vector3& local_euler = math::Vector3::Zero)
+        {
+            Entity* entity = World::CreateEntity();
+            if (entity == nullptr || ctx.parent == nullptr)
+            {
+                return nullptr;
+            }
+            entity->SetObjectName(name);
+            entity->SetParent(ctx.parent);
+            entity->SetPositionLocal(local_pos);
+            entity->SetScaleLocal(local_scale);
+            if (local_euler.x != 0.0f || local_euler.y != 0.0f || local_euler.z != 0.0f)
+            {
+                entity->SetRotationLocal(math::Quaternion::FromEulerAngles(local_euler));
+            }
+            if (Render* renderable = entity->AddComponent<Render>())
+            {
+                renderable->SetMesh(mesh);
+                renderable->SetDefaultMaterial();
+            }
+            ctx.part_count++;
+            return entity;
+        }
+
+        Entity* blockout_light(DistrictBuildContext& ctx, const std::string& name, const math::Vector3& local_pos, float intensity = 8500.0f, float range = 30.0f)
+        {
+            if (!ctx.lights || ctx.parent == nullptr)
+            {
+                return nullptr;
+            }
+            Entity* entity = World::CreateEntity();
+            if (entity == nullptr)
+            {
+                return nullptr;
+            }
+            entity->SetObjectName(name);
+            entity->SetParent(ctx.parent);
+            entity->SetPositionLocal(local_pos);
+            if (Light* light = entity->AddComponent<Light>())
+            {
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color(1.0f, 0.92f, 0.78f, 1.0f));
+                light->SetTemperature(3200.0f);
+                light->SetIntensity(intensity);
+                light->SetRange(range);
+                light->SetFlag(LightFlags::Shadows, true);
+                light->SetDrawDistance(std::max(60.0f, range * 2.0f));
+                light->SetShadowDistance(std::max(45.0f, range * 1.5f));
+            }
+            ctx.light_count++;
+            return entity;
+        }
+
+        void build_district_pad(DistrictBuildContext& ctx, float thickness = 0.2f)
+        {
+            blockout_part(ctx, "pad", MeshType::Cube, math::Vector3(0.0f, thickness * 0.5f, 0.0f), math::Vector3(ctx.width, thickness, ctx.depth));
+        }
+
+        void build_district_market(DistrictBuildContext& ctx)
+        {
+            build_district_pad(ctx, 0.15f);
+            const int stall_cols = std::max(2, static_cast<int>(3.0f * ctx.density));
+            const int stall_rows = std::max(2, static_cast<int>(2.0f * ctx.density));
+            const float stall_w = ctx.width * 0.18f;
+            const float stall_d = ctx.depth * 0.16f;
+            const float gap_x = ctx.width / static_cast<float>(stall_cols + 1);
+            const float gap_z = ctx.depth / static_cast<float>(stall_rows + 1);
+            uint32_t index = 0;
+            for (int row = 0; row < stall_rows; row++)
+            {
+                for (int col = 0; col < stall_cols; col++)
+                {
+                    const float x = -ctx.width * 0.5f + gap_x * static_cast<float>(col + 1);
+                    const float z = -ctx.depth * 0.5f + gap_z * static_cast<float>(row + 1);
+                    const float h = ctx.rng->range(2.2f, 3.4f);
+                    blockout_part(ctx, "stall_" + std::to_string(index), MeshType::Cube, math::Vector3(x, h * 0.5f, z), math::Vector3(stall_w, h, stall_d));
+                    blockout_part(ctx, "canopy_" + std::to_string(index), MeshType::Cube, math::Vector3(x, h + 0.15f, z), math::Vector3(stall_w * 1.15f, 0.2f, stall_d * 1.15f));
+                    if ((index % 2) == 0)
+                    {
+                        blockout_light(ctx, "stall_light_" + std::to_string(index), math::Vector3(x, h + 1.5f, z), 7000.0f, 18.0f);
+                    }
+                    index++;
+                }
+            }
+            blockout_part(ctx, "shop_a", MeshType::Cube, math::Vector3(-ctx.width * 0.38f, 2.5f, -ctx.depth * 0.38f), math::Vector3(ctx.width * 0.22f, 5.0f, ctx.depth * 0.18f));
+            blockout_part(ctx, "shop_b", MeshType::Cube, math::Vector3(ctx.width * 0.36f, 2.2f, ctx.depth * 0.34f), math::Vector3(ctx.width * 0.2f, 4.4f, ctx.depth * 0.16f));
+            blockout_light(ctx, "market_center_light", math::Vector3(0.0f, 8.0f, 0.0f), 12000.0f, 40.0f);
+        }
+
+        void build_district_downtown(DistrictBuildContext& ctx)
+        {
+            build_district_pad(ctx, 0.25f);
+            const int towers = std::max(3, static_cast<int>(5.0f * ctx.density));
+            for (int i = 0; i < towers; i++)
+            {
+                const float x = ctx.rng->range(-ctx.width * 0.35f, ctx.width * 0.35f);
+                const float z = ctx.rng->range(-ctx.depth * 0.35f, ctx.depth * 0.35f);
+                const float w = ctx.rng->range(ctx.width * 0.08f, ctx.width * 0.14f);
+                const float d = ctx.rng->range(ctx.depth * 0.08f, ctx.depth * 0.14f);
+                const float h = ctx.rng->range(18.0f, 55.0f) * ctx.density;
+                blockout_part(ctx, "tower_" + std::to_string(i), MeshType::Cube, math::Vector3(x, h * 0.5f, z), math::Vector3(w, h, d));
+                blockout_light(ctx, "tower_light_" + std::to_string(i), math::Vector3(x, h + 2.0f, z), 9000.0f, 28.0f);
+            }
+            blockout_part(ctx, "podium", MeshType::Cube, math::Vector3(0.0f, 2.0f, 0.0f), math::Vector3(ctx.width * 0.35f, 4.0f, ctx.depth * 0.28f));
+            blockout_light(ctx, "downtown_plaza_light", math::Vector3(0.0f, 10.0f, 0.0f), 14000.0f, 45.0f);
+        }
+
+        void build_district_park(DistrictBuildContext& ctx)
+        {
+            build_district_pad(ctx, 0.12f);
+            blockout_part(ctx, "path_x", MeshType::Cube, math::Vector3(0.0f, 0.18f, 0.0f), math::Vector3(ctx.width * 0.9f, 0.08f, ctx.depth * 0.08f));
+            blockout_part(ctx, "path_z", MeshType::Cube, math::Vector3(0.0f, 0.18f, 0.0f), math::Vector3(ctx.width * 0.08f, 0.08f, ctx.depth * 0.9f));
+            const int trees = std::max(6, static_cast<int>(10.0f * ctx.density));
+            for (int i = 0; i < trees; i++)
+            {
+                const float x = ctx.rng->range(-ctx.width * 0.4f, ctx.width * 0.4f);
+                const float z = ctx.rng->range(-ctx.depth * 0.4f, ctx.depth * 0.4f);
+                if (std::fabs(x) < ctx.width * 0.06f || std::fabs(z) < ctx.depth * 0.06f)
+                {
+                    continue;
+                }
+                const float trunk_h = ctx.rng->range(1.8f, 3.2f);
+                blockout_part(ctx, "tree_trunk_" + std::to_string(i), MeshType::Cylinder, math::Vector3(x, trunk_h * 0.5f, z), math::Vector3(0.35f, trunk_h, 0.35f));
+                blockout_part(ctx, "tree_crown_" + std::to_string(i), MeshType::Sphere, math::Vector3(x, trunk_h + 1.2f, z), math::Vector3(2.2f, 2.2f, 2.2f));
+            }
+            blockout_part(ctx, "bench_a", MeshType::Cube, math::Vector3(-ctx.width * 0.2f, 0.45f, ctx.depth * 0.12f), math::Vector3(2.2f, 0.5f, 0.55f));
+            blockout_part(ctx, "bench_b", MeshType::Cube, math::Vector3(ctx.width * 0.18f, 0.45f, -ctx.depth * 0.15f), math::Vector3(2.2f, 0.5f, 0.55f), math::Vector3(0.0f, 90.0f, 0.0f));
+            blockout_light(ctx, "park_light_a", math::Vector3(-ctx.width * 0.25f, 5.0f, -ctx.depth * 0.25f), 6500.0f, 25.0f);
+            blockout_light(ctx, "park_light_b", math::Vector3(ctx.width * 0.25f, 5.0f, ctx.depth * 0.25f), 6500.0f, 25.0f);
+        }
+
+        void build_district_industrial(DistrictBuildContext& ctx)
+        {
+            build_district_pad(ctx, 0.2f);
+            blockout_part(ctx, "warehouse", MeshType::Cube, math::Vector3(-ctx.width * 0.22f, 5.0f, 0.0f), math::Vector3(ctx.width * 0.42f, 10.0f, ctx.depth * 0.55f));
+            blockout_part(ctx, "office", MeshType::Cube, math::Vector3(ctx.width * 0.32f, 2.5f, -ctx.depth * 0.28f), math::Vector3(ctx.width * 0.18f, 5.0f, ctx.depth * 0.2f));
+            const int containers = std::max(4, static_cast<int>(8.0f * ctx.density));
+            for (int i = 0; i < containers; i++)
+            {
+                const float x = ctx.width * 0.18f + static_cast<float>(i % 3) * 3.2f;
+                const float z = -ctx.depth * 0.05f + static_cast<float>(i / 3) * 3.0f;
+                const float y = 1.3f + static_cast<float>((i / 3) % 2) * 2.6f;
+                blockout_part(ctx, "container_" + std::to_string(i), MeshType::Cube, math::Vector3(x, y, z), math::Vector3(6.0f, 2.6f, 2.5f), math::Vector3(0.0f, (i % 2) * 90.0f, 0.0f));
+            }
+            blockout_part(ctx, "crane_mast", MeshType::Cube, math::Vector3(ctx.width * 0.05f, 9.0f, ctx.depth * 0.28f), math::Vector3(1.0f, 18.0f, 1.0f));
+            blockout_part(ctx, "crane_arm", MeshType::Cube, math::Vector3(ctx.width * 0.05f + 6.0f, 17.5f, ctx.depth * 0.28f), math::Vector3(14.0f, 0.8f, 0.8f));
+            const float fence_h = 2.2f;
+            blockout_part(ctx, "fence_n", MeshType::Cube, math::Vector3(0.0f, fence_h * 0.5f, -ctx.depth * 0.5f), math::Vector3(ctx.width, fence_h, 0.2f));
+            blockout_part(ctx, "fence_s", MeshType::Cube, math::Vector3(0.0f, fence_h * 0.5f, ctx.depth * 0.5f), math::Vector3(ctx.width, fence_h, 0.2f));
+            blockout_part(ctx, "fence_w", MeshType::Cube, math::Vector3(-ctx.width * 0.5f, fence_h * 0.5f, 0.0f), math::Vector3(0.2f, fence_h, ctx.depth));
+            blockout_part(ctx, "fence_e", MeshType::Cube, math::Vector3(ctx.width * 0.5f, fence_h * 0.5f, 0.0f), math::Vector3(0.2f, fence_h, ctx.depth));
+            blockout_light(ctx, "yard_light_a", math::Vector3(-ctx.width * 0.3f, 12.0f, -ctx.depth * 0.3f), 11000.0f, 40.0f);
+            blockout_light(ctx, "yard_light_b", math::Vector3(ctx.width * 0.3f, 12.0f, ctx.depth * 0.2f), 11000.0f, 40.0f);
+        }
+
+        void build_district_residential(DistrictBuildContext& ctx)
+        {
+            build_district_pad(ctx, 0.15f);
+            const int rows = std::max(2, static_cast<int>(2.0f * ctx.density));
+            const int cols = std::max(3, static_cast<int>(3.0f * ctx.density));
+            uint32_t index = 0;
+            for (int row = 0; row < rows; row++)
+            {
+                for (int col = 0; col < cols; col++)
+                {
+                    const float x = -ctx.width * 0.35f + static_cast<float>(col) * (ctx.width * 0.7f / std::max(1, cols - 1));
+                    const float z = -ctx.depth * 0.3f + static_cast<float>(row) * (ctx.depth * 0.6f / std::max(1, rows - 1));
+                    const float h = ctx.rng->range(6.0f, 14.0f) * (0.85f + 0.15f * ctx.density);
+                    blockout_part(ctx, "house_" + std::to_string(index), MeshType::Cube, math::Vector3(x, h * 0.5f, z), math::Vector3(ctx.width * 0.12f, h, ctx.depth * 0.14f));
+                    if ((index % 3) == 0)
+                    {
+                        blockout_light(ctx, "house_light_" + std::to_string(index), math::Vector3(x, h + 1.5f, z), 6000.0f, 20.0f);
+                    }
+                    index++;
+                }
+            }
+            blockout_part(ctx, "courtyard", MeshType::Cube, math::Vector3(0.0f, 0.2f, 0.0f), math::Vector3(ctx.width * 0.25f, 0.1f, ctx.depth * 0.25f));
+        }
+
+        void build_district_parking(DistrictBuildContext& ctx)
+        {
+            build_district_pad(ctx, 0.12f);
+            const int rows = std::max(3, static_cast<int>(4.0f * ctx.density));
+            for (int i = 0; i < rows; i++)
+            {
+                const float z = -ctx.depth * 0.4f + static_cast<float>(i) * (ctx.depth * 0.8f / std::max(1, rows - 1));
+                blockout_part(ctx, "stall_strip_" + std::to_string(i), MeshType::Cube, math::Vector3(0.0f, 0.16f, z), math::Vector3(ctx.width * 0.85f, 0.05f, 0.25f));
+            }
+            const int poles = std::max(2, static_cast<int>(3.0f * ctx.density));
+            for (int i = 0; i < poles; i++)
+            {
+                const float x = -ctx.width * 0.35f + static_cast<float>(i) * (ctx.width * 0.7f / std::max(1, poles - 1));
+                blockout_part(ctx, "light_pole_" + std::to_string(i), MeshType::Cylinder, math::Vector3(x, 4.0f, ctx.depth * 0.42f), math::Vector3(0.2f, 8.0f, 0.2f));
+                blockout_light(ctx, "lot_light_" + std::to_string(i), math::Vector3(x, 8.2f, ctx.depth * 0.42f), 9000.0f, 32.0f);
+            }
+        }
+
+        void build_district_plaza(DistrictBuildContext& ctx)
+        {
+            build_district_pad(ctx, 0.18f);
+            blockout_part(ctx, "wall_n", MeshType::Cube, math::Vector3(0.0f, 1.0f, -ctx.depth * 0.48f), math::Vector3(ctx.width * 0.9f, 2.0f, 0.35f));
+            blockout_part(ctx, "wall_s", MeshType::Cube, math::Vector3(0.0f, 1.0f, ctx.depth * 0.48f), math::Vector3(ctx.width * 0.9f, 2.0f, 0.35f));
+            blockout_part(ctx, "wall_w", MeshType::Cube, math::Vector3(-ctx.width * 0.48f, 1.0f, 0.0f), math::Vector3(0.35f, 2.0f, ctx.depth * 0.9f));
+            blockout_part(ctx, "wall_e", MeshType::Cube, math::Vector3(ctx.width * 0.48f, 1.0f, 0.0f), math::Vector3(0.35f, 2.0f, ctx.depth * 0.9f));
+            blockout_part(ctx, "monument_base", MeshType::Cube, math::Vector3(0.0f, 0.6f, 0.0f), math::Vector3(4.0f, 1.2f, 4.0f));
+            blockout_part(ctx, "monument", MeshType::Cylinder, math::Vector3(0.0f, 5.0f, 0.0f), math::Vector3(1.2f, 8.0f, 1.2f));
+            blockout_light(ctx, "plaza_light_a", math::Vector3(-ctx.width * 0.3f, 6.0f, -ctx.depth * 0.3f), 8000.0f, 28.0f);
+            blockout_light(ctx, "plaza_light_b", math::Vector3(ctx.width * 0.3f, 6.0f, ctx.depth * 0.3f), 8000.0f, 28.0f);
+            blockout_light(ctx, "plaza_center_light", math::Vector3(0.0f, 10.0f, 0.0f), 12000.0f, 35.0f);
+        }
+
+        void build_district_gas_station(DistrictBuildContext& ctx)
+        {
+            const float w = std::max(24.0f, ctx.width);
+            const float d = std::max(18.0f, ctx.depth);
+            ctx.width = w;
+            ctx.depth = d;
+            build_district_pad(ctx, 0.1f);
+            blockout_part(ctx, "store", MeshType::Cube, math::Vector3(-w * 0.28f, 2.0f, -d * 0.2f), math::Vector3(8.0f, 4.0f, 6.0f));
+            blockout_part(ctx, "store_roof", MeshType::Cube, math::Vector3(-w * 0.28f, 4.2f, -d * 0.2f), math::Vector3(8.6f, 0.35f, 6.6f));
+            blockout_part(ctx, "canopy", MeshType::Cube, math::Vector3(w * 0.12f, 5.0f, d * 0.05f), math::Vector3(14.0f, 0.4f, 10.0f));
+            blockout_part(ctx, "pillar_a", MeshType::Cylinder, math::Vector3(w * 0.12f - 5.0f, 2.5f, d * 0.05f - 3.5f), math::Vector3(0.4f, 5.0f, 0.4f));
+            blockout_part(ctx, "pillar_b", MeshType::Cylinder, math::Vector3(w * 0.12f + 5.0f, 2.5f, d * 0.05f - 3.5f), math::Vector3(0.4f, 5.0f, 0.4f));
+            blockout_part(ctx, "pillar_c", MeshType::Cylinder, math::Vector3(w * 0.12f - 5.0f, 2.5f, d * 0.05f + 3.5f), math::Vector3(0.4f, 5.0f, 0.4f));
+            blockout_part(ctx, "pillar_d", MeshType::Cylinder, math::Vector3(w * 0.12f + 5.0f, 2.5f, d * 0.05f + 3.5f), math::Vector3(0.4f, 5.0f, 0.4f));
+            for (int i = 0; i < 4; i++)
+            {
+                const float x = w * 0.12f - 3.0f + static_cast<float>(i) * 2.0f;
+                blockout_part(ctx, "pump_" + std::to_string(i), MeshType::Cube, math::Vector3(x, 1.0f, d * 0.05f), math::Vector3(0.7f, 2.0f, 0.7f));
+            }
+            blockout_part(ctx, "sign_pole", MeshType::Cylinder, math::Vector3(w * 0.4f, 4.0f, -d * 0.35f), math::Vector3(0.25f, 8.0f, 0.25f));
+            blockout_part(ctx, "sign_board", MeshType::Cube, math::Vector3(w * 0.4f, 7.5f, -d * 0.35f), math::Vector3(3.5f, 2.0f, 0.3f));
+            blockout_light(ctx, "gs_light_canopy", math::Vector3(w * 0.12f, 4.7f, d * 0.05f), 12000.0f, 35.0f);
+            blockout_light(ctx, "gs_light_store", math::Vector3(-w * 0.28f, 3.5f, -d * 0.05f), 8500.0f, 25.0f);
+            blockout_light(ctx, "gs_light_sign", math::Vector3(w * 0.4f, 8.0f, -d * 0.35f), 7000.0f, 20.0f);
+        }
+
+        void build_district_preset(DistrictBuildContext& ctx, DistrictPreset preset)
+        {
+            switch (preset)
+            {
+            case DistrictPreset::Market: build_district_market(ctx); break;
+            case DistrictPreset::Downtown: build_district_downtown(ctx); break;
+            case DistrictPreset::Park: build_district_park(ctx); break;
+            case DistrictPreset::Industrial: build_district_industrial(ctx); break;
+            case DistrictPreset::Residential: build_district_residential(ctx); break;
+            case DistrictPreset::Parking: build_district_parking(ctx); break;
+            case DistrictPreset::Plaza: build_district_plaza(ctx); break;
+            case DistrictPreset::GasStation: build_district_gas_station(ctx); break;
+            }
+        }
+
+        math::Vector2 default_footprint_for_preset(DistrictPreset preset)
+        {
+            switch (preset)
+            {
+            case DistrictPreset::Market: return math::Vector2(48.0f, 40.0f);
+            case DistrictPreset::Downtown: return math::Vector2(70.0f, 70.0f);
+            case DistrictPreset::Park: return math::Vector2(60.0f, 50.0f);
+            case DistrictPreset::Industrial: return math::Vector2(80.0f, 55.0f);
+            case DistrictPreset::Residential: return math::Vector2(55.0f, 45.0f);
+            case DistrictPreset::Parking: return math::Vector2(45.0f, 35.0f);
+            case DistrictPreset::Plaza: return math::Vector2(40.0f, 40.0f);
+            case DistrictPreset::GasStation: return math::Vector2(28.0f, 22.0f);
+            }
+            return math::Vector2(40.0f, 40.0f);
+        }
+
+        std::string district_receipt_json(Entity* entity, DistrictPreset preset, uint32_t part_count, uint32_t light_count)
+        {
+            std::string json = "{";
+            json += "\"entity\":" + entity_to_json_compact(entity);
+            json += ",\"preset\":" + json_string(district_preset_to_name(preset));
+            json += ",\"created_count\":" + std::to_string(part_count);
+            json += ",\"lights_count\":" + std::to_string(light_count);
+            math::BoundingBox bounds;
+            if (subtree_render_bounds(entity, bounds))
+            {
+                json += ",\"bounding_box\":" + json_bounding_box(bounds);
+            }
+            json += "}";
+            return json;
+        }
+
+        bool boxes_overlap_xz(const math::BoundingBox& a, const math::BoundingBox& b, float gap)
+        {
+            return !(a.GetMax().x + gap < b.GetMin().x || b.GetMax().x + gap < a.GetMin().x ||
+                     a.GetMax().z + gap < b.GetMin().z || b.GetMax().z + gap < a.GetMin().z);
+        }
+
+        math::BoundingBox footprint_box_at(const math::Vector3& center, float width, float depth)
+        {
+            const math::Vector3 half(width * 0.5f, 20.0f, depth * 0.5f);
+            return math::BoundingBox(center - half, center + half);
+        }
+
+        std::vector<math::BoundingBox> collect_existing_landmark_boxes()
+        {
+            std::vector<math::BoundingBox> boxes;
+            for (Entity* entity : World::GetEntities())
+            {
+                if (entity == nullptr || entity->GetParent() != nullptr)
+                {
+                    continue;
+                }
+                if (is_landmark_noise(entity))
+                {
+                    continue;
+                }
+                math::BoundingBox bounds;
+                if (!subtree_render_bounds(entity, bounds))
+                {
+                    continue;
+                }
+                const math::Vector3 size = bounds.GetSize();
+                if (size.x < 4.0f && size.z < 4.0f)
+                {
+                    continue;
+                }
+                if (size.x > 5000.0f || size.z > 5000.0f)
+                {
+                    continue;
+                }
+                boxes.push_back(bounds);
+            }
+            return boxes;
+        }
+
+        bool footprint_blocked(const math::Vector3& center, float width, float depth, const std::vector<math::BoundingBox>& reserved, float gap)
+        {
+            const math::BoundingBox candidate = footprint_box_at(center, width, depth);
+            for (const math::BoundingBox& box : reserved)
+            {
+                if (boxes_overlap_xz(candidate, box, gap))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        Entity* create_district_entity(const std::string& name, const math::Vector3& position, float rotation_y, DistrictPreset preset, float width, float depth, float density, bool lights, uint32_t seed, bool replace, uint32_t& part_count, uint32_t& light_count, std::string& error)
+        {
+            Entity* parent = nullptr;
+            {
+                std::string resolve_error;
+                parent = find_entity_by_name_unique(name, true, resolve_error);
+            }
+            if (parent != nullptr)
+            {
+                if (!replace)
+                {
+                    error = "entity already exists: " + name;
+                    return nullptr;
+                }
+                clear_entity_children(parent);
+            }
+            else
+            {
+                parent = World::CreateEntity();
+                if (parent == nullptr)
+                {
+                    error = "failed to create district entity";
+                    return nullptr;
+                }
+                parent->SetObjectName(name);
+            }
+
+            parent->SetPosition(position);
+            if (std::fabs(rotation_y) > 0.001f)
+            {
+                parent->SetRotation(math::Quaternion::FromEulerAngles(math::Vector3(0.0f, rotation_y, 0.0f)));
+            }
+            parent->AddTag("landmark");
+            parent->AddTag("district");
+            parent->AddTag(district_preset_to_name(preset));
+
+            DistrictRng rng(seed);
+            DistrictBuildContext ctx;
+            ctx.parent = parent;
+            ctx.rng = &rng;
+            ctx.width = width;
+            ctx.depth = depth;
+            ctx.density = density;
+            ctx.lights = lights;
+            build_district_preset(ctx, preset);
+            part_count = ctx.part_count;
+            light_count = ctx.light_count;
+            return parent;
+        }
+
+        std::string command_district_blockout(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("district blockout requires edit mode");
+            }
+
+            const std::optional<std::string> preset_arg = get_argument(request, "preset");
+            if (!preset_arg)
+            {
+                return json_error("missing preset");
+            }
+            const std::optional<DistrictPreset> preset = district_preset_from_name(*preset_arg);
+            if (!preset)
+            {
+                return json_error("invalid preset, expected market, downtown, park, industrial, residential, parking, plaza, or gas_station");
+            }
+
+            math::Vector3 position = math::Vector3::Zero;
+            if (const std::optional<std::string> position_arg = get_argument(request, "position"))
+            {
+                if (!parse_vector3(*position_arg, position))
+                {
+                    return json_error("invalid position");
+                }
+            }
+
+            math::Vector2 footprint = default_footprint_for_preset(*preset);
+            if (const std::optional<std::string> footprint_arg = get_argument(request, "footprint"))
+            {
+                if (!parse_vector2(*footprint_arg, footprint) || footprint.x <= 1.0f || footprint.y <= 1.0f)
+                {
+                    return json_error("footprint must be width,depth meters");
+                }
+            }
+
+            float rotation_y = 0.0f;
+            if (const std::optional<std::string> rotation_arg = get_argument(request, "rotation_y"))
+            {
+                if (!parse_float(*rotation_arg, rotation_y))
+                {
+                    return json_error("invalid rotation_y");
+                }
+            }
+
+            uint32_t seed = 1;
+            if (const std::optional<std::string> seed_arg = get_argument(request, "seed"))
+            {
+                uint64_t parsed = 0;
+                if (!parse_uint64(*seed_arg, parsed))
+                {
+                    return json_error("invalid seed");
+                }
+                seed = static_cast<uint32_t>(parsed);
+            }
+
+            bool lights = true;
+            if (const std::optional<std::string> lights_arg = get_argument(request, "lights"))
+            {
+                if (!parse_bool(*lights_arg, lights))
+                {
+                    return json_error("invalid lights");
+                }
+            }
+
+            bool replace = true;
+            if (const std::optional<std::string> replace_arg = get_argument(request, "replace"))
+            {
+                if (!parse_bool(*replace_arg, replace))
+                {
+                    return json_error("invalid replace");
+                }
+            }
+
+            float density = 1.0f;
+            if (const std::optional<std::string> density_arg = get_argument(request, "density"))
+            {
+                density = district_density_scale(*density_arg);
+            }
+
+            const std::string name = get_argument(request, "name").value_or(district_preset_to_name(*preset));
+            uint32_t part_count = 0;
+            uint32_t light_count = 0;
+            std::string error;
+            Entity* entity = create_district_entity(name, position, rotation_y, *preset, footprint.x, footprint.y, density, lights, seed, replace, part_count, light_count, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"entity\":" + entity_to_json_compact(entity);
+            json += ",\"preset\":" + json_string(district_preset_to_name(*preset));
+            json += ",\"created_count\":" + std::to_string(part_count);
+            json += ",\"lights_count\":" + std::to_string(light_count);
+            json += ",\"footprint\":[" + std::to_string(footprint.x) + "," + std::to_string(footprint.y) + "]";
+            math::BoundingBox bounds;
+            if (subtree_render_bounds(entity, bounds))
+            {
+                json += ",\"bounding_box\":" + json_bounding_box(bounds);
+            }
+            json += "}";
+            return json;
+        }
+
+        std::string command_city_blockout(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("city blockout requires edit mode");
+            }
+
+            math::Vector3 center = math::Vector3::Zero;
+            if (const std::optional<std::string> center_arg = get_argument(request, "center"))
+            {
+                if (!parse_vector3(*center_arg, center))
+                {
+                    return json_error("invalid center");
+                }
+            }
+
+            float extent = 220.0f;
+            if (const std::optional<std::string> extent_arg = get_argument(request, "extent"))
+            {
+                if (!parse_float(*extent_arg, extent) || extent < 40.0f || extent > 2000.0f)
+                {
+                    return json_error("extent must be between 40 and 2000");
+                }
+            }
+
+            uint32_t seed = 7;
+            if (const std::optional<std::string> seed_arg = get_argument(request, "seed"))
+            {
+                uint64_t parsed = 0;
+                if (!parse_uint64(*seed_arg, parsed))
+                {
+                    return json_error("invalid seed");
+                }
+                seed = static_cast<uint32_t>(parsed);
+            }
+
+            bool avoid_existing = true;
+            if (const std::optional<std::string> avoid_arg = get_argument(request, "avoid_existing"))
+            {
+                if (!parse_bool(*avoid_arg, avoid_existing))
+                {
+                    return json_error("invalid avoid_existing");
+                }
+            }
+
+            bool lights = true;
+            if (const std::optional<std::string> lights_arg = get_argument(request, "lights"))
+            {
+                if (!parse_bool(*lights_arg, lights))
+                {
+                    return json_error("invalid lights");
+                }
+            }
+
+            bool replace = true;
+            if (const std::optional<std::string> replace_arg = get_argument(request, "replace"))
+            {
+                if (!parse_bool(*replace_arg, replace))
+                {
+                    return json_error("invalid replace");
+                }
+            }
+
+            bool connect_roads = false;
+            if (const std::optional<std::string> roads_arg = get_argument(request, "connect_roads"))
+            {
+                if (!parse_bool(*roads_arg, connect_roads))
+                {
+                    return json_error("invalid connect_roads");
+                }
+            }
+
+            float density = 1.0f;
+            if (const std::optional<std::string> density_arg = get_argument(request, "density"))
+            {
+                density = district_density_scale(*density_arg);
+            }
+
+            float corridor = 28.0f;
+            if (const std::optional<std::string> corridor_arg = get_argument(request, "corridor"))
+            {
+                if (!parse_float(*corridor_arg, corridor) || corridor < 8.0f || corridor > 120.0f)
+                {
+                    return json_error("corridor must be between 8 and 120");
+                }
+            }
+
+            struct PlannedDistrict
+            {
+                std::string name;
+                DistrictPreset preset = DistrictPreset::Market;
+                math::Vector3 position = math::Vector3::Zero;
+                math::Vector2 footprint = math::Vector2(40.0f, 40.0f);
+                bool has_position = false;
+            };
+
+            std::vector<PlannedDistrict> planned;
+            if (const std::optional<std::string> districts_arg = get_argument(request, "districts"))
+            {
+                const std::vector<std::string> tokens = split_csv_tokens(*districts_arg);
+                for (const std::string& token : tokens)
+                {
+                    std::string preset_name = token;
+                    std::string district_name;
+                    const size_t colon = token.find(':');
+                    if (colon != std::string::npos)
+                    {
+                        preset_name = token.substr(0, colon);
+                        district_name = token.substr(colon + 1);
+                    }
+                    const std::optional<DistrictPreset> preset = district_preset_from_name(preset_name);
+                    if (!preset)
+                    {
+                        return json_error("invalid district preset: " + preset_name);
+                    }
+                    PlannedDistrict entry;
+                    entry.preset = *preset;
+                    entry.name = district_name.empty() ? district_preset_to_name(*preset) : district_name;
+                    entry.footprint = default_footprint_for_preset(*preset);
+                    planned.push_back(std::move(entry));
+                }
+            }
+            else
+            {
+                const DistrictPreset defaults[] = {
+                    DistrictPreset::Downtown,
+                    DistrictPreset::Market,
+                    DistrictPreset::Park,
+                    DistrictPreset::Industrial,
+                    DistrictPreset::Residential,
+                    DistrictPreset::Parking
+                };
+                for (DistrictPreset preset : defaults)
+                {
+                    PlannedDistrict entry;
+                    entry.preset = preset;
+                    entry.name = district_preset_to_name(preset);
+                    entry.footprint = default_footprint_for_preset(preset);
+                    planned.push_back(std::move(entry));
+                }
+            }
+
+            if (planned.empty())
+            {
+                return json_error("no districts to place");
+            }
+
+            if (const std::optional<std::string> names_arg = get_argument(request, "names"))
+            {
+                const std::vector<std::string> names = split_csv_tokens(*names_arg);
+                for (size_t i = 0; i < planned.size() && i < names.size(); i++)
+                {
+                    if (!names[i].empty())
+                    {
+                        planned[i].name = names[i];
+                    }
+                }
+            }
+
+            if (const std::optional<std::string> footprints_arg = get_argument(request, "footprints"))
+            {
+                std::vector<float> values;
+                std::stringstream stream(*footprints_arg);
+                std::string part;
+                while (std::getline(stream, part, ','))
+                {
+                    float parsed = 0.0f;
+                    if (!parse_float(part, parsed))
+                    {
+                        return json_error("footprints must be flat width,depth pairs");
+                    }
+                    values.push_back(parsed);
+                }
+                if (values.size() < 2 || (values.size() % 2) != 0)
+                {
+                    return json_error("footprints must be flat width,depth pairs");
+                }
+                for (size_t i = 0; i < planned.size() && (i * 2 + 1) < values.size(); i++)
+                {
+                    planned[i].footprint = math::Vector2(values[i * 2], values[i * 2 + 1]);
+                }
+            }
+
+            if (const std::optional<std::string> positions_arg = get_argument(request, "positions"))
+            {
+                std::vector<math::Vector3> positions;
+                if (!parse_vector3_list(*positions_arg, positions))
+                {
+                    return json_error("positions must be a flat xyz list");
+                }
+                for (size_t i = 0; i < planned.size() && i < positions.size(); i++)
+                {
+                    planned[i].position = positions[i];
+                    planned[i].has_position = true;
+                }
+            }
+
+            std::vector<math::BoundingBox> reserved;
+            if (avoid_existing)
+            {
+                reserved = collect_existing_landmark_boxes();
+            }
+
+            DistrictRng rng(seed);
+            const float ring = extent * 0.55f;
+            for (size_t i = 0; i < planned.size(); i++)
+            {
+                PlannedDistrict& entry = planned[i];
+                if (entry.has_position)
+                {
+                    continue;
+                }
+
+                bool placed = false;
+                for (int attempt = 0; attempt < 48; attempt++)
+                {
+                    const float angle = (static_cast<float>(i) / static_cast<float>(planned.size())) * 6.2831853f + rng.range(-0.35f, 0.35f);
+                    const float radius = ring * rng.range(0.55f, 1.05f);
+                    math::Vector3 candidate = center + math::Vector3(std::cos(angle) * radius, 0.0f, std::sin(angle) * radius);
+                    candidate.y = center.y;
+                    if (!footprint_blocked(candidate, entry.footprint.x, entry.footprint.y, reserved, corridor))
+                    {
+                        entry.position = candidate;
+                        entry.has_position = true;
+                        reserved.push_back(footprint_box_at(candidate, entry.footprint.x, entry.footprint.y));
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed)
+                {
+                    // fall back to a spaced slot even if tight
+                    const float angle = (static_cast<float>(i) / static_cast<float>(planned.size())) * 6.2831853f;
+                    entry.position = center + math::Vector3(std::cos(angle) * ring, 0.0f, std::sin(angle) * ring);
+                    entry.has_position = true;
+                    reserved.push_back(footprint_box_at(entry.position, entry.footprint.x, entry.footprint.y));
+                }
+            }
+
+            std::string json = "{\"ok\":true,\"districts\":[";
+            std::vector<std::string> created_names;
+            created_names.reserve(planned.size());
+            for (size_t i = 0; i < planned.size(); i++)
+            {
+                const PlannedDistrict& entry = planned[i];
+                uint32_t part_count = 0;
+                uint32_t light_count = 0;
+                std::string error;
+                Entity* entity = create_district_entity(
+                    entry.name,
+                    entry.position,
+                    0.0f,
+                    entry.preset,
+                    entry.footprint.x,
+                    entry.footprint.y,
+                    density,
+                    lights,
+                    seed + static_cast<uint32_t>(i) * 97u,
+                    replace,
+                    part_count,
+                    light_count,
+                    error
+                );
+                if (entity == nullptr)
+                {
+                    return json_error(error);
+                }
+                if (i > 0)
+                {
+                    json += ",";
+                }
+                json += district_receipt_json(entity, entry.preset, part_count, light_count);
+                created_names.push_back(entry.name);
+            }
+            json += "]";
+
+            // road hint points: approach edges facing city center for a later arterial pass
+            json += ",\"road_hints\":[";
+            for (size_t i = 0; i < planned.size(); i++)
+            {
+                const PlannedDistrict& entry = planned[i];
+                math::Vector3 toward = center;
+                if ((center - entry.position).LengthSquared() < 1.0f && planned.size() > 1)
+                {
+                    toward = planned[(i + 1) % planned.size()].position;
+                }
+                math::Vector3 approach = entry.position;
+                {
+                    std::string resolve_error;
+                    Entity* entity = find_entity_by_name_unique(entry.name, true, resolve_error);
+                    if (entity != nullptr)
+                    {
+                        landmark_approach_point(entity, toward, corridor * 0.35f, approach);
+                    }
+                }
+                if (i > 0)
+                {
+                    json += ",";
+                }
+                json += "{\"district\":" + json_string(entry.name);
+                json += ",\"point\":" + json_vector3(approach) + "}";
+            }
+            json += "]";
+
+            uint32_t roads_created = 0;
+            if (connect_roads && created_names.size() >= 2)
+            {
+                json += ",\"roads\":[";
+                bool first_road = true;
+                for (size_t i = 0; i + 1 < created_names.size(); i++)
+                {
+                    McpRequest connect_request;
+                    connect_request.command = "spline_connect";
+                    connect_request.arguments["landmarks"] = created_names[i] + "," + created_names[i + 1];
+                    connect_request.arguments["name"] = "road_" + created_names[i] + "_" + created_names[i + 1];
+                    connect_request.arguments["avoid_obstacles"] = "true";
+                    connect_request.arguments["conform_to_terrain"] = "true";
+                    connect_request.arguments["sidewalk_enabled"] = "true";
+                    const std::string road_result = command_spline_connect(connect_request);
+                    if (road_result.find("\"ok\":true") == std::string::npos)
+                    {
+                        continue;
+                    }
+                    if (!first_road)
+                    {
+                        json += ",";
+                    }
+                    first_road = false;
+                    json += "{\"from\":" + json_string(created_names[i]) + ",\"to\":" + json_string(created_names[i + 1]) + "}";
+                    roads_created++;
+                }
+                json += "]";
+            }
+
+            json += ",\"count\":" + std::to_string(created_names.size());
+            json += ",\"roads_created\":" + std::to_string(roads_created);
+            json += ",\"center\":" + json_vector3(center);
+            json += ",\"extent\":" + std::to_string(extent);
+            json += ",\"corridor\":" + std::to_string(corridor);
+            json += "}";
+            return json;
+        }
+
         std::string command_execute_lua(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -8576,6 +9982,10 @@ namespace spartan
         {
             return command_spline_set_control_points(request);
         }
+        if (request.command == "spline_reroute")
+        {
+            return command_spline_reroute(request);
+        }
         if (request.command == "spline_connect")
         {
             return command_spline_connect(request);
@@ -8587,6 +9997,14 @@ namespace spartan
         if (request.command == "spline_decorate")
         {
             return command_spline_decorate(request);
+        }
+        if (request.command == "district_blockout")
+        {
+            return command_district_blockout(request);
+        }
+        if (request.command == "city_blockout")
+        {
+            return command_city_blockout(request);
         }
         if (request.command == "execute_lua")
         {

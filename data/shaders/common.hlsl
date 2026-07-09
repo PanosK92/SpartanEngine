@@ -416,6 +416,15 @@ float get_linear_depth(const float2 uv)
     return linearize_depth(get_depth(uv));
 }
 
+// unjittered overlays vs jittered depth, sample the depth texel the geometry actually wrote
+bool is_occluded_by_scene(float4 position_ss)
+{
+    float2 uv = position_ss.xy / buffer_frame.resolution_output;
+    uv       += buffer_frame.taa_jitter_current * float2(0.5f, -0.5f);
+    float scene_depth = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
+    return position_ss.z < scene_depth;
+}
+
 /*------------------------------------------------------------------------------
     POSITION
 ------------------------------------------------------------------------------*/

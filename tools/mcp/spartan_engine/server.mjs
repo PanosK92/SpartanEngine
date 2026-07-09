@@ -855,6 +855,28 @@ register_tool(
 
 register_tool(
   server,
+  "spline_reroute",
+  [
+    "Reroute an existing spline road around buildings, districts, and other roads without deleting its lights/cameras/props.",
+    "Captures child lateral offsets, skirts obstacles with clearance, regenerates the mesh, then redistributes cameras/lights/road props along the new path.",
+    "Also reclaims stranded road_light_* / road_prop_* furniture left behind by earlier edits and reparents it under the road.",
+    "Pass id or name (defaults to spline_road). Optional from/to landmark names snap ends to district edges. Optional via adds midpoints.",
+  ].join(" "),
+  {
+    id: z.union([z.string(), z.number().int()]).optional(),
+    name: z.string().optional().describe("spline entity name, e.g. spline_road"),
+    from: z.string().optional().describe("start landmark name or id"),
+    to: z.string().optional().describe("end landmark name or id"),
+    via: z.string().optional().describe("optional flat xyz midpoints"),
+    clearance: z.number().optional().describe("meters of padding around obstacles, default 14"),
+    keep_children: z.boolean().optional().describe("default true, redistribute lights/cameras/props"),
+  },
+  "spline_reroute",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
   "spline_connect",
   [
     "Connect ordered landmarks with one spline road. landmarks is a comma separated list of entity names or ids, at least two.",
@@ -917,6 +939,58 @@ register_tool(
     replace: z.boolean().optional(),
   },
   "spline_decorate",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "district_blockout",
+  [
+    "Block out one city district in a single call: root landmark parent, greybox massing, and calibrated lights.",
+    "Presets: market, downtown (skyscrapers), park, industrial, residential, parking, plaza, gas_station.",
+    "position is world xyz. footprint is width,depth meters. density is low, medium, or high. replace clears an existing same-named parent.",
+    "Prefer this over hand-placing dozens of cubes. Use city_blockout to lay out many districts at once.",
+  ].join(" "),
+  {
+    preset: z.enum(["market", "downtown", "skyscrapers", "park", "industrial", "residential", "parking", "plaza", "gas_station"]),
+    name: z.string().optional(),
+    position: z.string().optional().describe("world xyz, e.g. 10,0,-40"),
+    footprint: z.string().optional().describe("width,depth meters"),
+    rotation_y: z.number().optional(),
+    seed: z.number().int().optional(),
+    lights: z.boolean().optional(),
+    density: z.enum(["low", "medium", "high"]).optional(),
+    replace: z.boolean().optional(),
+  },
+  "district_blockout",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "city_blockout",
+  [
+    "Lay out a multi-district city skeleton as landmark roots ready for a later road pass.",
+    "Default mix: downtown, market, park, industrial, residential, parking around center with corridor gaps and avoid_existing landmarks.",
+    "districts is an optional comma list of presets or preset:name pairs, e.g. market:market_east,downtown:towers.",
+    "Returns district receipts plus road_hints approach points. connect_roads defaults false; set true only if you also want spur roads now.",
+  ].join(" "),
+  {
+    center: z.string().optional().describe("world xyz city center"),
+    extent: z.number().optional().describe("half-size of city footprint in meters, default 220"),
+    seed: z.number().int().optional(),
+    districts: z.string().optional().describe("comma presets or preset:name pairs"),
+    names: z.string().optional().describe("optional override names matching districts order"),
+    footprints: z.string().optional().describe("flat width,depth pairs"),
+    positions: z.string().optional().describe("flat world xyz list, one per district"),
+    avoid_existing: z.boolean().optional().describe("default true, do not stamp on existing landmark AABBs"),
+    corridor: z.number().optional().describe("meters of gap between districts for future roads, default 28"),
+    lights: z.boolean().optional(),
+    density: z.enum(["low", "medium", "high"]).optional(),
+    replace: z.boolean().optional(),
+    connect_roads: z.boolean().optional().describe("default false, roads are a second pass"),
+  },
+  "city_blockout",
   { annotations: edit_tool },
 );
 
