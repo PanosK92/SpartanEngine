@@ -91,6 +91,16 @@ namespace spartan
 
         static bool ensure_pool_capacity(uint32_t input_pixels, uint32_t output_blocks)
         {
+            auto fail = [](const char* name, const bool has_resource, const bool has_mapped, const uint64_t size) -> bool
+            {
+                SP_LOG_ERROR("gpu compression pool '%s' failed (resource=%s, mapped=%s, size=%llu)",
+                    name,
+                    has_resource ? "ok" : "null",
+                    has_mapped ? "ok" : "null",
+                    size);
+                return false;
+            };
+
             if (!pool::input || pool::input_capacity_pixels < input_pixels)
             {
                 uint32_t new_cap = grow_capacity(pool::input_capacity_pixels, input_pixels);
@@ -103,9 +113,10 @@ namespace spartan
                 );
                 if (!pool::input->GetRhiResource())
                 {
+                    const uint64_t size = pool::input->GetObjectSize();
                     pool::input.reset();
                     pool::input_capacity_pixels = 0;
-                    return false;
+                    return fail("compress_input", false, false, size);
                 }
                 pool::input_capacity_pixels = new_cap;
             }
@@ -122,9 +133,12 @@ namespace spartan
                 );
                 if (!pool::staging->GetRhiResource() || !pool::staging->GetMappedData())
                 {
+                    const bool has_resource = pool::staging->GetRhiResource() != nullptr;
+                    const bool has_mapped   = pool::staging->GetMappedData() != nullptr;
+                    const uint64_t size     = pool::staging->GetObjectSize();
                     pool::staging.reset();
                     pool::staging_capacity_pixels = 0;
-                    return false;
+                    return fail("compress_staging", has_resource, has_mapped, size);
                 }
                 pool::staging_capacity_pixels = new_cap;
             }
@@ -141,9 +155,10 @@ namespace spartan
                 );
                 if (!pool::output->GetRhiResource())
                 {
+                    const uint64_t size = pool::output->GetObjectSize();
                     pool::output.reset();
                     pool::output_capacity_blocks = 0;
-                    return false;
+                    return fail("compress_output", false, false, size);
                 }
                 pool::output_capacity_blocks = new_cap;
             }
@@ -160,9 +175,12 @@ namespace spartan
                 );
                 if (!pool::readback->GetRhiResource() || !pool::readback->GetMappedData())
                 {
+                    const bool has_resource = pool::readback->GetRhiResource() != nullptr;
+                    const bool has_mapped   = pool::readback->GetMappedData() != nullptr;
+                    const uint64_t size     = pool::readback->GetObjectSize();
                     pool::readback.reset();
                     pool::readback_capacity_blocks = 0;
-                    return false;
+                    return fail("compress_readback", has_resource, has_mapped, size);
                 }
                 pool::readback_capacity_blocks = new_cap;
             }

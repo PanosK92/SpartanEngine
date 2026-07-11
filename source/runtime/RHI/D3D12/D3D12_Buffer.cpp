@@ -198,8 +198,7 @@ namespace spartan
 
         if (heap_type == D3D12_HEAP_TYPE_UPLOAD || heap_type == D3D12_HEAP_TYPE_READBACK)
         {
-            D3D12_RANGE read_range = { 0, 0 };
-            hr = buffer->Map(0, &read_range, &m_data_gpu);
+            hr = buffer->Map(0, nullptr, &m_data_gpu);
             if (FAILED(hr))
             {
                 SP_LOG_ERROR("Failed to map buffer '%s': %s", m_object_name.c_str(), d3d12_utility::error::dxgi_error_to_string(hr));
