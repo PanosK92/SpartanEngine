@@ -19,7 +19,7 @@ echo          spartan engine project generator
 echo =============================================
 echo.
 echo   [1] visual studio 2026 - vulkan
-echo   [2] visual studio 2026 - d3d12 (wip)
+echo   [2] visual studio 2026 - d3d12
 echo   [3] gmake2 - vulkan (linux)
 echo   [0] exit
 echo.

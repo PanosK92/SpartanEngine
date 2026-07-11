@@ -121,9 +121,9 @@ namespace car
         float min_slip_speed;
         float load_sensitivity;
         float load_reference;
-        float rear_grip_ratio;
+        float rear_grip_ratio;           // rear axle mu relative to front, 1.0 = matched compound
         float slip_angle_deadband;
-        float min_lateral_grip;
+        float min_lateral_grip;          // unused, kept for xml compatibility
         float camber_thrust_coeff;
         float max_slip_angle;
         float tire_pressure;             // bar, nominal hot pressure
@@ -194,9 +194,9 @@ namespace car
 
         // steering
         float max_steer_angle;
-        float high_speed_steer_reduction;
+        float high_speed_steer_reduction; // unused, kept for xml compatibility
         float steering_rate;
-        float self_align_gain;
+        float self_align_gain;            // scales pneumatic trail sat, 1.0 = physical
         float steering_linearity;
 
         // alignment (radians)
@@ -212,12 +212,12 @@ namespace car
         float tire_vertical_stiffness;
         float lsd_viscous;
         float abs_load_sensitivity;
-        float steer_compliance;
+        float steer_compliance;          // rad per 100 kn of front lateral force
 
         // wheels
         float airborne_wheel_decay;
         float bearing_friction;
-        float ground_match_rate;
+        float ground_match_rate;         // unused, kept for xml compatibility
         float handbrake_sliding_factor;
         float handbrake_torque;
 
@@ -249,7 +249,7 @@ namespace car
         // damping
         float linear_damping;
         float angular_damping;
-        float yaw_damping;
+        float yaw_damping;               // unused, kept for xml compatibility
 
         // abs
         bool  abs_enabled;

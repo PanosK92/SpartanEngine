@@ -157,8 +157,8 @@ namespace spartan::d3d12_utility
                 return !comparison_enabled ? D3D12_FILTER_MIN_MAG_MIP_LINEAR              : D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
             }
 
-            SP_ASSERT(false && "D3D11_Sampler filter not supported.");
-            return D3D12_FILTER_MIN_MAG_MIP_POINT;
+            SP_ASSERT(false && "D3D12 sampler filter not supported.");
+            return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         }
     }
 }

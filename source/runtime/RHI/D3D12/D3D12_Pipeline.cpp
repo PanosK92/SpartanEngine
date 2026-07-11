@@ -72,6 +72,16 @@ namespace spartan
         }
     }
 
+    static void pso_hash_to_name(uint64_t hash, wchar_t* out)
+    {
+        static const wchar_t* hex = L"0123456789ABCDEF";
+        for (int i = 15; i >= 0; i--)
+        {
+            out[15 - i] = hex[(hash >> (i * 4)) & 0xF];
+        }
+        out[16] = 0;
+    }
+
     static void create_compute_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state)
     {
         // compute always uses the bindless root signature
@@ -92,11 +102,29 @@ namespace spartan
             desc.CS.BytecodeLength  = state.shaders[RHI_Shader_Type::Compute]->GetObjectSize();
         }
 
+        wchar_t pso_name[17];
+        pso_hash_to_name(state.GetHash(), pso_name);
+
         void* resource = nullptr;
+        ID3D12PipelineLibrary* lib = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
+        if (lib && d3d12_pipeline_library::can_load())
+        {
+            HRESULT hr_load = lib->LoadComputePipeline(pso_name, &desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
+            if (SUCCEEDED(hr_load))
+            {
+                pipeline->SetRhiResource(resource);
+                return;
+            }
+        }
+
         HRESULT hr = RHI_Context::device->CreateComputePipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
         if (FAILED(hr))
         {
             SP_LOG_ERROR("Failed to create compute pipeline state '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
+        }
+        else if (lib && resource)
+        {
+            lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
         }
         pipeline->SetRhiResource(resource);
     }
@@ -272,11 +300,30 @@ namespace spartan
             desc.PS.BytecodeLength  = state.shaders[RHI_Shader_Type::Pixel]->GetObjectSize();
         }
 
+        // stable wide name from pso hash for pipeline library load/store
+        wchar_t pso_name[17];
+        pso_hash_to_name(state.GetHash(), pso_name);
+
         void* resource = nullptr;
+        ID3D12PipelineLibrary* lib = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
+        if (lib && d3d12_pipeline_library::can_load())
+        {
+            HRESULT hr_load = lib->LoadGraphicsPipeline(pso_name, &desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
+            if (SUCCEEDED(hr_load))
+            {
+                pipeline->SetRhiResource(resource);
+                return;
+            }
+        }
+
         HRESULT hr = RHI_Context::device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
         if (FAILED(hr))
         {
             SP_LOG_ERROR("Failed to create graphics pipeline state '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
+        }
+        else if (lib && resource)
+        {
+            lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
         }
         pipeline->SetRhiResource(resource);
     }
@@ -285,8 +332,8 @@ namespace spartan
     // root parameter slots (see D3D12_RootSlot below):
     //   0: CBV b0 space0 (buffer_frame)
     //   1: 32-bit root constants b1 space0 (buffer_pass - 16 dwords = 64 bytes)
-    //   2: SRV table t0..t27 space0
-    //   3: UAV table u0..u44 space0
+    //   2: SRV table t0..t31 space0
+    //   3: UAV table u0..u56 space0
     //   4: SRV table t15 space1 unbounded (material_textures[])
     //   5: SRV table t16 space2 (material_parameters)
     //   6: SRV table t17 space3 (light_parameters)
@@ -330,10 +377,11 @@ namespace spartan
         params[1].Constants.Num32BitValues = 16; // PassBufferData = 64 bytes
         params[1].ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 2: SRV table t0..t27 space0
+        // 2: SRV table t0..t31 space0
+        // highest srv used is t31 (tex_ocean_normal) in common_resources.hlsl, must cover the full range or graphics psos that bind it fail validation
         static D3D12_DESCRIPTOR_RANGE srv0_range = {};
         srv0_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srv0_range.NumDescriptors                    = 28;
+        srv0_range.NumDescriptors                    = d3d12_root_slot::srv_space0_count;
         srv0_range.BaseShaderRegister                = 0;
         srv0_range.RegisterSpace                     = 0;
         srv0_range.OffsetInDescriptorsFromTableStart = 0;
@@ -342,11 +390,11 @@ namespace spartan
         params[2].DescriptorTable.pDescriptorRanges   = &srv0_range;
         params[2].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 3: UAV table u0..u44 space0
-        // highest uav used is u44 (cull_tasks) in common_resources.hlsl, must cover the full range or compute psos that bind it fail validation
+        // 3: UAV table u0..u56 space0
+        // highest uav used is u56 (ocean_heights) in common_resources.hlsl, must cover the full range or compute psos that bind it fail validation
         static D3D12_DESCRIPTOR_RANGE uav0_range = {};
         uav0_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        uav0_range.NumDescriptors                    = 45;
+        uav0_range.NumDescriptors                    = d3d12_root_slot::uav_space0_count;
         uav0_range.BaseShaderRegister                = 0;
         uav0_range.RegisterSpace                     = 0;
         uav0_range.OffsetInDescriptorsFromTableStart = 0;

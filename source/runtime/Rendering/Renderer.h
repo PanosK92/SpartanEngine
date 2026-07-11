@@ -352,7 +352,7 @@ namespace spartan
         // misc
         static void AddLinesToBeRendered();
         static void UpdatePersistentLines();
-        static void SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips, bool bind_ssao = true);
         static void DestroyResources();
         static void UpdateShadowAtlas();
 
@@ -416,6 +416,7 @@ namespace spartan
         // cpu-side draw data staging
         static std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;
         static uint32_t m_draw_data_count;
+        static bool m_draw_data_gpu_synced;
 
         // bindless
         static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
@@ -506,10 +507,6 @@ namespace spartan
             // phase 3 present submit waits on async compute batch b before recording lighting work
             RHI_SyncPrimitive* pending_compute_timeline       = nullptr;
             uint64_t           pending_compute_timeline_value = 0;
-            // compute batch a waits on the previous frame's last graphics submit so it does not
-            // overwrite resources still in flight (e.g. tlas, skysphere)
-            RHI_SyncPrimitive* previous_present_timeline       = nullptr;
-            uint64_t           previous_present_timeline_value = 0;
         };
         static CrossQueueSync m_cross_queue_sync;
 

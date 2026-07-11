@@ -52,7 +52,14 @@ namespace spartan
         DXGI_FORMAT dxgi_format = d3d12_format[format_index];
         if (dxgi_format == DXGI_FORMAT_UNKNOWN && m_format != RHI_Format::Max)
         {
-            SP_LOG_ERROR("Unknown DXGI format for RHI_Format: %d", static_cast<int>(m_format));
+            if (m_format == RHI_Format::ASTC)
+            {
+                SP_LOG_ERROR("ASTC is not supported on D3D12, use BC1/BC3/BC5/BC7");
+            }
+            else
+            {
+                SP_LOG_ERROR("Unknown DXGI format for RHI_Format: %d", static_cast<int>(m_format));
+            }
             return false;
         }
 
@@ -137,6 +144,13 @@ namespace spartan
             resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         }
 
+        // mirrors vulkan concurrent sharing, required when graphics and compute queues touch the same texture
+        // incompatible with depth stencil resources per the d3d12 spec
+        if ((m_flags & RHI_Texture_ConcurrentSharing) && !is_depth_format)
+        {
+            resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+        }
+
         D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
         if (!HasData())
         {
@@ -190,6 +204,12 @@ namespace spartan
 
         // seed the d3d12 state tracker so future barriers know the StateBefore
         d3d12_state::SetState(texture, initial_state);
+        // buffers and simultaneous-access textures decay to common after every executecommandlists
+        d3d12_state::SetDecaysToCommon(texture, (m_flags & RHI_Texture_ConcurrentSharing) && !is_depth_format);
+        {
+            const uint32_t slices = (m_type == RHI_Texture_Type::Type3D) ? 1u : static_cast<uint32_t>(resource_desc.DepthOrArraySize);
+            d3d12_state::SetSubresourceCount(texture, m_mip_count * slices);
+        }
 
         // set initial layout matching the initial state
         {
@@ -278,8 +298,8 @@ namespace spartan
                                 temp_cmd_list->CopyTextureRegion(&dest_location, 0, 0, 0, &src_location, nullptr);
                             }
 
-                            // pick the post-upload state based on usage, uav textures need unordered access, the rest shader read
-                            D3D12_RESOURCE_STATES post_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                            // pixel|non_pixel so bindless material sampling works in pixel shaders without a per-texture settexture upgrade
+                            D3D12_RESOURCE_STATES post_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
                             RHI_Image_Layout post_layout     = RHI_Image_Layout::Shader_Read;
                             if (m_flags & RHI_Texture_Uav)
                             {
@@ -306,7 +326,11 @@ namespace spartan
 
                             // upload finished, reflect the post-copy state in both the rhi layout map and the d3d12 state tracker
                             SetLayoutDirect(0, m_mip_count, post_layout);
-                            d3d12_state::SetState(texture, post_state);
+                            // simultaneous-access textures decay to common after executecommandlists
+                            const D3D12_RESOURCE_STATES tracked = (m_flags & RHI_Texture_ConcurrentSharing)
+                                ? D3D12_RESOURCE_STATE_COMMON
+                                : post_state;
+                            d3d12_state::SetState(texture, tracked);
 
                             temp_cmd_list->Release();
                         }
@@ -548,10 +572,11 @@ namespace spartan
         // evict cached descriptor sets keyed by this texture pointer
         RHI_Device::DescriptorSetInvalidateReferencingResource(this);
 
+        // defer release, open command lists may still reference this resource
         if (m_rhi_resource)
         {
-            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
-            static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
+            ClearLayouts();
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Image, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
 
@@ -566,6 +591,21 @@ namespace spartan
 
     void RHI_Texture::DestroyResourceImmediate()
     {
-        RHI_DestroyResource();
+        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+
+        if (m_rhi_resource)
+        {
+            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
+            static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
+            m_rhi_resource = nullptr;
+        }
+
+        m_rhi_srv = nullptr;
+        for (auto& v : m_rhi_srv_mips) v = nullptr;
+        for (auto& v : m_rhi_srv_layers) v = nullptr;
+        for (auto& v : m_rhi_rtv) v = nullptr;
+        for (auto& v : m_rhi_dsv) v = nullptr;
+        m_rhi_rtv_multiview = nullptr;
+        m_rhi_dsv_multiview = nullptr;
     }
 }

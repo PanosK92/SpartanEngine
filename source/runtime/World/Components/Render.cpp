@@ -74,7 +74,8 @@ namespace spartan
     {
         // mesh, skip procedural meshes as they are not in the resource cache, their owning component regenerates them after load
         const bool is_standard_mesh = m_mesh && m_mesh->GetObjectName().rfind("standard_", 0) == 0;
-        const bool is_resolvable    = m_mesh && (is_standard_mesh || ResourceCache::GetByName<Mesh>(m_mesh->GetObjectName()) != nullptr);
+        const bool is_procedural    = m_mesh && m_mesh->GetObjectName() == "ocean";
+        const bool is_resolvable    = m_mesh && !is_procedural && (is_standard_mesh || ResourceCache::GetByName<Mesh>(m_mesh->GetObjectName()) != nullptr);
         node.append_attribute("mesh_name")      = is_resolvable ? m_mesh->GetObjectName().c_str() : "";
         node.append_attribute("sub_mesh_index") = m_sub_mesh_index;
 
@@ -148,6 +149,10 @@ namespace spartan
             else if (mesh_name == "standard_cone")
             {
                 m_mesh = Renderer::GetStandardMesh(MeshType::Cone).get();
+            }
+            else if (mesh_name == "ocean")
+            {
+                // procedural clipmap owned by water, rebuilt in water::initialize
             }
             else
             {
@@ -232,15 +237,10 @@ namespace spartan
             }
         }
 
-        // compute mesh bounding box (needed for culling and LOD)
-        if (m_mesh)
+        // use the mesh lod aabb, copying every vertex here used to dominate entity load time
+        if (m_mesh && GetLodCount() > 0)
         {
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            m_mesh->GetGeometry(m_sub_mesh_index, nullptr, &vertices);
-            if (!vertices.empty())
-            {
-                m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-            }
+            m_bounding_box_mesh = GetLodAabb(0);
         }
 
         // update instance buffer and bounding boxes

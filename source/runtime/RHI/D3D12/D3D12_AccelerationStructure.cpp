@@ -84,6 +84,9 @@ namespace spartan
 
             // track the logical initial state, buffers in COMMON auto-promote to UAV on first access
             d3d12_state::SetState(resource, initial_state);
+            d3d12_state::SetDecaysToCommon(resource, true);
+            d3d12_state::SetIsBuffer(resource, true);
+            d3d12_state::SetSubresourceCount(resource, 1);
             if (name)
             {
                 d3d12_utility::debug::set_name(resource, name);
@@ -132,6 +135,9 @@ namespace spartan
             }
 
             d3d12_state::SetState(resource, D3D12_RESOURCE_STATE_GENERIC_READ);
+            d3d12_state::SetDecaysToCommon(resource, true);
+            d3d12_state::SetIsBuffer(resource, true);
+            d3d12_state::SetSubresourceCount(resource, 1);
             if (name)
             {
                 d3d12_utility::debug::set_name(resource, name);

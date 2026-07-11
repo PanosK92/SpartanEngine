@@ -682,8 +682,8 @@ namespace car
         {
             for (int i = 0; i < wheel_count; i++) abs_active[i] = false;
 
-            // reverse request: full stop + brake hold while in forward gear
-            if (fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < tuning::spec.input_deadzone && is_in_forward_gear() && !is_shifting)
+            // reverse request: auto only, full stop + brake hold while in forward gear
+            if (!tuning::spec.manual_transmission && fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < tuning::spec.input_deadzone && is_in_forward_gear() && !is_shifting)
             {
                 current_gear = 0;
                 is_shifting  = true;
@@ -741,9 +741,15 @@ namespace car
             clutch = 1.0f;
         }
 
-        // reflect the engine flywheel to the driven wheels, neutral zeroes it via its 0 gear ratio
+        // reflect the engine flywheel only while the driveline is transmitting drive torque.
+        // coasting already couples through engine braking, keeping full i^2 inertia on the wheels
+        // after a lift makes wheelspin take forever to die and starves rear lateral grip via combined slip
         float ratio_total = tuning::spec.gear_ratios[current_gear] * tuning::spec.final_drive;
-        reflected_engine_inertia = (driven_count > 0) ? tuning::spec.engine_inertia * ratio_total * ratio_total * clutch / (float)driven_count : 0.0f;
+        bool driving = (input.throttle > tuning::spec.input_deadzone && is_in_forward_gear())
+                    || (input.brake > tuning::spec.input_deadzone && is_in_reverse());
+        reflected_engine_inertia = (driving && driven_count > 0 && clutch > 0.0f)
+            ? tuning::spec.engine_inertia * ratio_total * ratio_total * clutch / (float)driven_count
+            : 0.0f;
 
         update_engine_rpm(compute_target_engine_rpm(wheel_driven_rpm), dt);
 

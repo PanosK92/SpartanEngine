@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
 #include <vector>
+#include <string>
+#include <algorithm>
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
@@ -307,8 +309,6 @@ namespace car
     inline float           shift_cooldown          = 0.0f;
     // cooldown after a shift completes before the next auto-shift can occur
     inline constexpr float shift_cooldown_time     = 0.5f;
-    // per-wheel chassis reaction force cap from the suspension, expressed in g's
-    inline constexpr float chassis_force_cap_g     = 6.0f;
     // "large" static friction gain applied under the low-slip static-friction model,
     // units are (N per m/s) per kg of chassis mass
     inline constexpr float static_friction_gain_per_kg = 10.0f;
@@ -350,6 +350,96 @@ namespace car
             }
             frame_counter = 0;
             elapsed_time  = 0.0f;
+        }
+
+        void flush()
+        {
+            if (file)
+            {
+                fflush(file);
+            }
+        }
+
+        // absolute path of the csv when known, empty if not open yet
+        std::string absolute_path() const
+        {
+            char abs_path[1024] = {};
+            if (_fullpath(abs_path, "car_telemetry.csv", sizeof(abs_path)))
+            {
+                return abs_path;
+            }
+            return "car_telemetry.csv";
+        }
+
+        // reopen for append without truncating an existing csv
+        bool reopen_append()
+        {
+            if (file)
+            {
+                return true;
+            }
+            fopen_s(&file, "car_telemetry.csv", "a");
+            return file != nullptr;
+        }
+
+        // flush, temporarily close, read the last max_rows lines, reopen for append
+        bool snapshot_tail(int max_rows, std::string& out_text, std::string& out_path, int& out_total_lines)
+        {
+            out_text.clear();
+            out_path = absolute_path();
+            out_total_lines = 0;
+            if (!tuning::log_to_file)
+            {
+                return false;
+            }
+            flush();
+            if (file)
+            {
+                fclose(file);
+                file = nullptr;
+            }
+
+            FILE* read_file = nullptr;
+            fopen_s(&read_file, "car_telemetry.csv", "r");
+            if (!read_file)
+            {
+                reopen_append();
+                return false;
+            }
+
+            std::vector<std::string> lines;
+            char buffer[8192];
+            while (fgets(buffer, sizeof(buffer), read_file))
+            {
+                lines.emplace_back(buffer);
+            }
+            fclose(read_file);
+            out_total_lines = static_cast<int>(lines.size());
+
+            if (lines.empty())
+            {
+                reopen_append();
+                return true;
+            }
+
+            // always keep header, then the last max_rows data rows
+            out_text = lines[0];
+            if (!out_text.empty() && out_text.back() != '\n')
+            {
+                out_text.push_back('\n');
+            }
+            const int data_count = std::max(0, out_total_lines - 1);
+            const int start = 1 + std::max(0, data_count - std::max(max_rows, 0));
+            for (int i = start; i < out_total_lines; i++)
+            {
+                out_text += lines[static_cast<size_t>(i)];
+                if (!out_text.empty() && out_text.back() != '\n')
+                {
+                    out_text.push_back('\n');
+                }
+            }
+
+            return reopen_append();
         }
 
         bool open_if_needed()

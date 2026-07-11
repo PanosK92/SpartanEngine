@@ -50,10 +50,11 @@ float3 sample_input(int2 pixel, uint2 resolution)
     return max(tex.Load(int3(clamped_pixel, 0)).rgb, 0.0f);
 }
 
-void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, out float3 sigma)
+void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, out float3 sigma, out float neighbor_max_luma)
 {
     float3 second_moment = 0.0f;
     mean                 = 0.0f;
+    neighbor_max_luma    = 0.0f;
     for (int y = -1; y <= 1; y++)
     {
         for (int x = -1; x <= 1; x++)
@@ -62,6 +63,10 @@ void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, ou
             float3 sample_color = sample_input(sp, resolution);
             mean          += sample_color;
             second_moment += sample_color * sample_color;
+            if (x != 0 || y != 0)
+            {
+                neighbor_max_luma = max(neighbor_max_luma, dot(sample_color, luminance_weights));
+            }
         }
     }
     mean /= 9.0f;
@@ -156,11 +161,22 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     // local neighborhood stats stabilize the variance estimate and feed the firefly clamp
     float3 mean_color, sigma_color;
-    compute_local_statistics(pixel, resolution, mean_color, sigma_color);
+    float  neighbor_max_luma;
+    compute_local_statistics(pixel, resolution, mean_color, sigma_color, neighbor_max_luma);
     float spatial_sigma_luma = dot(sigma_color, luminance_weights);
 
+    // single pixel firefly kill, a center far brighter than its neighbors survives luma edge
+    // stopping in the a-trous and dances frame to frame as the ggx lobe wanders
+    float firefly_scale   = lerp(4.0f, 1.5f, rough_reflection);
+    float firefly_ceiling = max(neighbor_max_luma, 1e-4f) * firefly_scale;
+    if (current_luma > firefly_ceiling)
+    {
+        current_color *= firefly_ceiling / current_luma;
+        current_luma   = firefly_ceiling;
+    }
+
     float raw_mean_luma = dot(mean_color, luminance_weights);
-    float raw_band      = lerp(10.0f, 2.0f, rough_reflection);
+    float raw_band      = lerp(6.0f, 1.25f, rough_reflection);
     float raw_high      = raw_mean_luma + raw_band * max(spatial_sigma_luma, 0.05f);
     if (rough_reflection > 0.0f && current_luma > raw_high && current_luma > 1e-3f)
     {
@@ -174,7 +190,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         float history_sigma = sqrt(max(history_moments.y - history_moments.x * history_moments.x, 0.0f));
         float band_sigma    = max(history_sigma, spatial_sigma_luma);
-        float band_widen    = lerp(12.0f, 6.0f, saturate(history_moments.z / 4.0f));
+        float band_widen    = lerp(8.0f, 3.0f, saturate(history_moments.z / 4.0f));
         float clamp_high    = history_moments.x + band_widen * max(band_sigma, 0.05f);
         if (current_luma > clamp_high && current_luma > 1e-3f)
         {

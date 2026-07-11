@@ -1991,6 +1991,120 @@ register_tool(
 
 register_tool(
   server,
+  "vehicle_list",
+  "List drivable cars in the world with occupancy, mcp control flag, view, position, and speed.",
+  {},
+  "vehicle_list",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "vehicle_get",
+  "Read live car status: occupancy, mcp control, camera view, pedals, gear, rpm, and speed. Omit id to use the occupied car or the only car in the world.",
+  {
+    id: z.string().optional(),
+  },
+  "vehicle_get",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "vehicle_enter",
+  "Enter a drivable car in play mode (same as E). Enables chase cam and by default takes mcp pedal ownership so keyboard does not overwrite agent input.",
+  {
+    id: z.string().optional(),
+    mcp_controlled: z.boolean().optional(),
+  },
+  "vehicle_enter",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_exit",
+  "Exit the occupied car in play mode when slow enough (same as E). Clears mcp pedal ownership.",
+  {
+    id: z.string().optional(),
+  },
+  "vehicle_exit",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_set_input",
+  [
+    "Set car pedals while occupied in play mode.",
+    "throttle and brake are 0 to 1, steering is -1 left to 1 right, handbrake is 0 to 1.",
+    "Automatically marks the car mcp_controlled so keyboard zeros do not overwrite these values.",
+    "Human keyboard map for reference: Arrow Up gas, Arrow Down brake, Arrow Left/Right steer, Space handbrake, E enter/exit, V cycle view, R reset, L1/R1 shift.",
+  ].join(" "),
+  {
+    id: z.string().optional(),
+    throttle: z.number().min(0).max(1).optional(),
+    brake: z.number().min(0).max(1).optional(),
+    steering: z.number().min(-1).max(1).optional(),
+    handbrake: z.number().min(0).max(1).optional(),
+  },
+  "vehicle_set_input",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_shift",
+  "Shift gears on the occupied car: up, down, or neutral.",
+  {
+    id: z.string().optional(),
+    action: z.enum(["up", "down", "neutral"]),
+  },
+  "vehicle_shift",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_reset",
+  "Reset the car to its spawn pose and clear pedals with handbrake on (same as R).",
+  {
+    id: z.string().optional(),
+  },
+  "vehicle_reset",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_set_view",
+  "Set or cycle the in-car camera view: chase, hood, wheel, or cycle (same as V).",
+  {
+    id: z.string().optional(),
+    view: z.enum(["chase", "hood", "wheel", "cycle", "next"]),
+  },
+  "vehicle_set_view",
+  { annotations: edit_tool },
+);
+
+register_tool(
+  server,
+  "vehicle_telemetry",
+  [
+    "Read car_telemetry.csv from the engine working directory (binary folder when launched from there).",
+    "Returns the absolute path plus the csv header and the last max_rows data rows for handling diagnosis.",
+    "Not an Excel file; it is a per-physics-tick csv written while a drivable car simulates with log_to_file enabled.",
+  ].join(" "),
+  {
+    max_rows: z.number().int().min(1).max(5000).optional(),
+    include_csv: z.boolean().optional(),
+  },
+  "vehicle_telemetry",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
   "execute_lua",
   [
     "Run one focused Lua script inside the engine using known bindings (World, Entity, Renderable, Light, MeshType, LightType, ComponentType, WorldHelpers, etc.).",

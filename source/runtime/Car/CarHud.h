@@ -30,7 +30,7 @@ namespace spartan
         // always-on cockpit overlay anchored to the bottom of the viewport
         void draw_driver_hud(Physics* physics);
 
-        // single tabbed telemetry window, p_open is bound to the toggle state
+        // single scrollable telemetry funnel, p_open is bound to the toggle state
         void draw_telemetry_window(Physics* physics, bool* p_open);
     }
 }

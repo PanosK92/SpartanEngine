@@ -42,6 +42,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/SplineFollower.h"
 #include "../World/Components/Terrain.h"
 #include "../World/Prefab.h"
+#include "../Car/Car.h"
+#include "../Car/CarState.h"
 #include "../Resource/ResourceCache.h"
 #include "../Animation/Animation.h"
 #include "../Geometry/Mesh.h"
@@ -4402,6 +4404,500 @@ namespace spartan
                 json += "]}";
             }
 
+            json += "}";
+            return json;
+        }
+
+        const char* car_view_to_name(CarView view)
+        {
+            switch (view)
+            {
+            case CarView::Chase: return "chase";
+            case CarView::Hood:  return "hood";
+            case CarView::Wheel: return "wheel";
+            }
+            return "chase";
+        }
+
+        bool car_view_from_name(const std::string& name, CarView& view)
+        {
+            const std::string lower = to_lower_copy(name);
+            if (lower == "chase")
+            {
+                view = CarView::Chase;
+                return true;
+            }
+            if (lower == "hood")
+            {
+                view = CarView::Hood;
+                return true;
+            }
+            if (lower == "wheel")
+            {
+                view = CarView::Wheel;
+                return true;
+            }
+            return false;
+        }
+
+        Car* find_car_from_request(const McpRequest& request, std::string& error)
+        {
+            const std::optional<std::string> id_arg = get_argument(request, "id");
+            if (id_arg)
+            {
+                Entity* entity = get_entity_from_request(request, error);
+                if (entity == nullptr)
+                {
+                    return nullptr;
+                }
+
+                for (Car* car : Car::GetAll())
+                {
+                    if (car == nullptr)
+                    {
+                        continue;
+                    }
+                    Entity* root = car->GetRootEntity();
+                    Entity* body = car->GetBodyEntity();
+                    if (root == entity || body == entity)
+                    {
+                        return car;
+                    }
+                    // prefab worlds parent the vehicle under an entity like player_car
+                    if (root && root->GetParent() == entity)
+                    {
+                        return car;
+                    }
+                }
+
+                error = "entity is not a drivable car";
+                return nullptr;
+            }
+
+            Car* occupied = nullptr;
+            Car* first_drivable = nullptr;
+            int drivable_count = 0;
+            for (Car* car : Car::GetAll())
+            {
+                if (car == nullptr || !car->IsDrivable() || !car->GetRootEntity())
+                {
+                    continue;
+                }
+                if (car->IsOccupied())
+                {
+                    if (occupied != nullptr)
+                    {
+                        error = "multiple occupied cars, pass id";
+                        return nullptr;
+                    }
+                    occupied = car;
+                }
+                drivable_count++;
+                if (first_drivable == nullptr)
+                {
+                    first_drivable = car;
+                }
+            }
+
+            if (occupied != nullptr)
+            {
+                return occupied;
+            }
+            if (drivable_count == 1)
+            {
+                return first_drivable;
+            }
+            if (drivable_count == 0)
+            {
+                error = "no cars in world";
+                return nullptr;
+            }
+
+            error = "multiple cars, pass id";
+            return nullptr;
+        }
+
+        std::string car_status_json(Car* car)
+        {
+            Entity* root = car->GetRootEntity();
+            Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+
+            std::string json = "{\"ok\":true";
+            if (root)
+            {
+                json += ",\"entity\":" + entity_to_json_compact(root);
+            }
+            json += ",\"occupied\":" + json_bool(car->IsOccupied());
+            json += ",\"mcp_controlled\":" + json_bool(car->IsMcpControlled());
+            json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
+            json += ",\"show_telemetry\":" + json_bool(car->GetShowTelemetry());
+            json += ",\"playing\":" + json_bool(Engine::IsFlagSet(EngineMode::Playing));
+            if (physics && physics->GetBodyType() == BodyType::Vehicle)
+            {
+                const math::Vector3 velocity = physics->GetLinearVelocity();
+                json += ",\"throttle\":" + std::to_string(physics->GetVehicleThrottle());
+                json += ",\"brake\":" + std::to_string(physics->GetVehicleBrake());
+                json += ",\"steering\":" + std::to_string(physics->GetVehicleSteering());
+                json += ",\"handbrake\":" + std::to_string(physics->GetVehicleHandbrake());
+                json += ",\"gear\":" + json_string(physics->GetCurrentGearString());
+                json += ",\"engine_rpm\":" + std::to_string(physics->GetEngineRPM());
+                json += ",\"speed_kmh\":" + std::to_string(velocity.Length() * 3.6f);
+                json += ",\"position\":" + json_vector3(root->GetPosition());
+                json += ",\"linear_velocity\":" + json_vector3(velocity);
+                json += ",\"abs_active\":" + json_bool(physics->IsAbsActiveAny());
+                json += ",\"tc_active\":" + json_bool(physics->IsTcActive());
+            }
+            json += "}";
+            return json;
+        }
+
+        std::string command_vehicle_list()
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string json = "{\"ok\":true,\"cars\":[";
+            bool first = true;
+            for (Car* car : Car::GetAll())
+            {
+                if (car == nullptr || !car->IsDrivable() || car->GetRootEntity() == nullptr)
+                {
+                    continue;
+                }
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+
+                Entity* root = car->GetRootEntity();
+                Physics* physics = root->GetComponent<Physics>();
+                Entity* parent = root->GetParent();
+                json += "{";
+                json += "\"id\":" + json_string(std::to_string(root->GetObjectId()));
+                json += ",\"name\":" + json_string(root->GetObjectName());
+                if (parent)
+                {
+                    json += ",\"parent_id\":" + json_string(std::to_string(parent->GetObjectId()));
+                    json += ",\"parent_name\":" + json_string(parent->GetObjectName());
+                }
+                json += ",\"occupied\":" + json_bool(car->IsOccupied());
+                json += ",\"mcp_controlled\":" + json_bool(car->IsMcpControlled());
+                json += ",\"view\":" + json_string(car_view_to_name(car->GetCurrentView()));
+                json += ",\"position\":" + json_vector3(root->GetPosition());
+                if (physics)
+                {
+                    json += ",\"speed_kmh\":" + std::to_string(physics->GetLinearVelocity().Length() * 3.6f);
+                }
+                json += "}";
+            }
+            json += "]}";
+            return json;
+        }
+
+        std::string command_vehicle_get(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_enter(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                return json_error("vehicle enter requires play mode");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            bool mcp_controlled = true;
+            if (const std::optional<std::string> value = get_argument(request, "mcp_controlled"))
+            {
+                if (!parse_bool(*value, mcp_controlled))
+                {
+                    return json_error("invalid mcp_controlled");
+                }
+            }
+
+            if (!car->IsOccupied())
+            {
+                car->Enter();
+            }
+            if (!car->IsOccupied())
+            {
+                return json_error("failed to enter car");
+            }
+
+            car->SetMcpControlled(mcp_controlled);
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_exit(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            if (car->IsOccupied())
+            {
+                car->Exit();
+            }
+            car->SetMcpControlled(false);
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_set_input(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                return json_error("vehicle input requires play mode");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+            if (!car->IsOccupied())
+            {
+                return json_error("car is not occupied, call vehicle_enter first");
+            }
+
+            car->SetMcpControlled(true);
+
+            if (const std::optional<std::string> value = get_argument(request, "throttle"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*value, parsed))
+                {
+                    return json_error("invalid throttle");
+                }
+                car->SetThrottle(std::clamp(parsed, 0.0f, 1.0f));
+            }
+            if (const std::optional<std::string> value = get_argument(request, "brake"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*value, parsed))
+                {
+                    return json_error("invalid brake");
+                }
+                car->SetBrake(std::clamp(parsed, 0.0f, 1.0f));
+            }
+            if (const std::optional<std::string> value = get_argument(request, "steering"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*value, parsed))
+                {
+                    return json_error("invalid steering");
+                }
+                car->SetSteering(std::clamp(parsed, -1.0f, 1.0f));
+            }
+            if (const std::optional<std::string> value = get_argument(request, "handbrake"))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(*value, parsed))
+                {
+                    return json_error("invalid handbrake");
+                }
+                car->SetHandbrake(std::clamp(parsed, 0.0f, 1.0f));
+            }
+
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_shift(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                return json_error("vehicle shift requires play mode");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            Entity* root = car->GetRootEntity();
+            Physics* physics = root ? root->GetComponent<Physics>() : nullptr;
+            if (!physics || physics->GetBodyType() != BodyType::Vehicle)
+            {
+                return json_error("vehicle physics not found");
+            }
+
+            const std::optional<std::string> action_arg = get_argument(request, "action");
+            if (!action_arg)
+            {
+                return json_error("missing action");
+            }
+
+            const std::string action = to_lower_copy(*action_arg);
+            if (action == "up")
+            {
+                physics->ShiftUp();
+            }
+            else if (action == "down")
+            {
+                physics->ShiftDown();
+            }
+            else if (action == "neutral")
+            {
+                physics->ShiftToNeutral();
+            }
+            else
+            {
+                return json_error("action must be up, down, or neutral");
+            }
+
+            car->SetMcpControlled(true);
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_reset(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            car->ResetToSpawn();
+            car->SetThrottle(0.0f);
+            car->SetBrake(0.0f);
+            car->SetSteering(0.0f);
+            car->SetHandbrake(1.0f);
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_set_view(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (car == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> view_arg = get_argument(request, "view");
+            if (!view_arg)
+            {
+                return json_error("missing view");
+            }
+
+            const std::string view_name = to_lower_copy(*view_arg);
+            if (view_name == "cycle" || view_name == "next")
+            {
+                car->CycleView();
+            }
+            else
+            {
+                CarView view = CarView::Chase;
+                if (!car_view_from_name(view_name, view))
+                {
+                    return json_error("view must be chase, hood, wheel, or cycle");
+                }
+                car->SetView(view);
+            }
+
+            return car_status_json(car);
+        }
+
+        std::string command_vehicle_telemetry(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            int max_rows = 200;
+            if (const std::optional<std::string> rows_arg = get_argument(request, "max_rows"))
+            {
+                int32_t parsed = 0;
+                if (!parse_int32(*rows_arg, parsed) || parsed < 1 || parsed > 5000)
+                {
+                    return json_error("max_rows must be between 1 and 5000");
+                }
+                max_rows = parsed;
+            }
+
+            bool include_csv = true;
+            if (const std::optional<std::string> include_arg = get_argument(request, "include_csv"))
+            {
+                if (!parse_bool(*include_arg, include_csv))
+                {
+                    return json_error("invalid include_csv");
+                }
+            }
+
+            std::string csv_text;
+            std::string path;
+            int total_lines = 0;
+            const bool ok = ::car::telemetry.snapshot_tail(max_rows, csv_text, path, total_lines);
+
+            std::string json = "{\"ok\":true";
+            json += ",\"path\":" + json_string(path);
+            json += ",\"log_to_file\":" + json_bool(::car::tuning::log_to_file);
+            json += ",\"total_lines\":" + std::to_string(total_lines);
+            json += ",\"returned_data_rows\":" + std::to_string(std::max(0, std::min(max_rows, std::max(0, total_lines - 1))));
+            json += ",\"file_ready\":" + json_bool(ok && total_lines > 0);
+            if (include_csv)
+            {
+                json += ",\"csv\":" + json_string(csv_text);
+            }
+            if (!ok && total_lines == 0)
+            {
+                json += ",\"note\":" + json_string("telemetry file not found yet, enter play mode with a drivable car and drive first");
+            }
             json += "}";
             return json;
         }
@@ -9949,6 +10445,42 @@ namespace spartan
         if (request.command == "physics_state")
         {
             return command_physics_state(request);
+        }
+        if (request.command == "vehicle_list")
+        {
+            return command_vehicle_list();
+        }
+        if (request.command == "vehicle_get")
+        {
+            return command_vehicle_get(request);
+        }
+        if (request.command == "vehicle_enter")
+        {
+            return command_vehicle_enter(request);
+        }
+        if (request.command == "vehicle_exit")
+        {
+            return command_vehicle_exit(request);
+        }
+        if (request.command == "vehicle_set_input")
+        {
+            return command_vehicle_set_input(request);
+        }
+        if (request.command == "vehicle_shift")
+        {
+            return command_vehicle_shift(request);
+        }
+        if (request.command == "vehicle_reset")
+        {
+            return command_vehicle_reset(request);
+        }
+        if (request.command == "vehicle_set_view")
+        {
+            return command_vehicle_set_view(request);
+        }
+        if (request.command == "vehicle_telemetry")
+        {
+            return command_vehicle_telemetry(request);
         }
         if (request.command == "prefab_types")
         {

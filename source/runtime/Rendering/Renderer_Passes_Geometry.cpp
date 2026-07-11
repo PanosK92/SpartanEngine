@@ -660,11 +660,11 @@ namespace spartan
                 }
             }
 
-            // early transition gbuffer color, normal, material, velocity to general (uav read), depth to shader read
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::General,     cmd_list);
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::General,     cmd_list);
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::General,     cmd_list);
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::General,     cmd_list);
+            // early transition gbuffer to shader read for the compute lighting batch, depth likewise
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();

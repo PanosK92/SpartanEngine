@@ -451,6 +451,10 @@ namespace spartan
         }
         s_cars.clear();
 
+        default_camera     = nullptr;
+        default_car        = nullptr;
+        default_car_window = nullptr;
+
         // stop any vibration
         Input::GamepadVibrate(0.0f, 0.0f);
     }
@@ -534,6 +538,7 @@ namespace spartan
         }
 
         m_is_occupied = false;
+        m_mcp_controlled = false;
         m_chase_camera.initialized = false;
 
         // restore mouse cursor if orbit was active
@@ -714,6 +719,12 @@ namespace spartan
     void Car::CycleView()
     {
         m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % 3);
+        ConfigureCameraForView();
+    }
+
+    void Car::SetView(CarView view)
+    {
+        m_current_view = view;
         ConfigureCameraForView();
     }
 
@@ -1415,29 +1426,51 @@ namespace spartan
         }
 
         // lazy camera finding - needed because parallel entity loading means camera might not exist during prefab creation
+        // prefer the player flycam (camera under a controller body) over cinematic sequence cameras
         if (m_camera_follows && !default_camera)
         {
             std::vector<Entity*> root_entities;
             World::GetRootEntities(root_entities);
-            
+
+            Entity* fallback = nullptr;
             for (Entity* root_entity : root_entities)
             {
                 std::vector<Entity*> descendants;
                 root_entity->GetDescendants(&descendants);
                 descendants.push_back(root_entity);
-                
+
                 for (Entity* entity : descendants)
                 {
-                    if (entity->GetComponent<Camera>())
+                    if (!entity->GetComponent<Camera>())
                     {
-                        default_camera = entity->GetParent() ? entity->GetParent() : entity;
-                        break;
+                        continue;
+                    }
+
+                    Entity* parent = entity->GetParent() ? entity->GetParent() : entity;
+                    if (Physics* physics = parent->GetComponent<Physics>())
+                    {
+                        if (physics->GetBodyType() == BodyType::Controller)
+                        {
+                            default_camera = parent;
+                            break;
+                        }
+                    }
+
+                    if (!fallback)
+                    {
+                        fallback = parent;
                     }
                 }
+
                 if (default_camera)
                 {
                     break;
                 }
+            }
+
+            if (!default_camera)
+            {
+                default_camera = fallback;
             }
         }
 
@@ -1476,7 +1509,7 @@ namespace spartan
                 "Brake\tDown\tL2\n"
                 "Steer\tL/R\tLStick\n"
                 "Hbrk\tSpace\tCircle\n"
-                "Shift\t-\tL1/R1\n"
+                "Shift\tPgUp/Dn\tL1/R1\n"
                 "Light\tL\tDpadUp\n"
                 "View\tV\tTri\n"
                 "ReCam\tC\tR3\n"
@@ -1503,50 +1536,54 @@ namespace spartan
         bool is_gamepad_connected = Input::IsGamepadConnected();
         float dt = static_cast<float>(Timer::GetDeltaTimeSec());
 
-        // throttle
-        float throttle = 0.0f;
-        if (is_gamepad_connected)
+        // mcp owns pedals when flagged so keyboard zeros do not overwrite agent input
+        float throttle  = physics->GetVehicleThrottle();
+        float brake     = physics->GetVehicleBrake();
+        float steering  = physics->GetVehicleSteering();
+        float handbrake = physics->GetVehicleHandbrake();
+        if (!m_mcp_controlled)
         {
-            throttle = Input::GetGamepadTriggerRight();
-        }
-        if (Input::GetKey(KeyCode::Arrow_Up))
-        {
-            throttle = 1.0f;
-        }
+            throttle = 0.0f;
+            if (is_gamepad_connected)
+            {
+                throttle = Input::GetGamepadTriggerRight();
+            }
+            if (Input::GetKey(KeyCode::Arrow_Up))
+            {
+                throttle = 1.0f;
+            }
 
-        // brake
-        float brake = 0.0f;
-        if (is_gamepad_connected)
-        {
-            brake = Input::GetGamepadTriggerLeft();
-        }
-        if (Input::GetKey(KeyCode::Arrow_Down))
-        {
-            brake = 1.0f;
-        }
+            brake = 0.0f;
+            if (is_gamepad_connected)
+            {
+                brake = Input::GetGamepadTriggerLeft();
+            }
+            if (Input::GetKey(KeyCode::Arrow_Down))
+            {
+                brake = 1.0f;
+            }
 
-        // steering
-        float steering = 0.0f;
-        if (is_gamepad_connected)
-        {
-            steering = Input::GetGamepadThumbStickLeft().x;
-        }
-        if (Input::GetKey(KeyCode::Arrow_Left))
-        {
-            steering = -1.0f;
-        }
-        if (Input::GetKey(KeyCode::Arrow_Right))
-        {
-            steering = 1.0f;
-        }
+            steering = 0.0f;
+            if (is_gamepad_connected)
+            {
+                steering = Input::GetGamepadThumbStickLeft().x;
+            }
+            if (Input::GetKey(KeyCode::Arrow_Left))
+            {
+                steering = -1.0f;
+            }
+            if (Input::GetKey(KeyCode::Arrow_Right))
+            {
+                steering = 1.0f;
+            }
 
-        // handbrake
-        float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_East)) ? 1.0f : 0.0f;
+            handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_East)) ? 1.0f : 0.0f;
 
-        physics->SetVehicleThrottle(throttle);
-        physics->SetVehicleBrake(brake);
-        physics->SetVehicleSteering(steering);
-        physics->SetVehicleHandbrake(handbrake);
+            physics->SetVehicleThrottle(throttle);
+            physics->SetVehicleBrake(brake);
+            physics->SetVehicleSteering(steering);
+            physics->SetVehicleHandbrake(handbrake);
+        }
 
         // camera orbit (mouse right_click drag and or gamepad right thumb stick)
         if (m_current_view == CarView::Chase)
@@ -1609,7 +1646,7 @@ namespace spartan
         }
 
         // reset to spawn
-        if (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_South))
+        if (!m_mcp_controlled && (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_South)))
         {
             ResetToSpawn();
         }
@@ -1620,12 +1657,12 @@ namespace spartan
             m_show_telemetry = !m_show_telemetry;
         }
 
-        // manual gear shifting (gran turismo style: L1 down, R1 up)
-        if (Input::GetKeyDown(KeyCode::Left_Shoulder))
+        // manual gear shifting (gran turismo style: L1/pgdn down, R1/pgup up)
+        if (!m_mcp_controlled && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Page_Down)))
         {
             physics->ShiftDown();
         }
-        if (Input::GetKeyDown(KeyCode::Right_Shoulder))
+        if (!m_mcp_controlled && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Page_Up)))
         {
             physics->ShiftUp();
         }

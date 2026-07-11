@@ -99,6 +99,7 @@ namespace spartan
         void Enter();
         void Exit();
         bool IsOccupied() const { return m_is_occupied; }
+        bool IsDrivable() const { return m_is_drivable; }
 
         // controls (only effective when occupied)
         void SetThrottle(float value);
@@ -107,8 +108,13 @@ namespace spartan
         void SetHandbrake(float value);
         void ResetToSpawn();
 
+        // when true, keyboard and gamepad pedals are ignored so mcp can drive
+        void SetMcpControlled(bool controlled) { m_mcp_controlled = controlled; }
+        bool IsMcpControlled() const { return m_mcp_controlled; }
+
         // view control
         void CycleView();
+        void SetView(CarView view);
         CarView GetCurrentView() const { return m_current_view; }
 
         // telemetry
@@ -189,6 +195,7 @@ namespace spartan
         bool              m_is_drivable     = false;
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
+        bool              m_mcp_controlled  = false;    // mcp owns pedals, keyboard does not overwrite
         CarView           m_current_view    = CarView::Chase;
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);

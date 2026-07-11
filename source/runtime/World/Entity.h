@@ -59,7 +59,8 @@ namespace spartan
 
         // io
         void Save(pugi::xml_node& node);
-        void Load(pugi::xml_node& node);
+        // load_children false skips nested Entity nodes, used by the flattened world loader
+        void Load(pugi::xml_node& node, bool load_children = true);
 
         // active
         bool GetActive();

@@ -147,7 +147,8 @@ namespace spartan
             intel::params_init.bufferHeapOffset     = 0;
             intel::params_init.pTempTextureHeap     = nullptr;
             intel::params_init.textureHeapOffset    = 0;
-            intel::params_init.pPipelineLibrary     = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
+            // keep xess off the engine pipeline library, its cold load names spam the debug layer
+            intel::params_init.pPipelineLibrary     = nullptr;
 
             // xess manages its own shader-visible descriptor heap internally when none is supplied at execute time,
             // so no engine heap needs to be handed over here, this keeps the bindless heap free of xess descriptors
@@ -310,11 +311,13 @@ namespace spartan
             return;
         }
 
-        // d3d12 xess wants NON_PIXEL_SHADER_RESOURCE for inputs and UNORDERED_ACCESS for output
-        // SetLayout to General gives us read+write states; xess only reads inputs and writes output
-        tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        // d3d12 xess wants non_pixel_shader_resource for inputs and unordered_access for output,
+        // shader_read includes pixel which xess silently strips, desyncing our state tracker
+        RHI_Texture* tex_mask = Renderer::GetStandardTexture(Renderer_StandardTexture::Black);
+        cmd_list->EnsureComputeShaderResource(tex_color);
+        cmd_list->EnsureComputeShaderResource(tex_velocity);
+        cmd_list->EnsureComputeShaderResource(tex_depth);
+        cmd_list->EnsureComputeShaderResource(tex_mask);
         tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->FlushBarriers();
 
@@ -323,7 +326,7 @@ namespace spartan
         intel::params_execute.pVelocityTexture             = static_cast<ID3D12Resource*>(tex_velocity->GetRhiResource());
         intel::params_execute.pDepthTexture                = static_cast<ID3D12Resource*>(tex_depth->GetRhiResource());
         intel::params_execute.pExposureScaleTexture        = nullptr; // ignored, autoexposure flag is set
-        intel::params_execute.pResponsivePixelMaskTexture  = static_cast<ID3D12Resource*>(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)->GetRhiResource());
+        intel::params_execute.pResponsivePixelMaskTexture  = static_cast<ID3D12Resource*>(tex_mask->GetRhiResource());
         intel::params_execute.pOutputTexture               = static_cast<ID3D12Resource*>(tex_output->GetRhiResource());
         intel::params_execute.jitterOffsetX                = intel::jitter.x;
         intel::params_execute.jitterOffsetY                = intel::jitter.y;
@@ -348,6 +351,16 @@ namespace spartan
         {
             SP_LOG_WARNING("XeSS dispatch failed with result %d", static_cast<int>(result));
         }
+
+        // xess may have rebarriered, adopt the states it leaves so later transitions use a correct state_before
+        cmd_list->AdoptComputeShaderResource(tex_color);
+        cmd_list->AdoptComputeShaderResource(tex_velocity);
+        cmd_list->AdoptComputeShaderResource(tex_depth);
+        cmd_list->AdoptComputeShaderResource(tex_mask);
+        cmd_list->AdoptUnorderedAccess(tex_output);
+
+        // xess binds its own descriptor heap when pDescriptorHeap is null, restore engine heaps/root sig state
+        cmd_list->RestoreAfterExternalPass();
     #endif
     }
 

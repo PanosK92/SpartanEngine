@@ -480,6 +480,7 @@ namespace spartan
     {
         ConstantFrame,
         SpdCounter,
+        SpdCounterCompute,
         MaterialParameters,
         LightParameters,
         DummyInstance,

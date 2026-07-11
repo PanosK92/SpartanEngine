@@ -521,6 +521,37 @@ namespace spartan
         }
     }
 
+    void RHI_CommandList::RestoreAfterExternalPass()
+    {
+    }
+
+    void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture)
+    {
+        if (!texture)
+        {
+            return;
+        }
+        texture->SetLayout(RHI_Image_Layout::Shader_Read, this);
+    }
+
+    void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture)
+    {
+        if (!texture)
+        {
+            return;
+        }
+        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+    }
+
+    void RHI_CommandList::AdoptUnorderedAccess(RHI_Texture* texture)
+    {
+        if (!texture)
+        {
+            return;
+        }
+        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::General);
+    }
+
     void RHI_CommandList::FlushBarriers()
     {
         if (m_pending_barriers.empty())
@@ -2946,6 +2977,12 @@ namespace spartan
                     break;
                 case RHI_Buffer_Type::ShaderBindingTable:
                     barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR;
+                    break;
+                case RHI_Buffer_Type::Upload:
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_TRANSFER_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Readback:
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_HOST_READ_BIT;
                     break;
                 default:
                     SP_ASSERT_MSG(false, "Unknown buffer type");

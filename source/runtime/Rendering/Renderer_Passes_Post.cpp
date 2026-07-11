@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/ParticleSystem.h"
 #include "../RHI/RHI_CommandList.h"
+#include "../RHI/RHI_Queue.h"
 #include "../RHI/RHI_AccelerationStructure.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
@@ -567,7 +568,12 @@ namespace spartan
 
         cmd_list->BeginMarker("downscale");
         {
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::SpdCounter));
+            // graphics and compute queues can run spd concurrently, each needs its own atomic counter
+            RHI_Buffer* spd_counter = (cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Compute)
+                ? GetBuffer(Renderer_Buffer::SpdCounterCompute)
+                : GetBuffer(Renderer_Buffer::SpdCounter);
+
+            cmd_list->InsertBarrier(spd_counter);
 
             RHI_PipelineState pso;
             pso.name             = "downscale";
@@ -578,7 +584,7 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,   GetBuffer(Renderer_Buffer::SpdCounter));
+            cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,   spd_counter);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     tex, mip_start, 1);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count);
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);

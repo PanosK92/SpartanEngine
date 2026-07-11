@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <atomic>
 #include <vector>
+#include <fstream>
 //================================
 
 // pix3blob marker encoding constants, hard-coded so we don't need the winpixeventruntime header pack
@@ -279,12 +280,46 @@ namespace spartan
         void destroy_resource(RHI_Resource_Type type, void* resource);
     }
 
-    // pipeline library, populated on first GetPipelineCache call
+    // pipeline library, load/save pipeline_cache_d3d12.bin to mirror vulkan's vkPipelineCache
     namespace pipeline_library
     {
         ID3D12PipelineLibrary* lib = nullptr;
         std::vector<uint8_t>   data;
         std::once_flag         init_flag;
+        bool                   has_disk_cache = false;
+        const char*            cache_path = "pipeline_cache_d3d12_v2.bin";
+
+        void save()
+        {
+            if (!lib)
+            {
+                return;
+            }
+
+            const SIZE_T size = lib->GetSerializedSize();
+            if (size == 0)
+            {
+                return;
+            }
+
+            vector<uint8_t> blob(size);
+            if (FAILED(lib->Serialize(blob.data(), size)))
+            {
+                return;
+            }
+
+            ofstream file(cache_path, ios::binary);
+            if (file.is_open())
+            {
+                file.write(reinterpret_cast<const char*>(blob.data()), static_cast<streamsize>(size));
+            }
+        }
+    }
+
+    bool d3d12_pipeline_library::can_load()
+    {
+        // disabled, cold-start load spam and stale caches are not worth it, create always stores into the library
+        return false;
     }
 
     namespace descriptors
@@ -747,6 +782,7 @@ namespace spartan
         // flush the pipeline library to disk (best-effort, ignored on failure)
         if (pipeline_library::lib)
         {
+            pipeline_library::save();
             pipeline_library::lib->Release();
             pipeline_library::lib = nullptr;
         }
@@ -1405,6 +1441,10 @@ namespace spartan
         }
 
         staging::pool.push_back({ res, size, true });
+        d3d12_state::SetState(res, D3D12_RESOURCE_STATE_GENERIC_READ);
+        d3d12_state::SetDecaysToCommon(res, true);
+        d3d12_state::SetIsBuffer(res, true);
+        d3d12_state::SetSubresourceCount(res, 1);
         return res;
     }
 
@@ -1459,8 +1499,7 @@ namespace spartan
 
     void* RHI_Device::GetPipelineCache()
     {
-        // create a small empty pipeline library on first request, callers use it as an opaque handle
-        // d3d12 requires the library to be created from a serialized blob, an empty blob is valid
+        // create pipeline library from disk cache on first request, empty blob is valid when no cache exists
         std::call_once(pipeline_library::init_flag, []()
         {
             Microsoft::WRL::ComPtr<ID3D12Device1> device1;
@@ -1469,11 +1508,37 @@ namespace spartan
                 return;
             }
 
-            HRESULT hr = device1->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&pipeline_library::lib));
+            {
+                ifstream file(pipeline_library::cache_path, ios::binary | ios::ate);
+                if (file.is_open())
+                {
+                    const size_t size = static_cast<size_t>(file.tellg());
+                    if (size > 0)
+                    {
+                        pipeline_library::data.resize(size);
+                        file.seekg(0, ios::beg);
+                        file.read(reinterpret_cast<char*>(pipeline_library::data.data()), static_cast<streamsize>(size));
+                        pipeline_library::has_disk_cache = true;
+                    }
+                }
+            }
+
+            const void* initial_data = pipeline_library::data.empty() ? nullptr : pipeline_library::data.data();
+            const SIZE_T initial_size = pipeline_library::data.size();
+            HRESULT hr = device1->CreatePipelineLibrary(initial_data, initial_size, IID_PPV_ARGS(&pipeline_library::lib));
+            if (FAILED(hr) && initial_size > 0)
+            {
+                // stale cache from another driver/device, fall back to an empty library
+                pipeline_library::data.clear();
+                pipeline_library::has_disk_cache = false;
+                hr = device1->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&pipeline_library::lib));
+            }
+
             if (FAILED(hr))
             {
                 // unsupported, drivers without pipeline library support fail this with ERROR_UNSUPPORTED
                 pipeline_library::lib = nullptr;
+                pipeline_library::has_disk_cache = false;
             }
         });
 

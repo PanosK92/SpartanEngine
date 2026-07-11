@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
 #include "../Core/Window.h"
+#include "../Core/ThreadPool.h"
 #include "../FileSystem/FileSystem.h"
 #include <unordered_map>
 #include <algorithm>
@@ -277,6 +278,56 @@ namespace spartan
             uint32_t        y      = 0;
         };
 
+        vector<source_icon> decoded_sources;
+
+        // single source of truth, icon type to source file
+        const vector<pair<IconType, string>>& icon_table()
+        {
+            static const vector<pair<IconType, string>> table =
+            {
+                { IconType::Console,       "icons/console.png"          },
+                { IconType::File,          "icons/file.png"             },
+                { IconType::Folder,        "icons/folder.png"           },
+                { IconType::Model,         "icons/model.png"            },
+                { IconType::World,         "icons/world.png"            },
+                { IconType::Material,      "icons/material.png"         },
+                { IconType::Shader,        "icons/code.png"             },
+                { IconType::Xml,           "icons/xml.png"              },
+                { IconType::Dll,           "icons/dll.png"              },
+                { IconType::Txt,           "icons/txt.png"              },
+                { IconType::Ini,           "icons/ini.png"              },
+                { IconType::Exe,           "icons/exe.png"              },
+                { IconType::Font,          "icons/font.png"             },
+                { IconType::Screenshot,    "icons/screenshot.png"       },
+                { IconType::Gear,          "icons/gear.png"             },
+                { IconType::Play,          "icons/play.png"             },
+                { IconType::Profiler,      "icons/timer.png"            },
+                { IconType::ResourceCache, "icons/resource_viewer.png"  },
+                { IconType::RenderDoc,     "icons/renderdoc.png"        },
+                { IconType::Texture,       "icons/texture.png"          },
+                { IconType::Minimize,      "icons/window_minimise.png"  },
+                { IconType::Maximize,      "icons/window_maximise.png"  },
+                { IconType::X,             "icons/window_close.png"     },
+                { IconType::Entity,        "icons/entity.png"           },
+                { IconType::Hybrid,        "icons/hybrid.png"           },
+                { IconType::Audio,         "icons/audio.png"            },
+                { IconType::Terrain,       "icons/terrain.png"          },
+                { IconType::Light,         "icons/light.png"            },
+                { IconType::Camera,        "icons/camera.png"           },
+                { IconType::Particle,      "icons/particle.png"         },
+                { IconType::Physics,       "icons/physics.png"          },
+                { IconType::Compressed,    "icons/compressed.png"       },
+                { IconType::ArrowLeft,     "icons/arrow_left.png"       },
+                { IconType::ArrowRight,    "icons/arrow_right.png"      },
+                { IconType::ArrowUp,       "icons/arrow_up.png"         },
+                { IconType::Refresh,       "icons/refresh.png"          },
+                { IconType::Logo,          "logo.ico"                   },
+                { IconType::Mcp,           "icons/mcp.png"              },
+                { IconType::Snap,          "icons/snap.png"             }
+            };
+            return table;
+        }
+
         // decodes an image file to rgba8 cpu pixels without uploading it to the gpu
         bool load_icon_pixels(const string& path, source_icon& out)
         {
@@ -342,9 +393,9 @@ namespace spartan
         }
     }
 
-    void IconAtlas::Build()
+    void IconAtlas::DecodeSources()
     {
-        Shutdown();
+        decoded_sources.clear();
 
         const vector<string> data_dirs =
         {
@@ -355,73 +406,60 @@ namespace spartan
             "../Data/"
         };
 
-        // single source of truth, icon type to source file
-        const vector<pair<IconType, string>> table =
-        {
-            { IconType::Console,       "icons/console.png"          },
-            { IconType::File,          "icons/file.png"             },
-            { IconType::Folder,        "icons/folder.png"           },
-            { IconType::Model,         "icons/model.png"            },
-            { IconType::World,         "icons/world.png"            },
-            { IconType::Material,      "icons/material.png"         },
-            { IconType::Shader,        "icons/code.png"             },
-            { IconType::Xml,           "icons/xml.png"              },
-            { IconType::Dll,           "icons/dll.png"              },
-            { IconType::Txt,           "icons/txt.png"              },
-            { IconType::Ini,           "icons/ini.png"              },
-            { IconType::Exe,           "icons/exe.png"              },
-            { IconType::Font,          "icons/font.png"             },
-            { IconType::Screenshot,    "icons/screenshot.png"       },
-            { IconType::Gear,          "icons/gear.png"             },
-            { IconType::Play,          "icons/play.png"             },
-            { IconType::Profiler,      "icons/timer.png"            },
-            { IconType::ResourceCache, "icons/resource_viewer.png"  },
-            { IconType::RenderDoc,     "icons/renderdoc.png"        },
-            { IconType::Texture,       "icons/texture.png"          },
-            { IconType::Minimize,      "icons/window_minimise.png"  },
-            { IconType::Maximize,      "icons/window_maximise.png"  },
-            { IconType::X,             "icons/window_close.png"     },
-            { IconType::Entity,        "icons/entity.png"           },
-            { IconType::Hybrid,        "icons/hybrid.png"           },
-            { IconType::Audio,         "icons/audio.png"            },
-            { IconType::Terrain,       "icons/terrain.png"          },
-            { IconType::Light,         "icons/light.png"            },
-            { IconType::Camera,        "icons/camera.png"           },
-            { IconType::Particle,      "icons/particle.png"         },
-            { IconType::Physics,       "icons/physics.png"          },
-            { IconType::Compressed,    "icons/compressed.png"       },
-            { IconType::ArrowLeft,     "icons/arrow_left.png"       },
-            { IconType::ArrowRight,    "icons/arrow_right.png"      },
-            { IconType::ArrowUp,       "icons/arrow_up.png"         },
-            { IconType::Refresh,       "icons/refresh.png"          },
-            { IconType::Logo,          "logo.ico"                   },
-            { IconType::Mcp,           "icons/mcp.png"              },
-            { IconType::Snap,          "icons/snap.png"             }
-        };
+        const vector<pair<IconType, string>>& table = icon_table();
+        const uint32_t count = static_cast<uint32_t>(table.size());
+        vector<source_icon> slots(count);
 
-        // decode every source icon
-        vector<source_icon> sources;
-        sources.reserve(table.size());
-        for (const auto& [type, file] : table)
+        ThreadPool::ParallelLoop([&](uint32_t start, uint32_t end)
         {
-            source_icon icon;
-            icon.type = type;
-
-            string file_path;
-            for (const string& data_dir : data_dirs)
+            for (uint32_t i = start; i < end; i++)
             {
-                const string candidate = data_dir + file;
-                if (FileSystem::Exists(candidate))
+                source_icon icon;
+                icon.type = table[i].first;
+
+                string file_path;
+                for (const string& data_dir : data_dirs)
                 {
-                    file_path = candidate;
-                    break;
+                    const string candidate = data_dir + table[i].second;
+                    if (FileSystem::Exists(candidate))
+                    {
+                        file_path = candidate;
+                        break;
+                    }
+                }
+
+                if (!file_path.empty() && load_icon_pixels(file_path, icon))
+                {
+                    slots[i] = move(icon);
                 }
             }
+        }, count);
 
-            if (!file_path.empty() && load_icon_pixels(file_path, icon))
+        decoded_sources.reserve(count);
+        for (source_icon& icon : slots)
+        {
+            if (!icon.rgba.empty())
             {
-                sources.push_back(move(icon));
+                decoded_sources.push_back(move(icon));
             }
+        }
+    }
+
+    void IconAtlas::Build()
+    {
+        // take ownership of any pre-decoded sources before clearing atlas state
+        vector<source_icon> sources = move(decoded_sources);
+        decoded_sources.clear();
+
+        atlas_icons.clear();
+        atlas_fallback = Icon();
+        atlas_texture.reset();
+
+        if (sources.empty())
+        {
+            DecodeSources();
+            sources = move(decoded_sources);
+            decoded_sources.clear();
         }
 
         if (sources.empty())
@@ -497,6 +535,7 @@ namespace spartan
         atlas_icons.clear();
         atlas_fallback = Icon();
         atlas_texture.reset();
+        decoded_sources.clear();
     }
 
     const Icon& IconAtlas::Get(IconType type)

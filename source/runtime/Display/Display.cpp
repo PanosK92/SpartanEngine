@@ -25,7 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 SP_WARNINGS_OFF
 #if defined(_WIN32)
-// used by GetLuminanceMax()
+// used by GetLuminanceMax() and GetSdrWhiteNits()
+#include <Windows.h>
 #include <dxgi.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
@@ -233,6 +234,45 @@ namespace spartan
             if (SUCCEEDED(output6->GetDesc1(&desc)))
             {
                 value = desc.MaxLuminance;
+            }
+        }
+        #endif
+
+        return value;
+    }
+
+    float Display::GetSdrWhiteNits()
+    {
+        // bt.2408 reference white, used when the os does not expose a user sdr white level
+        float value = 203.0f;
+
+        #if defined(_WIN32)
+        UINT path_count = 0;
+        UINT mode_count = 0;
+        if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS || path_count == 0)
+        {
+            return value;
+        }
+
+        vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
+        vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
+        if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS)
+        {
+            return value;
+        }
+
+        for (UINT i = 0; i < path_count; i++)
+        {
+            DISPLAYCONFIG_SDR_WHITE_LEVEL sdr = {};
+            sdr.header.type      = DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL;
+            sdr.header.size      = sizeof(sdr);
+            sdr.header.adapterId = paths[i].targetInfo.adapterId;
+            sdr.header.id        = paths[i].targetInfo.id;
+            if (DisplayConfigGetDeviceInfo(&sdr.header) == ERROR_SUCCESS && sdr.SDRWhiteLevel > 0)
+            {
+                // stored as (nits / 80) * 1000
+                value = (static_cast<float>(sdr.SDRWhiteLevel) / 1000.0f) * 80.0f;
+                break;
             }
         }
         #endif

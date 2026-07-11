@@ -108,7 +108,7 @@ struct FrameBufferData
     SHARED_FLOAT restir_pt_emissive_tri_count;
     // cumulus horizontal coverage, 0 = clear sky, 1 = overcast, authored on the directional light
     SHARED_FLOAT cloud_coverage;
-    SHARED_FLOAT padding_b;
+    SHARED_FLOAT hdr_sdr_white_nits;
 
     // vr stereo - right eye matrices (left eye uses the primary matrices above)
     SHARED_MATRIX view_right;

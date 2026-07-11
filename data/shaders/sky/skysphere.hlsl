@@ -335,23 +335,39 @@ float3 compute_sky_luminance(
     return luminance * get_sun_radiance_toa();
 }
 
-// sun disc with limb darkening
+// sun disc with limb darkening and a solar aureole
 float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
 {
     float cos_angle = dot(view_dir, sun_dir);
-    float edge_softness = sun_angular_radius * 0.5;
-    float sun_edge = smoothstep(cos(sun_angular_radius + edge_softness),
-                                cos(max(0.0, sun_angular_radius - edge_softness)), cos_angle);
-    
-    float angle_approx = safe_sqrt(2.0 * max(0.0, 1.0 - cos_angle));
-    float r = saturate(angle_approx / sun_angular_radius);
-    float mu = safe_sqrt(1.0 - r * r);
+    if (cos_angle <= 0.0)
+    {
+        return float3(0.0, 0.0, 0.0);
+    }
+
+    float angle = acos(saturate(cos_angle));
+    float3 toa  = get_sun_radiance_toa() * transmittance;
+    float x     = angle / sun_angular_radius;
+
+    // limb darkening across the geometric disc
+    float r    = saturate(x);
+    float mu   = safe_sqrt(1.0 - r * r);
     float limb = 0.3 + 0.93 * mu - 0.23 * mu * mu;
-    
-    // disc radiance is toa irradiance over the disc solid angle, the transmittance argument
-    // tints it so the disc warmth matches the sky scatter and the direct lighting
-    const float sun_solid_angle = PI2 * (1.0 - cos(sun_angular_radius));
-    return get_sun_radiance_toa() * transmittance * sun_edge * limb / sun_solid_angle;
+
+    // compact soft core, solid angle division is skipped on purpose, it produces ~600k nits
+    // that the panorama hdr clamp flattens into a hard circle and erases every soft edge
+    float core  = 1.0 - smoothstep(0.75, 1.4, x);
+    float3 disc = toa * core * limb * 0.5;
+
+    // wide solar aureole, must stay bright over several degrees or tonemap collapses the sun
+    // into a flat cream sticker against the blue sky
+    float3 aureole = toa * (
+        exp(-x * x * 0.8)  * 0.45 +
+        exp(-x * x * 0.05) * 0.35 +
+        exp(-x * x * 0.008) * 0.18 +
+        exp(-x * x * 0.0015) * 0.06
+    );
+
+    return disc + aureole;
 }
 
 // =====================================================================

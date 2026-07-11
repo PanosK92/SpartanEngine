@@ -382,7 +382,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 F             = F_Schlick(F0, get_f90(), l_dot_h);
         float3 specular_brdf = D * G * F;
         float3 specular      = specular_brdf * radiance;
-        float  specular_knee = lerp(4096.0f, 96.0f, rough_reflection);
+        float  specular_knee = lerp(4096.0f, 32.0f, rough_reflection);
         specular             = reflections_compress_luminance(specular, specular_knee, specular_knee * 0.5f);
         
         out_diffuse  += diffuse_brdf  * radiance;
@@ -422,11 +422,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         emission = mat.color.rgb * 25.0f;
     }
-    float emission_knee = lerp(FLT_MAX_16U, 320.0f, rough_reflection);
+    // rough lobes undersample small bright emitters, soft compress before the denoiser sees them
+    float emission_knee = lerp(FLT_MAX_16U, 48.0f, rough_reflection);
     emission = reflections_compress_luminance(emission, emission_knee, emission_knee * 0.5f);
 
     float3 final_color = out_diffuse + out_specular + ibl_diffuse + ibl_specular + emission;
-    float  final_knee  = lerp(FLT_MAX_16U, 768.0f, rough_reflection);
+    float  final_knee  = lerp(FLT_MAX_16U, 96.0f, rough_reflection);
     final_color        = reflections_compress_luminance(final_color, final_knee, final_knee * 0.5f);
 
     // rt owns the full primary specular lobe, restir contributes diffuse only so there is no overlap

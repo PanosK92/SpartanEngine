@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <mutex>
 #include <unordered_set>
+#include <future>
 #include "Renderer.h"
 #include "Material.h"
 #include "GeometryBuffer.h"
@@ -74,6 +75,7 @@ namespace spartan
     // bindless draw data
     array<Sb_DrawData, renderer_max_draw_calls> Renderer::m_draw_data_cpu;
     uint32_t Renderer::m_draw_data_count = 0;
+    bool Renderer::m_draw_data_gpu_synced = false;
 
     // per-frame rotated buffers
     array<Renderer::FrameResource, renderer_draw_data_buffer_count> Renderer::m_frame_resources;
@@ -339,8 +341,15 @@ namespace spartan
         ThreadPool::AddTask([]()
         {
             m_initialized_resources = false;
-            CreateStandardMeshes();
+
+            // meshes and textures are independent, overlap them
+            future<void> meshes_future = ThreadPool::AddTask([]()
+            {
+                CreateStandardMeshes();
+            });
             CreateStandardTextures();
+            meshes_future.get();
+
             CreateStandardMaterials();
             CreateFonts();
             CreateShaders();
@@ -446,7 +455,8 @@ namespace spartan
             m_cmd_list_compute->Begin();
         }
 
-        m_draw_data_count = 0;
+        m_draw_data_count      = 0;
+        m_draw_data_gpu_synced = false;
 
         if (can_render)
         {
@@ -589,12 +599,18 @@ namespace spartan
     void Renderer::TickUploadBindlessDependencies(RHI_CommandList* cmd_list)
     {
         // run during loading so newly published entities pick up materials and lights as they arrive
-        const bool initialize = GetFrameNumber() == 0;
+        const bool initialize     = GetFrameNumber() == 0;
+        const bool lights_changed = initialize || World::HaveLightsChanged();
 
-        if (initialize || World::HaveLightsChanged())
+        if (lights_changed)
         {
             UpdateShadowAtlas();
-            UpdateLights(cmd_list);
+        }
+
+        // frustum and draw distance membership depend on the camera, rebuild every frame
+        UpdateLights(cmd_list);
+        if (lights_changed)
+        {
             RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
         }
 
@@ -627,6 +643,8 @@ namespace spartan
             const uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_draw_data_count;
             cmd_list->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
         }
+        // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
+        m_draw_data_gpu_synced = true;
         static bool draw_data_descriptor_set = false;
         if (!draw_data_descriptor_set)
         {
@@ -764,7 +782,7 @@ namespace spartan
 
             CreateRenderTargets(create_render, create_output, true);
 
-            RHI_Device::DeletionQueueFlush();
+            // age based deletion, never flush here while a command list may still reference old targets
 
             // after recreation the gpu is idle and all images sit in their initial layout
             // (general or undefined), but the per-texture layout tracking may still hold the
@@ -950,8 +968,14 @@ namespace spartan
         m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
         m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
         m_cb_frame_cpu.restir_pt_w_clamp     = std::max(cvar_restir_pt_w_clamp.GetValue(), 100.0f);
-        m_cb_frame_cpu.hdr_enabled           = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
-        m_cb_frame_cpu.hdr_max_nits          = Display::GetLuminanceMax();
+        // 0 = sdr, 1 = hdr10 pq (vulkan), 2 = hdr scrgb (d3d12 windowed)
+        m_cb_frame_cpu.hdr_enabled = 0.0f;
+        if (m_swapchain && m_swapchain->IsHdr())
+        {
+            m_cb_frame_cpu.hdr_enabled = (m_swapchain->GetFormat() == RHI_Format::R16G16B16A16_Float) ? 2.0f : 1.0f;
+        }
+        m_cb_frame_cpu.hdr_max_nits      = Display::GetLuminanceMax();
+        m_cb_frame_cpu.hdr_sdr_white_nits = Display::GetSdrWhiteNits();
         m_cb_frame_cpu.gamma                 = cvar_gamma.GetValue();
         m_cb_frame_cpu.camera_exposure       = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
@@ -1428,9 +1452,6 @@ namespace spartan
 
             m_cross_queue_sync.pending_compute_timeline       = nullptr;
             m_cross_queue_sync.pending_compute_timeline_value = 0;
-
-            m_cross_queue_sync.previous_present_timeline       = m_cmd_list_present->GetTimelineSemaphore();
-            m_cross_queue_sync.previous_present_timeline_value = m_cmd_list_present->GetLastTimelineSignalValue();
         }
         Profiler::TimeBlockEnd(TimeBlockType::Cpu);
 
@@ -1447,7 +1468,7 @@ namespace spartan
         return m_frame_num;
     }
 
-    void Renderer::SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    void Renderer::SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/, bool bind_ssao /*= true*/)
     {
         // gbuffer (when eye_layer is specified, bind per-layer 2d views for compute passes)
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_color),    GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, false, eye_layer);
@@ -1456,9 +1477,13 @@ namespace spartan
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth),    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, false, eye_layer);
 
-        // ssao (white = no occlusion when disabled)
-        RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
+        // ssao is written on async compute in parallel with graphics phase 2, skip the srv bind
+        // there so d3d12 does not emit a cross-queue transition while the uav write is in flight
+        if (bind_ssao)
+        {
+            RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
+            cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
+        }
     }
 
     uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* renderable)
@@ -1501,6 +1526,18 @@ namespace spartan
         {
             void* dst = static_cast<char*>(mapped) + global_index * sizeof(Sb_DrawData);
             memcpy(dst, &entry, sizeof(Sb_DrawData));
+        }
+        else if (m_draw_data_gpu_synced)
+        {
+            // d3d12 storage buffers are not persistently mapped, scene draws are bulk-uploaded in
+            // TickUploadBindlessDependencies, imgui and editor overlays written after that must stage here
+            if (RHI_CommandList* cmd_list = GetCommandListPresent())
+            {
+                if (cmd_list->GetState() == RHI_CommandListState::Recording)
+                {
+                    cmd_list->UpdateBuffer(buffer, global_index * sizeof(Sb_DrawData), sizeof(Sb_DrawData), &entry);
+                }
+            }
         }
 
         return global_index;
@@ -1884,6 +1921,7 @@ namespace spartan
         m_draw_call_count           = 0;
         m_draw_calls_prepass_count  = 0;
         m_draw_data_count           = 0;
+        m_draw_data_gpu_synced      = false;
         m_indirect_draw_count       = 0;
         m_indirect_renderable_count = 0;
         m_cull_task_count           = 0;
@@ -2823,6 +2861,22 @@ namespace spartan
 
     void Renderer::Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list)
     {
+        // d3d12 bindless materials are never settexture'd, so they never pick up pixel_shader_resource via that path
+        // ensure they are in full shader_read before depth/gbuffer pixel shaders sample them
+        if (GetRhiApiType() == RHI_Api_Type::D3d12)
+        {
+            unordered_set<RHI_Texture*> seen;
+            for (RHI_Texture* tex : m_bindless_textures)
+            {
+                if (!tex || !tex->GetRhiResource() || !seen.insert(tex).second)
+                {
+                    continue;
+                }
+                tex->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
+            cmd_list->FlushBarriers();
+        }
+
         Pass_HiZ(cmd_list);
         Pass_IndirectCull(cmd_list);
         // populate the gpu procedural grass ring before the geometry rasters that consume it
@@ -2915,14 +2969,26 @@ namespace spartan
         RHI_Texture* rt_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         const bool update_skysphere    = UpdateSkysphereConvergenceState();
         Light* directional_light       = World::GetDirectionalLight();
+        RHI_Queue* queue_graphics      = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+
+        // flush host-visible frame cb and light uploads before compute batch a, the host->device barrier
+        // was recorded on this graphics list and is invisible to the compute queue until this submit,
+        // same-queue order after the previous present so waiting on this timeline also covers that
+        cmd_list_graphics_present->Submit(nullptr, false);
+        RHI_SyncPrimitive* uploads_timeline = cmd_list_graphics_present->GetTimelineSemaphore();
+        const uint64_t uploads_value        = cmd_list_graphics_present->GetLastTimelineSignalValue();
+
+        cmd_list_graphics_present = queue_graphics->NextCommandList();
+        cmd_list_graphics_present->Begin();
+        m_cmd_list_present = cmd_list_graphics_present;
 
         // compute batch a, view independent prep, runs alongside graphics phase 1
         Pass_ComputeBatchA(cmd_list_compute, update_skysphere, directional_light);
 
-        // submit batch a, waits on the prior frame's present so writes here do not race with phase 3 reads
+        // submit batch a after the upload flush so light cluster assign reads this frame's camera matrices
         // we submit before recording any graphics phase 1 work so the compute queue starts skysphere,
         // tlas update and light cluster assign as early as possible, maximising overlap with the gbuffer pass
-        cmd_list_compute->Submit(nullptr, false, nullptr, m_cross_queue_sync.previous_present_timeline, m_cross_queue_sync.previous_present_timeline_value);
+        cmd_list_compute->Submit(nullptr, false, nullptr, uploads_timeline, uploads_value);
         RHI_SyncPrimitive* batch_a_timeline = cmd_list_compute->GetTimelineSemaphore();
         const uint64_t batch_a_value        = cmd_list_compute->GetLastTimelineSignalValue();
 
@@ -2955,7 +3021,6 @@ namespace spartan
             const uint64_t compute_b_value        = cmd_list_compute_b->GetLastTimelineSignalValue();
 
             // graphics phase 2, runs parallel to batch b, waits on batch a so tlas is ready for rt reflections
-            RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
             cmd_list_graphics_present = queue_graphics->NextCommandList();
             cmd_list_graphics_present->Begin();
             m_cmd_list_present        = cmd_list_graphics_present;
@@ -3004,5 +3069,6 @@ namespace spartan
         GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        cmd_list_graphics_present->FlushBarriers();
     }
 }

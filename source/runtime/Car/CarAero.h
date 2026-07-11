@@ -131,17 +131,15 @@ namespace car
         float computed_aero_center_front_z = max_pt.z * 0.8f;
         float computed_aero_center_rear_z  = min_pt.z * 0.8f;
 
+        // use mesh derived centres when the preset left them at the zero sentinel
         if (tuning::spec.aero_center_height == 0.0f)
         {
-            tuning::spec.aero_center_height   = centroid_y;
+            tuning::spec.aero_center_height = centroid_y;
         }
-        if (tuning::spec.aero_center_front_z == 0.0f)
+        if (tuning::spec.aero_center_front_z == 0.0f && tuning::spec.aero_center_rear_z == 0.0f)
         {
-            tuning::spec.aero_center_front_z  = computed_aero_center_front_z;
-        }
-        if (tuning::spec.aero_center_rear_z == 0.0f)
-        {
-            tuning::spec.aero_center_rear_z   = computed_aero_center_rear_z;
+            tuning::spec.aero_center_front_z = computed_aero_center_front_z;
+            tuning::spec.aero_center_rear_z  = computed_aero_center_rear_z;
         }
 
         SP_LOG_INFO("aero: dimensions %.2f x %.2f x %.2f m (L x W x H)", length, width, height);

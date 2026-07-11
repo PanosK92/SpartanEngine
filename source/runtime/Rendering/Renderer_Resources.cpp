@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
 #include "../XR/Xr.h"
+#include "../Core/ThreadPool.h"
 #ifdef _MSC_VER
 #include "../RHI/RHI_VendorTechnology.h"
 #endif
@@ -98,6 +99,7 @@ namespace spartan
 
         at(buffers, Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame),                           element_count,                          nullptr,            true, "frame");
         at(buffers, Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    1,                                      &spd_counter_value, true, "spd_counter");
+        at(buffers, Renderer_Buffer::SpdCounterCompute)  = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    1,                                      &spd_counter_value, true, "spd_counter_compute");
         at(buffers, Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                     nullptr,            true, "materials");
         at(buffers, Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                     nullptr,            true, "lights");
         at(buffers, Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Instance),                           static_cast<uint32_t>(identity.size()), &identity,          true, "dummy_instance_buffer");
@@ -235,7 +237,19 @@ namespace spartan
             renderer_ocean_heights_resolution * renderer_ocean_heights_resolution * renderer_ocean_max_cascades, nullptr, true, "ocean_heights"
         );
         // zero so cpu samples taken before the first gpu write read a flat sea instead of garbage
-        memset(at(buffers, Renderer_Buffer::OceanHeights)->GetMappedData(), 0, at(buffers, Renderer_Buffer::OceanHeights)->GetObjectSize());
+        // d3d12 storage buffers are default-heap uavs so GetMappedData is null, upload zeros instead
+        {
+            RHI_Buffer* ocean_heights = at(buffers, Renderer_Buffer::OceanHeights).get();
+            if (void* mapped = ocean_heights->GetMappedData())
+            {
+                memset(mapped, 0, ocean_heights->GetObjectSize());
+            }
+            else
+            {
+                vector<uint8_t> zeros(ocean_heights->GetObjectSize(), 0);
+                ocean_heights->UploadSubRegion(zeros.data(), 0, zeros.size());
+            }
+        }
 
         // particle buffers
         const uint32_t particle_max = 100000;
@@ -626,7 +640,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
             at(render_targets, Renderer_RenderTarget::screenshot_sdr)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,       RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_sdr");
             at(render_targets, Renderer_RenderTarget::screenshot_sdr_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,       RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_sdr_2");
-            at(render_targets, Renderer_RenderTarget::taau_history)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "taau_history");
+            at(render_targets, Renderer_RenderTarget::taau_history)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "taau_history");
 
             // stereo output, 2-layer array for xr swapchain blit (only when vr is active)
             if (xr_stereo)
@@ -769,7 +783,7 @@ namespace spartan
             { Renderer_Shader::tessellation_d,                        RHI_Shader_Type::Domain,  "common_tessellation.hlsl"                                                   },
 
             // light
-            { Renderer_Shader::light_integration_brdf_specular_lut_c, RHI_Shader_Type::Compute, "light_integration.hlsl",                     RHI_Vertex_Type::Max, "BRDF_SPECULAR_LUT", false },
+            { Renderer_Shader::light_integration_brdf_specular_lut_c, RHI_Shader_Type::Compute, "light_integration.hlsl",                     RHI_Vertex_Type::Max, "BRDF_SPECULAR_LUT" },
             { Renderer_Shader::light_integration_environment_filter_c,RHI_Shader_Type::Compute, "light_integration.hlsl",                     RHI_Vertex_Type::Max, "ENVIRONMENT_FILTER"      },
             { Renderer_Shader::light_c,                               RHI_Shader_Type::Compute, "light.hlsl",                                 RHI_Vertex_Type::Max, rt ? "RAY_TRACING_ENABLED" : nullptr },
             { Renderer_Shader::light_cluster_assign_c,                RHI_Shader_Type::Compute, "light_cluster_assign.hlsl"                                                  },
@@ -790,17 +804,17 @@ namespace spartan
 
             // amd fidelityfx
             { Renderer_Shader::ffx_cas_c,                             RHI_Shader_Type::Compute, "amd_fidelity_fx/cas.hlsl"                                                   },
-            { Renderer_Shader::ffx_spd_average_c,                     RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "AVERAGE", false },
-            { Renderer_Shader::ffx_spd_min_c,                         RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MIN",     false },
-            { Renderer_Shader::ffx_spd_max_c,                         RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MAX",     false },
+            { Renderer_Shader::ffx_spd_average_c,                     RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "AVERAGE" },
+            { Renderer_Shader::ffx_spd_min_c,                         RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MIN"     },
+            { Renderer_Shader::ffx_spd_max_c,                         RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MAX"     },
 
             // sky
             { Renderer_Shader::skysphere_c,                           RHI_Shader_Type::Compute, "sky/skysphere.hlsl"                                                         },
-            { Renderer_Shader::skysphere_transmittance_lut_c,         RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "TRANSMITTANCE_LUT", false },
-            { Renderer_Shader::skysphere_multiscatter_lut_c,          RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "MULTISCATTER_LUT",  false },
-            { Renderer_Shader::skysphere_sky_view_lut_c,              RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "SKY_VIEW_LUT",      false },
-            { Renderer_Shader::clouds_noise_c,                        RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_NOISE",       false },
-            { Renderer_Shader::clouds_shadow_c,                       RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_SHADOW",      false },
+            { Renderer_Shader::skysphere_transmittance_lut_c,         RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "TRANSMITTANCE_LUT" },
+            { Renderer_Shader::skysphere_multiscatter_lut_c,          RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "MULTISCATTER_LUT"  },
+            { Renderer_Shader::skysphere_sky_view_lut_c,              RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "SKY_VIEW_LUT"      },
+            { Renderer_Shader::clouds_noise_c,                        RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_NOISE"       },
+            { Renderer_Shader::clouds_shadow_c,                       RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_SHADOW"      },
 
             // post-process
             { Renderer_Shader::fxaa_c,                                RHI_Shader_Type::Compute, "fxaa/fxaa.hlsl"                                                             },
@@ -966,23 +980,34 @@ namespace spartan
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "/";
         const string dir_icon    = ResourceCache::GetResourceDirectory(ResourceDirectory::Icons) + "/";
 
-        at(standard_textures, Renderer_StandardTexture::Noise_perlin) = make_shared<RHI_Texture>(dir_texture + "noise_perlin.png");
-        at(standard_textures, Renderer_StandardTexture::Noise_blue)   = make_shared<RHI_Texture>(dir_texture + "noise_blue_0.png");
-
-        // gizmos
+        struct TexDef
         {
-            at(standard_textures, Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture>(dir_texture + "sun.png");
-            at(standard_textures, Renderer_StandardTexture::Gizmo_light_point)       = make_shared<RHI_Texture>(dir_texture + "light_bulb.png");
-            at(standard_textures, Renderer_StandardTexture::Gizmo_light_spot)        = make_shared<RHI_Texture>(dir_texture + "flashlight.png");
-            at(standard_textures, Renderer_StandardTexture::Gizmo_audio_source)      = make_shared<RHI_Texture>(dir_texture + "audio.png");
-            at(standard_textures, Renderer_StandardTexture::Gizmo_camera)            = make_shared<RHI_Texture>(dir_icon + "camera.png");
-            at(standard_textures, Renderer_StandardTexture::Gizmo_particle)          = make_shared<RHI_Texture>(dir_icon + "particle.png");
-        }
+            Renderer_StandardTexture id;
+            string path;
+        };
 
-        // misc
+        const TexDef file_textures[] =
         {
-            at(standard_textures, Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
-        }
+            { Renderer_StandardTexture::Noise_perlin,             dir_texture + "noise_perlin.png"  },
+            { Renderer_StandardTexture::Noise_blue,               dir_texture + "noise_blue_0.png"  },
+            { Renderer_StandardTexture::Gizmo_light_directional,  dir_texture + "sun.png"           },
+            { Renderer_StandardTexture::Gizmo_light_point,        dir_texture + "light_bulb.png"    },
+            { Renderer_StandardTexture::Gizmo_light_spot,         dir_texture + "flashlight.png"    },
+            { Renderer_StandardTexture::Gizmo_audio_source,       dir_texture + "audio.png"         },
+            { Renderer_StandardTexture::Gizmo_camera,             dir_icon + "camera.png"           },
+            { Renderer_StandardTexture::Gizmo_particle,           dir_icon + "particle.png"         },
+            { Renderer_StandardTexture::Checkerboard,             dir_texture + "no_texture.png"    },
+        };
+
+        // decode and upload file textures in parallel, ImmediateExecution is mutexed per queue
+        const uint32_t tex_count = static_cast<uint32_t>(sizeof(file_textures) / sizeof(file_textures[0]));
+        ThreadPool::ParallelLoop([&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                at(standard_textures, file_textures[i].id) = make_shared<RHI_Texture>(file_textures[i].path);
+            }
+        }, tex_count);
 
         // solid 1x1 textures
         {

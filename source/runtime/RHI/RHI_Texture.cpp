@@ -114,7 +114,7 @@ namespace spartan
             {
                 uint32_t new_cap = grow_capacity(pool::staging_capacity_pixels, input_pixels);
                 pool::staging = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Storage,
+                    RHI_Buffer_Type::Upload,
                     static_cast<uint32_t>(sizeof(uint32_t)),
                     new_cap,
                     nullptr, true,
@@ -152,7 +152,7 @@ namespace spartan
             {
                 uint32_t new_cap = grow_capacity(pool::readback_capacity_blocks, output_blocks);
                 pool::readback = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Storage,
+                    RHI_Buffer_Type::Readback,
                     pool::output_stride_bytes,
                     new_cap,
                     nullptr, true,

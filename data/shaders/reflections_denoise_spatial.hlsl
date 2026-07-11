@@ -161,6 +161,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float  sample_var    = max(sample_data.a, 0.0f);
         float  sample_luma   = dot(sample_color, luminance_weights);
 
+        // reject bright outliers before they widen the luma gate and smear as dancing dots
+        float sample_ceiling = center_luma + lerp(6.0f, 2.0f, filter_strength) * luma_sigma;
+        if (sample_luma > sample_ceiling && sample_luma > 1e-3f)
+        {
+            sample_color *= sample_ceiling / sample_luma;
+            sample_luma   = sample_ceiling;
+        }
+
         float pixel_dist    = length(float2(spatial_offsets[i] * step_width));
         float depth_delta   = abs(sample_depth - center_depth) / max(phi_depth * depth_grad_max * pixel_dist, 1e-3f);
         float depth_weight  = exp(-depth_delta);
@@ -178,7 +186,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             continue;
         }
 
-        filtered_color    += sample_data * weight;
+        filtered_color    += float4(sample_color, sample_var) * weight;
         filtered_variance += sample_var * weight * weight;
         total_weight      += weight;
     }

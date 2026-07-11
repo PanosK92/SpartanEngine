@@ -40,7 +40,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Commands/Console/ConsoleCommands.h"
 #include "../MCP/McpServer.h"
 #include "../Steam/Steam.h"
+#include "../Resource/IconAtlas.h"
 #include "Settings.h"
+#include <future>
 //===========================================
 
 //= NAMESPACES ===============
@@ -78,14 +80,27 @@ namespace spartan
             ThreadPool::Initialize();
             ResourceCache::Initialize();
             Profiler::Initialize();
-            PhysicsWorld::Initialize();
+
+            // overlap independent cpu work with the heavy renderer path
+            future<void> physics_future = ThreadPool::AddTask([]()
+            {
+                PhysicsWorld::Initialize();
+            });
+            future<void> icon_decode_future = ThreadPool::AddTask([]()
+            {
+                IconAtlas::DecodeSources();
+            });
+
             Renderer::Initialize();
             Window::PumpEvents();
             World::Initialize();
             Settings::Initialize();
             SmokeTest::Initialize();
             McpServer::Initialize(args);
-            Steam::Initialize();
+            Steam::Initialize(); // must stay on the main thread, steam callbacks run here too
+
+            physics_future.get();
+            icon_decode_future.get();
 
             // xr is intentionally not auto initialized here, ctrl+0 brings it up on demand
             // so the openxr runtime (e.g. steamvr) is never spawned without explicit intent

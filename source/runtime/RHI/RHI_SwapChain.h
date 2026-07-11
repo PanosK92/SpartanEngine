@@ -79,7 +79,12 @@ namespace spartan
 
         static const uint8_t buffer_count  = 2;
         static const RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
+        // d3d12 windowed hdr uses fp16 scrgb, vulkan uses hdr10 pq
+        #if defined(API_GRAPHICS_D3D12)
+        static const RHI_Format format_hdr = RHI_Format::R16G16B16A16_Float;
+        #else
         static const RHI_Format format_hdr = RHI_Format::R10G10B10A2_Unorm;
+        #endif
 
     private:
         void Create();

@@ -34,6 +34,9 @@ namespace spartan
     class IconAtlas
     {
     public:
+        // cpu decode only, safe to run before the gpu device exists
+        static void DecodeSources();
+        // packs decoded sources and uploads the atlas, call after DecodeSources
         static void Build();
         static void Shutdown();
 

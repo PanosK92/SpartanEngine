@@ -26,14 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Queue.h"
+#include "../RHI_SyncPrimitive.h"
 #include "../Core/Debugging.h"
+#include "../Display/Display.h"
 #include "../../Profiling/Breadcrumbs.h"
 #include "../Core/Event.h"
 #include "../Core/Window.h"
+#include "../Rendering/Renderer.h"
 #include "D3D12_Internal.h"
 #include <wrl/client.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_properties.h>
+#include <unordered_map>
 //================================
 
 //= NAMESPACES ===============
@@ -78,15 +82,70 @@ namespace spartan
         }
     }
 
-    static void set_swapchain_color_space(IDXGISwapChain3* swapchain, const RHI_Format format)
+    // cache last applied color space per swapchain so resize does not re-spam SetHDRMetaData
+    static unordered_map<IDXGISwapChain3*, DXGI_COLOR_SPACE_TYPE> s_color_space_by_swapchain;
+    static unordered_map<IDXGISwapChain3*, bool> s_hdr10_metadata_active;
+
+    static void clear_hdr_metadata(IDXGISwapChain3* swapchain)
     {
-        if (!swapchain)
+        const auto it = s_hdr10_metadata_active.find(swapchain);
+        if (it == s_hdr10_metadata_active.end() || !it->second)
         {
             return;
         }
 
+        Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+        if (FAILED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4))))
+        {
+            return;
+        }
+        swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_NONE, 0, nullptr);
+        s_hdr10_metadata_active[swapchain] = false;
+    }
+
+    static void set_hdr_metadata(IDXGISwapChain3* swapchain)
+    {
+        Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+        if (FAILED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4))))
+        {
+            return;
+        }
+
+        // chromaticity in units of 0.00002, luminance in nits
+        DXGI_HDR_METADATA_HDR10 meta = {};
+        meta.RedPrimary[0]               = static_cast<UINT16>(0.708f * 50000.0f);
+        meta.RedPrimary[1]               = static_cast<UINT16>(0.292f * 50000.0f);
+        meta.GreenPrimary[0]             = static_cast<UINT16>(0.170f * 50000.0f);
+        meta.GreenPrimary[1]             = static_cast<UINT16>(0.797f * 50000.0f);
+        meta.BluePrimary[0]              = static_cast<UINT16>(0.131f * 50000.0f);
+        meta.BluePrimary[1]              = static_cast<UINT16>(0.046f * 50000.0f);
+        meta.WhitePoint[0]               = static_cast<UINT16>(0.3127f * 50000.0f);
+        meta.WhitePoint[1]               = static_cast<UINT16>(0.3290f * 50000.0f);
+        meta.MaxMasteringLuminance       = static_cast<UINT>(Display::GetLuminanceMax());
+        meta.MinMasteringLuminance       = static_cast<UINT>(0.001f * 10000.0f);
+        meta.MaxContentLightLevel        = 2000;
+        meta.MaxFrameAverageLightLevel   = 500;
+
+        HRESULT result = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(meta), &meta);
+        if (FAILED(result))
+        {
+            SP_LOG_WARNING("Failed to set DXGI HDR10 metadata");
+            return;
+        }
+        s_hdr10_metadata_active[swapchain] = true;
+    }
+
+    static bool set_swapchain_color_space(IDXGISwapChain3* swapchain, const RHI_Format format)
+    {
+        if (!swapchain)
+        {
+            return false;
+        }
+
         const DXGI_COLOR_SPACE_TYPE color_space = format == RHI_SwapChain::format_hdr ?
-            DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 :
+            (format == RHI_Format::R16G16B16A16_Float ?
+                DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709 :
+                DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) :
             DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
 
         UINT support = 0;
@@ -94,13 +153,51 @@ namespace spartan
         if (FAILED(result) || !(support & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT))
         {
             SP_LOG_WARNING("DXGI color space %d is not supported for presentation", static_cast<int>(color_space));
-            return;
+            return false;
+        }
+
+        const auto it = s_color_space_by_swapchain.find(swapchain);
+        if (it != s_color_space_by_swapchain.end() && it->second == color_space)
+        {
+            return true;
         }
 
         result = swapchain->SetColorSpace1(color_space);
         if (FAILED(result))
         {
             SP_LOG_WARNING("Failed to set DXGI color space %d", static_cast<int>(color_space));
+            return false;
+        }
+        s_color_space_by_swapchain[swapchain] = color_space;
+
+        // hdr10 metadata is only meaningful for pq swapchains, scrgb stays metadata-free
+        if (format == RHI_Format::R10G10B10A2_Unorm)
+        {
+            set_hdr_metadata(swapchain);
+        }
+        else
+        {
+            clear_hdr_metadata(swapchain);
+        }
+
+        return true;
+    }
+
+    static void forget_swapchain_color_space(IDXGISwapChain3* swapchain)
+    {
+        if (swapchain)
+        {
+            s_color_space_by_swapchain.erase(swapchain);
+            s_hdr10_metadata_active.erase(swapchain);
+        }
+    }
+
+    static void disable_hdr_cvar_silent()
+    {
+        // avoid on_change recursion back into SetHdr during create/fallback
+        if (ConsoleVariable* var = ConsoleRegistry::Get().Find("r.hdr"))
+        {
+            *var->m_value_ptr = 0.0f;
         }
     }
 
@@ -223,7 +320,28 @@ namespace spartan
         }
         swap_chain_temp->Release();
 
-        set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
+        // fall back to sdr when the display rejects hdr10 color space, mirrors vulkan surface format check
+        if (m_format == format_hdr && !set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format))
+        {
+            SP_LOG_WARNING("HDR format not supported by display. Falling back to SDR.");
+            disable_hdr_cvar_silent();
+            m_format = format_sdr;
+            forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
+
+            DXGI_SWAP_CHAIN_DESC1 desc = {};
+            static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetDesc1(&desc);
+            if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->ResizeBuffers(
+                m_buffer_count, m_width, m_height, d3d12_format[rhi_format_to_index(m_format)], desc.Flags)))
+            {
+                SP_LOG_ERROR("Failed to resize swapchain to SDR after HDR fallback");
+                return;
+            }
+            set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
+        }
+        else if (m_format != format_hdr)
+        {
+            set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
+        }
 
         // disable alt+enter fullscreen toggle
         factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
@@ -253,6 +371,7 @@ namespace spartan
 
             // backbuffers come out of dxgi in present state, seed the tracker so the first transition is correct
             d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+            d3d12_state::SetSubresourceCount(backbuffer, 1);
 
             // store backbuffer and rtv info
             m_rhi_rt[i]       = backbuffer;
@@ -283,6 +402,7 @@ namespace spartan
 
         if (m_rhi_swapchain)
         {
+            forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Release();
             m_rhi_swapchain = nullptr;
         }
@@ -344,7 +464,7 @@ namespace spartan
             if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetBuffer(i, IID_PPV_ARGS(&backbuffer))))
             {
                 SP_LOG_ERROR("Failed to get backbuffer %d after resize", i);
-                continue;
+                return;
             }
 
             // create rtv at the same index
@@ -354,6 +474,7 @@ namespace spartan
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
 
             d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+            d3d12_state::SetSubresourceCount(backbuffer, 1);
 
             m_rhi_rt[i] = backbuffer;
         }
@@ -361,7 +482,12 @@ namespace spartan
         m_image_index    = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
         m_image_acquired = true;
 
-        set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
+        // resizeBuffers resets the color space, force re-apply
+        forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
+        if (!set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format))
+        {
+            SP_LOG_WARNING("Failed to restore color space after resize (%s)", rhi_format_to_string(m_format));
+        }
     }
     
     void RHI_SwapChain::AcquireNextImage()
@@ -373,8 +499,13 @@ namespace spartan
             return;
         }
 
-        // d3d12 doesn't have explicit image acquisition like vulkan
-        // the current backbuffer index is determined by the swapchain
+        // when the window is minimized acquisition will fail and it's not necessary either
+        if (Window::IsMinimized())
+        {
+            return;
+        }
+
+        // d3d12 has no vkAcquireNextImageKHR, the current backbuffer index is owned by dxgi
         m_image_index    = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
         m_image_acquired = true;
     }
@@ -393,11 +524,10 @@ namespace spartan
             return;
         }
 
-        // note: barrier to present state should be handled by the command list before present
-
-        // present parameters
-        const bool tearing_allowed = m_present_mode == RHI_Present_Mode::Immediate;
-        const UINT sync_interval   = tearing_allowed ? 0 : 1;
+        // present parameters, tearing can bypass dwm hdr composition so keep it off for hdr
+        const bool hdr             = m_format == format_hdr;
+        const bool tearing_allowed = m_present_mode == RHI_Present_Mode::Immediate && !hdr;
+        const UINT sync_interval   = (m_present_mode == RHI_Present_Mode::Immediate) ? 0 : 1;
         const UINT flags           = tearing_allowed ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // present
@@ -430,6 +560,11 @@ namespace spartan
 
     void RHI_SwapChain::SetHdr(const bool enabled)
     {
+        if (enabled)
+        {
+            SP_ASSERT_MSG(Display::GetHdr(), "This display doesn't support HDR");
+        }
+
         if (!m_rhi_swapchain)
         {
             return;
@@ -445,18 +580,17 @@ namespace spartan
         RHI_Device::QueueWaitAll();
         destroy_swapchain_resources(this);
 
+        IDXGISwapChain3* dxgi = static_cast<IDXGISwapChain3*>(m_rhi_swapchain);
         DXGI_SWAP_CHAIN_DESC1 desc = {};
-        static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetDesc1(&desc);
-        const DXGI_FORMAT new_format = d3d12_format[rhi_format_to_index(target_format)];
+        dxgi->GetDesc1(&desc);
+        forget_swapchain_color_space(dxgi);
 
-        if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->ResizeBuffers(
-            m_buffer_count, m_width, m_height, new_format, desc.Flags)))
+        const DXGI_FORMAT new_format = d3d12_format[rhi_format_to_index(target_format)];
+        if (!d3d12_utility::error::check(dxgi->ResizeBuffers(m_buffer_count, m_width, m_height, new_format, desc.Flags)))
         {
             SP_LOG_ERROR("Failed to resize swapchain to %s", enabled ? "HDR" : "SDR");
             return;
         }
-
-        m_format = target_format;
 
         // recreate rtvs at the same indices
         ID3D12DescriptorHeap* rtv_heap = d3d12_descriptors::GetRtvHeap();
@@ -464,23 +598,52 @@ namespace spartan
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             ID3D12Resource* backbuffer = nullptr;
-            if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetBuffer(i, IID_PPV_ARGS(&backbuffer))))
+            if (!d3d12_utility::error::check(dxgi->GetBuffer(i, IID_PPV_ARGS(&backbuffer))))
             {
-                continue;
+                SP_LOG_ERROR("Failed to get backbuffer %d after HDR toggle", i);
+                return;
             }
 
             D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
             rtv_handle.ptr += s_rtv_indices[i] * rtv_descriptor_size;
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
             d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+            d3d12_state::SetSubresourceCount(backbuffer, 1);
             m_rhi_rt[i] = backbuffer;
         }
 
-        m_image_index    = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
+        m_image_index    = dxgi->GetCurrentBackBufferIndex();
         m_image_acquired = true;
 
-        set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
+        // hdr shaders must match the swapchain encoding, refuse a half-applied hdr mode
+        if (!set_swapchain_color_space(dxgi, target_format))
+        {
+            SP_LOG_WARNING("HDR color space not supported after format change, falling back to SDR");
+            disable_hdr_cvar_silent();
+            forget_swapchain_color_space(dxgi);
+            destroy_swapchain_resources(this);
+            dxgi->GetDesc1(&desc);
+            dxgi->ResizeBuffers(m_buffer_count, m_width, m_height, d3d12_format[rhi_format_to_index(format_sdr)], desc.Flags);
+            for (uint32_t i = 0; i < m_buffer_count; i++)
+            {
+                ID3D12Resource* backbuffer = nullptr;
+                if (SUCCEEDED(dxgi->GetBuffer(i, IID_PPV_ARGS(&backbuffer))))
+                {
+                    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
+                    rtv_handle.ptr += s_rtv_indices[i] * rtv_descriptor_size;
+                    RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
+                    d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
+                    d3d12_state::SetSubresourceCount(backbuffer, 1);
+                    m_rhi_rt[i] = backbuffer;
+                }
+            }
+            m_format = format_sdr;
+            set_swapchain_color_space(dxgi, m_format);
+            SP_LOG_INFO("Swapchain HDR disabled (%s)", rhi_format_to_string(m_format));
+            return;
+        }
 
+        m_format = target_format;
         SP_LOG_INFO("Swapchain HDR %s (%s)", enabled ? "enabled" : "disabled", rhi_format_to_string(m_format));
     }
 
@@ -500,6 +663,7 @@ namespace spartan
         {
             RHI_Device::QueueWaitAll();
             destroy_swapchain_resources(this);
+            forget_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain));
             static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Release();
             m_rhi_swapchain = nullptr;
             Create();
@@ -513,13 +677,13 @@ namespace spartan
 
     RHI_SyncPrimitive* RHI_SwapChain::GetImageAcquiredSemaphore() const
     {
-        // d3d12 doesn't use semaphores for swapchain synchronization
+        // d3d12 present is synchronized by dxgi flip, not binary semaphores
+        // returning these into Submit would queue->Wait on fences that are never gpu-signaled for acquire
         return nullptr;
     }
 
     RHI_SyncPrimitive* RHI_SwapChain::GetRenderingCompleteSemaphore() const
     {
-        // d3d12 doesn't use semaphores for swapchain synchronization
         return nullptr;
     }
 

@@ -374,11 +374,13 @@ namespace car
         reset_drivetrain_transients();
         reset_wheel_thermals();
 
-        material = params.physics->createMaterial(0.8f, 0.7f, 0.1f);
+        // chassis material: normal friction, zero restitution so curb scrape does not bounce
+        material = params.physics->createMaterial(0.8f, 0.7f, 0.0f);
         if (!material)
         {
             return false;
         }
+        material->setRestitutionCombineMode(PxCombineMode::eMIN);
 
         // spawn at the spring equilibrium height instead of above it, plus a small clearance so
         // the wheel sweep cylinder doesn't start already overlapping the ground on the first tick
@@ -705,12 +707,14 @@ namespace car
         tuning::spec.center_of_mass_x = x;
         tuning::spec.center_of_mass_y = y;
         tuning::spec.center_of_mass_z = z;
+        // springs and axle mass share follow weight distribution from com z
+        compute_constants();
         update_mass_properties();
     }
 
-    inline void set_center_of_mass_x(float x) { tuning::spec.center_of_mass_x = x; update_mass_properties(); }
-    inline void set_center_of_mass_y(float y) { tuning::spec.center_of_mass_y = y; update_mass_properties(); }
-    inline void set_center_of_mass_z(float z) { tuning::spec.center_of_mass_z = z; update_mass_properties(); }
+    inline void set_center_of_mass_x(float x) { set_center_of_mass(x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z); }
+    inline void set_center_of_mass_y(float y) { set_center_of_mass(tuning::spec.center_of_mass_x, y, tuning::spec.center_of_mass_z); }
+    inline void set_center_of_mass_z(float z) { set_center_of_mass(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, z); }
 
     inline float get_center_of_mass_x() { return tuning::spec.center_of_mass_x; }
     inline float get_center_of_mass_y() { return tuning::spec.center_of_mass_y; }
@@ -849,7 +853,7 @@ namespace car
             wheels[i].net_torque = 0.0f;
 
         float wheel_angles[wheel_count];
-        calculate_steering(forward_speed, speed_kmh, wheel_angles);
+        calculate_steering(forward_speed, wheel_angles);
 
         update_suspension(scene, dt);
         apply_suspension_forces(dt);
@@ -857,15 +861,6 @@ namespace car
 
         apply_tire_forces(wheel_angles, dt);
         apply_self_aligning_torque();
-
-        // speed-proportional yaw damping (tire scrub, suspension compliance, chassis flex)
-        {
-            PxVec3 up = pose.q.rotate(PxVec3(0, 1, 0));
-            float yaw_rate      = body->getAngularVelocity().dot(up);
-            float speed_scale   = PxClamp(speed_kmh / 60.0f, 0.0f, 1.0f);
-            float yaw_damp_torque = -yaw_rate * tuning::spec.yaw_damping * speed_scale;
-            safe_add_torque(body, up * yaw_damp_torque);
-        }
 
         apply_aero_and_resistance();
 

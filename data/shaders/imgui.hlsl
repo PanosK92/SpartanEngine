@@ -131,10 +131,14 @@ float4 main_ps(vertex input) : SV_Target
 
     float4 color = input.color * color_texture;
 
-    // hdr encoding, skipped for the frame texture since the output pass already wrote pq-encoded values into it
-    float apply_hdr     = buffer_frame.hdr_enabled * (1.0f - is_frame_texture);
+    // hdr encoding, skipped for the frame texture since the output pass already wrote display-encoded values
+    // hdr_enabled: 1 = hdr10 pq, 2 = scrgb linear (1.0 = 80 nits)
+    float apply_hdr     = (buffer_frame.hdr_enabled != 0.0f ? 1.0f : 0.0f) * (1.0f - is_frame_texture);
     float3 color_linear = srgb_to_linear(color.rgb);
-    float3 color_hdr    = linear_to_hdr10(color_linear, 400.0f);
+    float ui_nits       = buffer_frame.hdr_sdr_white_nits > 0.0f ? buffer_frame.hdr_sdr_white_nits : 203.0f;
+    float3 color_hdr    = buffer_frame.hdr_enabled > 1.5f
+        ? color_linear * (ui_nits / 80.0f)
+        : linear_to_hdr10(color_linear, ui_nits);
     color.rgb           = lerp(color.rgb, color_hdr, apply_hdr);
 
     return color;

@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsWorld.h"
 #include "../Input/Input.h"
 #include <cstdlib>
+#include <functional>
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
@@ -85,8 +86,41 @@ namespace spartan
         atomic<bool> load_in_progress = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
-        Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the first-match camera
+        Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the default camera
         Entity* light               = nullptr;
+
+        // prefer the player flycam (camera under a controller body) over cinematic sequence cameras
+        Entity* pick_default_camera(Entity* current, Entity* candidate)
+        {
+            if (!candidate || !candidate->GetComponent<Camera>())
+            {
+                return current;
+            }
+
+            auto is_player_camera = [](Entity* entity) -> bool
+            {
+                Entity* parent = entity->GetParent();
+                if (!parent)
+                {
+                    return false;
+                }
+
+                Physics* physics = parent->GetComponent<Physics>();
+                return physics && physics->GetBodyType() == BodyType::Controller;
+            };
+
+            if (!current)
+            {
+                return candidate;
+            }
+
+            if (!is_player_camera(current) && is_player_camera(candidate))
+            {
+                return candidate;
+            }
+
+            return current;
+        }
 
         // snapshot for play/stop state restoration (like unity's play mode)
         struct EntitySnapshot
@@ -920,6 +954,9 @@ namespace spartan
         material_state_hashes.clear();
         light_state_hashes.clear();
 
+        // drop car module state so the next world does not inherit dangling camera or car pointers
+        Car::ShutdownAll();
+
         // mark for resolve
         resolve = true;
     }
@@ -964,10 +1001,7 @@ namespace spartan
                 {
                     if (entity->GetActive())
                     {
-                        if (!camera && entity->GetComponent<Camera>())
-                        {
-                            camera = entity;
-                        }
+                        camera = pick_default_camera(camera, entity);
 
                         if (Light* light_comp = entity->GetComponent<Light>())
                         {
@@ -1201,10 +1235,7 @@ namespace spartan
                 {
                     if (entity->GetActive())
                     {
-                        if (!camera && entity->GetComponent<Camera>())
-                        {
-                            camera = entity;
-                        }
+                        camera = pick_default_camera(camera, entity);
 
                         if (Light* light_comp = entity->GetComponent<Light>())
                         {
@@ -1485,42 +1516,52 @@ namespace spartan
                         }
                     }
 
-                    // pass 1, textures and meshes are independent, run them in parallel
+                    // pass 1, textures and meshes are independent, fan them out together
                     // ResourceCache::Load uses a per-path in-flight lock so concurrent loads of the same path are deduplicated,
                     // RHI_Texture::PrepareForGpu transitions state via compare_exchange_strong so it is safe across threads
-                    if (!texture_paths.empty())
                     {
-                        ThreadPool::ParallelLoop([&texture_paths, resource_count](uint32_t start, uint32_t end)
+                        struct ResourceJob
                         {
-                            for (uint32_t i = start; i < end; i++)
-                            {
-                                if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(texture_paths[i]))
-                                {
-                                    texture->PrepareForGpu();
-                                }
+                            enum class Type : uint8_t { Texture, Mesh } type;
+                            string path;
+                        };
 
-                                if (resource_count > 0)
-                                {
-                                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                                }
-                            }
-                        }, static_cast<uint32_t>(texture_paths.size()));
-                    }
-
-                    if (!mesh_paths.empty())
-                    {
-                        ThreadPool::ParallelLoop([&mesh_paths, resource_count](uint32_t start, uint32_t end)
+                        vector<ResourceJob> jobs;
+                        jobs.reserve(texture_paths.size() + mesh_paths.size());
+                        for (const string& path : texture_paths)
                         {
-                            for (uint32_t i = start; i < end; i++)
-                            {
-                                ResourceCache::Load<Mesh>(mesh_paths[i]);
+                            jobs.push_back({ ResourceJob::Type::Texture, path });
+                        }
+                        for (const string& path : mesh_paths)
+                        {
+                            jobs.push_back({ ResourceJob::Type::Mesh, path });
+                        }
 
-                                if (resource_count > 0)
+                        if (!jobs.empty())
+                        {
+                            ThreadPool::ParallelLoop([&jobs, resource_count](uint32_t start, uint32_t end)
+                            {
+                                for (uint32_t i = start; i < end; i++)
                                 {
-                                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                                    if (jobs[i].type == ResourceJob::Type::Texture)
+                                    {
+                                        if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(jobs[i].path))
+                                        {
+                                            texture->PrepareForGpu();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        ResourceCache::Load<Mesh>(jobs[i].path);
+                                    }
+
+                                    if (resource_count > 0)
+                                    {
+                                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                                    }
                                 }
-                            }
-                        }, static_cast<uint32_t>(mesh_paths.size()));
+                            }, static_cast<uint32_t>(jobs.size()));
+                        }
                     }
 
                     // pass 2, materials reference textures by path so they must run after the texture pass completes
@@ -1596,15 +1637,35 @@ namespace spartan
                     return;
                 }
 
-                // collect all root entity nodes
-                vector<pugi::xml_node> entity_nodes;
-                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                // flatten the entity tree so every node can load in parallel
+                // parent_index is into this same vector, UINT32_MAX means root
+                struct FlatEntity
                 {
-                    entity_nodes.push_back(entity_node);
+                    pugi::xml_node node;
+                    uint32_t parent_index = UINT32_MAX;
+                };
+
+                vector<FlatEntity> flat_entities;
+                {
+                    function<void(pugi::xml_node, uint32_t)> collect = [&](pugi::xml_node node, uint32_t parent_index)
+                    {
+                        const uint32_t index = static_cast<uint32_t>(flat_entities.size());
+                        flat_entities.push_back({ node, parent_index });
+
+                        for (pugi::xml_node child = node.child("Entity"); child; child = child.next_sibling("Entity"))
+                        {
+                            collect(child, index);
+                        }
+                    };
+
+                    for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                    {
+                        collect(entity_node, UINT32_MAX);
+                    }
                 }
 
                 // progress tracking
-                uint32_t entity_count = static_cast<uint32_t>(entity_nodes.size());
+                uint32_t entity_count = static_cast<uint32_t>(flat_entities.size());
                 ProgressTracker::GetProgress(ProgressType::World).Start(entity_count, "Loading entities...");
 
                 // defer script lua execution, lua is single threaded and cannot run across the worker threads below
@@ -1614,16 +1675,31 @@ namespace spartan
                 }
                 defer_script_init.store(true, memory_order_release);
 
-                // load root entities in parallel, each created entity is auto-drained into the renderer on the next World::Tick
-                ThreadPool::ParallelLoop([&entity_nodes](uint32_t start, uint32_t end)
+                // create and load every entity without hierarchy, children are wired after
+                vector<Entity*> loaded_entities(entity_count, nullptr);
+                if (entity_count > 0)
                 {
-                    for (uint32_t i = start; i < end; i++)
+                    ThreadPool::ParallelLoop([&flat_entities, &loaded_entities](uint32_t start, uint32_t end)
                     {
-                        Entity* entity = World::CreateEntity();
-                        entity->Load(entity_nodes[i]);
-                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                        for (uint32_t i = start; i < end; i++)
+                        {
+                            Entity* entity = World::CreateEntity();
+                            entity->Load(flat_entities[i].node, false);
+                            loaded_entities[i] = entity;
+                            ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                        }
+                    }, entity_count);
+
+                    // wire parents in document order so each parent exists before its children attach
+                    for (uint32_t i = 0; i < entity_count; i++)
+                    {
+                        const uint32_t parent_index = flat_entities[i].parent_index;
+                        if (parent_index != UINT32_MAX)
+                        {
+                            loaded_entities[i]->SetParent(loaded_entities[parent_index]);
+                        }
                     }
-                }, entity_count);
+                }
 
                 // every entity now exists, run the queued script initialization sequentially on this thread
                 // builder scripts get the full thread pool for their own parallel work and lua stays single threaded

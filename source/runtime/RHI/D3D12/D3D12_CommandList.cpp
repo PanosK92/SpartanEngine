@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2024 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -60,9 +60,17 @@ namespace spartan
 
 namespace spartan::d3d12_state
 {
+    struct TrackedResource
+    {
+        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+        bool decays_to_common       = false;
+        bool is_buffer              = false;
+        uint32_t subresource_count  = 0; // 0 means unknown, never call getdesc on the barrier hot path
+    };
+
     // process-wide resource state tracker, keyed on the raw d3d12 resource pointer
     // d3d12 has no implicit transitions outside of common-promotion rules, so we maintain it explicitly
-    static std::unordered_map<ID3D12Resource*, D3D12_RESOURCE_STATES> resource_states;
+    static std::unordered_map<ID3D12Resource*, TrackedResource> resource_states;
     static std::mutex resource_states_mutex;
 
     void SetState(ID3D12Resource* resource, D3D12_RESOURCE_STATES state)
@@ -72,7 +80,7 @@ namespace spartan::d3d12_state
             return;
         }
         std::lock_guard<std::mutex> lock(resource_states_mutex);
-        resource_states[resource] = state;
+        resource_states[resource].state = state;
     }
 
     D3D12_RESOURCE_STATES GetState(ID3D12Resource* resource)
@@ -88,7 +96,75 @@ namespace spartan::d3d12_state
             // unseeded resource - assume common, this matches the d3d12 promotion rules well enough for first-pixel
             return D3D12_RESOURCE_STATE_COMMON;
         }
-        return it->second;
+        return it->second.state;
+    }
+
+    void SetDecaysToCommon(ID3D12Resource* resource, bool decays)
+    {
+        if (!resource)
+        {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        resource_states[resource].decays_to_common = decays;
+    }
+
+    bool DecaysToCommon(ID3D12Resource* resource)
+    {
+        if (!resource)
+        {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        auto it = resource_states.find(resource);
+        return it != resource_states.end() && it->second.decays_to_common;
+    }
+
+    void SetIsBuffer(ID3D12Resource* resource, bool is_buffer)
+    {
+        if (!resource)
+        {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        resource_states[resource].is_buffer = is_buffer;
+    }
+
+    bool IsBuffer(ID3D12Resource* resource)
+    {
+        if (!resource)
+        {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        auto it = resource_states.find(resource);
+        return it != resource_states.end() && it->second.is_buffer;
+    }
+
+    void SetSubresourceCount(ID3D12Resource* resource, uint32_t count)
+    {
+        if (!resource)
+        {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        resource_states[resource].subresource_count = std::max(1u, count);
+    }
+
+    uint32_t GetSubresourceCount(ID3D12Resource* resource)
+    {
+        if (!resource)
+        {
+            return 0;
+        }
+        std::lock_guard<std::mutex> lock(resource_states_mutex);
+        auto it = resource_states.find(resource);
+        if (it == resource_states.end() || it->second.subresource_count == 0)
+        {
+            // unseeded, prefer 1 over getdesc which avs some d3d12SDKLayers builds
+            return 1;
+        }
+        return it->second.subresource_count;
     }
 
     void RemoveState(ID3D12Resource* resource)
@@ -147,18 +223,11 @@ namespace spartan
             D3D12_RESOURCE_STATE_RESOLVE_DEST             |
             D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
 
-        // graphics-only state bits that, when stripped at submit time, leave the resource readable by both graphics and
-        // compute queues, render_target and depth_write are intentionally kept since their attachments are usually
-        // re-used by the next graphics frame and stripping them only adds round-trip transitions
-        static constexpr D3D12_RESOURCE_STATES submit_strip_states =
-            D3D12_RESOURCE_STATE_DEPTH_READ               |
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-
         struct PendingBindings
         {
             // source cpu handles (from cpu staging heap) per slot - zero means null
-            D3D12_CPU_DESCRIPTOR_HANDLE srv[28] = {};
-            D3D12_CPU_DESCRIPTOR_HANDLE uav[45] = {};
+            D3D12_CPU_DESCRIPTOR_HANDLE srv[d3d12_root_slot::srv_space0_count] = {};
+            D3D12_CPU_DESCRIPTOR_HANDLE uav[d3d12_root_slot::uav_space0_count] = {};
             bool srv_dirty                       = false;
             bool uav_dirty                       = false;
             bool is_compute_bound                = false;
@@ -216,14 +285,10 @@ namespace spartan
             b.staging_buffers_in_flight.clear();
         }
 
-        // total subresource count for a resource, mip count times array length, ignoring stencil planes
-        // since spartan currently does not transition depth and stencil planes independently
+        // total subresource count from the create-time cache, never call getdesc here, it avs mismatched d3d12SDKLayers
         static uint32_t get_subresource_count(ID3D12Resource* resource)
         {
-            D3D12_RESOURCE_DESC desc = resource->GetDesc();
-            uint32_t array_size      = (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) ? 1u : static_cast<uint32_t>(desc.DepthOrArraySize);
-            uint32_t mip_count       = static_cast<uint32_t>(desc.MipLevels);
-            return mip_count * array_size;
+            return d3d12_state::GetSubresourceCount(resource);
         }
 
         // get or create the state info for a resource, lazy-initializing from the global tracker on first use
@@ -233,26 +298,38 @@ namespace spartan
             if (!info.initialized)
             {
                 info.uniform_state = d3d12_state::GetState(resource);
-                info.initialized   = true;
+                // compute always waits on the producer timeline before touching shared resources, by then
+                // buffers and simultaneous-access textures have decayed to common on the gpu
+                if (b.is_compute_queue && d3d12_state::DecaysToCommon(resource))
+                {
+                    info.uniform_state = D3D12_RESOURCE_STATE_COMMON;
+                }
+                info.initialized = true;
             }
             return info;
         }
 
         // publish all per-cmd-list resource state changes to the global tracker, called at submit time
-        // resources left non-uniform get unifying barriers emitted before close so the global tracker stays uniform
-        // and the actual gpu state matches it after execution
+        // resources left non-uniform get unifying barriers so the next cmd list sees a single state
+        // do not emit pixel-strip barriers here, they repeatedly av d3d12SDKLayers when state_before is stale
+        // compute already skips transitions when pixel|non_pixel already covers the needed non_pixel bits
         void commit_states_to_global(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
         {
             std::vector<D3D12_RESOURCE_BARRIER> unify;
             for (auto& kv : b.resource_states)
             {
+                if (!kv.first)
+                {
+                    continue;
+                }
+
                 ResourceStateInfo& info = kv.second;
                 if (!info.per_subresource.empty())
                 {
-                    // collapse to subresource 0's state, this is arbitrary but keeps the global tracker uniform
-                    // and produces a known starting state for the next cmd list
-                    D3D12_RESOURCE_STATES target = info.per_subresource[0];
-                    for (uint32_t i = 1; i < info.per_subresource.size(); i++)
+                    // collapse divergent mips to subresource 0's state
+                    const D3D12_RESOURCE_STATES target = info.per_subresource[0];
+                    const uint32_t count = static_cast<uint32_t>(info.per_subresource.size());
+                    for (uint32_t i = 0; i < count; i++)
                     {
                         if (info.per_subresource[i] == target)
                         {
@@ -270,36 +347,25 @@ namespace spartan
                     info.per_subresource.clear();
                     info.uniform_state = target;
                 }
-                // strip graphics-only shader_read bits on graphics queue submissions, the next cmd list may run on a
-                // compute queue which can not transition out of pixel_shader_resource or depth_read, leaving the resource
-                // in non_pixel_shader_resource keeps it readable in compute and ps reads on the next graphics cmd list
-                // re-add the stripped bits cheaply via the normal push_transition path
-                if (!b.is_compute_queue && (info.uniform_state & submit_strip_states))
-                {
-                    D3D12_RESOURCE_STATES stripped = info.uniform_state & ~submit_strip_states;
-                    // if stripping removed every read bit fall back to non_pixel_shader_resource so the resource still
-                    // has a valid shader_read state on the compute queue
-                    if (stripped == 0)
-                    {
-                        stripped = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                    }
-                    if (stripped != info.uniform_state)
-                    {
-                        D3D12_RESOURCE_BARRIER barrier = {};
-                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                        barrier.Transition.pResource   = kv.first;
-                        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                        barrier.Transition.StateBefore = info.uniform_state;
-                        barrier.Transition.StateAfter  = stripped;
-                        unify.push_back(barrier);
-                        info.uniform_state = stripped;
-                    }
-                }
+
                 d3d12_state::SetState(kv.first, info.uniform_state);
             }
             if (!unify.empty())
             {
-                cmd_list->ResourceBarrier(static_cast<UINT>(unify.size()), unify.data());
+                for (const D3D12_RESOURCE_BARRIER& barrier : unify)
+                {
+                    if (!barrier.Transition.pResource ||
+                        barrier.Transition.StateBefore == barrier.Transition.StateAfter)
+                    {
+                        continue;
+                    }
+                    const uint32_t count = get_subresource_count(barrier.Transition.pResource);
+                    if (barrier.Transition.Subresource >= count)
+                    {
+                        continue;
+                    }
+                    cmd_list->ResourceBarrier(1, &barrier);
+                }
             }
         }
 
@@ -307,11 +373,18 @@ namespace spartan
         // when subresource is ALL_SUBRESOURCES and the resource is currently divergent, this emits per-subresource
         // barriers for the subresources that differ from state_after, then collapses back to uniform
         // returns true if any barrier was actually queued, false if all subresources were already in state_after
-        bool push_transition(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state_after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
+        // force skips the subset early-out so callers can strip extra bits (e.g. pixel for xess)
+        bool push_transition(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state_after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, bool force = false)
         {
             if (!resource)
             {
                 return false;
+            }
+
+            // buffers only have subresource 0, all-subresources is illegal and avs the debug layer
+            if (d3d12_state::IsBuffer(resource))
+            {
+                subresource = 0;
             }
 
             // on the compute queue strip graphics-only state bits from state_after, otherwise the runtime rejects the
@@ -324,22 +397,58 @@ namespace spartan
 
             ResourceStateInfo& info = get_or_init_state(b, resource);
 
+            // true when the resource is already usable for state_after, even if it also has extra graphics-only bits
+            // compute cannot legally barrier away from pixel_shader_resource, so skip when the needed bits are present
+            auto already_usable = [&](D3D12_RESOURCE_STATES state_before) -> bool
+            {
+                if (force)
+                {
+                    return state_before == state_after;
+                }
+                if (state_before == state_after)
+                {
+                    return true;
+                }
+                // common/present is 0, a bitwise subset check would match every state and skip the present barrier
+                if (state_after == D3D12_RESOURCE_STATE_COMMON)
+                {
+                    return false;
+                }
+                if ((state_before & state_after) == state_after)
+                {
+                    return true;
+                }
+                return false;
+            };
+
             if (subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
             {
                 if (info.per_subresource.empty())
                 {
-                    if (info.uniform_state == state_after)
+                    if (already_usable(info.uniform_state))
                     {
                         return false;
                     }
 
-                    D3D12_RESOURCE_BARRIER barrier = {};
-                    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                    barrier.Transition.pResource   = resource;
-                    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                    barrier.Transition.StateBefore = info.uniform_state;
-                    barrier.Transition.StateAfter  = state_after;
-                    b.pending_barriers.push_back(barrier);
+                    // compute cannot emit a barrier whose state_before still has pixel/rt/depth bits
+                    if (b.is_compute_queue && (info.uniform_state & compute_invalid_states))
+                    {
+                        return false;
+                    }
+
+                    // never emit all-subresources, it is illegal for buffers and mixing it with
+                    // per-mip barriers in one ResourceBarrier call avs the d3d12 debug layer
+                    const uint32_t count = get_subresource_count(resource);
+                    for (uint32_t i = 0; i < count; i++)
+                    {
+                        D3D12_RESOURCE_BARRIER barrier = {};
+                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                        barrier.Transition.pResource   = resource;
+                        barrier.Transition.Subresource = i;
+                        barrier.Transition.StateBefore = info.uniform_state;
+                        barrier.Transition.StateAfter  = state_after;
+                        b.pending_barriers.push_back(barrier);
+                    }
 
                     info.uniform_state = state_after;
                     return true;
@@ -349,7 +458,11 @@ namespace spartan
                 bool any = false;
                 for (uint32_t i = 0; i < info.per_subresource.size(); i++)
                 {
-                    if (info.per_subresource[i] == state_after)
+                    if (already_usable(info.per_subresource[i]))
+                    {
+                        continue;
+                    }
+                    if (b.is_compute_queue && (info.per_subresource[i] & compute_invalid_states))
                     {
                         continue;
                     }
@@ -361,18 +474,37 @@ namespace spartan
                     barrier.Transition.StateBefore = info.per_subresource[i];
                     barrier.Transition.StateAfter  = state_after;
                     b.pending_barriers.push_back(barrier);
+                    info.per_subresource[i] = state_after;
                     any = true;
                 }
 
-                info.per_subresource.clear();
-                info.uniform_state = state_after;
+                // only collapse when every subresource actually matches, skipped compute/pixel cases must keep their gpu state
+                const D3D12_RESOURCE_STATES first = info.per_subresource[0];
+                bool all_same = true;
+                for (uint32_t i = 1; i < info.per_subresource.size(); i++)
+                {
+                    if (info.per_subresource[i] != first)
+                    {
+                        all_same = false;
+                        break;
+                    }
+                }
+                if (all_same)
+                {
+                    info.per_subresource.clear();
+                    info.uniform_state = first;
+                }
                 return any;
             }
 
             // specific subresource, expand to per-subresource if currently uniform
             if (info.per_subresource.empty())
             {
-                if (info.uniform_state == state_after)
+                if (already_usable(info.uniform_state))
+                {
+                    return false;
+                }
+                if (b.is_compute_queue && (info.uniform_state & compute_invalid_states))
                 {
                     return false;
                 }
@@ -391,7 +523,11 @@ namespace spartan
             }
 
             D3D12_RESOURCE_STATES state_before = info.per_subresource[subresource];
-            if (state_before == state_after)
+            if (already_usable(state_before))
+            {
+                return false;
+            }
+            if (b.is_compute_queue && (state_before & compute_invalid_states))
             {
                 return false;
             }
@@ -418,6 +554,26 @@ namespace spartan
             barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.UAV.pResource = resource;
             b.pending_barriers.push_back(barrier);
+        }
+
+        // set the local and global trackers without emitting a barrier, used after external libraries mutate gpu state
+        void adopt_state(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state)
+        {
+            if (!resource)
+            {
+                return;
+            }
+            ResourceStateInfo& info = get_or_init_state(b, resource);
+            info.per_subresource.clear();
+            info.uniform_state = state;
+            d3d12_state::SetState(resource, state);
+        }
+
+        static D3D12_RESOURCE_STATES compute_shader_resource_state(bool is_depth)
+        {
+            return is_depth
+                ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+                : D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
         }
 
         void flush(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
@@ -459,18 +615,94 @@ namespace spartan
                 }
             }
 
-            // drop any resulting no-op transitions where the chained Before == After
+            // drop no-op transitions and any barrier missing its resource
             deduped.erase(std::remove_if(deduped.begin(), deduped.end(),
                 [](const D3D12_RESOURCE_BARRIER& barrier)
                 {
-                    return barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
-                           barrier.Transition.StateBefore == barrier.Transition.StateAfter;
+                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
+                    {
+                        return !barrier.Transition.pResource ||
+                               barrier.Transition.StateBefore == barrier.Transition.StateAfter;
+                    }
+                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_UAV)
+                    {
+                        return false;
+                    }
+                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_ALIASING)
+                    {
+                        return false;
+                    }
+                    return true;
                 }),
                 deduped.end());
 
             if (!deduped.empty())
             {
-                cmd_list->ResourceBarrier(static_cast<UINT>(deduped.size()), deduped.data());
+                // rewrite any leftover all-subresources entries to explicit indices before submit
+                std::vector<D3D12_RESOURCE_BARRIER> fixed;
+                fixed.reserve(deduped.size());
+                for (const auto& barrier : deduped)
+                {
+                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
+                        barrier.Transition.pResource &&
+                        barrier.Transition.Subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
+                    {
+                        const uint32_t count = get_subresource_count(barrier.Transition.pResource);
+                        for (uint32_t i = 0; i < count; i++)
+                        {
+                            D3D12_RESOURCE_BARRIER per = barrier;
+                            per.Transition.Subresource = i;
+                            fixed.push_back(per);
+                        }
+                        continue;
+                    }
+                    // buffers must use subresource 0, a non-zero index or all-subresources avs the debug layer
+                    if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
+                        barrier.Transition.pResource &&
+                        d3d12_state::IsBuffer(barrier.Transition.pResource))
+                    {
+                        D3D12_RESOURCE_BARRIER per = barrier;
+                        per.Transition.Subresource = 0;
+                        fixed.push_back(per);
+                        continue;
+                    }
+                    fixed.push_back(barrier);
+                }
+                if (!fixed.empty())
+                {
+                    // submit one barrier at a time, batched resourcebarrier with a bad entry avs some
+                    // debug layer and driver combinations without identifying the offender
+                    for (size_t i = 0; i < fixed.size(); i++)
+                    {
+                        const D3D12_RESOURCE_BARRIER& barrier = fixed[i];
+                        if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
+                        {
+                            if (!barrier.Transition.pResource ||
+                                barrier.Transition.StateBefore == barrier.Transition.StateAfter)
+                            {
+                                continue;
+                            }
+                            // reject out-of-range subresource indices, they null-deref in the nvidia umd
+                            if (barrier.Transition.Subresource != D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
+                            {
+                                const uint32_t count = get_subresource_count(barrier.Transition.pResource);
+                                if (barrier.Transition.Subresource >= count)
+                                {
+                                    SP_LOG_ERROR("dropping barrier with subresource %u >= count %u", barrier.Transition.Subresource, count);
+                                    continue;
+                                }
+                            }
+                        }
+                        else if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_UAV)
+                        {
+                            if (!barrier.UAV.pResource)
+                            {
+                                continue;
+                            }
+                        }
+                        cmd_list->ResourceBarrier(1, &barrier);
+                    }
+                }
             }
             b.pending_barriers.clear();
         }
@@ -646,9 +878,29 @@ namespace spartan
         }
     }
 
+    // bind engine shader-visible heaps, required after any external library that calls SetDescriptorHeaps
+    static void bind_shader_visible_heaps(ID3D12GraphicsCommandList* cmd_list)
+    {
+        ID3D12DescriptorHeap* heaps[2] = {
+            d3d12_descriptors::GetCbvSrvUavHeap(),
+            d3d12_descriptors::GetSamplerHeap()
+        };
+        if (heaps[0] && heaps[1])
+        {
+            cmd_list->SetDescriptorHeaps(2, heaps);
+        }
+        else if (heaps[0])
+        {
+            cmd_list->SetDescriptorHeaps(1, heaps);
+        }
+    }
+
     // bind all bindless descriptor tables at the fixed bindless zones
     static void bind_bindless_tables(ID3D12GraphicsCommandList* cmd_list, bool is_compute)
     {
+        // external passes (xess) may have swapped the bound heaps, always restore before using engine handles
+        bind_shader_visible_heaps(cmd_list);
+
         const uint32_t tex_base     = d3d12_descriptors::GetBindlessTexturesBase();
         const uint32_t buf_base     = d3d12_descriptors::GetBindlessBuffersBase();
         const uint32_t compare_base = d3d12_descriptors::GetSamplersCompareBase();
@@ -709,8 +961,8 @@ namespace spartan
 
         if (b.srv_dirty)
         {
-            uint32_t base = d3d12_descriptors::AllocateRing(28);
-            for (uint32_t i = 0; i < 28; i++)
+            uint32_t base = d3d12_descriptors::AllocateRing(d3d12_root_slot::srv_space0_count);
+            for (uint32_t i = 0; i < d3d12_root_slot::srv_space0_count; i++)
             {
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base + i);
                 D3D12_CPU_DESCRIPTOR_HANDLE src = (b.srv[i].ptr != 0) ? b.srv[i] : cmd_state::ensure_null_srv(b);
@@ -730,8 +982,8 @@ namespace spartan
 
         if (b.uav_dirty)
         {
-            uint32_t base = d3d12_descriptors::AllocateRing(45);
-            for (uint32_t i = 0; i < 45; i++)
+            uint32_t base = d3d12_descriptors::AllocateRing(d3d12_root_slot::uav_space0_count);
+            for (uint32_t i = 0; i < d3d12_root_slot::uav_space0_count; i++)
             {
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base + i);
                 D3D12_CPU_DESCRIPTOR_HANDLE src = (b.uav[i].ptr != 0) ? b.uav[i] : cmd_state::ensure_null_uav(b);
@@ -862,18 +1114,7 @@ namespace spartan
         SP_ASSERT_MSG(d3d12_utility::error::check(cmd_list->Reset(allocator, nullptr)), "Failed to reset command list");
 
         // bind shader-visible heaps once per frame per cmd list
-        ID3D12DescriptorHeap* heaps[2] = {
-            d3d12_descriptors::GetCbvSrvUavHeap(),
-            d3d12_descriptors::GetSamplerHeap()
-        };
-        if (heaps[0] && heaps[1])
-        {
-            cmd_list->SetDescriptorHeaps(2, heaps);
-        }
-        else if (heaps[0])
-        {
-            cmd_list->SetDescriptorHeaps(1, heaps);
-        }
+        bind_shader_visible_heaps(cmd_list);
 
         cmd_state::reset(this);
         // record the queue type so push_transition can mask compute-invalid state bits when recording on a compute queue
@@ -965,6 +1206,11 @@ namespace spartan
         {
             uint64_t next_value = semaphore_signal->GetNextSignalValue();
             queue->Signal(static_cast<ID3D12Fence*>(semaphore_signal->GetRhiResource()), next_value);
+        }
+
+        if (semaphore_wait)
+        {
+            semaphore_wait->SetUserCmdList(this);
         }
 
         // detect a gpu crash early so the engine reports it instead of hanging on the next wait
@@ -1424,7 +1670,11 @@ namespace spartan
             desc.ByteStride        = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
             desc.NumArgumentDescs  = 1;
             desc.pArgumentDescs    = &arg_desc;
-            RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
+            if (FAILED(RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature))))
+            {
+                SP_LOG_ERROR("Failed to create draw indexed indirect command signature");
+                return;
+            }
         }
 
         ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
@@ -1466,7 +1716,11 @@ namespace spartan
             desc.ByteStride        = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
             desc.NumArgumentDescs  = 1;
             desc.pArgumentDescs    = &arg_desc;
-            RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
+            if (FAILED(RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature))))
+            {
+                SP_LOG_ERROR("Failed to create draw indexed indirect count command signature");
+                return;
+            }
         }
 
         // executeindirect requires args and count buffers in indirect_argument state, they were likely written by a prior compute pass and left as unordered_access
@@ -1525,7 +1779,11 @@ namespace spartan
             desc.ByteStride        = sizeof(D3D12_DRAW_ARGUMENTS);
             desc.NumArgumentDescs  = 1;
             desc.pArgumentDescs    = &arg_desc;
-            RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
+            if (FAILED(RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature))))
+            {
+                SP_LOG_ERROR("Failed to create draw indirect command signature");
+                return;
+            }
         }
 
         // executeindirect requires the args buffer in indirect_argument state, it was likely written by a prior compute pass and left as unordered_access
@@ -1568,7 +1826,11 @@ namespace spartan
             desc.ByteStride        = sizeof(D3D12_DISPATCH_ARGUMENTS);
             desc.NumArgumentDescs  = 1;
             desc.pArgumentDescs    = &arg_desc;
-            RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
+            if (FAILED(RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature))))
+            {
+                SP_LOG_ERROR("Failed to create dispatch indirect command signature");
+                return;
+            }
         }
 
         // executeindirect requires the args buffer in indirect_argument state, it was likely written by a prior compute pass and left as unordered_access
@@ -1666,7 +1928,7 @@ namespace spartan
         }
 
         const uint32_t slot_index = static_cast<uint32_t>(slot);
-        if (slot_index >= 28)
+        if (slot_index >= d3d12_root_slot::srv_space0_count)
         {
             return;
         }
@@ -1708,126 +1970,176 @@ namespace spartan
         const std::array<RHI_Image_Layout, rhi_max_mip_count> dst_layouts_initial = destination->GetLayouts();
         auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
 
-        // when source and destination dimensions and formats match and no scaling is requested copyresource is the
-        // cheapest path and copies every subresource, otherwise fall back to a fullscreen-triangle blit per mip
+        // copyresource requires identical resource footprints including mip and array counts
         const bool dims_match   = source->GetWidth()  == destination->GetWidth()
                                && source->GetHeight() == destination->GetHeight();
         const bool format_match = source->GetFormat() == destination->GetFormat();
+        const bool mips_match   = source->GetMipCount() == destination->GetMipCount();
+        const bool array_match  = source->GetArrayLength() == destination->GetArrayLength();
         const bool no_scaling   = resolution_scale >= 1.0f - 1e-6f && resolution_scale <= 1.0f + 1e-6f;
 
+        // same size and format with no scaling: use a gpu copy (works for uav-only destinations without rtv)
+        // always transition the whole resource so the state tracker stays uniform across mip chains
         if (dims_match && format_match && no_scaling)
         {
             cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
             cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
             cmd_state::flush(cmd_list, b);
 
-            cmd_list->CopyResource(dst, src);
-        }
-        else
-        {
-            // graphics pipeline blit, mirrors the vkCmdBlitImage scaling semantics that rhi callers expect
-            const bool dst_is_depth = destination->IsDepthStencilFormat();
-            const bool src_is_depth = source->IsDepthStencilFormat();
-
-            // depth resources additionally allow depth_read to coexist with shader_resource state
-            const D3D12_RESOURCE_STATES src_read_state = src_is_depth
-                ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
-                : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-            cmd_state::push_transition(b, src, src_read_state);
-            cmd_state::push_transition(b, dst, dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET);
-            cmd_state::flush(cmd_list, b);
-
-            // maps a typeless or float depth format to its dsv-compatible format for transient deeper-mip views
-            auto to_dsv_format = [](DXGI_FORMAT f) -> DXGI_FORMAT
+            if (mips_match && array_match)
             {
-                switch (f)
+                cmd_list->CopyResource(dst, src);
+            }
+            else
+            {
+                const uint32_t mip_count   = blit_mips ? std::min(source->GetMipCount(), destination->GetMipCount()) : 1u;
+                const uint32_t array_count = std::min(source->GetArrayLength(), destination->GetArrayLength());
+                const uint32_t src_mips    = source->GetMipCount();
+                const uint32_t dst_mips    = destination->GetMipCount();
+
+                for (uint32_t array_index = 0; array_index < array_count; array_index++)
                 {
-                    case DXGI_FORMAT_R32_TYPELESS:   return DXGI_FORMAT_D32_FLOAT;
-                    case DXGI_FORMAT_R32_FLOAT:      return DXGI_FORMAT_D32_FLOAT;
-                    case DXGI_FORMAT_R16_TYPELESS:   return DXGI_FORMAT_D16_UNORM;
-                    case DXGI_FORMAT_R24G8_TYPELESS: return DXGI_FORMAT_D24_UNORM_S8_UINT;
-                    default:                         return f;
+                    for (uint32_t mip = 0; mip < mip_count; mip++)
+                    {
+                        D3D12_TEXTURE_COPY_LOCATION src_loc = {};
+                        src_loc.pResource        = src;
+                        src_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                        src_loc.SubresourceIndex = mip + array_index * src_mips;
+
+                        D3D12_TEXTURE_COPY_LOCATION dst_loc = {};
+                        dst_loc.pResource        = dst;
+                        dst_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+                        dst_loc.SubresourceIndex = mip + array_index * dst_mips;
+
+                        cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
+                    }
                 }
-            };
+            }
 
-            const DXGI_FORMAT dst_dxgi   = d3d12_format[rhi_format_to_index(destination->GetFormat())];
-            const uint32_t    mip_count  = blit_mips ? destination->GetMipCount() : 1;
+            // whole-resource copy transitions, restore every mip
+            for (uint32_t i = 0; i < source->GetMipCount(); i++)
+            {
+                InsertBarrier(source, safe_layout(src_layouts_initial[i]), i, 1);
+            }
+            for (uint32_t i = 0; i < destination->GetMipCount(); i++)
+            {
+                InsertBarrier(destination, safe_layout(dst_layouts_initial[i]), i, 1);
+            }
+            return;
+        }
 
+        // graphics pipeline blit for scaling or format conversion, destination must support rtv/dsv
+        const bool dst_is_depth = destination->IsDepthStencilFormat();
+        const bool src_is_depth = source->IsDepthStencilFormat();
+
+        // depth resources additionally allow depth_read to coexist with shader_resource state
+        const D3D12_RESOURCE_STATES src_read_state = src_is_depth
+            ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+            : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        const D3D12_RESOURCE_STATES dst_write_state = dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET;
+        const uint32_t mip_count = blit_mips ? destination->GetMipCount() : 1;
+        const uint32_t src_mips  = source->GetMipCount();
+        const uint32_t dst_mips  = destination->GetMipCount();
+        const uint32_t arrays    = std::min(source->GetArrayLength(), destination->GetArrayLength());
+
+        for (uint32_t array_index = 0; array_index < arrays; array_index++)
+        {
             for (uint32_t mip = 0; mip < mip_count; mip++)
             {
-                // source srv, per-mip when blitting the chain so the shader's SampleLevel 0 reads the matching source mip
-                void* src_srv_ptr = blit_mips ? source->GetRhiSrvMip(mip) : source->GetRhiSrv();
-                if (!src_srv_ptr)
-                {
-                    continue;
-                }
+                cmd_state::push_transition(b, src, src_read_state, mip + array_index * src_mips);
+                cmd_state::push_transition(b, dst, dst_write_state, mip + array_index * dst_mips);
+            }
+        }
+        cmd_state::flush(cmd_list, b);
 
-                d3d12_blit::BlitParams params    = {};
-                params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
+        // maps a typeless or float depth format to its dsv-compatible format for transient deeper-mip views
+        auto to_dsv_format = [](DXGI_FORMAT f) -> DXGI_FORMAT
+        {
+            switch (f)
+            {
+                case DXGI_FORMAT_R32_TYPELESS:   return DXGI_FORMAT_D32_FLOAT;
+                case DXGI_FORMAT_R32_FLOAT:      return DXGI_FORMAT_D32_FLOAT;
+                case DXGI_FORMAT_R16_TYPELESS:   return DXGI_FORMAT_D16_UNORM;
+                case DXGI_FORMAT_R24G8_TYPELESS: return DXGI_FORMAT_D24_UNORM_S8_UINT;
+                default:                         return f;
+            }
+        };
 
-                // mip 0 uses the cached view, deeper mips need a transient view that targets the specific mip slice
-                if (dst_is_depth)
+        const DXGI_FORMAT dst_dxgi = d3d12_format[rhi_format_to_index(destination->GetFormat())];
+
+        for (uint32_t mip = 0; mip < mip_count; mip++)
+        {
+            // source srv, per-mip when blitting the chain so the shader's SampleLevel 0 reads the matching source mip
+            void* src_srv_ptr = blit_mips ? source->GetRhiSrvMip(mip) : source->GetRhiSrv();
+            if (!src_srv_ptr)
+            {
+                continue;
+            }
+
+            d3d12_blit::BlitParams params    = {};
+            params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
+
+            // mip 0 uses the cached view, deeper mips need a transient view that targets the specific mip slice
+            if (dst_is_depth)
+            {
+                if (mip == 0)
                 {
-                    if (mip == 0)
+                    void* dsv_ptr = destination->GetRhiDsv(0);
+                    if (!dsv_ptr)
                     {
-                        void* dsv_ptr = destination->GetRhiDsv(0);
-                        if (!dsv_ptr)
-                        {
-                            continue;
-                        }
-                        params.destination_dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv_ptr);
+                        continue;
                     }
-                    else
-                    {
-                        D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
-                        dsv_desc.Format             = to_dsv_format(dst_dxgi);
-                        dsv_desc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
-                        dsv_desc.Texture2D.MipSlice = mip;
-                        uint32_t idx                = d3d12_descriptors::AllocateDsv();
-                        params.destination_dsv_handle = d3d12_descriptors::GetDsvHandle(idx);
-                        RHI_Context::device->CreateDepthStencilView(dst, &dsv_desc, params.destination_dsv_handle);
-                    }
+                    params.destination_dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv_ptr);
                 }
                 else
                 {
-                    if (mip == 0)
-                    {
-                        void* rtv_ptr = destination->GetRhiRtv(0);
-                        if (!rtv_ptr)
-                        {
-                            continue;
-                        }
-                        params.destination_rtv_handle.ptr = reinterpret_cast<SIZE_T>(rtv_ptr);
-                    }
-                    else
-                    {
-                        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
-                        rtv_desc.Format             = dst_dxgi;
-                        rtv_desc.ViewDimension      = D3D12_RTV_DIMENSION_TEXTURE2D;
-                        rtv_desc.Texture2D.MipSlice = mip;
-                        uint32_t idx                = d3d12_descriptors::AllocateRtv();
-                        params.destination_rtv_handle = d3d12_descriptors::GetRtvHandle(idx);
-                        RHI_Context::device->CreateRenderTargetView(dst, &rtv_desc, params.destination_rtv_handle);
-                    }
+                    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
+                    dsv_desc.Format             = to_dsv_format(dst_dxgi);
+                    dsv_desc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+                    dsv_desc.Texture2D.MipSlice = mip;
+                    uint32_t idx                = d3d12_descriptors::AllocateDsv();
+                    params.destination_dsv_handle = d3d12_descriptors::GetDsvHandle(idx);
+                    RHI_Context::device->CreateDepthStencilView(dst, &dsv_desc, params.destination_dsv_handle);
                 }
-
-                params.destination_format    = dst_dxgi;
-                params.destination_width     = std::max(1u, destination->GetWidth()  >> mip);
-                params.destination_height    = std::max(1u, destination->GetHeight() >> mip);
-                params.is_depth_destination  = dst_is_depth;
-                // resolution_scale shrinks the source extent that fills the destination, matches the vulkan semantics where
-                // source[0..w*scale, 0..h*scale] is mapped onto destination[0..dst_w, 0..dst_h]
-                params.source_uv_scale_x     = resolution_scale;
-                params.source_uv_scale_y     = resolution_scale;
-
-                d3d12_blit::blit(cmd_list, params);
+            }
+            else
+            {
+                if (mip == 0)
+                {
+                    void* rtv_ptr = destination->GetRhiRtv(0);
+                    if (!rtv_ptr)
+                    {
+                        continue;
+                    }
+                    params.destination_rtv_handle.ptr = reinterpret_cast<SIZE_T>(rtv_ptr);
+                }
+                else
+                {
+                    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+                    rtv_desc.Format             = dst_dxgi;
+                    rtv_desc.ViewDimension      = D3D12_RTV_DIMENSION_TEXTURE2D;
+                    rtv_desc.Texture2D.MipSlice = mip;
+                    uint32_t idx                = d3d12_descriptors::AllocateRtv();
+                    params.destination_rtv_handle = d3d12_descriptors::GetRtvHandle(idx);
+                    RHI_Context::device->CreateRenderTargetView(dst, &rtv_desc, params.destination_rtv_handle);
+                }
             }
 
-            // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
-            // the bindless layout cleanly, b.is_compute_bound stays untouched since this path never affects compute state
-            b.has_root_signature_graphics = false;
+            params.destination_format    = dst_dxgi;
+            params.destination_width     = std::max(1u, destination->GetWidth()  >> mip);
+            params.destination_height    = std::max(1u, destination->GetHeight() >> mip);
+            params.is_depth_destination  = dst_is_depth;
+            // resolution_scale shrinks the source extent that fills the destination, matches the vulkan semantics where
+            // source[0..w*scale, 0..h*scale] is mapped onto destination[0..dst_w, 0..dst_h]
+            params.source_uv_scale_x     = resolution_scale;
+            params.source_uv_scale_y     = resolution_scale;
+
+            d3d12_blit::blit(cmd_list, params);
         }
+
+        // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
+        // the bindless layout cleanly, b.is_compute_bound stays untouched since this path never affects compute state
+        b.has_root_signature_graphics = false;
 
         // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
         if (blit_mips)
@@ -1843,8 +2155,8 @@ namespace spartan
         }
         else
         {
-            InsertBarrier(source,      safe_layout(src_layouts_initial[0]), 0, source->GetMipCount());
-            InsertBarrier(destination, safe_layout(dst_layouts_initial[0]), 0, destination->GetMipCount());
+            InsertBarrier(source,      safe_layout(src_layouts_initial[0]), 0, 1);
+            InsertBarrier(destination, safe_layout(dst_layouts_initial[0]), 0, 1);
         }
     }
 
@@ -2052,6 +2364,7 @@ namespace spartan
         // openxr guarantees the d3d12 swapchain image is in the render_target state on acquire and requires it
         // returned in the same state, seed the tracker so the transitions resolve against the correct prior state
         d3d12_state::SetState(xr_image, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        d3d12_state::SetSubresourceCount(xr_image, 1);
 
         // save the source layout so it can be restored after the blit
         RHI_Image_Layout source_layout_initial = source->GetLayout(0);
@@ -2060,9 +2373,35 @@ namespace spartan
             source_layout_initial = RHI_Image_Layout::General;
         }
 
+        // full sync after xr acquire so prior compositor access is visible, mirrors vulkan's post-wait barrier
+        {
+            D3D12_RESOURCE_BARRIER uav_barrier = {};
+            uav_barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            uav_barrier.UAV.pResource = nullptr;
+            cmd_list->ResourceBarrier(1, &uav_barrier);
+        }
+
         cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         cmd_state::push_transition(b, xr_image, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmd_state::flush(cmd_list, b);
+
+        // clear the xr image to black first for letterboxing, mirrors vulkan BlitToXrSwapchain
+        {
+            const float clear_color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+            for (uint32_t layer = 0; layer < Xr::eye_count; layer++)
+            {
+                D3D12_RENDER_TARGET_VIEW_DESC rtv_desc  = {};
+                rtv_desc.Format                         = xr_format;
+                rtv_desc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                rtv_desc.Texture2DArray.MipSlice        = 0;
+                rtv_desc.Texture2DArray.FirstArraySlice = layer;
+                rtv_desc.Texture2DArray.ArraySize       = 1;
+                uint32_t idx                            = d3d12_descriptors::AllocateRtv();
+                D3D12_CPU_DESCRIPTOR_HANDLE rtv         = d3d12_descriptors::GetRtvHandle(idx);
+                RHI_Context::device->CreateRenderTargetView(xr_image, &rtv_desc, rtv);
+                cmd_list->ClearRenderTargetView(rtv, clear_color, 0, nullptr);
+            }
+        }
 
         // when the source is a stereo array each eye copies from its own layer, otherwise the same image feeds both eyes
         const bool source_is_array = source->GetType() == RHI_Texture_Type::Type2DArray;
@@ -2072,7 +2411,9 @@ namespace spartan
             void* src_srv_ptr = source_is_array ? source->GetRhiSrvLayer(layer) : source->GetRhiSrv();
             if (!src_srv_ptr)
             {
-                continue;
+                SP_LOG_ERROR("BlitToXrSwapchain missing source srv for eye %u", layer);
+                Xr::ReleaseSwapchainImage();
+                return;
             }
 
             // transient rtv targeting the eye's array slice on the xr image
@@ -2330,8 +2671,8 @@ namespace spartan
         }
 
         // engine only declares a uav SetBuffer overload (Renderer_BindingsUav), so this path is uav-only
-        // slots beyond what the bindless root signature exposes (u0..u44) are skipped, this matches the editor-level limit
-        if (slot >= 45)
+        // slots beyond what the bindless root signature exposes (u0..u56) are skipped
+        if (slot >= d3d12_root_slot::uav_space0_count)
         {
             return;
         }
@@ -2476,8 +2817,8 @@ namespace spartan
 
         if (!texture)
         {
-            if (uav) { if (slot < 45) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }
-            else     { if (slot < 28) { b.srv[slot].ptr = 0; b.srv_dirty = true; } }
+            if (uav) { if (slot < d3d12_root_slot::uav_space0_count) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }
+            else     { if (slot < d3d12_root_slot::srv_space0_count) { b.srv[slot].ptr = 0; b.srv_dirty = true; } }
             return;
         }
 
@@ -2519,7 +2860,7 @@ namespace spartan
 
         if (uav)
         {
-            if (slot >= 45)
+            if (slot >= d3d12_root_slot::uav_space0_count)
             {
                 return;
             }
@@ -2561,7 +2902,7 @@ namespace spartan
         }
         else
         {
-            if (slot >= 28)
+            if (slot >= d3d12_root_slot::srv_space0_count)
             {
                 return;
             }
@@ -3011,6 +3352,15 @@ namespace spartan
                 }
 
                 D3D12_RESOURCE_STATES state_after = rhi_layout_to_d3d12_state(barrier.layout, is_depth);
+                RHI_Image_Layout layout_tracked = barrier.layout;
+
+                // general maps to unordered_access on d3d12, which requires allow_unordered_access,
+                // rt-only textures (gbuffer etc) use general on vulkan for compute sampling, remap to shader_read
+                if (barrier.layout == RHI_Image_Layout::General && barrier.texture && !barrier.texture->IsUav())
+                {
+                    layout_tracked = RHI_Image_Layout::Shader_Read;
+                    state_after    = rhi_layout_to_d3d12_state(layout_tracked, is_depth);
+                }
 
                 // honor mip_index and mip_range when supplied so per-mip transitions can be requested
                 // (e.g. mipmap filtering passes that need to flip a single mip back to shader_read between dispatches)
@@ -3035,7 +3385,7 @@ namespace spartan
 
                 if (barrier.texture)
                 {
-                    barrier.texture->SetLayoutDirect(0, barrier.texture->GetMipCount(), barrier.layout);
+                    barrier.texture->SetLayoutDirect(0, barrier.texture->GetMipCount(), layout_tracked);
                 }
                 break;
             }
@@ -3068,6 +3418,76 @@ namespace spartan
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
         cmd_state::flush(cmd_list, b);
+    }
+
+    void RHI_CommandList::RestoreAfterExternalPass()
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        bind_shader_visible_heaps(cmd_list);
+
+        // external libraries leave their own root signature bound, force a full rebind on the next pso
+        auto& b = cmd_state::get(this);
+        b.has_root_signature_graphics = false;
+        b.has_root_signature_compute  = false;
+        b.srv_dirty = true;
+        b.uav_dirty = true;
+    }
+
+    void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture)
+    {
+        if (!texture || m_state != RHI_CommandListState::Recording)
+        {
+            return;
+        }
+
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
+        if (!resource)
+        {
+            return;
+        }
+
+        auto& b = cmd_state::get(this);
+        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat());
+        cmd_state::push_transition(b, resource, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, true);
+        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+    }
+
+    void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture)
+    {
+        if (!texture || m_state != RHI_CommandListState::Recording)
+        {
+            return;
+        }
+
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
+        if (!resource)
+        {
+            return;
+        }
+
+        auto& b = cmd_state::get(this);
+        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat());
+        cmd_state::adopt_state(b, resource, state);
+        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+    }
+
+    void RHI_CommandList::AdoptUnorderedAccess(RHI_Texture* texture)
+    {
+        if (!texture || m_state != RHI_CommandListState::Recording)
+        {
+            return;
+        }
+
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
+        if (!resource)
+        {
+            return;
+        }
+
+        auto& b = cmd_state::get(this);
+        cmd_state::adopt_state(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::General);
     }
 
     void RHI_CommandList::InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip, uint32_t mip_range)
@@ -3253,7 +3673,26 @@ namespace spartan
         {
             return;
         }
+
+        auto& b = cmd_state::get(this);
+        // upload heaps are permanently generic_read, readback heaps are permanently copy_dest
+        if (source->GetType() != RHI_Buffer_Type::Upload)
+        {
+            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        }
+        if (destination->GetType() != RHI_Buffer_Type::Readback)
+        {
+            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        }
+        cmd_state::flush(cmd_list, b);
+
         cmd_list->CopyBufferRegion(dst, 0, src, 0, size);
+
+        // readback heaps can only stay in copy_dest, everything else returns to shader readable
+        if (destination->GetType() != RHI_Buffer_Type::Readback)
+        {
+            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
     }
 
     namespace immediate_execution

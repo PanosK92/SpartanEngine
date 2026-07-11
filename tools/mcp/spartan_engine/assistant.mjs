@@ -51,6 +51,12 @@ const mutating_tools = new Set([
   "component_set",
   "component_set_batch",
   "execute_lua",
+  "vehicle_enter",
+  "vehicle_exit",
+  "vehicle_set_input",
+  "vehicle_shift",
+  "vehicle_reset",
+  "vehicle_set_view",
 ]);
 
 if (!Number.isInteger(assistant_port) || assistant_port <= 0 || assistant_port > 65535) {

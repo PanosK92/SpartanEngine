@@ -36,6 +36,8 @@ namespace spartan
         Storage,
         Constant,
         ShaderBindingTable,
+        Upload,
+        Readback,
         Max
     };
 
@@ -64,6 +66,10 @@ namespace spartan
             if (type == RHI_Buffer_Type::ShaderBindingTable)
             {
                 SP_ASSERT_MSG(mappable, "Shader binding tables must be mappable");
+            }
+            if (type == RHI_Buffer_Type::Upload || type == RHI_Buffer_Type::Readback)
+            {
+                SP_ASSERT_MSG(mappable, "Upload and readback buffers must be mappable");
             }
 
             // set

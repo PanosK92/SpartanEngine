@@ -410,8 +410,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float exposure = is_auto_exposure ? tex2.Load(int3(0, 0, 0)).r : buffer_frame.camera_exposure;
     color.rgb     *= exposure;
     
-    // check hdr state
+    // check hdr state, 1 = hdr10 pq, 2 = scrgb linear (1.0 = 80 nits)
     bool is_hdr    = buffer_frame.hdr_enabled != 0.0f && !force_sdr;
+    bool is_scrgb  = buffer_frame.hdr_enabled > 1.5f;
     float max_nits = buffer_frame.hdr_max_nits;
 
     switch (tone_mapping)
@@ -442,24 +443,41 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (is_hdr)
     {
-        // normalize to pq range (0.0 - 1.0 where 1.0 = 10,000 nits)
-        const float pq_max_nits    = 10000.0f;
-        const float sdr_white_nits = 203.0f; // bt.2408 reference white for sdr content on hdr displays
+        const float sdr_white_nits = buffer_frame.hdr_sdr_white_nits > 0.0f ? buffer_frame.hdr_sdr_white_nits : 203.0f;
 
-        if (tone_mapping == 4) // gran turismo 7
+        if (is_scrgb)
         {
-            // gt7 outputs in fb units where 1.0 = 100 nits (gt7_ref_luminance)
-            // for hdr, output is already in range [0, fb_target] where fb_target = max_nits / 100
-            // convert to pq normalized range while staying in rec.2020
-            color.rgb = (color.rgb * gt7_ref_luminance) / pq_max_nits;
-            color.rgb = linear_rec2020_to_hdr10(color.rgb);
+            // scrgb linear, 1.0 = 80 nits, match the desktop sdr white level
+            if (tone_mapping == 4)
+            {
+                // gt7 hdr returns rec.2020 fb units where 1.0 = 100 nits
+                color.rgb = gt7_to_rec709(color.rgb) * (gt7_ref_luminance / 80.0f);
+            }
+            else
+            {
+                color.rgb = color.rgb * (sdr_white_nits / 80.0f);
+            }
         }
         else
         {
-            // sdr tonemappers output 0-1 where 1.0 = sdr white
-            // no tonemapping also uses this since exposure normalizes values to ~1.0 = white
-            color.rgb = (color.rgb * sdr_white_nits) / pq_max_nits;
-            color.rgb = linear_rec709_to_hdr10(color.rgb);
+            // normalize to pq range (0.0 - 1.0 where 1.0 = 10,000 nits)
+            const float pq_max_nits = 10000.0f;
+
+            if (tone_mapping == 4) // gran turismo 7
+            {
+                // gt7 outputs in fb units where 1.0 = 100 nits (gt7_ref_luminance)
+                // for hdr, output is already in range [0, fb_target] where fb_target = max_nits / 100
+                // convert to pq normalized range while staying in rec.2020
+                color.rgb = (color.rgb * gt7_ref_luminance) / pq_max_nits;
+                color.rgb = linear_rec2020_to_hdr10(color.rgb);
+            }
+            else
+            {
+                // sdr tonemappers output 0-1 where 1.0 = sdr white
+                // no tonemapping also uses this since exposure normalizes values to ~1.0 = white
+                color.rgb = (color.rgb * sdr_white_nits) / pq_max_nits;
+                color.rgb = linear_rec709_to_hdr10(color.rgb);
+            }
         }
     }
     else

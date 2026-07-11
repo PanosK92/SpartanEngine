@@ -590,7 +590,7 @@ namespace spartan
         }
     }
 
-    void Entity::Load(pugi::xml_node& node)
+    void Entity::Load(pugi::xml_node& node, bool load_children)
     {
         // self
         {
@@ -716,12 +716,15 @@ namespace spartan
             }
         }
 
-        // children
-        for (pugi::xml_node child_node = node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
+        // children, skipped when the world loader flattens the hierarchy for parallel load
+        if (load_children)
         {
-            Entity* child = World::CreateEntity();
-            child->Load(child_node);
-            child->SetParent(this);
+            for (pugi::xml_node child_node = node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
+            {
+                Entity* child = World::CreateEntity();
+                child->Load(child_node);
+                child->SetParent(this);
+            }
         }
 
         UpdateTransform();

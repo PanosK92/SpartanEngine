@@ -129,6 +129,29 @@ namespace car
             PxVec3 wheel_fwd = chassis_fwd * cs + chassis_right * sn;
             PxVec3 wheel_lat = chassis_right * cs - chassis_fwd * sn;
 
+            // keep tire forces in the contact plane so body roll cannot turn lateral grip into lift
+            wheel_fwd -= w.contact_normal * wheel_fwd.dot(w.contact_normal);
+            wheel_lat -= w.contact_normal * wheel_lat.dot(w.contact_normal);
+            if (wheel_fwd.magnitudeSquared() > 1e-6f)
+            {
+                wheel_fwd.normalize();
+            }
+            if (wheel_lat.magnitudeSquared() > 1e-6f)
+            {
+                wheel_lat.normalize();
+            }
+            // re-orthogonalise after projection
+            wheel_lat = w.contact_normal.cross(wheel_fwd);
+            if (wheel_lat.magnitudeSquared() > 1e-6f)
+            {
+                wheel_lat.normalize();
+            }
+            wheel_fwd = wheel_lat.cross(w.contact_normal);
+            if (wheel_fwd.magnitudeSquared() > 1e-6f)
+            {
+                wheel_fwd.normalize();
+            }
+
             float vx = wheel_vel.dot(wheel_fwd);
             float vy = wheel_vel.dot(wheel_lat);
             float wheel_speed  = w.angular_velocity * wr_eff;
@@ -150,14 +173,12 @@ namespace car
             float temp_factor    = get_tire_temp_grip_factor(w.thermal.avg_surface());
             float camber_factor  = get_camber_grip_factor(dyn_camb);
             float surface_factor = get_surface_friction(w.contact_surface);
-            // rear_grip_ratio scales the whole friction budget on the rear axle rather than only
-            // lateral force, which kept the friction circle well-behaved under combined slip
+            // rear_grip_ratio is a per axle mu scale for tire compound differences, 1.0 means matched
             float axle_grip_scale = is_rear(i) ? tuning::spec.rear_grip_ratio : 1.0f;
-            // per direction peaks: camber mostly costs lateral grip, min_lateral_grip floors the
-            // temp and wear degradation so a cold or worn tire still steers
+            // camber mainly costs lateral grip, temp and wear apply to both directions without a floor
             float shared_grip     = base_grip * surface_factor * axle_grip_scale;
             float long_grip_scale = temp_factor * wear_factor;
-            float lat_grip_scale  = PxMax(temp_factor * wear_factor, tuning::spec.min_lateral_grip) * camber_factor;
+            float lat_grip_scale  = temp_factor * wear_factor * camber_factor;
             float peak_force_long = shared_grip * long_grip_scale;
             float peak_force_lat  = shared_grip * lat_grip_scale;
 
@@ -187,8 +208,7 @@ namespace car
             float raw_slip_ratio = PxClamp((wheel_speed - vx) / slip_denom, -1.0f, 1.0f);
             float raw_slip_angle = atan2f(vy, PxMax(abs_vx, 0.5f));
 
-            float speed_factor = PxClamp(ground_speed / 10.0f, 0.3f, 1.0f);
-            float effective_relaxation = tuning::spec.tire_relaxation_length * speed_factor;
+            float effective_relaxation = PxMax(tuning::spec.tire_relaxation_length, 0.05f);
             float long_distance = PxMax(ground_speed, abs_ws) * dt;
             float lat_distance  = ground_speed * dt;
             float long_blend = 1.0f - expf(-long_distance / effective_relaxation);
@@ -372,18 +392,6 @@ namespace car
 
             w.angular_velocity = new_w;
 
-            // ground speed sync for undriven/coasting wheels
-            // never while braking, the sync would spin locked wheels back up and mask lockup and abs
-            bool coasting = input.throttle < 0.01f && input.brake < 0.01f;
-            bool braking  = (input.brake >= 0.01f && !is_in_reverse()) || (is_rear(i) && input.handbrake > tuning::spec.input_deadzone);
-            bool should_match = !braking && (coasting || !is_driven(i) || (ground_speed < tuning::spec.min_slip_speed && (!is_driven(i) || input.throttle < 0.01f)));
-            if (should_match)
-            {
-                float target_w = vx / wr_eff;
-                float match_rate = coasting ? tuning::spec.ground_match_rate : ((ground_speed < tuning::spec.min_slip_speed) ? tuning::spec.ground_match_rate * 2.0f : tuning::spec.ground_match_rate);
-                w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(match_rate, dt));
-            }
-
             w.rotation += w.angular_velocity * dt;
 
             if (tuning::log_pacejka)
@@ -402,9 +410,7 @@ namespace car
         // pneumatic trail moves the lateral force pressure centre behind the geometric contact
         // patch by trail along wheel_fwd, so the correction to the body yaw is
         // delta_M = (-trail * wheel_fwd) x (lat_f * wheel_lat) = -trail * lat_f * up
-        // this slightly reduces the body yaw response to lateral force, it does not amplify it
-        float front_sat   = 0.0f;
-        float rear_damp   = 0.0f;
+        float total_sat = 0.0f;
         for (int i = 0; i < wheel_count; i++)
         {
             if (!wheels[i].grounded)
@@ -413,20 +419,12 @@ namespace car
             }
 
             float abs_sa = fabsf(wheels[i].slip_angle);
-            float sa_norm = abs_sa / tuning::spec.pneumatic_trail_peak;
+            float sa_norm = abs_sa / PxMax(tuning::spec.pneumatic_trail_peak, 0.01f);
             float trail   = PxMax(tuning::spec.pneumatic_trail_max * (1.0f - sa_norm), 0.0f);
-
-            if (is_front(i))
-            {
-                front_sat -= wheels[i].lateral_force * trail;
-            }
-            else
-            {
-                rear_damp -= wheels[i].lateral_force * trail * 0.4f;
-            }
+            total_sat -= wheels[i].lateral_force * trail;
         }
 
         PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0, 1, 0));
-        safe_add_torque(body, up * (front_sat + rear_damp) * tuning::spec.self_align_gain);
+        safe_add_torque(body, up * total_sat * tuning::spec.self_align_gain);
     }
 }

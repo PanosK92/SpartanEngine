@@ -81,10 +81,13 @@ namespace spartan::d3d12_descriptors
 // root parameter slots for the unified bindless root signature
 namespace spartan::d3d12_root_slot
 {
+    // must cover the highest register in common_resources.hlsl / Renderer_BindingsSrv (ocean_normal = t31) and Renderer_BindingsUav (ocean_heights = u56)
+    constexpr uint32_t srv_space0_count   = 32; // t0..t31
+    constexpr uint32_t uav_space0_count   = 57; // u0..u56
     constexpr uint32_t cbv_frame          = 0;  // CBV b0 space0
     constexpr uint32_t push_constants     = 1;  // 32-bit root constants b1 space0
-    constexpr uint32_t srv_table_space0   = 2;  // t0..t26 space0
-    constexpr uint32_t uav_table_space0   = 3;  // u0..u44 space0
+    constexpr uint32_t srv_table_space0   = 2;  // t0..t31 space0
+    constexpr uint32_t uav_table_space0   = 3;  // u0..u56 space0
     constexpr uint32_t srv_material_tex   = 4;  // t15 space1 unbounded
     constexpr uint32_t srv_material_param = 5;  // t16 space2
     constexpr uint32_t srv_light_param    = 6;  // t17 space3
@@ -101,7 +104,20 @@ namespace spartan::d3d12_state
 {
     void SetState(ID3D12Resource* resource, D3D12_RESOURCE_STATES state);
     D3D12_RESOURCE_STATES GetState(ID3D12Resource* resource);
+    // buffers and simultaneous-access textures decay to common after executecommandlists
+    void SetDecaysToCommon(ID3D12Resource* resource, bool decays);
+    bool DecaysToCommon(ID3D12Resource* resource);
+    void SetIsBuffer(ID3D12Resource* resource, bool is_buffer);
+    bool IsBuffer(ID3D12Resource* resource);
+    void SetSubresourceCount(ID3D12Resource* resource, uint32_t count);
+    uint32_t GetSubresourceCount(ID3D12Resource* resource);
     void RemoveState(ID3D12Resource* resource);
+}
+
+// true when pipeline_cache_d3d12.bin was loaded, skip Load*Pipeline when false to avoid nameless cache spam
+namespace spartan::d3d12_pipeline_library
+{
+    bool can_load();
 }
 
 // shader bytecode lifetime, the IDxcBlob backing a compiled shader is kept alive in a registry

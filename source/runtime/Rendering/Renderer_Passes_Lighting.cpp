@@ -141,7 +141,8 @@ namespace spartan
             pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
             cmd_list->SetPipelineState(pso);
 
-            SetCommonTextures(cmd_list, eye_layer);
+            // phase 2 overlaps async compute ssao writes, do not transition ssao here
+            SetCommonTextures(cmd_list, eye_layer, false);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             
             RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);

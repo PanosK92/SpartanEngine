@@ -144,6 +144,18 @@ namespace spartan
             VkBufferUsageFlags flags_usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, data, m_object_name.c_str());
         }
+        else if (m_type == RHI_Buffer_Type::Upload)
+        {
+            VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, data, m_object_name.c_str());
+        }
+        else if (m_type == RHI_Buffer_Type::Readback)
+        {
+            VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, data, m_object_name.c_str());
+        }
         else if (m_type == RHI_Buffer_Type::Constant)
         {
             // calculate required alignment based on minimum device offset alignment
@@ -284,6 +296,8 @@ namespace spartan
             case RHI_Buffer_Type::Storage:            dst_access = VK_ACCESS_2_SHADER_READ_BIT;           break;
             case RHI_Buffer_Type::Constant:           dst_access = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_UNIFORM_READ_BIT; break;
             case RHI_Buffer_Type::ShaderBindingTable: dst_access = VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR; break;
+            case RHI_Buffer_Type::Upload:             dst_access = VK_ACCESS_2_TRANSFER_READ_BIT;         break;
+            case RHI_Buffer_Type::Readback:           dst_access = VK_ACCESS_2_HOST_READ_BIT;             break;
             default: break;
         }
 

@@ -49,8 +49,8 @@ namespace spartan
             // evict cached descriptor sets keyed by this buffer pointer
             RHI_Device::DescriptorSetInvalidateReferencingResource(this);
 
-            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
-            static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
+            // defer release, open command lists may still reference this resource
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
 
@@ -59,7 +59,21 @@ namespace spartan
 
     void RHI_Buffer::DestroyResourceImmediate()
     {
-        RHI_DestroyResource();
+        if (m_data_gpu && m_rhi_resource)
+        {
+            static_cast<ID3D12Resource*>(m_rhi_resource)->Unmap(0, nullptr);
+            m_data_gpu = nullptr;
+        }
+
+        if (m_rhi_resource)
+        {
+            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
+            static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
+            m_rhi_resource = nullptr;
+        }
+
+        m_device_address = 0;
     }
 
     void RHI_Buffer::RHI_CreateResource(const void* data)
@@ -99,8 +113,18 @@ namespace spartan
         // uav flag, cpu updates go through staging via the command list (see RHI_CommandList::UpdateBuffer)
         const bool force_default_heap_uav = (m_type == RHI_Buffer_Type::Storage);
 
-        D3D12_HEAP_TYPE heap_type = (m_mappable && !force_default_heap_uav) ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
-        D3D12_RESOURCE_STATES initial_state = (heap_type == D3D12_HEAP_TYPE_UPLOAD) ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
+        D3D12_HEAP_TYPE heap_type = D3D12_HEAP_TYPE_DEFAULT;
+        D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON;
+        if (m_type == RHI_Buffer_Type::Readback)
+        {
+            heap_type     = D3D12_HEAP_TYPE_READBACK;
+            initial_state = D3D12_RESOURCE_STATE_COPY_DEST;
+        }
+        else if (m_type == RHI_Buffer_Type::Upload || (m_mappable && !force_default_heap_uav))
+        {
+            heap_type     = D3D12_HEAP_TYPE_UPLOAD;
+            initial_state = D3D12_RESOURCE_STATE_GENERIC_READ;
+        }
 
         D3D12_HEAP_PROPERTIES heap_props = {};
         heap_props.Type                  = heap_type;
@@ -163,13 +187,16 @@ namespace spartan
 
         // seed the global state tracker so subsequent barrier transitions know the resource's starting state
         d3d12_state::SetState(buffer, initial_state);
+        d3d12_state::SetDecaysToCommon(buffer, heap_type == D3D12_HEAP_TYPE_DEFAULT);
+        d3d12_state::SetIsBuffer(buffer, true);
+        d3d12_state::SetSubresourceCount(buffer, 1);
 
         if (!m_object_name.empty())
         {
             d3d12_utility::debug::set_name(buffer, m_object_name.c_str());
         }
 
-        if (heap_type == D3D12_HEAP_TYPE_UPLOAD)
+        if (heap_type == D3D12_HEAP_TYPE_UPLOAD || heap_type == D3D12_HEAP_TYPE_READBACK)
         {
             D3D12_RANGE read_range = { 0, 0 };
             hr = buffer->Map(0, &read_range, &m_data_gpu);
@@ -213,7 +240,7 @@ namespace spartan
                             b.Transition.pResource   = buffer;
                             b.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
                             b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-                            b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                            b.Transition.Subresource = 0;
                             list->ResourceBarrier(1, &b);
 
                             list->CopyBufferRegion(buffer, 0, staging, 0, m_object_size);
@@ -289,7 +316,7 @@ namespace spartan
                 D3D12_RESOURCE_BARRIER barrier = {};
                 barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                 barrier.Transition.pResource   = dst;
-                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                barrier.Transition.Subresource = 0;
                 barrier.Transition.StateBefore = state_before;
                 barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
                 cmd_list->ResourceBarrier(1, &barrier);
@@ -302,7 +329,7 @@ namespace spartan
                 D3D12_RESOURCE_BARRIER barrier = {};
                 barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                 barrier.Transition.pResource   = dst;
-                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                barrier.Transition.Subresource = 0;
                 barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
                 barrier.Transition.StateAfter  = state_before;
                 cmd_list->ResourceBarrier(1, &barrier);

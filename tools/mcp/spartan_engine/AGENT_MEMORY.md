@@ -17,6 +17,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - `resource_load`, `resource_reload`, `resource_save`, `resource_remove`, and `material_create` cover common resource lifecycle work.
 - `undo_redo` routes editor undo and redo through the command stack.
 - `camera_set_view`, `viewport_frame`, `renderer_debug_get`, `renderer_debug_set`, and `physics_state` cover common viewport/debug inspection.
+- Drivable cars in play mode: `vehicle_list`/`vehicle_get`, `vehicle_enter` (E + mcp pedal ownership), `vehicle_set_input`, `vehicle_shift`, `vehicle_set_view`, `vehicle_reset`, `vehicle_exit`, `vehicle_telemetry` (`car_telemetry.csv` in the working directory, not Excel).
 - `screenshot_take` queues a renderer screenshot and can return the saved PNG as image content for visual inspection.
 - The editor sequencer (camera cut timeline) is controlled with `sequencer_get`, `sequencer_set`, `sequencer_playback`, `sequencer_event_add`, `sequencer_event_update`, and `sequencer_event_remove`; `camera` accepts an entity id or name, events re-sort by time, and state auto-saves to `sequencer.xml` next to the loaded world.
 - `spline_query` with no arguments auto-picks the followed spline and projects every camera in the world onto it, returning per camera `arc_distance` and `pass_time_seconds` (when the follower passes that camera); this is the whole camera cut calculation in one call, never sample the spline manually with Lua.
@@ -40,6 +41,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use resource lifecycle tools for asset cache load/reload/save/remove and new material creation.
 - Use `viewport_frame` and `camera_set_view` before manual camera transform scripts.
 - Use `renderer_debug_set` and `physics_state` for visual debugging and vehicle/rigid body inspection.
+- To drive and inspect a car: `engine_set_mode` play, `vehicle_enter`, hold `vehicle_set_input` for a stretch, then `vehicle_telemetry` and report anomalies. Agents cannot compile; stop at diagnosis unless the user asks for code changes.
 - Use `screenshot_take` when visual verification matters; it waits briefly for the async save and returns the image when ready.
 - Before deleting or rebuilding geometry that should preserve look, call `entity_render_materials` on the target and reuse material names.
 - Use `entity_create_light` for every light; it fully initializes intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.

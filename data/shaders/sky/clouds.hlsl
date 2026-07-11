@@ -44,7 +44,7 @@ static const float cumulus_thickness      = cumulus_top_alt - cumulus_bottom_alt
 static const float cumulus_shape_scale    = 1.0 / 6000.0;   // one tile of the noise volume covers 6 km horizontally, big heroic forms
 static const float cumulus_detail_scale   = 1.0 / 2200.0;   // detail features now ~370m at the highest surviving octave, well above the 40m step nyquist
 static const float cumulus_coverage_scale = 1.0 / 26000.0;  // weather map domain, pushes tile repeats out toward the horizon
-static const float cumulus_density_mul    = 1.00;
+static const float cumulus_density_mul    = 1.15;
 
 // coverage is authored on the directional light component, 0 = clear sky, 1 = overcast,
 // fair weather sits around 0.30 - 0.45, cirrus rides along at a fixed ratio so both layers
@@ -79,7 +79,7 @@ static const float cumulus_shell_padding      = 1200.0;
 
 // wind shear in meters at the top of the layer, higher samples fetch their noise from upwind
 // so clouds visibly lean downwind with altitude like real convective towers
-static const float cumulus_shear              = 800.0;
+static const float cumulus_shear              = 350.0;
 
 // cirrus layer
 static const float cirrus_bottom_alt      = 6500.0;
@@ -374,13 +374,12 @@ float cloud_base_offset(Texture3D noise, SamplerState samp, float3 pos)
 // =====================================================================
 
 // cumulus vertical profile, flat-ish bottom and rounded top, mirrors the schneider cumulus curve
-// the bottom ramp extends well below zero so wispy tendrils have room to hang under the
-// nominal base, this is what visually breaks the perceived flat floor of each cloud, the top
-// fades smoothly over the upper half so the silhouette has continuously curving tops
-// cloud_top comes from the weather type, low flat sheets get ~0.28, towers get the full layer
+// bottom stays near the nominal base so forms read as puffy volumes instead of hanging smoke
+// tendrils, the top fades smoothly over the upper half so the silhouette has curving domes
+// cloud_top comes from the weather type, low flat sheets get ~0.42, towers get the full layer
 float cloud_height_profile_cumulus(float h_norm, float cloud_top)
 {
-    float bottom = smoothstep(-0.12, 0.22, h_norm);
+    float bottom = smoothstep(-0.02, 0.28, h_norm);
     float top    = smoothstep(cloud_top, cloud_top * 0.55, h_norm);
     return saturate(bottom * top);
 }
@@ -412,7 +411,7 @@ float2 cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
     float3 wind_h    = float3(buffer_frame.wind.x, 0.0, buffer_frame.wind.z);
     float  wind_len  = length(wind_h);
     float3 street_ax = wind_len > 1e-3 ? wind_h / wind_len : float3(1.0, 0.0, 0.0);
-    float3 wpos_st   = wpos - street_ax * (dot(wpos, street_ax) * 0.55);
+    float3 wpos_st   = wpos - street_ax * (dot(wpos, street_ax) * 0.25);
     
     float3 uvw_a = wpos_st * cumulus_coverage_scale;
     uvw_a.y      = 0.5;
@@ -450,7 +449,7 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     float3 pos_n      = pos + cloud_wind_drift(cumulus_wind_speed_mul) + cloud_evolve_offset(cumulus_evolve_rate);
     float base_offset = cloud_base_offset(noise, samp, pos_n);
     float h_norm      = (h - (cumulus_bottom_alt + base_offset)) / cumulus_thickness;
-    float cloud_top   = lerp(0.28, 1.0, weather.y);
+    float cloud_top   = lerp(0.42, 1.0, weather.y);
     float profile     = cloud_height_profile_cumulus(h_norm, cloud_top);
     if (profile <= 0.0 || weather.x <= 0.0)
     {
@@ -470,37 +469,32 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     float3 shape_warp = cloud_domain_warp(noise, samp, pos_n, cumulus_shape_warp_scale, cumulus_shape_warp);
     float3 uvw        = (pos_n + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
     
-    // vertical anisotropy per type, sheets sample the noise faster vertically which flattens
-    // their forms into pancakes, towers stay isotropic so their bulges develop upward.
-    // kept mild so sheet clouds do not pack noise texel planes densely enough to reintroduce
-    // altitude terraces on thin fringes after the lighting remap
-    uvw.y            *= lerp(1.35, 1.0, weather.y);
+    // mild vertical anisotropy, sheets stay a bit flatter than towers without collapsing into
+    // thin smoke pancakes
+    uvw.y            *= lerp(1.12, 1.0, weather.y);
     float4 shape_n    = cloud_sample_noise(noise, samp, uvw);
     
-    // base shape from low-freq perlin-worley (r), eroded by mid-frequency worley fbm (g, b)
-    // channel a is the high-freq perlin used by cirrus, mixing it here gave a wispy smudge
-    // instead of distinct cumulus puffs, so it stays out of the cumulus pipeline
+    // base shape from low-freq perlin-worley (r), lightly eroded by mid-frequency worley fbm
+    // softer carve keeps rounded cauliflower cells instead of pointy smoke filaments
     float fbm       = shape_n.g * 0.65 + shape_n.b * 0.35;
-    float base      = cloud_remap_soft(shape_n.r, fbm - 1.0, 1.0, 0.0, 1.0);
+    float base      = cloud_remap_soft(shape_n.r, fbm - 0.82, 1.0, 0.0, 1.0);
     base            = cloud_remap_soft(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
     if (base <= 0.0)
     {
         return 0.0;
     }
     
-    // two detail species per the nubis wisp and billow model, stringy perlin carves the bases
-    // into hanging tendrils, rounded worley builds cauliflower domes on the tops, the erosion
-    // flip means bottoms erode where wisp is high and tops keep material where billow is high
+    // billow-led detail, rounded worley dominates early so bases stay puffy instead of
+    // hanging as stringy perlin tendrils, light erosion keeps cauliflower edges without smoke
     float3 uvw_d     = (pos_n + cumulus_wind_offset * 1.7) * cumulus_detail_scale;
     float4 detail_n  = cloud_sample_noise(noise, samp, uvw_d);
-    float detail     = lerp(detail_n.a, detail_n.g, saturate(h_norm * 2.2));
-    float detail_mod = lerp(detail, 1.0 - detail, saturate(h_norm * 4.0));
-    float detail_amt = lerp(0.25, 0.40, weather.y);
+    float detail     = lerp(detail_n.a, detail_n.g, saturate(h_norm * 0.85 + 0.35));
+    float detail_mod = lerp(detail, 1.0 - detail, saturate(h_norm * 2.0));
+    float detail_amt = lerp(0.10, 0.18, weather.y);
     float density    = saturate(cloud_remap_soft(base, detail_mod * detail_amt, 1.0, 0.0, 1.0));
     
-    // silhouette sharpening, soft ends so thin edges and fringe clouds do not terrace when a
-    // residual noise kink crosses the old hard 0.04 clip, cores still saturate toward full density
-    density = cloud_remap_soft(density, 0.04, 0.85, 0.0, 1.0);
+    // soft silhouette, keeps fringe volume so edges read as fluffy instead of razor wisps
+    density = cloud_remap_soft(density, 0.02, 0.78, 0.0, 1.0);
     return density * cumulus_density_mul;
 }
 
@@ -514,7 +508,7 @@ float cloud_density_cumulus_cheap(float3 pos, Texture3D noise, SamplerState samp
     float3 pos_n      = pos + cloud_wind_drift(cumulus_wind_speed_mul) + cloud_evolve_offset(cumulus_evolve_rate);
     float base_offset = cloud_base_offset(noise, samp, pos_n);
     float h_norm      = (h - (cumulus_bottom_alt + base_offset)) / cumulus_thickness;
-    float cloud_top   = lerp(0.28, 1.0, weather.y);
+    float cloud_top   = lerp(0.42, 1.0, weather.y);
     float profile     = cloud_height_profile_cumulus(h_norm, cloud_top);
     if (profile <= 0.0 || weather.x <= 0.0)
     {
@@ -528,11 +522,11 @@ float cloud_density_cumulus_cheap(float3 pos, Texture3D noise, SamplerState samp
     pos_n           -= shear_dir * (cumulus_shear * saturate(h_norm));
     
     float3 uvw = (pos_n + cumulus_wind_offset) * cumulus_shape_scale;
-    uvw.y     *= lerp(1.35, 1.0, weather.y);
+    uvw.y     *= lerp(1.12, 1.0, weather.y);
     float4 shape_n = cloud_sample_noise(noise, samp, uvw);
     
     float fbm  = shape_n.g * 0.65 + shape_n.b * 0.35;
-    float base = cloud_remap_soft(shape_n.r, fbm - 1.0, 1.0, 0.0, 1.0);
+    float base = cloud_remap_soft(shape_n.r, fbm - 0.82, 1.0, 0.0, 1.0);
     base       = cloud_remap_soft(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
     return saturate(base) * cumulus_density_mul;
 }

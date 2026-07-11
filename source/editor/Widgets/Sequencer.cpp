@@ -1748,8 +1748,11 @@ void Sequencer::Load()
     m_spline_events.clear();
     m_time            = 0.0f;
     m_playing         = false;
+    m_scrubbing       = false;
+    m_was_previewing  = false;
     m_selected        = -1;
     m_spline_selected = -1;
+    World::SetActiveCamera(nullptr);
 
     const string file_path = GetFilePath();
     if (file_path.empty() || !FileSystem::Exists(file_path))

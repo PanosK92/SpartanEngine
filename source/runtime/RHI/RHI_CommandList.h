@@ -179,6 +179,13 @@ namespace spartan
         // barriers - unified interface
         void InsertBarrier(const RHI_Barrier& barrier);
         void FlushBarriers();
+        // rebind engine descriptor heaps and invalidate root signatures after an external library (e.g. xess) mutated cmd list state
+        void RestoreAfterExternalPass();
+        // transition to non_pixel (depth also keeps depth_read) for external compute that rejects pixel_shader_resource
+        void EnsureComputeShaderResource(RHI_Texture* texture);
+        // adopt gpu state after an external pass that already transitioned the resource, no barrier emitted
+        void AdoptComputeShaderResource(RHI_Texture* texture);
+        void AdoptUnorderedAccess(RHI_Texture* texture);
 
         // barriers - convenience overloads
         void InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip = rhi_all_mips, uint32_t mip_range = 0);

@@ -40,10 +40,8 @@ namespace car
         filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER;
         self_filter.ignore = body;
 
-        // floor geometry that participates in divisions and force scaling, otherwise a 0 from a
-        // missing preset overlay propagates straight into wheel_accel and tire_load as nan
+        // floor geometry that participates in divisions and force scaling
         float susp_travel_safe = PxMax(cfg.suspension_travel, 0.01f);
-        float wheel_mass_safe  = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
 
         float max_wheel_r = PxMax(cfg.front_wheel_radius, cfg.rear_wheel_radius);
         float sweep_dist  = susp_travel_safe + max_wheel_r + 0.5f;
@@ -81,8 +79,7 @@ namespace car
             {
                 debug_sweep[i].hit_point = hit.block.position;
 
-                // fall back to body up when the normal is degenerate, the suspension force is
-                // (contact_normal * forces[i]) so a zero normal silently kills all spring support
+                // fall back to body up when the normal is degenerate
                 PxVec3 sweep_normal = hit.block.normal;
                 float normal_len_sq = sweep_normal.dot(sweep_normal);
                 if (!is_finite_vec(sweep_normal) || normal_len_sq < 1e-6f)
@@ -94,27 +91,43 @@ namespace car
                     sweep_normal *= 1.0f / sqrtf(normal_len_sq);
                 }
 
-                // an initial overlap sweep returns distance 0 and a negative penetration depth in
-                // hit.block.distance with eMTD. clamp to 0 so target_compression saturates at 1
-                // instead of producing a spurious negative dist that the clamp turns into target 0
-                sweep_distance[i]    = hit.block.distance;
-                float dist_from_rest = PxMax(hit.block.distance, 0.0f);
+                // reject wall-like hits, a curb face or barrier is not a road surface and must
+                // not drive spring compression or tire load
+                const float min_ground_alignment = 0.5f;
+                const bool is_ground = sweep_normal.dot(-local_down) >= min_ground_alignment;
 
-                w.grounded       = true;
-                w.contact_point  = hit.block.position;
-                w.contact_normal = sweep_normal;
-                w.contact_actor  = hit.block.actor;
+                sweep_distance[i] = hit.block.distance;
 
-                float speed = body->getLinearVelocity().magnitude();
-                if (speed > 1.0f && tuning::road_bump_amplitude > 0.0f)
+                if (is_ground)
                 {
-                    float phase = road_bump_phase;
-                    float bump  = sinf(phase * 17.3f + i * 2.1f) * (0.5f + 0.5f * sinf(phase * 7.1f + i * 4.3f));
-                    bump += sinf(phase * 31.7f + i * 1.3f) * 0.3f;
-                    dist_from_rest += bump * tuning::road_bump_amplitude;
-                }
+                    // eMTD reports negative distance when the sweep starts overlapping, that is real
+                    // penetration past full travel and must drive the bump stop, not clamp to target 1
+                    float dist_from_rest = hit.block.distance;
 
-                w.target_compression = PxClamp(1.0f - dist_from_rest / susp_travel_safe, 0.0f, 1.0f);
+                    w.grounded       = true;
+                    w.contact_point  = hit.block.position;
+                    w.contact_normal = sweep_normal;
+                    w.contact_actor  = hit.block.actor;
+
+                    float speed = body->getLinearVelocity().magnitude();
+                    if (speed > 1.0f && tuning::road_bump_amplitude > 0.0f)
+                    {
+                        float phase = road_bump_phase;
+                        float bump  = sinf(phase * 17.3f + i * 2.1f) * (0.5f + 0.5f * sinf(phase * 7.1f + i * 4.3f));
+                        bump += sinf(phase * 31.7f + i * 1.3f) * 0.3f;
+                        dist_from_rest += bump * tuning::road_bump_amplitude;
+                    }
+
+                    // compression > 1 means the bump stop is engaged
+                    w.target_compression = PxClamp(1.0f - dist_from_rest / susp_travel_safe, 0.0f, 1.5f);
+                }
+                else
+                {
+                    w.grounded           = false;
+                    w.target_compression = 0.0f;
+                    w.contact_normal     = -local_down;
+                    w.contact_actor      = nullptr;
+                }
             }
             else
             {
@@ -127,28 +140,23 @@ namespace car
             }
 
             debug_suspension_top[i] = world_attach;
-            PxVec3 wheel_center_dbg = world_attach + local_down * (susp_travel_safe * (1.0f - w.compression) + wr);
+            float visual_comp = PxClamp(w.compression, 0.0f, 1.0f);
+            PxVec3 wheel_center_dbg = world_attach + local_down * (susp_travel_safe * (1.0f - visual_comp) + wr);
             debug_suspension_bottom[i] = wheel_center_dbg;
 
-            // wheel tracking
-            float compression_error  = w.target_compression - w.compression;
-            float wheel_spring_force = spring_stiffness[i] * compression_error;
-            float wheel_damper_force = -spring_damping[i] * w.compression_velocity * 0.5f;
-            float wheel_accel        = (wheel_spring_force + wheel_damper_force) / wheel_mass_safe;
-
-            w.compression_velocity += wheel_accel * dt;
-            w.compression          += w.compression_velocity * dt;
-
-            if (w.compression > 1.0f)      { w.compression = 1.0f; w.compression_velocity = PxMin(w.compression_velocity, 0.0f); }
-            else if (w.compression < 0.0f) { w.compression = 0.0f; w.compression_velocity = PxMax(w.compression_velocity, 0.0f); }
+            // kinematic strut: compression is the sweep geometry, velocity is its rate of change.
+            // an unsprung mass lag here turned hard roll into a resonant bounce (rc car hop)
+            w.compression = w.target_compression;
+            w.compression_velocity = (w.compression - w.prev_compression) / PxMax(dt, 0.0001f);
         }
     }
 
     inline void apply_suspension_forces(float dt)
     {
+        (void)dt;
         PxTransform pose = body->getGlobalPose();
-        PxVec3 lin_vel   = body->getLinearVelocity();
-        PxVec3 ang_vel   = body->getAngularVelocity();
+        // spring and damper act along the strut, never along a curb face normal
+        PxVec3 strut_dir = pose.q.rotate(PxVec3(0, 1, 0));
         float forces[wheel_count];
 
         for (int i = 0; i < wheel_count; i++)
@@ -161,25 +169,24 @@ namespace car
                 continue;
             }
 
-            float displacement = w.compression * cfg.suspension_travel;
-            float spring_f = spring_stiffness[i] * displacement;
-            // damp the real chassis velocity along the contact normal, the tracked compression
-            // velocity pins to zero when travel saturates, leaving bottoming-out undamped and
-            // turning every hard vertical hit into a near elastic, self sustaining bounce
-            PxVec3 attach_vel = lin_vel + ang_vel.cross(pose.q.rotate(wheel_offsets[i]));
-            float closing_vel = -attach_vel.dot(w.contact_normal);
-            float susp_vel = PxClamp(closing_vel, -tuning::spec.max_damper_velocity, tuning::spec.max_damper_velocity);
+            // soft spring saturates at full travel, bump stop handles anything past that
+            float travel    = cfg.suspension_travel;
+            float soft_comp = PxMin(w.compression, 1.0f);
+            float spring_f  = spring_stiffness[i] * soft_comp * travel;
+            float susp_vel  = PxClamp(w.compression_velocity * travel, -tuning::spec.max_damper_velocity, tuning::spec.max_damper_velocity);
             float damper_ratio = (susp_vel > 0.0f) ? tuning::spec.damping_bump_ratio : tuning::spec.damping_rebound_ratio;
-            float damper_f = spring_damping[i] * susp_vel * damper_ratio;
+            float damper_f  = spring_damping[i] * susp_vel * damper_ratio;
 
-            forces[i] = PxClamp(spring_f + damper_f, 0.0f, tuning::spec.max_susp_force);
+            forces[i] = spring_f + damper_f;
 
-            // bump stop - progressive stiffness increase near full compression
+            // progressive bump stop once past the soft travel limit
             if (w.compression > tuning::spec.bump_stop_threshold)
             {
-                float penetration = (w.compression - tuning::spec.bump_stop_threshold) / (1.0f - tuning::spec.bump_stop_threshold);
-                forces[i] += tuning::spec.bump_stop_stiffness * penetration * penetration * cfg.suspension_travel;
+                float penetration = (w.compression - tuning::spec.bump_stop_threshold) / PxMax(1.0f - tuning::spec.bump_stop_threshold, 0.01f);
+                forces[i] += tuning::spec.bump_stop_stiffness * penetration * penetration * travel;
             }
+
+            forces[i] = PxClamp(forces[i], 0.0f, tuning::spec.max_susp_force);
         }
 
         auto apply_arb = [&](int left, int right, float stiffness)
@@ -198,56 +205,26 @@ namespace car
         apply_arb(front_left, front_right, tuning::spec.front_arb_stiffness);
         apply_arb(rear_left, rear_right, tuning::spec.rear_arb_stiffness);
 
-        // cap per-wheel forces, then scale all wheels down if the total would
-        // produce more than chassis_force_cap_g of net upward acceleration, prevents
-        // launch from external impulses like the player landing on the car
-        float total_force = 0.0f;
-        for (int i = 0; i < wheel_count; i++)
-        {
-            forces[i] = PxClamp(forces[i], 0.0f, tuning::spec.max_susp_force);
-            total_force += forces[i];
-        }
-
-        float max_total_force = cfg.mass * 9.81f * chassis_force_cap_g;
-        if (total_force > max_total_force)
-        {
-            float scale = max_total_force / total_force;
-            for (int i = 0; i < wheel_count; i++)
-                forces[i] *= scale;
-        }
-
         float wheel_mass_safe = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
         for (int i = 0; i < wheel_count; i++)
         {
-            // mirror the final spring force into car state so telemetry can show whether
-            // springs are actually doing work even when tire_load looks plausible
+            forces[i] = PxClamp(forces[i], 0.0f, tuning::spec.max_susp_force);
             spring_force[i]     = forces[i];
             wheels[i].tire_load = forces[i] + wheel_mass_safe * 9.81f;
 
             if (forces[i] > 0.0f && wheels[i].grounded)
             {
-                // at the contact patch, not the top mount, so roll and jacking moments are correct
-                PxVec3 force = wheels[i].contact_normal * forces[i];
-                safe_add_force_at_pos(body, force, wheels[i].contact_point);
+                safe_add_force_at_pos(body, strut_dir * forces[i], wheels[i].contact_point);
             }
         }
 
-        // lateral weight transfer: only the geometric component is added explicitly
-        // the elastic component is already produced by the springs as the body rolls under lateral force
-        // adding it here would double count it and starve the inside wheels of load at high lateral g
-        float track_width      = (cfg.track_front + cfg.track_rear) * 0.5f;
-        float total_lat_force  = cfg.mass * lateral_accel;
-        float max_lat_transfer = cfg.mass * 9.81f * 0.25f;
-        float wdf              = get_weight_distribution_front();
-        float front_geo        = total_lat_force * wdf          * tuning::spec.front_roll_center_height / PxMax(track_width, 0.1f);
-        float rear_geo         = total_lat_force * (1.0f - wdf) * tuning::spec.rear_roll_center_height  / PxMax(track_width, 0.1f);
-        float front_lat_transfer = PxClamp(front_geo, -max_lat_transfer, max_lat_transfer);
-        float rear_lat_transfer  = PxClamp(rear_geo,  -max_lat_transfer, max_lat_transfer);
-        // longitudinal weight transfer, same split: the anti dive and anti squat fraction acts
-        // instantly through the pitch center, the elastic remainder arrives via the springs
-        float total_long_force = cfg.mass * longitudinal_accel;
-        float long_geo         = total_long_force * tuning::spec.pitch_center_height / PxMax(cfg.wheelbase, 0.1f);
-        float long_transfer    = PxClamp(long_geo, -max_lat_transfer, max_lat_transfer);
+        // geometric weight transfer only, elastic transfer already comes from the springs
+        float track_width        = (cfg.track_front + cfg.track_rear) * 0.5f;
+        float total_lat_force    = cfg.mass * lateral_accel;
+        float wdf                = get_weight_distribution_front();
+        float front_lat_transfer = total_lat_force * wdf          * tuning::spec.front_roll_center_height / PxMax(track_width, 0.1f);
+        float rear_lat_transfer  = total_lat_force * (1.0f - wdf) * tuning::spec.rear_roll_center_height  / PxMax(track_width, 0.1f);
+        float long_transfer      = cfg.mass * longitudinal_accel * tuning::spec.pitch_center_height / PxMax(cfg.wheelbase, 0.1f);
 
         for (int i = 0; i < wheel_count; i++)
         {
@@ -269,17 +246,18 @@ namespace car
         }
     }
 
-    inline void calculate_steering(float forward_speed, float speed_kmh, float out_angles[wheel_count])
+    inline void calculate_steering(float forward_speed, float out_angles[wheel_count])
     {
-        float reduction = (speed_kmh > 80.0f)
-            ? 1.0f - tuning::spec.high_speed_steer_reduction * PxClamp((speed_kmh - 80.0f) / 120.0f, 0.0f, 1.0f)
-            : 1.0f;
-
         float curved_input = copysignf(powf(fabsf(input.steering), tuning::spec.steering_linearity), input.steering);
-        float base = curved_input * tuning::spec.max_steer_angle * reduction;
+        float base = curved_input * tuning::spec.max_steer_angle;
+
+        // load dependent steer compliance: lateral force at the front bends the rack slightly
         if (tuning::spec.steer_compliance > 0.0f)
         {
-            base *= (1.0f - tuning::spec.steer_compliance);
+            float front_lat = wheels[front_left].lateral_force + wheels[front_right].lateral_force;
+            float compliance_angle = front_lat * tuning::spec.steer_compliance * 1.0e-5f;
+            base -= compliance_angle;
+            base = PxClamp(base, -tuning::spec.max_steer_angle, tuning::spec.max_steer_angle);
         }
 
         // bump steer
