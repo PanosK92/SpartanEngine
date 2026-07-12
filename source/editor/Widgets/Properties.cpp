@@ -1925,6 +1925,18 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
             material->SetProperty(MaterialProperty::Ior, ior);
         }
 
+        float absorption = material->GetProperty(MaterialProperty::Absorption);
+        if (property_float("Absorption", &absorption, 0.01f, 0.0f, 8.0f, "beer lambert dye density for glass, independent of alpha", "%.2f"))
+        {
+            material->SetProperty(MaterialProperty::Absorption, absorption);
+        }
+
+        float thickness = material->GetProperty(MaterialProperty::Thickness);
+        if (property_float("Thickness", &thickness, 0.001f, 0.0f, 0.1f, "glass shell thickness in meters for parallax and optical path", "%.3f m"))
+        {
+            material->SetProperty(MaterialProperty::Thickness, thickness);
+        }
+
         layout::separator();
         layout::section_header("UV Mapping");
 
@@ -2040,6 +2052,12 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
         if (property_toggle("Wind Animation", &wind_animation, "vertex animation from wind"))
         {
             material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
+        }
+
+        bool motion_blur_radial = material->GetProperty(MaterialProperty::MotionBlurRadial) != 0.0f;
+        if (property_toggle("Radial Motion Blur", &motion_blur_radial, "rotational blur for spinning wheels"))
+        {
+            material->SetProperty(MaterialProperty::MotionBlurRadial, motion_blur_radial ? 1.0f : 0.0f);
         }
 
         bool emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo) != 0.0f;

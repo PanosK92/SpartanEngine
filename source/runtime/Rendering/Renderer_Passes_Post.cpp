@@ -134,7 +134,8 @@ namespace spartan
             run_effect("motion_blur", Renderer_Shader::motion_blur_c, [&]()
             {
                 SetCommonTextures(cmd_list, eye_layer);
-                m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), 0.0f, 0.0f);
+                // y > 1.5 enables the radial mask debug view (r.motion_blur = 2)
+                m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), cvar_motion_blur.GetValue(), 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
         }

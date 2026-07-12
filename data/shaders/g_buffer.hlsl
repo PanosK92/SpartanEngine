@@ -27,7 +27,7 @@ struct gbuffer
     float4 albedo   : SV_Target0;
     float4 normal   : SV_Target1;
     float4 material : SV_Target2;
-    float2 velocity : SV_Target3;
+    float4 velocity : SV_Target3; // xy = ndc velocity, z = radial motion blur mask
 };
 
 // constants
@@ -367,9 +367,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         albedo.rgb     += emissive;
         emission        = luminance(emissive);
     }
-    // saturate emission flag so dark albedos still bloom at full strength
+    // emissive_from_albedo strength is authored 0-1, composition maps 1.0 to the calibrated nits
     if (material.emissive_from_albedo())
-        emission = 1.0f;
+        emission = material.emissive_strength;
     
     // normal mapping
     float distance_fade = 1.0f;
@@ -471,6 +471,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
-    g_buffer.velocity = velocity;
+    g_buffer.velocity = float4(velocity, material.is_motion_blur_radial() ? 1.0f : 0.0f, 0.0f);
     return g_buffer;
 }

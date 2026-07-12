@@ -1074,7 +1074,9 @@ float sky_nee_pdf_at(float3 dir, float3 shading_normal)
 
 float3 probe_emission_estimate(MaterialParameters mat)
 {
-    if (mat.emissive_from_albedo() || mat.has_texture_emissive())
+    if (mat.emissive_from_albedo())
+        return mat.color.rgb * mat.emissive_strength;
+    if (mat.has_texture_emissive())
         return mat.color.rgb;
     return float3(0.0f, 0.0f, 0.0f);
 }
@@ -1417,7 +1419,7 @@ void inline_pull_hit_data(
     }
     if (mat.emissive_from_albedo())
     {
-        emission += albedo;
+        emission += albedo * mat.emissive_strength;
     }
 
     hit_out.hit              = true;

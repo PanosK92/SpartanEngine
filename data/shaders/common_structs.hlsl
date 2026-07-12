@@ -48,6 +48,8 @@ struct Surface
     float3 coat_tint;
     float  coat_tint_strength;
     float  ior;
+    float  absorption;
+    float  thickness;
     float  occlusion;
     float3 emissive;
     float3 F0;
@@ -77,6 +79,7 @@ struct Surface
     bool is_flower()                     { return flags & uint(1U << 12); }
     bool is_water()                      { return flags & uint(1U << 13); }
     bool is_tessellated()                { return flags & uint(1U << 14); }
+    bool is_motion_blur_radial()         { return flags & uint(1U << 19); }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }
@@ -120,6 +123,8 @@ struct Surface
         coat_tint             = material.coat_tint.rgb;
         coat_tint_strength    = material.coat_tint.a;
         ior                   = material.ior;
+        absorption            = material.absorption;
+        thickness             = material.thickness;
         diffuse_energy        = 1.0f;
 
         // roughness is authored as perceptual roughness, as is convention

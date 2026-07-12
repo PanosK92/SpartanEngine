@@ -1082,6 +1082,112 @@ namespace spartan
         }
     }
 
+    void Renderer::UpdateFrameCb_RadialBlurHubs()
+    {
+        // wheel hubs for radial motion blur, computed here because entity previous matrices
+        // are snapshotted (overwritten) right after the opaque g-buffer pass
+        uint32_t count = 0;
+        const Matrix& view_projection = m_cb_frame_cpu.view_projection_unjittered;
+        const Vector2 resolution      = m_resolution_output;
+        const Vector3 camera_forward  = m_cb_frame_cpu.camera_forward;
+        const Vector3 camera_right    = m_cb_frame_cpu.camera_right;
+
+        auto project_to_uv = [&view_projection](const Vector3& position_world, Vector2& uv)
+        {
+            Vector4 clip = Vector4(position_world.x, position_world.y, position_world.z, 1.0f) * view_projection;
+            if (clip.w <= 0.0001f)
+            {
+                return false;
+            }
+            uv.x = (clip.x / clip.w) * 0.5f + 0.5f;
+            uv.y = (clip.y / clip.w) * -0.5f + 0.5f;
+            return true;
+        };
+
+        for (Entity* entity : World::GetEntitiesRenderables())
+        {
+            if (count >= 8)
+            {
+                break;
+            }
+
+            Render* renderable = entity->GetComponent<Render>();
+            if (!renderable)
+            {
+                continue;
+            }
+
+            Material* material = renderable->GetMaterial();
+            if (!material || material->GetProperty(MaterialProperty::MotionBlurRadial) == 0.0f)
+            {
+                continue;
+            }
+
+            // per-frame rotation delta in world space, immune to the velocity aliasing that
+            // makes fast wheels produce useless screen-space motion vectors
+            Quaternion q_curr  = entity->GetMatrix().GetRotation();
+            Quaternion q_prev  = entity->GetMatrixPrevious().GetRotation();
+            Quaternion q_delta = q_curr * q_prev.Inverse();
+            float w            = min(fabs(q_delta.w), 1.0f);
+            float angle        = 2.0f * acosf(w);
+            Vector3 axis       = Vector3(q_delta.x, q_delta.y, q_delta.z) * (q_delta.w < 0.0f ? -1.0f : 1.0f);
+            if (angle < 0.005f || axis.LengthSquared() < 1e-12f)
+            {
+                continue;
+            }
+            axis.Normalize();
+
+            const math::BoundingBox& aabb = renderable->GetBoundingBox();
+            const Vector3 center          = aabb.GetCenter();
+            const Vector3 extents         = aabb.GetExtents();
+            const float radius_world      = max(extents.x, max(extents.y, extents.z));
+
+            Vector2 uv_center;
+            Vector2 uv_edge_x;
+            Vector2 uv_edge_y;
+            const Vector3 camera_up = Vector3::Cross(camera_forward, camera_right);
+            if (!project_to_uv(center, uv_center) || !project_to_uv(center + camera_right * radius_world, uv_edge_x) || !project_to_uv(center + camera_up * radius_world, uv_edge_y))
+            {
+                continue;
+            }
+            const float radius_pixels = max(((uv_edge_x - uv_center) * resolution).Length(), ((uv_edge_y - uv_center) * resolution).Length());
+            if (radius_pixels < 2.0f)
+            {
+                continue;
+            }
+
+            // resolve the on-screen rotation direction by projecting a rotated test point,
+            // this avoids baking in any handedness or projection convention assumptions
+            Vector3 perpendicular = Vector3::Cross(axis, camera_forward);
+            if (perpendicular.LengthSquared() < 1e-6f)
+            {
+                perpendicular = Vector3::Cross(axis, Vector3::Up);
+            }
+            if (perpendicular.LengthSquared() < 1e-6f)
+            {
+                perpendicular = Vector3::Cross(axis, Vector3::Right);
+            }
+            perpendicular.Normalize();
+
+            Vector2 uv_p0;
+            Vector2 uv_p1;
+            const Vector3 rotated = Quaternion::FromAxisAngle(axis, 0.05f) * perpendicular;
+            if (!project_to_uv(center + perpendicular * radius_world, uv_p0) || !project_to_uv(center + rotated * radius_world, uv_p1))
+            {
+                continue;
+            }
+            const Vector2 d0  = uv_p0 - uv_center;
+            const Vector2 d1  = uv_p1 - uv_center;
+            const float cross = d0.x * d1.y - d0.y * d1.x;
+            const float sign  = cross >= 0.0f ? 1.0f : -1.0f;
+
+            m_cb_frame_cpu.radial_blur_hubs[count] = Vector4(uv_center.x, uv_center.y, angle * sign, radius_pixels);
+            count++;
+        }
+
+        m_cb_frame_cpu.radial_blur_hub_count = static_cast<float>(count);
+    }
+
     void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
     {
         UpdateFrameCb_CameraAndProjectionHistory();
@@ -1091,6 +1197,7 @@ namespace spartan
         UpdateFrameCb_ClusterLighting();
         UpdateFrameCb_FeatureBits();
         UpdateFrameCb_StereoXr();
+        UpdateFrameCb_RadialBlurHubs();
 
         // emissive triangle nee pool, must precede the cb upload because it writes the count
         // into m_cb_frame_cpu, the buffer upload itself piggybacks on the same cmd_list
@@ -1589,6 +1696,7 @@ namespace spartan
                 // it is per-renderable and lives on Sb_DrawData (see WriteDrawData) and Sb_GeometryInfo for rt
                 properties[count].local_width           = material->GetProperty(MaterialProperty::WorldWidth);
                 properties[count].local_height          = material->GetProperty(MaterialProperty::WorldHeight);
+                properties[count].emissive_strength     = material->GetProperty(MaterialProperty::EmissiveFromAlbedo);
                 properties[count].color.x               = material->GetProperty(MaterialProperty::ColorR);
                 properties[count].color.y               = material->GetProperty(MaterialProperty::ColorG);
                 properties[count].color.z               = material->GetProperty(MaterialProperty::ColorB);
@@ -1613,6 +1721,8 @@ namespace spartan
                 properties[count].coat_tint.z           = material->GetProperty(MaterialProperty::CoatTintB);
                 properties[count].coat_tint.w           = material->GetProperty(MaterialProperty::CoatTintStrength);
                 properties[count].ior                   = material->GetProperty(MaterialProperty::Ior);
+                properties[count].absorption            = material->GetProperty(MaterialProperty::Absorption);
+                properties[count].thickness             = material->GetProperty(MaterialProperty::Thickness);
                 properties[count].sheen                 = material->GetProperty(MaterialProperty::Sheen);
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
 
@@ -1636,6 +1746,7 @@ namespace spartan
                 properties[count].flags |= material->IsAlphaTested()                                          ? (1U << 16) : 0;
                 properties[count].flags |= should_decode_as_srgb(material->GetTexture(MaterialTextureType::Color))    ? (1U << 17) : 0;
                 properties[count].flags |= should_decode_as_srgb(material->GetTexture(MaterialTextureType::Emission)) ? (1U << 18) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::MotionBlurRadial)          ? (1U << 19) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     
@@ -2897,7 +3008,6 @@ namespace spartan
     void Renderer::Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list)
     {
         Pass_ShadowMaps(cmd_list);
-        Pass_Reflections_Trace(cmd_list);
     }
 
     void Renderer::ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer)
@@ -2930,6 +3040,14 @@ namespace spartan
         {
             Pass_Particles(cmd_list);
         }
+
+        // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        Pass_Reflections_Trace(cmd_list, eye_layer);
 
         Pass_Light_Ibl(cmd_list, eye_layer);
         Pass_Reflections_Shade(cmd_list, eye_layer);
@@ -3020,7 +3138,7 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = cmd_list_compute_b->GetTimelineSemaphore();
             const uint64_t compute_b_value        = cmd_list_compute_b->GetLastTimelineSignalValue();
 
-            // graphics phase 2, runs parallel to batch b, waits on batch a so tlas is ready for rt reflections
+            // graphics phase 2, runs parallel to batch b, waits on batch a so tlas is ready for the reflections trace that follows in per-eye
             cmd_list_graphics_present = queue_graphics->NextCommandList();
             cmd_list_graphics_present->Begin();
             m_cmd_list_present        = cmd_list_graphics_present;

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <sstream>
 #include <utility>
+#include <mutex>
 
 using namespace std;
 
@@ -12,6 +13,10 @@ namespace car
 {
     namespace
     {
+        // world loading creates car prefabs from multiple threads, definitions and
+        // preset_registry are shared globals so their mutation must be serialized
+        mutex load_mutex;
+
         void read_float(pugi::xml_node node, const char* name, float& value)
         {
             if (pugi::xml_attribute attribute = node.attribute(name))
@@ -307,6 +312,8 @@ namespace car
 
     const car_definition* load_car_file(const string& file_path)
     {
+        lock_guard<mutex> lock(load_mutex);
+
         const string path = normalize_path(file_path);
 
         // cached by path

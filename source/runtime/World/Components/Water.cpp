@@ -118,7 +118,6 @@ namespace spartan
             render->SetMesh(m_mesh.get());
             render->SetMaterial(m_material);
             render->SetFlag(RenderableFlags::CastsShadows, false);
-            render->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
         }
     }
 

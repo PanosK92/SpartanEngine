@@ -42,6 +42,10 @@ static const float MAX_SHUTTER_RATIO = 0.8f;
 // without snapping to a fixed tile grid (which produces visible square artifacts)
 static const float NEIGHBORHOOD_RADIUS_PIXELS = 16.0f;
 
+// radial motion blur, hub association range relative to the projected wheel radius
+static const float RADIAL_HUB_RANGE_SCALE = 1.35f;
+static const float MAX_RADIAL_ANGLE      = 1.0f; // radians per blur direction, keeps arcs tasteful at high rpm
+
 // soft depth comparison (guerrilla games / killzone approach)
 // returns 1 when depth_a is behind or equal to depth_b
 float soft_depth_compare(float depth_a, float depth_b)
@@ -141,6 +145,109 @@ float2 compute_sky_velocity(float2 uv)
     return curr_ndc - prev_ndc;
 }
 
+// wheel hubs are supplied by the cpu in buffer_frame.radial_blur_hubs, each entry holds
+// screen uv (xy), signed per-frame rotation angle in radians (z) and projected wheel
+// radius in output pixels (w), derived from entity transforms, so fast spins do not
+// suffer from the screen-space velocity aliasing that breaks vector-based estimation
+bool find_radial_hub(float2 uv, float2 resolution, out float4 hub)
+{
+    hub             = 0.0f;
+    float best_dist = 1e10f;
+    uint  count     = (uint)buffer_frame.radial_blur_hub_count;
+
+    for (uint i = 0; i < count; ++i)
+    {
+        float4 candidate = buffer_frame.radial_blur_hubs[i];
+        float  dist      = length((uv - candidate.xy) * resolution);
+        if (dist < candidate.w * RADIAL_HUB_RANGE_SCALE && dist < best_dist)
+        {
+            best_dist = dist;
+            hub       = candidate;
+        }
+    }
+
+    return best_dist < 1e10f;
+}
+
+// rigid 2d reconstruction for spinning wheels - the wheel's screen motion is rotation
+// around the hub plus the hub's own translation, so samples are taken along that path
+float4 motion_blur_radial_reconstruction(
+    float2 uv,
+    float2 resolution,
+    float  shutter_ratio,
+    float  noise,
+    float4 center_color,
+    float  center_depth,
+    float4 hub
+)
+{
+    float2 hub_uv     = hub.xy;
+    float  angle_blur = clamp(hub.z * shutter_ratio, -MAX_RADIAL_ANGLE, MAX_RADIAL_ANGLE);
+
+    // spin is zero at the center, so the velocity at the hub is the wheel's pure translation
+    float2 hub_vel_ndc  = tex_velocity.SampleLevel(samplers[sampler_point_clamp], hub_uv * get_render_uv_scale(), 0).xy;
+    float2 hub_shift_uv = hub_vel_ndc * float2(0.5f, -0.5f) * shutter_ratio;
+    float  shift_pixels = length(hub_shift_uv * resolution);
+    if (shift_pixels > MAX_BLUR_RADIUS_PIXELS)
+    {
+        hub_shift_uv *= MAX_BLUR_RADIUS_PIXELS / shift_pixels;
+        shift_pixels  = MAX_BLUR_RADIUS_PIXELS;
+    }
+
+    float2 d_pixels      = (uv - hub_uv) * resolution;
+    float  radius_pixels = length(d_pixels);
+    float  arc_pixels    = abs(angle_blur) * radius_pixels;
+
+    if (arc_pixels + shift_pixels < MIN_BLUR_THRESHOLD)
+    {
+        return center_color;
+    }
+
+    float4 color_sum  = center_color * CENTER_WEIGHT;
+    float  weight_sum = CENTER_WEIGHT;
+    float  jitter     = (noise - 0.5f) * 0.5f;
+
+    [unroll]
+    for (int i = 1; i <= SAMPLE_COUNT; ++i)
+    {
+        float t          = (float)i / (float)SAMPLE_COUNT;
+        float t_jittered = saturate(t + jitter / (float)SAMPLE_COUNT);
+        float falloff    = sample_falloff(t);
+
+        [unroll]
+        for (int dir = -1; dir <= 1; dir += 2)
+        {
+            float  step_t    = t_jittered * dir;
+            float  ang       = angle_blur * step_t;
+            float  cs        = cos(ang);
+            float  sn        = sin(ang);
+            float2 rotated   = float2(d_pixels.x * cs - d_pixels.y * sn, d_pixels.x * sn + d_pixels.y * cs);
+            float2 uv_sample = hub_uv + hub_shift_uv * step_t + rotated / resolution;
+
+            if (!is_valid_uv(uv_sample))
+            {
+                continue;
+            }
+
+            float4 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_sample, 0);
+            float  sample_depth = get_linear_depth(uv_sample * get_render_uv_scale());
+            float  sample_mask  = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv_sample * get_render_uv_scale(), 0).z;
+
+            // symmetric depth similarity plus a hard gate to the wheel mask so the arc
+            // never drags the sharp body or background across the wheel
+            float depth_sym = soft_depth_compare(center_depth, sample_depth) * soft_depth_compare(sample_depth, center_depth);
+            float weight    = falloff * depth_sym * sample_mask;
+
+            color_sum  += sample_color * weight;
+            weight_sum += weight;
+        }
+    }
+
+    float4 result = color_sum / weight_sum;
+    result.a = center_color.a;
+    return result;
+}
+
 // main reconstruction filter
 float4 motion_blur_reconstruction(
     float2 uv,
@@ -158,13 +265,48 @@ float4 motion_blur_reconstruction(
     float  center_depth = get_linear_depth(render_uv);
 
     // per-pixel velocity - for sky pixels (no geometry), derive from camera rotation
-    float  raw_depth      = get_depth(render_uv);
-    float2 pixel_velocity = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], render_uv, 0).xy;
-    bool   is_sky         = raw_depth < 0.0001f;
+    float  raw_depth       = get_depth(render_uv);
+    float4 velocity_sample = tex_velocity.SampleLevel(samplers[sampler_point_clamp], render_uv, 0);
+    float2 pixel_velocity  = velocity_sample.xy;
+    bool   is_sky          = raw_depth < 0.0001f;
+    bool   is_radial       = velocity_sample.z > 0.5f;
     if (is_sky)
     {
         pixel_velocity = compute_sky_velocity(uv);
+        is_radial      = false;
     }
+
+    // debug view, r.motion_blur = 2 shows the radial mask in red and hub association in green
+    if (pass_get_f3_value().y > 1.5f)
+    {
+        float4 debug_color = center_color;
+        float4 debug_hub;
+        if (is_radial)
+        {
+            debug_color.rgb = lerp(debug_color.rgb, float3(1.0f, 0.0f, 0.0f), 0.5f);
+        }
+        if (find_radial_hub(uv, resolution, debug_hub))
+        {
+            debug_color.rgb = lerp(debug_color.rgb, float3(0.0f, 1.0f, 0.0f), 0.25f);
+            if (length((uv - debug_hub.xy) * resolution) < 4.0f)
+            {
+                debug_color.rgb = float3(0.0f, 0.0f, 1.0f);
+            }
+        }
+        return debug_color;
+    }
+
+    // radial materials (wheels) rotate around a cpu-supplied hub, when the wheel is not
+    // rotating this frame no hub exists and the pixel falls through to the linear path
+    if (is_radial)
+    {
+        float4 hub;
+        if (find_radial_hub(uv, resolution, hub))
+        {
+            return motion_blur_radial_reconstruction(uv, resolution, shutter_ratio, noise, center_color, center_depth, hub);
+        }
+    }
+
     float pixel_speed = length(pixel_velocity * resolution);
 
     // neighborhood dominant velocity, sampled around the pixel itself rather than

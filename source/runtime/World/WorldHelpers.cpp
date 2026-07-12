@@ -558,6 +558,7 @@ namespace spartan
             "WindAnimation",              MaterialProperty::WindAnimation,
             "ColorVariationFromInstance", MaterialProperty::ColorVariationFromInstance,
             "IsWater",                    MaterialProperty::IsWater,
+            "MotionBlurRadial",           MaterialProperty::MotionBlurRadial,
             "CullMode",                   MaterialProperty::CullMode
         );
 

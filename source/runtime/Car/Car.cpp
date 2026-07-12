@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Render.h"
 #include "../World/Prefab.h"
 #include "../IO/pugixml.hpp"
+#include <mutex>
 //==========================================
 
 namespace spartan
@@ -56,6 +57,9 @@ namespace spartan
 
     namespace
     {
+        // car prefabs are created from multiple world loading threads, s_cars is shared
+        std::mutex car_list_mutex;
+
         enum class CarMaterialSlot
         {
             Unknown,
@@ -403,7 +407,10 @@ namespace spartan
             default_car = car->m_body_entity;
         }
 
-        s_cars.push_back(car);
+        {
+            std::lock_guard<std::mutex> lock(car_list_mutex);
+            s_cars.push_back(car);
+        }
         return car;
     }
 
@@ -466,10 +473,13 @@ namespace spartan
 
     void Car::Destroy()
     {
-        auto it = std::find(s_cars.begin(), s_cars.end(), this);
-        if (it != s_cars.end())
         {
-            s_cars.erase(it);
+            std::lock_guard<std::mutex> lock(car_list_mutex);
+            auto it = std::find(s_cars.begin(), s_cars.end(), this);
+            if (it != s_cars.end())
+            {
+                s_cars.erase(it);
+            }
         }
 
         if (m_vehicle_entity)
@@ -1011,7 +1021,11 @@ namespace spartan
                     {
                         if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "main_glass"))
                         {
-                            material->ApplySurfacePreset(MaterialSurfacePreset::GlassClear, false);
+                            // smoked engine covers use tinted glass, windshields and side glass stay clear
+                            const MaterialSurfacePreset glass_preset = contains(context, "engine")
+                                ? MaterialSurfacePreset::GlassTinted
+                                : MaterialSurfacePreset::GlassClear;
+                            material->ApplySurfacePreset(glass_preset, false);
                         }
 
                         if (contains(context, "object_58") || contains(context, "windshield"))
@@ -1151,6 +1165,7 @@ namespace spartan
             {
                 material->SetTexture(MaterialTextureType::Roughness, m_definition->wheel_roughness);
             }
+            material->SetProperty(MaterialProperty::MotionBlurRadial, 1.0f);
         }
 
         return wheel_base;

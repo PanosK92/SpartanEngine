@@ -416,7 +416,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 emission = 0.0f;
     if (mat.emissive_from_albedo())
     {
-        emission = albedo * 250.0f;
+        emission = albedo * 250.0f * mat.emissive_strength;
     }
     else if (mat.has_texture_emissive())
     {

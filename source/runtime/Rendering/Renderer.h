@@ -246,6 +246,7 @@ namespace spartan
         static void UpdateFrameCb_ClusterLighting();
         static void UpdateFrameCb_FeatureBits();
         static void UpdateFrameCb_StereoXr();
+        static void UpdateFrameCb_RadialBlurHubs();
         static bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources,
                                   bool create_render, bool create_output, const char* label);
 

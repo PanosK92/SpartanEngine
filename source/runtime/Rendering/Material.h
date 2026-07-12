@@ -85,10 +85,12 @@ namespace spartan
         CoatTintB,                  // tinted clearcoat blue
         CoatTintStrength,           // tinted clearcoat strength
         Ior,                        // index of refraction
+        Absorption,                 // beer lambert dye density for glass, independent of alpha
+        Thickness,                  // glass shell thickness in meters
         PaintPreset,                // selected paint preset
         SurfacePreset,              // selected surface preset
         NormalFromAlbedo,           // derive normal from albedo
-        EmissiveFromAlbedo,         // derive emissive from albedo
+        EmissiveFromAlbedo,         // derive emissive from albedo, value is 0-1 intensity
     
         // texture transforms
         TextureTilingX,             // tiling along x axis
@@ -106,6 +108,7 @@ namespace spartan
         WindAnimation,              // vertex wind animation
         ColorVariationFromInstance, // per-instance color variation
         IsWater,                    // water flow animation
+        MotionBlurRadial,           // rotational motion blur instead of linear (wheels)
     
         // render settings
         CullMode,                   // face culling mode

@@ -941,7 +941,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     }
     if (mat.emissive_from_albedo())
     {
-        emission += albedo;
+        emission += albedo * mat.emissive_strength;
     }
 
     payload.hit_position     = hit_position;

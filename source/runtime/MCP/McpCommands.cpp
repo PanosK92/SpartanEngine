@@ -1209,6 +1209,8 @@ namespace spartan
                 return "color_variation_from_instance";
             case MaterialProperty::IsWater:
                 return "vertex_animate_water";
+            case MaterialProperty::MotionBlurRadial:
+                return "motion_blur_radial";
             case MaterialProperty::CullMode:
                 return "cull_mode";
             default:

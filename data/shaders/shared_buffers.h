@@ -150,6 +150,13 @@ struct FrameBufferData
     SHARED_FLOAT  ocean_turbidity;
     SHARED_FLOAT  ocean_caustics_intensity;
 
+    // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
+    SHARED_FLOAT4 radial_blur_hubs[8];
+    SHARED_FLOAT  radial_blur_hub_count;
+    SHARED_FLOAT  padding_radial_0;
+    SHARED_FLOAT  padding_radial_1;
+    SHARED_FLOAT  padding_radial_2;
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {
@@ -200,10 +207,10 @@ struct MaterialParameters
     SHARED_FLOAT normal     SHARED_DEFAULT(0.0f);
     SHARED_FLOAT height     SHARED_DEFAULT(0.0f);
 
-    SHARED_UINT  flags        SHARED_DEFAULT(0);
-    SHARED_FLOAT local_width  SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT local_height SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT padding_a    SHARED_DEFAULT(0.0f);
+    SHARED_UINT  flags             SHARED_DEFAULT(0);
+    SHARED_FLOAT local_width       SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT local_height      SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT emissive_strength SHARED_DEFAULT(0.0f); // 0-1 scale for emissive_from_albedo, 1 maps to the composition nits
 
     SHARED_FLOAT subsurface_scattering;
     SHARED_FLOAT sheen;
@@ -220,8 +227,8 @@ struct MaterialParameters
 
     SHARED_FLOAT pearl_strength;
     SHARED_FLOAT ior;
-    SHARED_FLOAT padding0 SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT padding1 SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT absorption SHARED_DEFAULT(0.0f); // beer lambert dye density for glass, independent of alpha
+    SHARED_FLOAT thickness  SHARED_DEFAULT(0.0f); // shell thickness in meters for glass parallax and optical path
 
 #ifndef __cplusplus
     bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
@@ -235,6 +242,7 @@ struct MaterialParameters
     bool is_alpha_tested()       { return (flags & (1 << 16)) != 0; }
     bool is_albedo_srgb()        { return (flags & (1 << 17)) != 0; }
     bool is_emissive_srgb()      { return (flags & (1 << 18)) != 0; }
+    bool is_motion_blur_radial() { return (flags & (1 << 19)) != 0; }
 #endif
 };
 

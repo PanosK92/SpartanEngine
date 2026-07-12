@@ -83,6 +83,8 @@ namespace spartan
                 case MaterialProperty::CoatTintB:                  return "coat_tint_b";
                 case MaterialProperty::CoatTintStrength:           return "coat_tint_strength";
                 case MaterialProperty::Ior:                        return "ior";
+                case MaterialProperty::Absorption:                 return "absorption";
+                case MaterialProperty::Thickness:                  return "thickness";
                 case MaterialProperty::PaintPreset:                return "paint_preset";
                 case MaterialProperty::SurfacePreset:              return "surface_preset";
                 case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
@@ -104,6 +106,7 @@ namespace spartan
                 case MaterialProperty::WindAnimation:              return "wind_animation";
                 case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
                 case MaterialProperty::IsWater:                    return "vertex_animate_water";
+                case MaterialProperty::MotionBlurRadial:           return "motion_blur_radial";
         
                 // Render settings
                 case MaterialProperty::CullMode:                   return "cull_mode";
@@ -765,38 +768,46 @@ namespace spartan
         {
             case MaterialSurfacePreset::GlassClear:
             {
-                SetColorInternal(Color(0.85f, 0.95f, 1.0f, 0.35f), false);
+                SetColorInternal(Color(0.85f, 0.95f, 1.0f, 0.12f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,           0.02f, false);
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.02f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::Absorption,          0.15f, false);
+                SetPropertyInternal(MaterialProperty::Thickness,           0.006f, false);
                 break;
             }
             case MaterialSurfacePreset::GlassTinted:
             {
-                SetColorInternal(Color(0.08f, 0.1f, 0.12f, 0.45f), false);
+                SetColorInternal(Color(0.08f, 0.1f, 0.12f, 0.35f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,           0.04f, false);
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.04f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::Absorption,          1.2f,  false);
+                SetPropertyInternal(MaterialProperty::Thickness,           0.006f, false);
                 break;
             }
             case MaterialSurfacePreset::HeadlightLens:
             {
-                SetColorInternal(Color(1.0f, 0.96f, 0.82f, 0.55f), false);
-                SetPropertyInternal(MaterialProperty::Roughness,           0.12f, false);
+                SetColorInternal(Color(1.0f, 0.96f, 0.82f, 0.25f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.06f, false);
                 SetPropertyInternal(MaterialProperty::Clearcoat,           1.0f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.06f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::Absorption,          0.35f, false);
+                SetPropertyInternal(MaterialProperty::Thickness,           0.012f, false);
                 break;
             }
             case MaterialSurfacePreset::TaillightLens:
             {
-                SetColorInternal(Color(1.0f, 0.04f, 0.02f, 0.65f), false);
-                SetPropertyInternal(MaterialProperty::Roughness,           0.18f, false);
+                SetColorInternal(Color(1.0f, 0.04f, 0.02f, 0.4f), false);
+                SetPropertyInternal(MaterialProperty::Roughness,           0.1f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat,           0.8f,  false);
                 SetPropertyInternal(MaterialProperty::Clearcoat_Roughness, 0.12f, false);
                 SetPropertyInternal(MaterialProperty::Ior,                 EnumToIor(MaterialIor::Glass), false);
+                SetPropertyInternal(MaterialProperty::Absorption,          2.5f,  false);
+                SetPropertyInternal(MaterialProperty::Thickness,           0.01f, false);
                 break;
             }
             case MaterialSurfacePreset::RubberTire:
@@ -858,9 +869,10 @@ namespace spartan
             }
             case MaterialSurfacePreset::EmissiveRedLight:
             {
+                // keep saturated red chroma, strength stays well below the 100k nit full scale so bloom stays red
                 SetColorInternal(Color(1.0f, 0.02f, 0.01f, 1.0f), false);
                 SetPropertyInternal(MaterialProperty::Roughness,          0.2f, false);
-                SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo, 1.0f, false);
+                SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo, 0.02f, false);
                 break;
             }
             case MaterialSurfacePreset::EmissiveWhiteLight:
@@ -1253,9 +1265,6 @@ namespace spartan
                 RHI_CullMode cull_mode = value < 1.0f ? RHI_CullMode::None : RHI_CullMode::Back;
                 m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(cull_mode);
             }
-
-            // transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
-            m_properties[static_cast<uint32_t>(MaterialProperty::Roughness)] = value * 0.5f;
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
@@ -1304,6 +1313,8 @@ namespace spartan
         SetPropertyInternal(MaterialProperty::CoatTintB,            1.0f, false);
         SetPropertyInternal(MaterialProperty::CoatTintStrength,     0.0f, false);
         SetPropertyInternal(MaterialProperty::Ior,                  EnumToIor(MaterialIor::Glass), false);
+        SetPropertyInternal(MaterialProperty::Absorption,           0.0f, false);
+        SetPropertyInternal(MaterialProperty::Thickness,            0.0f, false);
         SetPropertyInternal(MaterialProperty::PaintPreset,          0.0f, false);
         SetPropertyInternal(MaterialProperty::SurfacePreset,        0.0f, false);
         SetPropertyInternal(MaterialProperty::EmissiveFromAlbedo,   0.0f, false);
