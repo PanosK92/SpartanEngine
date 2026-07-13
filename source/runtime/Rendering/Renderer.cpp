@@ -981,6 +981,11 @@ namespace spartan
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind                  = World::GetWind();
         m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverage() : 0.0f;
+        {
+            // match the directional light's day cycle source so stars lock to the same clock as the sun
+            const bool use_real_world_time = World::GetDirectionalLight() && World::GetDirectionalLight()->GetFlag(LightFlags::RealTimeCycle);
+            m_cb_frame_cpu.time_of_day = World::GetTimeOfDay(use_real_world_time);
+        }
 
         // fft ocean, geometry samples these to displace and shade the water surface
         if (const Water* water = m_pass_state.ocean)

@@ -1064,9 +1064,14 @@ namespace spartan
 
             m_bounding_box = math::BoundingBox(min, max);
         }
-        else // directional
+        else if (m_light_type == LightType::Directional)
         {
             m_bounding_box = math::BoundingBox::Infinite;
+        }
+        else
+        {
+            // LightType::Max or unknown, keep a finite empty box so frustum culling does not see nans
+            m_bounding_box = math::BoundingBox::Zero;
         }
     }
 
@@ -1121,10 +1126,19 @@ namespace spartan
     bool Light::IsInViewFrustum(Render* renderable, const uint32_t array_index) const
     {
         const BoundingBox& bounding_box = renderable->GetBoundingBox();
-        const Vector3 center            = bounding_box.GetCenter();
-        const Vector3 extents           = bounding_box.GetExtents();
-        const bool ignore_depth         = m_light_type == LightType::Directional; // orthographic
+        if (bounding_box.IsInfinite())
+        {
+            return true;
+        }
 
+        const Vector3 center  = bounding_box.GetCenter();
+        const Vector3 extents = bounding_box.GetExtents();
+        if (center.IsNaN() || extents.IsNaN())
+        {
+            return false;
+        }
+
+        const bool ignore_depth = m_light_type == LightType::Directional; // orthographic
         return m_frustums[array_index].IsVisible(center, extents, ignore_depth);
     }
 }

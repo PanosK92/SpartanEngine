@@ -48,11 +48,9 @@ static const float g_refraction_max_distance  = 2.0f;   // max refraction distan
 static const float g_refraction_thickness     = 0.1f;   // depth testing thickness
 static const float g_refraction_step_length   = g_refraction_max_distance / (float)g_refraction_max_steps;
 
-// foam where the ocean meets geometry, beaches use the shallow water column, pillars and shoreline edges use nearby opaque samples
-static const float shore_foam_width      = 1.25f; // meters of water depth that still foams
-static const float shore_foam_strength   = 1.0f;
-static const float contact_foam_height   = 1.5f; // vertical band around the waterline
-static const float contact_foam_strength = 1.0f;
+// shoreline foam from world-space water depth along the view ray, crest-style, no screen space neighbor rings
+static const float shore_foam_width    = 0.6f; // meters of water column that still foams
+static const float shore_foam_strength = 0.75f;
 
 // Compute Fresnel for dielectrics using Schlick approximation
 float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_inner)
@@ -199,43 +197,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // coverage mask out there, the cascade resolution is adequate at that magnification anyway
         foam = lerp(eroded, coverage, saturate(surface.camera_to_pixel_length / 100.0f));
 
-        // contact foam against opaque-only depth, beaches from the water column, pillars from emergent neighbors near the waterline
-        float2 uv_foam      = (thread_id.xy + 0.5f) / resolution_out;
-        float2 texel        = 1.0f / resolution_out;
-        float  depth_water  = linearize_depth(surface.depth);
-        float  depth_opaque = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], uv_foam, 0.0f).r);
-        float  thickness    = max(depth_opaque - depth_water, 0.0f);
-        float  shore        = saturate(1.0f - thickness / shore_foam_width);
-
-        float contact = 0.0f;
-        [unroll]
-        for (uint ring = 0; ring < 4; ++ring)
+        // shoreline foam from the water column behind this pixel, world space depth only, never screen adjacent silhouettes
+        float2 uv_foam         = (thread_id.xy + 0.5f) / resolution_out;
+        float  depth_water     = linearize_depth(surface.depth);
+        float  depth_opaque_raw = tex4.SampleLevel(samplers[sampler_point_clamp], uv_foam, 0.0f).r;
+        float  depth_opaque    = linearize_depth(depth_opaque_raw);
+        if (depth_opaque > depth_water + 0.02f)
         {
-            float radius = float(1u << ring); // 1, 2, 4, 8 texels
-            [unroll]
-            for (uint i = 0; i < 4; ++i)
+            float3 opaque_pos     = get_position(depth_opaque_raw, render_uv_to_screen_uv(uv_foam));
+            float  water_clearance = surface.position.y - opaque_pos.y;
+            if (water_clearance > 0.0f)
             {
-                float2 dir = float2((i == 0) ? 1.0f : (i == 1) ? -1.0f : 0.0f, (i == 2) ? 1.0f : (i == 3) ? -1.0f : 0.0f);
-                float2 nuv = uv_foam + dir * texel * radius;
-                if (!is_valid_uv(nuv))
-                {
-                    continue;
-                }
-
-                float  depth_n_raw = tex4.SampleLevel(samplers[sampler_bilinear_clamp], nuv, 0.0f).r;
-                float  depth_n     = linearize_depth(depth_n_raw);
-                float3 npos        = get_position(depth_n_raw, render_uv_to_screen_uv(nuv));
-                float  waterline   = saturate(1.0f - abs(npos.y - surface.position.y) / contact_foam_height);
-                // emergent geometry sits closer than the water surface, submerged contacts sit just behind it
-                float  emergent    = saturate((depth_water - depth_n) * 4.0f);
-                float  submerged   = saturate(1.0f - max(depth_n - depth_water, 0.0f) / shore_foam_width);
-                contact            = max(contact, max(emergent, submerged) * waterline);
+                float shore = saturate(1.0f - water_clearance / shore_foam_width);
+                shore       = shore * shore;
+                float shore_foam = saturate((lace + shore * shore_foam_strength - 1.0f) * 3.5f) * 0.7f;
+                foam = saturate(max(foam, shore_foam));
             }
         }
-
-        float geometry_foam = max(shore * shore_foam_strength, contact * contact_foam_strength);
-        geometry_foam      *= lerp(0.55f + 0.45f * lace, 1.0f, 0.25f);
-        foam                = saturate(max(foam, geometry_foam));
     }
 
     // get background color

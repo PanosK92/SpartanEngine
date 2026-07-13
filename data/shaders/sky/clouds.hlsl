@@ -130,11 +130,8 @@ static const float  cloud_albedo          = 0.97;   // single scattering albedo,
 static const float  cloud_sun_step_base   = 30.0;   // first sun-march step length, finer to avoid noisy self-shadow
 static const float  cloud_sun_step_growth = 2.0;    // geometric growth between sun samples, 8 steps cover ~7.7 km, the old 6 step growth 2.8 march quantized the optical depth into shells that striped the shaded side of thick bulbs
 
-// night lighting, faint cool blue glow so cumulus do not go pitch black after sunset. the
-// moon tint is multiplied into the moon-dir transmittance lookup, the airglow floor models
-// scattered starlight and atmospheric chemiluminescence and is present even without a moon
-static const float3 cloud_moon_tint       = float3(0.0006, 0.0009, 0.0014);
-static const float3 cloud_night_floor     = float3(0.0018, 0.0028, 0.0050);
+// night lighting, moon and airglow share night_sky_* / night_moon_to_sun from common.hlsl
+static const float3 cloud_moon_tint = float3(0.92, 0.97, 1.08) * night_moon_to_sun;
 
 // aerial perspective, atmospheric extinction along the camera-to-sample ray. a 25 km mean
 // free path matches clear-day visibility, distant clouds haze out gradually toward the
@@ -865,33 +862,32 @@ void cloud_march_cumulus(
             float3 sun_light  = cloud_sun_illuminance(pos, sun_dir, transmittance_lut, samp_lut);
             float3 sun_scat   = cloud_multiscatter_attenuation(sun_light, sun_od, cos_th);
             
-            // moon lighting, mirrors the sun illuminance pipeline with -sun_dir, scaled to a
-            // realistic moon-to-sun irradiance ratio and tinted cool. self-shadowing through the
-            // cloud is skipped since the contribution is far below the visible threshold anyway
+            float sun_elev = dot(sun_dir, float3(0.0, 1.0, 0.0));
+            float day_w    = smoothstep(-0.05, 0.18, sun_elev);
+            float night_w  = 1.0 - day_w;
+            
             float3 moon_dir   = -sun_dir;
             float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint;
             float3 moon_scat  = moon_light * cloud_phase(-cos_th);
             
             float h           = length(pos - cloud_earth_center) - cloud_earth_radius;
             float h_norm      = saturate((h - cumulus_bottom_alt) / cumulus_thickness);
-            // ambient rides on the transmittance-tinted sun color so clouds warm up at sunset
-            float3 ambient    = lerp(cloud_ambient_bottom, cloud_ambient_top, h_norm);
-            ambient          *= sun_light * cloud_ambient_factor + 0.005;
             
-            // warm terrain bounce fills the undersides at midday so flat bases read grey blue
-            // over sunlit ground instead of dead black, fades out over the lower half
-            ambient          += sun_light * cloud_ground_bounce * saturate(1.0 - h_norm * 2.0);
+            // daytime ambient, sun driven
+            float3 ambient_day = lerp(cloud_ambient_bottom, cloud_ambient_top, h_norm);
+            ambient_day       *= sun_light * cloud_ambient_factor + 0.005;
+            ambient_day       += sun_light * cloud_ground_bounce * saturate(1.0 - h_norm * 2.0);
             
-            // ambient occlusion proxy, samples deeper along the view ray sit deeper inside the
-            // cloud where less sky light reaches, this keeps interiors shaped instead of washed
-            ambient          *= lerp(0.5, 1.0, transmittance);
+            // night ambient, sky fill locked to night_sky_radiance so clouds cannot fall below the exposed sky
+            float3 ambient_night = night_sky_radiance(h_norm * 2.0 - 1.0) + night_airglow_rad;
+            ambient_night       *= lerp(0.95, 1.20, h_norm);
             
-            // night ambient floor, faint cool airglow that lights the underside of clouds even
-            // on a moonless night so cumulus never go pitch black. mildly height modulated so
-            // the cloud tops still read brighter than the bottoms
-            ambient          += cloud_night_floor * lerp(0.7, 1.1, h_norm);
+            float3 ambient = lerp(ambient_night, ambient_day, day_w);
+            ambient       *= lerp(0.85, 1.0, transmittance);
             
-            float3 direct       = (sun_scat + moon_scat) * cloud_powder(sun_od, cos_th);
+            float moon_elev_c = dot(moon_dir, float3(0.0, 1.0, 0.0));
+            float moon_vis    = smoothstep(-0.05, 0.12, moon_elev_c);
+            float3 direct       = (sun_scat * day_w + moon_scat * night_w * moon_vis) * cloud_powder(sun_od, cos_th);
             float3 luminance_in = direct + ambient;
             float3 s_int        = cloud_albedo * luminance_in * (1.0 - step_trans);
             
@@ -958,14 +954,18 @@ void cloud_march_cirrus(
             float step_trans = exp(-ext * dt);
             
             float3 sun_light = cloud_sun_illuminance(pos, sun_dir, transmittance_lut, samp_lut);
+            float sun_elev_c = dot(sun_dir, float3(0.0, 1.0, 0.0));
+            float day_w_c    = smoothstep(-0.05, 0.18, sun_elev_c);
+            float night_w_c  = 1.0 - day_w_c;
             
-            // moon lighting plus a small fraction of the night floor so cirrus stay faintly
-            // visible at night instead of disappearing into a black sky
             float3 moon_dir   = -sun_dir;
             float3 moon_light = cloud_sun_illuminance(pos, moon_dir, transmittance_lut, samp_lut) * cloud_moon_tint;
             float moon_phase  = cloud_hg_phase(-cos_th, 0.62);
             
-            float3 scat       = sun_light * phase + moon_light * moon_phase + cloud_night_floor * 0.4;
+            float3 night_amb = night_sky_radiance(0.35) + night_airglow_rad * 0.8;
+            float moon_elev_ci = dot(moon_dir, float3(0.0, 1.0, 0.0));
+            float moon_vis_c   = smoothstep(-0.05, 0.12, moon_elev_ci);
+            float3 scat      = sun_light * phase * day_w_c + moon_light * moon_phase * night_w_c * moon_vis_c + night_amb * night_w_c;
             
             // aerial perspective, same model as the cumulus march. cirrus is higher up so the
             // haze along grazing rays is a bit thinner, but the effect is significant enough

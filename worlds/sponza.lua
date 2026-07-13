@@ -25,11 +25,34 @@ local function set_cull_none(root, name)
     return material
 end
 
+-- new sponza ships dozens of lamp_light_* nodes, cluster shading can drive them all as shadowless points
+local function enable_sponza_lights(root)
+    local descendants = root:GetDescendants()
+    for i = 1, #descendants do
+        local node = descendants[i]
+        local name = node:GetName()
+        if name and string.find(name, "lamp_light", 1, true) and not string.find(name, "Orientation", 1, true) then
+            local light = node:GetComponent(ComponentType.Light)
+            if not light then
+                light = node:AddComponent(ComponentType.Light)
+                light:SetLightType(LightType.Point)
+                light:SetIntensity(LightIntensity.bulb_100_watt)
+                light:SetRange(10.0)
+            end
+
+            light:SetFlag(LightFlags.Shadows, false)
+            light:SetFlag(LightFlags.Volumetric, false)
+            node:SetActive(true)
+        end
+    end
+end
+
 function sponza.Initialize(self, entity)
     World.SetWind(Vector3(0.0, 0.02, 0.1))
 
-    -- main building
-    local mesh_main = ResourceCache.LoadMesh("project/models/sponza/main/NewSponza_Main_Blender_glTF.gltf", Mesh.GetDefaultFlags())
+    -- main building, import authored lights so cluster shading can pick them up
+    local mesh_flags = Mesh.GetDefaultFlags() | MeshFlags.ImportLights
+    local mesh_main = ResourceCache.LoadMesh("project/models/sponza/main/NewSponza_Main_Blender_glTF.gltf", mesh_flags)
     if mesh_main then
         local main = mesh_main:GetRootEntity()
         main:SetName("sponza")
@@ -54,6 +77,8 @@ function sponza.Initialize(self, entity)
                 physics:SetBodyType(BodyType.Mesh)
             end
         end
+
+        enable_sponza_lights(main)
     end
 
     -- curtains

@@ -714,16 +714,16 @@
     <Entity name="spline_point_3" id="7428135809617811879" active="true" position="856.55 10.1 -1787.58" rotation="0 0 0 1" scale="1 1 1" />
    </Entity>
    <Entity name="camera_1" id="235553311964844809" active="true" position="156.582 5.21233 -383.519" rotation="0.00519462 0.984713 -0.0298198 0.171537" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
    <Entity name="camera_3" id="235336573997620476" active="true" position="620.691 9.008 -1318.8" rotation="0.00528215 0.979694 -0.0260403 0.198727" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
    <Entity name="camera_static" id="235553311964845001" active="true" position="467.472 4.89759 -1022.51" rotation="-0.0380371 -0.258625 0.00665301 0.965205" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
    <Entity name="camera_finale" id="235553311964845002" active="true" position="870 9.5 -1822" rotation="0.0207088 -0.228518 0.00486214 0.973307" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
   </Entity>
   <Entity name="park" id="17593911269736004288" active="true" position="40 0 180" rotation="0 0 0 1" scale="1 1 1">
@@ -3462,7 +3462,7 @@
   <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="197.169 4.64485 68.9972" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="0.0984881 0.305359 -0.0317719 0.946597" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" fov_horizontal="1.57176566" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57176566" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
   </Entity>
   <Entity name="spline_car" id="5723169428173956022" active="true" position="1958.04 8.31514 800.637" rotation="0.00100538 -0.826177 0.00147428 0.563408" scale="1 1 1">
@@ -3473,16 +3473,16 @@
    <prefab_override path="vehicle/wheel_rear_right" position="-1.57159 0.655991 2.60003" rotation="0.203829 1.78683e-07 -7.45058e-08 0.979007" scale="0.38736 0.38736 0.38736" />
    <prefab_override path="vehicle/wheel_rear_left" position="1.56764 0.662726 2.60504" rotation="6.70552e-08 0.979007 0.203829 -2.38419e-07" scale="0.38736 0.38736 0.38736" />
    <Entity name="camera_wheel" id="5723169428173957001" active="true" position="-3.06563 1.1557 -4.06346" rotation="0.105288 0.31571 -0.0364061 0.942293" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
    <Entity name="camera_hood" id="5723169428173957002" active="true" position="0.283028 1.70274 -2.47828" rotation="0 1 0 0" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
    <Entity name="camera_dash" id="5723169428173957003" active="true" position="0.646301 1.67173 -0.0544891" rotation="0 1 0 0" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
    <Entity name="camera_rear" id="5723169428173957004" active="true" position="0.0113678 1.9244 1.79459" rotation="0 0 0 1" scale="1 1 1">
-    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="0" flags="17" />
+    <camera aperture="1.4" shutter_speed="0.0333333351" iso="1600" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="5" flags="17" />
    </Entity>
   </Entity>
   <Entity name="industrial" id="1426820836785749885" active="true" position="220 0 -360" rotation="0 0 0 1" scale="1 1 1">

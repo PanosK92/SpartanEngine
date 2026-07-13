@@ -106,14 +106,20 @@ void main_cs(uint group_index : SV_GroupIndex)
     float avg_nits = exp2(log2_sum / max(weight_sum, 0.000001f));
     avg_nits       = clamp(avg_nits, avg_nits_min, avg_nits_max);
 
-    // perceptual key from krawczyk et al, bright scenes render bright, dark scenes stay dark
+    // perceptual key from krawczyk et al, bright scenes render bright
     float key = 1.03f - 2.0f / (2.0f + log10(avg_nits + 1.0f));
+    // krawczyk alone maps a few-nit night sky to mid gray, which reads as a fake daylight blue
+    // pull the key down hard in the dark so night stays near black and day is unchanged
+    float dark_t = saturate((log2(avg_nits + 1e-4f) + 2.0f) / 8.0f);
+    key = lerp(0.018f, key, dark_t * dark_t);
 
     // exposure compensation is an artist controlled bias in stops, positive brightens
     float exposure_compensation = pass_get_f3_value().y;
 
     // map the metered average to the key in display units where 1 is paper white
     float target_exposure = (key / avg_nits) * exp2(exposure_compensation);
+    // never lift darker than a physical night camera (~ev 2), stops night from becoming day
+    target_exposure = min(target_exposure, 0.30f);
 
     float prev_exposure = tex2.Load(int3(0, 0, 0)).r;
     if (isnan(prev_exposure) || prev_exposure <= 0.0f)

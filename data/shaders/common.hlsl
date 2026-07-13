@@ -97,6 +97,20 @@ float3 get_sun_radiance()
     return get_sun_color() * get_sun_intensity();
 }
 
+// shared night radiometric levels, skysphere ambient and cloud night lighting both use these
+// so the panorama stays one coherent night exposure instead of detached layers
+static const float3 night_sky_zenith_rad  = float3(0.00009, 0.00015, 0.00030);
+static const float3 night_sky_horizon_rad = float3(0.00022, 0.00030, 0.00048);
+static const float3 night_airglow_rad     = float3(0.00010, 0.00014, 0.00007);
+// moon/sun irradiance ratio applied on top of get_sun_radiance_toa(), keep near physical ~4e-6
+static const float  night_moon_to_sun     = 2.0e-5;
+
+float3 night_sky_radiance(float up_y)
+{
+    float h = saturate(up_y * 0.5 + 0.5);
+    return lerp(night_sky_horizon_rad, night_sky_zenith_rad, h);
+}
+
 // fft ocean water body optics, shared by the refraction composite and the underwater ambient fill
 // so the water column and the objects submerged in it agree on the same color and falloff
 static const float3 ocean_scatter_albedo = float3(0.0f, 0.09f, 0.13f);                // deep blue-green in-scattering albedo, lit by the downwelling light

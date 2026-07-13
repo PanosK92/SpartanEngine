@@ -530,6 +530,8 @@ namespace spartan
         Gizmo_audio_source,
         Gizmo_camera,
         Gizmo_particle,
+        Sky_stars,
+        Sky_star_grid,
         Black,
         White,
         Max

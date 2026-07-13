@@ -224,8 +224,17 @@ namespace spartan
 
     bool Camera::IsInViewFrustum(const BoundingBox& bounding_box) const
     {
+        if (bounding_box.IsInfinite())
+        {
+            return true;
+        }
+
         const Vector3 center  = bounding_box.GetCenter();
         const Vector3 extents = bounding_box.GetExtents();
+        if (center.IsNaN() || extents.IsNaN())
+        {
+            return false;
+        }
 
         return m_frustum.IsVisible(center, extents);
     }

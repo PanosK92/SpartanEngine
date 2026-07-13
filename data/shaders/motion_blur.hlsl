@@ -46,8 +46,7 @@ static const float NEIGHBORHOOD_RADIUS_PIXELS = 16.0f;
 static const float RADIAL_HUB_RANGE_SCALE = 1.35f;
 static const float MAX_RADIAL_ANGLE      = 1.0f; // radians per blur direction, keeps arcs tasteful at high rpm
 
-// soft depth comparison (guerrilla games / killzone approach)
-// returns 1 when depth_a is behind or equal to depth_b
+// soft depth comparison, linear depth larger is farther, returns 1 when depth_a is closer or equal
 float soft_depth_compare(float depth_a, float depth_b)
 {
     return saturate(1.0f - (depth_a - depth_b) * DEPTH_SCALE);
@@ -394,20 +393,22 @@ float4 motion_blur_reconstruction(
             float4 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_fwd, 0);
             float  sample_depth = get_linear_depth(uv_fwd * get_render_uv_scale());
             float2 sample_vel   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_fwd * get_render_uv_scale(), 0).xy;
-            float  sample_blur  = length(sample_vel * resolution) * shutter_ratio;
+            float2 sample_vel_px = sample_vel * resolution;
+            float  sample_blur  = length(sample_vel_px) * shutter_ratio;
 
-            // depth-aware weighting
-            float depth_weight_fg = soft_depth_compare(center_depth, sample_depth); // sample in front
-            float depth_weight_bg = soft_depth_compare(sample_depth, center_depth); // center in front
+            // linear depth, sample in front when sample_depth < center_depth
+            float sample_in_front = soft_depth_compare(sample_depth, center_depth);
+            float center_in_front = soft_depth_compare(center_depth, sample_depth);
+            float vel_weight      = velocity_weight(min(sample_blur, MAX_BLUR_RADIUS_PIXELS), clamped_blur, sample_dist);
+            float weight          = falloff * (sample_in_front + center_in_front * vel_weight);
 
-            // velocity-based weight
-            float vel_weight = velocity_weight(min(sample_blur, MAX_BLUR_RADIUS_PIXELS), clamped_blur, sample_dist);
+            // depth-ambiguous contacts need velocity agreement or skirts/lights smear into the ground
+            float depth_ambiguous = sample_in_front * center_in_front;
+            float sample_speed    = length(sample_vel_px);
+            float dir_agree       = sample_speed > 1e-4f ? saturate(dot(sample_vel_px / sample_speed, blur_dir)) : 0.0f;
+            weight *= lerp(1.0f, dir_agree * dir_agree, depth_ambiguous);
 
-            // combine weights
-            float weight = falloff * (depth_weight_fg + depth_weight_bg * vel_weight);
-            weight = max(weight, 0.01f); // minimum weight to prevent harsh cutoffs
-
-            color_sum += sample_color * weight;
+            color_sum  += sample_color * weight;
             weight_sum += weight;
         }
 
@@ -417,26 +418,26 @@ float4 motion_blur_reconstruction(
             float4 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_bwd, 0);
             float  sample_depth = get_linear_depth(uv_bwd * get_render_uv_scale());
             float2 sample_vel   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_bwd * get_render_uv_scale(), 0).xy;
-            float  sample_blur  = length(sample_vel * resolution) * shutter_ratio;
+            float2 sample_vel_px = sample_vel * resolution;
+            float  sample_blur  = length(sample_vel_px) * shutter_ratio;
 
-            // depth-aware weighting
-            float depth_weight_fg = soft_depth_compare(center_depth, sample_depth);
-            float depth_weight_bg = soft_depth_compare(sample_depth, center_depth);
+            float sample_in_front = soft_depth_compare(sample_depth, center_depth);
+            float center_in_front = soft_depth_compare(center_depth, sample_depth);
+            float vel_weight      = velocity_weight(min(sample_blur, MAX_BLUR_RADIUS_PIXELS), clamped_blur, sample_dist);
+            float weight          = falloff * (sample_in_front + center_in_front * vel_weight);
 
-            // velocity-based weight
-            float vel_weight = velocity_weight(min(sample_blur, MAX_BLUR_RADIUS_PIXELS), clamped_blur, sample_dist);
+            float depth_ambiguous = sample_in_front * center_in_front;
+            float sample_speed    = length(sample_vel_px);
+            float dir_agree       = sample_speed > 1e-4f ? saturate(dot(sample_vel_px / sample_speed, blur_dir)) : 0.0f;
+            weight *= lerp(1.0f, dir_agree * dir_agree, depth_ambiguous);
 
-            // combine weights
-            float weight = falloff * (depth_weight_fg + depth_weight_bg * vel_weight);
-            weight = max(weight, 0.01f);
-
-            color_sum += sample_color * weight;
+            color_sum  += sample_color * weight;
             weight_sum += weight;
         }
     }
 
     // final result
-    float4 result = color_sum / weight_sum;
+    float4 result = color_sum / max(weight_sum, FLT_MIN);
     result.a = center_color.a;
 
     return result;

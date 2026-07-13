@@ -153,7 +153,8 @@ struct FrameBufferData
     // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
     SHARED_FLOAT4 radial_blur_hubs[8];
     SHARED_FLOAT  radial_blur_hub_count;
-    SHARED_FLOAT  padding_radial_0;
+    // 0 = midnight, 0.5 = noon, drives catalog star and milky way rotation with the sun day cycle
+    SHARED_FLOAT  time_of_day;
     SHARED_FLOAT  padding_radial_1;
     SHARED_FLOAT  padding_radial_2;
 

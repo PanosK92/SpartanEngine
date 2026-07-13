@@ -257,6 +257,9 @@ ModelManifest.xml
 
 # Rider IDE config dir
 .idea/
+
+# sky catalog bake download cache
+tools/sky/_cache/
 /third_party/libraries/libraries.7z
 /assets
 /spartan.slnx

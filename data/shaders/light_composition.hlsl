@@ -171,6 +171,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 light_gi            = 0.0f;
     float alpha                = 0.0f;
     float distance_from_camera = 0.0f;
+    float ocean_geometry_foam  = 0.0f;
 
     // fill in the sky pixels
     if (surface.is_sky() && pass_is_opaque())
@@ -254,6 +255,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     light_diffuse       += sun_incident * get_ocean_caustic(entry_xz, sun_path) * buffer_frame.ocean_caustics_intensity * distance_fade * lap_band;
                 }
             }
+
+            // waterline foam on the object itself, world space height vs the ocean, no screen space edges
+            float d     = surface.position.y - water_height;
+            float above = saturate(1.0f - max(d, 0.0f) / 0.05f);
+            float below = saturate(1.0f - max(-d, 0.0f) / 0.35f);
+            float band  = (d >= 0.0f) ? above : below;
+            band        = band * band;
+            float wall  = saturate(1.0f - abs(surface.normal.y));
+            float floor_up = saturate(surface.normal.y);
+            float coverage = band * max(wall, floor_up * below);
+            float lace = hash(surface.position.xz * 4.0f) * 0.45f + hash(surface.position.xz * 13.0f) * 0.35f + hash(surface.position.xz * 41.0f) * 0.2f;
+            ocean_geometry_foam = saturate((lace + coverage - 1.0f) * 3.5f) * 0.7f;
         }
     }
     
@@ -313,5 +326,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // each pixel reaches this point once per frame so a straight write is safe
-    tex_uav[thread_id.xy] = validate_output(float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric + light_gi, alpha));
+    float3 color = light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric + light_gi;
+    if (ocean_geometry_foam > 0.0f)
+    {
+        float  n_dot_l  = saturate(dot(surface.normal, -light_parameters[0].direction));
+        float3 foam_lit = get_sun_radiance() * (n_dot_l * 0.5f + 0.5f) * (1.0f / PI) * float3(0.97f, 0.98f, 1.0f) * 2.0f;
+        foam_lit       += light_atmospheric + light_specular * 0.2f;
+        color           = lerp(color, foam_lit, ocean_geometry_foam);
+    }
+    tex_uav[thread_id.xy] = validate_output(float4(color, alpha));
 }

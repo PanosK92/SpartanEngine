@@ -91,9 +91,11 @@ namespace spartan
             }
 
             // dimensions
-            Vector3 GetCenter() const  { return (m_max + m_min) * 0.5f; }
-            Vector3 GetSize() const    { return m_max - m_min; }
-            Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
+            // infinite min/max make center/extents nan via inf-inf, treat that case explicitly
+            bool IsInfinite() const { return m_min == Vector3::InfinityNeg && m_max == Vector3::Infinity; }
+            Vector3 GetCenter() const  { return IsInfinite() ? Vector3::Zero : (m_max + m_min) * 0.5f; }
+            Vector3 GetSize() const    { return IsInfinite() ? Vector3::Infinity : (m_max - m_min); }
+            Vector3 GetExtents() const { return IsInfinite() ? Vector3::Infinity : (m_max - m_min) * 0.5f; }
             float GetVolume() const
             {
                 Vector3 size = GetSize();

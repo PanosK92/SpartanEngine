@@ -196,6 +196,6 @@ namespace spartan
     TConsoleVar<float> cvar_meshlet_visualize              ("r.meshlet_visualize",              0.0f,                                                    "meshlet debug visualisation written to debug_output (0 off, 1 color by meshlet id, 2 wireframe by meshlet id, 3 color by post-cull draw id, 4 wireframe by post-cull draw id)");
     TConsoleVar<float> cvar_cluster_visualize              ("r.cluster_visualize",              0.0f,                                                    "clustered lighting debug heatmap written to debug_output (0 off, 1 lights per cluster, 2 cluster slice z)");
     TConsoleVar<float> cvar_cluster_visualize_cap          ("r.cluster_visualize_cap",          4.0f,                                                    "lights per cluster mapped to full red on the heatmap, lower for more contrast in lightly populated scenes");
-    TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, 0 or negative disables");
+    TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.0f,                                                    "auto exposure adaptation speed, 0 or negative disables, physical camera exposure is used when disabled");
     TConsoleVar<float> cvar_auto_exposure_compensation     ("r.auto_exposure_compensation",     0.0f,                                                    "auto exposure bias in ev stops, positive brightens");
 }

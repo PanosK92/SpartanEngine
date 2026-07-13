@@ -405,8 +405,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // convert once here so exposure and tone mapping operate in photometric display space.
     color.rgb = radiometric_to_photometric(color.rgb);
 
-    // apply exposure
-    // auto exposure stores the resolved final scale, while manual mode falls back to the camera settings
+    // apply exposure, auto exposure meters the scene, manual mode uses the physical camera
     float exposure = is_auto_exposure ? tex2.Load(int3(0, 0, 0)).r : buffer_frame.camera_exposure;
     color.rgb     *= exposure;
     

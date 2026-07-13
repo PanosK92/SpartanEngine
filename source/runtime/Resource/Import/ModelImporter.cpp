@@ -1172,14 +1172,7 @@ namespace spartan
                 light->SetFlag(LightFlags::Shadows, false);
                 light->SetFlag(LightFlags::Volumetric, false);
 
-                // local transform
-                light->GetEntity()->SetPositionLocal(to_vector3(light_assimp->mPosition));
-                light->GetEntity()->SetRotationLocal(Quaternion::FromLookRotation(to_vector3(light_assimp->mDirection)));
-
-                // color
-                light->SetColor(to_color(light_assimp->mColorDiffuse));
-
-                // type
+                // type first so constructor side effects do not leave an infinite/max bbox
                 switch (light_assimp->mType)
                 {
                     case aiLightSource_DIRECTIONAL:
@@ -1193,8 +1186,23 @@ namespace spartan
                         light->SetLightType(LightType::Spot);
                         break;
                     default:
+                        light->SetLightType(LightType::Point);
                         break;
                 }
+
+                // local transform, only orient lights that have a meaningful direction
+                light->GetEntity()->SetPositionLocal(to_vector3(light_assimp->mPosition));
+                if (light_assimp->mType == aiLightSource_DIRECTIONAL || light_assimp->mType == aiLightSource_SPOT)
+                {
+                    const Vector3 direction = to_vector3(light_assimp->mDirection);
+                    if (direction.LengthSquared() > epsilon)
+                    {
+                        light->GetEntity()->SetRotationLocal(Quaternion::FromLookRotation(direction));
+                    }
+                }
+
+                // color
+                light->SetColor(to_color(light_assimp->mColorDiffuse));
             }
         }
     }

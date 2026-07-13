@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../XR/Xr.h"
 #include "../Core/ThreadPool.h"
+#include <fstream>
 #ifdef _MSC_VER
 #include "../RHI/RHI_VendorTechnology.h"
 #endif
@@ -980,6 +981,7 @@ namespace spartan
     {
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "/";
         const string dir_icon    = ResourceCache::GetResourceDirectory(ResourceDirectory::Icons) + "/";
+        const string dir_shaders = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/";
 
         struct TexDef
         {
@@ -1021,6 +1023,118 @@ namespace spartan
 
             at(standard_textures, Renderer_StandardTexture::Black) = create_solid_texture("black_texture", std::byte{0},   std::byte{0},   std::byte{0},   std::byte{255});
             at(standard_textures, Renderer_StandardTexture::White) = create_solid_texture("white_texture", std::byte{255}, std::byte{255}, std::byte{255}, std::byte{255});
+        }
+
+        // yale bright star catalog, sorted into an angular grid for the night sky draw
+        {
+            const string stars_path = dir_shaders + "sky/stars.bin";
+            ifstream file(stars_path, ios::binary);
+            struct StarRaw
+            {
+                float dir_x, dir_y, dir_z;
+                float col_r, col_g, col_b;
+                float radius;
+            };
+
+            uint32_t magic = 0;
+            uint32_t version = 0;
+            uint32_t star_count = 0;
+            vector<StarRaw> stars;
+            if (file.is_open())
+            {
+                file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
+                file.read(reinterpret_cast<char*>(&version), sizeof(version));
+                file.read(reinterpret_cast<char*>(&star_count), sizeof(star_count));
+                if (magic == 0x52545353 && version == 1 && star_count > 0 && star_count < 100000)
+                {
+                    stars.resize(star_count);
+                    file.read(reinterpret_cast<char*>(stars.data()), static_cast<streamsize>(star_count * sizeof(StarRaw)));
+                }
+            }
+
+            constexpr uint32_t grid_w = 256;
+            constexpr uint32_t grid_h = 128;
+            vector<vector<uint32_t>> cells(grid_w * grid_h);
+            auto direction_to_uv = [](float x, float y, float z) -> pair<float, float>
+            {
+                float u = 0.5f + atan2f(z, x) / (2.0f * pi);
+                float v = 0.5f - asinf(clamp(y, -1.0f, 1.0f)) / pi;
+                u = u - floorf(u);
+                return { u, v };
+            };
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(stars.size()); i++)
+            {
+                const StarRaw& s = stars[i];
+                auto [u, v] = direction_to_uv(s.dir_x, s.dir_y, s.dir_z);
+                uint32_t cx = min(grid_w - 1u, static_cast<uint32_t>(u * grid_w));
+                uint32_t cy = min(grid_h - 1u, static_cast<uint32_t>(v * grid_h));
+                cells[cy * grid_w + cx].push_back(i);
+            }
+
+            vector<StarRaw> sorted;
+            sorted.reserve(stars.size());
+            vector<uint32_t> cell_offset(grid_w * grid_h, 0);
+            vector<uint32_t> cell_count(grid_w * grid_h, 0);
+            uint32_t running = 0;
+            for (uint32_t c = 0; c < grid_w * grid_h; c++)
+            {
+                cell_offset[c] = running;
+                cell_count[c]  = static_cast<uint32_t>(cells[c].size());
+                for (uint32_t idx : cells[c])
+                {
+                    sorted.push_back(stars[idx]);
+                }
+                running += cell_count[c];
+            }
+
+            const uint32_t count = max(1u, static_cast<uint32_t>(sorted.size()));
+            vector<std::byte> star_bytes(static_cast<size_t>(count) * 2u * 16u, std::byte{0});
+            for (uint32_t i = 0; i < static_cast<uint32_t>(sorted.size()); i++)
+            {
+                const StarRaw& s = sorted[i];
+                float row0[4] = { s.dir_x, s.dir_y, s.dir_z, s.radius };
+                float row1[4] = { s.col_r, s.col_g, s.col_b, 0.0f };
+                memcpy(star_bytes.data() + (static_cast<size_t>(i) * 16u), row0, 16);
+                memcpy(star_bytes.data() + (static_cast<size_t>(count + i) * 16u), row1, 16);
+            }
+
+            vector<std::byte> grid_bytes(static_cast<size_t>(grid_w * grid_h) * 16u, std::byte{0});
+            for (uint32_t c = 0; c < grid_w * grid_h; c++)
+            {
+                float cell[4];
+                uint32_t off = cell_offset[c];
+                uint32_t cnt = cell_count[c];
+                memcpy(&cell[0], &off, 4);
+                memcpy(&cell[1], &cnt, 4);
+                cell[2] = 0.0f;
+                cell[3] = 0.0f;
+                memcpy(grid_bytes.data() + static_cast<size_t>(c) * 16u, cell, 16);
+            }
+
+            {
+                vector<RHI_Texture_Mip> mips = { RHI_Texture_Mip{ move(star_bytes) } };
+                vector<RHI_Texture_Slice> slices = { RHI_Texture_Slice{ move(mips) } };
+                at(standard_textures, Renderer_StandardTexture::Sky_stars) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D, count, sorted.empty() ? 1u : 2u, 1, 1,
+                    RHI_Format::R32G32B32A32_Float, RHI_Texture_Srv, "sky_stars", slices);
+            }
+            {
+                vector<RHI_Texture_Mip> mips = { RHI_Texture_Mip{ move(grid_bytes) } };
+                vector<RHI_Texture_Slice> slices = { RHI_Texture_Slice{ move(mips) } };
+                at(standard_textures, Renderer_StandardTexture::Sky_star_grid) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D, grid_w, grid_h, 1, 1,
+                    RHI_Format::R32G32B32A32_Float, RHI_Texture_Srv, "sky_star_grid", slices);
+            }
+
+            if (!sorted.empty())
+            {
+                SP_LOG_INFO("loaded %u catalog stars for the night sky", static_cast<uint32_t>(sorted.size()));
+            }
+            else
+            {
+                SP_LOG_WARNING("night sky catalog missing or empty (%s)", stars_path.c_str());
+            }
         }
     }
 

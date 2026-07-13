@@ -425,39 +425,11 @@ float3 sample_sky_view_lut(Texture2D lut, SamplerState samp, float3 view_dir, fl
 // night sky
 // =====================================================================
 
-// blackbody color via tanner helland approximation, biased to plausible stellar temperatures
-float3 night_blackbody(float temp_k)
-{
-    temp_k = clamp(temp_k, 1000.0, 40000.0);
-    float t = temp_k * 0.01;
-    float3 c;
-    if (t <= 66.0)
-    {
-        c.r = 1.0;
-        c.g = saturate(0.39008157 * log(t) - 0.63184144);
-        c.b = (t <= 19.0) ? 0.0 : saturate(0.54320678 * log(t - 10.0) - 1.19625408);
-    }
-    else
-    {
-        c.r = saturate(1.29293619 * pow(t - 60.0, -0.1332047));
-        c.g = saturate(1.12989086 * pow(t - 60.0, -0.0755148));
-        c.b = 1.0;
-    }
-    return c;
-}
-
 float night_hash13(float3 p)
 {
     p = frac(p * 0.1031);
     p += dot(p, p.zyx + 31.32);
     return frac((p.x + p.y) * p.z);
-}
-
-float3 night_hash33(float3 p)
-{
-    p = frac(p * float3(0.1031, 0.103, 0.0973));
-    p += dot(p, p.yxz + 33.33);
-    return frac((p.xxy + p.yxx) * p.zyx);
 }
 
 // smooth 3d value noise on a hashed lattice
@@ -510,11 +482,11 @@ float3 night_rotate_about_axis(float3 dir, float3 axis, float angle)
     return dir * c + cross(axis, dir) * s + axis * dot(axis, dir) * (1.0 - c);
 }
 
-float3 night_apply_earth_rotation(float3 view_dir, float time_seconds)
+float3 night_apply_earth_rotation(float3 view_dir, float time_of_day)
 {
-    const float sidereal_day_seconds = 86164.0905;
-    const float3 celestial_axis      = float3(0.0, 0.70710678, 0.70710678);
-    return night_rotate_about_axis(view_dir, celestial_axis, time_seconds * PI2 / sidereal_day_seconds);
+    // same axis as Light::SetTimeOfDay / DayNightCycle, sun and stars share one earth spin
+    const float3 celestial_axis = float3(1.0, 0.0, 0.0);
+    return night_rotate_about_axis(view_dir, celestial_axis, time_of_day * PI2);
 }
 
 // stars and milky way are dimmed by airmass toward the horizon, blue is attenuated more than red
@@ -524,114 +496,127 @@ float3 night_atmospheric_extinction(float3 view_dir)
     return exp(-airmass * float3(0.07, 0.10, 0.16));
 }
 
-// one star layer over a 3x3x3 neighborhood of a uniform 3d cell grid sampled along view_dir
-float3 night_compute_star_layer(float3 view_dir, float time,
-    float scale, float threshold, float radius_cells,
-    float mag_pow, float brightness, float twinkle, float halo)
+// yale bsc5 catalog stars as unresolved pinpoints, magnitude drives flux and size
+float3 night_compute_stars(float3 celestial_view, Texture2D stars_tex, Texture2D grid_tex, float time_seconds)
 {
-    float3 sample_pos = view_dir * scale;
-    float3 cell       = floor(sample_pos);
-    float3 frac_pos   = frac(sample_pos);
-    float r2_max      = radius_cells * radius_cells;
-    
+    float2 res;
+    grid_tex.GetDimensions(res.x, res.y);
+    if (res.x < 2.0 || res.y < 2.0)
+    {
+        return float3(0, 0, 0);
+    }
+
+    float2 uv = direction_sphere_uv(celestial_view);
+    int2 grid_size = int2(res);
+    int2 cell = int2(uv * res);
+    cell = clamp(cell, int2(0, 0), grid_size - 1);
+
+    // skysphere equirect is 4096 wide, one texel is the natural unresolved star size
+    const float pixel_ang = PI2 / 4096.0;
+
     float3 result = float3(0, 0, 0);
-    
     [unroll]
-    for (int z = -1; z <= 1; z++)
+    for (int dy = -1; dy <= 1; dy++)
     {
         [unroll]
-        for (int y = -1; y <= 1; y++)
+        for (int dx = -1; dx <= 1; dx++)
         {
-            [unroll]
-            for (int x = -1; x <= 1; x++)
+            int2 c = cell + int2(dx, dy);
+            c.x = (c.x + grid_size.x) % grid_size.x;
+            c.y = clamp(c.y, 0, grid_size.y - 1);
+
+            float4 cell_data = grid_tex.Load(int3(c, 0));
+            uint offset = asuint(cell_data.x);
+            uint count  = asuint(cell_data.y);
+            count = min(count, 64u);
+
+            [loop]
+            for (uint i = 0; i < count; i++)
             {
-                float3 ofs = float3(x, y, z);
-                float3 c   = cell + ofs;
-                float3 h   = night_hash33(c);
-                
-                // probability gate, most cells produce no star
-                if (h.x > threshold) continue;
-                
-                // star center inside the cell, distance in cell units
-                float3 d     = ofs + h - frac_pos;
-                float dist2  = dot(d, d);
-                float gauss  = exp(-dist2 / r2_max);
-                if (gauss < 1e-3) continue;
-                
-                // power law magnitude, most stars dim and a few bright
-                float mag = pow(h.x / threshold, mag_pow);
-                
-                // blackbody color across plausible stellar temperatures
-                float temp = lerp(3500.0, 11000.0, h.y);
-                float3 col = night_blackbody(temp);
-                
-                // per-star twinkle, slow sinusoid offset by hash
-                float seed = h.z * PI2;
-                float tw   = 1.0 + twinkle * sin(time * 3.5 + seed);
-                
-                // soft additive halo only on the rare brightest layer
-                float halo_glow = 0.0;
-                if (halo > 0.0)
-                    halo_glow = halo * mag / (1.0 + dist2 * 60.0);
-                
-                result += col * mag * brightness * tw * (gauss + halo_glow);
+                int idx = int(offset + i);
+                float4 star = stars_tex.Load(int3(idx, 0, 0));
+                float4 col  = stars_tex.Load(int3(idx, 1, 0));
+
+                float3 star_dir = star.xyz;
+                float ndot = dot(celestial_view, star_dir);
+                // ~2.5 texels, enough for aa and the brightest diffraction arms
+                if (ndot < 0.999995)
+                {
+                    continue;
+                }
+
+                float mag  = star.w;
+                float flux = pow(10.0, -0.4 * mag);
+                // relative brightness weight, mag -1.5 -> ~1, mag 6.5 -> ~0
+                float bright = saturate((-mag + 6.5) / 8.0);
+                float ang2   = max(0.0, 1.0 - ndot) * 2.0;
+
+                // most stars stay inside one texel, only the brightest grow a little
+                float core_r = pixel_ang * (0.22 + bright * bright * 0.85);
+                float core   = exp(-ang2 / max(core_r * core_r, 1e-14));
+                if (core < 1e-3)
+                {
+                    continue;
+                }
+
+                // energy near night_sky scale, strong magnitude contrast, no common floor
+                float energy = flux * 0.035;
+                float3 rgb   = col.rgb * energy;
+
+                float seed    = frac(dot(star_dir, float3(12.9898, 78.233, 37.719)) * 43758.5453);
+                float twinkle = 1.0 + bright * 0.18 * sin(time_seconds * (1.6 + seed * 2.4) + seed * PI2);
+                float3 contrib = rgb * core * twinkle;
+
+                // thin diffraction cross on the brightest only
+                if (bright > 0.72)
+                {
+                    float3 t_axis, b_axis;
+                    night_make_basis(star_dir, t_axis, b_axis);
+                    float3 delta = celestial_view - star_dir * ndot;
+                    float u = abs(dot(delta, t_axis));
+                    float v = abs(dot(delta, b_axis));
+                    float sw = pixel_ang * 0.10;
+                    float sl = pixel_ang * (0.7 + bright * 1.6);
+                    float spike = exp(-u / sw) * exp(-v / sl) + exp(-v / sw) * exp(-u / sl);
+                    contrib += rgb * spike * bright * 0.28 * twinkle;
+                }
+
+                result += contrib;
             }
         }
     }
     return result;
 }
 
-// three layers of stars blended together for a believable magnitude distribution
-float3 night_compute_stars(float3 view_dir, float time)
-{
-    float3 result = float3(0, 0, 0);
-    
-    // dim background field, very dense, no twinkle
-    result += night_compute_star_layer(view_dir, time,
-        140.0, 0.45, 0.10, 4.0, 0.30, 0.0, 0.0);
-    
-    // medium magnitude stars, moderate density, gentle twinkle
-    result += night_compute_star_layer(view_dir, time,
-        55.0, 0.18, 0.09, 5.0, 0.85, 0.15, 0.0);
-    
-    // rare bright stars, sharp pinpoint core with a tiny halo and stronger twinkle
-    result += night_compute_star_layer(view_dir, time,
-        22.0, 0.08, 0.045, 6.0, 1.05, 0.30, 0.05);
-    
-    return result;
-}
-
 // procedural galactic plane, fbm density modulated along a tilted band with dust rifts and a bulge
 float3 night_compute_milky_way(float3 view_dir)
 {
-    // precomputed normalized orientations to avoid intrinsics in const initializers
     const float3 galactic_up = float3(0.42064, 0.55179, 0.72260);
     const float3 bulge_dir   = float3(-0.79602, -0.09950, 0.59702);
-    
-    // angular distance from the galactic plane, gaussian envelope
-    float lat   = abs(dot(view_dir, galactic_up));
-    float band  = exp(-lat * lat / 0.040);
-    if (band < 0.001) return float3(0, 0, 0);
-    
-    // density along the band, broken up by an fbm and eaten away by a second fbm acting as dust
-    float3 fp    = view_dir * 4.0;
+
+    float lat  = abs(dot(view_dir, galactic_up));
+    float band = exp(-lat * lat / 0.040);
+    if (band < 0.001)
+    {
+        return float3(0, 0, 0);
+    }
+
+    float3 fp     = view_dir * 4.0;
     float density = night_fbm(fp, 4);
     density = saturate(density * 1.6 - 0.35);
-    
+
     float dust = night_fbm(fp * 2.5 + 11.7, 4);
     dust       = saturate(dust * 1.3 - 0.40);
     density    = saturate(density - dust * 0.7);
-    
-    // brighter galactic bulge concentrated in one direction along the band
-    float bulge = pow(saturate(dot(view_dir, bulge_dir)), 6.0);
+
+    float bulge     = pow(saturate(dot(view_dir, bulge_dir)), 6.0);
     float intensity = density * (0.5 + bulge * 1.5);
-    
-    // cool blue at the edges, warm cream toward the bulge
+
     float3 cool = float3(0.55, 0.70, 1.00);
     float3 warm = float3(1.00, 0.85, 0.65);
     float3 col  = lerp(cool, warm, bulge);
-    
-    return col * intensity * band * 0.030;
+
+    return col * intensity * band * 0.0018;
 }
 
 // moon split into disc and halo so they can be composited differently
@@ -665,10 +650,10 @@ moon_result night_compute_moon(float3 view_dir, float3 moon_dir)
         return r;
     }
     
-    // soft wide gaussian halo around the moon
+    // soft wide gaussian halo around the moon, scaled to night_sky so it does not wash the sky blue
     float angle_to_moon = acos(saturate(cos_angle));
     float halo_falloff  = exp(-angle_to_moon * angle_to_moon / 0.0040);
-    r.halo = float3(0.55, 0.72, 0.95) * halo_falloff * 0.030 * horizon_fade;
+    r.halo = float3(0.55, 0.72, 0.95) * halo_falloff * 0.0045 * horizon_fade;
     
     // outside the disc, only the halo contributes
     if (cos_angle < cos(moon_radius * 1.05))
@@ -732,9 +717,9 @@ moon_result night_compute_moon(float3 view_dir, float3 moon_dir)
     float dark         = saturate(-n_dot_l);
     float3 earthshine  = float3(0.04, 0.06, 0.10) * dark * 0.45;
     
-    // cool moonlight tint, intensity tuned for visibility against the night sky
-    float3 lunar_light = float3(0.92, 0.96, 1.00) * 0.55;
-    float3 surface     = albedo * lunar_light * lit * limb + earthshine;
+    // cool moonlight, disc peak sits above night_sky but below a daylight sun
+    float3 lunar_light = float3(0.92, 0.96, 1.00) * 0.045;
+    float3 surface     = albedo * lunar_light * lit * limb + earthshine * 0.015;
     
     // anti-aliased disc edge
     float r_norm = sqrt(r2);
@@ -744,29 +729,22 @@ moon_result night_compute_moon(float3 view_dir, float3 moon_dir)
     return r;
 }
 
-// night atmosphere combines a zenith to horizon gradient, a horizon airglow band and physical moonlight rayleigh scatter
+// night atmosphere, uses the shared night radiometric levels from common.hlsl
 float3 night_compute_atmosphere(float3 view_dir, float3 moon_dir, Texture2D sky_view_lut, SamplerState samp)
 {
-    // deep navy at zenith fading to a slightly warmer indigo near the horizon
-    float h = saturate(view_dir.y * 0.5 + 0.5);
-    float3 zenith_color  = float3(0.0035, 0.0070, 0.0180);
-    float3 horizon_color = float3(0.0090, 0.0120, 0.0220);
-    float3 base = lerp(horizon_color, zenith_color, h);
+    float3 base = night_sky_radiance(view_dir.y);
     
-    // thin airglow band a few degrees above the horizon, faint green and orange
     float dy = view_dir.y - 0.04;
     float airglow_band = exp(-(dy * dy) / 0.0050);
-    float3 airglow = float3(0.0070, 0.0095, 0.0050) * airglow_band;
+    float3 airglow = night_airglow_rad * airglow_band;
     
-    // moonlight rayleigh scatter, the moon half of the sky view lut carries the atmosphere
-    // marched with the moon as light source, scaled by an empirical moon to sun irradiance ratio
     float moon_elev = dot(moon_dir, up_direction);
     float3 moon_scatter = float3(0, 0, 0);
     if (moon_elev > -0.10)
     {
         float3 lum  = sample_sky_view_lut(sky_view_lut, samp, view_dir, moon_dir, 1.0);
         float fade  = smoothstep(-0.05, 0.10, moon_elev);
-        moon_scatter = lum * 3.5e-5 * fade;
+        moon_scatter = lum * night_moon_to_sun * fade;
     }
     
     return base + airglow + moon_scatter;
@@ -840,7 +818,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         return;
     }
     
-    float3 light_dir = moon_half ? night_apply_earth_rotation(-sun_dir, (float)buffer_frame.time) : sun_dir;
+    float3 light_dir = moon_half ? normalize(-sun_dir) : sun_dir;
     float3 view_dir  = sky_view_unit_to_dir(unit, light_dir);
     float3 cam_pos   = clamp_camera_to_atmosphere(get_camera_position());
     
@@ -962,22 +940,27 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     // night sky, atmosphere is sky-dome, celestials ride behind the atmosphere
     // the physical sky needs no day factor, the earth shadow in the transmittance lut fades it naturally
     float night_factor      = 1.0 - day_factor;
+    // stars only after the sun is below the horizon, never on a blue daytime sky
+    float star_visibility = smoothstep(0.02, -0.12, sun_elev);
     float3 night_ambient    = float3(0, 0, 0);
     float3 night_celestials = float3(0, 0, 0);
     if (night_factor > 0.001)
     {
-        float time_seconds    = (float)buffer_frame.time;
-        float star_time       = time_seconds * 0.08f;
-        float3 celestial_view = night_apply_earth_rotation(orig_view, time_seconds);
-        float3 moon_dir       = night_apply_earth_rotation(-sun_dir, time_seconds);
+        float time_of_day     = buffer_frame.time_of_day;
+        float3 celestial_view = night_apply_earth_rotation(orig_view, time_of_day);
+        // moon stays opposite the sun, sun already tracks time of day
+        float3 moon_dir       = normalize(-sun_dir);
 
         night_ambient = night_compute_atmosphere(view_dir, moon_dir, tex3, GET_SAMPLER(sampler_bilinear_clamp));
 
         if (!below_horizon)
         {
             float3 ext = night_atmospheric_extinction(orig_view);
-            night_celestials += night_compute_milky_way(celestial_view) * ext;
-            night_celestials += night_compute_stars(celestial_view, star_time) * ext;
+            if (star_visibility > 0.001)
+            {
+                night_celestials += night_compute_milky_way(celestial_view) * ext * star_visibility;
+                night_celestials += night_compute_stars(celestial_view, tex5, tex6, (float)buffer_frame.time) * ext * star_visibility;
+            }
 
             moon_result mr    = night_compute_moon(orig_view, moon_dir);
             night_ambient    += mr.halo;
