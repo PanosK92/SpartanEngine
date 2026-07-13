@@ -97,7 +97,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_lut_sky_view)                // catalog stars + procedural milky way, drawn into the panorama like before
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_lut_sky_view);  // catalog stars + procedural milky way, drawn into the panorama like before
                 RHI_Texture* tex_stars = GetStandardTexture(Renderer_StandardTexture::Sky_stars);
                 RHI_Texture* tex_grid  = GetStandardTexture(Renderer_StandardTexture::Sky_star_grid);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_stars ? tex_stars : GetStandardTexture(Renderer_StandardTexture::Black));

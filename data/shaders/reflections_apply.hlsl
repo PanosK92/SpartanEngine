@@ -48,9 +48,9 @@ static const float g_refraction_max_distance  = 2.0f;   // max refraction distan
 static const float g_refraction_thickness     = 0.1f;   // depth testing thickness
 static const float g_refraction_step_length   = g_refraction_max_distance / (float)g_refraction_max_steps;
 
-// shoreline foam from world-space water depth along the view ray, crest-style, no screen space neighbor rings
-static const float shore_foam_width    = 0.6f; // meters of water column that still foams
-static const float shore_foam_strength = 0.75f;
+// contact foam only where opaque geometry sits within this 3d world distance of the water surface point,
+// vertical clearance alone foams every submerged wall seen through the water, full distance cannot
+static const float contact_foam_radius = 0.6f;
 
 // Compute Fresnel for dielectrics using Schlick approximation
 float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_inner)
@@ -197,22 +197,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // coverage mask out there, the cascade resolution is adequate at that magnification anyway
         foam = lerp(eroded, coverage, saturate(surface.camera_to_pixel_length / 100.0f));
 
-        // shoreline foam from the water column behind this pixel, world space depth only, never screen adjacent silhouettes
-        float2 uv_foam         = (thread_id.xy + 0.5f) / resolution_out;
-        float  depth_water     = linearize_depth(surface.depth);
+        // contact foam, the opaque point behind this water pixel must sit right at the surface point in
+        // full 3d, a submerged wall seen through the water lies meters along the ray so it stays clean
+        float2 uv_foam          = (thread_id.xy + 0.5f) / resolution_out;
+        float  depth_water      = linearize_depth(surface.depth);
         float  depth_opaque_raw = tex4.SampleLevel(samplers[sampler_point_clamp], uv_foam, 0.0f).r;
-        float  depth_opaque    = linearize_depth(depth_opaque_raw);
+        float  depth_opaque     = linearize_depth(depth_opaque_raw);
         if (depth_opaque > depth_water + 0.02f)
         {
-            float3 opaque_pos     = get_position(depth_opaque_raw, render_uv_to_screen_uv(uv_foam));
-            float  water_clearance = surface.position.y - opaque_pos.y;
-            if (water_clearance > 0.0f)
-            {
-                float shore = saturate(1.0f - water_clearance / shore_foam_width);
-                shore       = shore * shore;
-                float shore_foam = saturate((lace + shore * shore_foam_strength - 1.0f) * 3.5f) * 0.7f;
-                foam = saturate(max(foam, shore_foam));
-            }
+            float3 opaque_pos = get_position(depth_opaque_raw, render_uv_to_screen_uv(uv_foam));
+            float  contact    = saturate(1.0f - length(opaque_pos - surface.position) / contact_foam_radius);
+            float  contact_foam = saturate((lace + contact - 1.0f) * 3.5f) * 0.7f;
+            foam = saturate(max(foam, contact_foam));
         }
     }
 
