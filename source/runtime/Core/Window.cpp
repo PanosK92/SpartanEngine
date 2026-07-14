@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
+#include <freetype/freetype.h>
 #pragma comment(lib, "winmm.lib") 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "version.lib")
@@ -52,10 +53,79 @@ namespace spartan
         SDL_Window* window             = nullptr;
 
         // splash-screen
-        bool m_show_splash_screen              = true;
-        SDL_Window* m_splash_screen_window     = nullptr;
-        SDL_Renderer* m_splash_screen_renderer = nullptr;
-        SDL_Texture* m_splash_screen_texture   = nullptr;
+        bool m_show_splash_screen          = true;
+        SDL_Window* m_splash_screen_window = nullptr;
+
+        void draw_splash_version(SDL_Surface* surface)
+        {
+            FT_Library library = nullptr;
+            FT_Face face       = nullptr;
+            if (FT_Init_FreeType(&library) != 0)
+            {
+                return;
+            }
+
+            if (FT_New_Face(library, "data/fonts/OpenSans/OpenSans-Bold.ttf", 0, &face) != 0)
+            {
+                FT_Done_FreeType(library);
+                return;
+            }
+
+            constexpr int font_size = 20;
+            constexpr int margin_x  = 14;
+            constexpr int margin_y  = 12;
+            FT_Set_Pixel_Sizes(face, 0, font_size);
+
+            const char* text = version::c_str();
+            int pen_x        = margin_x;
+            int pen_y        = surface->h - margin_y;
+
+            for (const char* p = text; *p != '\0'; ++p)
+            {
+                if (FT_Load_Char(face, static_cast<FT_ULong>(*p), FT_LOAD_RENDER) != 0)
+                {
+                    continue;
+                }
+
+                FT_GlyphSlot glyph = face->glyph;
+                for (unsigned int row = 0; row < glyph->bitmap.rows; ++row)
+                {
+                    for (unsigned int col = 0; col < glyph->bitmap.width; ++col)
+                    {
+                        const int x = pen_x + glyph->bitmap_left + static_cast<int>(col);
+                        const int y = pen_y - glyph->bitmap_top + static_cast<int>(row);
+                        if (x < 0 || y < 0 || x >= surface->w || y >= surface->h)
+                        {
+                            continue;
+                        }
+
+                        const uint8_t coverage = glyph->bitmap.buffer[row * glyph->bitmap.pitch + col];
+                        if (coverage == 0)
+                        {
+                            continue;
+                        }
+
+                        uint8_t r = 0;
+                        uint8_t g = 0;
+                        uint8_t b = 0;
+                        uint8_t a = 0;
+                        SDL_ReadSurfacePixel(surface, x, y, &r, &g, &b, &a);
+
+                        // blend white text over the banner
+                        const uint32_t inv = 255 - coverage;
+                        r = static_cast<uint8_t>((r * inv + 255 * coverage) / 255);
+                        g = static_cast<uint8_t>((g * inv + 255 * coverage) / 255);
+                        b = static_cast<uint8_t>((b * inv + 255 * coverage) / 255);
+                        SDL_WriteSurfacePixel(surface, x, y, r, g, b, a);
+                    }
+                }
+
+                pen_x += glyph->advance.x >> 6;
+            }
+
+            FT_Done_Face(face);
+            FT_Done_FreeType(library);
+        }
 
         // custom title bar
         float titlebar_height       = 40.0f;  // default height, updated by editor
@@ -561,6 +631,8 @@ namespace spartan
             return;
         }
 
+        draw_splash_version(window_surface);
+
         // update window surface to display the image
         if (!SDL_UpdateWindowSurface(m_splash_screen_window))
         {
@@ -579,9 +651,8 @@ namespace spartan
         Show();
 
         // hide and destroy splash screen window
-        SDL_DestroyTexture(m_splash_screen_texture);
-        SDL_DestroyRenderer(m_splash_screen_renderer);
         SDL_DestroyWindow(m_splash_screen_window);
+        m_splash_screen_window = nullptr;
     }
 
     void Window::SetSplashScreenVisible(bool visible)
