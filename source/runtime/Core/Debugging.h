@@ -37,8 +37,8 @@ namespace spartan
         static bool IsSteamEnabled()                 { return m_steam_enabled; }
 
     private:
-        inline static bool m_validation_layer_enabled        = false; // enables vulkan validation layers for api error detection and debug message reporting
-        inline static bool m_gpu_assisted_validation_enabled = false; // gpu-based validation is extremely slow and breaks on first error, use the debug layer alone for day to day d3d12 work
+        inline static bool m_validation_layer_enabled        = false; // enables debug/validation layer for api error detection and debug message reporting
+        inline static bool m_gpu_assisted_validation_enabled = false; // gpu-based validation is extremely slow and breaks on first error, use the debug/validation layer alone for day to day work
         inline static bool m_logging_to_file_enabled         = false; // writes diagnostic and validation messages to a persistent log file
         inline static bool m_breadcrumbs_enabled             = false; // records gpu execution markers to help identify the cause of gpu crashes
         inline static bool m_renderdoc_enabled               = false; // enables integration with renderdoc for frame capture and gpu debugging

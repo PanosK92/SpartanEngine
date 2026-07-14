@@ -77,7 +77,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
     extern TConsoleVar<float> cvar_restir_pt_w_clamp;
-    extern TConsoleVar<float> cvar_restir_pt_debug;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;
@@ -339,8 +338,8 @@ namespace spartan
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
-        // restir denoising fallback, history clear plus blit raw to denoised, used when restir is off, debug mode is on, or shaders missing
-        static void Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised, RHI_Texture* tex_history, bool clear_history_to_black);
+        // restir denoising fallback, history clear plus blit raw to denoised
+        static void Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised);
 
         // event handlers
         static void OnFullScreenToggled();

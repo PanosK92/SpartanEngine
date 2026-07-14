@@ -295,7 +295,6 @@ void RenderOptions::OnTickVisible()
                     option_check_box("ReSTIR Path Tracing (WIP)", "r.restir_pt");
                     ImGui::BeginDisabled(!cvar_restir_pt.GetValueAs<bool>());
                     option_value("ReSTIR resolution scale",   "r.restir_pt_scale",                "Fraction of render resolution used for path tracing (0.1-1.0)", 0.05f, 0.1f, 1.0f, "%.2f");
-                    option_check_box("ReSTIR debug (raw GI)", "r.restir_pt_debug");
                     ImGui::EndDisabled();
                     ImGui::EndDisabled();
                 }

@@ -52,9 +52,7 @@ namespace spartan
             return;
         }
 
-        // light.hlsl skips the analytical shading path entirely when rt shadows or restir
-        // own every light type (restir now covers directional, point, spot and area through
-        // its initial nee pool, traces inline rt shadow rays inside trace_shift_visibility)
+        // shadow atlas is unused when restir or full rt shadows own visibility, analytic specular under restir traces inline instead
         const bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
         if ((cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available) || cvar_restir_pt.GetValueAs<bool>())
         {

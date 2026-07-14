@@ -28,12 +28,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Shader.h"
-#include "../Rendering/Renderer.h"
+#include "../RHI_CommandList.h"
+#include "../RHI_Texture.h"
+#include "../../Rendering/Renderer.h"
 #include "../../World/World.h"
-#include "../World/Components/Camera.h"
+#include "../../World/Components/Camera.h"
 SP_WARNINGS_OFF
 #ifdef _WIN32
 #include <xess/xess_vk.h>
+#define NRD_STATIC_LIBRARY
+#include "NRD.h"
+#include "NRI.h"
+#include "Extensions/NRIHelper.h"
+#include "Extensions/NRIWrapperVK.h"
+#include "NRDIntegration.hpp"
+#include "../RHI_VendorTechnology_NRD.h"
 #endif
 SP_WARNINGS_ON
 //=============================================
@@ -56,6 +65,7 @@ namespace spartan
         uint32_t resolution_output_height     = 0;
         bool reset_history                    = false;
         float resolution_scale                = 1.0f;
+        Cb_Frame* cb_frame                    = nullptr;
     }
 
     namespace intel
@@ -200,6 +210,96 @@ namespace spartan
             return info;
         }
     }
+
+    namespace nvidia
+    {
+        nrd::Integration integration;
+        bool initialized          = false;
+        uint32_t width            = 0;
+        uint32_t height           = 0;
+        bool reset_history           = false;
+        uint32_t last_frame_index    = UINT32_MAX;
+        uint32_t last_settings_frame = UINT32_MAX;
+
+        nrd::Resource make_resource(RHI_Texture* texture)
+        {
+            nrd::Resource resource = {};
+            resource.vk.image  = reinterpret_cast<VKNonDispatchableHandle>(texture->GetRhiResource());
+            resource.vk.format = static_cast<VKEnum>(vulkan_format[rhi_format_to_index(texture->GetFormat())]);
+            resource.userArg   = texture;
+            return resource;
+        }
+
+        void context_destroy()
+        {
+            if (initialized)
+            {
+                integration.Destroy();
+                initialized = false;
+            }
+            width               = 0;
+            height              = 0;
+            last_frame_index    = UINT32_MAX;
+            last_settings_frame = UINT32_MAX;
+        }
+
+        bool context_create(uint32_t resource_width, uint32_t resource_height)
+        {
+            context_destroy();
+
+            if (!RHI_Context::device || !RHI_Context::instance || !RHI_Context::device_physical || resource_width == 0 || resource_height == 0)
+            {
+                return false;
+            }
+
+            const nrd::LibraryDesc* library_desc = nrd::GetLibraryDesc();
+
+            nri::QueueFamilyVKDesc queue_family = {};
+            queue_family.queueNum    = 1;
+            queue_family.queueType   = nri::QueueType::COMPUTE;
+            queue_family.familyIndex = RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute);
+
+            nri::DeviceCreationVKDesc device_desc = {};
+            device_desc.vkInstance       = RHI_Context::instance;
+            device_desc.vkDevice         = RHI_Context::device;
+            device_desc.vkPhysicalDevice = RHI_Context::device_physical;
+            device_desc.queueFamilies    = &queue_family;
+            device_desc.queueFamilyNum   = 1;
+            device_desc.minorVersion     = 3;
+            device_desc.vkBindingOffsets.sRegister = library_desc->spirvBindingOffsets.samplerOffset;
+            device_desc.vkBindingOffsets.tRegister = library_desc->spirvBindingOffsets.textureOffset;
+            device_desc.vkBindingOffsets.bRegister = library_desc->spirvBindingOffsets.constantBufferOffset;
+            device_desc.vkBindingOffsets.uRegister = library_desc->spirvBindingOffsets.storageTextureAndBufferOffset;
+
+            const nrd::DenoiserDesc denoisers[] =
+            {
+                { nrd_common::denoiser_id, nrd::Denoiser::REBLUR_DIFFUSE }
+            };
+
+            nrd::InstanceCreationDesc instance_desc = {};
+            instance_desc.denoisers    = denoisers;
+            instance_desc.denoisersNum = 1;
+
+            nrd::IntegrationCreationDesc integration_desc = {};
+            strncpy_s(integration_desc.name, "NRD", _TRUNCATE);
+            integration_desc.queuedFrameNum                       = 3;
+            integration_desc.enableWholeLifetimeDescriptorCaching = false;
+            integration_desc.autoWaitForIdle                      = true;
+            integration_desc.resourceWidth                        = static_cast<uint16_t>(resource_width);
+            integration_desc.resourceHeight                       = static_cast<uint16_t>(resource_height);
+
+            if (integration.RecreateVK(integration_desc, instance_desc, device_desc) != nrd::Result::SUCCESS)
+            {
+                SP_LOG_WARNING("NRD recreate failed");
+                return false;
+            }
+
+            width       = resource_width;
+            height      = resource_height;
+            initialized = true;
+            return true;
+        }
+    }
     #endif // _WIN32
 
     void RHI_VendorTechnology::Initialize()
@@ -211,12 +311,14 @@ namespace spartan
     {
     #ifdef _WIN32
         intel::context_destroy();
+        nvidia::context_destroy();
     #endif
     }
 
     void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame, const Vector2& resolution_render, const Vector2& resolution_output, const float resolution_scale)
     {
     #ifdef _WIN32
+        common::cb_frame         = cb_frame;
         common::resolution_scale = resolution_scale;
 
         // update per-frame scaled render dimensions (used by dispatch)
@@ -244,6 +346,8 @@ namespace spartan
             RHI_Device::QueueWaitAll();
             intel::context_create();
             common::reset_history = true;
+            nvidia::reset_history = true;
+            nvidia::context_destroy();
         }
     #endif
     }
@@ -252,6 +356,7 @@ namespace spartan
     {
     #ifdef _WIN32
         common::reset_history = true;
+        nvidia::reset_history = true;
     #endif
     }
 
@@ -361,6 +466,86 @@ namespace spartan
 
         _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &intel::params_execute);
         SP_ASSERT(result == XESS_RESULT_SUCCESS);
+    #endif
+    }
+
+    bool RHI_VendorTechnology::NRD_Dispatch(
+        RHI_CommandList* cmd_list,
+        RHI_Texture* tex_mv,
+        RHI_Texture* tex_normal_roughness,
+        RHI_Texture* tex_view_z,
+        RHI_Texture* tex_diff_radiance_hitdist,
+        RHI_Texture* tex_diff_radiance_hitdist_out
+    )
+    {
+    #ifdef _WIN32
+        if (!common::cb_frame || !tex_mv || !tex_normal_roughness || !tex_view_z || !tex_diff_radiance_hitdist || !tex_diff_radiance_hitdist_out)
+        {
+            return false;
+        }
+
+        const uint32_t width  = tex_mv->GetWidth();
+        const uint32_t height = tex_mv->GetHeight();
+        if (!nvidia::initialized || nvidia::width != width || nvidia::height != height)
+        {
+            RHI_Device::QueueWaitAll();
+            if (!nvidia::context_create(width, height))
+            {
+                return false;
+            }
+            nvidia::reset_history = true;
+        }
+
+        tex_mv->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_normal_roughness->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_view_z->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_diff_radiance_hitdist->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_diff_radiance_hitdist_out->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->FlushBarriers();
+
+        if (nvidia::last_frame_index != common::cb_frame->frame)
+        {
+            nvidia::integration.NewFrame();
+            nvidia::last_frame_index = common::cb_frame->frame;
+        }
+
+        const bool reset_history = nrd_common::resolve_history_reset(nvidia::reset_history, common::cb_frame->frame, nvidia::last_settings_frame);
+        nvidia::reset_history = false;
+
+        nrd::CommonSettings common_settings = {};
+        nrd_common::fill_common_settings(common_settings, common::cb_frame, width, height, reset_history);
+
+        if (nvidia::integration.SetCommonSettings(common_settings) != nrd::Result::SUCCESS)
+        {
+            SP_LOG_WARNING("NRD SetCommonSettings failed");
+            return false;
+        }
+
+        nrd::ReblurSettings reblur_settings = {};
+        nrd_common::fill_reblur_settings_for_restir(reblur_settings);
+        if (nvidia::integration.SetDenoiserSettings(nrd_common::denoiser_id, &reblur_settings) != nrd::Result::SUCCESS)
+        {
+            SP_LOG_WARNING("NRD SetDenoiserSettings failed");
+            return false;
+        }
+
+        nrd::ResourceSnapshot snapshot = {};
+        snapshot.restoreInitialState = true;
+        snapshot.SetResource(nrd::ResourceType::IN_MV, nvidia::make_resource(tex_mv));
+        snapshot.SetResource(nrd::ResourceType::IN_NORMAL_ROUGHNESS, nvidia::make_resource(tex_normal_roughness));
+        snapshot.SetResource(nrd::ResourceType::IN_VIEWZ, nvidia::make_resource(tex_view_z));
+        snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_diff_radiance_hitdist));
+        snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_diff_radiance_hitdist_out));
+
+        nri::CommandBufferVKDesc cmd_desc = {};
+        cmd_desc.vkCommandBuffer = cmd_list->GetRhiResource();
+        cmd_desc.queueType       = nri::QueueType::COMPUTE;
+
+        const nrd::Identifier denoisers[] = { nrd_common::denoiser_id };
+        nvidia::integration.DenoiseVK(denoisers, 1, cmd_desc, snapshot);
+        return true;
+    #else
+        return false;
     #endif
     }
 }

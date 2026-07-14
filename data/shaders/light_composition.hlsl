@@ -202,9 +202,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             float depth_dst_lin = linearize_depth(surface.depth);
             light_gi            = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
-            // debug view stores raw radiance, skip re-modulation
-            if (!is_restir_pt_debug())
-                light_gi *= max(surface.albedo, 0.1f);
+            light_gi           *= max(surface.albedo, 0.1f);
         }
 
         // water and glass are shaded from reflection and transmission inside the refraction

@@ -525,27 +525,11 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised, RHI_Texture* tex_history, bool clear_history_to_black)
+    void Renderer::Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised)
     {
-        if (clear_history_to_black)
-        {
-            cmd_list->ClearTexture(tex_history, Color::standard_black);
-        }
         cmd_list->InsertBarrier(tex_denoised, RHI_BarrierType::EnsureReadThenWrite);
-        if (!clear_history_to_black)
-        {
-            cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
-        }
         Pass_Blit(cmd_list, tex_raw, tex_denoised);
-        if (!clear_history_to_black)
-        {
-            Pass_Blit(cmd_list, tex_raw, tex_history);
-        }
         cmd_list->InsertBarrier(tex_denoised, RHI_BarrierType::EnsureWriteThenRead);
-        if (!clear_history_to_black)
-        {
-            cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureWriteThenRead);
-        }
     }
 
     void Renderer::Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)

@@ -1042,7 +1042,6 @@ namespace spartan
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                 1 << 1);
         m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available, 1 << 2);
         m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),                            1 << 3);
-        m_cb_frame_cpu.set_bit(cvar_restir_pt_debug.GetValueAs<bool>(),                      1 << 4);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()

@@ -120,13 +120,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         diffuse_ibl = 0.0f;
     }
 
-    // restir owns indirect so drop both ibl terms, otherwise rt reflections owns specular
+    // restir owns diffuse indirect, rt reflections owns specular when enabled
     if (is_restir_pt_enabled())
     {
-        diffuse_ibl  *= 0.0f;
-        specular_ibl *= 0.0f;
+        diffuse_ibl *= 0.0f;
     }
-    else if (is_ray_traced_reflections_enabled())
+    if (is_ray_traced_reflections_enabled())
     {
         specular_ibl *= 0.0f;
     }

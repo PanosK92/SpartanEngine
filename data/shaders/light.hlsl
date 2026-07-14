@@ -261,10 +261,8 @@ void evaluate_light(
     // raw light energy without n_dot_l, sss needs it since light.radiance bakes n_dot_l in
     float3 light_radiance_raw = light.color * light.intensity * light.attenuation;
 
-    // restir owns all primary direct lighting, skip analytical surface eval to avoid double counting
-    // volumetric still flows through the analytical path since restir does not own fog
-    bool restir_owns_light     = is_restir_pt_enabled();
-    bool skip_surface_lighting = restir_owns_light;
+    // restir owns primary diffuse (direct and gi), keep analytic specular so local lights still form highlights
+    bool restir_owns_diffuse = is_restir_pt_enabled();
 
     float  L_shadow        = 1.0f;
     float3 L_specular_sum  = 0.0f;
@@ -281,47 +279,48 @@ void evaluate_light(
     bool has_brdf                   = any(light.radiance > 0.0f);
     bool has_sss                    = surface.subsurface_scattering > 0.0f;
 
-    if (eval_surface && !surface.is_sky() && !skip_surface_lighting && light_can_contribute && (has_brdf || has_sss))
+    if (eval_surface && !surface.is_sky() && light_can_contribute && (has_brdf || has_sss))
     {
-        // shadow splits into primary (ray traced or shadow map) and screen space contact
-        // primary applies to brdf and sss, contact applies only to brdf so it cannot crush sss
-        bool can_use_rt_shadows = light.has_shadows() && is_ray_traced_shadows_enabled();
-
+        // restir skips the shadow atlas. inline rt shadows self-hit area light emitter meshes in the
+        // tlas and zero analytic specular (the showroom tubes). raster area lights never had a real
+        // atlas path either, compute_shadow falls through invalid cascades and stays lit, match that.
         float L_shadow_primary = 1.0f;
         float L_shadow_contact = 1.0f;
 
-        if (can_use_rt_shadows && light.is_directional())
+        if (!restir_owns_diffuse)
         {
-            L_shadow_primary = sample_ray_traced_shadow(surface.uv);
-        }
-    #ifdef RAY_TRACING_ENABLED
-        else if (can_use_rt_shadows)
-        {
-            L_shadow_primary = trace_inline_shadow_ray(light, surface);
-        }
-    #endif
-        else if (light.has_shadows())
-        {
-            L_shadow_primary = compute_shadow(surface, light);
-        }
+            const bool want_shadows          = light.has_shadows();
+            const bool use_rt_shadow_texture = want_shadows && is_ray_traced_shadows_enabled() && light.is_directional();
+            const bool use_inline_rt_shadow  = want_shadows && !use_rt_shadow_texture && is_ray_traced_shadows_enabled();
+            const bool use_shadow_maps       = want_shadows && !use_rt_shadow_texture && !use_inline_rt_shadow;
 
-        // clouds shade the ground through the same sun-projected transmittance map the fog
-        // march samples, so the shafts in the air and the shade on the ground agree exactly
-        if (light.is_directional())
-        {
-            L_shadow_primary *= cloud_shadow_sample(tex5, GET_SAMPLER(sampler_bilinear_clamp), surface.position, normalize(-light.forward), get_camera_position());
-        }
+            if (use_rt_shadow_texture)
+            {
+                L_shadow_primary = sample_ray_traced_shadow(surface.uv);
+            }
+        #ifdef RAY_TRACING_ENABLED
+            else if (use_inline_rt_shadow)
+            {
+                L_shadow_primary = trace_inline_shadow_ray(light, surface);
+            }
+        #endif
+            else if (use_shadow_maps)
+            {
+                L_shadow_primary = compute_shadow(surface, light);
+            }
 
-        // the rt shadow already resolves exact sun contact occlusion, the bend contact term is redundant there
-        bool rt_owns_contact = can_use_rt_shadows && light.is_directional();
+            if (light.is_directional())
+            {
+                L_shadow_primary *= cloud_shadow_sample(tex5, GET_SAMPLER(sampler_bilinear_clamp), surface.position, normalize(-light.forward), get_camera_position());
+            }
 
-        if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque() && !rt_owns_contact)
-        {
-            float contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
-
-            // sss is a near field contact effect, fade it out with distance so far grazing surfaces never show marching stripes
-            float contact_fade = 1.0f - saturate((surface.camera_to_pixel_length - 25.0f) / 50.0f);
-            L_shadow_contact   = lerp(1.0f, contact, contact_fade);
+            bool rt_owns_contact = use_rt_shadow_texture || (use_inline_rt_shadow && light.is_directional());
+            if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque() && !rt_owns_contact)
+            {
+                float contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
+                float contact_fade = 1.0f - saturate((surface.camera_to_pixel_length - 25.0f) / 50.0f);
+                L_shadow_contact   = lerp(1.0f, contact, contact_fade);
+            }
         }
 
         L_shadow = min(L_shadow_primary, L_shadow_contact);
@@ -368,7 +367,7 @@ void evaluate_light(
             }
         }
 
-        if (has_sss)
+        if (has_sss && !restir_owns_diffuse)
         {
             // sss uses raw radiance so it can fire on back faced surfaces
             Light light_sss    = light;
@@ -381,8 +380,8 @@ void evaluate_light(
         surface.roughness       = original_roughness;
         surface.roughness_alpha = original_roughness_alpha;
 
-        // diffuse_precomputed is zero for transparents, skip the eval entirely
-        if (has_brdf && !is_transparent)
+        // diffuse_precomputed is zero for transparents, restir already carries diffuse direct
+        if (has_brdf && !is_transparent && !restir_owns_diffuse)
         {
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
@@ -435,7 +434,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                        out_diffuse, out_specular, out_volumetric);
     }
 
-    // clustered point, spot and area lights, the loop still runs under restir for volumetric only
+    // clustered point, spot and area lights, under restir this still runs for specular and volumetric
     if (!surface.is_sky() && total_lights > 1u)
     {
         // the cluster grid lives in the left eye view projection space, shared by both vr eyes

@@ -1793,7 +1793,7 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
 }
 
 // shades the reservoir sample at the current pixel via self shift
-// returns diffuse only gi f(y) * W demodulated by primary albedo, debug view emits raw f(y) * W
+// returns diffuse only gi f(y) * W demodulated by primary albedo
 float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, float3 dst_view_dir, float3 dst_albedo, float dst_roughness, float dst_metallic)
 {
     if (r.M <= 0.0f || r.W <= 0.0f)
@@ -1805,10 +1805,6 @@ float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, floa
 
     if (!trace_shift_visibility(r.sample, dst_pos, dst_normal))
         return float3(0, 0, 0);
-
-    // debug view, emit the raw estimator so the post chain can be isolated
-    if (is_restir_pt_debug())
-        return shift.f_dst * r.W;
 
     // diffuse albedo demodulation, the stored gi is albedo proportional so this yields clean
     // irradiance, the 0.1 floor bounds the divide on near black surfaces

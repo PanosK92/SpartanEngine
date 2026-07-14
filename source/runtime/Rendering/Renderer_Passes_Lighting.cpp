@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_AccelerationStructure.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_VendorTechnology.h"
 #include "../Core/Window.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
@@ -933,166 +934,25 @@ namespace spartan
     void Renderer::Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list)
     {
         if (Window::IsMinimized())
+        {
             return;
+        }
 
-        RHI_Texture* tex_gi_raw         = GetRenderTarget(Renderer_RenderTarget::restir_output);
-        RHI_Texture* tex_gi_denoised    = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
-        RHI_Texture* tex_gi_history     = GetRenderTarget(Renderer_RenderTarget::restir_denoised_history);
-        RHI_Texture* tex_gi_ping        = GetRenderTarget(Renderer_RenderTarget::restir_denoised_ping);
-        RHI_Texture* tex_moments        = GetRenderTarget(Renderer_RenderTarget::restir_denoised_moments);
-        RHI_Texture* tex_moments_hist   = GetRenderTarget(Renderer_RenderTarget::restir_denoised_moments_history);
-
-        // restir resources are gated by cvar_restir_pt, nothing to do when they are not allocated
-        if (!tex_gi_raw || !tex_gi_denoised || !tex_gi_history || !tex_gi_ping || !tex_moments || !tex_moments_hist)
+        RHI_Texture* tex_gi_raw      = GetRenderTarget(Renderer_RenderTarget::restir_output);
+        RHI_Texture* tex_gi_denoised = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
+        if (!tex_gi_raw || !tex_gi_denoised)
+        {
             return;
+        }
 
         const uint32_t min_rt_dimension = 64;
         if (tex_gi_raw->GetWidth() < min_rt_dimension || tex_gi_raw->GetHeight() < min_rt_dimension)
-            return;
-
-        if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
         {
-            Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised, tex_gi_history, true);
             return;
         }
 
-        // debug view, bypass the svgf denoiser entirely and blit the raw gi estimator straight
-        // through so the composited image shows the un-denoised, un-demodulated estimator, this
-        // isolates resampling artifacts (fireflies in the estimator) from post chain artifacts
-        if (cvar_restir_pt_debug.GetValueAs<bool>())
-        {
-            Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised, tex_gi_history, false);
-            return;
-        }
-
-        RHI_Shader* shader_temporal = GetShader(Renderer_Shader::restir_pt_denoise_temporal_c);
-        RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::restir_pt_denoise_spatial_c);
-        if (!shader_temporal || !shader_spatial || !shader_temporal->IsCompiled() || !shader_spatial->IsCompiled())
-        {
-            Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised, tex_gi_history, false);
-            return;
-        }
-
-        RHI_Texture* reservoirs[6];
-        for (uint32_t i = 0; i < 6; i++)
-        {
-            reservoirs[i] = GetRenderTarget(static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_prev0) + i));
-        }
-
-        const uint32_t thread_group_count_x = 8;
-        const uint32_t thread_group_count_y = 8;
-        const uint32_t width                = tex_gi_raw->GetWidth();
-        const uint32_t height               = tex_gi_raw->GetHeight();
-        const uint32_t dispatch_x           = (width + thread_group_count_x - 1) / thread_group_count_x;
-        const uint32_t dispatch_y           = (height + thread_group_count_y - 1) / thread_group_count_y;
-
-        // one timeblock wraps the whole svgf denoiser so it reads as a single profiler chunk, the
-        // temporal, a-trous and history blit sub stages below are plain gpu markers
-        cmd_list->BeginTimeblock("restir_pt_denoise");
-
-        cmd_list->BeginMarker("denoise_temporal");
-        {
-            RHI_PipelineState pso;
-            pso.name             = "restir_pt_denoise_temporal";
-            pso.shaders[Compute] = shader_temporal;
-            cmd_list->SetPipelineState(pso);
-
-            cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrier(tex_moments,     RHI_BarrierType::EnsureReadThenWrite);
-            SetCommonTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_gi_raw);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_gi_history);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments_hist);
-            // bind previous frame depth on tex4 so the denoiser's disocclusion gate uses the
-            // same prev-depth-vs-reprojected-expected-depth formulation as the reservoir
-            // temporal pass, fixes asymmetric ghosting between the two passes on moving
-            // objects (the previous code compared current depth at prev_uv vs current pixel
-            // depth which mistreats dynamic surfaces as disocclusions)
-            if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
-            {
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex4, depth_prev);
-            }
-            // previous frame normals on tex5 for the same disocclusion gate
-            if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
-            {
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex5, normal_prev);
-            }
-            for (uint32_t i = 0; i < 6; i++)
-                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_gi_denoised);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_moments);
-            // pipeline layout still carries the push constant range so vulkan requires a push
-            // before each dispatch even though this shader does not read any per pass values
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-            cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_moments,     RHI_BarrierType::EnsureWriteThenRead);
-        }
-        cmd_list->EndMarker();
-
-        // ping pong spatial passes, parameter is the kernel radius, src and dst alternate
-        // a-trous step doubling at each level matches lin 2022's reference svgf, 4 levels
-        // (1, 2, 4, 8) give an effective tap radius of 1+3+7+15 = 26 pixels which is the
-        // standard schied 2017 / lin 2022 configuration, the previous 3 level (1, 2, 4)
-        // attempt to preserve contact detail left visible firefly clumps in the output
-        // because the kernel never reached the scale where bright outliers get averaged
-        // down, with the reservoir firefly cap and 4 levels back we trade a small amount
-        // of crevice softness for a stable image, ping pong routing ends with the final
-        // write in tex_gi_denoised (even pass count) so no extra blit is needed
-        struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
-        const denoise_stage stages[4] = {
-            { "restir_pt_denoise_spatial",   1.0f, tex_gi_denoised, tex_gi_ping     },
-            { "restir_pt_denoise_spatial_2", 2.0f, tex_gi_ping,     tex_gi_denoised },
-            { "restir_pt_denoise_spatial_3", 4.0f, tex_gi_denoised, tex_gi_ping     },
-            { "restir_pt_denoise_spatial_4", 8.0f, tex_gi_ping,     tex_gi_denoised },
-        };
-
-        uint32_t stage_index = 0;
-        for (const denoise_stage& s : stages)
-        {
-            cmd_list->BeginMarker(s.name);
-            {
-                RHI_PipelineState pso;
-                pso.name             = s.name;
-                pso.shaders[Compute] = shader_spatial;
-                cmd_list->SetPipelineState(pso);
-
-                m_pcb_pass_cpu.set_f3_value(s.radius);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureReadThenWrite);
-                SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  s.src);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments);
-                for (uint32_t i = 0; i < 6; i++)
-                    cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, s.dst);
-                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
-            }
-            cmd_list->EndMarker();
-
-            // svgf feeds the first wavelet iteration back as next frame's color history,
-            // schied 2017 4.2, feeding back the final widest blur compounded blur and lag
-            // into the ema every frame which showed up as ghosting and detail loss
-            if (stage_index == 0)
-            {
-                cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
-                Pass_Blit(cmd_list, s.dst, tex_gi_history, false);
-                cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureWriteThenRead);
-            }
-            stage_index++;
-        }
-
-        // 4 stages with even count means the final write landed in tex_gi_denoised
-        cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
-
-        // moments history copy for the next frame's svgf temporal accumulation
-        cmd_list->InsertBarrier(tex_moments_hist, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_moments, tex_moments_hist, false);
-        cmd_list->InsertBarrier(tex_moments_hist, RHI_BarrierType::EnsureWriteThenRead);
-
-        cmd_list->EndTimeblock();
+        // nrd temporarily disabled, blit raw restir so raster vs restir can be compared without the denoiser
+        Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised);
     }
 
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)

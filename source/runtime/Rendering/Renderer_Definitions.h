@@ -325,8 +325,8 @@ namespace spartan
         restir_pt_temporal_c,
         restir_pt_spatial_c,
         restir_pt_duplication_c,
-        restir_pt_denoise_temporal_c,
-        restir_pt_denoise_spatial_c,
+        restir_pt_nrd_pack_c,
+        restir_pt_nrd_unpack_c,
         // baked wind field
         wind_field_c,
         // fft ocean
@@ -422,10 +422,11 @@ namespace spartan
         // sample duplication score map driving the adaptive temporal confidence cap, lin 2026
         restir_duplication,
         restir_denoised,
-        restir_denoised_history,
-        restir_denoised_ping,
-        restir_denoised_moments,
-        restir_denoised_moments_history,
+        nrd_in_mv,
+        nrd_in_normal_roughness,
+        nrd_in_viewz,
+        nrd_in_diff_radiance,
+        nrd_out_diff_radiance,
         // restir reservoir buffers (current frame)
         restir_reservoir0,
         restir_reservoir1,

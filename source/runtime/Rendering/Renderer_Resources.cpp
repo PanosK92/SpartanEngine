@@ -421,10 +421,11 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_moments)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_moments_history) = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
         };
 
         auto allocate_restir_resources = [&]()
@@ -446,13 +447,11 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_output");
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised");
-            at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_history");
-            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_ping");
-            // svgf moments texture, packs (luma_M1, luma_M2, sample_count, unused) per pixel,
-            // sampled by the spatial pass to drive luma_phi by sqrt(variance) instead of a
-            // hand-tuned global scale, history copy ping pongs each frame for temporal accumulation
-            at(render_targets, Renderer_RenderTarget::restir_denoised_moments)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_moments");
-            at(render_targets, Renderer_RenderTarget::restir_denoised_moments_history) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_moments_history");
+            at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_mv");
+            at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R10G10B10A2_Unorm, restir_flags, "nrd_in_normal_roughness");
+            at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32_Float,         restir_flags, "nrd_in_viewz");
+            at(render_targets, Renderer_RenderTarget::nrd_in_diff_radiance)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_in_diff_radiance");
+            at(render_targets, Renderer_RenderTarget::nrd_out_diff_radiance)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "nrd_out_diff_radiance");
 
             last_restir_scale = restir_scale;
         };
@@ -514,10 +513,11 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_moments)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_moments_history) = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_normal_roughness)         = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
             for_restir_reservoir_slot([](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
             at(render_targets, Renderer_RenderTarget::shading_rate)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::shadow_atlas)                 = nullptr;
@@ -871,8 +871,8 @@ namespace spartan
             { Renderer_Shader::restir_pt_temporal_c,                  RHI_Shader_Type::Compute,       "restir_pt_temporal.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_duplication_c,               RHI_Shader_Type::Compute,       "restir_pt_duplication.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::restir_pt_denoise_temporal_c,          RHI_Shader_Type::Compute,       "restir_pt_denoise_temporal.hlsl",      RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::restir_pt_denoise_spatial_c,           RHI_Shader_Type::Compute,       "restir_pt_denoise_spatial.hlsl",       RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_nrd_pack_c,                  RHI_Shader_Type::Compute,       "restir_pt_nrd_pack.hlsl",            RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_nrd_unpack_c,                RHI_Shader_Type::Compute,       "restir_pt_nrd_unpack.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },
 
             // wind field
             { Renderer_Shader::wind_field_c,                          RHI_Shader_Type::Compute, "wind_field.hlsl"                                                                                    },

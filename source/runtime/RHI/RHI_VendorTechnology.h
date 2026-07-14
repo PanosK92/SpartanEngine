@@ -49,5 +49,15 @@ namespace spartan
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_output
         );
+
+        // nrd (reblur diffuse), returns false if the denoise dispatch could not run
+        static bool NRD_Dispatch(
+            RHI_CommandList* cmd_list,
+            RHI_Texture* tex_mv,
+            RHI_Texture* tex_normal_roughness,
+            RHI_Texture* tex_view_z,
+            RHI_Texture* tex_diff_radiance_hitdist,
+            RHI_Texture* tex_diff_radiance_hitdist_out
+        );
     };
 }
