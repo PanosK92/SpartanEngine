@@ -375,6 +375,9 @@ namespace
 
                 v.push_back({ "Sol2", SOL_VERSION_STRING, "https://github.com/ThePhD/sol2" });
 
+                // no version macro in the redistributable headers
+                v.push_back({ "Steamworks", "1.64", "https://partner.steamgames.com/" });
+
 #if defined(API_GRAPHICS_VULKAN)
                 // c api version, the release tag is not exposed
                 {
