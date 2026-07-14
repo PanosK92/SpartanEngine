@@ -249,8 +249,11 @@ namespace spartan
 
         Create();
 
-        // re-trigger swapchain resize when the os window changes size, mirrors vulkan behaviour
-        m_window_resize_event_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+        // only the main window swapchain tracks os resize, imgui child swapchains are resized via their own platform callbacks
+        if (m_sdl_window == Window::GetHandleSDL())
+        {
+            m_window_resize_event_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+        }
     }
 
     void RHI_SwapChain::Create()
@@ -416,7 +419,7 @@ namespace spartan
 
     void RHI_SwapChain::ResizeToWindowSize()
     {
-        Resize(Window::GetWidth(), Window::GetHeight());
+        Resize(Window::GetWidthInPixels(), Window::GetHeightInPixels());
     }
     
     void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)

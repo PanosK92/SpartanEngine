@@ -1,0 +1,9 @@
+"lang"
+{
+	"Language"	"english"
+	"Tokens"
+	{
+		"#StatusIdle"		"In Spartan Engine"
+		"#StatusPlaying"	"Playing %world%"
+	}
+}

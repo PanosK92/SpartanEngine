@@ -29,9 +29,6 @@ ARG_API_GRAPHICS = _ARGS[1]
 
 local setup = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "setup.lua"))
 
--- steamworks sdk is vendored locally and optional, only wire it when the lib is present
-STEAM_ENABLED = os.isfile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "../third_party/steamworks/redistributable_bin/win64/steam_api64.lib"))
-
 newaction {
     trigger     = "setup",
     description = "download dependencies and stage runtime files",
@@ -41,6 +38,14 @@ newaction {
 local generation_actions = { vs2026 = true, vs2022 = true, gmake2 = true, gmake = true, codelite = true, xcode4 = true }
 if generation_actions[_ACTION] then
     setup.run()
+end
+
+-- evaluate after setup so a freshly downloaded sdk is linked
+STEAM_ENABLED = os.isfile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "../third_party/steamworks/redistributable_bin/win64/steam_api64.lib"))
+if STEAM_ENABLED then
+    print("steamworks: enabled")
+else
+    print("steamworks: disabled (sdk not found)")
 end
 
 function configure_graphics_api()

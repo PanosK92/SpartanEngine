@@ -244,10 +244,15 @@ namespace spartan
 
         VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), &present_info);
 
-        // vk_error_out_of_date_khr and vk_suboptimal_khr are not errors, they indicate the swapchain needs recreation
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        // out of date must recreate before the next present, suboptimal presented successfully but should recreate when convenient
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            return false; // signal swapchain needs recreation
+            return false;
+        }
+
+        if (result == VK_SUBOPTIMAL_KHR)
+        {
+            return true;
         }
 
         SP_ASSERT_VK(result);

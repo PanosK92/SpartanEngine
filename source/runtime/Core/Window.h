@@ -51,6 +51,8 @@ namespace spartan
         static void SetSize(const uint32_t width_new, const uint32_t height_new);
         static uint32_t GetWidth();
         static uint32_t GetHeight();
+        static uint32_t GetWidthInPixels();
+        static uint32_t GetHeightInPixels();
         static float GetDpiScale();
 
         // misc

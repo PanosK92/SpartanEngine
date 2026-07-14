@@ -291,8 +291,12 @@ namespace spartan
         }
 
         Create();
-    
-        m_window_resize_event_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+
+        // only the main window swapchain tracks os resize, imgui child swapchains are resized via their own platform callbacks
+        if (m_sdl_window == Window::GetHandleSDL())
+        {
+            m_window_resize_event_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+        }
     }
 
     RHI_SwapChain::~RHI_SwapChain()
@@ -370,11 +374,24 @@ namespace spartan
             color_space = get_color_space(m_format); 
         }
 
-        RHI_Device::QueueWaitAll();
+        // only wait when replacing an in-flight swapchain, initial create has nothing to sync and
+        // queuewaitall here is what freezes the editor for a frame when undocking a viewport
+        if (m_rhi_swapchain)
+        {
+            RHI_Device::QueueWaitAll();
+        }
 
-        // clamp size
-        m_width  = clamp(m_width,  capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        // match the surface extent when the platform locks it, using logical sdl size here causes vk_suboptimal_khr recreate loops under dpi scaling
+        if (capabilities.currentExtent.width != UINT32_MAX)
+        {
+            m_width  = capabilities.currentExtent.width;
+            m_height = capabilities.currentExtent.height;
+        }
+        else
+        {
+            m_width  = clamp(m_width,  capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        }
     
         // create new swapchain
         VkSwapchainCreateInfoKHR create_info = {};
@@ -478,7 +495,7 @@ namespace spartan
 
     void RHI_SwapChain::ResizeToWindowSize()
     {
-        Resize(Window::GetWidth(), Window::GetHeight());
+        Resize(Window::GetWidthInPixels(), Window::GetHeightInPixels());
     }
 
     void RHI_SwapChain::AcquireNextImage()

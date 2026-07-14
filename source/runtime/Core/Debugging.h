@@ -34,6 +34,7 @@ namespace spartan
         static bool IsShaderOptimizationEnabled()    { return m_shader_optimization_enabled; }
         static bool IsLoggingToFileEnabled()         { return m_logging_to_file_enabled; }
         static bool IsBreadcrumbsEnabled()           { return m_breadcrumbs_enabled; }
+        static bool IsSteamEnabled()                 { return m_steam_enabled; }
 
     private:
         inline static bool m_validation_layer_enabled        = false; // enables vulkan validation layers for api error detection and debug message reporting
@@ -44,5 +45,6 @@ namespace spartan
         inline static bool m_gpu_marking_enabled             = true;  // labels gpu resources and command markers to improve debugging and profiling readability
         inline static bool m_gpu_timing_enabled              = true;  // measures gpu execution times for profiling and performance analysis
         inline static bool m_shader_optimization_enabled     = true;  // enables shader compiler optimizations to improve performance and efficiency
+        inline static bool m_steam_enabled                   = true;  // initializes steamworks, tick only runs cheap callback pumping when active
     };
 }

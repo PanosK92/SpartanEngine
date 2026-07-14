@@ -316,8 +316,8 @@ namespace spartan
         ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
 
         {
-            uint32_t width  = Window::GetWidth();
-            uint32_t height = Window::GetHeight();
+            uint32_t width  = Window::GetWidthInPixels();
+            uint32_t height = Window::GetHeightInPixels();
             SetResolutionOutput(width, height, false);
             SetResolutionRender(1920, 1080, false); // lower than output so taau works well
             SetViewport(static_cast<float>(width), static_cast<float>(height));
@@ -329,8 +329,8 @@ namespace spartan
         m_swapchain = make_shared<RHI_SwapChain>
         (
             Window::GetHandleSDL(),
-            Window::GetWidth(),
-            Window::GetHeight(),
+            Window::GetWidthInPixels(),
+            Window::GetHeightInPixels(),
             cvar_vsync.GetValueAs<bool>() ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             swap_chain_buffer_count,
             Display::GetHdr(),
@@ -1484,8 +1484,8 @@ namespace spartan
 
         if (Window::IsFullScreen())
         {
-            uint32_t width  = Window::GetWidth();
-            uint32_t height = Window::GetHeight();
+            uint32_t width  = Window::GetWidthInPixels();
+            uint32_t height = Window::GetHeightInPixels();
 
             width_previous_viewport  = m_viewport.width;
             height_previous_viewport = m_viewport.height;

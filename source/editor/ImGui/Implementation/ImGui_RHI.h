@@ -84,6 +84,7 @@ namespace ImGui::RHI
             shared_ptr<ViewportRhiResources> viewport_rhi_resources;
             shared_ptr<RHI_SwapChain>        swapchain;
             RHI_CommandList* cmd_list = nullptr;
+            bool pending_show        = false;
         };
 
         // main window rhi resources
@@ -96,6 +97,23 @@ namespace ImGui::RHI
         shared_ptr<RHI_BlendState>        g_blend_state;
         shared_ptr<RHI_Shader>            g_shader_vertex;
         shared_ptr<RHI_Shader>            g_shader_pixel;
+
+        // deferred so the os window is revealed only after the first successful present
+        void (*g_platform_show_window)(ImGuiViewport*) = nullptr;
+
+        void platform_show_window(ImGuiViewport* viewport)
+        {
+            if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
+            {
+                window->pending_show = true;
+                return;
+            }
+
+            if (g_platform_show_window)
+            {
+                g_platform_show_window(viewport);
+            }
+        }
     }
 
     // forward declarations
@@ -609,7 +627,20 @@ namespace ImGui::RHI
     void window_present(ImGuiViewport* viewport, void*)
     {
         WindowData* window = static_cast<WindowData*>(viewport->RendererUserData);
+        if (!window || !window->swapchain)
+        {
+            return;
+        }
+
+        const bool had_image = window->swapchain->IsImageAcquired();
         window->swapchain->Present(window->cmd_list);
+
+        // reveal only after a real present so undocking does not flash an empty os window
+        if (had_image && window->pending_show && g_platform_show_window)
+        {
+            g_platform_show_window(viewport);
+            window->pending_show = false;
+        }
     }
 
     void initialize_platform_interface()
@@ -620,5 +651,8 @@ namespace ImGui::RHI
         platform_io.Renderer_SetWindowSize = window_resize;
         platform_io.Renderer_RenderWindow  = window_render;
         platform_io.Renderer_SwapBuffers   = window_present;
+
+        g_platform_show_window           = platform_io.Platform_ShowWindow;
+        platform_io.Platform_ShowWindow  = platform_show_window;
     }
 }

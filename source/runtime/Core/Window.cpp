@@ -323,6 +323,8 @@ namespace spartan
                     SP_FIRE_EVENT(EventType::WindowResized);
                     break;
                 case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                    // swapchain and render targets must track pixel size, which can change independently of logical size under dpi scaling
+                    SP_FIRE_EVENT(EventType::WindowResized);
                     break;
                 case SDL_EVENT_WINDOW_MINIMIZED:
                     break;
@@ -530,6 +532,24 @@ namespace spartan
 
         int height_size = 0;
         SDL_GetWindowSize(window, nullptr, &height_size);
+        return static_cast<uint32_t>(height_size);
+    }
+
+    uint32_t Window::GetWidthInPixels()
+    {
+        SP_ASSERT(window);
+
+        int width_size = 0;
+        SDL_GetWindowSizeInPixels(window, &width_size, nullptr);
+        return static_cast<uint32_t>(width_size);
+    }
+
+    uint32_t Window::GetHeightInPixels()
+    {
+        SP_ASSERT(window);
+
+        int height_size = 0;
+        SDL_GetWindowSizeInPixels(window, nullptr, &height_size);
         return static_cast<uint32_t>(height_size);
     }
 

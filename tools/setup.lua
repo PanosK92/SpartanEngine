@@ -35,8 +35,12 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "libxess.dll"),
 }
 
--- steamworks sdk is vendored locally by the user, not part of the downloaded archive
-local STEAM_DLL        = path.join(PROJECT_ROOT, "third_party", "steamworks", "redistributable_bin", "win64", "steam_api64.dll")
+-- steamworks sdk, downloaded on demand into third_party/steamworks
+local STEAMWORKS_DIR   = path.join(PROJECT_ROOT, "third_party", "steamworks")
+local STEAM_DLL        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.dll")
+local STEAM_LIB        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.lib")
+local STEAMWORKS_URL   = "https://github.com/rlabrecque/SteamworksSDK/archive/refs/heads/main.zip"
+local STEAMWORKS_ZIP   = path.join(PROJECT_ROOT, "third_party", "steamworks_sdk.zip")
 local STEAM_APP_ID     = "480" -- valve spacewar test appid, replace with the real one
 
 local function is_windows()
@@ -179,24 +183,99 @@ local function ensure_archive()
     end
 end
 
+local function ensure_steamworks()
+    if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
+        print("steamworks sdk present, skipping download")
+        return
+    end
+
+    if not file_exists(SEVEN_ZIP) then
+        print("  7z missing, cannot install steamworks sdk")
+        return
+    end
+
+    print("downloading steamworks sdk...")
+    os.mkdir(path.getdirectory(STEAMWORKS_ZIP))
+
+    local last_percent = -1
+    local result, code = http.download(STEAMWORKS_URL, STEAMWORKS_ZIP, {
+        progress = function(total, current)
+            if total and total > 0 then
+                local percent = math.floor((current / total) * 100)
+                if percent ~= last_percent and percent % 5 == 0 then
+                    io.write(string.format("\r  progress: %3d%%", percent))
+                    io.flush()
+                    last_percent = percent
+                end
+            end
+        end
+    })
+    io.write("\n")
+
+    if result ~= "OK" then
+        print(string.format("  steamworks download failed: %s (http %s)", tostring(result), tostring(code)))
+        return
+    end
+
+    local extract_root = path.join(PROJECT_ROOT, "third_party", "steamworks_extract")
+    if os.isdir(extract_root) then
+        os.rmdir(extract_root)
+    end
+    os.mkdir(extract_root)
+
+    local extract_cmd = string.format('%s x %s -o%s -aoa -bso0 -bsp1',
+        quote(SEVEN_ZIP), quote(STEAMWORKS_ZIP), quote(extract_root))
+    print("extracting steamworks sdk...")
+    local ok = run(extract_cmd)
+    if ok ~= true and ok ~= 0 then
+        print("  steamworks extraction failed")
+        return
+    end
+
+    local sdk_root = path.join(extract_root, "SteamworksSDK-main")
+    if not os.isdir(sdk_root) then
+        print("  unexpected steamworks archive layout")
+        return
+    end
+
+    if os.isdir(STEAMWORKS_DIR) then
+        os.rmdir(STEAMWORKS_DIR)
+    end
+    os.mkdir(STEAMWORKS_DIR)
+
+    copy_dir(path.join(sdk_root, "public"), path.join(STEAMWORKS_DIR, "public"))
+    copy_dir(path.join(sdk_root, "redistributable_bin"), path.join(STEAMWORKS_DIR, "redistributable_bin"))
+
+    os.rmdir(extract_root)
+    os.remove(STEAMWORKS_ZIP)
+
+    if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
+        print("steamworks sdk installed")
+    else
+        print("  steamworks sdk install incomplete")
+    end
+end
+
 function setup.run()
-    print("\n[1/4] copying data files into binaries...")
+    print("\n[1/5] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
     copy_file(path.join(TOOLS_DIR, "7z.exe"), path.join(BINARIES_DIR, "7z.exe"))
     copy_file(path.join(TOOLS_DIR, "7z.dll"), path.join(BINARIES_DIR, "7z.dll"))
 
-    print("\n[2/4] ensuring libraries archive is present...")
+    print("\n[2/5] ensuring libraries archive is present...")
     ensure_archive()
 
-    print("\n[3/4] extracting archive...")
+    print("\n[3/5] extracting archive...")
     extract_archive()
 
-    print("\n[4/4] copying runtime dlls into binaries...")
+    print("\n[4/5] ensuring steamworks sdk...")
+    ensure_steamworks()
+
+    print("\n[5/5] copying runtime dlls into binaries...")
     for _, dll in ipairs(RUNTIME_DLLS) do
         copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
     end
 
-    -- stage steam runtime, skipped when the sdk has not been vendored yet
     if file_exists(STEAM_DLL) then
         copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
 
@@ -206,8 +285,9 @@ function setup.run()
             f:write(STEAM_APP_ID)
             f:close()
         end
+        print("  staged steam_api64.dll and steam_appid.txt")
     else
-        print("  steamworks sdk not found at " .. STEAM_DLL .. ", skipping steam staging")
+        print("  steamworks sdk not found, skipping steam staging")
     end
 
     print("\nsetup complete")

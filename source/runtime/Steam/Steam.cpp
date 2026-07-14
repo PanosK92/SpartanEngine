@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================================
 #include "pch.h"
 #include "Steam.h"
+#include "../Core/Debugging.h"
+#include "../World/World.h"
 // the steamworks sdk is vendored locally, compile to no-ops when it is absent
 #if __has_include("steam/steam_api.h")
     #define SP_STEAM_ENABLED 1
@@ -44,33 +46,54 @@ namespace spartan
         bool     m_initialized = false;
         uint64_t m_steam_id    = 0;
         string   m_persona_name;
+        string   m_presence_world;
 
 #if SP_STEAM_ENABLED
         // must match steam_appid.txt and the appid registered on the steam partner site
         // 480 is valve's spacewar test appid, replace with the real one before shipping
         constexpr uint32_t app_id = 480;
 
-        // steamworks callbacks require a live c++ instance for their lifetime
-        struct SteamListener
+        // requires tools/steam/rich_presence_english.vdf uploaded under steamworks localization
+        void update_presence()
         {
-            STEAM_CALLBACK(SteamListener, OnUserStatsReceived, UserStatsReceived_t);
-        };
-
-        void SteamListener::OnUserStatsReceived(UserStatsReceived_t* callback)
-        {
-            if (callback->m_eResult != k_EResultOK)
+            if (!m_initialized)
             {
-                SP_LOG_WARNING("failed to receive user stats, result %d", static_cast<int>(callback->m_eResult));
+                return;
+            }
+
+            m_presence_world = World::GetName();
+            if (m_presence_world.empty())
+            {
+                SteamFriends()->SetRichPresence("world", "");
+                SteamFriends()->SetRichPresence("status", "In Spartan Engine");
+                SteamFriends()->SetRichPresence("steam_display", "#StatusIdle");
+            }
+            else
+            {
+                const string title = FileSystem::GetFileNameWithoutExtensionFromFilePath(World::GetFilePath());
+                SteamFriends()->SetRichPresence("world", title.c_str());
+                SteamFriends()->SetRichPresence("status", ("Playing " + title).c_str());
+                SteamFriends()->SetRichPresence("steam_display", "#StatusPlaying");
             }
         }
-
-        SteamListener* m_listener = nullptr;
 #endif
     }
 
     void Steam::Initialize()
     {
 #if SP_STEAM_ENABLED
+        if (!Debugging::IsSteamEnabled())
+        {
+            SP_LOG_INFO("steam disabled via debugging.h");
+            return;
+        }
+
+        // relaunches through steam when needed, no-op under local steam_appid.txt testing
+        if (SteamAPI_RestartAppIfNecessary(app_id))
+        {
+            return;
+        }
+
         if (!SteamAPI_Init())
         {
             SP_LOG_WARNING("steam is not running or the appid is missing, steam features are disabled");
@@ -87,9 +110,8 @@ namespace spartan
             SP_LOG_WARNING("steam appid mismatch, expected %u but running as %u", app_id, running_app_id);
         }
 
-        m_listener = new SteamListener();
-        SteamUserStats()->RequestCurrentStats();
-
+        // stats and achievements are synced by the steam client before launch, no request call needed
+        update_presence();
         SP_LOG_INFO("steam initialized for user %s", m_persona_name.c_str());
 #else
         SP_LOG_INFO("steam sdk not present, steam features are disabled");
@@ -104,12 +126,11 @@ namespace spartan
         }
 
 #if SP_STEAM_ENABLED
-        delete m_listener;
-        m_listener = nullptr;
-
+        SteamFriends()->ClearRichPresence();
         SteamAPI_Shutdown();
 #endif
-        m_initialized = false;
+        m_initialized    = false;
+        m_presence_world.clear();
     }
 
     void Steam::Tick()
@@ -118,6 +139,12 @@ namespace spartan
         if (m_initialized)
         {
             SteamAPI_RunCallbacks();
+
+            // keep presence in sync when worlds load or unload
+            if (World::GetName() != m_presence_world)
+            {
+                update_presence();
+            }
         }
 #endif
     }

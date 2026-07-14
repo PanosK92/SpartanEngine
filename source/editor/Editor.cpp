@@ -174,18 +174,22 @@ void Editor::Tick()
         {
             ImGui::Render();
 
+            // record main imgui first, then create/present child viewports before presenting
+            // the main swapchain, otherwise undocked content vanishes for a frame
             if (spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
             {
-                // main window
                 ImGui::RHI::render(ImGui::GetDrawData());
-                spartan::Renderer::SubmitAndPresent();
             }
 
-            // child windows
             if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault();
+            }
+
+            if (spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
+            {
+                spartan::Renderer::SubmitAndPresent();
             }
         }
 
