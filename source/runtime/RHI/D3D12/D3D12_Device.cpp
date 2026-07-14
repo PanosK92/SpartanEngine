@@ -165,23 +165,27 @@ namespace spartan
         ID3D12CommandQueue* graphics = nullptr;
         ID3D12CommandQueue* compute  = nullptr;
         ID3D12CommandQueue* copy     = nullptr;
+        ID3D12CommandQueue* present  = nullptr;
 
         // command allocators (one per queue type)
         ID3D12CommandAllocator* allocator_graphics = nullptr;
         ID3D12CommandAllocator* allocator_compute  = nullptr;
         ID3D12CommandAllocator* allocator_copy     = nullptr;
+        ID3D12CommandAllocator* allocator_present  = nullptr;
 
         // rhi queue wrappers
-        array<shared_ptr<RHI_Queue>, 3> regular;
+        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular;
 
         // per-queue fences for queue-side wait/signal, separate from the rhi sync primitives
         // (fence_graphics is reused as the "everything finished" fence by QueueWaitAll)
         ID3D12Fence* fence_graphics = nullptr;
         ID3D12Fence* fence_compute  = nullptr;
         ID3D12Fence* fence_copy     = nullptr;
+        ID3D12Fence* fence_present  = nullptr;
         uint64_t fence_value_graphics = 0;
         uint64_t fence_value_compute  = 0;
         uint64_t fence_value_copy     = 0;
+        uint64_t fence_value_present  = 0;
         HANDLE fence_event = nullptr;
 
         ID3D12CommandQueue* get_d3d_queue(RHI_Queue_Type type)
@@ -197,6 +201,10 @@ namespace spartan
             if (type == RHI_Queue_Type::Copy)
             {
                 return copy;
+            }
+            if (type == RHI_Queue_Type::Present)
+            {
+                return present;
             }
             return nullptr;
         }
@@ -215,6 +223,10 @@ namespace spartan
             {
                 return fence_copy;
             }
+            if (type == RHI_Queue_Type::Present)
+            {
+                return fence_present;
+            }
             return nullptr;
         }
 
@@ -227,6 +239,10 @@ namespace spartan
             if (type == RHI_Queue_Type::Copy)
             {
                 return fence_value_copy;
+            }
+            if (type == RHI_Queue_Type::Present)
+            {
+                return fence_value_present;
             }
             return fence_value_graphics;
         }
@@ -247,6 +263,7 @@ namespace spartan
             if (fence_graphics) { fence_graphics->Release(); fence_graphics = nullptr; }
             if (fence_compute)  { fence_compute->Release();  fence_compute  = nullptr; }
             if (fence_copy)     { fence_copy->Release();     fence_copy     = nullptr; }
+            if (fence_present)  { fence_present->Release();  fence_present  = nullptr; }
 
             if (allocator_graphics)
             {
@@ -264,6 +281,12 @@ namespace spartan
             {
                 allocator_copy->Release();
                 allocator_copy = nullptr;
+            }
+
+            if (allocator_present)
+            {
+                allocator_present->Release();
+                allocator_present = nullptr;
             }
         }
     }
@@ -638,6 +661,10 @@ namespace spartan
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::graphics))),
                 "Failed to create graphics queue");
 
+            // dedicated present queue, same type as graphics so vsync wait does not stall the render queue
+            SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::present))),
+                "Failed to create present queue");
+
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::compute))),
                 "Failed to create compute queue");
@@ -668,6 +695,10 @@ namespace spartan
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandAllocator(
                 D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&queues::allocator_copy))),
                 "Failed to create copy command allocator");
+
+            SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandAllocator(
+                D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&queues::allocator_present))),
+                "Failed to create present command allocator");
         }
 
         // create fences for synchronization (one per queue so wait/signal across queues can be ordered)
@@ -684,9 +715,14 @@ namespace spartan
                 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queues::fence_copy))),
                 "Failed to create copy fence");
 
+            SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateFence(
+                0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queues::fence_present))),
+                "Failed to create present fence");
+
             queues::fence_value_graphics = 1;
             queues::fence_value_compute  = 1;
             queues::fence_value_copy     = 1;
+            queues::fence_value_present  = 1;
             queues::fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
             SP_ASSERT_MSG(queues::fence_event != nullptr, "Failed to create fence event");
         }
@@ -762,8 +798,10 @@ namespace spartan
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
+        queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Present)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Present,  "present");
 
         SP_LOG_INFO("DirectX 12.0 initialized successfully");
+        SP_LOG_INFO("Dedicated present queue created");
     }
 
     void RHI_Device::Tick(const uint64_t frame_count)
@@ -797,6 +835,7 @@ namespace spartan
         if (queues::graphics) { queues::graphics->Release(); queues::graphics = nullptr; }
         if (queues::compute)  { queues::compute->Release();  queues::compute  = nullptr; }
         if (queues::copy)     { queues::copy->Release();     queues::copy     = nullptr; }
+        if (queues::present)  { queues::present->Release();  queues::present  = nullptr; }
 
         // release info queue before the device, since it holds a reference to it
         validation::destroy();
@@ -833,7 +872,7 @@ namespace spartan
         }
 
         // then signal+wait on each queue's per-queue fence as a final guard
-        const RHI_Queue_Type queue_types[] = { RHI_Queue_Type::Graphics, RHI_Queue_Type::Compute, RHI_Queue_Type::Copy };
+        const RHI_Queue_Type queue_types[] = { RHI_Queue_Type::Graphics, RHI_Queue_Type::Compute, RHI_Queue_Type::Copy, RHI_Queue_Type::Present };
         for (RHI_Queue_Type type : queue_types)
         {
             ID3D12CommandQueue* q = queues::get_d3d_queue(type);
@@ -871,6 +910,10 @@ namespace spartan
         {
             return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)].get();
         }
+        if (type == RHI_Queue_Type::Present)
+        {
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Present)].get();
+        }
         return nullptr;
     }
 
@@ -887,6 +930,10 @@ namespace spartan
         if (type == RHI_Queue_Type::Copy)
         {
             return queues::copy;
+        }
+        if (type == RHI_Queue_Type::Present)
+        {
+            return queues::present;
         }
         return nullptr;
     }

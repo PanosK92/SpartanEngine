@@ -562,12 +562,16 @@ namespace spartan
         void* graphics = nullptr;
         void* compute  = nullptr;
         void* copy     = nullptr;
+        void* present  = nullptr;
 
-        uint32_t index_graphics = numeric_limits<uint32_t>::max();
-        uint32_t index_compute  = numeric_limits<uint32_t>::max();
-        uint32_t index_copy     = numeric_limits<uint32_t>::max();
+        uint32_t index_graphics       = numeric_limits<uint32_t>::max();
+        uint32_t index_compute        = numeric_limits<uint32_t>::max();
+        uint32_t index_copy           = numeric_limits<uint32_t>::max();
+        uint32_t index_present        = numeric_limits<uint32_t>::max();
+        uint32_t local_index_present  = 0; // queue index within the present family
+        bool present_dedicated        = false;
 
-        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular; // graphics, compute, and copy
+        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular;
 
         void destroy()
         {
@@ -659,6 +663,21 @@ namespace spartan
                     return false;
                 }
                 SP_LOG_INFO("Copy sharing family %u.", index_copy);
+            }
+
+            // present: prefer a second queue in the graphics family so present/vsync does not stall graphics
+            index_present       = index_graphics;
+            local_index_present = 0;
+            present_dedicated   = false;
+            if (queue_families[index_graphics].queueCount >= 2)
+            {
+                local_index_present = 1;
+                present_dedicated   = true;
+                SP_LOG_INFO("Dedicated present queue: graphics family %u, queue 1.", index_graphics);
+            }
+            else
+            {
+                SP_LOG_INFO("No dedicated present queue available, presenting on graphics.");
             }
 
             return true;
@@ -1670,22 +1689,32 @@ namespace spartan
             vector<VkDeviceQueueCreateInfo> queue_create_infos;
             {
                 queues::detect_queue_family_indices(RHI_Context::device_physical);
-                vector<uint32_t> queue_family_indices =
-                {
-                    queues::index_graphics,
-                    queues::index_compute,
-                    queues::index_copy
-                };
 
-                float queue_priority = 1.0f;
-                for (const uint32_t& queue_family_index : queue_family_indices)
+                // one create info per unique family, queue count covers the highest local index we need
+                unordered_map<uint32_t, uint32_t> family_queue_counts;
+                auto require_queue = [&](uint32_t family, uint32_t local_index)
+                {
+                    uint32_t needed = local_index + 1;
+                    auto it = family_queue_counts.find(family);
+                    if (it == family_queue_counts.end() || it->second < needed)
+                    {
+                        family_queue_counts[family] = needed;
+                    }
+                };
+                require_queue(queues::index_graphics, 0);
+                require_queue(queues::index_compute, 0);
+                require_queue(queues::index_copy, 0);
+                require_queue(queues::index_present, queues::local_index_present);
+
+                static float queue_priorities[2] = { 1.0f, 1.0f };
+                for (const auto& entry : family_queue_counts)
                 {
                     VkDeviceQueueCreateInfo queue_create_info = {};
                     queue_create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
                     queue_create_info.flags                   = 0;
-                    queue_create_info.queueFamilyIndex        = queue_family_index;
-                    queue_create_info.queueCount              = 1;
-                    queue_create_info.pQueuePriorities        = &queue_priority;
+                    queue_create_info.queueFamilyIndex        = entry.first;
+                    queue_create_info.queueCount              = entry.second;
+                    queue_create_info.pQueuePriorities        = queue_priorities;
                     queue_create_infos.push_back(queue_create_info);
                 }
             }
@@ -1767,10 +1796,14 @@ namespace spartan
 
             vkGetDeviceQueue(RHI_Context::device, queues::index_copy, 0, reinterpret_cast<VkQueue*>(&queues::copy));
             SetResourceName(queues::copy, RHI_Resource_Type::Queue, "copy");
- 
+
+            vkGetDeviceQueue(RHI_Context::device, queues::index_present, queues::local_index_present, reinterpret_cast<VkQueue*>(&queues::present));
+            SetResourceName(queues::present, RHI_Resource_Type::Queue, queues::present_dedicated ? "present" : "present_shared_graphics");
+
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
+            queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Present)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Present,  "present");
         }
 
         vulkan_memory_allocator::initialize();
@@ -1900,6 +1933,10 @@ namespace spartan
         {
             return queues::index_compute;
         }
+        else if (type == RHI_Queue_Type::Present)
+        {
+            return queues::index_present;
+        }
 
         return 0;
     }
@@ -1914,6 +1951,16 @@ namespace spartan
         if (type == RHI_Queue_Type::Compute)
         {
             return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)].get();
+        }
+
+        if (type == RHI_Queue_Type::Copy)
+        {
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)].get();
+        }
+
+        if (type == RHI_Queue_Type::Present)
+        {
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Present)].get();
         }
 
         return nullptr;
@@ -1934,6 +1981,11 @@ namespace spartan
         if (type == RHI_Queue_Type::Compute)
         {
             return queues::compute;
+        }
+
+        if (type == RHI_Queue_Type::Present)
+        {
+            return queues::present;
         }
 
         return nullptr;

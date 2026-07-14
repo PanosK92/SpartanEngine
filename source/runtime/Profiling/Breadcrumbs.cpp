@@ -37,6 +37,7 @@ namespace spartan
                 case RHI_Queue_Type::Graphics: return 0;
                 case RHI_Queue_Type::Compute:  return 1;
                 case RHI_Queue_Type::Copy:     return 2;
+                case RHI_Queue_Type::Present:  return -1; // present does not record gpu breadcrumbs
                 default:                       return -1;
             }
         }

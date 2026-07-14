@@ -46,7 +46,7 @@ namespace spartan
 {
     namespace
     {
-        array<mutex, 3> mutexes;
+        array<mutex, static_cast<uint32_t>(RHI_Queue_Type::Max)> mutexes;
 
         mutex& get_mutex(RHI_Queue* queue)
         {

@@ -288,11 +288,11 @@ namespace spartan
         swap_chain_desc.AlphaMode             = DXGI_ALPHA_MODE_IGNORE; // tell dwm not to use the alpha channel for compositing, matches vulkan's composite_alpha_opaque
         swap_chain_desc.Flags                 = (m_present_mode == RHI_Present_Mode::Immediate) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
-        // get the graphics queue
-        ID3D12CommandQueue* command_queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Graphics));
+        // get the present queue, dedicated so vsync wait does not stall graphics
+        ID3D12CommandQueue* command_queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Present));
         if (!command_queue)
         {
-            SP_LOG_ERROR("Graphics command queue is null");
+            SP_LOG_ERROR("Present command queue is null");
             return;
         }
 
@@ -376,6 +376,12 @@ namespace spartan
             // store backbuffer and rtv info
             m_rhi_rt[i]       = backbuffer;
             s_rtv_indices[i]  = rtv_index;
+        }
+
+        // fences so the present queue can wait for graphics to finish writing the backbuffer
+        for (uint32_t i = 0; i < m_buffer_count; i++)
+        {
+            m_rendering_complete_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_present_" + to_string(i)).c_str());
         }
 
         // get the first backbuffer index
@@ -523,6 +529,9 @@ namespace spartan
             SP_LOG_ERROR("Can't present, the swapchain has not been initialized");
             return;
         }
+
+        // present queue waits for graphics to finish the backbuffer, then dxgi presents
+        RHI_Device::GetQueue(RHI_Queue_Type::Present)->Present(m_rhi_swapchain, m_image_index, GetRenderingCompleteSemaphore());
 
         // present parameters, tearing can bypass dwm hdr composition so keep it off for hdr
         const bool hdr             = m_format == format_hdr;
@@ -684,7 +693,7 @@ namespace spartan
 
     RHI_SyncPrimitive* RHI_SwapChain::GetRenderingCompleteSemaphore() const
     {
-        return nullptr;
+        return m_image_acquired ? m_rendering_complete_semaphore[m_image_index].get() : nullptr;
     }
 
     // helper function to get rtv handle for a swapchain image (used by command list)

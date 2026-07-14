@@ -2445,6 +2445,8 @@ namespace spartan
                 return "compute";
             case RHI_Queue_Type::Copy:
                 return "copy";
+            case RHI_Queue_Type::Present:
+                return "present";
             default:
                 return "none";
             }

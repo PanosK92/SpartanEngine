@@ -283,10 +283,11 @@ namespace spartan
             VkBool32 present_support = false;
             SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceSupportKHR(
                 RHI_Context::device_physical,
-                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Present),
                 static_cast<VkSurfaceKHR>(m_rhi_surface),
                 &present_support
             ));
+            SP_ASSERT_MSG(present_support, "Present queue does not support presentation to this surface");
         }
 
         Create();
@@ -557,6 +558,8 @@ namespace spartan
     
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
+        (void)cmd_list_frame;
+
         // only present if we successfully acquired an image
         if (!m_image_acquired)
         {
@@ -566,7 +569,7 @@ namespace spartan
         // use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
         // we know the previous presentation completed, so the semaphore is safe to signal again
         RHI_SyncPrimitive* rendering_complete_semaphore = m_rendering_complete_semaphore[m_image_index].get();
-        bool success = cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, rendering_complete_semaphore);
+        bool success = RHI_Device::GetQueue(RHI_Queue_Type::Present)->Present(m_rhi_swapchain, m_image_index, rendering_complete_semaphore);
 
         // clear acquisition state after presentation
         m_image_acquired = false;

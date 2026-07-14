@@ -246,8 +246,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             if (surface.is_water())
             {
-                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).r);
-                float thickness        = clamp(depth_background - depth_transparent, 0.0f, 10.0f);
+                // point sample, bilinear blends silhouette depths into values that land anywhere
+                float depth_background = linearize_depth(tex4.SampleLevel(samplers[sampler_point_clamp], uv, 0.0f).r);
+                // geometry in front leaking into this texel says nothing about the water column, a zero
+                // column shows the raw background as a bright halo, treat the column as deep instead
+                float thickness = depth_background > depth_transparent ? clamp(depth_background - depth_transparent, 0.0f, 10.0f) : 10.0f;
 
                 // a physically bent ray shifts the whole underwater image systematically in one direction,
                 // and wherever the shifted sample is unavailable in screen space the pixel has to fall back
@@ -261,7 +264,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 // above the surface, halve it until the sample is submerged, the offset is small so the
                 // collapse is invisible when it happens
                 float2 refracted_uv = uv;
-                float depth_shown   = depth_background;
+                float depth_shown   = depth_transparent + thickness;
                 float scale         = 1.0f;
                 [unroll]
                 for (int i = 0; i < 4; i++)

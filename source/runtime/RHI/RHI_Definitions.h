@@ -87,6 +87,7 @@ namespace spartan
         Graphics,
         Compute,
         Copy,
+        Present,
         Max
     };
 
