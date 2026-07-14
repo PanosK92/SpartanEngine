@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -88,6 +88,8 @@ public:
 	\note It is not allowed to use this method while the simulation is running (except during PxScene::collide(),
 	in PxContactModifyCallback or in contact report callbacks).
 
+	\note If this actor is a PxRigidDynamic or PxArticulationLink, this method should not be used after the direct GPU API has been enabled and initialized. See #PxDirectGPUAPI for the details.
+
 	\return Global pose of object.
 
 	\see PxRigidDynamic.setGlobalPose() PxRigidStatic.setGlobalPose()
@@ -114,6 +116,8 @@ public:
 
 	\note It is not allowed to use this method if the actor is part of a #PxPruningStructure that has not been
 	added to a scene yet.
+
+	\note If this actor is a PxRigidDynamic or PxArticulationLink, this method should not be used after the direct GPU API has been enabled and initialized. See #PxDirectGPUAPI for the details.
 
 	<b>Sleeping:</b> This call wakes dynamic actors if they are sleeping and the autowake parameter is true (default).
 

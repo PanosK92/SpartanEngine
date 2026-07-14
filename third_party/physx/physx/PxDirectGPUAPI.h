@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -82,9 +82,9 @@ class PxArticulationGPUAPIReadType
 		eJOINT_POSITION = 0,		//!< The joint positions. 1 PxReal per dof. Block size per articulation: maxDofs.
 		eJOINT_VELOCITY,			//!< The joint velocities. 1 PxReal per dof. Block size per articulation: maxDofs.
 		eJOINT_ACCELERATION,		//!< The joint accelerations. 1 PxReal per dof. Block size per articulation: maxDofs.
-		eJOINT_FORCE,				//!< The joint forces or torques applied using setArticulationData. 1 PxReal per dof. Block size per articulation: maxDofs.
-		eJOINT_TARGET_VELOCITY,		//!< The velocity targets applied using setArticulationData. 1 PxReal per dof. Block size per articulation: maxDofs.
-		eJOINT_TARGET_POSITION,		//!< The position targets applied using setArticulationData. 1 PxReal per dof. Block size per articulation: maxDofs.
+		eJOINT_FORCE,				//!< The joint forces or torques applied using setArticulationData. 1 PxReal per dof. Block size per articulation: maxDofs. Not updated by the simulation, will return the values set by PxDirectGPUAPI::setArticulationData().
+		eJOINT_TARGET_VELOCITY,		//!< The velocity targets applied using setArticulationData. 1 PxReal per dof. Block size per articulation: maxDofs. Not updated by the simulation, will return the values set by PxDirectGPUAPI::setArticulationData().
+		eJOINT_TARGET_POSITION,		//!< The position targets applied using setArticulationData. 1 PxReal per dof. Block size per articulation: maxDofs. Not updated by the simulation, will return the values set by PxDirectGPUAPI::setArticulationData().
 		eROOT_GLOBAL_POSE,			//!< The root link global pose. 1 PxTransform per articulation. Block size per articulation: 1.
 		eROOT_LINEAR_VELOCITY,		//!< The root link linear velocity. 1 PxVec3 per articulation. Block size per articulation: 1.
 		eROOT_ANGULAR_VELOCITY,		//!< The root link angular velocity. 1 PxVec3 per articulation. Block size per articulation: 1.
@@ -93,7 +93,11 @@ class PxArticulationGPUAPIReadType
 		eLINK_ANGULAR_VELOCITY,		//!< The link angular velocities including root link. 1 PxVec3 per link. Block size per articulation: maxLinks.
 		eLINK_LINEAR_ACCELERATION,	//!< The link linear accelerations including root link. 1 PxVec3 per link. Block size per articulation: maxLinks.
 		eLINK_ANGULAR_ACCELERATION,	//!< The link angular accelerations including root link. 1 PxVec3 per link. Block size per articulation: maxLinks.
-		eLINK_INCOMING_JOINT_FORCE	//!< The link incoming joint forces including root link. The force is reported in the child joint frame of the link's incoming joint. 2 PxVec3 per link. The first PxVec3 contains the force, and the second PxVec3 contains the torque. Block size per articulation: maxLinks.
+		eLINK_INCOMING_JOINT_FORCE,	//!< The link incoming joint forces including root link. The force is reported in the child joint frame of the link's incoming joint. 2 PxVec3 per link. The first PxVec3 contains the force, and the second PxVec3 contains the torque. Block size per articulation: maxLinks.
+		eFIXED_TENDON,				//!< Fixed tendon data. 1 PxGpuFixedTendonData per fixed tendon. Block size per articulation: maxFixedTendons. Not updated by the simulation, will return the values set by PxDirectGPUAPI::setArticulationData().
+		eFIXED_TENDON_JOINT,		//!< Fixed tendon joint data. 1 PxGpuTendonJointCoefficientData per fixed tendon joint. Block size per articulation: maxFixedTendons * maxFixedTendonJoints. Not updated by the simulation, will return the values set by PxDirectGPUAPI::setArticulationData().
+		eSPATIAL_TENDON,			//!< Spatial tendon data. 1 PxGpuSpatialTendonData per spatial tendon. Block size per articulation: maxSpatialTendons. Not updated by the simulation, will return the values set by PxDirectGPUAPI::setArticulationData().
+		eSPATIAL_TENDON_ATTACHMENT  //!< Spatial tendon attachment data. 1 PxGpuTendonAttachmentData per spatial tendon attachment. Block size per articulation: maxSpatialTendons * maxSpatialTendonAttachments. Not updated by the simulation, will return the values set by PxDirectGPUAPI::setArticulationData().
 	};
 };
 
@@ -144,27 +148,6 @@ public:
 												//!< across all the articulations in the scene, and can be queried by calling PxDirectGPUAPI::getArticulationGPUAPIMaxCounts().
 												//!< The size of the jacobian can vary by articulation, and will be determined using these formulas:
 												//!< nCols = (fixedBase ? 0 : 6) + dofCount, nRows = (fixedBase ? 0 : 6) + (linkCount - 1) * 6. The matrix is indexed [nCols * row + column].
-		eGENERALIZED_MASS_MATRICES PX_DEPRECATED, //!< Deprecated, use PxArticulationGPUAPIComputeType::eMASS_MATRICES instead.
-												//!< Computes the joint-space inertia matrices that maps joint accelerations to joint forces: forces = M * accelerations on the GPU.
-												//!< This is the batched, direct-GPU equivalent of PxArticulationReducedCoordinate::computeGeneralizedMassMatrix().
-												//!< The output buffer is laid out into sequential blocks per articulation, where each block has the size maxDofs * maxDofs * sizeof(float).
-												//!< maxDofs is the maximum dof count across all the articulations in the scene, and can be queried by calling 
-												//!< PxDirectGPUAPI::getArticulationGPUAPIMaxCounts(). The size of the matrix can vary by articulation, and will be dofCount * dofCount.
-												//!< The dof indices will be according to the low-level indexing, we refer to the documentation of PxArticulationCache for an explanation.
-		eGENERALIZED_GRAVITY_FORCES PX_DEPRECATED,	//!< Deprecated, use PxArticulationGPUAPIComputeType::eGRAVITY_COMPENSATION instead.
-												//!< Computes the joint dof forces required to counteract gravitational forces for the given articulation pose. This is the
-												//!< batched, direct-GPU equivalent of PxArticulationReducedCoordinate::computeGeneralizedGravityForce(). The output data
-												//!< buffer is laid out into sequential blocks per articulation, where each block has the size maxDofs * sizeof(float). maxDofs
-												//!< is the maximum dof count across all the articulations in the scene, and can be queried by calling
-												//!< PxDirectGPUAPI::getArticulationGPUAPIMaxCounts(). The data layout within each block follows the PxArticulationCache layout,
-												//!< for which we refer to the user guide. There will be 1 PxReal per articulation dof.
-		eCORIOLIS_AND_CENTRIFUGAL_FORCES PX_DEPRECATED,	//!< Deprecated, use PxArticulationGPUAPIComputeType::eCORIOLIS_AND_CENTRIFUGAL_COMPENSATION instead.
-												//!< Computes the joint dof forces required to counteract Coriolis and centrifugal forces for the given articulation pose.
-												//!< This is the batched, direct-GPU equivalent to PxArticulationReducedCoordinate::computeCoriolisAndCentrifugalForce(). The output data
-												//!< buffer is laid out into sequential blocks per articulation, where each block has the size maxDofs * sizeof(float). maxDofs
-												//!< is the maximum dof count across all the articulations in the scene, and can be queried by calling
-												//!< PxDirectGPUAPI::getArticulationGPUAPIMaxCounts(). The data layout within each block follows the PxArticulationCache layout,
-												//!< for which we refer to the user guide. There will be 1 PxReal per articulation dof.
 		eMASS_MATRICES,							//!< Computes the mass matrices that maps accelerations to forces: forces = M * accelerations on the GPU.
 												//!< This is the batched, direct-GPU equivalent of PxArticulationReducedCoordinate::computeMassMatrix(). The output buffer is laid
 												//!< out into sequential blocks per articulation, where each block has the size (maxDofs + 6) * (maxDofs + 6) * sizeof(float).

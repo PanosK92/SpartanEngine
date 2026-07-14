@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -41,7 +41,7 @@
 PX_BINARY_SERIAL_VERSION is used to version the PhysX binary data and meta data. The global unique identifier of the PhysX SDK needs to match 
 the one in the data and meta data, otherwise they are considered incompatible. A 32 character wide GUID can be generated with https://www.guidgenerator.com/ for example. 
 */
-#define PX_BINARY_SERIAL_VERSION "C911256C963940C0B0829DC519970BC2"
+#define PX_BINARY_SERIAL_VERSION "04A07573A4E94B1E98F95D5FBDE3AF6F"
 
 
 #if !PX_DOXYGEN

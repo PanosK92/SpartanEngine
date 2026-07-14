@@ -175,7 +175,7 @@ function spartan_project_configuration()
             links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
-                "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle2_static_64", "PhysXCharacterKinematic_static_64"
+                "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
             }
 
             filter { "system:windows", "configurations:release" }
@@ -201,7 +201,7 @@ function spartan_project_configuration()
             links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
-                "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle2_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
+                "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
             }
             if ARG_API_GRAPHICS == "vulkan" then
                 links {

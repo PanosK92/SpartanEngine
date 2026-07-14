@@ -890,6 +890,14 @@ namespace spartan
     {
         const Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
 
+        // stereo overwrites the projection with unjittered per eye matrices, keep the advertised jitter at zero
+        // so shaders do not unjitter velocities and uvs with an offset that was never applied
+        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        {
+            m_jitter_offset = Vector2::Zero;
+            return;
+        }
+
         if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
         {
             // halton-2,3 jitter, taau pass uses it to reconstruct sub-pixel detail

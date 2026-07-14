@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -94,7 +94,7 @@ public:
 	\li PxPlaneGeometry vs. {PxPlaneGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
 	\li PxTriangleMeshGeometry vs. PxHeightFieldGeometry
 	\li PxHeightFieldGeometry vs. PxHeightFieldGeometry
-	\li Anything involving PxParticleSystemGeometry, PxTetrahedronMeshGeometry, or PxConvexCoreGeometry
+	\li Anything involving PxParticleSystemGeometry or PxTetrahedronMeshGeometry
 
 	\param[in] geom0			The first geometry object
 	\param[in] pose0			Pose of the first geometry object
@@ -116,14 +116,15 @@ public:
 
 	The following combinations are supported.
 
-	\li PxSphereGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
-	\li PxCapsuleGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
-	\li PxBoxGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
-	\li PxConvexMeshGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
+	\li PxSphereGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexCoreGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
+	\li PxCapsuleGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexCoreGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
+	\li PxBoxGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexCoreGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
+	\li PxConvexCoreGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexCoreGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
+	\li PxConvexMeshGeometry vs. {PxSphereGeometry, PxPlaneGeometry, PxCapsuleGeometry, PxBoxGeometry, PxConvexCoreGeometry, PxConvexMeshGeometry, PxTriangleMeshGeometry, PxHeightFieldGeometry}
 
 	\param[in] unitDir			Normalized direction along which object geom0 should be swept
 	\param[in] maxDist			Maximum sweep distance, has to be in the [0, inf) range
-	\param[in] geom0			The geometry object to sweep. Supported geometries are #PxSphereGeometry, #PxCapsuleGeometry, #PxBoxGeometry and #PxConvexMeshGeometry
+	\param[in] geom0			The geometry object to sweep. Supported geometries are #PxSphereGeometry, #PxCapsuleGeometry, #PxBoxGeometry, #PxConvexCoreGeometry, and #PxConvexMeshGeometry
 	\param[in] pose0			Pose of the geometry object to sweep
 	\param[in] geom1			The geometry object to test the sweep against
 	\param[in] pose1			Pose of the geometry object to sweep against
@@ -154,7 +155,7 @@ public:
 	- mesh/mesh
 	- mesh/heightfield
 	- heightfield/heightfield
-	- anything involving PxParticleSystemGeometry, PxTetrahedronMeshGeometry, or PxConvexCoreGeometry
+	- anything involving PxParticleSystemGeometry, PxTetrahedronMeshGeometry
 
 	The function returns a unit vector ('direction') and a penetration depth ('depth').
 
@@ -184,7 +185,7 @@ public:
 	/**
 	\brief Computes distance between a point and a geometry object.
 
-	Currently supported geometry objects: box, sphere, capsule, convex, mesh.
+	Currently supported geometry objects: box, sphere, capsule, convex core, convex mesh, mesh.
 
 	\note For meshes, only the BVH34 midphase data-structure is supported.
 
@@ -212,9 +213,10 @@ public:
 	\param[in] inflation	Scale factor for computed bounds. The geom's extents are multiplied by this value.
 	\param[in] queryFlags	Optional flags controlling the query.
 
+	\return True if success, false if an error occurred and the bounds were not written out.
 	\see PxGeometry PxTransform
 	*/
-	PX_PHYSX_COMMON_API static void	computeGeomBounds(PxBounds3& bounds, const PxGeometry& geom, const PxTransform& pose, float offset=0.0f, float inflation=1.0f, PxGeometryQueryFlags queryFlags = PxGeometryQueryFlag::eDEFAULT);
+	PX_PHYSX_COMMON_API static bool	computeGeomBounds(PxBounds3& bounds, const PxGeometry& geom, const PxTransform& pose, float offset=0.0f, float inflation=1.0f, PxGeometryQueryFlags queryFlags = PxGeometryQueryFlag::eDEFAULT);
 
 	/**
 	\brief Generate collision contacts between a convex geometry and a single triangle

@@ -1340,6 +1340,10 @@ namespace spartan
             if (!is_compute && !is_raytracing)
             {
                 D3D12_PRIMITIVE_TOPOLOGY topo = (pso.primitive_topology == RHI_PrimitiveTopology::LineList) ? D3D_PRIMITIVE_TOPOLOGY_LINELIST : D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+                if (pso.HasTessellation())
+                {
+                    topo = D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+                }
                 cmd_list->IASetPrimitiveTopology(topo);
             }
 

@@ -22,18 +22,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
 #ifndef PX_CONSTRAINT_H
 #define PX_CONSTRAINT_H
 
-
 #include "PxPhysXConfig.h"
 #include "PxConstraintDesc.h"
 #include "common/PxBase.h"
-#include "PxResidual.h"
 
 #if !PX_DOXYGEN
 namespace physx
@@ -56,7 +54,7 @@ struct PxConstraintFlag
 		eBROKEN						= 1<<0,		//!< whether the constraint is broken
 		eCOLLISION_ENABLED			= 1<<3,		//!< whether contacts should be generated between the objects this constraint constrains
 		eVISUALIZATION				= 1<<4,		//!< whether this constraint should be visualized, if constraint visualization is turned on
-		eDRIVE_LIMITS_ARE_FORCES	= 1<<5,		//!< limits for drive strength are forces rather than impulses
+		eDRIVE_LIMITS_ARE_FORCES	= 1<<5,		//!< \deprecated Will be removed in a future version and the limits will always be forces. limits for drive strength are forces rather than impulses
 		eIMPROVED_SLERP				= 1<<7,		//!< perform preprocessing for improved accuracy on D6 Slerp Drive (this flag will be removed in a future release when preprocessing is no longer required)
 		eDISABLE_PREPROCESSING		= 1<<8,		//!< suppress constraint preprocessing, intended for use with rowResponseThreshold. May result in worse solver accuracy for ill-conditioned constraints.
 		eENABLE_EXTENDED_LIMITS		= 1<<9,		//!< enables extended limit ranges for angular limits (e.g., limit values > PxPi or < -PxPi)
@@ -101,7 +99,7 @@ public:
 
 	\see PxPhysics.createConstraint, PxBase.release()
 	*/
-	virtual void				release()														= 0;
+	virtual void				release()														PX_OVERRIDE = 0;
 
 	/**
 	\brief Retrieves the scene which this constraint belongs to.
@@ -251,23 +249,11 @@ public:
 
 	virtual	const char*			getConcreteTypeName() const PX_OVERRIDE	PX_FINAL { return "PxConstraint"; }
 
-	/**
-	\brief Returns the residual for this constraint.
-
-	The residual represents the current error in this constraint measured as the delta impulse applied in the last velocity or position iteration.
-	If the solver converges perfectly, the residual should approach zero.
-
-	\return The residual for this constraint.
-
-	\see PxConstraintResidual
-	*/
-	virtual PxConstraintResidual getSolverResidual() const = 0;
-
 			void*				userData;	//!< user can assign this to whatever, usually to create a 1:1 relationship with a user object.
 
 protected:
 	PX_INLINE					PxConstraint(PxType concreteType, PxBaseFlags baseFlags) : PxBase(concreteType, baseFlags), userData(NULL) {}
-	PX_INLINE					PxConstraint(PxBaseFlags baseFlags) : PxBase(baseFlags), userData(NULL) {}
+	PX_INLINE					PxConstraint(PxBaseFlags baseFlags) : PxBase(baseFlags)	{}
 	virtual						~PxConstraint() {}
 	virtual	bool				isKindOf(const char* name) const PX_OVERRIDE { PX_IS_KIND_OF(name, "PxConstraint", PxBase); }
 

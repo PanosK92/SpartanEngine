@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2025 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2026 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.  
 
@@ -43,8 +43,8 @@ class OmniPvdFileWriteStream;
 //   Minor version version indicates non-breaking changes such as the
 //   addition of a class or attribute on top of those already existing,
 //   hence additive changes.
-#define PX_PHYSICS_OVD_INTEGRATION_VERSION_MAJOR 2
-#define PX_PHYSICS_OVD_INTEGRATION_VERSION_MINOR 0
+#define PX_PHYSICS_OVD_INTEGRATION_VERSION_MAJOR 3
+#define PX_PHYSICS_OVD_INTEGRATION_VERSION_MINOR 1
 
 #if !PX_DOXYGEN
 namespace physx
@@ -60,10 +60,10 @@ public:
 	{
 	  public:
 		PX_FORCE_INLINE ScopedExclusiveWriter(PxOmniPvd* omniPvd)
-		{			
+		{
 			mOmniPvd = omniPvd;
 			mWriter = NULL;
-			if (mOmniPvd) {			
+			if (mOmniPvd) {
 				mWriter = mOmniPvd->acquireExclusiveWriterAccess();
 			}
 		}

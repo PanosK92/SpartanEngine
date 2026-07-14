@@ -54,6 +54,46 @@ namespace spartan
         return state.name != nullptr && strcmp(state.name, "imgui") == 0;
     }
 
+    // shaders reading sv_viewid require the pso to declare view instancing, which only the stream api exposes
+    static bool view_instancing_supported()
+    {
+        static int supported = -1;
+        if (supported == -1)
+        {
+            D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3 = {};
+            const bool queried = SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3)));
+            supported = (queried && options3.ViewInstancingTier != D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED) ? 1 : 0;
+        }
+        return supported == 1;
+    }
+
+    // pso stream subobject wrapper, replaces the CD3DX12 helpers which are not vendored
+    template<typename T, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE SubobjectType>
+    struct alignas(void*) pso_subobject
+    {
+        D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type = SubobjectType;
+        T value = {};
+    };
+
+    struct pso_stream_graphics
+    {
+        pso_subobject<ID3D12RootSignature*, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE> root_signature;
+        pso_subobject<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS> vs;
+        pso_subobject<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS> hs;
+        pso_subobject<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS> ds;
+        pso_subobject<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS> ps;
+        pso_subobject<D3D12_BLEND_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND> blend;
+        pso_subobject<UINT, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK> sample_mask;
+        pso_subobject<D3D12_RASTERIZER_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER> rasterizer;
+        pso_subobject<D3D12_DEPTH_STENCIL_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL> depth_stencil;
+        pso_subobject<D3D12_INPUT_LAYOUT_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT> input_layout;
+        pso_subobject<D3D12_PRIMITIVE_TOPOLOGY_TYPE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY> topology;
+        pso_subobject<D3D12_RT_FORMAT_ARRAY, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS> rtv_formats;
+        pso_subobject<DXGI_FORMAT, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT> dsv_format;
+        pso_subobject<DXGI_SAMPLE_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC> sample_desc;
+        pso_subobject<D3D12_VIEW_INSTANCING_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING> view_instancing;
+    };
+
     RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_state = pipeline_state;
@@ -289,10 +329,26 @@ namespace spartan
         desc.PrimitiveTopologyType = (state.primitive_topology == RHI_PrimitiveTopology::LineList) ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE : D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         desc.SampleDesc.Count      = 1;
 
+        // tessellation draws consume control point patches, matches the vulkan patch list topology
+        if (state.HasTessellation())
+        {
+            desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+        }
+
         if (state.shaders[RHI_Shader_Type::Vertex])
         {
             desc.VS.pShaderBytecode = state.shaders[RHI_Shader_Type::Vertex]->GetRhiResource();
             desc.VS.BytecodeLength  = state.shaders[RHI_Shader_Type::Vertex]->GetObjectSize();
+        }
+        if (state.shaders[RHI_Shader_Type::Hull])
+        {
+            desc.HS.pShaderBytecode = state.shaders[RHI_Shader_Type::Hull]->GetRhiResource();
+            desc.HS.BytecodeLength  = state.shaders[RHI_Shader_Type::Hull]->GetObjectSize();
+        }
+        if (state.shaders[RHI_Shader_Type::Domain])
+        {
+            desc.DS.pShaderBytecode = state.shaders[RHI_Shader_Type::Domain]->GetRhiResource();
+            desc.DS.BytecodeLength  = state.shaders[RHI_Shader_Type::Domain]->GetObjectSize();
         }
         if (state.shaders[RHI_Shader_Type::Pixel])
         {
@@ -306,6 +362,69 @@ namespace spartan
 
         void* resource = nullptr;
         ID3D12PipelineLibrary* lib = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
+
+        // stream-based creation declares view instancing, required by shaders reading sv_viewid (vulkan multiview parity)
+        Microsoft::WRL::ComPtr<ID3D12Device2> device2;
+        if (view_instancing_supported() && SUCCEEDED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device2))))
+        {
+            // view n renders to render target array slice n, mono psos declare a single view which is a no-op
+            D3D12_VIEW_INSTANCE_LOCATION view_locations[2] = { { 0, 0 }, { 0, 1 } };
+
+            pso_stream_graphics stream                          = {};
+            stream.root_signature.value                         = desc.pRootSignature;
+            stream.vs.value                                     = desc.VS;
+            stream.hs.value                                     = desc.HS;
+            stream.ds.value                                     = desc.DS;
+            stream.ps.value                                     = desc.PS;
+            stream.blend.value                                  = desc.BlendState;
+            stream.sample_mask.value                            = desc.SampleMask;
+            stream.rasterizer.value                             = desc.RasterizerState;
+            stream.depth_stencil.value                          = desc.DepthStencilState;
+            stream.input_layout.value                           = desc.InputLayout;
+            stream.topology.value                               = desc.PrimitiveTopologyType;
+            stream.rtv_formats.value.NumRenderTargets           = desc.NumRenderTargets;
+            for (uint32_t i = 0; i < desc.NumRenderTargets; i++)
+            {
+                stream.rtv_formats.value.RTFormats[i] = desc.RTVFormats[i];
+            }
+            stream.dsv_format.value                             = desc.DSVFormat;
+            stream.sample_desc.value                            = desc.SampleDesc;
+            stream.view_instancing.value.ViewInstanceCount      = state.is_multiview ? 2 : 1;
+            stream.view_instancing.value.pViewInstanceLocations = view_locations;
+            stream.view_instancing.value.Flags                  = D3D12_VIEW_INSTANCING_FLAG_NONE;
+
+            D3D12_PIPELINE_STATE_STREAM_DESC stream_desc = {};
+            stream_desc.SizeInBytes                      = sizeof(stream);
+            stream_desc.pPipelineStateSubobjectStream    = &stream;
+
+            Microsoft::WRL::ComPtr<ID3D12PipelineLibrary1> lib1;
+            if (lib && SUCCEEDED(lib->QueryInterface(IID_PPV_ARGS(&lib1))) && d3d12_pipeline_library::can_load())
+            {
+                if (SUCCEEDED(lib1->LoadPipeline(pso_name, &stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)))))
+                {
+                    pipeline->SetRhiResource(resource);
+                    return;
+                }
+            }
+
+            HRESULT hr = device2->CreatePipelineState(&stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
+            if (FAILED(hr))
+            {
+                SP_LOG_ERROR("Failed to create graphics pipeline state '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
+            }
+            else if (lib && resource)
+            {
+                lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
+            }
+            pipeline->SetRhiResource(resource);
+            return;
+        }
+
+        if (state.is_multiview)
+        {
+            SP_LOG_ERROR("Multiview pipeline '%s' requires view instancing, which this device does not support", state.name ? state.name : "?");
+        }
+
         if (lib && d3d12_pipeline_library::can_load())
         {
             HRESULT hr_load = lib->LoadGraphicsPipeline(pso_name, &desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));

@@ -872,12 +872,6 @@ namespace spartan
         // prepare projection views for submission
         array<XrCompositionLayerProjectionView, eye_count> projection_views;
 
-        // compute center pose (average of both eyes) for 2D content
-        XrPosef center_pose = xr_views[0].pose;
-        center_pose.position.x = (xr_views[0].pose.position.x + xr_views[1].pose.position.x) * 0.5f;
-        center_pose.position.y = (xr_views[0].pose.position.y + xr_views[1].pose.position.y) * 0.5f;
-        center_pose.position.z = (xr_views[0].pose.position.z + xr_views[1].pose.position.z) * 0.5f;
-
         for (uint32_t i = 0; i < eye_count; i++)
         {
             projection_views[i] = { XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW };
