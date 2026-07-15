@@ -258,7 +258,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 ray_dir         = position; // direction stored in position for misses
         float2 sky_uv          = direction_sphere_uv(ray_dir);
         float3 sky_color       = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, sky_mip).rgb;
-        tex_uav[thread_id.xy]  = float4(sky_color, 1.0f);
+        tex_uav[thread_id.xy]  = float4(sky_color, 1000.0f);
         return;
     }
     
@@ -431,5 +431,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     final_color        = reflections_compress_luminance(final_color, final_knee, final_knee * 0.5f);
 
     // rt owns the full primary specular lobe, restir contributes diffuse only so there is no overlap
-    tex_uav[thread_id.xy] = validate_output(float4(final_color, 1.0f));
+    // a stores hit distance for nrd reblur specular
+    tex_uav[thread_id.xy] = validate_output(float4(final_color, max(hit_distance, 0.0f)));
 }

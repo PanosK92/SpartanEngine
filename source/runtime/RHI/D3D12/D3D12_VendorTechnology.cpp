@@ -21,14 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
-#include "../RHI_VendorTechnology.h"
-#include "../RHI_Implementation.h"
-#include "../RHI_CommandList.h"
-#include "../RHI_Device.h"
-#include "../RHI_Texture.h"
-#include "../../Rendering/Renderer.h"
-#include "../../World/World.h"
-#include "../../World/Components/Camera.h"
 SP_WARNINGS_OFF
 #ifdef _WIN32
 #include <xess/xess_d3d12.h>
@@ -38,9 +30,16 @@ SP_WARNINGS_OFF
 #include "Extensions/NRIHelper.h"
 #include "Extensions/NRIWrapperD3D12.h"
 #include "NRDIntegration.hpp"
-#include "../RHI_VendorTechnology_NRD.h"
 #endif
 SP_WARNINGS_ON
+#include "../RHI_VendorTechnology.h"
+#include "../RHI_Implementation.h"
+#include "../RHI_CommandList.h"
+#include "../RHI_Device.h"
+#include "../RHI_Texture.h"
+#include "../../Rendering/Renderer.h"
+#include "../../World/World.h"
+#include "../../World/Components/Camera.h"
 //============================================
 
 //= NAMESPACES ===============
@@ -199,14 +198,22 @@ namespace spartan
 
     namespace nvidia
     {
-        nrd::Integration integration;
-        bool initialized           = false;
-        uint32_t width             = 0;
-        uint32_t height            = 0;
-        bool reset_history           = false;
-        uint32_t last_frame_index    = UINT32_MAX;
-        uint32_t last_settings_frame = UINT32_MAX;
-        ID3D12CommandQueue* queue    = nullptr;
+        // gi is restir sized, screen is render sized for reflections and shadows
+        struct nrd_pool
+        {
+            nrd::Integration integration;
+            bool initialized             = false;
+            uint32_t width               = 0;
+            uint32_t height              = 0;
+            bool reset_history           = false;
+            uint32_t last_frame_index    = UINT32_MAX;
+            uint32_t last_settings_frame = UINT32_MAX;
+            bool is_screen               = false;
+            ID3D12CommandQueue* queue    = nullptr;
+        };
+
+        nrd_pool pool_gi;
+        nrd_pool pool_screen;
 
         nrd::Resource make_resource(RHI_Texture* texture)
         {
@@ -217,31 +224,44 @@ namespace spartan
             return resource;
         }
 
-        void context_destroy()
+        void pool_destroy(nrd_pool& pool)
         {
-            if (initialized)
+            if (pool.initialized)
             {
-                integration.Destroy();
-                initialized = false;
+                pool.integration.Destroy();
+                pool.initialized = false;
             }
-            width               = 0;
-            height              = 0;
-            last_frame_index    = UINT32_MAX;
-            last_settings_frame = UINT32_MAX;
+            pool.width               = 0;
+            pool.height              = 0;
+            pool.last_frame_index    = UINT32_MAX;
+            pool.last_settings_frame = UINT32_MAX;
         }
 
-        bool context_create(uint32_t resource_width, uint32_t resource_height)
+        void context_destroy()
         {
-            context_destroy();
+            pool_destroy(pool_gi);
+            pool_destroy(pool_screen);
+        }
 
-            queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Compute));
-            if (!RHI_Context::device || !queue || resource_width == 0 || resource_height == 0)
+        void request_history_reset()
+        {
+            pool_gi.reset_history     = true;
+            pool_screen.reset_history = true;
+        }
+
+        bool pool_create(nrd_pool& pool, uint32_t resource_width, uint32_t resource_height, bool is_screen)
+        {
+            pool_destroy(pool);
+            pool.is_screen = is_screen;
+
+            pool.queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Compute));
+            if (!RHI_Context::device || !pool.queue || resource_width == 0 || resource_height == 0)
             {
                 return false;
             }
 
             nri::QueueFamilyD3D12Desc queue_family = {};
-            queue_family.d3d12Queues = &queue;
+            queue_family.d3d12Queues = &pool.queue;
             queue_family.queueNum    = 1;
             queue_family.queueType   = nri::QueueType::COMPUTE;
 
@@ -251,33 +271,51 @@ namespace spartan
             device_desc.queueFamilyNum               = 1;
             device_desc.disableD3D12EnhancedBarriers = true;
 
-            const nrd::DenoiserDesc denoisers[] =
+            nrd::DenoiserDesc denoisers_gi[] =
             {
-                { nrd_common::denoiser_id, nrd::Denoiser::REBLUR_DIFFUSE }
+                { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE }
+            };
+            nrd::DenoiserDesc denoisers_screen[] =
+            {
+                { nrd_common::id_reflections, nrd::Denoiser::REBLUR_SPECULAR },
+                { nrd_common::id_shadows,     nrd::Denoiser::SIGMA_SHADOW }
             };
 
             nrd::InstanceCreationDesc instance_desc = {};
-            instance_desc.denoisers                 = denoisers;
-            instance_desc.denoisersNum              = 1;
+            if (pool.is_screen)
+            {
+                instance_desc.denoisers    = denoisers_screen;
+                instance_desc.denoisersNum = 2;
+            }
+            else
+            {
+                instance_desc.denoisers    = denoisers_gi;
+                instance_desc.denoisersNum = 1;
+            }
 
             nrd::IntegrationCreationDesc integration_desc = {};
-            strncpy_s(integration_desc.name, "NRD", _TRUNCATE);
+            strncpy_s(integration_desc.name, pool.is_screen ? "NRD_Screen" : "NRD_GI", _TRUNCATE);
             integration_desc.queuedFrameNum                       = 3;
             integration_desc.enableWholeLifetimeDescriptorCaching = false;
             integration_desc.autoWaitForIdle                      = true;
             integration_desc.resourceWidth                        = static_cast<uint16_t>(resource_width);
             integration_desc.resourceHeight                       = static_cast<uint16_t>(resource_height);
 
-            if (integration.RecreateD3D12(integration_desc, instance_desc, device_desc) != nrd::Result::SUCCESS)
+            if (pool.integration.RecreateD3D12(integration_desc, instance_desc, device_desc) != nrd::Result::SUCCESS)
             {
                 SP_LOG_WARNING("NRD recreate failed");
                 return false;
             }
 
-            width       = resource_width;
-            height      = resource_height;
-            initialized = true;
+            pool.width       = resource_width;
+            pool.height      = resource_height;
+            pool.initialized = true;
             return true;
+        }
+
+        nrd_pool& pool_for_preset(Nrd_Preset preset)
+        {
+            return preset == Nrd_Preset::Gi ? pool_gi : pool_screen;
         }
     }
     #endif
@@ -323,8 +361,8 @@ namespace spartan
         {
             RHI_Device::QueueWaitAll();
             intel::context_create();
-            common::reset_history  = true;
-            nvidia::reset_history  = true;
+            common::reset_history = true;
+            nvidia::request_history_reset();
             nvidia::context_destroy();
         }
     #endif
@@ -334,7 +372,7 @@ namespace spartan
     {
     #ifdef _WIN32
         common::reset_history = true;
-        nvidia::reset_history = true;
+        nvidia::request_history_reset();
     #endif
     }
 
@@ -463,83 +501,119 @@ namespace spartan
 
     bool RHI_VendorTechnology::NRD_Dispatch(
         RHI_CommandList* cmd_list,
+        Nrd_Preset preset,
         RHI_Texture* tex_mv,
         RHI_Texture* tex_normal_roughness,
         RHI_Texture* tex_view_z,
-        RHI_Texture* tex_diff_radiance_hitdist,
-        RHI_Texture* tex_diff_radiance_hitdist_out
+        RHI_Texture* tex_signal_in,
+        RHI_Texture* tex_signal_out,
+        const math::Vector3* light_direction
     )
     {
     #ifdef _WIN32
-        if (!common::cb_frame || !tex_mv || !tex_normal_roughness || !tex_view_z || !tex_diff_radiance_hitdist || !tex_diff_radiance_hitdist_out)
+        if (!common::cb_frame || !tex_mv || !tex_normal_roughness || !tex_view_z || !tex_signal_in || !tex_signal_out)
         {
             return false;
         }
 
+        if (preset == Nrd_Preset::Shadows && !light_direction)
+        {
+            return false;
+        }
+
+        nvidia::nrd_pool& pool = nvidia::pool_for_preset(preset);
         const uint32_t width  = tex_mv->GetWidth();
         const uint32_t height = tex_mv->GetHeight();
-        if (!nvidia::initialized || nvidia::width != width || nvidia::height != height)
+        if (!pool.initialized || pool.width != width || pool.height != height)
         {
             RHI_Device::QueueWaitAll();
-            if (!nvidia::context_create(width, height))
+            if (!nvidia::pool_create(pool, width, height, preset != Nrd_Preset::Gi))
             {
                 return false;
             }
-            nvidia::reset_history = true;
+            pool.reset_history = true;
         }
 
         cmd_list->EnsureComputeShaderResource(tex_mv);
         cmd_list->EnsureComputeShaderResource(tex_normal_roughness);
         cmd_list->EnsureComputeShaderResource(tex_view_z);
-        cmd_list->EnsureComputeShaderResource(tex_diff_radiance_hitdist);
-        tex_diff_radiance_hitdist_out->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->EnsureComputeShaderResource(tex_signal_in);
+        tex_signal_out->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->FlushBarriers();
 
-        if (nvidia::last_frame_index != common::cb_frame->frame)
+        if (pool.last_frame_index != common::cb_frame->frame)
         {
-            nvidia::integration.NewFrame();
-            nvidia::last_frame_index = common::cb_frame->frame;
+            pool.integration.NewFrame();
+            pool.last_frame_index = common::cb_frame->frame;
         }
 
-        const bool reset_history = nrd_common::resolve_history_reset(nvidia::reset_history, common::cb_frame->frame, nvidia::last_settings_frame);
-        nvidia::reset_history = false;
+        const bool reset_history = nrd_common::resolve_history_reset(pool.reset_history, common::cb_frame->frame, pool.last_settings_frame);
+        pool.reset_history = false;
 
         nrd::CommonSettings common_settings = {};
         nrd_common::fill_common_settings(common_settings, common::cb_frame, width, height, reset_history);
-
-        if (nvidia::integration.SetCommonSettings(common_settings) != nrd::Result::SUCCESS)
+        if (pool.integration.SetCommonSettings(common_settings) != nrd::Result::SUCCESS)
         {
             SP_LOG_WARNING("NRD SetCommonSettings failed");
             return false;
         }
 
-        nrd::ReblurSettings reblur_settings = {};
-        nrd_common::fill_reblur_settings_for_restir(reblur_settings);
-        if (nvidia::integration.SetDenoiserSettings(nrd_common::denoiser_id, &reblur_settings) != nrd::Result::SUCCESS)
-        {
-            SP_LOG_WARNING("NRD SetDenoiserSettings failed");
-            return false;
-        }
-
+        nrd::Identifier denoiser_id = nrd_common::id_gi;
         nrd::ResourceSnapshot snapshot = {};
         snapshot.restoreInitialState = true;
         snapshot.SetResource(nrd::ResourceType::IN_MV, nvidia::make_resource(tex_mv));
         snapshot.SetResource(nrd::ResourceType::IN_NORMAL_ROUGHNESS, nvidia::make_resource(tex_normal_roughness));
         snapshot.SetResource(nrd::ResourceType::IN_VIEWZ, nvidia::make_resource(tex_view_z));
-        snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_diff_radiance_hitdist));
-        snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_diff_radiance_hitdist_out));
+
+        if (preset == Nrd_Preset::Gi)
+        {
+            denoiser_id = nrd_common::id_gi;
+            nrd::ReblurSettings reblur = {};
+            nrd_common::fill_preset_gi(reblur);
+            if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
+            {
+                return false;
+            }
+            snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in));
+            snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out));
+        }
+        else if (preset == Nrd_Preset::Reflections)
+        {
+            denoiser_id = nrd_common::id_reflections;
+            nrd::ReblurSettings reblur = {};
+            nrd_common::fill_preset_reflections(reblur);
+            if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
+            {
+                return false;
+            }
+            snapshot.SetResource(nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in));
+            snapshot.SetResource(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out));
+        }
+        else
+        {
+            denoiser_id = nrd_common::id_shadows;
+            const float light_dir[3] = { light_direction->x, light_direction->y, light_direction->z };
+            nrd::SigmaSettings sigma = {};
+            nrd_common::fill_preset_shadows(sigma, light_dir);
+            if (pool.integration.SetDenoiserSettings(denoiser_id, &sigma) != nrd::Result::SUCCESS)
+            {
+                return false;
+            }
+            snapshot.SetResource(nrd::ResourceType::IN_PENUMBRA, nvidia::make_resource(tex_signal_in));
+            snapshot.SetResource(nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY, nvidia::make_resource(tex_signal_out));
+        }
 
         nri::CommandBufferD3D12Desc cmd_desc = {};
         cmd_desc.d3d12CommandList = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
 
-        const nrd::Identifier denoisers[] = { nrd_common::denoiser_id };
-        nvidia::integration.DenoiseD3D12(denoisers, 1, cmd_desc, snapshot);
+        const nrd::Identifier denoisers[] = { denoiser_id };
+        pool.integration.DenoiseD3D12(denoisers, 1, cmd_desc, snapshot);
 
         cmd_list->AdoptComputeShaderResource(tex_mv);
         cmd_list->AdoptComputeShaderResource(tex_normal_roughness);
         cmd_list->AdoptComputeShaderResource(tex_view_z);
-        cmd_list->AdoptComputeShaderResource(tex_diff_radiance_hitdist);
-        cmd_list->AdoptUnorderedAccess(tex_diff_radiance_hitdist_out);
+        cmd_list->AdoptComputeShaderResource(tex_signal_in);
+        cmd_list->AdoptUnorderedAccess(tex_signal_out);
         cmd_list->RestoreAfterExternalPass();
         return true;
     #else

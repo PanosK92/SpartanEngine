@@ -389,24 +389,12 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "gbuffer_reflections_position");
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_reflections_normal");
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_reflections_albedo");
-
-            // spatiotemporal denoiser scratch, history holds the accumulated reflection, moments
-            // packs (luma_m1, luma_m2, sample_count, unused) for variance estimation, ping is the
-            // a-trous ping pong target, all match the reflections texture resolution and format
-            at(render_targets, Renderer_RenderTarget::reflections_history)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "reflections_history");
-            at(render_targets, Renderer_RenderTarget::reflections_moments)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "reflections_moments");
-            at(render_targets, Renderer_RenderTarget::reflections_moments_history)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "reflections_moments_history");
-            at(render_targets, Renderer_RenderTarget::reflections_ping)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "reflections_ping");
         }
         else if (!need_rt_reflections && at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position))
         {
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position) = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)   = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)   = nullptr;
-            at(render_targets, Renderer_RenderTarget::reflections_history)          = nullptr;
-            at(render_targets, Renderer_RenderTarget::reflections_moments)          = nullptr;
-            at(render_targets, Renderer_RenderTarget::reflections_moments_history)  = nullptr;
-            at(render_targets, Renderer_RenderTarget::reflections_ping)             = nullptr;
         }
         
         // restir, allocate or free both the reservoirs and the output ring together so the feature is fully on or fully off
@@ -506,10 +494,6 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_history)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_moments)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_moments_history) = nullptr;
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_ping)            = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
@@ -518,6 +502,13 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::nrd_in_viewz)                    = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_diff_radiance)            = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_out_diff_radiance)           = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_screen_mv)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_screen_normal_roughness)     = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_screen_viewz)                = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_spec_radiance)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_out_spec_radiance)           = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_in_penumbra)                 = nullptr;
+            at(render_targets, Renderer_RenderTarget::nrd_out_shadow)                  = nullptr;
             for_restir_reservoir_slot([](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
             at(render_targets, Renderer_RenderTarget::shading_rate)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::shadow_atlas)                 = nullptr;
@@ -609,12 +600,14 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
 
-            // shadow denoiser scratch, history holds the accumulated visibility, moments packs
-            // (visibility_m1, visibility_m2, sample_count, unused), ping is the a-trous ping pong target
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_history)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ray_traced_shadows_history");
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_moments)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ray_traced_shadows_moments");
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_moments_history) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ray_traced_shadows_moments_history");
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_ping)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ray_traced_shadows_ping");
+            // nrd screen guides and signals for reflections (reblur specular) and shadows (sigma)
+            at(render_targets, Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
+            at(render_targets, Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
+            at(render_targets, Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
+            at(render_targets, Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
+            at(render_targets, Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
+            at(render_targets, Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
+            at(render_targets, Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
         };
 
         // gated by cvar_restir_pt so disabling restir frees the output ring as well as the reservoir slots managed by UpdateOptionalRenderTargets
@@ -858,13 +851,13 @@ namespace spartan
             { Renderer_Shader::reflections_ray_miss_r,                RHI_Shader_Type::RayMiss,       "reflections_trace.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::reflections_ray_hit_r,                 RHI_Shader_Type::RayHit,        "reflections_trace.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::reflections_shade_c,                   RHI_Shader_Type::Compute,       "reflections_shade.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::reflections_denoise_temporal_c,        RHI_Shader_Type::Compute,       "reflections_denoise_temporal.hlsl",    RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::reflections_denoise_spatial_c,         RHI_Shader_Type::Compute,       "reflections_denoise_spatial.hlsl",     RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::nrd_pack_reflections_c,                RHI_Shader_Type::Compute,       "nrd_pack_reflections.hlsl",            RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::nrd_unpack_reflections_c,              RHI_Shader_Type::Compute,       "nrd_unpack_reflections.hlsl",          RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_generation_r,              RHI_Shader_Type::RayGeneration, "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_miss_r,                    RHI_Shader_Type::RayMiss,       "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::shadows_ray_hit_r,                     RHI_Shader_Type::RayHit,        "ray_traced_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::shadows_denoise_temporal_c,           RHI_Shader_Type::Compute,       "shadows_denoise_temporal.hlsl",        RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::shadows_denoise_spatial_c,            RHI_Shader_Type::Compute,       "shadows_denoise_spatial.hlsl",         RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::nrd_pack_shadows_c,                    RHI_Shader_Type::Compute,       "nrd_pack_shadows.hlsl",                RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::nrd_unpack_shadows_c,                  RHI_Shader_Type::Compute,       "nrd_unpack_shadows.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_ray_generation_r,            RHI_Shader_Type::RayGeneration, "restir_pt.hlsl",                       RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_ray_miss_r,                  RHI_Shader_Type::RayMiss,       "restir_pt.hlsl",                       RHI_Vertex_Type::Max, "MAIN_MISS",                   true,  true },
             { Renderer_Shader::restir_pt_ray_hit_r,                   RHI_Shader_Type::RayHit,        "restir_pt.hlsl",                       RHI_Vertex_Type::Max, "MAIN_HIT",                    true,  true },
