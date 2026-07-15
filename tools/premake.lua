@@ -193,7 +193,8 @@ function spartan_project_configuration()
                         "NRD", "NRI", "NRI_Shared", "NRI_VK", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid"
                     }
                 elseif ARG_API_GRAPHICS == "d3d12" then
-                    links { "libxess", "NRD", "NRI", "NRI_Shared", "NRI_D3D12", "NRI_VK", "NRI_Validation", "ShaderMakeBlob", "dxguid", "vulkan-1" }
+                    -- nri.lib refs CreateDeviceVK, satisfied by stub, not nri_vk (needs vma)
+                    links { "libxess", "NRD", "NRI", "NRI_Shared", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid" }
                 end
 
         -- Debug configuration
@@ -218,7 +219,7 @@ function spartan_project_configuration()
                     "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_VK_debug", "NRI_D3D12_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid"
                 }
             elseif ARG_API_GRAPHICS == "d3d12" then
-                links { "libxess", "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_D3D12_debug", "NRI_VK_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid", "vulkan-1" }
+                links { "libxess", "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_D3D12_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid" }
             end
 
         filter { "configurations:debug", "system:linux" }
