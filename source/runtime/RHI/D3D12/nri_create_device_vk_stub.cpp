@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES =======================
 #include "pch.h"
 SP_WARNINGS_OFF
 #include "NRI.h"
 #include "Extensions/NRIWrapperVK.h"
 SP_WARNINGS_ON
-//=====================================
+//==================================
 
 // static nri.lib / nri_validation reference vk helpers, d3d12 does not link nri_vk (it needs vma)
 namespace nri
@@ -35,6 +35,11 @@ namespace nri
     QueryType GetQueryTypeVK(uint32_t)
     {
         return QueryType::TIMESTAMP;
+    }
+
+    uint32_t NRIFormatToVKFormat(Format)
+    {
+        return 0; // VK_FORMAT_UNDEFINED
     }
 }
 
