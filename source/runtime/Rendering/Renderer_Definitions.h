@@ -35,6 +35,10 @@ namespace spartan
     // hard cap on the restir nee pool, the cpu walker stops appending once this many emissive
     // triangles have been recorded so worst case upload size is bounded at 80 * 16384 = 1.25 mb
     const uint32_t restir_emissive_tri_max         = 16384;
+    // paired spatial reuse tables, lin 2026 3, sizes and order must match RESTIR_PAIRING_SIZES
+    // in restir_reservoir.hlsl, near coprime so tiling periods never align within a screen
+    const uint32_t restir_pairing_sizes[3]         = { 254, 230, 210 };
+    const uint32_t restir_pairing_element_count    = 254 * 254 + 230 * 230 + 210 * 210;
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
     const uint32_t renderer_max_indirect_draws     = 131072;  // per-renderable lod draw data, cull shader clamps writes
     // per (renderable, instance) cull tasks, drives the phase a instance cull dispatch size and caps the phase a survivor list
@@ -232,6 +236,9 @@ namespace spartan
         // for per-pass structured buffers (cull_tasks, meshlet_bounds, etc.) even though the
         // shader treats it read-only
         emissive_triangles     = 49,
+        // restir paired spatial reuse tables, lin 2026 3, packed partner deltas built once
+        // on the cpu, declared rw to match the per-pass structured buffer pattern
+        restir_pairing         = 57,
         // gpu procedural grass, transient ring buffer + per-lod atomic counter + indirect draw args
         // populate compute writes grass_instances and bumps grass_count, the args compute reads
         // grass_count and writes grass_indirect_args (one entry per lod), the raster passes
@@ -323,6 +330,7 @@ namespace spartan
         restir_pt_ray_miss_r,
         restir_pt_ray_hit_r,
         restir_pt_temporal_c,
+        restir_pt_spatial_shift_c,
         restir_pt_spatial_c,
         restir_pt_duplication_c,
         restir_pt_nrd_pack_c,
@@ -449,6 +457,10 @@ namespace spartan
         restir_reservoir_spatial3,
         restir_reservoir_spatial4,
         restir_reservoir_spatial5,
+        // paired spatial reuse shift results, lin 2026 3, one per pairing table
+        restir_shift0,
+        restir_shift1,
+        restir_shift2,
         // baked wind field, written each frame, sampled by depth_prepass/g_buffer/depth_light
         wind_field,
         // fft ocean, texture2d arrays with one slice per cascade
@@ -505,6 +517,8 @@ namespace spartan
         OceanHeights,              // fft ocean vertical displacement per cascade texel, host visible for cpu buoyancy queries
         // restir path tracing emissive triangle nee pool, rebuilt each frame from renderables with non-zero emission
         EmissiveTriangles,
+        // restir paired spatial reuse tables, built once on the cpu when the reservoirs initialize
+        RestirPairing,
         // gpu-driven particles
         ParticleBufferA,
         ParticleCounter,

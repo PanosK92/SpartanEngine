@@ -850,9 +850,17 @@ namespace spartan::car_hud
             ImGui::SeparatorText(title);
         }
 
-        void section_setup(Physics* physics)
+        void section_setup(Car* car_instance, Physics* physics)
         {
             section_header("Setup");
+
+            int visualization_preset = static_cast<int>(car_instance->GetVisualizationPreset());
+            const char* visualization_presets[] = { "Full car", "Skeleton" };
+            ImGui::SetNextItemWidth(160.0f);
+            if (ImGui::Combo("View preset", &visualization_preset, visualization_presets, IM_ARRAYSIZE(visualization_presets)))
+            {
+                car_instance->SetVisualizationPreset(static_cast<CarVisualizationPreset>(visualization_preset));
+            }
 
             ImGui::SetNextItemWidth(260.0f);
             if (ImGui::BeginCombo("Car", car::tuning::spec.name))
@@ -1599,14 +1607,17 @@ namespace spartan::car_hud
         }
     } // anonymous namespace
 
-    void draw_telemetry_window(Physics* physics, bool* p_open)
+    void draw_telemetry_window(Car* car_instance, Physics* physics, bool* p_open)
     {
-        if (!Engine::IsFlagSet(EngineMode::EditorVisible) || !physics)
+        if (!Engine::IsFlagSet(EngineMode::EditorVisible) || !car_instance || !physics)
         {
             return;
         }
 
-        physics->DrawDebugVisualization();
+        if (car_instance->GetVisualizationPreset() == CarVisualizationPreset::Full)
+        {
+            physics->DrawDebugVisualization();
+        }
 
         ImGuiIO& io = ImGui::GetIO();
         if (io.DisplaySize.x < 200.0f || io.DisplaySize.y < 200.0f)
@@ -1632,7 +1643,7 @@ namespace spartan::car_hud
 
             if (ImGui::BeginChild("##telemetry_funnel", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
             {
-                section_setup(physics);
+                section_setup(car_instance, physics);
                 section_chassis(physics);
 
                 if (ImGui::BeginTable("##aero_engine", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_NoPadOuterX))

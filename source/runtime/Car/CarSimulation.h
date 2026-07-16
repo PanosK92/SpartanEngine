@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarState.h"
 #include "CarPacejka.h"
 #include "CarAero.h"
+#include "CarMultibody.h"
 #include "CarSuspension.h"
 #include "CarDrivetrain.h"
 #include "CarTires.h"
@@ -235,6 +236,26 @@ namespace car
         {
             cfg.suspension_travel = spec.suspension_travel;
         }
+        if (spec.front_wheel_radius > 0.0f)
+        {
+            cfg.front_wheel_radius = spec.front_wheel_radius;
+        }
+        if (spec.rear_wheel_radius > 0.0f)
+        {
+            cfg.rear_wheel_radius = spec.rear_wheel_radius;
+        }
+        if (spec.front_wheel_width > 0.0f)
+        {
+            cfg.front_wheel_width = spec.front_wheel_width;
+        }
+        if (spec.rear_wheel_width > 0.0f)
+        {
+            cfg.rear_wheel_width = spec.rear_wheel_width;
+        }
+        if (spec.wheel_mass > 0.0f)
+        {
+            cfg.wheel_mass = spec.wheel_mass;
+        }
     }
 
     inline void compute_constants()
@@ -286,6 +307,7 @@ namespace car
 
     inline void destroy()
     {
+        destroy_multibody();
         if (body)             { body->release();             body = nullptr; }
         if (material)         { material->release();         material = nullptr; }
         if (wheel_sweep_mesh) { wheel_sweep_mesh->release(); wheel_sweep_mesh = nullptr; }
@@ -301,7 +323,7 @@ namespace car
             wheel_sweep_mesh = nullptr;
         }
 
-        const int segments = 16;
+        const int segments = 32;
         std::vector<PxVec3> cyl_verts;
         cyl_verts.reserve(segments * 2);
         float sweep_r = PxMax(PxMax(cfg.front_wheel_radius, cfg.rear_wheel_radius), 0.05f);
@@ -426,7 +448,7 @@ namespace car
 
         PxVec3 com(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
         PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
-        body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+        body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
         body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
         body->setLinearDamping(tuning::spec.linear_damping);
         body->setAngularDamping(tuning::spec.angular_damping);
@@ -439,6 +461,12 @@ namespace car
         }
 
         rebuild_wheel_sweep_mesh();
+        if (!create_multibody(params.physics, params.scene))
+        {
+            SP_LOG_ERROR("failed to create car suspension assembly");
+            destroy();
+            return false;
+        }
 
         SP_LOG_INFO("car setup complete: mass=%.0f kg", cfg.mass);
         return true;
@@ -564,6 +592,10 @@ namespace car
 
         reset_drivetrain_transients();
         reset_wheel_thermals();
+        if (multibody.initialized && !rebuild_multibody())
+        {
+            SP_LOG_ERROR("failed to rebuild suspension for car preset");
+        }
 
         SP_LOG_INFO("loaded car preset: %s (mass=%.0f kg, wheelbase=%.3f m, track f/r=%.3f/%.3f m, drivetrain=%s)",
             new_spec.name ? new_spec.name : "?",
@@ -852,20 +884,14 @@ namespace car
         for (int i = 0; i < wheel_count; i++)
             wheels[i].net_torque = 0.0f;
 
-        float wheel_angles[wheel_count];
-        calculate_steering(forward_speed, wheel_angles);
-
+        update_multibody(dt);
         update_suspension(scene, dt);
-        apply_suspension_forces(dt);
         apply_drivetrain(forward_speed * 3.6f, dt);
 
-        apply_tire_forces(wheel_angles, dt);
+        apply_tire_forces(dt);
         apply_self_aligning_torque();
 
         apply_aero_and_resistance();
-
-        safe_add_force(body, PxVec3(0, -9.81f * cfg.mass, 0));
-
 
         // --- telemetry ---
         if (tuning::log_telemetry)
@@ -1024,6 +1050,8 @@ namespace car
     inline float       get_clutch()                { return clutch; }
     inline float       get_engine_torque_current() { return get_engine_torque(engine_rpm) * (1.0f + boost_pressure * tuning::spec.boost_torque_mult); }
     inline float       get_motor_torque()          { return motor_torque; }
+    inline float       get_driveshaft_twist()      { return driveshaft_twist; }
+    inline float       get_driveshaft_torque()     { return driveshaft_twist * tuning::spec.driveshaft_stiffness; }
     inline float       get_motor_power_kw()        { float w = motor_torque * engine_rpm * (2.0f * 3.14159265f / 60.0f); return w / 1000.0f; }
     inline float       get_redline_rpm()           { return tuning::spec.engine_redline_rpm; }
     inline float       get_max_rpm()               { return tuning::spec.engine_max_rpm; }

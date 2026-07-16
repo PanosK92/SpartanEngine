@@ -294,6 +294,124 @@ namespace spartan
             renderable->SetMaterial(material);
             return material;
         }
+
+        const Color skeleton_color_frame       = Color(0.20f, 0.72f, 1.00f, 1.0f);
+        const Color skeleton_color_control_arm = Color(0.86f, 0.88f, 0.92f, 1.0f);
+        const Color skeleton_color_spring      = Color(1.00f, 0.72f, 0.12f, 1.0f);
+        const Color skeleton_color_steering    = Color(0.25f, 1.00f, 0.48f, 1.0f);
+        const Color skeleton_color_anti_roll   = Color(0.82f, 0.35f, 1.00f, 1.0f);
+        const Color skeleton_color_drivetrain  = Color(1.00f, 0.30f, 0.22f, 1.0f);
+        const Color skeleton_color_joint       = Color(1.00f, 1.00f, 1.00f, 1.0f);
+
+        math::Vector3 lerp_skeleton(const math::Vector3& a, const math::Vector3& b, float t)
+        {
+            return a + (b - a) * t;
+        }
+
+        void draw_skeleton_joint(const math::Vector3& position, const Color& color)
+        {
+            Renderer::DrawSphere(position, 0.035f, 6, color);
+        }
+
+        void draw_skeleton_spring(const math::Vector3& start, const math::Vector3& end, const math::Vector3& reference, float radius)
+        {
+            const math::Vector3 axis = end - start;
+            const float length = axis.Length();
+            if (length <= 0.001f)
+            {
+                return;
+            }
+
+            const math::Vector3 direction = axis / length;
+            math::Vector3 tangent = reference - direction * math::Vector3::Dot(reference, direction);
+            if (tangent.LengthSquared() <= 0.0001f)
+            {
+                tangent = math::Vector3::Right - direction * math::Vector3::Dot(math::Vector3::Right, direction);
+            }
+            tangent.Normalize();
+            const math::Vector3 bitangent = math::Vector3::Cross(direction, tangent).Normalized();
+            const int segments = 36;
+            const float turns  = 6.0f;
+            math::Vector3 previous = start;
+
+            for (int i = 0; i <= segments; i++)
+            {
+                const float t     = static_cast<float>(i) / static_cast<float>(segments);
+                const float angle = t * turns * math::pi * 2.0f;
+                const float envelope = sinf(t * math::pi);
+                const math::Vector3 point = lerp_skeleton(start, end, t) + (tangent * cosf(angle) + bitangent * sinf(angle)) * radius * envelope;
+                if (i > 0)
+                {
+                    Renderer::DrawLine(previous, point, skeleton_color_spring, skeleton_color_spring);
+                }
+                previous = point;
+            }
+        }
+
+        void draw_skeleton_wishbone(const math::Vector3& pivot_front, const math::Vector3& pivot_rear, const math::Vector3& joint)
+        {
+            Renderer::DrawLine(pivot_front, joint, skeleton_color_control_arm, skeleton_color_control_arm);
+            Renderer::DrawLine(pivot_rear, joint, skeleton_color_control_arm, skeleton_color_control_arm);
+            Renderer::DrawLine(pivot_front, pivot_rear, skeleton_color_control_arm, skeleton_color_control_arm);
+            draw_skeleton_joint(joint, skeleton_color_joint);
+        }
+
+        void draw_skeleton_shaft(const math::Vector3& start, const math::Vector3& end, float radius, float rotation, float twist, const Color& color)
+        {
+            const math::Vector3 axis = end - start;
+            const float length = axis.Length();
+            if (length <= 0.001f)
+            {
+                return;
+            }
+
+            const math::Vector3 direction = axis / length;
+            const math::Vector3 reference = fabsf(direction.y) < 0.9f ? math::Vector3::Up : math::Vector3::Right;
+            const math::Vector3 tangent   = math::Vector3::Cross(direction, reference).Normalized();
+            const math::Vector3 bitangent = math::Vector3::Cross(direction, tangent).Normalized();
+            const int radial_segments = 12;
+            const int length_segments = 8;
+
+            for (int length_index = 0; length_index <= length_segments; length_index++)
+            {
+                const float t = static_cast<float>(length_index) / static_cast<float>(length_segments);
+                const math::Vector3 center = lerp_skeleton(start, end, t);
+                math::Vector3 previous;
+                for (int radial_index = 0; radial_index <= radial_segments; radial_index++)
+                {
+                    const float angle = rotation + twist * t + static_cast<float>(radial_index) * math::pi * 2.0f / static_cast<float>(radial_segments);
+                    const math::Vector3 point = center + (tangent * cosf(angle) + bitangent * sinf(angle)) * radius;
+                    if (radial_index > 0)
+                    {
+                        Renderer::DrawLine(previous, point, color, color);
+                    }
+                    previous = point;
+                }
+            }
+
+            for (int stripe_index = 0; stripe_index < 4; stripe_index++)
+            {
+                math::Vector3 previous;
+                for (int length_index = 0; length_index <= length_segments; length_index++)
+                {
+                    const float t = static_cast<float>(length_index) / static_cast<float>(length_segments);
+                    const float angle = rotation + twist * t + static_cast<float>(stripe_index) * math::pi * 0.5f;
+                    const math::Vector3 point = lerp_skeleton(start, end, t) + (tangent * cosf(angle) + bitangent * sinf(angle)) * radius;
+                    if (length_index > 0)
+                    {
+                        Renderer::DrawLine(previous, point, color, color);
+                    }
+                    previous = point;
+                }
+            }
+
+            draw_skeleton_joint(start, color);
+            draw_skeleton_joint(end, color);
+            Renderer::DrawLine(start - tangent * radius * 1.7f, start + tangent * radius * 1.7f, color, color);
+            Renderer::DrawLine(start - bitangent * radius * 1.7f, start + bitangent * radius * 1.7f, color, color);
+            Renderer::DrawLine(end - tangent * radius * 1.7f, end + tangent * radius * 1.7f, color, color);
+            Renderer::DrawLine(end - bitangent * radius * 1.7f, end + bitangent * radius * 1.7f, color, color);
+        }
     }
 
     Car* Car::Create(const Config& config)
@@ -469,6 +587,199 @@ namespace spartan
     std::vector<Car*>& Car::GetAll()
     {
         return s_cars;
+    }
+
+    void Car::SetVisualizationPreset(CarVisualizationPreset preset)
+    {
+        if (preset == m_visualization_preset)
+        {
+            return;
+        }
+
+        for (const BodyRenderState& state : m_body_render_states)
+        {
+            if (state.entity)
+            {
+                state.entity->SetActive(state.active);
+            }
+        }
+        m_body_render_states.clear();
+
+        m_visualization_preset = preset;
+        if (preset != CarVisualizationPreset::Skeleton || !m_body_entity)
+        {
+            return;
+        }
+
+        std::vector<Entity*> body_entities;
+        body_entities.push_back(m_body_entity);
+        m_body_entity->GetDescendants(&body_entities);
+
+        for (Entity* entity : body_entities)
+        {
+            if (entity && entity->GetComponent<Render>())
+            {
+                m_body_render_states.push_back({ entity, entity->IsActive() });
+            }
+        }
+
+        for (const BodyRenderState& state : m_body_render_states)
+        {
+            state.entity->SetActive(false);
+        }
+    }
+
+    void Car::TickVisualization()
+    {
+        if (m_visualization_preset != CarVisualizationPreset::Skeleton || !m_vehicle_entity)
+        {
+            return;
+        }
+
+        Physics* physics = m_vehicle_entity->GetComponent<Physics>();
+        if (!physics)
+        {
+            return;
+        }
+
+        Entity* wheel_entities[4] =
+        {
+            physics->GetWheelEntity(WheelIndex::FrontLeft),
+            physics->GetWheelEntity(WheelIndex::FrontRight),
+            physics->GetWheelEntity(WheelIndex::RearLeft),
+            physics->GetWheelEntity(WheelIndex::RearRight)
+        };
+
+        for (Entity* wheel_entity : wheel_entities)
+        {
+            if (!wheel_entity)
+            {
+                return;
+            }
+        }
+
+        const math::Vector3 vehicle_position = m_vehicle_entity->GetPosition();
+        const math::Quaternion vehicle_rotation = m_vehicle_entity->GetRotation();
+        auto to_world = [&](const math::Vector3& local) { return vehicle_position + vehicle_rotation * local; };
+        auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
+
+        math::Vector3 wheel_local[4];
+        math::Vector3 wheel_world[4];
+        for (int i = 0; i < 4; i++)
+        {
+            const ::car::suspension_corner& corner = ::car::multibody.corners[i];
+            if (!corner.upright || !corner.wheel_body)
+            {
+                return;
+            }
+
+            const physx::PxTransform wheel_pose = corner.wheel_body->getGlobalPose();
+            wheel_world[i] = from_px(wheel_pose.p);
+            wheel_local[i] = vehicle_rotation.Conjugate() * (wheel_world[i] - vehicle_position);
+            const float wheel_radius = ::car::cfg.wheel_radius_for(i);
+            const float wheel_half_width = ::car::cfg.wheel_width_for(i) * 0.5f;
+            const physx::PxQuat query_rotation = corner.upright->getGlobalPose().q;
+            const physx::PxVec3 wheel_axis = query_rotation.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
+            const physx::PxVec3 wheel_radial_y = query_rotation.rotate(physx::PxVec3(0.0f, 1.0f, 0.0f));
+            const physx::PxVec3 wheel_radial_z = query_rotation.rotate(physx::PxVec3(0.0f, 0.0f, 1.0f));
+            const physx::PxVec3 wheel_left = wheel_pose.p - wheel_axis * wheel_half_width;
+            const physx::PxVec3 wheel_right = wheel_pose.p + wheel_axis * wheel_half_width;
+            const Color wheel_query_color = ::car::wheels[i].grounded ? Color(0.15f, 1.0f, 0.25f, 1.0f) : Color(1.0f, 0.2f, 0.12f, 1.0f);
+            const int wheel_segments = 20;
+            physx::PxVec3 previous_left;
+            physx::PxVec3 previous_right;
+            for (int segment = 0; segment <= wheel_segments; segment++)
+            {
+                const float angle = static_cast<float>(segment) / static_cast<float>(wheel_segments) * math::pi * 2.0f;
+                const physx::PxVec3 radial = (wheel_radial_y * cosf(angle) + wheel_radial_z * sinf(angle)) * wheel_radius;
+                const physx::PxVec3 left = wheel_left + radial;
+                const physx::PxVec3 right = wheel_right + radial;
+                if (segment > 0)
+                {
+                    Renderer::DrawLine(from_px(previous_left), from_px(left), wheel_query_color, wheel_query_color);
+                    Renderer::DrawLine(from_px(previous_right), from_px(right), wheel_query_color, wheel_query_color);
+                }
+                if (segment % 5 == 0)
+                {
+                    Renderer::DrawLine(from_px(left), from_px(right), wheel_query_color, wheel_query_color);
+                }
+                previous_left = left;
+                previous_right = right;
+            }
+
+            const physx::PxTransform upright_pose = corner.upright->getGlobalPose();
+            const math::Vector3 upright_bottom = from_px(upright_pose.transform(physx::PxVec3(0.0f, -0.18f, 0.0f)));
+            const math::Vector3 upright_top = from_px(upright_pose.transform(physx::PxVec3(0.0f, 0.18f, 0.0f)));
+            Renderer::DrawLine(upright_bottom, upright_top, skeleton_color_control_arm, skeleton_color_control_arm);
+            draw_skeleton_joint(upright_bottom, skeleton_color_joint);
+            draw_skeleton_joint(upright_top, skeleton_color_joint);
+
+            for (int member_index = 0; member_index < corner.member_count; member_index++)
+            {
+                const ::car::suspension_member& member = corner.members[member_index];
+                if (!member.actor)
+                {
+                    continue;
+                }
+                const physx::PxTransform member_pose = member.actor->getGlobalPose();
+                const math::Vector3 start = from_px(member_pose.transform(member.local_start));
+                const math::Vector3 end = from_px(member_pose.transform(member.local_end));
+                Renderer::DrawLine(start, end, skeleton_color_control_arm, skeleton_color_control_arm);
+                draw_skeleton_joint(start, skeleton_color_joint);
+                draw_skeleton_joint(end, skeleton_color_joint);
+            }
+
+            const math::Vector3 shock_top = from_px(::car::body->getGlobalPose().transform(corner.chassis_shock_anchor));
+            const math::Vector3 shock_bottom = from_px(upright_pose.transform(corner.upright_shock_anchor));
+            draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f);
+            draw_skeleton_joint(shock_top, skeleton_color_joint);
+            if (::car::wheels[i].grounded)
+            {
+                const math::Vector3 contact = from_px(::car::wheels[i].contact_point);
+                const math::Vector3 tire_force = from_px(::car::wheels[i].contact_normal * (::car::wheels[i].tire_load * 0.00002f));
+                Renderer::DrawLine(contact, contact + tire_force, skeleton_color_anti_roll, skeleton_color_anti_roll);
+            }
+        }
+
+        const float front_z = (wheel_local[0].z + wheel_local[1].z) * 0.5f;
+        const float rear_z  = (wheel_local[2].z + wheel_local[3].z) * 0.5f;
+        if (::car::multibody.rack)
+        {
+            const physx::PxTransform rack_pose = ::car::multibody.rack->getGlobalPose();
+            const float half_width = ::car::cfg.track_front * 0.35f;
+            const math::Vector3 rack_left = from_px(rack_pose.transform(physx::PxVec3(-half_width, 0.0f, 0.0f)));
+            const math::Vector3 rack_right = from_px(rack_pose.transform(physx::PxVec3(half_width, 0.0f, 0.0f)));
+            Renderer::DrawLine(rack_left, rack_right, skeleton_color_steering, skeleton_color_steering);
+        }
+
+        const int drivetrain_type = ::car::tuning::spec.drivetrain_type;
+        const bool drives_front = drivetrain_type == 1 || drivetrain_type == 2;
+        const bool drives_rear  = drivetrain_type == 0 || drivetrain_type == 2;
+        const math::Vector3 front_diff = to_world(math::Vector3(0.0f, -0.02f, front_z));
+        const math::Vector3 rear_diff  = to_world(math::Vector3(0.0f, -0.02f, rear_z));
+        const math::Vector3 gearbox    = to_world(math::Vector3(0.0f, 0.02f, 0.0f));
+        const float driveshaft_twist  = ::car::get_driveshaft_twist();
+        const float driveshaft_torque = ::car::get_driveshaft_torque();
+        const float torque_load = std::clamp(fabsf(driveshaft_torque) / 6000.0f, 0.0f, 1.0f);
+        const Color loaded_drivetrain_color = Color(0.65f + torque_load * 0.35f, 0.34f - torque_load * 0.16f, 0.18f, 1.0f);
+        const float front_pinion_rotation = (::car::get_wheel_rotation(0) + ::car::get_wheel_rotation(1)) * 0.5f * ::car::tuning::spec.final_drive;
+        const float rear_pinion_rotation  = (::car::get_wheel_rotation(2) + ::car::get_wheel_rotation(3)) * 0.5f * ::car::tuning::spec.final_drive;
+
+        Renderer::DrawSphere(gearbox, 0.10f, 8, skeleton_color_drivetrain);
+        if (drives_front)
+        {
+            Renderer::DrawSphere(front_diff, 0.11f, 8, skeleton_color_drivetrain);
+            draw_skeleton_shaft(front_diff, wheel_world[0], 0.04f, ::car::get_wheel_rotation(0), 0.0f, loaded_drivetrain_color);
+            draw_skeleton_shaft(front_diff, wheel_world[1], 0.04f, ::car::get_wheel_rotation(1), 0.0f, loaded_drivetrain_color);
+            draw_skeleton_shaft(gearbox, front_diff, 0.055f, front_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
+        }
+        if (drives_rear)
+        {
+            Renderer::DrawSphere(rear_diff, 0.11f, 8, skeleton_color_drivetrain);
+            draw_skeleton_shaft(rear_diff, wheel_world[2], 0.04f, ::car::get_wheel_rotation(2), 0.0f, loaded_drivetrain_color);
+            draw_skeleton_shaft(rear_diff, wheel_world[3], 0.04f, ::car::get_wheel_rotation(3), 0.0f, loaded_drivetrain_color);
+            draw_skeleton_shaft(gearbox, rear_diff, 0.055f, rear_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
+        }
     }
 
     void Car::Destroy()
@@ -1179,18 +1490,20 @@ namespace spartan
             return;
         }
 
-        // rescale wheel mesh so its visual radius matches the physics target radius.
-        // ComputeWheelRadiusFromEntity is still called so it can update the mesh center
-        // offset used to place the visual wheel, but its measured radius is unreliable
-        // in some load orderings, so SetWheelRadius is called last with the target to
-        // guarantee the cooked sweep cylinder, body height and wheel moi all agree
-        const float target_wheel_radius = physics->GetTargetWheelRadius();
-        physics->ScaleWheelEntityToRadius(wheel_base, target_wheel_radius);
-        physics->ComputeWheelRadiusFromEntity(wheel_base);
-        physics->SetWheelRadius(target_wheel_radius);
-
-        // read from tuning spec instead of cfg, cfg can be raced to zero by a parallel car setup
         const ::car::car_preset& preset = ::car::tuning::spec;
+        const float front_wheel_radius  = preset.front_wheel_radius > 0.0f ? preset.front_wheel_radius : 0.34f;
+        const float rear_wheel_radius   = preset.rear_wheel_radius  > 0.0f ? preset.rear_wheel_radius  : 0.35f;
+        const float front_wheel_width   = preset.front_wheel_width  > 0.0f ? preset.front_wheel_width  : 0.245f;
+        const float rear_wheel_width    = preset.rear_wheel_width   > 0.0f ? preset.rear_wheel_width   : 0.305f;
+        Entity* wheel_fl = wheel_base;
+        Entity* wheel_fr = wheel_base->Clone();
+        Entity* wheel_rl = wheel_base->Clone();
+        Entity* wheel_rr = wheel_base->Clone();
+        physics->ScaleWheelEntityToDimensions(wheel_fl, front_wheel_radius, front_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_fr, front_wheel_radius, front_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_rl, rear_wheel_radius, rear_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_rr, rear_wheel_radius, rear_wheel_width);
+
         const float suspension_height   = physics->GetSuspensionHeight();
         const float preset_wheelbase    = preset.wheelbase   > 0.0f ? preset.wheelbase   : 2.6f;
         const float preset_track_front  = preset.track_front > 0.0f ? preset.track_front : 1.6f;
@@ -1202,14 +1515,12 @@ namespace spartan
         const float wheel_y             = -suspension_height;
 
         // front left
-        Entity* wheel_fl = wheel_base;
         wheel_fl->SetObjectName("wheel_front_left");
         wheel_fl->SetParent(vehicle_ent);
         wheel_fl->SetPositionLocal(math::Vector3(-half_track_front, wheel_y, front_z));
         tag_wheel(wheel_fl, true, true);
 
         // front right
-        Entity* wheel_fr = wheel_base->Clone();
         wheel_fr->SetObjectName("wheel_front_right");
         wheel_fr->SetParent(vehicle_ent);
         wheel_fr->SetPositionLocal(math::Vector3(half_track_front, wheel_y, front_z));
@@ -1217,14 +1528,12 @@ namespace spartan
         tag_wheel(wheel_fr, true, false);
 
         // rear left
-        Entity* wheel_rl = wheel_base->Clone();
         wheel_rl->SetObjectName("wheel_rear_left");
         wheel_rl->SetParent(vehicle_ent);
         wheel_rl->SetPositionLocal(math::Vector3(-half_track_rear, wheel_y, rear_z));
         tag_wheel(wheel_rl, false, true);
 
         // rear right
-        Entity* wheel_rr = wheel_base->Clone();
         wheel_rr->SetObjectName("wheel_rear_right");
         wheel_rr->SetParent(vehicle_ent);
         wheel_rr->SetPositionLocal(math::Vector3(half_track_rear, wheel_y, rear_z));
@@ -1504,6 +1813,7 @@ namespace spartan
         TickChaseCamera();
         TickEnterExit();
         TickViewSwitch();
+        TickVisualization();
 
         if (m_is_occupied)
         {
@@ -1511,7 +1821,7 @@ namespace spartan
             car_hud::draw_driver_hud(hud_physics);
             if (m_show_telemetry)
             {
-                car_hud::draw_telemetry_window(hud_physics, &m_show_telemetry);
+                car_hud::draw_telemetry_window(this, hud_physics, &m_show_telemetry);
             }
         }
 

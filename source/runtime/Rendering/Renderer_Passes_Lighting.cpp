@@ -518,6 +518,91 @@ namespace spartan
         cmd_list->EndMarker();
     }
 
+    // build one self inverting pairing table, lin 2026 3.1, each link index starts as two
+    // horizontally adjacent copies, repeated random 2x2 shuffles move each copy by a gaussian
+    // of sigma / sqrt(2), pairing the copies yields deltas with standard deviation sigma,
+    // deltas wrap at half the table size so the table tiles across the screen
+    static void build_restir_pairing_table(uint32_t size, float sigma, uint32_t seed, uint32_t* out)
+    {
+        const uint32_t n = size * size;
+        vector<uint32_t> link(n);
+        for (uint32_t i = 0; i < n; i++)
+        {
+            link[i] = i / 2;
+        }
+
+        // shuffle count from the paper's fit, equation 3
+        float inv_sigma        = 1.0f / sigma;
+        uint32_t shuffle_count = max(static_cast<uint32_t>(sigma * sigma * 0.5f + 1.46f * inv_sigma + 1.76f * inv_sigma * inv_sigma + 0.656f * inv_sigma * inv_sigma * inv_sigma + 0.5f), 1u);
+
+        uint32_t rng = seed;
+        auto next_random = [&rng]()
+        {
+            rng = rng * 747796405u + 2891336453u;
+            uint32_t word = ((rng >> ((rng >> 28u) + 4u)) ^ rng) * 277803737u;
+            return (word >> 22u) ^ word;
+        };
+
+        for (uint32_t shuffle = 0; shuffle < shuffle_count; shuffle++)
+        {
+            uint32_t offset = shuffle & 1u;
+            for (uint32_t by = 0; by < size / 2; by++)
+            {
+                for (uint32_t bx = 0; bx < size / 2; bx++)
+                {
+                    uint32_t x0     = (bx * 2 + offset) % size;
+                    uint32_t y0     = (by * 2 + offset) % size;
+                    uint32_t x1     = (x0 + 1) % size;
+                    uint32_t y1     = (y0 + 1) % size;
+                    uint32_t idx[4] = { y0 * size + x0, y0 * size + x1, y1 * size + x0, y1 * size + x1 };
+                    for (uint32_t k = 3; k > 0; k--)
+                    {
+                        uint32_t j = next_random() % (k + 1);
+                        swap(link[idx[k]], link[idx[j]]);
+                    }
+                }
+            }
+        }
+
+        // pair the two pixels sharing each link index, wrapped deltas pack into 8 bits per axis
+        vector<int32_t> first(n / 2, -1);
+        const int32_t side = static_cast<int32_t>(size);
+        const int32_t half = side / 2;
+        for (uint32_t i = 0; i < n; i++)
+        {
+            uint32_t l = link[i];
+            if (first[l] < 0)
+            {
+                first[l] = static_cast<int32_t>(i);
+                continue;
+            }
+            int32_t ax = first[l] % side;
+            int32_t ay = first[l] / side;
+            int32_t bx = static_cast<int32_t>(i) % side;
+            int32_t by = static_cast<int32_t>(i) / side;
+            int32_t dx = bx - ax;
+            int32_t dy = by - ay;
+            if (dx > half)
+            {
+                dx -= side;
+            }
+            if (dx < -half)
+            {
+                dx += side;
+            }
+            if (dy > half)
+            {
+                dy -= side;
+            }
+            if (dy < -half)
+            {
+                dy += side;
+            }
+            out[ay * side + ax] = (static_cast<uint32_t>( dx + 128) << 8) | static_cast<uint32_t>( dy + 128);
+            out[by * side + bx] = (static_cast<uint32_t>(-dx + 128) << 8) | static_cast<uint32_t>(-dy + 128);
+        }
+    }
+
     void Renderer::Pass_ReSTIR_TraceInitial(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* tex_skysphere, RHI_Texture* const* reservoirs, uint32_t width, uint32_t height)
     {
         // amd tdrs when tracerays dispatches with uninitialized push constants, all raygen passes must push constants
@@ -640,75 +725,110 @@ namespace spartan
 
     bool Renderer::Pass_ReSTIR_SpatialPair(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_spatial, uint32_t dispatch_x, uint32_t dispatch_y)
     {
+        RHI_Shader* shader_shift   = GetShader(Renderer_Shader::restir_pt_spatial_shift_c);
         RHI_Shader* shader_spatial = GetShader(Renderer_Shader::restir_pt_spatial_c);
-        if (!shader_spatial || !shader_spatial->IsCompiled())
+        if (!shader_shift || !shader_spatial || !shader_shift->IsCompiled() || !shader_spatial->IsCompiled())
         {
             return false;
         }
 
-        // three a-trous-style passes with progressively expanding radii (lin 2022 §6.2),
-        // the first pass operates on a tight neighborhood for sharp signal preservation, the
-        // second and third widen the kernel so distant neighbors feed the canonical
-        // reservoir, radius progression is 1x, 1.6x, 2.56x (1.6 ^ pass_index) so 3 passes
-        // cover the same effective radius as the old 4 level denoiser but in the reservoir
-        // domain where the m cap clamps influence to bounded confidence per neighbor
-        // ping pong routing leaves the final output in reservoirs_spatial which the swap
-        // below moves back into the canonical reservoirs slot
-        struct stage { const char* name; float param; RHI_Texture* const* src; RHI_Texture* const* dst; };
-        const stage stages[3] = {
-            { "restir_pt_spatial",   0.0f, reservoirs,         reservoirs_spatial }, // tight
-            { "restir_pt_spatial_2", 1.0f, reservoirs_spatial, reservoirs         }, // wide
-            { "restir_pt_spatial_3", 2.0f, reservoirs,         reservoirs_spatial }  // widest
-        };
-
-        for (const stage& s : stages)
+        RHI_Texture* shift[3];
+        for (uint32_t i = 0; i < 3; i++)
         {
-            cmd_list->BeginTimeblock(s.name);
-            {
-                RHI_PipelineState pso;
-                pso.name             = s.name;
-                pso.shaders[Compute] = shader_spatial;
-                cmd_list->SetPipelineState(pso);
-
-                m_pcb_pass_cpu.set_f3_value(s.param);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                SetCommonTextures(cmd_list);
-                cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-
-                // bind the per renderable geometry info ring and the emissive triangle nee pool so
-                // the random replay shift can do its full suffix retrace inline, see the matching
-                // comment in Pass_ReSTIR_Temporal for details
-                cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info,      GetBuffer(Renderer_Buffer::GeometryInfo));
-                cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
-
-                // skysphere on tex3 so the random replay shift sees the same sky the initial trace did
-                if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
-                {
-                    tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
-                }
-
-                for (uint32_t i = 0; i < 6; i++)
-                {
-                    cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, s.src[i]);
-                    cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, s.dst[i], rhi_all_mips, 0, true);
-                }
-
-                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
-                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-
-                for (uint32_t i = 0; i < 6; i++)
-                    cmd_list->InsertBarrier(s.dst[i], RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
-            }
-            cmd_list->EndTimeblock();
+            shift[i] = GetRenderTarget(static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_shift0) + i));
+        }
+        if (!shift[0] || !shift[1] || !shift[2])
+        {
+            return false;
         }
 
-        // 3 stages end with the latest spatial output sitting in reservoirs_spatial, swap the
-        // canonical and spatial render target pointers so subsequent passes reading
-        // restir_reservoir0..5 see the freshly filtered reservoirs, the pointer swap is free
-        // compared to blitting 6 reservoir textures and keeps the per-frame swap chain stable
+        // paired spatial reuse, lin 2026 3, the pairing tables couple every pixel with one
+        // mutual partner per table, the pre-pass shifts each pixel's path to its partners once
+        // and the resample pass reads both directions of every pair from the shift textures,
+        // halving the shift mapping and visibility cost versus per-neighbor bidirectional shifts
+        cmd_list->BeginTimeblock("restir_pt_spatial_shift");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "restir_pt_spatial_shift";
+            pso.shaders[Compute] = shader_shift;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+            SetCommonTextures(cmd_list);
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+
+            // bind the per renderable geometry info ring and the emissive triangle nee pool so
+            // the random replay shift can do its full suffix retrace inline, see the matching
+            // comment in Pass_ReSTIR_Temporal for details
+            cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info,      GetBuffer(Renderer_Buffer::GeometryInfo));
+            cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+            cmd_list->SetBuffer(Renderer_BindingsUav::restir_pairing,     GetBuffer(Renderer_Buffer::RestirPairing));
+
+            // skysphere on tex3 so the random replay shift sees the same sky the initial trace did
+            if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
+            {
+                tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+            }
+
+            for (uint32_t i = 0; i < 6; i++)
+            {
+                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
+            }
+
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex),  shift[0], rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), shift[1], rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), shift[2], rhi_all_mips, 0, true);
+            cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+
+            for (uint32_t i = 0; i < 3; i++)
+            {
+                cmd_list->InsertBarrier(shift[i], RHI_BarrierType::EnsureWriteThenRead);
+            }
+        }
+        cmd_list->EndTimeblock();
+
+        cmd_list->BeginTimeblock("restir_pt_spatial");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "restir_pt_spatial";
+            pso.shaders[Compute] = shader_spatial;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+            SetCommonTextures(cmd_list);
+
+            // tlas for the periodic sample validation ray, the pairing buffer resolves partners
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            cmd_list->SetBuffer(Renderer_BindingsUav::restir_pairing, GetBuffer(Renderer_Buffer::RestirPairing));
+
+            // pre-pass shift results, one per pairing table
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  shift[0]);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, shift[1]);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex4, shift[2]);
+
+            for (uint32_t i = 0; i < 6; i++)
+            {
+                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
+                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs_spatial[i], rhi_all_mips, 0, true);
+            }
+
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
+            cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+
+            for (uint32_t i = 0; i < 6; i++)
+            {
+                cmd_list->InsertBarrier(reservoirs_spatial[i], RHI_BarrierType::EnsureWriteThenRead);
+            }
+            cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+
+        // the resample leaves its output in reservoirs_spatial, swap the canonical and spatial
+        // render target pointers so subsequent passes reading restir_reservoir0..5 see the
+        // freshly resampled reservoirs, the pointer swap is free compared to blitting 6 textures
         auto& render_targets = GetRenderTargets();
         for (uint32_t i = 0; i < 6; i++)
         {
@@ -849,6 +969,23 @@ namespace spartan
             if (RHI_Texture* tex_duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
             {
                 cmd_list->ClearTexture(tex_duplication, Color::standard_black);
+            }
+
+            // paired spatial reuse tables, lin 2026 3, sigma is the paper's 16 px at full
+            // resolution scaled by the restir resolution factor, the init flag resets on
+            // scale changes so the tables regenerate together with the reservoirs
+            if (RHI_Buffer* pairing_buffer = GetBuffer(Renderer_Buffer::RestirPairing))
+            {
+                float sigma = min(max(16.0f * cvar_restir_pt_scale.GetValue(), 2.0f), 16.0f);
+                vector<uint32_t> pairing(restir_pairing_element_count);
+                uint32_t base = 0;
+                for (uint32_t t = 0; t < 3; t++)
+                {
+                    build_restir_pairing_table(restir_pairing_sizes[t], sigma, 0x9E3779B9u * (t + 1), pairing.data() + base);
+                    base += restir_pairing_sizes[t] * restir_pairing_sizes[t];
+                }
+                pairing_buffer->ResetOffset();
+                pairing_buffer->Update(cmd_list, pairing.data(), static_cast<uint32_t>(pairing.size() * sizeof(uint32_t)));
             }
 
             m_pass_state.restir_reservoirs_initialized = true;

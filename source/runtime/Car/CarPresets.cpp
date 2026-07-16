@@ -71,6 +71,42 @@ namespace car
             }
         }
 
+        suspension_mechanism parse_suspension_mechanism(const char* value)
+        {
+            const string mechanism = value ? value : "";
+            if (mechanism == "macpherson")
+            {
+                return suspension_mechanism::macpherson;
+            }
+            if (mechanism == "multi_link")
+            {
+                return suspension_mechanism::multi_link;
+            }
+            return suspension_mechanism::double_wishbone;
+        }
+
+        void load_suspension_geometry(pugi::xml_node node, suspension_geometry& geometry)
+        {
+            if (!node)
+            {
+                return;
+            }
+
+            geometry.mechanism = parse_suspension_mechanism(node.attribute("mechanism").as_string("double_wishbone"));
+            read_float(node, "chassis_inset", geometry.chassis_inset);
+            read_float(node, "upper_inner_y", geometry.upper_inner_y);
+            read_float(node, "lower_inner_y", geometry.lower_inner_y);
+            read_float(node, "upper_upright_y", geometry.upper_upright_y);
+            read_float(node, "lower_upright_y", geometry.lower_upright_y);
+            read_float(node, "arm_span", geometry.arm_span);
+            read_float(node, "strut_top_y", geometry.strut_top_y);
+            read_float(node, "strut_top_inset", geometry.strut_top_inset);
+            read_float(node, "tie_rod_y", geometry.tie_rod_y);
+            read_float(node, "tie_rod_z", geometry.tie_rod_z);
+            read_float(node, "link_spread_y", geometry.link_spread_y);
+            read_float(node, "link_spread_z", geometry.link_spread_z);
+        }
+
         void load_preset(pugi::xml_node node, car_preset& preset)
         {
             #define READ_FLOAT(member) read_float(node, #member, preset.member)
@@ -87,6 +123,14 @@ namespace car
             READ_FLOAT(track_rear);
             READ_FLOAT(suspension_height);
             READ_FLOAT(suspension_travel);
+            READ_FLOAT(front_wheel_radius);
+            READ_FLOAT(rear_wheel_radius);
+            READ_FLOAT(front_wheel_width);
+            READ_FLOAT(rear_wheel_width);
+            READ_FLOAT(wheel_mass);
+            READ_FLOAT(upright_mass);
+            READ_FLOAT(suspension_link_mass);
+            READ_FLOAT(steering_rack_mass);
 
             READ_FLOAT(engine_idle_rpm);
             READ_FLOAT(engine_redline_rpm);
@@ -365,6 +409,7 @@ namespace car
             definition.wheel_metalness = wheels.attribute("metalness").as_string("");
             definition.wheel_normal    = wheels.attribute("normal").as_string("");
             definition.wheel_roughness = wheels.attribute("roughness").as_string("");
+            load_preset(wheels, definition.performance);
         }
 
         // performance attributes can live in any number of thematic sections,
@@ -379,6 +424,9 @@ namespace car
             }
             load_preset(section, definition.performance);
         }
+
+        load_suspension_geometry(root.child("front_suspension"), definition.performance.front_geometry);
+        load_suspension_geometry(root.child("rear_suspension"), definition.performance.rear_geometry);
 
         definitions.push_back(std::move(definition));
         car_definition& stored = definitions.back();

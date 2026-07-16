@@ -26,7 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
 static const uint  RESTIR_M_CAP_MIN          = 32;
 static const uint  RESTIR_M_CAP_MAX          = 128;
-static const uint  RESTIR_SPATIAL_SAMPLES    = 8;
+
+// paired spatial reuse, lin 2026 3, three tileable self inverting gaussian pairing tables
+// sizes are near coprime so the tiling periods never align within a screen
+static const uint RESTIR_PAIRING_COUNT    = 3;
+static const uint RESTIR_PAIRING_SIZES[3] = { 254u, 230u, 210u };
+static const uint RESTIR_PAIRING_BASES[3] = { 0u, 64516u, 117416u };
 
 float get_restir_m_cap()
 {
@@ -49,6 +54,10 @@ static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
 static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
 static const float RESTIR_RAY_T_MIN          = 0.001f;
 
+// emissive nits calibration, must match light_composition or emitters glow on screen but bounce no light
+static const float RESTIR_EMISSIVE_NITS_FROM_ALBEDO = 100000.0f;
+static const float RESTIR_EMISSIVE_NITS_TEXTURE     = 10000.0f;
+
 // sky / environment, both bands derive from the surface w clamp so one knob scales the hdr range
 static const float RESTIR_SKY_RADIANCE_CLAMP_FACTOR = 4.0f;
 static const float RESTIR_SKY_W_CLAMP_FACTOR        = 10.0f;
@@ -69,6 +78,19 @@ static const float RESTIR_MIN_PDF            = 1e-6f;
 
 // nee
 static const float MIN_AREA_LIGHT_SOLID_ANGLE = 1e-4f;
+
+// smooth range window matching compute_attenuation_range in common_structs.hlsl, keeps restir falloff consistent with raster
+float restir_range_window(float dist, float range)
+{
+    if (range <= 0.0f)
+    {
+        return 0.0f;
+    }
+    float ratio  = dist / range;
+    float ratio2 = ratio * ratio;
+    float window = saturate(1.0f - ratio2 * ratio2);
+    return window * window;
+}
 
 // urena, fajardo, king 2013 spherical rectangle solid angle sampling
 // rect_origin is the min corner, ex / ey the edge vectors, returns the sampled point and solid angle
@@ -542,6 +564,92 @@ uint create_seed_for_pass(uint2 pixel, uint frame, uint pass_id)
     h = pcg_hash(h ^ xxhash32(pixel.y));
     h = pcg_hash(h ^ xxhash32(frame ^ (pass_salt >> 16)));
     return h;
+}
+
+// paired partner lookup, lin 2026 3.2, the table is self inverting so when p resolves q then
+// q resolves p, both spatial passes call this with identical inputs and agree on every pair
+// a per frame random flip, transpose and offset decorrelates consecutive frames, deltas
+// transform through the inverse of the linear part so pairs stay mutual under any transform
+int2 restir_pairing_partner(uint2 pixel, uint table)
+{
+    uint size      = RESTIR_PAIRING_SIZES[table];
+    uint h         = xxhash32(buffer_frame.frame * 3u + table + 1u);
+    uint2 c        = (pixel + uint2(h & 0xFFu, (h >> 8) & 0xFFu)) % size;
+    bool flip_x    = (h & 0x10000u) != 0u;
+    bool flip_y    = (h & 0x20000u) != 0u;
+    bool transpose = (h & 0x40000u) != 0u;
+    if (transpose)
+    {
+        c = c.yx;
+    }
+    if (flip_x)
+    {
+        c.x = size - 1u - c.x;
+    }
+    if (flip_y)
+    {
+        c.y = size - 1u - c.y;
+    }
+    uint packed = restir_pairing[RESTIR_PAIRING_BASES[table] + c.y * size + c.x];
+    int2 d      = int2(int((packed >> 8) & 0xFFu) - 128, int(packed & 0xFFu) - 128);
+    if (flip_x)
+    {
+        d.x = -d.x;
+    }
+    if (flip_y)
+    {
+        d.y = -d.y;
+    }
+    if (transpose)
+    {
+        d = d.yx;
+    }
+    return int2(pixel) + d;
+}
+
+// g-buffer similarity gate used before attempting a shift on a paired neighbor
+bool is_neighbor_gbuffer_compatible(
+    int2 neighbor_pixel,
+    float3 center_pos,
+    float3 center_normal,
+    float center_linear_depth,
+    float2 resolution)
+{
+    if (neighbor_pixel.x < 0 || neighbor_pixel.x >= (int)resolution.x ||
+        neighbor_pixel.y < 0 || neighbor_pixel.y >= (int)resolution.y)
+        return false;
+
+    float2 neighbor_uv   = (neighbor_pixel + 0.5f) / resolution;
+    float neighbor_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).r;
+
+    if (neighbor_depth <= 0.0f)
+        return false;
+
+    float neighbor_linear_depth = linearize_depth(neighbor_depth);
+
+    float adaptive_depth_threshold = lerp(RESTIR_DEPTH_THRESHOLD, RESTIR_DEPTH_THRESHOLD * 2.0f,
+                                           saturate(center_linear_depth / 200.0f));
+
+    float depth_ratio = center_linear_depth / max(neighbor_linear_depth, 1e-6f);
+    if (abs(depth_ratio - 1.0f) > adaptive_depth_threshold)
+        return false;
+
+    float3 neighbor_normal = get_normal(neighbor_uv);
+    float normal_similarity = dot(center_normal, neighbor_normal);
+
+    float adaptive_normal_threshold = lerp(RESTIR_NORMAL_THRESHOLD, 0.98f,
+                                            saturate(center_linear_depth / 150.0f));
+    if (normal_similarity < adaptive_normal_threshold)
+        return false;
+
+    // world distance gate scaled with depth, a 5cm floor, rejects crevices regardless of camera distance
+    float3 neighbor_pos  = get_position(neighbor_uv);
+    float  world_dist    = length(neighbor_pos - center_pos);
+    float  max_world_dist = max(center_linear_depth * 0.02f, 0.05f);
+    if (world_dist > max_world_dist)
+        return false;
+
+    return true;
 }
 
 // sampling helpers
@@ -1075,9 +1183,13 @@ float sky_nee_pdf_at(float3 dir, float3 shading_normal)
 float3 probe_emission_estimate(MaterialParameters mat)
 {
     if (mat.emissive_from_albedo())
-        return mat.color.rgb * mat.emissive_strength;
+    {
+        return mat.color.rgb * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
+    }
     if (mat.has_texture_emissive())
-        return mat.color.rgb;
+    {
+        return mat.color.rgb * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
+    }
     return float3(0.0f, 0.0f, 0.0f);
 }
 
@@ -1163,8 +1275,8 @@ float3 direct_lighting_at_vertex(
                 continue;
 
             light_pdf   = 1.0f / solid_angle;
-            // no extra distance falloff, the 1/d^2 term is already baked into the solid-angle pdf
-            attenuation = 1.0f;
+            // the 1/d^2 term is baked into the solid angle pdf, only the artistic range window applies
+            attenuation = restir_range_window(light_dist, light.range);
         }
         else if (is_point || is_spot)
         {
@@ -1178,7 +1290,7 @@ float3 direct_lighting_at_vertex(
                 continue;
             }
 
-            attenuation = 1.0f / (light_dist * light_dist + 0.0001f);
+            attenuation = restir_range_window(light_dist, light.range) / (light_dist * light_dist + 0.0001f);
 
             if (is_spot)
             {
@@ -1407,19 +1519,21 @@ void inline_pull_hit_data(
         metallic *= material_textures[metallic_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).r;
     }
 
+    // emissive calibration mirrors g_buffer and light_composition, see closest_hit in restir_pt.hlsl
     float3 emission = float3(0, 0, 0);
     if (mat.has_texture_emissive())
     {
         uint emissive_idx = instance_id + material_texture_index_emission;
-        emission = material_textures[emissive_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
+        float3 emissive_sample = material_textures[emissive_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
         if (mat.is_emissive_srgb())
         {
-            emission = srgb_to_linear(emission);
+            emissive_sample = srgb_to_linear(emissive_sample);
         }
+        emission = luminance(emissive_sample) * albedo * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
     }
     if (mat.emissive_from_albedo())
     {
-        emission += albedo * mat.emissive_strength;
+        emission = albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
     }
 
     hit_out.hit              = true;

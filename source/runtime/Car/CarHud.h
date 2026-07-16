@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    class Car;
     class Physics;
 
     namespace car_hud
@@ -31,6 +32,6 @@ namespace spartan
         void draw_driver_hud(Physics* physics);
 
         // single scrollable telemetry funnel, p_open is bound to the toggle state
-        void draw_telemetry_window(Physics* physics, bool* p_open);
+        void draw_telemetry_window(Car* car, Physics* physics, bool* p_open);
     }
 }

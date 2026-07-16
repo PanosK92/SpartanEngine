@@ -24,81 +24,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-static const float SPATIAL_RADIUS_MIN  = 4.0f;
-static const float SPATIAL_RADIUS_MAX  = 24.0f;
-static const float SPATIAL_DEPTH_SCALE = 0.5f;
+// paired spatial resample, lin 2026 3, consumes the shift pre-pass so no shift mapping or
+// visibility ray runs here, the forward shift (partner sample at this pixel) is read from the
+// partner's texel and the backward shift (own sample at the partner) from this pixel's texel
 
-// g-buffer similarity gate used before attempting a shift on a neighbor's reservoir
-bool is_neighbor_gbuffer_compatible(
-    int2 neighbor_pixel,
-    float3 center_pos,
-    float3 center_normal,
-    float center_linear_depth,
-    float2 resolution)
+// pre-pass shift results, one texture per pairing table, rgb = f_dst, a = jacobian (0 = failed)
+float4 read_shift(uint table, int2 p)
 {
-    if (neighbor_pixel.x < 0 || neighbor_pixel.x >= (int)resolution.x ||
-        neighbor_pixel.y < 0 || neighbor_pixel.y >= (int)resolution.y)
-        return false;
-
-    float2 neighbor_uv   = (neighbor_pixel + 0.5f) / resolution;
-    float neighbor_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).r;
-
-    if (neighbor_depth <= 0.0f)
-        return false;
-
-    float neighbor_linear_depth = linearize_depth(neighbor_depth);
-
-    float adaptive_depth_threshold = lerp(RESTIR_DEPTH_THRESHOLD, RESTIR_DEPTH_THRESHOLD * 2.0f,
-                                           saturate(center_linear_depth / 200.0f));
-
-    float depth_ratio = center_linear_depth / max(neighbor_linear_depth, 1e-6f);
-    if (abs(depth_ratio - 1.0f) > adaptive_depth_threshold)
-        return false;
-
-    float3 neighbor_normal = get_normal(neighbor_uv);
-    float normal_similarity = dot(center_normal, neighbor_normal);
-
-    float adaptive_normal_threshold = lerp(RESTIR_NORMAL_THRESHOLD, 0.98f,
-                                            saturate(center_linear_depth / 150.0f));
-    if (normal_similarity < adaptive_normal_threshold)
-        return false;
-
-    // world distance gate scaled with depth, a 5cm floor, rejects crevices regardless of camera distance
-    float3 neighbor_pos  = get_position(neighbor_uv);
-    float  world_dist    = length(neighbor_pos - center_pos);
-    float  max_world_dist = max(center_linear_depth * 0.02f, 0.05f);
-    if (world_dist > max_world_dist)
-        return false;
-
-    return true;
-}
-
-float compute_edge_factor(float2 uv, float linear_depth, float2 screen_resolution)
-{
-    float2 texel     = 1.0f / screen_resolution;
-    float depth_left  = linearize_depth(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv + float2(-texel.x, 0), 0).r);
-    float depth_right = linearize_depth(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv + float2(texel.x, 0), 0).r);
-    float depth_up    = linearize_depth(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv + float2(0, -texel.y), 0).r);
-    float depth_down  = linearize_depth(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv + float2(0, texel.y), 0).r);
-
-    float gradient = abs(depth_left - depth_right) + abs(depth_up - depth_down);
-    float relative_gradient = gradient / max(linear_depth, 0.01f);
-
-    return saturate(1.0f - relative_gradient * 5.0f);
-}
-
-float compute_adaptive_radius(float linear_depth, float center_roughness, float edge_factor, float3 normal_ws, float3 view_dir)
-{
-    float depth_factor     = saturate(sqrt(linear_depth * SPATIAL_DEPTH_SCALE / 100.0f));
-    float base_radius      = lerp(SPATIAL_RADIUS_MIN, SPATIAL_RADIUS_MAX, depth_factor);
-    float roughness_factor = lerp(0.7f, 1.0f, center_roughness);
-
-    float n_dot_v = abs(dot(normal_ws, view_dir));
-    float grazing_factor = lerp(0.3f, 1.0f, saturate(n_dot_v * 2.0f));
-
-    float distance_reduction = lerp(1.0f, 0.5f, saturate((linear_depth - 50.0f) / 100.0f));
-
-    return base_radius * roughness_factor * edge_factor * grazing_factor * distance_reduction;
+    if (table == 0)
+    {
+        return tex[p];
+    }
+    if (table == 1)
+    {
+        return tex2[p];
+    }
+    return tex4[p];
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -139,21 +80,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (!is_reservoir_valid(center))
         center = create_empty_reservoir();
 
-    uint spatial_pass_index = (uint)pass_get_f3_value().x;
-    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 2 + spatial_pass_index);
+    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 2);
     float center_confidence = saturate(center.confidence);
-
-    float edge_factor     = compute_edge_factor(uv, linear_depth, buffer_frame.resolution_render);
-    float adaptive_radius = compute_adaptive_radius(linear_depth, roughness, edge_factor, normal_ws, view_dir);
-
-    // a-trous expanding spatial reuse, lin 2022 6.2, the radius grows by 1.6^pass so later
-    // passes feed neighbors at larger distances into the canonical reservoir
-    uint spatial_sample_count = RESTIR_SPATIAL_SAMPLES;
-    if (spatial_pass_index > 0)
-    {
-        adaptive_radius     *= pow(1.6f, float(spatial_pass_index));
-        spatial_sample_count = max(RESTIR_SPATIAL_SAMPLES - 2u, 4u);
-    }
 
     // own domain target from the previous pass finalize at this same pixel, re-evaluating
     // would mismatch center.W for replay carried samples since W = weight_sum / stored target
@@ -171,36 +99,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     uint  valid_neighbors    = 0;
 
     // collected per neighbor so the canonical defensive share is known before the streaming insert
-    PathSample stream_samples [RESTIR_SPATIAL_SAMPLES];
-    float      stream_target  [RESTIR_SPATIAL_SAMPLES];
-    float      stream_jacobian[RESTIR_SPATIAL_SAMPLES];
-    float      stream_W       [RESTIR_SPATIAL_SAMPLES];
-    float      stream_share   [RESTIR_SPATIAL_SAMPLES];
+    PathSample stream_samples [RESTIR_PAIRING_COUNT];
+    float      stream_target  [RESTIR_PAIRING_COUNT];
+    float      stream_jacobian[RESTIR_PAIRING_COUNT];
+    float      stream_W       [RESTIR_PAIRING_COUNT];
+    float      stream_share   [RESTIR_PAIRING_COUNT];
     // rgb integrand per neighbor for vector shading weights, lin 2026 6.3
-    float3     stream_f       [RESTIR_SPATIAL_SAMPLES];
+    float3     stream_f       [RESTIR_PAIRING_COUNT];
 
     float confidence_acc = center_M * center_confidence;
     float confidence_w   = center_M;
     float M_total        = center_M;
 
-    // gaussian distributed neighbor offsets, lin 2026 3, sigma = sqrt(8 / (9 pi)) * radius
-    // matches the mean sample distance of a uniform disk of the same radius while
-    // concentrating samples near the center, which raises the odds of compatible neighbors
-    float sigma = 0.532f * adaptive_radius;
-
-    for (uint i = 0; i < spatial_sample_count; i++)
+    for (uint t = 0; t < RESTIR_PAIRING_COUNT; t++)
     {
-        float2 g_xi   = random_float2(seed);
-        float  g_r    = sigma * sqrt(max(-2.0f * log(max(g_xi.x, 1e-7f)), 0.0f));
-        float  g_a    = 2.0f * PI * g_xi.y;
-        int2   offset = int2(round(g_r * float2(cos(g_a), sin(g_a))));
-
-        if (all(offset == int2(0, 0)))
-            continue;
-
-        int2 neighbor_pixel = int2(pixel) + offset;
+        int2 neighbor_pixel = restir_pairing_partner(pixel, t);
 
         if (!is_neighbor_gbuffer_compatible(neighbor_pixel, pos_ws, normal_ws, linear_depth, resolution))
+            continue;
+
+        // forward shift, the partner's path evaluated at this pixel, visibility already traced
+        float4 forward = read_shift(t, neighbor_pixel);
+        if (forward.a <= 0.0f)
+            continue;
+
+        float target_j_at_c = target_scalar(forward.rgb);
+        if (target_j_at_c <= 0.0f)
             continue;
 
         Reservoir neighbor = unpack_reservoir(
@@ -218,66 +142,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         // confidence feeds the m-weighted merge but does not gate participation
         float neighbor_confidence = saturate(neighbor.confidence);
 
-        float2 neighbor_uv     = (neighbor_pixel + 0.5f) / resolution;
-        float3 neighbor_pos_ws = get_position(neighbor_uv);
-
-        // both the forward and backward shift need the neighbor brdf parameters
-        float4 neighbor_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0);
-        float3 neighbor_albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).rgb);
-        float  neighbor_roughness = max(neighbor_material.r, 0.04f);
-        float  neighbor_metallic  = neighbor_material.g;
-        float3 neighbor_normal_ws = get_normal(neighbor_uv);
-        float3 neighbor_view_dir  = normalize(get_camera_position() - neighbor_pos_ws);
-
-        // forward shift, neighbor path evaluated at this pixel
-        ShiftResult shift_j_to_c = try_hybrid_shift(
-            neighbor.sample,
-            neighbor_pos_ws,
-            neighbor_normal_ws,
-            neighbor_view_dir,
-            neighbor_albedo,
-            neighbor_roughness,
-            neighbor_metallic,
-            pos_ws,
-            normal_ws,
-            view_dir,
-            albedo,
-            roughness,
-            metallic
-        );
-
-        if (!shift_j_to_c.ok)
-            continue;
-
-        if (!trace_shift_visibility(neighbor.sample, pos_ws, normal_ws))
-            continue;
-
-        float target_j_at_c = target_scalar(shift_j_to_c.f_dst);
-        if (target_j_at_c <= 0.0f)
-            continue;
-
-        // backward shift, canonical sample evaluated at the neighbor pixel, for pairwise mis
-        ShiftResult shift_c_to_j = try_hybrid_shift(
-            center.sample,
-            pos_ws,
-            normal_ws,
-            view_dir,
-            albedo,
-            roughness,
-            metallic,
-            neighbor_pos_ws,
-            neighbor_normal_ws,
-            neighbor_view_dir,
-            neighbor_albedo,
-            neighbor_roughness,
-            neighbor_metallic
-        );
-
-        // if the canonical does not shift to the neighbor, the neighbor technique cannot
-        // produce the canonical sample and that pair share collapses to full canonical weight
-        float target_c_at_j   = shift_c_to_j.ok ? target_scalar(shift_c_to_j.f_dst) : 0.0f;
-        float jacobian_c_to_j = shift_c_to_j.ok ? shift_c_to_j.jacobian             : 0.0f;
-        float jacobian_j_to_c = shift_j_to_c.jacobian;
+        // backward shift, own sample evaluated at the partner, for pairwise mis, a failed
+        // backward shift collapses the pair share to full canonical weight which stays unbiased
+        float4 backward       = read_shift(t, int2(pixel));
+        float target_c_at_j   = backward.a > 0.0f ? target_scalar(backward.rgb) : 0.0f;
+        float jacobian_c_to_j = backward.a > 0.0f ? backward.a                  : 0.0f;
+        float jacobian_j_to_c = forward.a;
 
         // pairwise mis shares, lin 2022 5.2, each share evaluates one sample under both
         // techniques, own domain target in the numerator, shifted target times the shift
@@ -298,15 +168,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         stream_jacobian[valid_neighbors] = jacobian_j_to_c;
         stream_W       [valid_neighbors] = neighbor.W;
         stream_share   [valid_neighbors] = neigh_share;
-        stream_f       [valid_neighbors] = shift_j_to_c.f_dst;
+        stream_f       [valid_neighbors] = forward.rgb;
         valid_neighbors++;
 
         M_total        += neighbor.M;
         confidence_acc += neighbor.M * neighbor_confidence;
         confidence_w   += neighbor.M;
-
-        if (valid_neighbors >= RESTIR_SPATIAL_SAMPLES)
-            break;
     }
 
     // defensive pairwise mis weights, k == 0 gives the canonical the full weight
@@ -340,7 +207,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
     {
         uint hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
-        uint slot = (buffer_frame.frame + hash + spatial_pass_index * 11u) % validation_period;
+        uint slot = (buffer_frame.frame + hash) % validation_period;
         if (slot == 0u)
         {
             bool reachable = trace_shift_visibility(combined.sample, pos_ws, normal_ws);
@@ -416,6 +283,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
 
+    // real reconnection distance in w so reblur can size its kernels, sky gets the far band
+    float hit_dist = 0.0f;
+    if (combined.W > 0.0f)
+    {
+        hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
+    }
+
     // direct lighting lives inside the reservoir via the initial ris nee samples, adding it here would double count
-    tex_uav[pixel] = float4(gi, saturate(combined.confidence));
+    tex_uav[pixel] = float4(gi, hit_dist);
 }

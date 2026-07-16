@@ -312,5 +312,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
 
-    tex_uav[pixel] = float4(gi, saturate(combined.confidence));
+    // real reconnection distance in w so reblur can size its kernels, sky gets the far band
+    float hit_dist = 0.0f;
+    if (combined.W > 0.0f)
+    {
+        hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
+    }
+
+    tex_uav[pixel] = float4(gi, hit_dist);
 }

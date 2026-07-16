@@ -292,6 +292,9 @@ namespace spartan
         if (m_body_type == BodyType::Vehicle)
         {
             PhysicsWorld::SetVehicleStepCallback(nullptr);
+            car::destroy();
+            m_actors.clear();
+            m_actors_active.clear();
         }
 
         // release controller if it exists
@@ -1554,6 +1557,10 @@ namespace spartan
                 car::wheels[i].angular_velocity = 0.0f;
             }
 
+            if (!car::rebuild_multibody())
+            {
+                SP_LOG_ERROR("failed to rebuild suspension after vehicle reset");
+            }
             car::reset_drivetrain_transients();
             car::reset_wheel_thermals();
             return;
@@ -1646,6 +1653,8 @@ namespace spartan
                         renderable->Tick();
                         BoundingBox aabb = renderable->GetBoundingBox();
                         wheel_world_pos = aabb.GetCenter();
+                        Vector3 center_offset = entity->GetRotation().Conjugate() * (wheel_world_pos - entity->GetPosition());
+                        m_wheel_mesh_center_offsets[index] = center_offset.IsFinite() ? center_offset : Vector3::Zero;
                     }
 
                     Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
@@ -2029,19 +2038,10 @@ namespace spartan
             return;
         }
 
-        // compute the offset from entity origin to mesh center
-        // this handles meshes that don't have their origin at geometric center
-        Vector3 entity_pos = wheel_entity->GetPosition();
-        m_wheel_mesh_center_offset_y = aabb_center.y - entity_pos.y;
-        if (!std::isfinite(m_wheel_mesh_center_offset_y))
-        {
-            m_wheel_mesh_center_offset_y = 0.0f;
-        }
+        m_wheel_radius = radius;
 
-        SetWheelRadius(radius);
-
-        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f, center_offset_y=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)",
-            radius, m_wheel_mesh_center_offset_y, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
+        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)",
+            radius, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
     }
 
     float Physics::GetSuspensionHeight() const
@@ -2132,6 +2132,39 @@ namespace spartan
         SP_LOG_INFO("ScaleWheelEntityToRadius: '%s' measured r=%.3f, target r=%.3f, scale factor %.3f -> new scale (%.3f, %.3f, %.3f)",
             wheel_entity->GetObjectName().c_str(), measured_radius, target_radius, scale_factor,
             new_scale.x, new_scale.y, new_scale.z);
+    }
+
+    void Physics::ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width)
+    {
+        if (!wheel_entity || !std::isfinite(target_radius) || !std::isfinite(target_width) || target_radius <= 0.0f || target_width <= 0.0f)
+        {
+            return;
+        }
+
+        Render* renderable = wheel_entity->GetComponent<Render>();
+        if (!renderable)
+        {
+            return;
+        }
+
+        renderable->Tick();
+        Vector3 extents = renderable->GetBoundingBox().GetExtents();
+        if (!extents.IsFinite() || extents.x <= 0.0001f || extents.y <= 0.0001f || extents.z <= 0.0001f)
+        {
+            return;
+        }
+
+        Vector3 scale = wheel_entity->GetScaleLocal();
+        scale.x *= target_width / (extents.x * 2.0f);
+        scale.y *= target_radius / extents.y;
+        scale.z *= target_radius / extents.z;
+        if (!scale.IsFinite() || scale.x <= 0.0f || scale.y <= 0.0f || scale.z <= 0.0f)
+        {
+            return;
+        }
+
+        wheel_entity->SetScaleLocal(scale);
+        renderable->Tick();
     }
 
     float Physics::GetVehicleThrottle() const
@@ -2885,6 +2918,11 @@ namespace spartan
             // update the physics wheel offset x and z to match the mesh position
             car::set_wheel_offset(i, local_pos.x, local_pos.z);
         }
+
+        if (!car::rebuild_multibody())
+        {
+            SP_LOG_ERROR("failed to rebuild car suspension after wheel synchronization");
+        }
     }
 
     void Physics::SetCenterOfMassOffset(const Vector3& offset)
@@ -2931,21 +2969,6 @@ namespace spartan
             return;
         }
 
-        // get steering angle from vehicle system
-        float steering = car::get_steering();
-        if (!std::isfinite(steering))
-        {
-            SP_LOG_WARNING("non finite steering from car sim, clamping to 0");
-            steering = 0.0f;
-        }
-        const float max_steering_angle = 35.0f * math::deg_to_rad;
-        float steering_angle = steering * max_steering_angle;
-
-        // get suspension parameters for position calculation
-        float suspension_height = car::cfg.suspension_height;
-        float suspension_travel = car::cfg.suspension_travel;
-
-        // update each wheel entity using physics rotation and position data
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
             Entity* wheel_entity = m_wheel_entities[i];
@@ -2954,64 +2977,29 @@ namespace spartan
                 continue;
             }
 
-            bool is_front_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::FrontRight));
             bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
-
-            // pull the raw sim values and sanitize, a NaN here would seep into the entity transform
-            // and produce a NaN bbox that trips the frustum culler assert from the renderer tick.
-            // also heal back the underlying sim state, otherwise the next tick reads the same NaN
-            // and we just keep clamping the visual to 0 forever
-            float compression    = car::get_wheel_compression(i);
-            float wheel_rotation = car::get_wheel_rotation(i);
-            if (!std::isfinite(compression))
+            PxRigidDynamic* wheel_actor = car::multibody.corners[i].wheel_body;
+            if (!wheel_actor)
             {
-                SP_LOG_WARNING("non finite compression from car sim on wheel %d, healing to 0", i);
-                compression = 0.0f;
-                car::sanitize_wheel_state(i);
-            }
-            if (!std::isfinite(wheel_rotation))
-            {
-                SP_LOG_WARNING("non finite wheel rotation from car sim on wheel %d, healing to 0", i);
-                wheel_rotation = 0.0f;
-                car::set_wheel_rotation(i, 0.0f);
-                car::set_wheel_angular_velocity(i, 0.0f);
-                car::sanitize_wheel_state(i);
+                continue;
             }
 
-            // update wheel Y position based on suspension compression
-            // compression: 0 = fully extended (wheel at lowest), 1 = fully compressed (wheel at highest)
-            Vector3 current_pos = wheel_entity->GetPositionLocal();
-
-            // base Y is at -suspension_height (fully extended position)
-            // as compression increases, wheel moves UP by compression * suspension_travel
-            // subtract mesh center offset to account for meshes with non-centered origin
-            float visual_y = -suspension_height + compression * suspension_travel - m_wheel_mesh_center_offset_y;
-            wheel_entity->SetPositionLocal(Vector3(current_pos.x, visual_y, current_pos.z));
-
-            // get wheel rotation from physics (each wheel has its own rotation)
-            Quaternion spin_rotation = Quaternion::FromAxisAngle(Vector3::Right, wheel_rotation);
-
-            // steering rotation for front wheels only (around Y axis)
-            Quaternion steer_rotation = Quaternion::Identity;
-            if (is_front_wheel)
+            Vector3 wheel_position;
+            Quaternion wheel_rotation;
+            from_px_transform(wheel_actor->getGlobalPose(), wheel_position, wheel_rotation);
+            if (!wheel_position.IsFinite() || !wheel_rotation.IsFinite())
             {
-                steer_rotation = Quaternion::FromAxisAngle(Vector3::Up, steering_angle);
+                continue;
             }
 
-            // mirror rotation for right side wheels
-            Quaternion mirror_rotation = Quaternion::Identity;
             if (is_right_wheel)
             {
-                mirror_rotation = Quaternion::FromAxisAngle(Vector3::Up, math::pi);
+                wheel_rotation *= Quaternion::FromAxisAngle(Vector3::Up, math::pi);
             }
-
-            // combine rotations
-            Quaternion final_rotation = steer_rotation * spin_rotation * mirror_rotation;
-            wheel_entity->SetRotationLocal(final_rotation);
+            wheel_position -= wheel_rotation * m_wheel_mesh_center_offsets[i];
+            wheel_entity->SetPosition(wheel_position + m_vehicle_render_offset);
+            wheel_entity->SetRotation(wheel_rotation);
         }
-
-        // note: chassis entity is a child of vehicle_entity, which already follows car::body
-        // so the chassis inherits the physics transform automatically - no extra update needed
     }
 
     void Physics::Create()
@@ -3106,6 +3094,10 @@ namespace spartan
                 Vector3 pos = GetEntity()->GetPosition();
                 PxTransform current_pose = car::body->getGlobalPose();
                 car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
+                if (!car::rebuild_multibody())
+                {
+                    SP_LOG_ERROR("failed to place car suspension assembly");
+                }
                 car::body->userData = reinterpret_cast<void*>(GetEntity());
                 tag_actor_shapes(car::body, 2);
 

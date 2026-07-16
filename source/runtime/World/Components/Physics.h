@@ -189,6 +189,7 @@ namespace spartan
         // must be called before SyncWheelOffsetsFromEntities or ComputeWheelRadiusFromEntity to
         // ensure the cooked sweep cylinder and visual wheel agree on the actual physical size
         void ScaleWheelEntityToRadius(Entity* wheel_entity, float target_radius);
+        void ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width);
 
         // vehicle metrics (read-only, for display/debugging)
         float GetVehicleThrottle() const;
@@ -341,7 +342,7 @@ namespace spartan
         // vehicle wheel entities and state
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
-        float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
+        math::Vector3 m_wheel_mesh_center_offsets[static_cast<int>(WheelIndex::Count)] = {};
         bool m_wheel_offsets_synced = false;  // flag to ensure wheel offsets are synced from entities once
 
         // vehicle chassis entity and suspension state

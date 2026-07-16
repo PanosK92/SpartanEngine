@@ -34,9 +34,41 @@ namespace car
 {
     static constexpr int max_gears = 11;
 
+    enum class suspension_mechanism : int
+    {
+        double_wishbone,
+        macpherson,
+        multi_link
+    };
+
+    struct suspension_geometry
+    {
+        suspension_mechanism mechanism = suspension_mechanism::double_wishbone;
+        float chassis_inset             = 0.48f;
+        float upper_inner_y             = 0.18f;
+        float lower_inner_y             = -0.16f;
+        float upper_upright_y           = 0.18f;
+        float lower_upright_y           = -0.18f;
+        float arm_span                   = 0.20f;
+        float strut_top_y                = 0.42f;
+        float strut_top_inset            = 0.32f;
+        float tie_rod_y                  = 0.02f;
+        float tie_rod_z                  = -0.14f;
+        float link_spread_y              = 0.16f;
+        float link_spread_z              = 0.22f;
+    };
+
     struct car_preset
     {
-        car_preset() { memset(this, 0, sizeof(car_preset)); }
+        car_preset()
+        {
+            memset(this, 0, sizeof(car_preset));
+            front_geometry       = suspension_geometry();
+            rear_geometry        = suspension_geometry();
+            upright_mass         = 14.0f;
+            suspension_link_mass = 2.5f;
+            steering_rack_mass   = 4.0f;
+        }
 
         const char* name;
 
@@ -52,6 +84,16 @@ namespace car
         float track_rear;            // m, distance between rear wheel centers
         float suspension_height;     // m, ride height of chassis bottom above wheel center
         float suspension_travel;     // m, available compression travel per wheel
+        float front_wheel_radius;
+        float rear_wheel_radius;
+        float front_wheel_width;
+        float rear_wheel_width;
+        float wheel_mass;
+        suspension_geometry front_geometry;
+        suspension_geometry rear_geometry;
+        float upright_mass;
+        float suspension_link_mass;
+        float steering_rack_mass;
 
         // engine
         float engine_idle_rpm;

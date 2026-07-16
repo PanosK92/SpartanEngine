@@ -53,6 +53,12 @@ namespace spartan
         Wheel
     };
 
+    enum class CarVisualizationPreset
+    {
+        Full,
+        Skeleton
+    };
+
     // self-contained drivable car class
     // handles entity hierarchy creation, physics setup, input, camera, sounds, and telemetry
     class Car
@@ -120,6 +126,8 @@ namespace spartan
         // telemetry
         void SetShowTelemetry(bool show) { m_show_telemetry = show; }
         bool GetShowTelemetry() const { return m_show_telemetry; }
+        void SetVisualizationPreset(CarVisualizationPreset preset);
+        CarVisualizationPreset GetVisualizationPreset() const { return m_visualization_preset; }
 
         // camera orbit (right stick control)
         void AddCameraOrbitYaw(float delta);
@@ -150,6 +158,7 @@ namespace spartan
         void TickChaseCamera();
         void TickEnterExit();
         void TickViewSwitch();
+        void TickVisualization();
 
         // chase camera - gt7 style
         struct ChaseCameraState
@@ -197,9 +206,17 @@ namespace spartan
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
         bool              m_mcp_controlled  = false;    // mcp owns pedals, keyboard does not overwrite
         CarView           m_current_view    = CarView::Chase;
+        CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         ChaseCameraState  m_chase_camera;
+
+        struct BodyRenderState
+        {
+            Entity* entity = nullptr;
+            bool active    = false;
+        };
+        std::vector<BodyRenderState> m_body_render_states;
 
         // mouse orbit state (right_click drag)
         bool              m_orbit_mouse_active        = false;

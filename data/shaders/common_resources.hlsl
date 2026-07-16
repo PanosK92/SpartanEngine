@@ -219,6 +219,10 @@ RWStructuredBuffer<uint> volumetric_light_indices : register(u48);
 // fft ocean vertical displacement per texel, one slice per cascade, host visible so the cpu can sample wave height for buoyancy
 RWStructuredBuffer<float> ocean_heights : register(u56);
 
+// restir paired spatial reuse tables, lin 2026 3, packed signed deltas to each pixel's partner
+// built once on the cpu, three concatenated tileable tables, treated read-only
+RWStructuredBuffer<uint> restir_pairing : register(u57);
+
 // restir nee pool, world space emissive triangles populated by Renderer::BuildEmissiveTriangleNeePool
 // each entry packs the world space triangle, area, normal, emission radiance, picking weight and
 // a cumulative prefix sum used for area-weighted sampling, count comes via buffer_frame.restir_pt_emissive_tri_count

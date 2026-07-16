@@ -33,11 +33,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace car
 {
-    inline void apply_tire_forces(float wheel_angles[wheel_count], float dt)
+    inline void apply_tire_forces(float dt)
     {
         // --- setup ---
         PxTransform pose = body->getGlobalPose();
-        PxVec3 chassis_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 chassis_right = pose.q.rotate(PxVec3(1, 0, 0));
 
         if (tuning::log_pacejka)
@@ -49,6 +48,12 @@ namespace car
         {
             wheel& w = wheels[i];
             const char* wheel_name = wheel_names[i];
+            PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
+            PxVec3 wheel_axis = wheel_actor ? wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f)) : chassis_right;
+            if (wheel_actor)
+            {
+                w.angular_velocity = wheel_actor->getAngularVelocity().dot(wheel_axis);
+            }
 
             // floor wr and the wheel moi so the divisions in the airborne branch, the slip
             // calculation, the semi implicit euler step and the ground match step can never
@@ -56,9 +61,6 @@ namespace car
             float wr_raw  = cfg.wheel_radius_for(i);
             float wr      = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
             float wmoi    = (std::isfinite(wheel_moi[i]) && wheel_moi[i] > 0.0f) ? wheel_moi[i] : 1.0f;
-            // driven wheels also carry the engine flywheel reflected through the gearing
-            float wmoi_eff = wmoi + (is_driven(i) ? reflected_engine_inertia : 0.0f);
-
             float defl = 0.0f;
             if (tuning::spec.tire_vertical_stiffness > 1000.0f)
             {
@@ -69,6 +71,12 @@ namespace car
             float camb = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
             float g = is_front(i) ? tuning::spec.front_camber_gain : tuning::spec.rear_camber_gain;
             float dyn_camb = camb + g * w.compression * cfg.suspension_travel;
+            if (wheel_actor)
+            {
+                PxVec3 chassis_up = pose.q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
+                float measured_camber = asinf(PxClamp(wheel_axis.dot(chassis_up), -1.0f, 1.0f));
+                dyn_camb = i == front_left || i == rear_left ? -measured_camber : measured_camber;
+            }
 
             w.effective_radius = wr_eff;
             w.dynamic_camber   = dyn_camb;
@@ -90,16 +98,19 @@ namespace car
                     w.net_torque += hb_sign * tuning::spec.handbrake_torque * input.handbrake;
                 }
 
-                float new_w = w.angular_velocity + (w.net_torque / wmoi_eff) * dt;
-                bool air_braking = input.brake > tuning::spec.input_deadzone || (is_rear(i) && input.handbrake > tuning::spec.input_deadzone);
-                if (air_braking && ((w.angular_velocity > 0.0f && new_w < 0.0f) || (w.angular_velocity < 0.0f && new_w > 0.0f)))
+                if (wheel_actor)
                 {
-                    new_w = 0.0f;
+                    safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
                 }
 
-                // airborne_wheel_decay is spin retained per 200 hz tick, raised to dt for rate independence
                 float spin_retain  = powf(PxClamp(tuning::spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
-                w.angular_velocity = new_w * spin_retain;
+                if (wheel_actor)
+                {
+                    PxVec3 angular_velocity = wheel_actor->getAngularVelocity();
+                    PxVec3 axle_velocity = wheel_axis * angular_velocity.dot(wheel_axis) * spin_retain;
+                    wheel_actor->setAngularVelocity(axle_velocity);
+                    w.angular_velocity = axle_velocity.dot(wheel_axis);
+                }
 
                 // airborne cooling: all zones cool at 3x rate
                 for (int z = 0; z < 3; z++)
@@ -121,13 +132,12 @@ namespace car
                 continue;
             }
 
-            PxVec3 world_pos = pose.transform(wheel_offsets[i]);
-            PxVec3 wheel_vel = body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p);
+            PxVec3 world_pos = wheel_actor ? wheel_actor->getGlobalPose().p : pose.transform(wheel_offsets[i]);
+            PxVec3 wheel_vel = wheel_actor ? wheel_actor->getLinearVelocity() : body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p);
             wheel_vel -= w.contact_normal * wheel_vel.dot(w.contact_normal);
 
-            float cs = cosf(wheel_angles[i]), sn = sinf(wheel_angles[i]);
-            PxVec3 wheel_fwd = chassis_fwd * cs + chassis_right * sn;
-            PxVec3 wheel_lat = chassis_right * cs - chassis_fwd * sn;
+            PxVec3 wheel_lat = wheel_axis;
+            PxVec3 wheel_fwd = wheel_lat.cross(w.contact_normal);
 
             // keep tire forces in the contact plane so body roll cannot turn lateral grip into lift
             wheel_fwd -= w.contact_normal * wheel_fwd.dot(w.contact_normal);
@@ -363,10 +373,16 @@ namespace car
             w.longitudinal_force = long_f;
 
             PxVec3 fpos = w.grounded ? w.contact_point : world_pos;
-            safe_add_force_at_pos(body, wheel_lat * lat_f + wheel_fwd * long_f, fpos);
+            PxVec3 tire_force = wheel_lat * lat_f + wheel_fwd * long_f;
+            safe_add_force_at_pos(wheel_actor, tire_force, fpos);
+            if (w.contact_actor)
+            {
+                if (const PxRigidDynamic* ground_actor = w.contact_actor->is<PxRigidDynamic>())
+                {
+                    safe_add_force_at_pos(const_cast<PxRigidDynamic*>(ground_actor), -tire_force, fpos);
+                }
+            }
 
-            // accumulate all torques on the wheel, then integrate once (semi-implicit euler)
-            w.net_torque += -long_f * wr_eff; // tire longitudinal reaction
             w.net_torque -= w.angular_velocity * tuning::spec.bearing_friction * wmoi; // bearing drag
 
             if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
@@ -375,22 +391,10 @@ namespace car
                 w.net_torque += hb_sign * tuning::spec.handbrake_torque * input.handbrake;
             }
 
-            // semi-implicit euler: compute new velocity from net torque, use new velocity for position
-            float new_w = w.angular_velocity + (w.net_torque / wmoi_eff) * dt;
-
-            // prevent sign reversal when a brake input is locking the wheel - any sign flip
-            // from brake/handbrake torque should clamp to zero rather than spin the wheel backwards
-            bool brake_locking = input.brake > tuning::spec.input_deadzone
-                              || (is_rear(i) && input.handbrake > tuning::spec.input_deadzone);
-            if (brake_locking)
+            if (wheel_actor)
             {
-                if ((w.angular_velocity > 0.0f && new_w < 0.0f) || (w.angular_velocity < 0.0f && new_w > 0.0f))
-                {
-                    new_w = 0.0f;
-                }
+                safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
             }
-
-            w.angular_velocity = new_w;
 
             w.rotation += w.angular_velocity * dt;
 
@@ -407,10 +411,6 @@ namespace car
 
     inline void apply_self_aligning_torque()
     {
-        // pneumatic trail moves the lateral force pressure centre behind the geometric contact
-        // patch by trail along wheel_fwd, so the correction to the body yaw is
-        // delta_M = (-trail * wheel_fwd) x (lat_f * wheel_lat) = -trail * lat_f * up
-        float total_sat = 0.0f;
         for (int i = 0; i < wheel_count; i++)
         {
             if (!wheels[i].grounded)
@@ -421,10 +421,8 @@ namespace car
             float abs_sa = fabsf(wheels[i].slip_angle);
             float sa_norm = abs_sa / PxMax(tuning::spec.pneumatic_trail_peak, 0.01f);
             float trail   = PxMax(tuning::spec.pneumatic_trail_max * (1.0f - sa_norm), 0.0f);
-            total_sat -= wheels[i].lateral_force * trail;
+            PxVec3 torque = wheels[i].contact_normal * (-wheels[i].lateral_force * trail * tuning::spec.self_align_gain);
+            safe_add_torque(multibody.corners[i].upright, torque);
         }
-
-        PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0, 1, 0));
-        safe_add_torque(body, up * total_sat * tuning::spec.self_align_gain);
     }
 }

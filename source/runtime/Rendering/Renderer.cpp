@@ -1234,6 +1234,7 @@ namespace spartan
         static vector<uint32_t>                 indices;
         static vector<RHI_Vertex_PosTexNorTan>  vertices;
         tris.clear();
+        bool truncated = false;
 
         for (Entity* entity : World::GetEntitiesRenderables())
         {
@@ -1252,8 +1253,9 @@ namespace spartan
             // emission test, accept either the synthetic albedo->emission path or an explicit
             // emission texture, the radiance estimate uses the material base color which is
             // the same heuristic used by probe_emission_estimate in the existing path tracer
+            // threshold matches the bit 15 flag set in UpdateMaterials, any nonzero strength counts
             bool has_emission =
-                material->GetProperty(MaterialProperty::EmissiveFromAlbedo) > 0.5f ||
+                material->GetProperty(MaterialProperty::EmissiveFromAlbedo) > 0.0f ||
                 material->HasTextureOfType(MaterialTextureType::Emission);
             if (!has_emission)
             {
@@ -1265,6 +1267,13 @@ namespace spartan
                 material->GetProperty(MaterialProperty::ColorG),
                 material->GetProperty(MaterialProperty::ColorB)
             );
+
+            // nits calibration matching light_composition, otherwise emitters glow on screen but bounce no light
+            const float emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo);
+            const float luminous_efficacy    = 683.0f;
+            const float nits                 = emissive_from_albedo > 0.0f ? emissive_from_albedo * 100000.0f : 10000.0f;
+            emission *= nits / luminous_efficacy;
+
             float emission_lum = 0.299f * emission.x + 0.587f * emission.y + 0.114f * emission.z;
             if (emission_lum <= 0.0f)
             {
@@ -1288,6 +1297,7 @@ namespace spartan
             {
                 if (tris.size() >= restir_emissive_tri_max)
                 {
+                    truncated = true;
                     break;
                 }
 
@@ -1331,10 +1341,23 @@ namespace spartan
                 tris.push_back(tri);
             }
 
-            if (tris.size() >= restir_emissive_tri_max)
+            if (truncated)
             {
                 break;
             }
+        }
+
+        // a truncated pool would zero emission at vertices it cannot sample, brdf sampling is unbiased so fall back to it
+        if (truncated)
+        {
+            static bool warned = false;
+            if (!warned)
+            {
+                SP_LOG_WARNING("emissive triangle count exceeds the nee pool cap, falling back to brdf sampled emission");
+                warned = true;
+            }
+            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+            return;
         }
 
         // build the prefix sum over picking weight, the last entry's cdf is the total weight
@@ -2055,6 +2078,11 @@ namespace spartan
     {
         for (Entity* entity : World::GetEntitiesRenderables())
         {
+            if (!entity || !entity->GetActive())
+            {
+                continue;
+            }
+
             // a worker may still be assigning the Render component, the mesh or the material, so guard every step
             Render* renderable = entity->GetComponent<Render>();
             if (!renderable || !renderable->GetMesh())
@@ -2406,6 +2434,11 @@ namespace spartan
             uint32_t blas_total     = 0;
             for (Entity* entity : World::GetEntitiesRenderables())
             {
+                if (!entity || !entity->GetActive())
+                {
+                    continue;
+                }
+
                 Render* renderable = entity->GetComponent<Render>();
                 if (!renderable)
                 {
@@ -2485,6 +2518,11 @@ namespace spartan
 
             for (Entity* entity : World::GetEntitiesRenderables())
             {
+                if (!entity || !entity->GetActive())
+                {
+                    continue;
+                }
+
                 Render* renderable = entity->GetComponent<Render>();
                 if (!renderable)
                 {

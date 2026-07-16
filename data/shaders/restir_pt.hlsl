@@ -459,7 +459,7 @@ PathSample sample_light_candidate(
         // area light, rc is the emitter surface, no continuation past rc
         s.rc_pos      = sampled_pos;
         s.rc_normal   = light_normal;
-        s.rc_L_nee    = light.color.rgb * light.intensity;
+        s.rc_L_nee    = light.color.rgb * light.intensity * restir_range_window(dist, light.range);
         s.rc_L_post   = float3(0, 0, 0);
         s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
 
@@ -487,7 +487,7 @@ PathSample sample_light_candidate(
             return s;
         }
 
-        float attenuation = 1.0f / (light_dist * light_dist + 0.0001f);
+        float attenuation = restir_range_window(light_dist, light.range) / (light_dist * light_dist + 0.0001f);
 
         if (is_spot)
         {
@@ -707,6 +707,15 @@ void ray_gen()
         update_reservoir(reservoir, candidate, weight, random_float(seed));
     }
 
+    // visibility belongs in the nee target, an occluded sun candidate has a cone radiance that
+    // dwarfs every bounce target so without it the sun wins the reservoir on shadowed pixels and
+    // a post ris visibility kill would then discard the valid brdf bounce samples with it,
+    // zeroing all indirect light in shadow, brdf candidates carry visibility by construction
+    // (their rc was found by an actual ray) so the target stays a single function of the path,
+    // the sun ray is traced once since its direction is pixel constant across cone candidates
+    bool sun_checked = false;
+    bool sun_visible = false;
+
     // additional ris stream over direct light samples, sun cone and area lights
     for (uint li = 0; li < n_light_count; li++)
     {
@@ -719,9 +728,27 @@ void ray_gen()
             float target_pdf = target_pdf_self(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
-                // single strategy weight, analytic lights are not in the bvh and the sun disc
-                // is excluded from every sky read so no other strategy reaches this integrand
-                light_weight = target_pdf / (n_light * light_source_pdf);
+                bool visible;
+                if (is_sky_sample(light_candidate))
+                {
+                    if (!sun_checked)
+                    {
+                        sun_visible = trace_shift_visibility(light_candidate, pos_ws, normal_ws);
+                        sun_checked = true;
+                    }
+                    visible = sun_visible;
+                }
+                else
+                {
+                    visible = trace_shift_visibility(light_candidate, pos_ws, normal_ws);
+                }
+
+                if (visible)
+                {
+                    // single strategy weight, analytic lights are not in the bvh and the sun disc
+                    // is excluded from every sky read so no other strategy reaches this integrand
+                    light_weight = target_pdf / (n_light * light_source_pdf);
+                }
             }
         }
 
@@ -741,7 +768,7 @@ void ray_gen()
         if (emtri_source_pdf >= RESTIR_MIN_PDF)
         {
             float target_pdf = target_pdf_self(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-            if (target_pdf > 0.0f)
+            if (target_pdf > 0.0f && trace_shift_visibility(emtri_candidate, pos_ws, normal_ws))
             {
                 emtri_weight = target_pdf / (n_emtri * emtri_source_pdf);
             }
@@ -751,18 +778,10 @@ void ray_gen()
     }
 
     // no 1/M divide, the balance mis weights already encode the 1/N_s normalization
+    // the winner is visible by construction so the finalize target needs no visibility factor
     float final_target = target_pdf_self(reservoir.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     reservoir.target_pdf = final_target;
     reservoir.W = (final_target > 0.0f) ? (reservoir.weight_sum / final_target) : 0.0f;
-
-    // post ris visibility test, kill an occluded chosen sample before temporal accumulation
-    bool visibility_rejected = false;
-    if (reservoir.W > 0.0f && !trace_shift_visibility(reservoir.sample, pos_ws, normal_ws))
-    {
-        reservoir            = create_empty_reservoir();
-        final_target         = 0.0f;
-        visibility_rejected  = true;
-    }
 
     // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
@@ -770,7 +789,7 @@ void ray_gen()
 
     float total_candidates     = n_brdf + n_light + n_emtri;
     float sample_count_quality = saturate(reservoir.M / max(total_candidates, 1.0f));
-    reservoir.confidence       = (final_target > 0.0f && !visibility_rejected) ? sample_count_quality : 0.0f;
+    reservoir.confidence       = (final_target > 0.0f) ? sample_count_quality : 0.0f;
     reservoir.age              = 0.0f;
 
     // stamp the source primary g-buffer onto the chosen sample, all candidates from this pixel
@@ -928,20 +947,22 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
             normal_world = -normal_world;
     }
 
+    // emissive calibration mirrors g_buffer and light_composition, from_albedo overrides the texture path
     float3 emission = float3(0.0f, 0.0f, 0.0f);
     if (mat.has_texture_emissive())
     {
         uint emissive_texture_index = material_index + material_texture_index_emission;
-        emission = material_textures[emissive_texture_index].SampleLevel(
+        float3 emissive_sample = material_textures[emissive_texture_index].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
         if (mat.is_emissive_srgb())
         {
-            emission = srgb_to_linear(emission);
+            emissive_sample = srgb_to_linear(emissive_sample);
         }
+        emission = luminance(emissive_sample) * albedo * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
     }
     if (mat.emissive_from_albedo())
     {
-        emission += albedo * mat.emissive_strength;
+        emission = albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
     }
 
     payload.hit_position     = hit_position;

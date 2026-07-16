@@ -223,6 +223,14 @@ namespace spartan
             restir_emissive_tri_max, nullptr, true, "emissive_triangles"
         );
 
+        // restir paired spatial reuse tables, lin 2026 3, three concatenated tileable pairing
+        // tables of packed partner deltas, generated on the cpu and uploaded once when the
+        // restir reservoirs initialize, see Pass_ReSTIR_PathTracing
+        at(buffers, Renderer_Buffer::RestirPairing) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            restir_pairing_element_count, nullptr, true, "restir_pairing"
+        );
+
         // volumetric light index list, compact list of light slot indices with the volumetric flag set
         // built each frame on the cpu in UpdateLights, scanned per pixel by the volumetric fog loop
         at(buffers, Renderer_Buffer::VolumetricLightIndices) = make_shared<RHI_Buffer>(
@@ -406,6 +414,9 @@ namespace spartan
         auto release_restir_resources = [&]()
         {
             for_restir_reservoir_slot([&](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
+            at(render_targets, Renderer_RenderTarget::restir_shift0)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_shift1)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_shift2)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
@@ -432,6 +443,10 @@ namespace spartan
             {
                 at(render_targets, rt) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, reservoir_names[i]);
             });
+            // paired spatial reuse shift results, rgb = f_dst, a = jacobian, lin 2026 3
+            at(render_targets, Renderer_RenderTarget::restir_shift0)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_shift0");
+            at(render_targets, Renderer_RenderTarget::restir_shift1)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_shift1");
+            at(render_targets, Renderer_RenderTarget::restir_shift2)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_shift2");
             at(render_targets, Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_output");
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised");
@@ -495,6 +510,9 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_shift0)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_shift1)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_shift2)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::nrd_in_mv)                       = nullptr;
@@ -862,6 +880,7 @@ namespace spartan
             { Renderer_Shader::restir_pt_ray_miss_r,                  RHI_Shader_Type::RayMiss,       "restir_pt.hlsl",                       RHI_Vertex_Type::Max, "MAIN_MISS",                   true,  true },
             { Renderer_Shader::restir_pt_ray_hit_r,                   RHI_Shader_Type::RayHit,        "restir_pt.hlsl",                       RHI_Vertex_Type::Max, "MAIN_HIT",                    true,  true },
             { Renderer_Shader::restir_pt_temporal_c,                  RHI_Shader_Type::Compute,       "restir_pt_temporal.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_spatial_shift_c,             RHI_Shader_Type::Compute,       "restir_pt_spatial_shift.hlsl",         RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_duplication_c,               RHI_Shader_Type::Compute,       "restir_pt_duplication.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_nrd_pack_c,                  RHI_Shader_Type::Compute,       "restir_pt_nrd_pack.hlsl",            RHI_Vertex_Type::Max, nullptr,                       true,  true },
