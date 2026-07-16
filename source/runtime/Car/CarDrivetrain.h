@@ -370,7 +370,7 @@ namespace car
     }
 
     // apply differential torque to a single axle (left/right wheel pair)
-    inline void apply_axle_diff(int left, int right, float axle_torque, float dt)
+    inline void apply_axle_diff(int left, int right, float axle_torque)
     {
         if (tuning::spec.diff_type == 0)
         {
@@ -379,9 +379,6 @@ namespace car
         }
         else if (tuning::spec.diff_type == 1)
         {
-            float avg_w = (wheels[left].angular_velocity + wheels[right].angular_velocity) * 0.5f;
-            wheels[left].angular_velocity  = avg_w;
-            wheels[right].angular_velocity = avg_w;
             wheels[left].net_torque  += axle_torque * 0.5f;
             wheels[right].net_torque += axle_torque * 0.5f;
         }
@@ -415,25 +412,25 @@ namespace car
     }
 
     // route torque to driven axle(s) based on drivetrain layout
-    inline void apply_drive_torque(float total_torque, float dt)
+    inline void apply_drive_torque(float total_torque)
     {
         if (tuning::spec.drivetrain_type == 2)
         {
             // awd - center diff torque split
             float front_torque = total_torque * tuning::spec.torque_split_front;
             float rear_torque  = total_torque * (1.0f - tuning::spec.torque_split_front);
-            apply_axle_diff(front_left, front_right, front_torque, dt);
-            apply_axle_diff(rear_left,  rear_right,  rear_torque,  dt);
+            apply_axle_diff(front_left, front_right, front_torque);
+            apply_axle_diff(rear_left,  rear_right,  rear_torque);
         }
         else if (tuning::spec.drivetrain_type == 1)
         {
             // fwd
-            apply_axle_diff(front_left, front_right, total_torque, dt);
+            apply_axle_diff(front_left, front_right, total_torque);
         }
         else
         {
             // rwd
-            apply_axle_diff(rear_left, rear_right, total_torque, dt);
+            apply_axle_diff(rear_left, rear_right, total_torque);
         }
     }
 
@@ -591,15 +588,15 @@ namespace car
             constexpr float twist_rate = 50.0f;
             driveshaft_twist = lerp(driveshaft_twist, target_twist, exp_decay(twist_rate, dt));
             float wheel_torque = driveshaft_twist * stiffness;
-            apply_drive_torque(wheel_torque, dt);
+            apply_drive_torque(wheel_torque);
         }
         else
         {
-            apply_drive_torque(rigid_torque, dt);
+            apply_drive_torque(rigid_torque);
         }
 
         // elec added directly at axle level
-        apply_drive_torque(elec_axle_torque, dt);
+        apply_drive_torque(elec_axle_torque);
     }
 
     inline void apply_reverse_drive_torque(float dt)
@@ -609,7 +606,7 @@ namespace car
         float engine_torque  = boosted_torque * input.brake * tuning::spec.reverse_power_ratio;
         float gear_ratio     = tuning::spec.gear_ratios[0] * tuning::spec.final_drive;
         float wheel_torque   = engine_torque * gear_ratio * clutch * tuning::spec.drivetrain_efficiency;
-        apply_drive_torque(wheel_torque, dt);
+        apply_drive_torque(wheel_torque);
     }
 
     inline void relax_drivetrain(float dt)
@@ -672,8 +669,7 @@ namespace car
                 float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;
                 wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, tuning::spec.brake_max_temp);
 
-                // push brake torque into net_torque: the single semi-implicit integration in
-                // apply_tire_forces handles the actual spin-down and sign-reversal lock
+                // physical wheel actors integrate the accumulated brake torque
                 float sign = (wheels[i].angular_velocity > 0.0f) ? -1.0f : (wheels[i].angular_velocity < 0.0f) ? 1.0f : 0.0f;
                 wheels[i].net_torque += sign * t;
             }
@@ -750,6 +746,14 @@ namespace car
         reflected_engine_inertia = (driving && driven_count > 0 && clutch > 0.0f)
             ? tuning::spec.engine_inertia * ratio_total * ratio_total * clutch / (float)driven_count
             : 0.0f;
+        for (int i = 0; i < wheel_count; i++)
+        {
+            if (PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body)
+            {
+                float axial_inertia = wheel_moi[i] + (is_driven(i) ? reflected_engine_inertia : 0.0f);
+                wheel_actor->setMassSpaceInertiaTensor(PxVec3(PxMax(axial_inertia, 0.1f), PxMax(wheel_moi[i] * 0.65f, 0.1f), PxMax(wheel_moi[i] * 0.65f, 0.1f)));
+            }
+        }
 
         update_engine_rpm(compute_target_engine_rpm(wheel_driven_rpm), dt);
 

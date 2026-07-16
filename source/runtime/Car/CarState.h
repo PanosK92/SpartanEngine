@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
+#include <physx/extensions/PxGearJoint.h>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -70,8 +71,6 @@ namespace car
 
         // simulation-level parameters (not part of car spec)
         constexpr float air_density                  = 1.225f;
-        constexpr float road_bump_amplitude          = 0.002f;
-        constexpr float road_bump_frequency          = 0.5f;
         // lateral grip peaks at a slightly negative camber, quadratic loss either side, per rad squared
         constexpr float camber_optimal               = -0.0436f;
         constexpr float camber_grip_loss             = 16.0f;
@@ -228,8 +227,6 @@ namespace car
     struct wheel
     {
         float        compression          = 0.0f;
-        float        target_compression   = 0.0f;
-        float        prev_compression     = 0.0f;
         float        compression_velocity = 0.0f;
         bool         grounded             = false;
         PxVec3       contact_point        = PxVec3(0);
@@ -325,8 +322,9 @@ namespace car
     inline bool            drs_active              = false;
     inline float           longitudinal_accel      = 0.0f;
     inline float           lateral_accel           = 0.0f;
-    inline float           road_bump_phase         = 0.0f;
     inline PxVec3          prev_velocity           = PxVec3(0);
+    inline float           vehicle_sleep_timer     = 0.0f;
+    inline bool            vehicle_sleeping        = false;
     // total engine braking torque routed to the driven axle this tick before any per wheel split
     inline float           engine_brake_torque     = 0.0f;
 
@@ -490,11 +488,9 @@ namespace car
                 "fl_net_torque,fr_net_torque,rl_net_torque,rr_net_torque,"
                 // total engine braking torque applied to driven axle, key signal for liftoff oversteer
                 "engine_brake_torque,"
-                // suspension diag: target compression from sweep, actual compression after spring
-                // dynamics, raw sweep distance and the post arb post cap spring force in newtons.
+                // suspension diagnostics from the physical assembly and contact sweep
                 // contact_ny is the y component of the contact normal so we can spot tilted or
                 // degenerate ground hits, key to debugging chassis on ground vs spring on ground
-                "fl_target_comp,fr_target_comp,rl_target_comp,rr_target_comp,"
                 "fl_comp,fr_comp,rl_comp,rr_comp,"
                 "fl_sweep_dist,fr_sweep_dist,rl_sweep_dist,rr_sweep_dist,"
                 "fl_spring_force,fr_spring_force,rl_spring_force,rr_spring_force,"
@@ -580,7 +576,6 @@ namespace car
                 "%.1f,%.1f,%.1f,%.1f,"
                 "%.1f,"
                 "%.3f,%.3f,%.3f,%.3f,"
-                "%.3f,%.3f,%.3f,%.3f,"
                 "%.4f,%.4f,%.4f,%.4f,"
                 "%.1f,%.1f,%.1f,%.1f,"
                 "%.3f,%.3f,%.3f,%.3f,"
@@ -623,8 +618,6 @@ namespace car
                 wheels[front_left].net_torque,  wheels[front_right].net_torque,
                 wheels[rear_left].net_torque,   wheels[rear_right].net_torque,
                 engine_brake_torque,
-                wheels[front_left].target_compression,  wheels[front_right].target_compression,
-                wheels[rear_left].target_compression,   wheels[rear_right].target_compression,
                 wheels[front_left].compression,         wheels[front_right].compression,
                 wheels[rear_left].compression,          wheels[rear_right].compression,
                 sweep_distance[front_left],             sweep_distance[front_right],
@@ -735,8 +728,6 @@ namespace car
         wheel& w = wheels[i];
         bool fixed = false;
         fixed |= sanitize_float(w.compression);
-        fixed |= sanitize_float(w.target_compression);
-        fixed |= sanitize_float(w.prev_compression);
         fixed |= sanitize_float(w.compression_velocity);
         fixed |= sanitize_float(w.angular_velocity);
         fixed |= sanitize_float(w.rotation);

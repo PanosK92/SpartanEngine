@@ -300,7 +300,7 @@ namespace spartan
         const Color skeleton_color_spring      = Color(1.00f, 0.72f, 0.12f, 1.0f);
         const Color skeleton_color_steering    = Color(0.25f, 1.00f, 0.48f, 1.0f);
         const Color skeleton_color_anti_roll   = Color(0.82f, 0.35f, 1.00f, 1.0f);
-        const Color skeleton_color_drivetrain  = Color(1.00f, 0.30f, 0.22f, 1.0f);
+        const Color skeleton_color_drivetrain  = Color(0.25f, 0.72f, 1.00f, 1.0f);
         const Color skeleton_color_joint       = Color(1.00f, 1.00f, 1.00f, 1.0f);
 
         math::Vector3 lerp_skeleton(const math::Vector3& a, const math::Vector3& b, float t)
@@ -761,7 +761,7 @@ namespace spartan
         const float driveshaft_twist  = ::car::get_driveshaft_twist();
         const float driveshaft_torque = ::car::get_driveshaft_torque();
         const float torque_load = std::clamp(fabsf(driveshaft_torque) / 6000.0f, 0.0f, 1.0f);
-        const Color loaded_drivetrain_color = Color(0.65f + torque_load * 0.35f, 0.34f - torque_load * 0.16f, 0.18f, 1.0f);
+        const Color loaded_drivetrain_color = Color(0.25f - torque_load * 0.08f, 0.72f + torque_load * 0.18f, 1.00f, 1.0f);
         const float front_pinion_rotation = (::car::get_wheel_rotation(0) + ::car::get_wheel_rotation(1)) * 0.5f * ::car::tuning::spec.final_drive;
         const float rear_pinion_rotation  = (::car::get_wheel_rotation(2) + ::car::get_wheel_rotation(3)) * 0.5f * ::car::tuning::spec.final_drive;
 

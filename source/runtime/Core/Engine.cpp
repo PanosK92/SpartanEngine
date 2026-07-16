@@ -137,8 +137,8 @@ namespace spartan
         ResourceCache::Shutdown();
         ResourceCache::UnloadDefaultResources();
 
-        PhysicsWorld::Shutdown();
         World::Shutdown();
+        PhysicsWorld::Shutdown();
         Xr::Shutdown();
         Renderer::Shutdown();
    

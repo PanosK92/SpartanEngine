@@ -27,12 +27,69 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // tire forces and self-aligning torque. this is the main coupling point between
 // the chassis and the ground: it produces per-wheel lateral / longitudinal forces
-// from slip, runs the 3-zone thermal model, applies tire wear, and performs the
-// single semi-implicit Euler integration of wheel angular velocity that every
-// other torque source (engine, diff, brakes, handbrake) writes into.
+// from slip, runs the 3-zone thermal model and applies tire wear
+// wheel torques are accumulated here and integrated by the physical wheel actors
 
 namespace car
 {
+    inline void update_tire_slip_state(float dt)
+    {
+        PxTransform chassis_pose = body->getGlobalPose();
+        for (int i = 0; i < wheel_count; i++)
+        {
+            wheel& w = wheels[i];
+            PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
+            if (!wheel_actor || !w.grounded || w.tire_load <= 0.0f)
+            {
+                w.slip_ratio = 0.0f;
+                w.slip_angle = 0.0f;
+                continue;
+            }
+
+            float wheel_radius = PxMax(cfg.wheel_radius_for(i), 0.05f);
+            float tire_deflection = tuning::spec.tire_vertical_stiffness > 1000.0f ? PxClamp(w.tire_load / tuning::spec.tire_vertical_stiffness, 0.0f, 0.05f) : 0.0f;
+            float effective_radius = PxMax(wheel_radius - tire_deflection * 0.55f, 0.05f);
+            PxVec3 wheel_axis = wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+            PxVec3 wheel_forward = wheel_axis.cross(w.contact_normal);
+            wheel_forward -= w.contact_normal * wheel_forward.dot(w.contact_normal);
+            if (wheel_forward.normalize() < 1e-4f)
+            {
+                wheel_forward = chassis_pose.q.rotate(PxVec3(0.0f, 0.0f, 1.0f));
+            }
+            PxVec3 wheel_lateral = w.contact_normal.cross(wheel_forward).getNormalized();
+            PxVec3 wheel_velocity = wheel_actor->getLinearVelocity();
+            wheel_velocity -= w.contact_normal * wheel_velocity.dot(w.contact_normal);
+            float longitudinal_speed = wheel_velocity.dot(wheel_forward);
+            float lateral_speed = wheel_velocity.dot(wheel_lateral);
+            float surface_speed = w.angular_velocity * effective_radius;
+            float ground_speed = sqrtf(longitudinal_speed * longitudinal_speed + lateral_speed * lateral_speed);
+            float absolute_longitudinal_speed = fabsf(longitudinal_speed);
+            float absolute_surface_speed = fabsf(surface_speed);
+            float rest_speed = PxMax(ground_speed, absolute_surface_speed);
+            float slip_denominator = PxMax(PxMax(absolute_longitudinal_speed, absolute_surface_speed), 0.01f);
+            float raw_slip_ratio = PxClamp((surface_speed - longitudinal_speed) / slip_denominator, -1.0f, 1.0f);
+            float raw_slip_angle = atan2f(lateral_speed, PxMax(absolute_longitudinal_speed, 0.5f));
+            float relaxation_length = PxMax(tuning::spec.tire_relaxation_length, 0.05f);
+            float longitudinal_blend = 1.0f - expf(-PxMax(ground_speed, absolute_surface_speed) * dt / relaxation_length);
+            float lateral_blend = 1.0f - expf(-ground_speed * dt / relaxation_length);
+            w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, longitudinal_blend);
+            w.slip_angle = lerp(w.slip_angle, raw_slip_angle, lateral_blend);
+
+            if (rest_speed < tuning::spec.min_slip_speed && input.throttle <= tuning::spec.input_deadzone)
+            {
+                float rest_factor = 1.0f - rest_speed / PxMax(tuning::spec.min_slip_speed, 0.01f);
+                float rest_decay = exp_decay(24.0f * rest_factor, dt);
+                w.slip_ratio = lerp(w.slip_ratio, 0.0f, rest_decay);
+                w.slip_angle = lerp(w.slip_angle, 0.0f, rest_decay);
+                if (rest_speed < 0.03f)
+                {
+                    w.slip_ratio = 0.0f;
+                    w.slip_angle = 0.0f;
+                }
+            }
+        }
+    }
+
     inline void apply_tire_forces(float dt)
     {
         // --- setup ---
@@ -55,9 +112,7 @@ namespace car
                 w.angular_velocity = wheel_actor->getAngularVelocity().dot(wheel_axis);
             }
 
-            // floor wr and the wheel moi so the divisions in the airborne branch, the slip
-            // calculation, the semi implicit euler step and the ground match step can never
-            // be 0 / 0 or x / 0. without this a single bad wheel radius poisons the entire sim
+            // floor wheel geometry so slip and torque calculations remain finite
             float wr_raw  = cfg.wheel_radius_for(i);
             float wr      = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
             float wmoi    = (std::isfinite(wheel_moi[i]) && wheel_moi[i] > 0.0f) ? wheel_moi[i] : 1.0f;
@@ -68,9 +123,7 @@ namespace car
             }
             float wr_eff = PxMax(wr - defl * 0.55f, 0.05f);
 
-            float camb = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
-            float g = is_front(i) ? tuning::spec.front_camber_gain : tuning::spec.rear_camber_gain;
-            float dyn_camb = camb + g * w.compression * cfg.suspension_travel;
+            float dyn_camb = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
             if (wheel_actor)
             {
                 PxVec3 chassis_up = pose.q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
@@ -98,18 +151,16 @@ namespace car
                     w.net_torque += hb_sign * tuning::spec.handbrake_torque * input.handbrake;
                 }
 
-                if (wheel_actor)
+                float spin_retain = powf(PxClamp(tuning::spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
+                if (dt > 1e-5f)
                 {
-                    safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
+                    w.net_torque += w.angular_velocity * (spin_retain - 1.0f) * wmoi / dt;
                 }
-
-                float spin_retain  = powf(PxClamp(tuning::spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
                 if (wheel_actor)
                 {
-                    PxVec3 angular_velocity = wheel_actor->getAngularVelocity();
-                    PxVec3 axle_velocity = wheel_axis * angular_velocity.dot(wheel_axis) * spin_retain;
-                    wheel_actor->setAngularVelocity(axle_velocity);
-                    w.angular_velocity = axle_velocity.dot(wheel_axis);
+                    PxVec3 hub_torque = wheel_axis * w.net_torque;
+                    safe_add_torque(wheel_actor, hub_torque);
+                    safe_add_torque(multibody.corners[i].upright, -hub_torque);
                 }
 
                 // airborne cooling: all zones cool at 3x rate
@@ -208,38 +259,7 @@ namespace car
             // static friction model (dominant at rest / very low speed)
             float friction_gain = cfg.mass * static_friction_gain_per_kg;
             float static_lat_f  = PxClamp(-vy * friction_gain, -peak_force_lat * 0.8f, peak_force_lat * 0.8f);
-            float static_long_f = PxClamp(-vx * friction_gain, -peak_force_long * 0.8f, peak_force_long * 0.8f);
-
-            // slip calculation (always runs, values approach zero smoothly at low speed)
-            float abs_vx = fabsf(vx);
-            float abs_ws = fabsf(wheel_speed);
-            float rest_speed = PxMax(ground_speed, abs_ws);
-            float slip_denom = PxMax(PxMax(abs_vx, abs_ws), 0.01f);
-            float raw_slip_ratio = PxClamp((wheel_speed - vx) / slip_denom, -1.0f, 1.0f);
-            float raw_slip_angle = atan2f(vy, PxMax(abs_vx, 0.5f));
-
-            float effective_relaxation = PxMax(tuning::spec.tire_relaxation_length, 0.05f);
-            float long_distance = PxMax(ground_speed, abs_ws) * dt;
-            float lat_distance  = ground_speed * dt;
-            float long_blend = 1.0f - expf(-long_distance / effective_relaxation);
-            float lat_blend  = 1.0f - expf(-lat_distance / effective_relaxation);
-            w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, long_blend);
-            w.slip_angle = lerp(w.slip_angle, raw_slip_angle, lat_blend);
-
-            float rest_slip_speed = tuning::spec.min_slip_speed;
-            if (rest_speed < rest_slip_speed && input.throttle <= tuning::spec.input_deadzone)
-            {
-                float rest_t = 1.0f - rest_speed / PxMax(rest_slip_speed, 0.01f);
-                float rest_decay = exp_decay(24.0f * rest_t, dt);
-                w.slip_ratio = lerp(w.slip_ratio, 0.0f, rest_decay);
-                w.slip_angle = lerp(w.slip_angle, 0.0f, rest_decay);
-
-                if (rest_speed < 0.03f)
-                {
-                    w.slip_ratio = 0.0f;
-                    w.slip_angle = 0.0f;
-                }
-            }
+            float static_long_f = PxClamp((wheel_speed - vx) * friction_gain, -peak_force_long * 0.8f, peak_force_long * 0.8f);
 
             float effective_slip_angle = w.slip_angle;
             if (fabsf(effective_slip_angle) < tuning::spec.slip_angle_deadband)
@@ -296,13 +316,6 @@ namespace car
             // blend between static friction and pacejka
             lat_f  = static_lat_f  * (1.0f - pacejka_weight) + dynamic_lat_f  * pacejka_weight;
             long_f = static_long_f * (1.0f - pacejka_weight) + dynamic_long_f * pacejka_weight;
-
-            // at very low speed, decay wheel spin toward zero
-            if (max_v < blend_hi)
-            {
-                float rest_blend = 1.0f - pacejka_weight;
-                w.angular_velocity = lerp(w.angular_velocity, vx / wr_eff, exp_decay(20.0f * rest_blend, dt));
-            }
 
             if (tuning::log_pacejka)
             {
@@ -393,7 +406,9 @@ namespace car
 
             if (wheel_actor)
             {
-                safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
+                PxVec3 hub_torque = wheel_axis * w.net_torque;
+                safe_add_torque(wheel_actor, hub_torque);
+                safe_add_torque(multibody.corners[i].upright, -hub_torque);
             }
 
             w.rotation += w.angular_velocity * dt;
@@ -423,6 +438,10 @@ namespace car
             float trail   = PxMax(tuning::spec.pneumatic_trail_max * (1.0f - sa_norm), 0.0f);
             PxVec3 torque = wheels[i].contact_normal * (-wheels[i].lateral_force * trail * tuning::spec.self_align_gain);
             safe_add_torque(multibody.corners[i].upright, torque);
+            if (const PxRigidDynamic* ground_actor = wheels[i].contact_actor ? wheels[i].contact_actor->is<PxRigidDynamic>() : nullptr)
+            {
+                safe_add_torque(const_cast<PxRigidDynamic*>(ground_actor), -torque);
+            }
         }
     }
 }

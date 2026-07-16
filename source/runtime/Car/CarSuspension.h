@@ -42,7 +42,6 @@ namespace car
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
-            w.prev_compression = w.compression;
             float wr_raw = cfg.wheel_radius_for(i);
             float wheel_radius = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
             float wheel_width = PxMax(cfg.wheel_width_for(i), 0.05f);
@@ -93,11 +92,6 @@ namespace car
             }
 
             float penetration = PxMax(query_lift - hit.block.distance, 0.0f);
-            if (body->getLinearVelocity().magnitude() > 1.0f && tuning::road_bump_amplitude > 0.0f)
-            {
-                float bump = sinf(road_bump_phase * 17.3f + i * 2.1f) * (0.5f + 0.5f * sinf(road_bump_phase * 7.1f + i * 4.3f));
-                penetration += bump * tuning::road_bump_amplitude;
-            }
 
             PxVec3 contact_velocity = wheel_actor ? actor_point_velocity(wheel_actor, hit.block.position) : actor_point_velocity(body, hit.block.position);
             float vertical_velocity = contact_velocity.dot(normal);
@@ -109,7 +103,6 @@ namespace car
             w.contact_normal = normal;
             w.contact_actor = hit.block.actor;
             w.tire_load = normal_force;
-            w.target_compression = w.compression;
             if (wheel_actor && normal_force > 0.0f)
             {
                 safe_add_force_at_pos(wheel_actor, normal * normal_force, hit.block.position);

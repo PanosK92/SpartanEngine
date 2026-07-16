@@ -44,6 +44,107 @@ namespace car
 
     inline multibody_state multibody;
 
+    struct actor_motion_state
+    {
+        PxVec3 linear_velocity = PxVec3(0.0f);
+        PxVec3 angular_velocity = PxVec3(0.0f);
+        bool valid = false;
+    };
+
+    struct corner_motion_state
+    {
+        actor_motion_state upright;
+        actor_motion_state wheel;
+        actor_motion_state members[max_suspension_members];
+        int member_count = 0;
+    };
+
+    struct multibody_motion_state
+    {
+        corner_motion_state corners[wheel_count];
+        actor_motion_state rack;
+        bool valid = false;
+    };
+
+    inline actor_motion_state capture_actor_motion(PxRigidDynamic* actor)
+    {
+        actor_motion_state state;
+        if (!actor || !body)
+        {
+            return state;
+        }
+
+        PxTransform chassis_pose = body->getGlobalPose();
+        PxVec3 chassis_angular_velocity = body->getAngularVelocity();
+        PxVec3 chassis_point_velocity = body->getLinearVelocity() + chassis_angular_velocity.cross(actor->getGlobalPose().p - chassis_pose.p);
+        state.linear_velocity = chassis_pose.q.rotateInv(actor->getLinearVelocity() - chassis_point_velocity);
+        state.angular_velocity = chassis_pose.q.rotateInv(actor->getAngularVelocity() - chassis_angular_velocity);
+        state.valid = true;
+        return state;
+    }
+
+    inline void restore_actor_motion(PxRigidDynamic* actor, const actor_motion_state& state)
+    {
+        if (!actor || !body || !state.valid)
+        {
+            return;
+        }
+
+        PxTransform chassis_pose = body->getGlobalPose();
+        PxVec3 chassis_angular_velocity = body->getAngularVelocity();
+        PxVec3 chassis_point_velocity = body->getLinearVelocity() + chassis_angular_velocity.cross(actor->getGlobalPose().p - chassis_pose.p);
+        actor->setLinearVelocity(chassis_point_velocity + chassis_pose.q.rotate(state.linear_velocity));
+        actor->setAngularVelocity(chassis_angular_velocity + chassis_pose.q.rotate(state.angular_velocity));
+        actor->wakeUp();
+    }
+
+    inline multibody_motion_state capture_multibody_motion()
+    {
+        multibody_motion_state state;
+        if (!multibody.initialized)
+        {
+            return state;
+        }
+
+        for (int i = 0; i < wheel_count; i++)
+        {
+            suspension_corner& corner = multibody.corners[i];
+            corner_motion_state& corner_state = state.corners[i];
+            corner_state.upright = capture_actor_motion(corner.upright);
+            corner_state.wheel = capture_actor_motion(corner.wheel_body);
+            corner_state.member_count = corner.member_count;
+            for (int member_index = 0; member_index < corner.member_count; member_index++)
+            {
+                corner_state.members[member_index] = capture_actor_motion(corner.members[member_index].actor);
+            }
+        }
+        state.rack = capture_actor_motion(multibody.rack);
+        state.valid = true;
+        return state;
+    }
+
+    inline void restore_multibody_motion(const multibody_motion_state& state)
+    {
+        if (!state.valid || !multibody.initialized)
+        {
+            return;
+        }
+
+        for (int i = 0; i < wheel_count; i++)
+        {
+            suspension_corner& corner = multibody.corners[i];
+            const corner_motion_state& corner_state = state.corners[i];
+            restore_actor_motion(corner.upright, corner_state.upright);
+            restore_actor_motion(corner.wheel_body, corner_state.wheel);
+            int member_count = PxMin(corner.member_count, corner_state.member_count);
+            for (int member_index = 0; member_index < member_count; member_index++)
+            {
+                restore_actor_motion(corner.members[member_index].actor, corner_state.members[member_index]);
+            }
+        }
+        restore_actor_motion(multibody.rack, state.rack);
+    }
+
     inline PxTransform local_anchor(PxRigidActor* actor, const PxVec3& world_point)
     {
         return actor ? PxTransform(actor->getGlobalPose().transformInv(world_point)) : PxTransform(world_point);
@@ -274,6 +375,26 @@ namespace car
         return chassis_pose.transform(local_point);
     }
 
+    inline float mechanism_actor_mass()
+    {
+        auto link_count = [](suspension_mechanism mechanism)
+        {
+            if (mechanism == suspension_mechanism::multi_link)
+            {
+                return 4;
+            }
+            return 2;
+        };
+
+        int suspension_links = link_count(tuning::spec.front_geometry.mechanism) * 2 + link_count(tuning::spec.rear_geometry.mechanism) * 2 + 2;
+        return (cfg.wheel_mass + tuning::spec.upright_mass) * static_cast<float>(wheel_count) + tuning::spec.suspension_link_mass * static_cast<float>(suspension_links) + tuning::spec.steering_rack_mass;
+    }
+
+    inline float chassis_mass()
+    {
+        return PxMax(cfg.mass - mechanism_actor_mass(), 100.0f);
+    }
+
     inline bool create_suspension_corner(int wheel_index, const suspension_geometry& geometry)
     {
         suspension_corner& corner = multibody.corners[wheel_index];
@@ -304,7 +425,7 @@ namespace car
         }
         corner.wheel_joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
         register_multibody_joint(corner.wheel_joint);
-        float steering_limit = is_front(wheel_index) ? PxMax(fabsf(tuning::spec.max_steer_angle), 0.1f) : 0.0f;
+        float steering_limit = is_front(wheel_index) ? PxClamp(fabsf(tuning::spec.max_steer_angle), 0.1f, 1.2f) : 0.0f;
         if (!add_steering_stop(corner.upright, chassis_pose, wheel_world, steering_limit))
         {
             return false;
@@ -321,23 +442,21 @@ namespace car
         {
             float spread_y = PxMax(geometry.link_spread_y, 0.05f);
             float spread_z = PxMax(geometry.link_spread_z, 0.05f);
-            const PxVec3 inner_points[5] =
+            const PxVec3 inner_points[4] =
             {
                 PxVec3(inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z + spread_z),
                 PxVec3(inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z - spread_z),
                 PxVec3(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z + spread_z),
-                PxVec3(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z - spread_z),
-                PxVec3(inner_x, wheel_local.y + geometry.tie_rod_y, wheel_local.z + geometry.tie_rod_z)
+                PxVec3(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z - spread_z)
             };
-            const PxVec3 outer_points[5] =
+            const PxVec3 outer_points[4] =
             {
                 wheel_local + PxVec3(0.0f, spread_y, spread_z * 0.45f),
                 wheel_local + PxVec3(0.0f, spread_y, -spread_z * 0.45f),
                 wheel_local + PxVec3(0.0f, -spread_y, spread_z * 0.45f),
-                wheel_local + PxVec3(0.0f, -spread_y, -spread_z * 0.45f),
-                wheel_local + PxVec3(0.0f, geometry.tie_rod_y, geometry.tie_rod_z)
+                wheel_local + PxVec3(0.0f, -spread_y, -spread_z * 0.45f)
             };
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 4; i++)
             {
                 add_link_member(corner, hardpoint_world(chassis_pose, inner_points[i]), hardpoint_world(chassis_pose, outer_points[i]), tuning::spec.suspension_link_mass);
             }
@@ -361,11 +480,11 @@ namespace car
         }
         corner.chassis_shock_anchor = shock_top_local;
         corner.upright_shock_anchor = corner.upright->getGlobalPose().transformInv(shock_bottom_world);
-        float static_load = cfg.mass * (is_front(wheel_index) ? get_weight_distribution_front() : 1.0f - get_weight_distribution_front()) * 0.5f * 9.81f;
+        float static_load = chassis_mass() * (is_front(wheel_index) ? get_weight_distribution_front() : 1.0f - get_weight_distribution_front()) * 0.5f * 9.81f;
         corner.shock_rest_length = (shock_top_world - shock_bottom_world).magnitude() + static_load / PxMax(spring_stiffness[wheel_index], 1.0f);
         corner.shock_length = (shock_top_world - shock_bottom_world).magnitude();
 
-        corner.travel_joint = PxDistanceJointCreate(*multibody.physics, body, local_anchor(body, shock_top_world), corner.upright, local_anchor(corner.upright, shock_bottom_world));
+        corner.travel_joint = geometry.mechanism == suspension_mechanism::macpherson ? nullptr : PxDistanceJointCreate(*multibody.physics, body, local_anchor(body, shock_top_world), corner.upright, local_anchor(corner.upright, shock_bottom_world));
         if (corner.travel_joint)
         {
             corner.travel_joint->setMinDistance(PxMax(corner.shock_rest_length - cfg.suspension_travel, 0.05f));
@@ -375,6 +494,25 @@ namespace car
             register_multibody_joint(corner.travel_joint);
         }
 
+        return true;
+    }
+
+    inline bool create_locked_differential(int left, int right)
+    {
+        suspension_corner& left_corner = multibody.corners[left];
+        suspension_corner& right_corner = multibody.corners[right];
+        PxGearJoint* differential = PxGearJointCreate(*multibody.physics, left_corner.wheel_body, PxTransform(PxIdentity), right_corner.wheel_body, PxTransform(PxIdentity));
+        if (!differential || !differential->setHinges(left_corner.wheel_joint, right_corner.wheel_joint))
+        {
+            if (differential)
+            {
+                differential->release();
+            }
+            return false;
+        }
+
+        differential->setGearRatio(-1.0f);
+        register_multibody_joint(differential);
         return true;
     }
 
@@ -458,6 +596,16 @@ namespace car
                 return false;
             }
         }
+        if (tuning::spec.diff_type == 1)
+        {
+            bool lock_front = tuning::spec.drivetrain_type == 1 || tuning::spec.drivetrain_type == 2;
+            bool lock_rear = tuning::spec.drivetrain_type == 0 || tuning::spec.drivetrain_type == 2;
+            if ((lock_front && !create_locked_differential(front_left, front_right)) || (lock_rear && !create_locked_differential(rear_left, rear_right)))
+            {
+                destroy_multibody();
+                return false;
+            }
+        }
         if (!create_steering_rack())
         {
             destroy_multibody();
@@ -468,16 +616,104 @@ namespace car
         return true;
     }
 
-    inline bool rebuild_multibody()
+    inline void sleep_vehicle_assembly();
+
+    inline bool rebuild_multibody(bool preserve_motion = true)
     {
         PxPhysics* physics = multibody.physics;
         PxScene* scene = multibody.scene;
-        return physics && scene ? create_multibody(physics, scene) : false;
+        multibody_motion_state motion = preserve_motion ? capture_multibody_motion() : multibody_motion_state();
+        bool was_sleeping = preserve_motion && vehicle_sleeping;
+        if (!physics || !scene || !create_multibody(physics, scene))
+        {
+            return false;
+        }
+        restore_multibody_motion(motion);
+        if (was_sleeping)
+        {
+            sleep_vehicle_assembly();
+        }
+        return true;
     }
 
     inline PxVec3 actor_point_velocity(PxRigidBody* actor, const PxVec3& world_point)
     {
         return actor->getLinearVelocity() + actor->getAngularVelocity().cross(world_point - actor->getGlobalPose().p);
+    }
+
+    inline void refresh_wheel_actor_state()
+    {
+        PxVec3 fallback_axis = body ? body->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f)) : PxVec3(1.0f, 0.0f, 0.0f);
+        for (int i = 0; i < wheel_count; i++)
+        {
+            PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
+            PxVec3 wheel_axis = wheel_actor ? wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f)) : fallback_axis;
+            wheels[i].angular_velocity = wheel_actor ? wheel_actor->getAngularVelocity().dot(wheel_axis) : 0.0f;
+        }
+    }
+
+    inline void wake_vehicle_assembly()
+    {
+        if (body)
+        {
+            body->wakeUp();
+        }
+        for (int i = 0; i < multibody.actor_count; i++)
+        {
+            if (multibody.actors[i])
+            {
+                multibody.actors[i]->wakeUp();
+            }
+        }
+        vehicle_sleep_timer = 0.0f;
+        vehicle_sleeping = false;
+    }
+
+    inline bool vehicle_assembly_is_settled()
+    {
+        if (!body || body->getLinearVelocity().magnitudeSquared() > 0.0025f || body->getAngularVelocity().magnitudeSquared() > 0.0025f)
+        {
+            return false;
+        }
+        for (int i = 0; i < wheel_count; i++)
+        {
+            if (fabsf(wheels[i].angular_velocity) > 0.1f)
+            {
+                return false;
+            }
+        }
+        for (int i = 0; i < multibody.actor_count; i++)
+        {
+            PxRigidDynamic* actor = multibody.actors[i];
+            if (actor && (actor->getLinearVelocity().magnitudeSquared() > 0.01f || actor->getAngularVelocity().magnitudeSquared() > 0.0625f))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    inline void sleep_vehicle_assembly()
+    {
+        for (int i = 0; i < multibody.actor_count; i++)
+        {
+            if (multibody.actors[i])
+            {
+                multibody.actors[i]->putToSleep();
+            }
+        }
+        if (body)
+        {
+            body->putToSleep();
+        }
+        for (int i = 0; i < wheel_count; i++)
+        {
+            wheels[i].angular_velocity = 0.0f;
+            wheels[i].net_torque = 0.0f;
+        }
+        prev_velocity = PxVec3(0.0f);
+        vehicle_sleep_timer = 0.0f;
+        vehicle_sleeping = true;
     }
 
     inline void update_multibody(float delta_time)
@@ -527,12 +763,20 @@ namespace car
         {
             suspension_corner& left_corner = multibody.corners[left];
             suspension_corner& right_corner = multibody.corners[right];
-            float force_magnitude = (wheels[left].compression - wheels[right].compression) * cfg.suspension_travel * stiffness;
+            float left_compression = left_corner.shock_rest_length - left_corner.shock_length;
+            float right_compression = right_corner.shock_rest_length - right_corner.shock_length;
+            float force_magnitude = PxClamp((left_compression - right_compression) * stiffness, -tuning::spec.max_susp_force, tuning::spec.max_susp_force);
             PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
-            PxVec3 left_point = left_corner.upright->getGlobalPose().p;
-            PxVec3 right_point = right_corner.upright->getGlobalPose().p;
-            PxRigidBodyExt::addForceAtPos(*left_corner.upright, -up * force_magnitude, left_point, PxForceMode::eFORCE);
-            PxRigidBodyExt::addForceAtPos(*right_corner.upright, up * force_magnitude, right_point, PxForceMode::eFORCE);
+            PxVec3 left_bottom = left_corner.upright->getGlobalPose().transform(left_corner.upright_shock_anchor);
+            PxVec3 right_bottom = right_corner.upright->getGlobalPose().transform(right_corner.upright_shock_anchor);
+            PxVec3 left_top = body->getGlobalPose().transform(left_corner.chassis_shock_anchor);
+            PxVec3 right_top = body->getGlobalPose().transform(right_corner.chassis_shock_anchor);
+            PxVec3 left_force = -up * force_magnitude;
+            PxVec3 right_force = up * force_magnitude;
+            PxRigidBodyExt::addForceAtPos(*left_corner.upright, left_force, left_bottom, PxForceMode::eFORCE);
+            PxRigidBodyExt::addForceAtPos(*right_corner.upright, right_force, right_bottom, PxForceMode::eFORCE);
+            PxRigidBodyExt::addForceAtPos(*body, -left_force, left_top, PxForceMode::eFORCE);
+            PxRigidBodyExt::addForceAtPos(*body, -right_force, right_top, PxForceMode::eFORCE);
         };
         apply_anti_roll(front_left, front_right, tuning::spec.front_arb_stiffness);
         apply_anti_roll(rear_left, rear_right, tuning::spec.rear_arb_stiffness);

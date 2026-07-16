@@ -1557,7 +1557,7 @@ namespace spartan
                 car::wheels[i].angular_velocity = 0.0f;
             }
 
-            if (!car::rebuild_multibody())
+            if (!car::rebuild_multibody(false))
             {
                 SP_LOG_ERROR("failed to rebuild suspension after vehicle reset");
             }
@@ -1957,11 +1957,6 @@ namespace spartan
         car::cfg.front_wheel_radius = radius;
         car::cfg.rear_wheel_radius  = radius;
 
-        // rebuild the sweep cylinder so its radius matches the actual visual wheel
-        // without this, sweep distance always exceeds suspension_travel, target_compression
-        // clamps to zero, no spring force is produced and the chassis falls through onto the ground
-        car::rebuild_wheel_sweep_mesh();
-
         // recalculate and update body height based on actual wheel radius
         if (car::body)
         {
@@ -1973,7 +1968,7 @@ namespace spartan
             // -suspension_height + compression*travel, so body_y = radius + suspension_height - sag.
             // spawning at this height puts the car immediately at rest instead of letting it bounce
             // through 2*sag of vertical travel on the first ticks
-            float front_mass_per_wheel = car::cfg.mass * 0.40f * 0.5f;
+            float front_mass_per_wheel = car::chassis_mass() * car::get_weight_distribution_front() * 0.5f;
             float front_omega = 2.0f * math::pi * car::tuning::spec.front_spring_freq;
             float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
             float front_load = front_mass_per_wheel * 9.81f;
@@ -1985,10 +1980,16 @@ namespace spartan
             pose.p.y = correct_body_height;
             car::body->setGlobalPose(pose);
 
-            // recompute wheel constants with new radius
-            car::compute_constants();
+            if (!car::rebuild_vehicle_geometry())
+            {
+                SP_LOG_ERROR("failed to rebuild suspension after wheel radius change");
+            }
 
             SP_LOG_INFO("SetWheelRadius: adjusted body height to %.3f for radius %.3f", correct_body_height, radius);
+        }
+        else
+        {
+            car::rebuild_vehicle_geometry();
         }
 
         SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
@@ -3094,7 +3095,7 @@ namespace spartan
                 Vector3 pos = GetEntity()->GetPosition();
                 PxTransform current_pose = car::body->getGlobalPose();
                 car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
-                if (!car::rebuild_multibody())
+                if (!car::rebuild_multibody(false))
                 {
                     SP_LOG_ERROR("failed to place car suspension assembly");
                 }

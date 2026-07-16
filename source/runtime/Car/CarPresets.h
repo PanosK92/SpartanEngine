@@ -202,10 +202,6 @@ namespace car
         float max_damper_velocity;
         float bump_stop_stiffness;
         float bump_stop_threshold;
-        float front_roll_center_height;
-        float rear_roll_center_height;
-        // effective height for the geometric share of longitudinal weight transfer, anti dive and anti squat
-        float pitch_center_height;
 
         // aerodynamics
         float rolling_resistance;
@@ -246,15 +242,9 @@ namespace car
         float rear_camber;
         float front_toe;
         float rear_toe;
-        float front_bump_steer;
-        float rear_bump_steer;
-
-        float front_camber_gain;
-        float rear_camber_gain;
         float tire_vertical_stiffness;
         float lsd_viscous;
         float abs_load_sensitivity;
-        float steer_compliance;          // rad per 100 kn of front lateral force
 
         // wheels
         float airborne_wheel_decay;

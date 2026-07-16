@@ -224,9 +224,6 @@ namespace car
             READ_FLOAT(max_damper_velocity);
             READ_FLOAT(bump_stop_stiffness);
             READ_FLOAT(bump_stop_threshold);
-            READ_FLOAT(front_roll_center_height);
-            READ_FLOAT(rear_roll_center_height);
-            READ_FLOAT(pitch_center_height);
 
             READ_FLOAT(rolling_resistance);
             READ_FLOAT(drag_coeff);
@@ -262,15 +259,9 @@ namespace car
             READ_FLOAT(rear_camber);
             READ_FLOAT(front_toe);
             READ_FLOAT(rear_toe);
-            READ_FLOAT(front_bump_steer);
-            READ_FLOAT(rear_bump_steer);
-
-            READ_FLOAT(front_camber_gain);
-            READ_FLOAT(rear_camber_gain);
             READ_FLOAT(tire_vertical_stiffness);
             READ_FLOAT(lsd_viscous);
             READ_FLOAT(abs_load_sensitivity);
-            READ_FLOAT(steer_compliance);
 
             READ_FLOAT(airborne_wheel_decay);
             READ_FLOAT(bearing_friction);

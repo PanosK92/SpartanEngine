@@ -46,8 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //   - CarDrivetrain.h  engine torque, turbo, automatic/manual gearbox, clutch,
 //                      driveshaft compliance, differentials, traction control,
 //                      engine braking, service brakes
-//   - CarTires.h       per-wheel tire forces, thermal/wear model, semi-implicit
-//                      euler wheel spin integration, self-aligning torque
+//   - CarTires.h       per-wheel tire forces, thermal/wear model and self-aligning torque
 //
 // - runs within the physx 200 hz fixed-timestep loop
 //   all vehicle physics run inside the physx fixed-step update at 200 hz rather
@@ -166,14 +165,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //   speed. yaw angle increases drag and reduces downforce, and pitch angle shifts
 //   the front/rear aero balance.
 //
-// - semi-implicit euler wheel spin integration
-//   wheel angular velocity is integrated using semi-implicit euler — the new
-//   velocity is computed from net torque first, then used to advance the rotation
-//   angle. this is more stable than explicit euler for stiff systems like brake
-//   lockup and clutch engagement where forces change rapidly within a single step.
+// - physical wheel spin integration
+//   engine, differential, brake and tire torques act on revolute wheel bodies and
+//   physx integrates their angular velocity together with the suspension assembly.
 //
 // - convex hull sweep for ground contact
-//   each wheel casts a convex shape sweep downward from the suspension top mount
+//   each wheel casts an oriented convex cylinder around its physical wheel center
 //   to detect ground contact, rather than using a simple raycast. this handles
 //   curbs, bumps, and uneven terrain more accurately because the contact point
 //   and normal reflect the actual wheel shape interacting with the surface geometry.
@@ -283,7 +280,8 @@ namespace car
         float wheel_mass_safe = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
 
         float wdf = get_weight_distribution_front();
-        float axle_mass[2] = { cfg.mass * wdf * 0.5f, cfg.mass * (1.0f - wdf) * 0.5f };
+        float sprung_mass = chassis_mass();
+        float axle_mass[2] = { sprung_mass * wdf * 0.5f, sprung_mass * (1.0f - wdf) * 0.5f };
         float freq[2]      = { tuning::spec.front_spring_freq, tuning::spec.rear_spring_freq };
 
         for (int i = 0; i < wheel_count; i++)
@@ -292,8 +290,7 @@ namespace car
             float mass = axle_mass[axle];
             float omega = 2.0f * PxPi * freq[axle];
 
-            // same story as wheel_mass, a zero or nan radius bricks wheel_moi which then bricks the
-            // semi implicit euler step in apply_tire_forces
+            // keep physical wheel inertia finite
             float r_raw  = cfg.wheel_radius_for(i);
             float r      = (std::isfinite(r_raw) && r_raw > 0.0f) ? r_raw : 0.34f;
             float r_safe = PxMax(r, 0.05f);
@@ -313,8 +310,7 @@ namespace car
         if (wheel_sweep_mesh) { wheel_sweep_mesh->release(); wheel_sweep_mesh = nullptr; }
     }
 
-    // sweep mesh must match the actual visual wheel radius, otherwise sweep distance overshoots
-    // suspension_travel, target_compression clamps to zero and the body falls through onto the chassis
+    // sweep geometry must match the physical wheel dimensions
     inline void rebuild_wheel_sweep_mesh()
     {
         if (wheel_sweep_mesh)
@@ -447,7 +443,7 @@ namespace car
         }
 
         PxVec3 com(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
-        PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
+        PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
         body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
         body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
         body->setLinearDamping(tuning::spec.linear_damping);
@@ -501,7 +497,7 @@ namespace car
         }
 
         PxVec3 com(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
-        PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
+        PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
 
         if (!vertices.empty())
         {
@@ -519,7 +515,7 @@ namespace car
         }
 
         PxVec3 com(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
-        PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
+        PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
 
         SP_LOG_INFO("car center of mass set to (%.2f, %.2f, %.2f)", com.x, com.y, com.z);
     }
@@ -534,6 +530,14 @@ namespace car
         apply_preset_geometry(spec);
         compute_constants();
         update_mass_properties();
+    }
+
+    inline bool rebuild_vehicle_geometry()
+    {
+        compute_constants();
+        update_mass_properties();
+        rebuild_wheel_sweep_mesh();
+        return !multibody.initialized || rebuild_multibody();
     }
 
     inline void reset_drivetrain_transients()
@@ -561,8 +565,9 @@ namespace car
         }
         longitudinal_accel = 0.0f;
         lateral_accel = 0.0f;
-        road_bump_phase = 0.0f;
         prev_velocity = PxVec3(0);
+        vehicle_sleep_timer = 0.0f;
+        vehicle_sleeping = false;
         drs_active = false;
         engine_brake_torque = 0.0f;
     }
@@ -592,7 +597,7 @@ namespace car
 
         reset_drivetrain_transients();
         reset_wheel_thermals();
-        if (multibody.initialized && !rebuild_multibody())
+        if (!rebuild_vehicle_geometry())
         {
             SP_LOG_ERROR("failed to rebuild suspension for car preset");
         }
@@ -626,8 +631,6 @@ namespace car
             p.rear_spring_freq *= s;
             p.front_arb_stiffness *= s;
             p.rear_arb_stiffness *= s;
-            p.front_camber_gain *= (1.0f + 0.08f * ups.suspension);
-            p.rear_camber_gain *= (1.0f + 0.08f * ups.suspension);
         }
         if (ups.tires > 0 && base.tires_stage_max > 0)
         {
@@ -739,7 +742,6 @@ namespace car
         tuning::spec.center_of_mass_x = x;
         tuning::spec.center_of_mass_y = y;
         tuning::spec.center_of_mass_z = z;
-        // springs and axle mass share follow weight distribution from com z
         compute_constants();
         update_mass_properties();
     }
@@ -845,6 +847,20 @@ namespace car
             return;
         }
 
+        bool steering_adjusting = fabsf(input_target.steering - input.steering) > 0.001f;
+        bool motion_requested = input.throttle > tuning::spec.input_deadzone || (is_in_reverse() && input.brake > tuning::spec.input_deadzone) || steering_adjusting;
+        if (vehicle_sleeping)
+        {
+            if (motion_requested || !body->isSleeping())
+            {
+                wake_vehicle_assembly();
+            }
+            else
+            {
+                return;
+            }
+        }
+
         PxTransform pose = body->getGlobalPose();
         PxVec3 fwd = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 vel = body->getLinearVelocity();
@@ -862,9 +878,6 @@ namespace car
         lateral_accel      = lerp(lateral_accel, raw_lat_accel, exp_decay(weight_transfer_rate, dt));
         prev_velocity = vel;
 
-        // advance road bump phase based on travel distance
-        road_bump_phase += vel.magnitude() * tuning::road_bump_frequency * dt;
-
         // brake cooling
         float airspeed = vel.magnitude();
         for (int i = 0; i < wheel_count; i++)
@@ -881,17 +894,31 @@ namespace car
         }
 
         // --- physics subsystems ---
+        refresh_wheel_actor_state();
         for (int i = 0; i < wheel_count; i++)
             wheels[i].net_torque = 0.0f;
 
         update_multibody(dt);
         update_suspension(scene, dt);
+        update_tire_slip_state(dt);
         apply_drivetrain(forward_speed * 3.6f, dt);
 
         apply_tire_forces(dt);
         apply_self_aligning_torque();
 
         apply_aero_and_resistance();
+        if (!motion_requested && vehicle_assembly_is_settled())
+        {
+            vehicle_sleep_timer += dt;
+            if (vehicle_sleep_timer >= 0.5f)
+            {
+                sleep_vehicle_assembly();
+            }
+        }
+        else
+        {
+            vehicle_sleep_timer = 0.0f;
+        }
 
         // --- telemetry ---
         if (tuning::log_telemetry)
@@ -933,7 +960,14 @@ namespace car
     {
         if (is_valid_wheel(i))
         {
-            wheels[i].angular_velocity = std::isfinite(v) ? v : 0.0f;
+            float angular_velocity = std::isfinite(v) ? v : 0.0f;
+            wheels[i].angular_velocity = angular_velocity;
+            if (PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body)
+            {
+                PxVec3 wheel_axis = wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+                PxVec3 actor_velocity = wheel_actor->getAngularVelocity();
+                wheel_actor->setAngularVelocity(actor_velocity + wheel_axis * (angular_velocity - actor_velocity.dot(wheel_axis)));
+            }
         }
     }
 
@@ -958,11 +992,7 @@ namespace car
 
     inline float get_wheel_suspension_force(int i)
     {
-        if (!is_valid_wheel(i) || !wheels[i].grounded)
-        {
-            return 0.0f;
-        }
-        return spring_stiffness[i] * wheels[i].compression * cfg.suspension_travel;
+        return is_valid_wheel(i) ? spring_force[i] : 0.0f;
     }
 
     inline float get_wheel_temp_grip_factor(int i)
