@@ -95,6 +95,9 @@ namespace car
             float raw_slip_ratio = PxClamp((surface_speed - longitudinal_speed) / slip_denominator, -1.0f, 1.0f);
             float raw_slip_angle = atan2f(lateral_speed, PxMax(absolute_longitudinal_speed, 0.5f));
             tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
+            w.condition_grip = condition.peak_grip;
+            w.condition_stiffness = condition.stiffness;
+            w.condition_relaxation = condition.relaxation;
             float relaxation_length = PxMax(tuning::spec.tire_relaxation_length * condition.relaxation, 0.05f);
             float longitudinal_length = relaxation_length * (fabsf(raw_slip_ratio) > fabsf(w.slip_ratio) ? 0.85f : 0.65f);
             float lateral_length = relaxation_length * (fabsf(raw_slip_angle) > fabsf(w.slip_angle) ? 1.10f : 0.85f);
@@ -168,9 +171,6 @@ namespace car
                 if (alignment_forward.normalize() > 1e-4f)
                 {
                     w.dynamic_toe = atan2f(alignment_forward.dot(chassis_right), alignment_forward.dot(chassis_forward));
-                    float side = i == front_left || i == rear_left ? -1.0f : 1.0f;
-                    float static_toe = side * (is_front(i) ? tuning::spec.front_toe : tuning::spec.rear_toe);
-                    w.bump_steer = w.dynamic_toe - static_toe;
                 }
             }
 
@@ -464,6 +464,11 @@ namespace car
                 SP_LOG_INFO("[%s] ang_vel=%.4f, lat_f=%.1f, long_f=%.1f", wheel_name, w.angular_velocity, lat_f, long_f);
             }
         }
+        float front_steering_angle = (wheels[front_left].dynamic_toe + wheels[front_right].dynamic_toe) * 0.5f;
+        wheels[front_left].bump_steer = wheels[front_left].dynamic_toe - front_steering_angle + tuning::spec.front_toe;
+        wheels[front_right].bump_steer = wheels[front_right].dynamic_toe - front_steering_angle - tuning::spec.front_toe;
+        wheels[rear_left].bump_steer = wheels[rear_left].dynamic_toe + tuning::spec.rear_toe;
+        wheels[rear_right].bump_steer = wheels[rear_right].dynamic_toe - tuning::spec.rear_toe;
         if (tuning::log_pacejka)
         {
             SP_LOG_INFO("=== pacejka tick end ===\n");

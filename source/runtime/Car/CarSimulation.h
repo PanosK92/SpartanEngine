@@ -583,9 +583,11 @@ namespace car
         clutch = 1.0f;
         shift_cooldown = 0.0f;
         last_shift_direction = 0;
-        redline_hold_timer = 0.0f;
+        previous_automatic_throttle = 0.0f;
         boost_pressure = 0.0f;
         motor_torque = 0.0f;
+        engine_output_torque = 0.0f;
+        axle_drive_torque = 0.0f;
         rev_limiter_active = false;
         downshift_blip_timer = 0.0f;
         driveshaft_twist = 0.0f;
@@ -965,6 +967,7 @@ namespace car
         {
             wheels[i].net_torque = 0.0f;
             wheels[i].drive_torque = 0.0f;
+            wheels[i].brake_torque = 0.0f;
         }
 
         update_multibody(dt);

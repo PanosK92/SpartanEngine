@@ -158,6 +158,9 @@ namespace car
             require(finite_range(preset.suspension_travel, 0.04f, 0.7f), "suspension_travel");
             require(finite_range(preset.front_spring_freq, 0.5f, 5.0f) && finite_range(preset.rear_spring_freq, 0.5f, 5.0f), "spring_frequency");
             require(finite_range(preset.front_damping_ratio, 0.1f, 2.0f) && finite_range(preset.rear_damping_ratio, 0.1f, 2.0f), "damping_ratio");
+            require(finite_range(preset.damping_bump_ratio, 0.05f, 3.0f) && finite_range(preset.damping_rebound_ratio, 0.05f, 3.0f), "low_speed_damping");
+            require(finite_range(preset.damping_bump_high_speed_ratio, 0.05f, 3.0f) && finite_range(preset.damping_rebound_high_speed_ratio, 0.05f, 3.0f), "high_speed_damping");
+            require(finite_range(preset.damper_knee_velocity, 0.01f, 10.0f), "damper_knee_velocity");
             require(finite_range(preset.max_steer_angle, 0.1f, 1.2f), "max_steer_angle");
             require(finite_range(preset.tire_friction, 0.3f, 2.5f), "tire_friction");
             require(preset.gear_count >= 3 && preset.gear_count <= max_gears, "gear_count");
@@ -182,6 +185,9 @@ namespace car
             require(finite_range(preset.lat_B, 0.1f, 50.0f) && finite_range(preset.lat_C, 0.1f, 5.0f) && finite_range(preset.lat_D, 0.1f, 3.0f), "lateral_tire_coefficients");
             require(finite_range(preset.long_B, 0.1f, 50.0f) && finite_range(preset.long_C, 0.1f, 5.0f) && finite_range(preset.long_D, 0.1f, 3.0f), "longitudinal_tire_coefficients");
             require(finite_range(preset.max_susp_force, 1000.0f, 500000.0f) && finite_range(preset.max_damper_velocity, 0.1f, 50.0f), "suspension_force_limits");
+            require(finite_range(preset.bump_stop_stiffness, 1000.0f, 5000000.0f) && finite_range(preset.bump_stop_threshold, 0.5f, 1.2f), "bump_stop");
+            require(finite_range(preset.bump_stop_progression, 0.0f, 20.0f), "bump_stop_progression");
+            require(finite_range(preset.packer_threshold, preset.bump_stop_threshold, 1.5f) && finite_range(preset.packer_stiffness, 10000.0f, 10000000.0f), "packer");
             require(finite_range(preset.steering_rate, 0.1f, 20.0f) && finite_range(preset.steering_linearity, 0.1f, 5.0f), "steering_response");
             require(finite_range(preset.steering_deadzone, 0.0f, 0.5f) && finite_range(preset.input_deadzone, 0.0f, 0.5f), "input_deadzones");
             require(finite_range(preset.center_of_mass_x, -preset.width * 0.5f, preset.width * 0.5f), "center_of_mass_x");
@@ -316,12 +322,18 @@ namespace car
             READ_FLOAT(rear_damping_ratio);
             READ_FLOAT(damping_bump_ratio);
             READ_FLOAT(damping_rebound_ratio);
+            READ_FLOAT(damping_bump_high_speed_ratio);
+            READ_FLOAT(damping_rebound_high_speed_ratio);
+            READ_FLOAT(damper_knee_velocity);
             READ_FLOAT(front_arb_stiffness);
             READ_FLOAT(rear_arb_stiffness);
             READ_FLOAT(max_susp_force);
             READ_FLOAT(max_damper_velocity);
             READ_FLOAT(bump_stop_stiffness);
             READ_FLOAT(bump_stop_threshold);
+            READ_FLOAT(bump_stop_progression);
+            READ_FLOAT(packer_threshold);
+            READ_FLOAT(packer_stiffness);
 
             READ_FLOAT(rolling_resistance);
             READ_FLOAT(drag_coeff);

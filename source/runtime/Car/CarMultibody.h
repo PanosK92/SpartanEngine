@@ -475,6 +475,7 @@ namespace car
         }
         float wheel_inertia = PxMax(wheel_moi[wheel_index], 0.1f);
         corner.wheel_body->setMassSpaceInertiaTensor(PxVec3(wheel_inertia, wheel_inertia * 0.65f, wheel_inertia * 0.65f));
+        corner.wheel_body->setMaxAngularVelocity(500.0f);
 
         corner.wheel_joint = PxRevoluteJointCreate(*multibody.physics, corner.upright, PxTransform(PxIdentity), corner.wheel_body, PxTransform(PxIdentity));
         if (!corner.wheel_joint)
@@ -745,6 +746,9 @@ namespace car
             PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
             PxVec3 wheel_axis = wheel_actor ? wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f)) : fallback_axis;
             wheels[i].angular_velocity = wheel_actor ? wheel_actor->getAngularVelocity().dot(wheel_axis) : 0.0f;
+            wheels[i].hub_position = wheel_actor ? wheel_actor->getGlobalPose().p : PxVec3(0.0f);
+            wheels[i].hub_linear_velocity = wheel_actor ? wheel_actor->getLinearVelocity() : PxVec3(0.0f);
+            wheels[i].hub_angular_velocity = wheel_actor ? wheel_actor->getAngularVelocity() : PxVec3(0.0f);
         }
     }
 
@@ -812,6 +816,19 @@ namespace car
         vehicle_sleeping = true;
     }
 
+    inline float compute_damper_force(float velocity, float base_damping)
+    {
+        bool bump = velocity < 0.0f;
+        float low_speed_ratio = bump ? tuning::spec.damping_bump_ratio : tuning::spec.damping_rebound_ratio;
+        float high_speed_ratio = bump ? tuning::spec.damping_bump_high_speed_ratio : tuning::spec.damping_rebound_high_speed_ratio;
+        float low_speed_damping = base_damping * low_speed_ratio;
+        float high_speed_damping = base_damping * high_speed_ratio;
+        float speed = fabsf(velocity);
+        float knee_velocity = PxMax(tuning::spec.damper_knee_velocity, 0.01f);
+        float force = high_speed_damping * speed + (low_speed_damping - high_speed_damping) * knee_velocity * (1.0f - expf(-speed / knee_velocity));
+        return copysignf(force, velocity);
+    }
+
     inline void update_multibody(float delta_time)
     {
         if (!multibody.initialized || delta_time <= 0.0f)
@@ -838,17 +855,25 @@ namespace car
             PxVec3 bottom_velocity = actor_point_velocity(corner.upright, bottom);
             float relative_speed = PxClamp((top_velocity - bottom_velocity).dot(direction), -tuning::spec.max_damper_velocity, tuning::spec.max_damper_velocity);
             float wheel_vertical_speed = (bottom_velocity - top_velocity).dot(body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f)));
-            if (fabsf(wheel_vertical_speed) > 0.01f)
+            if (fabsf(wheel_vertical_speed) > 0.1f)
             {
-                wheels[i].motion_ratio = PxClamp(fabsf(relative_speed / wheel_vertical_speed), 0.1f, 3.0f);
+                float target_motion_ratio = PxClamp(fabsf(relative_speed / wheel_vertical_speed), 0.25f, 2.0f);
+                wheels[i].motion_ratio = lerp(wheels[i].motion_ratio, target_motion_ratio, exp_decay(20.0f, delta_time));
             }
             float compression = corner.shock_rest_length - length;
-            float damper = spring_damping[i] * (relative_speed < 0.0f ? tuning::spec.damping_bump_ratio : tuning::spec.damping_rebound_ratio);
-            float force_magnitude = PxMax(spring_stiffness[i] * compression, 0.0f) - damper * relative_speed;
+            float force_magnitude = PxMax(spring_stiffness[i] * compression, 0.0f) - compute_damper_force(relative_speed, spring_damping[i]);
             float bump_start = cfg.suspension_travel * tuning::spec.bump_stop_threshold;
             if (compression > bump_start)
             {
-                force_magnitude += (compression - bump_start) * tuning::spec.bump_stop_stiffness;
+                float bump_travel = PxMax(cfg.suspension_travel - bump_start, 0.001f);
+                float bump_compression = compression - bump_start;
+                float bump_progress = PxClamp(bump_compression / bump_travel, 0.0f, 1.0f);
+                force_magnitude += bump_compression * tuning::spec.bump_stop_stiffness * (1.0f + tuning::spec.bump_stop_progression * bump_progress * bump_progress);
+            }
+            float packer_start = cfg.suspension_travel * tuning::spec.packer_threshold;
+            if (compression > packer_start)
+            {
+                force_magnitude += (compression - packer_start) * tuning::spec.packer_stiffness;
             }
             force_magnitude = PxClamp(force_magnitude, -tuning::spec.max_susp_force, tuning::spec.max_susp_force);
             PxVec3 force = direction * force_magnitude;
@@ -857,6 +882,9 @@ namespace car
 
             corner.shock_velocity = (length - corner.shock_length) / delta_time;
             corner.shock_length = length;
+            wheels[i].shock_length = corner.shock_length;
+            wheels[i].shock_rest_length = corner.shock_rest_length;
+            wheels[i].shock_velocity = corner.shock_velocity;
             wheels[i].compression = PxClamp(compression / PxMax(cfg.suspension_travel, 0.01f), 0.0f, 1.5f);
             wheels[i].compression_velocity = -corner.shock_velocity / PxMax(cfg.suspension_travel, 0.01f);
             spring_force[i] = force_magnitude;

@@ -42,6 +42,8 @@ namespace car
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
+            bool was_grounded = w.grounded;
+            PxVec3 previous_normal = w.contact_normal;
             float wr_raw = cfg.wheel_radius_for(i);
             float wheel_radius = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
             float wheel_width = PxMax(cfg.wheel_width_for(i), 0.05f);
@@ -88,12 +90,19 @@ namespace car
             {
                 normal.normalize();
             }
+            if (was_grounded && is_finite_vec(previous_normal) && previous_normal.magnitudeSquared() > 1e-6f)
+            {
+                previous_normal.normalize();
+                float normal_blend = exp_decay(30.0f, dt);
+                normal = previous_normal * (1.0f - normal_blend) + normal * normal_blend;
+                normal.normalize();
+            }
             if (normal.dot(local_up) < 0.5f)
             {
                 continue;
             }
 
-            float penetration = PxMax(query_lift + predicted_travel - hit.block.distance, 0.0f);
+            float penetration = PxMax(query_lift - hit.block.distance, 0.0f);
 
             PxVec3 contact_velocity = wheel_actor ? actor_point_velocity(wheel_actor, hit.block.position) : actor_point_velocity(body, hit.block.position);
             if (const PxRigidDynamic* ground_actor = hit.block.actor->is<PxRigidDynamic>())

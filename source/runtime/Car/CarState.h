@@ -240,6 +240,7 @@ namespace car
         float        longitudinal_force   = 0.0f;
         float        net_torque           = 0.0f;
         float        drive_torque         = 0.0f;
+        float        brake_torque         = 0.0f;
         tire_thermal thermal;
         float        brake_temp           = 30.0f;
         float        wear                 = 0.0f;
@@ -249,6 +250,15 @@ namespace car
         float        dynamic_toe          = 0.0f;
         float        bump_steer           = 0.0f;
         float        motion_ratio         = 1.0f;
+        float        condition_grip       = 1.0f;
+        float        condition_stiffness  = 1.0f;
+        float        condition_relaxation = 1.0f;
+        float        shock_length         = 0.0f;
+        float        shock_rest_length    = 0.0f;
+        float        shock_velocity       = 0.0f;
+        PxVec3       hub_position         = PxVec3(0.0f);
+        PxVec3       hub_linear_velocity  = PxVec3(0.0f);
+        PxVec3       hub_angular_velocity = PxVec3(0.0f);
     };
 
     struct input_state
@@ -257,6 +267,12 @@ namespace car
         float brake     = 0.0f;
         float steering  = 0.0f;
         float handbrake = 0.0f;
+    };
+
+    struct assist_command
+    {
+        float engine_torque_scale = 1.0f;
+        float brake_torque_scale[wheel_count] = { 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
     struct active_upgrades
@@ -281,6 +297,7 @@ namespace car
     inline wheel           wheels[wheel_count];
     inline input_state     input;
     inline input_state     input_target;
+    inline assist_command  assisted_actuators;
     inline PxVec3          wheel_offsets[wheel_count];
     inline float           wheel_moi[wheel_count];
     inline float           spring_stiffness[wheel_count];
@@ -312,7 +329,7 @@ namespace car
     inline constexpr float shift_cooldown_time     = 0.5f;
     // "large" static friction gain applied under the low-slip static-friction model,
     inline int             last_shift_direction    = 0;
-    inline float           redline_hold_timer      = 0.0f;
+    inline float           previous_automatic_throttle = 0.0f;
     inline float           boost_pressure          = 0.0f;
     inline float           motor_torque            = 0.0f;
     inline bool            rev_limiter_active      = false;
@@ -329,6 +346,8 @@ namespace car
     inline bool            vehicle_sleeping        = false;
     // total engine braking torque routed to the driven axle this tick before any per wheel split
     inline float           engine_brake_torque     = 0.0f;
+    inline float           engine_output_torque    = 0.0f;
+    inline float           axle_drive_torque       = 0.0f;
 
     // telemetry: writes a per-tick csv of body + per-wheel state to car_telemetry.csv
     // in the working directory. opens lazily, closes when tuning::log_to_file is off,
@@ -463,7 +482,7 @@ namespace car
 
             fprintf(file,
                 // time + body state
-                "frame,time,dt,"
+                "frame,time,dt,car_name,"
                 "pos_x,pos_y,pos_z,"
                 "speed_kmh,forward_speed_ms,lateral_speed_ms,"
                 "yaw_rate,body_slip_deg,"
@@ -513,7 +532,17 @@ namespace car
                 "fl_eff_r,fr_eff_r,rl_eff_r,rr_eff_r,"
                 "fl_dyn_camb,fr_dyn_camb,rl_dyn_camb,rr_dyn_camb,"
                 "fl_abs,fr_abs,rl_abs,rr_abs,"
-                "mass,tire_friction,brake_force,engine_peak_tq\n");
+                "mass,tire_friction,brake_force,engine_peak_tq,"
+                "rot_x,rot_y,rot_z,rot_w,vel_x,vel_y,vel_z,ang_vel_x,ang_vel_y,ang_vel_z,"
+                "target_throttle,target_brake,target_steering,target_handbrake,"
+                "active_gear_ratio,shift_timer,shift_cooldown,last_shift_direction,engine_rotation,boost_pressure,motor_torque,engine_output_torque,axle_drive_torque,driveshaft_twist,driveshaft_torque,reflected_engine_inertia,rev_limiter,downshift_blip_timer,abs_phase,vehicle_sleeping,vehicle_sleep_timer,drs_active,"
+                "assist_engine_scale,fl_assist_brake_scale,fr_assist_brake_scale,rl_assist_brake_scale,rr_assist_brake_scale,"
+                "aero_valid,aero_ride_height,aero_yaw_angle,aero_ground_effect,aero_drag_x,aero_drag_y,aero_drag_z,aero_front_downforce_x,aero_front_downforce_y,aero_front_downforce_z,aero_rear_downforce_x,aero_rear_downforce_y,aero_rear_downforce_z,aero_side_force_x,aero_side_force_y,aero_side_force_z,"
+                "fl_rotation,fl_drive_torque,fl_brake_torque,fl_comp_velocity,fl_surface,fl_contact_x,fl_contact_y,fl_contact_z,fl_contact_nx,fl_contact_nz,fl_dynamic_toe,fl_bump_steer,fl_motion_ratio,fl_shock_length,fl_shock_rest_length,fl_shock_velocity,fl_temp_inside,fl_temp_middle,fl_temp_outside,fl_condition_grip,fl_condition_stiffness,fl_condition_relaxation,fl_wheel_moi,fl_spring_stiffness,fl_spring_damping,"
+                "fr_rotation,fr_drive_torque,fr_brake_torque,fr_comp_velocity,fr_surface,fr_contact_x,fr_contact_y,fr_contact_z,fr_contact_nx,fr_contact_nz,fr_dynamic_toe,fr_bump_steer,fr_motion_ratio,fr_shock_length,fr_shock_rest_length,fr_shock_velocity,fr_temp_inside,fr_temp_middle,fr_temp_outside,fr_condition_grip,fr_condition_stiffness,fr_condition_relaxation,fr_wheel_moi,fr_spring_stiffness,fr_spring_damping,"
+                "rl_rotation,rl_drive_torque,rl_brake_torque,rl_comp_velocity,rl_surface,rl_contact_x,rl_contact_y,rl_contact_z,rl_contact_nx,rl_contact_nz,rl_dynamic_toe,rl_bump_steer,rl_motion_ratio,rl_shock_length,rl_shock_rest_length,rl_shock_velocity,rl_temp_inside,rl_temp_middle,rl_temp_outside,rl_condition_grip,rl_condition_stiffness,rl_condition_relaxation,rl_wheel_moi,rl_spring_stiffness,rl_spring_damping,"
+                "rr_rotation,rr_drive_torque,rr_brake_torque,rr_comp_velocity,rr_surface,rr_contact_x,rr_contact_y,rr_contact_z,rr_contact_nx,rr_contact_nz,rr_dynamic_toe,rr_bump_steer,rr_motion_ratio,rr_shock_length,rr_shock_rest_length,rr_shock_velocity,rr_temp_inside,rr_temp_middle,rr_temp_outside,rr_condition_grip,rr_condition_stiffness,rr_condition_relaxation,rr_wheel_moi,rr_spring_stiffness,rr_spring_damping,"
+                "fl_hub_x,fl_hub_y,fl_hub_z,fl_hub_vx,fl_hub_vy,fl_hub_vz,fl_hub_wx,fl_hub_wy,fl_hub_wz,fr_hub_x,fr_hub_y,fr_hub_z,fr_hub_vx,fr_hub_vy,fr_hub_vz,fr_hub_wx,fr_hub_wy,fr_hub_wz,rl_hub_x,rl_hub_y,rl_hub_z,rl_hub_vx,rl_hub_vy,rl_hub_vz,rl_hub_wx,rl_hub_wy,rl_hub_wz,rr_hub_x,rr_hub_y,rr_hub_z,rr_hub_vx,rr_hub_vy,rr_hub_vz,rr_hub_wx,rr_hub_wy,rr_hub_wz\n");
             frame_counter = 0;
             elapsed_time  = 0.0f;
             return true;
@@ -560,7 +589,7 @@ namespace car
             float wg_fl = 1.f - wheels[front_left].wear * tuning::spec.tire_grip_wear_loss, wg_fr=1.f - wheels[front_right].wear * tuning::spec.tire_grip_wear_loss, wg_rl=1.f - wheels[rear_left].wear * tuning::spec.tire_grip_wear_loss, wg_rr=1.f - wheels[rear_right].wear * tuning::spec.tire_grip_wear_loss;
 
             fprintf(file,
-                "%d,%.3f,%.4f,"
+                "%d,%.3f,%.4f,\"%s\","
                 "%.2f,%.2f,%.2f,"
                 "%.2f,%.3f,%.3f,"
                 "%.4f,%.2f,"
@@ -592,8 +621,17 @@ namespace car
                 // eff r dyn camb
                 "%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,"
                 "%d,%d,%d,%d,"
-                "%.1f,%.3f,%.1f,%.1f\n",
-                frame_counter, elapsed_time, dt,
+                "%.1f,%.3f,%.1f,%.1f,"
+                "%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
+                "%.6g,%.6g,%.6g,%.6g,"
+                "%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%d,%.6g,%d,"
+                "%.6g,%.6g,%.6g,%.6g,%.6g,"
+                "%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
+                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
+                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
+                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
+                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g",
+                frame_counter, elapsed_time, dt, tuning::spec.name ? tuning::spec.name : "",
                 pose.p.x, pose.p.y, pose.p.z,
                 speed_kmh, forward_speed, lateral_speed,
                 yaw_rate, body_slip_deg,
@@ -649,7 +687,21 @@ namespace car
                 wheels[rear_left].dynamic_camber,    wheels[rear_right].dynamic_camber,
                 abs_active[front_left] ? 1 : 0, abs_active[front_right] ? 1 : 0,
                 abs_active[rear_left] ? 1 : 0,  abs_active[rear_right] ? 1 : 0,
-                cfg.mass, tuning::spec.tire_friction, tuning::spec.brake_force, tuning::spec.engine_peak_torque);
+                cfg.mass, tuning::spec.tire_friction, tuning::spec.brake_force, tuning::spec.engine_peak_torque,
+                pose.q.x, pose.q.y, pose.q.z, pose.q.w, vel.x, vel.y, vel.z, ang_vel.x, ang_vel.y, ang_vel.z,
+                input_target.throttle, input_target.brake, input_target.steering, input_target.handbrake,
+                tuning::spec.gear_ratios[current_gear], shift_timer, shift_cooldown, last_shift_direction, engine_rotation, boost_pressure, motor_torque, engine_output_torque, axle_drive_torque, driveshaft_twist, driveshaft_twist * tuning::spec.driveshaft_stiffness, reflected_engine_inertia, rev_limiter_active ? 1 : 0, downshift_blip_timer, abs_phase, vehicle_sleeping ? 1 : 0, vehicle_sleep_timer, drs_active ? 1 : 0,
+                assisted_actuators.engine_torque_scale, assisted_actuators.brake_torque_scale[front_left], assisted_actuators.brake_torque_scale[front_right], assisted_actuators.brake_torque_scale[rear_left], assisted_actuators.brake_torque_scale[rear_right],
+                aero_debug.valid ? 1 : 0, aero_debug.ride_height, aero_debug.yaw_angle, aero_debug.ground_effect_factor, aero_debug.drag_force.x, aero_debug.drag_force.y, aero_debug.drag_force.z, aero_debug.front_downforce.x, aero_debug.front_downforce.y, aero_debug.front_downforce.z, aero_debug.rear_downforce.x, aero_debug.rear_downforce.y, aero_debug.rear_downforce.z, aero_debug.side_force.x, aero_debug.side_force.y, aero_debug.side_force.z,
+                wheels[front_left].rotation, wheels[front_left].drive_torque, wheels[front_left].brake_torque, wheels[front_left].compression_velocity, static_cast<int>(wheels[front_left].contact_surface), wheels[front_left].contact_point.x, wheels[front_left].contact_point.y, wheels[front_left].contact_point.z, wheels[front_left].contact_normal.x, wheels[front_left].contact_normal.z, wheels[front_left].dynamic_toe, wheels[front_left].bump_steer, wheels[front_left].motion_ratio, wheels[front_left].shock_length, wheels[front_left].shock_rest_length, wheels[front_left].shock_velocity, wheels[front_left].thermal.surface[0], wheels[front_left].thermal.surface[1], wheels[front_left].thermal.surface[2], wheels[front_left].condition_grip, wheels[front_left].condition_stiffness, wheels[front_left].condition_relaxation, wheel_moi[front_left], spring_stiffness[front_left], spring_damping[front_left],
+                wheels[front_right].rotation, wheels[front_right].drive_torque, wheels[front_right].brake_torque, wheels[front_right].compression_velocity, static_cast<int>(wheels[front_right].contact_surface), wheels[front_right].contact_point.x, wheels[front_right].contact_point.y, wheels[front_right].contact_point.z, wheels[front_right].contact_normal.x, wheels[front_right].contact_normal.z, wheels[front_right].dynamic_toe, wheels[front_right].bump_steer, wheels[front_right].motion_ratio, wheels[front_right].shock_length, wheels[front_right].shock_rest_length, wheels[front_right].shock_velocity, wheels[front_right].thermal.surface[0], wheels[front_right].thermal.surface[1], wheels[front_right].thermal.surface[2], wheels[front_right].condition_grip, wheels[front_right].condition_stiffness, wheels[front_right].condition_relaxation, wheel_moi[front_right], spring_stiffness[front_right], spring_damping[front_right],
+                wheels[rear_left].rotation, wheels[rear_left].drive_torque, wheels[rear_left].brake_torque, wheels[rear_left].compression_velocity, static_cast<int>(wheels[rear_left].contact_surface), wheels[rear_left].contact_point.x, wheels[rear_left].contact_point.y, wheels[rear_left].contact_point.z, wheels[rear_left].contact_normal.x, wheels[rear_left].contact_normal.z, wheels[rear_left].dynamic_toe, wheels[rear_left].bump_steer, wheels[rear_left].motion_ratio, wheels[rear_left].shock_length, wheels[rear_left].shock_rest_length, wheels[rear_left].shock_velocity, wheels[rear_left].thermal.surface[0], wheels[rear_left].thermal.surface[1], wheels[rear_left].thermal.surface[2], wheels[rear_left].condition_grip, wheels[rear_left].condition_stiffness, wheels[rear_left].condition_relaxation, wheel_moi[rear_left], spring_stiffness[rear_left], spring_damping[rear_left],
+                wheels[rear_right].rotation, wheels[rear_right].drive_torque, wheels[rear_right].brake_torque, wheels[rear_right].compression_velocity, static_cast<int>(wheels[rear_right].contact_surface), wheels[rear_right].contact_point.x, wheels[rear_right].contact_point.y, wheels[rear_right].contact_point.z, wheels[rear_right].contact_normal.x, wheels[rear_right].contact_normal.z, wheels[rear_right].dynamic_toe, wheels[rear_right].bump_steer, wheels[rear_right].motion_ratio, wheels[rear_right].shock_length, wheels[rear_right].shock_rest_length, wheels[rear_right].shock_velocity, wheels[rear_right].thermal.surface[0], wheels[rear_right].thermal.surface[1], wheels[rear_right].thermal.surface[2], wheels[rear_right].condition_grip, wheels[rear_right].condition_stiffness, wheels[rear_right].condition_relaxation, wheel_moi[rear_right], spring_stiffness[rear_right], spring_damping[rear_right]);
+            for (int i = 0; i < wheel_count; i++)
+            {
+                fprintf(file, ",%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", wheels[i].hub_position.x, wheels[i].hub_position.y, wheels[i].hub_position.z, wheels[i].hub_linear_velocity.x, wheels[i].hub_linear_velocity.y, wheels[i].hub_linear_velocity.z, wheels[i].hub_angular_velocity.x, wheels[i].hub_angular_velocity.y, wheels[i].hub_angular_velocity.z);
+            }
+            fputc('\n', file);
 
             if (frame_counter % 200 == 0)
             {

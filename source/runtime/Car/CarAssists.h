@@ -2,14 +2,6 @@
 
 namespace car
 {
-    struct assist_command
-    {
-        float engine_torque_scale = 1.0f;
-        float brake_torque_scale[wheel_count] = { 1.0f, 1.0f, 1.0f, 1.0f };
-    };
-
-    inline assist_command assisted_actuators;
-
     inline float get_assisted_steering_target(float raw_input)
     {
         float deadzone = PxClamp(tuning::spec.steering_deadzone, 0.0f, 0.95f);

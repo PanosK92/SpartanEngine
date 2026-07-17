@@ -162,6 +162,9 @@ namespace car
 
     inline void update_automatic_gearbox(float dt, float throttle, float forward_speed)
     {
+        bool kickdown_requested = throttle > 0.9f && previous_automatic_throttle <= 0.75f;
+        previous_automatic_throttle = throttle;
+
         if (shift_cooldown > 0.0f)
         {
             shift_cooldown -= dt;
@@ -235,56 +238,18 @@ namespace car
             {
                 if (is_driven(i))
                 {
-                    driven_angular_velocity += wheels[i].angular_velocity;
+                    driven_angular_velocity += fabsf(wheels[i].angular_velocity);
                     driven_wheel_count++;
                 }
             }
             float coupled_engine_rpm = engine_rpm;
             if (driven_wheel_count > 0)
             {
-                float average_wheel_rpm = fabsf(driven_angular_velocity / static_cast<float>(driven_wheel_count)) * 60.0f / (2.0f * PxPi);
+                float average_wheel_rpm = driven_angular_velocity / static_cast<float>(driven_wheel_count) * 60.0f / (2.0f * PxPi);
                 coupled_engine_rpm = wheel_rpm_to_engine_rpm(average_wheel_rpm, current_gear);
             }
             float shift_rpm = PxMax(engine_rpm, coupled_engine_rpm);
             bool rpm_trigger = shift_rpm >= tuning::spec.shift_up_rpm;
-
-            // track how long the engine has been sitting at redline
-            if (shift_rpm >= tuning::spec.shift_up_rpm)
-            {
-                redline_hold_timer += dt;
-            }
-            else
-            {
-                redline_hold_timer = 0.0f;
-            }
-
-            // force upshift after 0.5s at redline despite wheelspin
-            if (rpm_trigger && !speed_trigger)
-            {
-                // gear-scaled slip threshold
-                float slip_threshold = (current_gear <= 3) ? 0.50f : 0.25f;
-
-                float avg_slip = 0.0f;
-                int grounded_count = 0;
-                for (int i = 0; i < wheel_count; i++)
-                {
-                    if (is_driven(i) && wheels[i].grounded)
-                    {
-                        avg_slip += fabsf(wheels[i].slip_ratio);
-                        grounded_count++;
-                    }
-                }
-                if (grounded_count > 0)
-                {
-                    avg_slip /= (float)grounded_count;
-                }
-
-                // block upshift during wheelspin, but not past the redline timer
-                if (avg_slip > slip_threshold && redline_hold_timer < 0.5f)
-                {
-                    rpm_trigger = false;
-                }
-            }
 
             if (can_shift && (speed_trigger || rpm_trigger) && current_gear < tuning::spec.gear_count - 1 && throttle > 0.1f)
             {
@@ -330,8 +295,8 @@ namespace car
                 }
             }
 
-            // kickdown: only from cruise (below peak torque, no wheelspin)
-            if (can_shift && throttle > 0.9f && current_gear > 2 && engine_rpm < tuning::spec.engine_peak_torque_rpm)
+            // kickdown only on a new full throttle request
+            if (can_shift && kickdown_requested && current_gear > 2 && engine_rpm < tuning::spec.engine_peak_torque_rpm)
             {
                 float avg_slip = 0.0f;
                 int grounded = 0;
@@ -536,6 +501,7 @@ namespace car
 
         float combined       = ice_torque + motor_torque;
         float delivered      = combined * assisted_actuators.engine_torque_scale;
+        engine_output_torque = delivered;
 
         float ice_delivered = ice_torque;
         float elec_delivered = motor_torque;
@@ -567,6 +533,7 @@ namespace car
         {
             axle_torque += rigid_torque;
         }
+        axle_drive_torque = axle_torque;
         apply_drive_torque(axle_torque);
     }
 
@@ -577,6 +544,8 @@ namespace car
         float engine_torque  = boosted_torque * input.brake * tuning::spec.reverse_power_ratio;
         float gear_ratio     = tuning::spec.gear_ratios[0] * tuning::spec.final_drive;
         float wheel_torque   = engine_torque * gear_ratio * clutch * tuning::spec.drivetrain_efficiency;
+        engine_output_torque = engine_torque;
+        axle_drive_torque = wheel_torque;
         apply_drive_torque(wheel_torque);
     }
 
@@ -584,6 +553,8 @@ namespace car
     {
         driveshaft_twist = lerp(driveshaft_twist, 0.0f, exp_decay(10.0f, dt));
         motor_torque       = 0.0f;
+        engine_output_torque = 0.0f;
+        axle_drive_torque = 0.0f;
     }
 
     inline float brake_torque_sign(int wheel_index)
@@ -645,6 +616,7 @@ namespace car
 
             float brake_efficiency = get_brake_efficiency(wheels[i].brake_temp);
             t *= brake_efficiency * assisted_actuators.brake_torque_scale[i];
+            wheels[i].brake_torque = t;
 
             float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;
             wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, tuning::spec.brake_max_temp);

@@ -87,6 +87,12 @@ namespace car
             upright_mass         = 14.0f;
             suspension_link_mass = 2.5f;
             steering_rack_mass   = 4.0f;
+            damping_bump_high_speed_ratio = 0.4f;
+            damping_rebound_high_speed_ratio = 0.7f;
+            damper_knee_velocity = 0.25f;
+            bump_stop_progression = 3.0f;
+            packer_threshold = 1.05f;
+            packer_stiffness = 600000.0f;
             assists              = assist_settings();
             validation           = validation_targets();
         }
@@ -218,12 +224,18 @@ namespace car
         float rear_damping_ratio;
         float damping_bump_ratio;
         float damping_rebound_ratio;
+        float damping_bump_high_speed_ratio;
+        float damping_rebound_high_speed_ratio;
+        float damper_knee_velocity;
         float front_arb_stiffness;
         float rear_arb_stiffness;
         float max_susp_force;
         float max_damper_velocity;
         float bump_stop_stiffness;
         float bump_stop_threshold;
+        float bump_stop_progression;
+        float packer_threshold;
+        float packer_stiffness;
 
         // aerodynamics
         float rolling_resistance;

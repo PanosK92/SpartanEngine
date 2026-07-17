@@ -34,9 +34,10 @@
     <suspension suspension_height="1.04" suspension_travel="0.557"
         upright_mass="18" suspension_link_mass="4" steering_rack_mass="5"
         front_spring_freq="1.35" rear_spring_freq="1.45" front_damping_ratio="0.76" rear_damping_ratio="0.8"
-        damping_bump_ratio="0.65" damping_rebound_ratio="1.35"
+        damping_bump_ratio="0.65" damping_rebound_ratio="1.35" damping_bump_high_speed_ratio="0.45" damping_rebound_high_speed_ratio="0.75" damper_knee_velocity="0.5"
         front_arb_stiffness="3000" rear_arb_stiffness="0"
-        max_susp_force="32000" max_damper_velocity="10" bump_stop_stiffness="70000" bump_stop_threshold="0.82"
+        max_susp_force="32000" max_damper_velocity="10" bump_stop_stiffness="70000" bump_stop_threshold="0.82" bump_stop_progression="2.5"
+        packer_threshold="1.05" packer_stiffness="300000"
         front_camber="-0.010472" rear_camber="-0.006981" front_toe="0.001745" rear_toe="0.003491" />
 
     <front_suspension mechanism="double_wishbone"
