@@ -508,10 +508,8 @@ namespace spartan
             PxRigidDynamic* dynamic         = actor->is<PxRigidDynamic>();
             Vector3 physics_vel             = dynamic ? from_px_vec3(dynamic->getLinearVelocity())  : Vector3::Zero;
             Vector3 physics_ang_vel         = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
-            constexpr float physics_step    = 1.0f / 200.0f;
-            float leftover_time             = PhysicsWorld::GetInterpolationAlpha() * physics_step;
-            m_vehicle_render_offset         = physics_vel * leftover_time;
-            Vector3 render_pos              = physics_pos + m_vehicle_render_offset;
+            float leftover_time             = PhysicsWorld::GetInterpolationAlpha() * PhysicsWorld::GetFixedTimeStep();
+            Vector3 render_pos              = physics_pos + physics_vel * leftover_time;
             Quaternion render_rot           = physics_rot;
             float ang_speed                 = physics_ang_vel.Length();
             if (ang_speed > 0.001f)
@@ -522,6 +520,10 @@ namespace spartan
                 render_rot           = delta_rot * physics_rot;
                 render_rot.Normalize();
             }
+            m_vehicle_physics_position = physics_pos;
+            m_vehicle_physics_rotation = physics_rot;
+            m_vehicle_render_position  = render_pos;
+            m_vehicle_render_rotation  = render_rot;
             GetEntity()->SetPosition(render_pos);
             GetEntity()->SetRotation(render_rot);
 
@@ -539,7 +541,10 @@ namespace spartan
             // editor mode: sync entity -> physx, reset velocities
             m_wheel_offsets_synced      = false;
             m_interpolation_initialized = false;
-            m_vehicle_render_offset     = Vector3::Zero;
+            m_vehicle_physics_position  = GetEntity()->GetPosition();
+            m_vehicle_physics_rotation  = GetEntity()->GetRotation();
+            m_vehicle_render_position   = m_vehicle_physics_position;
+            m_vehicle_render_rotation   = m_vehicle_physics_rotation;
 
             actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
 
@@ -833,6 +838,9 @@ namespace spartan
         node.append_attribute("cloth_damping")         = m_cloth_damping;
         node.append_attribute("cloth_iterations")      = m_cloth_iterations;
         node.append_attribute("cloth_wind_enabled")    = m_cloth_wind_enabled;
+        node.append_attribute("cloth_pin_direction_x") = m_cloth_pin_direction.x;
+        node.append_attribute("cloth_pin_direction_y") = m_cloth_pin_direction.y;
+        node.append_attribute("cloth_pin_direction_z") = m_cloth_pin_direction.z;
     }
 
     void Physics::Load(pugi::xml_node& node)
@@ -859,6 +867,10 @@ namespace spartan
         m_cloth_damping      = node.attribute("cloth_damping").as_float(0.01f);
         m_cloth_iterations   = node.attribute("cloth_iterations").as_uint(8);
         m_cloth_wind_enabled = node.attribute("cloth_wind_enabled").as_bool(true);
+        m_cloth_pin_direction.x = node.attribute("cloth_pin_direction_x").as_float(0.0f);
+        m_cloth_pin_direction.y = node.attribute("cloth_pin_direction_y").as_float(1.0f);
+        m_cloth_pin_direction.z = node.attribute("cloth_pin_direction_z").as_float(0.0f);
+        m_cloth_pin_direction = m_cloth_pin_direction.LengthSquared() > 0.0001f ? m_cloth_pin_direction.Normalized() : Vector3::Up;
 
         // defer creation until tick so that renderable component is available
         // (components load in enum order, and renderable comes after physics)
@@ -1057,6 +1069,18 @@ namespace spartan
 
         // ensure safe physx mass range
         m_mass = min(max(mass, 0.001f), 10000.0f);
+
+        if (m_body_type == BodyType::Cloth)
+        {
+            float inverse_mass = 1.0f / m_mass;
+            for (ClothParticle& particle : m_cloth_particles)
+            {
+                if (particle.inverse_mass > 0.0f)
+                {
+                    particle.inverse_mass = inverse_mass;
+                }
+            }
+        }
 
         // update mass for all dynamic bodies
         for (auto* body : m_actors)
@@ -1299,6 +1323,21 @@ namespace spartan
         Create();
     }
 
+    void Physics::SetClothPinDirection(const Vector3& direction)
+    {
+        Vector3 normalized_direction = direction.LengthSquared() > 0.0001f ? direction.Normalized() : Vector3::Up;
+        if (m_cloth_pin_direction == normalized_direction)
+        {
+            return;
+        }
+
+        m_cloth_pin_direction = normalized_direction;
+        if (m_body_type == BodyType::Cloth)
+        {
+            Create();
+        }
+    }
+
     bool Physics::IsGrounded() const
     {
         // only controller bodies support ground queries, avoid spamming a warning for other body types
@@ -1533,6 +1572,10 @@ namespace spartan
         m_prev_rotation             = rotation;
         m_current_position          = position;
         m_current_rotation          = rotation;
+        m_vehicle_physics_position  = position;
+        m_vehicle_physics_rotation  = rotation;
+        m_vehicle_render_position   = position;
+        m_vehicle_render_rotation   = rotation;
 
         // for character controllers, use setPosition to teleport
         if (m_body_type == BodyType::Controller && m_controller)
@@ -1788,10 +1831,7 @@ namespace spartan
         Quaternion chassis_world_rot = chassis_entity->GetRotation();
         Quaternion chassis_world_rot_inv = chassis_world_rot.Conjugate();
 
-        // the chassis hull must never dip below where the wheels attach in body local space.
-        // if it does, the body lands on its own hull before the wheels can touch the ground,
-        // target_compression clamps to zero, no spring force is produced and the car can't move
-        // even though the wheels appear grounded. clamp every chassis vert y up to this floor
+        // keep the chassis hull above the wheel attachment plane
         const float chassis_hull_min_y = -car::cfg.suspension_height;
 
         // collect ALL vertices from all meshes into a single list, transformed to vehicle body space
@@ -2743,6 +2783,18 @@ namespace spartan
         return car::get_draw_suspension();
     }
 
+    Vector3 Physics::TransformVehiclePointToRender(const Vector3& point) const
+    {
+        return m_vehicle_render_position + m_vehicle_render_rotation * (m_vehicle_physics_rotation.Conjugate() * (point - m_vehicle_physics_position));
+    }
+
+    Quaternion Physics::TransformVehicleRotationToRender(const Quaternion& rotation) const
+    {
+        Quaternion result = m_vehicle_render_rotation * m_vehicle_physics_rotation.Conjugate() * rotation;
+        result.Normalize();
+        return result;
+    }
+
     void Physics::DrawDebugVisualization()
     {
         if (m_body_type != BodyType::Vehicle)
@@ -2758,47 +2810,28 @@ namespace spartan
         const Color color_susp_top   = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - suspension top
         const Color color_susp_bot   = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - suspension bottom/wheel
 
-        // anchor debug shapes to the actual rendered mesh aabb of each wheel, this guarantees the cylinders are exactly where the wheels are drawn
         Entity* vehicle_entity = GetEntity();
-        Quaternion vehicle_rot = vehicle_entity ? vehicle_entity->GetRotation() : Quaternion::Identity;
-        Vector3 vehicle_pos    = vehicle_entity ? vehicle_entity->GetPosition() : Vector3::Zero;
-        Vector3 vehicle_up     = vehicle_rot * Vector3::Up;
+        Vector3 vehicle_pos = vehicle_entity ? vehicle_entity->GetPosition() : Vector3::Zero;
 
         for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
         {
             Entity* wheel_entity = m_wheel_entities[w];
-            if (!wheel_entity)
+            const car::suspension_corner& corner = car::multibody.corners[w];
+            if (!wheel_entity || !corner.wheel_body)
             {
                 continue;
             }
 
-            // skip wheels with non finite world transforms, the bbox derived from such a transform
-            // would otherwise crash the frustum culler assert when wheel_render->Tick runs below
-            if (!wheel_entity->GetMatrix().IsFinite())
+            Vector3 wheel_position;
+            Quaternion wheel_rotation;
+            from_px_transform(corner.wheel_body->getGlobalPose(), wheel_position, wheel_rotation);
+            if (!wheel_position.IsFinite() || !wheel_rotation.IsFinite())
             {
-                SP_LOG_WARNING("non finite world matrix on wheel '%s' in DrawDebugVisualization, skipping", wheel_entity->GetObjectName().c_str());
                 continue;
             }
-
-            Vector3 wheel_center_v = wheel_entity->GetPosition();
-            if (Render* wheel_render = wheel_entity->GetComponent<Render>())
-            {
-                wheel_render->Tick();
-                Vector3 bbox_center = wheel_render->GetBoundingBox().GetCenter();
-                if (!bbox_center.IsNaN())
-                {
-                    wheel_center_v = bbox_center;
-                }
-                else
-                {
-                    SP_LOG_WARNING("non finite bbox center on wheel '%s' in DrawDebugVisualization, using entity origin", wheel_entity->GetObjectName().c_str());
-                }
-            }
-
-            // suspension top mount on the chassis, computed from the wheel offset stored in the physics module
-            PxVec3 attach = car::get_wheel_offset(w);
-            attach.y     += car::cfg.suspension_travel;
-            Vector3 susp_top_v = vehicle_pos + vehicle_rot * Vector3(attach.x, attach.y, attach.z);
+            Vector3 wheel_center_v = TransformVehiclePointToRender(wheel_position);
+            wheel_rotation         = TransformVehicleRotationToRender(wheel_rotation);
+            Vector3 susp_top_v     = car::body ? TransformVehiclePointToRender(from_px_vec3(car::body->getGlobalPose().transform(corner.chassis_shock_anchor))) : vehicle_pos;
 
             // suspension line
             if (car::get_draw_suspension())
@@ -2812,9 +2845,9 @@ namespace spartan
                 float radius     = car::get_wheel_radius();
                 float half_width = car::get_wheel_width() * 0.5f;
 
-                Vector3 right_v = vehicle_rot * Vector3::Right;
-                Vector3 fwd_v   = vehicle_rot * Vector3::Forward;
-                Vector3 up_v    = vehicle_up;
+                Vector3 right_v = wheel_rotation * Vector3::Right;
+                Vector3 fwd_v   = wheel_rotation * Vector3::Forward;
+                Vector3 up_v    = wheel_rotation * Vector3::Up;
 
                 PxVec3 right(right_v.x, right_v.y, right_v.z);
                 PxVec3 fwd  (fwd_v.x,   fwd_v.y,   fwd_v.z);
@@ -2997,8 +3030,10 @@ namespace spartan
             {
                 wheel_rotation *= Quaternion::FromAxisAngle(Vector3::Up, math::pi);
             }
+            wheel_position = TransformVehiclePointToRender(wheel_position);
+            wheel_rotation = TransformVehicleRotationToRender(wheel_rotation);
             wheel_position -= wheel_rotation * m_wheel_mesh_center_offsets[i];
-            wheel_entity->SetPosition(wheel_position + m_vehicle_render_offset);
+            wheel_entity->SetPosition(wheel_position);
             wheel_entity->SetRotation(wheel_rotation);
         }
     }
@@ -3671,7 +3706,7 @@ namespace spartan
 
             m_cloth_particles[i].position          = world_pos;
             m_cloth_particles[i].previous_position = world_pos;
-            m_cloth_particles[i].inverse_mass      = 1.0f;
+            m_cloth_particles[i].inverse_mass      = 1.0f / max(m_mass, 0.001f);
         }
 
         // build weld map: imported meshes duplicate vertices at uv seams and hard edges,
@@ -3707,20 +3742,19 @@ namespace spartan
             }
         }
 
-        // pin the top row: find the highest y and pin canonical particles near it
-        float max_y = -FLT_MAX;
+        float max_pin_projection = -FLT_MAX;
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
         {
             if (m_cloth_weld_map[i] == i)
             {
-                max_y = max(max_y, m_cloth_particles[i].position.y);
+                max_pin_projection = max(max_pin_projection, Vector3::Dot(m_cloth_particles[i].position, m_cloth_pin_direction));
             }
         }
 
         const float pin_threshold = 0.05f;
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
         {
-            if (m_cloth_weld_map[i] == i && m_cloth_particles[i].position.y >= max_y - pin_threshold)
+            if (m_cloth_weld_map[i] == i && Vector3::Dot(m_cloth_particles[i].position, m_cloth_pin_direction) >= max_pin_projection - pin_threshold)
             {
                 m_cloth_particles[i].inverse_mass = 0.0f;
             }
@@ -3816,27 +3850,16 @@ namespace spartan
         // wind
         if (m_cloth_wind_enabled)
         {
-            Vector3 wind            = World::GetWind();
-            float base_magnitude    = wind.Length();
-            if (base_magnitude > 0.0f)
+            float time = static_cast<float>(Timer::GetTimeSec());
+            for (auto& p : m_cloth_particles)
             {
-                Vector3 wind_dir = wind / base_magnitude;
-                float time       = static_cast<float>(Timer::GetTimeSec());
-
-                for (auto& p : m_cloth_particles)
+                if (p.inverse_mass == 0.0f)
                 {
-                    if (p.inverse_mass == 0.0f)
-                    {
-                        continue;
-                    }
-
-                    // per-particle phase offset from position for spatial variation
-                    float phase = p.position.x * 1.7f + p.position.y * 2.3f + p.position.z * 0.9f;
-                    float gust  = 1.0f + 0.4f * sinf(time * 3.0f + phase) + 0.2f * sinf(time * 7.1f + phase * 2.0f);
-
-                    Vector3 force = wind_dir * (base_magnitude * gust * p.inverse_mass);
-                    p.position += force * (dt * dt);
+                    continue;
                 }
+
+                Vector3 wind = World::SampleWind(p.position, time);
+                p.position += wind * (p.inverse_mass * dt * dt);
             }
         }
 

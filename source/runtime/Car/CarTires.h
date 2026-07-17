@@ -95,6 +95,7 @@ namespace car
         // --- setup ---
         PxTransform pose = body->getGlobalPose();
         PxVec3 chassis_right = pose.q.rotate(PxVec3(1, 0, 0));
+        PxVec3 chassis_forward = pose.q.rotate(PxVec3(0, 0, 1));
 
         if (tuning::log_pacejka)
         {
@@ -129,6 +130,14 @@ namespace car
                 PxVec3 chassis_up = pose.q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
                 float measured_camber = asinf(PxClamp(wheel_axis.dot(chassis_up), -1.0f, 1.0f));
                 dyn_camb = i == front_left || i == rear_left ? -measured_camber : measured_camber;
+                PxVec3 alignment_forward = wheel_axis.cross(chassis_up);
+                if (alignment_forward.normalize() > 1e-4f)
+                {
+                    w.dynamic_toe = atan2f(alignment_forward.dot(chassis_right), alignment_forward.dot(chassis_forward));
+                    float side = i == front_left || i == rear_left ? -1.0f : 1.0f;
+                    float static_toe = side * (is_front(i) ? tuning::spec.front_toe : tuning::spec.rear_toe);
+                    w.bump_steer = w.dynamic_toe - static_toe;
+                }
             }
 
             w.effective_radius = wr_eff;
@@ -251,15 +260,25 @@ namespace car
             float lat_f = 0.0f, long_f = 0.0f;
 
             // smoothstep blend: 0 at rest, 1 at full speed, smooth transition in between
-            float blend_lo = 0.1f;
-            float blend_hi = tuning::spec.min_slip_speed;
+            float blend_lo = 0.5f;
+            float blend_hi = PxMax(tuning::spec.min_slip_speed * 2.0f, 1.0f);
             float blend_t  = PxClamp((max_v - blend_lo) / PxMax(blend_hi - blend_lo, 0.01f), 0.0f, 1.0f);
             float pacejka_weight = blend_t * blend_t * (3.0f - 2.0f * blend_t);
 
             // static friction model (dominant at rest / very low speed)
-            float friction_gain = cfg.mass * static_friction_gain_per_kg;
-            float static_lat_f  = PxClamp(-vy * friction_gain, -peak_force_lat * 0.8f, peak_force_lat * 0.8f);
-            float static_long_f = PxClamp((wheel_speed - vx) * friction_gain, -peak_force_long * 0.8f, peak_force_long * 0.8f);
+            float corner_mass = PxMax(cfg.mass * 0.25f, 1.0f);
+            float effective_longitudinal_mass = 1.0f / (1.0f / corner_mass + wr_eff * wr_eff / wmoi);
+            float inverse_dt = 1.0f / PxMax(dt, 0.001f);
+            float static_lat_f = PxClamp(-vy * corner_mass * inverse_dt, -peak_force_lat * 0.8f, peak_force_lat * 0.8f);
+            float static_long_f = PxClamp((wheel_speed - vx) * effective_longitudinal_mass * inverse_dt, -peak_force_long * 0.8f, peak_force_long * 0.8f);
+            float static_x = static_long_f / PxMax(peak_force_long * 0.8f, 1.0f);
+            float static_y = static_lat_f / PxMax(peak_force_lat * 0.8f, 1.0f);
+            float static_magnitude = sqrtf(static_x * static_x + static_y * static_y);
+            if (static_magnitude > 1.0f)
+            {
+                static_long_f /= static_magnitude;
+                static_lat_f /= static_magnitude;
+            }
 
             float effective_slip_angle = w.slip_angle;
             if (fabsf(effective_slip_angle) < tuning::spec.slip_angle_deadband)

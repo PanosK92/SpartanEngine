@@ -383,7 +383,7 @@ namespace spartan::geometry_generation
 
     static void generate_cone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, float height = 2.0f)
     {
-        generate_cylinder(vertices, indices, 0.0f, radius, height);
+        generate_cylinder(vertices, indices, 0.0f, radius, height, 32, 8);
     }
 
     static void generate_foliage_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count)

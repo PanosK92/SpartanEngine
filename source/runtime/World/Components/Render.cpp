@@ -108,17 +108,20 @@ namespace spartan
         node.append_attribute("max_shadow_distance") = m_max_distance_shadow;
 
         // instances
-        pugi::xml_node instances_node = node.append_child("Instances");
-        for (const auto& instance : m_instances)
+        if (!m_instances.empty())
         {
-            pugi::xml_node t_node = instances_node.append_child("Transform");
-            math::Matrix matrix = instance.GetMatrix();
-            std::stringstream ss;
-            ss << matrix.m00 << " " << matrix.m01 << " " << matrix.m02 << " " << matrix.m03 << " "
-               << matrix.m10 << " " << matrix.m11 << " " << matrix.m12 << " " << matrix.m13 << " "
-               << matrix.m20 << " " << matrix.m21 << " " << matrix.m22 << " " << matrix.m23 << " "
-               << matrix.m30 << " " << matrix.m31 << " " << matrix.m32 << " " << matrix.m33;
-            t_node.append_attribute("matrix") = ss.str().c_str();
+            pugi::xml_node instances_node = node.append_child("Instances");
+            for (const auto& instance : m_instances)
+            {
+                pugi::xml_node t_node = instances_node.append_child("Transform");
+                math::Matrix matrix = instance.GetMatrix();
+                std::stringstream ss;
+                ss << matrix.m00 << " " << matrix.m01 << " " << matrix.m02 << " " << matrix.m03 << " "
+                   << matrix.m10 << " " << matrix.m11 << " " << matrix.m12 << " " << matrix.m13 << " "
+                   << matrix.m20 << " " << matrix.m21 << " " << matrix.m22 << " " << matrix.m23 << " "
+                   << matrix.m30 << " " << matrix.m31 << " " << matrix.m32 << " " << matrix.m33;
+                t_node.append_attribute("matrix") = ss.str().c_str();
+            }
         }
     }
 

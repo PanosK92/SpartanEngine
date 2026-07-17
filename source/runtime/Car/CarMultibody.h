@@ -215,7 +215,7 @@ namespace car
         return joint;
     }
 
-    inline PxRigidDynamic* create_link(const PxVec3& world_start, const PxVec3& world_end, float mass)
+    inline PxRigidDynamic* create_link(const PxVec3& world_start, const PxVec3& world_end, float mass, PxRigidDynamic* start_actor = nullptr)
     {
         PxVec3 delta = world_end - world_start;
         float length = delta.magnitude();
@@ -233,50 +233,55 @@ namespace car
         PxRigidDynamic* actor = create_mechanism_actor(PxTransform((world_start + world_end) * 0.5f, rotation), geometry, mass);
         if (actor)
         {
-            create_spherical_joint(body, actor, world_start);
+            PxRigidActor* anchor_actor = start_actor ? static_cast<PxRigidActor*>(start_actor) : static_cast<PxRigidActor*>(body);
+            if (!create_spherical_joint(anchor_actor, actor, world_start))
+            {
+                multibody.actors[--multibody.actor_count] = nullptr;
+                actor->release();
+                return nullptr;
+            }
         }
         return actor;
     }
 
-    inline void connect_link_to_upright(PxRigidDynamic* link, PxRigidDynamic* upright, const PxVec3& world_anchor)
+    inline bool connect_link_to_upright(PxRigidDynamic* link, PxRigidDynamic* upright, const PxVec3& world_anchor)
     {
-        if (link && upright)
+        if (!link || !upright)
         {
-            create_spherical_joint(link, upright, world_anchor);
+            return false;
         }
+        return create_spherical_joint(link, upright, world_anchor) != nullptr;
     }
 
-    inline void add_link_member(suspension_corner& corner, const PxVec3& world_start, const PxVec3& world_end, float mass, PxRigidDynamic* start_actor = nullptr)
+    inline bool add_link_member(suspension_corner& corner, const PxVec3& world_start, const PxVec3& world_end, float mass, PxRigidDynamic* start_actor = nullptr)
     {
         if (corner.member_count >= max_suspension_members)
         {
-            return;
+            return false;
         }
 
-        PxRigidDynamic* link = create_link(world_start, world_end, mass);
+        PxRigidDynamic* link = create_link(world_start, world_end, mass, start_actor);
         if (!link)
         {
-            return;
+            return false;
         }
 
-        if (start_actor)
+        if (!connect_link_to_upright(link, corner.upright, world_end))
         {
-            PxJoint* chassis_joint = multibody.joints[--multibody.joint_count];
-            chassis_joint->release();
-            create_spherical_joint(start_actor, link, world_start);
+            return false;
         }
-        connect_link_to_upright(link, corner.upright, world_end);
         suspension_member& member = corner.members[corner.member_count++];
         member.actor = link;
         member.local_start = link->getGlobalPose().transformInv(world_start);
         member.local_end = link->getGlobalPose().transformInv(world_end);
+        return true;
     }
 
-    inline void add_wishbone(suspension_corner& corner, const PxVec3& inner_front, const PxVec3& inner_rear, const PxVec3& outer, float mass)
+    inline bool add_wishbone(suspension_corner& corner, const PxVec3& inner_front, const PxVec3& inner_rear, const PxVec3& outer, float mass)
     {
         if (corner.member_count > max_suspension_members - 2)
         {
-            return;
+            return false;
         }
 
         PxVec3 center = (inner_front + inner_rear + outer) / 3.0f;
@@ -284,12 +289,13 @@ namespace car
         PxRigidDynamic* arm = create_mechanism_actor(PxTransform(center), PxBoxGeometry(extents), mass);
         if (!arm)
         {
-            return;
+            return false;
         }
 
-        create_spherical_joint(body, arm, inner_front);
-        create_spherical_joint(body, arm, inner_rear);
-        create_spherical_joint(arm, corner.upright, outer);
+        if (!create_spherical_joint(body, arm, inner_front) || !create_spherical_joint(body, arm, inner_rear) || !create_spherical_joint(arm, corner.upright, outer))
+        {
+            return false;
+        }
         suspension_member& front_member = corner.members[corner.member_count++];
         front_member.actor = arm;
         front_member.local_start = arm->getGlobalPose().transformInv(inner_front);
@@ -298,6 +304,7 @@ namespace car
         rear_member.actor = arm;
         rear_member.local_start = arm->getGlobalPose().transformInv(inner_rear);
         rear_member.local_end = arm->getGlobalPose().transformInv(outer);
+        return true;
     }
 
     inline bool add_macpherson_strut(suspension_corner& corner, const PxVec3& top, const PxVec3& bottom, float mass)
@@ -395,6 +402,37 @@ namespace car
         return PxMax(cfg.mass - mechanism_actor_mass(), 100.0f);
     }
 
+    inline void update_assembled_center_of_mass()
+    {
+        if (!body)
+        {
+            return;
+        }
+
+        float body_mass = body->getMass();
+        float total_mass = body_mass;
+        PxVec3 mechanism_moment = PxVec3(0.0f);
+        for (int i = 0; i < multibody.actor_count; i++)
+        {
+            PxRigidDynamic* actor = multibody.actors[i];
+            if (!actor)
+            {
+                continue;
+            }
+            float actor_mass = actor->getMass();
+            PxVec3 actor_center = actor->getGlobalPose().transform(actor->getCMassLocalPose().p);
+            total_mass += actor_mass;
+            mechanism_moment += actor_center * actor_mass;
+        }
+
+        PxTransform chassis_pose = body->getGlobalPose();
+        PxVec3 target_local(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
+        PxVec3 target_world = chassis_pose.transform(target_local);
+        PxVec3 chassis_center_world = (target_world * total_mass - mechanism_moment) / PxMax(body_mass, 1.0f);
+        PxVec3 chassis_center_local = chassis_pose.transformInv(chassis_center_world);
+        PxRigidBodyExt::setMassAndUpdateInertia(*body, body_mass, &chassis_center_local);
+    }
+
     inline bool create_suspension_corner(int wheel_index, const suspension_geometry& geometry)
     {
         suspension_corner& corner = multibody.corners[wheel_index];
@@ -458,15 +496,24 @@ namespace car
             };
             for (int i = 0; i < 4; i++)
             {
-                add_link_member(corner, hardpoint_world(chassis_pose, inner_points[i]), hardpoint_world(chassis_pose, outer_points[i]), tuning::spec.suspension_link_mass);
+                if (!add_link_member(corner, hardpoint_world(chassis_pose, inner_points[i]), hardpoint_world(chassis_pose, outer_points[i]), tuning::spec.suspension_link_mass))
+                {
+                    return false;
+                }
             }
         }
         else
         {
-            add_wishbone(corner, hardpoint_world(chassis_pose, lower_inner_front_local), hardpoint_world(chassis_pose, lower_inner_rear_local), hardpoint_world(chassis_pose, lower_outer_local), tuning::spec.suspension_link_mass);
+            if (!add_wishbone(corner, hardpoint_world(chassis_pose, lower_inner_front_local), hardpoint_world(chassis_pose, lower_inner_rear_local), hardpoint_world(chassis_pose, lower_outer_local), tuning::spec.suspension_link_mass))
+            {
+                return false;
+            }
             if (geometry.mechanism == suspension_mechanism::double_wishbone)
             {
-                add_wishbone(corner, hardpoint_world(chassis_pose, upper_inner_front_local), hardpoint_world(chassis_pose, upper_inner_rear_local), hardpoint_world(chassis_pose, upper_outer_local), tuning::spec.suspension_link_mass);
+                if (!add_wishbone(corner, hardpoint_world(chassis_pose, upper_inner_front_local), hardpoint_world(chassis_pose, upper_inner_rear_local), hardpoint_world(chassis_pose, upper_outer_local), tuning::spec.suspension_link_mass))
+                {
+                    return false;
+                }
             }
         }
 
@@ -484,9 +531,14 @@ namespace car
         corner.shock_rest_length = (shock_top_world - shock_bottom_world).magnitude() + static_load / PxMax(spring_stiffness[wheel_index], 1.0f);
         corner.shock_length = (shock_top_world - shock_bottom_world).magnitude();
 
-        corner.travel_joint = geometry.mechanism == suspension_mechanism::macpherson ? nullptr : PxDistanceJointCreate(*multibody.physics, body, local_anchor(body, shock_top_world), corner.upright, local_anchor(corner.upright, shock_bottom_world));
-        if (corner.travel_joint)
+        corner.travel_joint = nullptr;
+        if (geometry.mechanism != suspension_mechanism::macpherson)
         {
+            corner.travel_joint = PxDistanceJointCreate(*multibody.physics, body, local_anchor(body, shock_top_world), corner.upright, local_anchor(corner.upright, shock_bottom_world));
+            if (!corner.travel_joint)
+            {
+                return false;
+            }
             corner.travel_joint->setMinDistance(PxMax(corner.shock_rest_length - cfg.suspension_travel, 0.05f));
             corner.travel_joint->setMaxDistance(corner.shock_rest_length + cfg.suspension_travel * 0.15f);
             corner.travel_joint->setDistanceJointFlag(PxDistanceJointFlag::eMIN_DISTANCE_ENABLED, true);
@@ -550,7 +602,10 @@ namespace car
             float side = wheel_index == front_left ? -1.0f : 1.0f;
             PxVec3 rack_end_world = hardpoint_world(chassis_pose, PxVec3(side * cfg.track_front * 0.35f, rack_y, front_z));
             PxVec3 upright_anchor_world = hardpoint_world(chassis_pose, wheel_offsets[wheel_index] + PxVec3(0.0f, tuning::spec.front_geometry.tie_rod_y, tuning::spec.front_geometry.tie_rod_z));
-            add_link_member(corner, rack_end_world, upright_anchor_world, tuning::spec.suspension_link_mass, multibody.rack);
+            if (!add_link_member(corner, rack_end_world, upright_anchor_world, tuning::spec.suspension_link_mass, multibody.rack))
+            {
+                return false;
+            }
         }
         return true;
     }
@@ -574,14 +629,17 @@ namespace car
         multibody = multibody_state();
     }
 
-    inline bool create_multibody(PxPhysics* physics, PxScene* scene)
+    inline bool create_multibody(PxPhysics* physics, PxScene* scene, bool destroy_existing = true)
     {
         if (!body || !physics || !scene || !material)
         {
             return false;
         }
 
-        destroy_multibody();
+        if (destroy_existing)
+        {
+            destroy_multibody();
+        }
         multibody.physics = physics;
         multibody.scene = scene;
         body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
@@ -612,6 +670,7 @@ namespace car
             return false;
         }
 
+        update_assembled_center_of_mass();
         multibody.initialized = true;
         return true;
     }
@@ -624,10 +683,21 @@ namespace car
         PxScene* scene = multibody.scene;
         multibody_motion_state motion = preserve_motion ? capture_multibody_motion() : multibody_motion_state();
         bool was_sleeping = preserve_motion && vehicle_sleeping;
-        if (!physics || !scene || !create_multibody(physics, scene))
+        if (!physics || !scene)
         {
             return false;
         }
+        multibody_state previous = multibody;
+        multibody = multibody_state();
+        if (!create_multibody(physics, scene, false))
+        {
+            multibody = previous;
+            return false;
+        }
+        multibody_state replacement = multibody;
+        multibody = previous;
+        destroy_multibody();
+        multibody = replacement;
         restore_multibody_motion(motion);
         if (was_sleeping)
         {
@@ -738,7 +808,14 @@ namespace car
             PxVec3 delta = top - bottom;
             float length = PxMax(delta.magnitude(), 0.001f);
             PxVec3 direction = delta / length;
-            float relative_speed = PxClamp((actor_point_velocity(body, top) - actor_point_velocity(corner.upright, bottom)).dot(direction), -tuning::spec.max_damper_velocity, tuning::spec.max_damper_velocity);
+            PxVec3 top_velocity = actor_point_velocity(body, top);
+            PxVec3 bottom_velocity = actor_point_velocity(corner.upright, bottom);
+            float relative_speed = PxClamp((top_velocity - bottom_velocity).dot(direction), -tuning::spec.max_damper_velocity, tuning::spec.max_damper_velocity);
+            float wheel_vertical_speed = (bottom_velocity - top_velocity).dot(body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f)));
+            if (fabsf(wheel_vertical_speed) > 0.01f)
+            {
+                wheels[i].motion_ratio = PxClamp(fabsf(relative_speed / wheel_vertical_speed), 0.1f, 3.0f);
+            }
             float compression = corner.shock_rest_length - length;
             float damper = spring_damping[i] * (relative_speed < 0.0f ? tuning::spec.damping_bump_ratio : tuning::spec.damping_rebound_ratio);
             float force_magnitude = spring_stiffness[i] * compression - damper * relative_speed;

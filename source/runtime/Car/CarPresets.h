@@ -58,6 +58,25 @@ namespace car
         float link_spread_z              = 0.22f;
     };
 
+    struct assist_settings
+    {
+        float steering_speed_reduction = 0.45f;
+        float steering_speed_reference = 50.0f;
+        float abs_level = 1.0f;
+        float traction_control_level = 1.0f;
+    };
+
+    struct validation_targets
+    {
+        float settle_speed_max = 0.05f;
+        float zero_to_100_min = 2.0f;
+        float zero_to_100_max = 12.0f;
+        float braking_distance_min = 25.0f;
+        float braking_distance_max = 55.0f;
+        float skidpad_g_min = 0.70f;
+        float skidpad_g_max = 1.50f;
+    };
+
     struct car_preset
     {
         car_preset()
@@ -68,6 +87,8 @@ namespace car
             upright_mass         = 14.0f;
             suspension_link_mass = 2.5f;
             steering_rack_mass   = 4.0f;
+            assists              = assist_settings();
+            validation           = validation_targets();
         }
 
         const char* name;
@@ -94,6 +115,8 @@ namespace car
         float upright_mass;
         float suspension_link_mass;
         float steering_rack_mass;
+        assist_settings assists;
+        validation_targets validation;
 
         // engine
         float engine_idle_rpm;
@@ -165,7 +188,6 @@ namespace car
         float load_reference;
         float rear_grip_ratio;           // rear axle mu relative to front, 1.0 = matched compound
         float slip_angle_deadband;
-        float min_lateral_grip;          // unused, kept for xml compatibility
         float camber_thrust_coeff;
         float max_slip_angle;
         float tire_pressure;             // bar, nominal hot pressure
@@ -232,7 +254,6 @@ namespace car
 
         // steering
         float max_steer_angle;
-        float high_speed_steer_reduction; // unused, kept for xml compatibility
         float steering_rate;
         float self_align_gain;            // scales pneumatic trail sat, 1.0 = physical
         float steering_linearity;
@@ -249,7 +270,6 @@ namespace car
         // wheels
         float airborne_wheel_decay;
         float bearing_friction;
-        float ground_match_rate;         // unused, kept for xml compatibility
         float handbrake_sliding_factor;
         float handbrake_torque;
 
@@ -281,7 +301,6 @@ namespace car
         // damping
         float linear_damping;
         float angular_damping;
-        float yaw_damping;               // unused, kept for xml compatibility
 
         // abs
         bool  abs_enabled;

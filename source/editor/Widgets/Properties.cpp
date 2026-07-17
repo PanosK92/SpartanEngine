@@ -1451,7 +1451,7 @@ void Properties::ShowPhysics(Physics* body) const
         // body type
         static vector<string> body_types = {
             "Box", "Sphere", "Plane", "Capsule",
-            "Mesh", "Mesh (Convex)", "Controller", "Vehicle", "Cloth"
+            "Mesh", "Mesh (Convex)", "Controller", "Vehicle", "Cloth", "Unset"
         };
 
         uint32_t body_type_index = static_cast<uint32_t>(body->GetBodyType());
@@ -1541,10 +1541,12 @@ void Properties::ShowPhysics(Physics* body) const
             float cloth_stiffness  = body->GetClothStiffness();
             float cloth_damping    = body->GetClothDamping();
             float cloth_iterations = static_cast<float>(body->GetClothIterations());
+            Vector3 cloth_pin_direction = body->GetClothPinDirection();
 
             property_float("Stiffness", &cloth_stiffness, 0.01f, 0.0f, 1.0f, "constraint stiffness per iteration", "%.2f");
             property_float("Damping", &cloth_damping, 0.001f, 0.0f, 1.0f, "velocity damping factor", "%.3f");
             property_float("Iterations", &cloth_iterations, 1.0f, 1.0f, 32.0f, "constraint solver iterations per step", "%.0f");
+            property_vector3("Pin Direction", cloth_pin_direction, "direction toward the fixed edge");
 
             bool cloth_wind = body->GetClothWindEnabled();
             if (property_toggle("Wind", &cloth_wind, "allow wind to affect cloth simulation"))
@@ -1563,6 +1565,10 @@ void Properties::ShowPhysics(Physics* body) const
             if (static_cast<uint32_t>(cloth_iterations) != body->GetClothIterations())
             {
                 body->SetClothIterations(static_cast<uint32_t>(cloth_iterations));
+            }
+            if (cloth_pin_direction != body->GetClothPinDirection())
+            {
+                body->SetClothPinDirection(cloth_pin_direction);
             }
         }
 

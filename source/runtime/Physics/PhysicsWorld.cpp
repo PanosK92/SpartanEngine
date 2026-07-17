@@ -362,28 +362,31 @@ namespace spartan
             }
         }
 
-        // debug visualization (editor only, skip during play)
-        if (cvar_physics.GetValueAs<bool>() && !Engine::IsFlagSet(EngineMode::Playing))
+    }
+
+    void PhysicsWorld::DrawDebugVisualization()
+    {
+        if (!cvar_physics.GetValueAs<bool>() || Engine::IsFlagSet(EngineMode::Playing) || ProgressTracker::IsLoading())
         {
-            lock_guard<recursive_mutex> lock(physx_mutex);
+            return;
+        }
 
-            // run a near-zero step so physx populates the render buffer (physx requires dt > 0)
-            scene->simulate(numeric_limits<float>::min());
-            scene->fetchResults(true);
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        scene->simulate(numeric_limits<float>::min());
+        scene->fetchResults(true);
 
-            const PxRenderBuffer& rb = scene->getRenderBuffer();
-            for (PxU32 i = 0; i < rb.getNbLines(); i++)
-            {
-                const PxDebugLine& line = rb.getLines()[i];
-                Vector3 start(line.pos0.x, line.pos0.y, line.pos0.z);
-                Vector3 end(line.pos1.x, line.pos1.y, line.pos1.z);
-                Color color(
-                    ((line.color0 >> 16) & 0xFF) / 255.0f,
-                    ((line.color0 >> 8) & 0xFF) / 255.0f,
-                    (line.color0 & 0xFF) / 255.0f
-                );
-                Renderer::DrawLine(start, end, color, color);
-            }
+        const PxRenderBuffer& rb = scene->getRenderBuffer();
+        for (PxU32 i = 0; i < rb.getNbLines(); i++)
+        {
+            const PxDebugLine& line = rb.getLines()[i];
+            Vector3 start(line.pos0.x, line.pos0.y, line.pos0.z);
+            Vector3 end(line.pos1.x, line.pos1.y, line.pos1.z);
+            Color color(
+                ((line.color0 >> 16) & 0xFF) / 255.0f,
+                ((line.color0 >> 8) & 0xFF) / 255.0f,
+                (line.color0 & 0xFF) / 255.0f
+            );
+            Renderer::DrawLine(start, end, color, color);
         }
     }
 
@@ -431,6 +434,11 @@ namespace spartan
     float PhysicsWorld::GetInterpolationAlpha()
     {
         return interpolation::alpha;
+    }
+
+    float PhysicsWorld::GetFixedTimeStep()
+    {
+        return 1.0f / settings::hz;
     }
 
     void PhysicsWorld::SetVehicleStepCallback(const function<void(float)>& callback)

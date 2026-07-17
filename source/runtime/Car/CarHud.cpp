@@ -554,7 +554,7 @@ namespace spartan::car_hud
 
     void draw_driver_hud(Physics* physics)
     {
-        if (!Engine::IsFlagSet(EngineMode::EditorVisible) || !physics)
+        if (!physics)
         {
             return;
         }
@@ -886,6 +886,12 @@ namespace spartan::car_hud
                 car::reset_upgrades();
             }
             hud_tooltip("removes all upgrades, restores base preset");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Run validation"))
+            {
+                car::request_validation();
+            }
+            hud_tooltip("runs deterministic settle acceleration braking coastdown handling and bump scenarios");
 
             bool abs_enabled  = physics->GetAbsEnabled();
             bool tc_enabled   = physics->GetTcEnabled();
@@ -937,6 +943,12 @@ namespace spartan::car_hud
                 hud_tooltip("Differential type: Open splits torque freely, Locked equalises wheel speed, LSD biases under load.");
                 ImGui::EndTable();
             }
+            ImGui::SetNextItemWidth(160.0f);
+            ImGui::SliderFloat("High speed steering assist", &car::tuning::spec.assists.steering_speed_reduction, 0.0f, 0.9f, "%.2f");
+            ImGui::SetNextItemWidth(160.0f);
+            ImGui::SliderFloat("ABS level", &car::tuning::spec.assists.abs_level, 0.0f, 1.0f, "%.2f");
+            ImGui::SetNextItemWidth(160.0f);
+            ImGui::SliderFloat("TCS level", &car::tuning::spec.assists.traction_control_level, 0.0f, 1.0f, "%.2f");
 
             auto draw_stages = [](const char* name, int& level, int maxs)
             {
@@ -1062,6 +1074,8 @@ namespace spartan::car_hud
             ImGui::TextColored(imvec4_from_u32(text_primary), "%s", label);
             ImGui::SameLine();
             ImGui::TextColored(imvec4_from_u32(comp_color), "  %.0f%%", comp * 100.0f);
+            int wheel_index = static_cast<int>(wheel);
+            ImGui::TextColored(imvec4_from_u32(text_dim), "camber %+.2f  toe %+.2f  bump %+.2f  mr %.2f", car::get_wheel_dynamic_camber(wheel_index) * 180.0f / pi, car::get_wheel_dynamic_toe(wheel_index) * 180.0f / pi, car::get_wheel_bump_steer(wheel_index) * 180.0f / pi, car::get_wheel_motion_ratio(wheel_index));
 
             if (ImGui::BeginTable("##susp_cell", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoBordersInBody))
             {
@@ -1172,6 +1186,9 @@ namespace spartan::car_hud
                 ImGui::EndTable();
             }
 
+            ImGui::TextColored(imvec4_from_u32(text_label), "derived roll stiffness");
+            ImGui::SameLine();
+            ImGui::TextColored(imvec4_from_u32(text_primary), "front %.0f  rear %.0f Nm/rad", car::get_axle_roll_stiffness(true), car::get_axle_roll_stiffness(false));
             float psi     = physics->GetTirePressure();
             float psi_opt = physics->GetTirePressureOptimal();
             float dpsi    = psi - psi_opt;
@@ -1609,7 +1626,7 @@ namespace spartan::car_hud
 
     void draw_telemetry_window(Car* car_instance, Physics* physics, bool* p_open)
     {
-        if (!Engine::IsFlagSet(EngineMode::EditorVisible) || !car_instance || !physics)
+        if (!car_instance || !physics)
         {
             return;
         }

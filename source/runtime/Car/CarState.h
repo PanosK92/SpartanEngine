@@ -247,6 +247,9 @@ namespace car
         surface_type contact_surface      = surface_asphalt;
         float        effective_radius     = 0.0f;
         float        dynamic_camber       = 0.0f;
+        float        dynamic_toe          = 0.0f;
+        float        bump_steer           = 0.0f;
+        float        motion_ratio         = 1.0f;
     };
 
     struct input_state
@@ -307,8 +310,6 @@ namespace car
     // cooldown after a shift completes before the next auto-shift can occur
     inline constexpr float shift_cooldown_time     = 0.5f;
     // "large" static friction gain applied under the low-slip static-friction model,
-    // units are (N per m/s) per kg of chassis mass
-    inline constexpr float static_friction_gain_per_kg = 10.0f;
     inline int             last_shift_direction    = 0;
     inline float           redline_hold_timer      = 0.0f;
     inline float           boost_pressure          = 0.0f;
@@ -747,6 +748,9 @@ namespace car
         fixed |= sanitize_float(w.thermal.core);
         fixed |= sanitize_float(w.effective_radius);
         fixed |= sanitize_float(w.dynamic_camber);
+        fixed |= sanitize_float(w.dynamic_toe);
+        fixed |= sanitize_float(w.bump_steer);
+        fixed |= sanitize_float(w.motion_ratio);
         return fixed;
     }
 

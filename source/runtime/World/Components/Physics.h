@@ -276,6 +276,8 @@ namespace spartan
         void SetDrawSuspension(bool enabled);
         bool GetDrawSuspension() const;
         void DrawDebugVisualization();                          // call each frame to draw debug lines
+        math::Vector3 TransformVehiclePointToRender(const math::Vector3& point) const;
+        math::Quaternion TransformVehicleRotationToRender(const math::Quaternion& rotation) const;
 
         // sync physics wheel positions from wheel entity positions
         void SyncWheelOffsetsFromEntities();
@@ -303,6 +305,8 @@ namespace spartan
         void     SetClothIterations(uint32_t count) { m_cloth_iterations = std::clamp(count, 1u, 32u); }
         bool GetClothWindEnabled() const             { return m_cloth_wind_enabled; }
         void SetClothWindEnabled(bool enabled)       { m_cloth_wind_enabled = enabled; }
+        const math::Vector3& GetClothPinDirection() const { return m_cloth_pin_direction; }
+        void SetClothPinDirection(const math::Vector3& direction);
 
     private:
         // tick helpers (broken out for readability)
@@ -368,8 +372,10 @@ namespace spartan
         math::Quaternion m_current_rotation;                     // rotation at current physics step
         bool m_interpolation_initialized  = false;               // flag to track first-frame initialization
 
-        // vehicle chassis render extrapolation offset, smooths motion between fixed physx steps
-        math::Vector3 m_vehicle_render_offset = math::Vector3::Zero;
+        math::Vector3 m_vehicle_physics_position = math::Vector3::Zero;
+        math::Quaternion m_vehicle_physics_rotation;
+        math::Vector3 m_vehicle_render_position = math::Vector3::Zero;
+        math::Quaternion m_vehicle_render_rotation;
 
         // car owner (ticked automatically through entity system)
         class Car* m_car = nullptr;
@@ -400,5 +406,6 @@ namespace spartan
         float m_cloth_damping                 = 0.01f;   // velocity damping (0-1)
         uint32_t m_cloth_iterations           = 8;       // constraint solver iterations per step
         bool m_cloth_wind_enabled             = true;
+        math::Vector3 m_cloth_pin_direction   = math::Vector3::Up;
     };
 }

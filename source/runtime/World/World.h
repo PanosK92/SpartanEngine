@@ -93,6 +93,7 @@ namespace spartan
 
         // wind
         static const math::Vector3& GetWind();
+        static math::Vector3 SampleWind(const math::Vector3& position, float time);
         static void SetWind(const math::Vector3& wind);
 
         // world metadata

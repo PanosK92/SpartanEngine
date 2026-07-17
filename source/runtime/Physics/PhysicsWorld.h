@@ -43,6 +43,7 @@ namespace spartan
         static void Initialize();
         static void Shutdown();
         static void Tick();
+        static void DrawDebugVisualization();
 
         static void AddActor(physx::PxRigidActor* actor);
         static void RemoveActor(physx::PxRigidActor* actor);
@@ -54,6 +55,7 @@ namespace spartan
         // interpolation alpha for smooth rendering between fixed physics steps
         // 0 = at previous physics state, 1 = at current physics state
         static float GetInterpolationAlpha();
+        static float GetFixedTimeStep();
 
         // vehicle force model hook, invoked once per fixed simulation step right before
         // scene->simulate so the car applies its forces for exactly one integration step

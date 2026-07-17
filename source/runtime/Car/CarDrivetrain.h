@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #pragma once
 #include "CarState.h"
+#include "CarAssists.h"
 #include "CarPacejka.h"
 //==========================================
 
@@ -494,63 +495,23 @@ namespace car
 
         float eb_total = tuning::spec.engine_friction * engine_rpm * 0.1f * fabsf(tuning::spec.gear_ratios[current_gear]) * tuning::spec.final_drive;
         engine_brake_torque = eb_total;
-        float share = eb_total / (float)driven_count;
-        // ramp the brake direction smoothly through zero instead of a hard sign flip.
-        // a hard sign flip with a 14 nm share oscillates the rear wheels every tick at
-        // rest, which shows up in telemetry as alternating positive and negative net torque
+        float average_angular_velocity = 0.0f;
+        for (int i = 0; i < wheel_count; i++)
+        {
+            if (is_driven(i))
+            {
+                average_angular_velocity += wheels[i].angular_velocity;
+            }
+        }
+        average_angular_velocity /= static_cast<float>(driven_count);
         constexpr float brake_dir_band = 1.0f;
-        for (int i = 0; i < wheel_count; i++)
-        {
-            if (!is_driven(i))
-            {
-                continue;
-            }
-            float w_sign = PxClamp(wheels[i].angular_velocity / brake_dir_band, -1.0f, 1.0f);
-            wheels[i].net_torque += -w_sign * share;
-        }
-    }
-
-    // traction control: reduces engine torque when any driven wheel is exceeding slip threshold.
-    // returns the (possibly reduced) engine torque
-    inline float apply_traction_control(float engine_torque, float forward_speed_ms, float dt)
-    {
-        tc_active = false;
-        if (!tuning::spec.tc_enabled)
-        {
-            tc_reduction = 0.0f;
-            return engine_torque;
-        }
-
-        float ground_v = PxMax(fabsf(forward_speed_ms), 0.1f);
-        float max_slip = 0.0f;
-        for (int i = 0; i < wheel_count; i++)
-        {
-            if (!is_driven(i) || !wheels[i].grounded)
-            {
-                continue;
-            }
-            float wheel_v = fabsf(wheels[i].angular_velocity * cfg.wheel_radius_for(i));
-            float raw_slip = (wheel_v - ground_v) / PxMax(wheel_v, ground_v);
-            if (raw_slip > 0.0f)
-            {
-                max_slip = PxMax(max_slip, raw_slip);
-            }
-        }
-
-        float target_reduction = 0.0f;
-        if (max_slip > tuning::spec.tc_slip_threshold)
-        {
-            tc_active = true;
-            target_reduction = PxClamp((max_slip - tuning::spec.tc_slip_threshold) * 5.0f, 0.0f, tuning::spec.tc_power_reduction);
-        }
-
-        tc_reduction = lerp(tc_reduction, target_reduction, exp_decay(tuning::spec.tc_response_rate, dt));
-        return engine_torque * (1.0f - tc_reduction);
+        float direction = PxClamp(average_angular_velocity / brake_dir_band, -1.0f, 1.0f);
+        apply_drive_torque(-direction * eb_total);
     }
 
     // forward-drive torque path: evaluate engine torque -> traction control -> driveshaft
     // compliance -> differential. returns the torque ultimately sent to the axles.
-    inline void apply_forward_drive_torque(float forward_speed_ms, float dt)
+    inline void apply_forward_drive_torque(float dt)
     {
         float base_torque    = get_engine_torque(engine_rpm);
         float boosted_torque = base_torque * (1.0f + boost_pressure * tuning::spec.boost_torque_mult);
@@ -561,7 +522,7 @@ namespace car
         motor_torque         = lerp(motor_torque, elec_target, exp_decay(elec_rate, dt));
 
         float combined       = ice_torque + motor_torque;
-        float delivered      = apply_traction_control(combined, forward_speed_ms, dt);
+        float delivered      = combined * assisted_actuators.engine_torque_scale;
 
         float ice_delivered = ice_torque;
         float elec_delivered = motor_torque;
@@ -580,23 +541,20 @@ namespace car
         // electric motor couples near final drive (dedicated reduction), not full variable gearbox ratio
         float elec_axle_torque = elec_delivered * tuning::spec.final_drive * clutch * tuning::spec.drivetrain_efficiency;
 
-        // driveshaft torsional compliance applies to the ice path
+        float axle_torque = elec_axle_torque;
         float stiffness = tuning::spec.driveshaft_stiffness;
         if (stiffness > 0.0f)
         {
             float target_twist = rigid_torque / stiffness;
             constexpr float twist_rate = 50.0f;
             driveshaft_twist = lerp(driveshaft_twist, target_twist, exp_decay(twist_rate, dt));
-            float wheel_torque = driveshaft_twist * stiffness;
-            apply_drive_torque(wheel_torque);
+            axle_torque += driveshaft_twist * stiffness;
         }
         else
         {
-            apply_drive_torque(rigid_torque);
+            axle_torque += rigid_torque;
         }
-
-        // elec added directly at axle level
-        apply_drive_torque(elec_axle_torque);
+        apply_drive_torque(axle_torque);
     }
 
     inline void apply_reverse_drive_torque(float dt)
@@ -612,8 +570,6 @@ namespace car
     inline void relax_drivetrain(float dt)
     {
         driveshaft_twist = lerp(driveshaft_twist, 0.0f, exp_decay(10.0f, dt));
-        tc_reduction       = lerp(tc_reduction, 0.0f, exp_decay(tuning::spec.tc_response_rate * 2.0f, dt));
-        tc_active          = false;
         motor_torque       = 0.0f;
     }
 
@@ -641,30 +597,12 @@ namespace car
             float front_t = total_torque * tuning::spec.brake_bias_front * 0.5f;
             float rear_t  = total_torque * (1.0f - tuning::spec.brake_bias_front) * 0.5f;
 
-            abs_phase += tuning::spec.abs_pulse_frequency * dt;
-            if (abs_phase > 1.0f)
-            {
-                abs_phase -= 1.0f;
-            }
-
             for (int i = 0; i < wheel_count; i++)
             {
                 float t = is_front(i) ? front_t : rear_t;
 
                 float brake_efficiency = get_brake_efficiency(wheels[i].brake_temp);
-                t *= brake_efficiency;
-
-                abs_active[i] = false;
-                if (tuning::spec.abs_enabled && wheels[i].grounded)
-                {
-                    float load_f = PxClamp(wheels[i].tire_load / PxMax(tuning::spec.load_reference, 1000.0f), 0.6f, 1.6f);
-                    float th = tuning::spec.abs_slip_threshold * (1.0f - tuning::spec.abs_load_sensitivity * (load_f - 1.0f));
-                    if (-wheels[i].slip_ratio > th)
-                    {
-                        abs_active[i] = true;
-                        t *= (abs_phase < 0.5f) ? tuning::spec.abs_release_rate : 1.0f;
-                    }
-                }
+                t *= brake_efficiency * assisted_actuators.brake_torque_scale[i];
 
                 float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;
                 wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, tuning::spec.brake_max_temp);
@@ -693,6 +631,9 @@ namespace car
         float forward_speed_ms = forward_speed_kmh / 3.6f;
 
         update_automatic_gearbox(dt, input.throttle, forward_speed_ms);
+        bool traction_requested = input.throttle > tuning::spec.input_deadzone && is_in_forward_gear();
+        bool braking_requested = input.brake > tuning::spec.input_deadzone && !is_in_reverse() && fabsf(forward_speed_kmh) > tuning::spec.braking_speed_threshold;
+        update_assist_controller(traction_requested, braking_requested, dt);
 
         if (downshift_blip_timer > 0.0f)
         {
@@ -773,7 +714,7 @@ namespace car
         // drive-torque path selection
         if (input.throttle > tuning::spec.input_deadzone && is_in_forward_gear())
         {
-            apply_forward_drive_torque(forward_speed_ms, dt);
+            apply_forward_drive_torque(dt);
         }
         else if (input.brake > tuning::spec.input_deadzone && is_in_reverse())
         {

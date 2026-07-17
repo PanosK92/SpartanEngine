@@ -835,7 +835,6 @@ void Console::UpdateAutocomplete()
             m_filtered_cvars.push_back(cvar.m_name);
         }
     }
-
     m_show_autocomplete = !m_filtered_cvars.empty();
 }
 
@@ -847,7 +846,6 @@ void Console::ApplyAutocomplete()
     }
 
     const ConsoleVariable* selected = ConsoleRegistry::Get().Find(m_filtered_cvars[m_autocomplete_selection]);
-
     std::string completion = std::string(selected->m_name) + " ";
     strncpy_s(m_input_buffer, completion.c_str(), IM_ARRAYSIZE(m_input_buffer) - 1);
     m_input_buffer[IM_ARRAYSIZE(m_input_buffer) - 1] = '\0';

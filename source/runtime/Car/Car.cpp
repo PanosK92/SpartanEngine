@@ -662,6 +662,7 @@ namespace spartan
         const math::Quaternion vehicle_rotation = m_vehicle_entity->GetRotation();
         auto to_world = [&](const math::Vector3& local) { return vehicle_position + vehicle_rotation * local; };
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
+        auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(from_px(value)); };
 
         math::Vector3 wheel_local[4];
         math::Vector3 wheel_world[4];
@@ -674,7 +675,7 @@ namespace spartan
             }
 
             const physx::PxTransform wheel_pose = corner.wheel_body->getGlobalPose();
-            wheel_world[i] = from_px(wheel_pose.p);
+            wheel_world[i] = to_render(wheel_pose.p);
             wheel_local[i] = vehicle_rotation.Conjugate() * (wheel_world[i] - vehicle_position);
             const float wheel_radius = ::car::cfg.wheel_radius_for(i);
             const float wheel_half_width = ::car::cfg.wheel_width_for(i) * 0.5f;
@@ -696,20 +697,20 @@ namespace spartan
                 const physx::PxVec3 right = wheel_right + radial;
                 if (segment > 0)
                 {
-                    Renderer::DrawLine(from_px(previous_left), from_px(left), wheel_query_color, wheel_query_color);
-                    Renderer::DrawLine(from_px(previous_right), from_px(right), wheel_query_color, wheel_query_color);
+                    Renderer::DrawLine(to_render(previous_left), to_render(left), wheel_query_color, wheel_query_color);
+                    Renderer::DrawLine(to_render(previous_right), to_render(right), wheel_query_color, wheel_query_color);
                 }
                 if (segment % 5 == 0)
                 {
-                    Renderer::DrawLine(from_px(left), from_px(right), wheel_query_color, wheel_query_color);
+                    Renderer::DrawLine(to_render(left), to_render(right), wheel_query_color, wheel_query_color);
                 }
                 previous_left = left;
                 previous_right = right;
             }
 
             const physx::PxTransform upright_pose = corner.upright->getGlobalPose();
-            const math::Vector3 upright_bottom = from_px(upright_pose.transform(physx::PxVec3(0.0f, -0.18f, 0.0f)));
-            const math::Vector3 upright_top = from_px(upright_pose.transform(physx::PxVec3(0.0f, 0.18f, 0.0f)));
+            const math::Vector3 upright_bottom = to_render(upright_pose.transform(physx::PxVec3(0.0f, -0.18f, 0.0f)));
+            const math::Vector3 upright_top = to_render(upright_pose.transform(physx::PxVec3(0.0f, 0.18f, 0.0f)));
             Renderer::DrawLine(upright_bottom, upright_top, skeleton_color_control_arm, skeleton_color_control_arm);
             draw_skeleton_joint(upright_bottom, skeleton_color_joint);
             draw_skeleton_joint(upright_top, skeleton_color_joint);
@@ -722,15 +723,15 @@ namespace spartan
                     continue;
                 }
                 const physx::PxTransform member_pose = member.actor->getGlobalPose();
-                const math::Vector3 start = from_px(member_pose.transform(member.local_start));
-                const math::Vector3 end = from_px(member_pose.transform(member.local_end));
+                const math::Vector3 start = to_render(member_pose.transform(member.local_start));
+                const math::Vector3 end = to_render(member_pose.transform(member.local_end));
                 Renderer::DrawLine(start, end, skeleton_color_control_arm, skeleton_color_control_arm);
                 draw_skeleton_joint(start, skeleton_color_joint);
                 draw_skeleton_joint(end, skeleton_color_joint);
             }
 
-            const math::Vector3 shock_top = from_px(::car::body->getGlobalPose().transform(corner.chassis_shock_anchor));
-            const math::Vector3 shock_bottom = from_px(upright_pose.transform(corner.upright_shock_anchor));
+            const math::Vector3 shock_top = to_render(::car::body->getGlobalPose().transform(corner.chassis_shock_anchor));
+            const math::Vector3 shock_bottom = to_render(upright_pose.transform(corner.upright_shock_anchor));
             draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f);
             draw_skeleton_joint(shock_top, skeleton_color_joint);
             if (::car::wheels[i].grounded)
@@ -747,8 +748,8 @@ namespace spartan
         {
             const physx::PxTransform rack_pose = ::car::multibody.rack->getGlobalPose();
             const float half_width = ::car::cfg.track_front * 0.35f;
-            const math::Vector3 rack_left = from_px(rack_pose.transform(physx::PxVec3(-half_width, 0.0f, 0.0f)));
-            const math::Vector3 rack_right = from_px(rack_pose.transform(physx::PxVec3(half_width, 0.0f, 0.0f)));
+            const math::Vector3 rack_left = to_render(rack_pose.transform(physx::PxVec3(-half_width, 0.0f, 0.0f)));
+            const math::Vector3 rack_right = to_render(rack_pose.transform(physx::PxVec3(half_width, 0.0f, 0.0f)));
             Renderer::DrawLine(rack_left, rack_right, skeleton_color_steering, skeleton_color_steering);
         }
 
@@ -842,12 +843,6 @@ namespace spartan
             {
                 audio->PlayClip();
             }
-        }
-
-        // hide window when inside
-        if (m_window_entity)
-        {
-            m_window_entity->SetActive(false);
         }
     }
 
@@ -1451,10 +1446,7 @@ namespace spartan
         wheel_root->SetActive(false);
         wheel_root->SetTransient(true);
 
-        // start at unit scale so radius scaling can measure the natural mesh size.
-        // a hardcoded 0.2 here was undersizing the wheel to ~0.21 m so the cooked sweep
-        // cylinder could never reach the ground and target_compression was permanently
-        // clamped to zero in steady state
+        // measure wheel dimensions from the natural mesh scale
         wheel_base->SetScale(1.0f);
 
         if (Render* renderable = wheel_base->GetComponent<Render>())

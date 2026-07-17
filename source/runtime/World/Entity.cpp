@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "pch.h"
+#include <cstdio>
 #include <sstream>
 #include "Entity.h"
 #include "Prefab.h"
@@ -50,25 +51,17 @@ namespace spartan
 {
     namespace
     {
-        string to_string(const Vector3& value)
-        {
-            stringstream ss;
-            ss << value.x << " " << value.y << " " << value.z;
-            return ss.str();
-        }
-
-        string to_string(const Quaternion& value)
-        {
-            stringstream ss;
-            ss << value.x << " " << value.y << " " << value.z << " " << value.w;
-            return ss.str();
-        }
-
         void save_transform(pugi::xml_node& node, const Vector3& position, const Quaternion& rotation, const Vector3& scale)
         {
-            node.append_attribute("position") = to_string(position).c_str();
-            node.append_attribute("rotation") = to_string(rotation).c_str();
-            node.append_attribute("scale")    = to_string(scale).c_str();
+            char position_text[96];
+            char rotation_text[128];
+            char scale_text[96];
+            std::snprintf(position_text, sizeof(position_text), "%g %g %g", position.x, position.y, position.z);
+            std::snprintf(rotation_text, sizeof(rotation_text), "%g %g %g %g", rotation.x, rotation.y, rotation.z, rotation.w);
+            std::snprintf(scale_text, sizeof(scale_text), "%g %g %g", scale.x, scale.y, scale.z);
+            node.append_attribute("position") = position_text;
+            node.append_attribute("rotation") = rotation_text;
+            node.append_attribute("scale")    = scale_text;
         }
 
         void load_transform_override(Entity* entity, pugi::xml_node& node)

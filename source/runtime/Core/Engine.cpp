@@ -175,6 +175,7 @@ namespace spartan
         Input::Tick();
         PhysicsWorld::Tick();
         World::Tick();
+        PhysicsWorld::DrawDebugVisualization();
         Xr::Tick();
         Renderer::Tick();
         Allocator::Tick();

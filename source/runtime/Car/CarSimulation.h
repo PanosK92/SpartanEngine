@@ -22,12 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #pragma once
 #include "CarState.h"
+#include "CarAssists.h"
 #include "CarPacejka.h"
 #include "CarAero.h"
 #include "CarMultibody.h"
 #include "CarSuspension.h"
 #include "CarDrivetrain.h"
 #include "CarTires.h"
+#include "CarValidation.h"
 //================================
 
 // vehicle dynamics simulation
@@ -304,6 +306,7 @@ namespace car
 
     inline void destroy()
     {
+        shutdown_validation();
         destroy_multibody();
         if (body)             { body->release();             body = nullptr; }
         if (material)         { material->release();         material = nullptr; }
@@ -311,14 +314,8 @@ namespace car
     }
 
     // sweep geometry must match the physical wheel dimensions
-    inline void rebuild_wheel_sweep_mesh()
+    inline bool rebuild_wheel_sweep_mesh()
     {
-        if (wheel_sweep_mesh)
-        {
-            wheel_sweep_mesh->release();
-            wheel_sweep_mesh = nullptr;
-        }
-
         const int segments = 32;
         std::vector<PxVec3> cyl_verts;
         cyl_verts.reserve(segments * 2);
@@ -347,15 +344,23 @@ namespace car
         desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
 
         PxConvexMeshCookingResult::Enum cook_result;
-        wheel_sweep_mesh = PxCreateConvexMesh(cook_params, desc, *PxGetStandaloneInsertionCallback(), &cook_result);
-        if (!wheel_sweep_mesh || cook_result != PxConvexMeshCookingResult::eSUCCESS)
+        PxConvexMesh* replacement = PxCreateConvexMesh(cook_params, desc, *PxGetStandaloneInsertionCallback(), &cook_result);
+        if (!replacement || cook_result != PxConvexMeshCookingResult::eSUCCESS)
         {
+            if (replacement)
+            {
+                replacement->release();
+            }
             SP_LOG_WARNING("failed to create wheel sweep cylinder mesh (r=%.3f, w=%.3f)", sweep_r, sweep_w);
+            return false;
         }
-        else
+        if (wheel_sweep_mesh)
         {
-            SP_LOG_INFO("wheel sweep cylinder mesh cooked: r=%.3f, w=%.3f", sweep_r, sweep_w);
+            wheel_sweep_mesh->release();
         }
+        wheel_sweep_mesh = replacement;
+        SP_LOG_INFO("wheel sweep cylinder mesh cooked: r=%.3f, w=%.3f", sweep_r, sweep_w);
+        return true;
     }
 
     struct setup_params
@@ -456,7 +461,12 @@ namespace car
             compute_aero_from_shape(params.vertices);
         }
 
-        rebuild_wheel_sweep_mesh();
+        if (!rebuild_wheel_sweep_mesh())
+        {
+            SP_LOG_ERROR("failed to create wheel contact geometry");
+            destroy();
+            return false;
+        }
         if (!create_multibody(params.physics, params.scene))
         {
             SP_LOG_ERROR("failed to create car suspension assembly");
@@ -516,6 +526,10 @@ namespace car
 
         PxVec3 com(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
         PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
+        if (multibody.initialized)
+        {
+            update_assembled_center_of_mass();
+        }
 
         SP_LOG_INFO("car center of mass set to (%.2f, %.2f, %.2f)", com.x, com.y, com.z);
     }
@@ -536,7 +550,10 @@ namespace car
     {
         compute_constants();
         update_mass_properties();
-        rebuild_wheel_sweep_mesh();
+        if (!rebuild_wheel_sweep_mesh())
+        {
+            return false;
+        }
         return !multibody.initialized || rebuild_multibody();
     }
 
@@ -584,6 +601,9 @@ namespace car
             wheels[i].thermal.core = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
             wheels[i].effective_radius = (i < 2 ? cfg.front_wheel_radius : cfg.rear_wheel_radius);
             wheels[i].dynamic_camber = 0.0f;
+            wheels[i].dynamic_toe = 0.0f;
+            wheels[i].bump_steer = 0.0f;
+            wheels[i].motion_ratio = 1.0f;
         }
     }
 
@@ -592,15 +612,28 @@ namespace car
     // it has to live in CarSimulation.h because it touches the physics body and recomputes geometry.
     inline void load_car(const car_preset& new_spec)
     {
+        active_upgrades previous_upgrades = upgrades;
+        car_preset previous_base = base_spec;
+        car_preset previous_spec = tuning::spec;
+        config previous_config = cfg;
         upgrades = active_upgrades{};
         apply_car_spec(new_spec, true);
 
-        reset_drivetrain_transients();
-        reset_wheel_thermals();
         if (!rebuild_vehicle_geometry())
         {
             SP_LOG_ERROR("failed to rebuild suspension for car preset");
+            upgrades = previous_upgrades;
+            base_spec = previous_base;
+            tuning::spec = previous_spec;
+            cfg = previous_config;
+            compute_constants();
+            update_mass_properties();
+            rebuild_wheel_sweep_mesh();
+            return;
         }
+        reset_drivetrain_transients();
+        prev_velocity = body ? body->getLinearVelocity() : PxVec3(0.0f);
+        reset_wheel_thermals();
 
         SP_LOG_INFO("loaded car preset: %s (mass=%.0f kg, wheelbase=%.3f m, track f/r=%.3f/%.3f m, drivetrain=%s)",
             new_spec.name ? new_spec.name : "?",
@@ -678,6 +711,8 @@ namespace car
 
     inline void reapply_upgrades()
     {
+        car_preset previous_spec = tuning::spec;
+        config previous_config = cfg;
         clamp_upgrade_stage(upgrades.engine, base_spec.engine_stage_max);
         clamp_upgrade_stage(upgrades.suspension, base_spec.suspension_stage_max);
         clamp_upgrade_stage(upgrades.tires, base_spec.tires_stage_max);
@@ -691,6 +726,7 @@ namespace car
         bool save_turbo = tuning::spec.turbo_enabled;
         bool save_drs = tuning::spec.drs_enabled;
         int save_diff = tuning::spec.diff_type;
+        assist_settings save_assists = tuning::spec.assists;
 
         float save_abs_th = tuning::spec.abs_slip_threshold;
         float save_abs_release = tuning::spec.abs_release_rate;
@@ -715,6 +751,7 @@ namespace car
         tuning::spec.turbo_enabled = save_turbo;
         tuning::spec.drs_enabled = save_drs;
         tuning::spec.diff_type = save_diff;
+        tuning::spec.assists = save_assists;
 
         tuning::spec.abs_slip_threshold = save_abs_th;
         tuning::spec.abs_release_rate = save_abs_release;
@@ -729,12 +766,21 @@ namespace car
         tuning::spec.boost_wastegate_rpm = save_bst_waste;
         tuning::spec.boost_torque_mult = save_bst_torq;
         tuning::spec.boost_min_rpm = save_bst_min;
+        if (!rebuild_vehicle_geometry())
+        {
+            tuning::spec = previous_spec;
+            cfg = previous_config;
+            compute_constants();
+            update_mass_properties();
+            rebuild_wheel_sweep_mesh();
+            SP_LOG_ERROR("failed to rebuild vehicle upgrades");
+        }
     }
 
     inline void reset_upgrades()
     {
         upgrades = active_upgrades{};
-        apply_car_spec(base_spec, false);
+        reapply_upgrades();
     }
 
     inline void set_center_of_mass(float x, float y, float z)
@@ -778,9 +824,10 @@ namespace car
 
     inline void update_input(float dt)
     {
-        float diff = input_target.steering - input.steering;
+        float steering_target = get_assisted_steering_target(input_target.steering);
+        float diff = steering_target - input.steering;
         float max_change = tuning::spec.steering_rate * dt;
-        input.steering = (fabsf(diff) <= max_change) ? input_target.steering : input.steering + ((diff > 0) ? max_change : -max_change);
+        input.steering = (fabsf(diff) <= max_change) ? steering_target : input.steering + ((diff > 0) ? max_change : -max_change);
 
         // rising edge: first-order smoothing with per-pedal rate
         // falling edge: instantaneous (lift-off should always be felt immediately)
@@ -840,6 +887,7 @@ namespace car
         }
 
         // caller (physics::tickvehicle) already runs this at a fixed sub-step, no clamp needed
+        tick_validation(dt);
         update_input(dt);
         PxScene* scene = body->getScene();
         if (!scene)
@@ -985,6 +1033,9 @@ namespace car
     WHEEL_GETTER(rotation, rotation)
     WHEEL_GETTER(effective_radius, effective_radius)
     WHEEL_GETTER(dynamic_camber, dynamic_camber)
+    WHEEL_GETTER(dynamic_toe, dynamic_toe)
+    WHEEL_GETTER(bump_steer, bump_steer)
+    WHEEL_GETTER(motion_ratio, motion_ratio)
     #undef WHEEL_GETTER
     inline float get_wheel_temperature(int i) { return is_valid_wheel(i) ? wheels[i].thermal.avg_surface() : 0.0f; }
 
@@ -993,6 +1044,17 @@ namespace car
     inline float get_wheel_suspension_force(int i)
     {
         return is_valid_wheel(i) ? spring_force[i] : 0.0f;
+    }
+
+    inline float get_axle_roll_stiffness(bool front)
+    {
+        int left = front ? front_left : rear_left;
+        int right = front ? front_right : rear_right;
+        float track = front ? cfg.track_front : cfg.track_rear;
+        float anti_roll = front ? tuning::spec.front_arb_stiffness : tuning::spec.rear_arb_stiffness;
+        float left_wheel_rate = spring_stiffness[left] * wheels[left].motion_ratio * wheels[left].motion_ratio;
+        float right_wheel_rate = spring_stiffness[right] * wheels[right].motion_ratio * wheels[right].motion_ratio;
+        return ((left_wheel_rate + right_wheel_rate) * 0.5f + anti_roll) * track * track * 0.5f;
     }
 
     inline float get_wheel_temp_grip_factor(int i)
@@ -1112,7 +1174,21 @@ namespace car
     inline bool get_drs_active()              { return drs_active; }
 
     // differential type
-    inline void set_diff_type(int type)       { tuning::spec.diff_type = PxClamp(type, 0, 2); }
+    inline void set_diff_type(int type)
+    {
+        int new_type = PxClamp(type, 0, 2);
+        if (new_type == tuning::spec.diff_type)
+        {
+            return;
+        }
+        int previous_type = tuning::spec.diff_type;
+        tuning::spec.diff_type = new_type;
+        if (multibody.initialized && !rebuild_multibody())
+        {
+            tuning::spec.diff_type = previous_type;
+            SP_LOG_ERROR("failed to rebuild physical differential");
+        }
+    }
     inline int  get_diff_type()               { return tuning::spec.diff_type; }
     inline const char* get_diff_type_name()
     {

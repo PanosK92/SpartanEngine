@@ -65,7 +65,7 @@
         arm_span="0.22" strut_top_y="0.5" strut_top_inset="0.25" tie_rod_y="0.01" tie_rod_z="0.14" link_spread_y="0.19" link_spread_z="0.25" />
 
     <steering
-        max_steer_angle="0.52" high_speed_steer_reduction="0" steering_rate="1.6"
+        max_steer_angle="0.52" steering_rate="1.6"
         self_align_gain="1.0" steering_linearity="1.2" steering_deadzone="0.001" />
 
     <!-- pacejka curve constants plus grip, pressure and thermal model -->
@@ -73,7 +73,7 @@
         lat_B="10.5" lat_C="1.5" lat_D="1" lat_E="-0.2" long_B="16" long_C="1.55" long_D="1" long_E="-0.2"
         load_B_scale_min="0.5" pneumatic_trail_max="0.04" pneumatic_trail_peak="0.14"
         tire_friction="1.3" min_slip_speed="0.5" load_sensitivity="0.9" load_reference="4500" rear_grip_ratio="1.0"
-        slip_angle_deadband="0.01" min_lateral_grip="0" camber_thrust_coeff="0.012" max_slip_angle="1.2"
+        slip_angle_deadband="0.01" camber_thrust_coeff="0.012" max_slip_angle="1.2"
         tire_pressure="2.4" tire_pressure_optimal="2.4" tire_vertical_stiffness="160000" rolling_resistance="0.014"
         tire_ambient_temp="45" tire_optimal_temp="85" tire_temp_range="45"
         tire_heat_from_slip="22" tire_heat_from_rolling="0.15" tire_cooling_rate="2" tire_cooling_airflow="0.04"
@@ -91,14 +91,18 @@
 
     <assists
         abs_enabled="false" abs_slip_threshold="0.15" abs_release_rate="0.7" abs_pulse_frequency="12" abs_load_sensitivity="0.25"
-        tc_enabled="false" tc_slip_threshold="0.1" tc_power_reduction="0.7" tc_response_rate="12" />
+        tc_enabled="false" tc_slip_threshold="0.1" tc_power_reduction="0.7" tc_response_rate="12"
+        steering_speed_reduction="0.45" steering_speed_reference="50" abs_level="1" traction_control_level="1" />
 
     <input
         throttle_smoothing="8" brake_smoothing="8" input_deadzone="0.01" />
 
     <simulation
-        braking_speed_threshold="3" linear_damping="0.001" angular_damping="0.08" yaw_damping="0"
-        airborne_wheel_decay="0.99" bearing_friction="0.2" ground_match_rate="0" />
+        braking_speed_threshold="3" linear_damping="0.001" angular_damping="0.08"
+        airborne_wheel_decay="0.99" bearing_friction="0.2" />
+
+    <validation settle_speed_max="0.05" zero_to_100_min="4.5" zero_to_100_max="7.5"
+        braking_distance_min="32" braking_distance_max="45" skidpad_g_min="0.85" skidpad_g_max="1.15" />
 
     <upgrades
         engine_stage_max="3" suspension_stage_max="2" tires_stage_max="2"

@@ -107,6 +107,105 @@ namespace car
             read_float(node, "link_spread_z", geometry.link_spread_z);
         }
 
+        void load_assists(pugi::xml_node node, assist_settings& assists)
+        {
+            if (!node)
+            {
+                return;
+            }
+            read_float(node, "steering_speed_reduction", assists.steering_speed_reduction);
+            read_float(node, "steering_speed_reference", assists.steering_speed_reference);
+            read_float(node, "abs_level", assists.abs_level);
+            read_float(node, "traction_control_level", assists.traction_control_level);
+        }
+
+        void load_validation_targets(pugi::xml_node node, validation_targets& validation)
+        {
+            if (!node)
+            {
+                return;
+            }
+            read_float(node, "settle_speed_max", validation.settle_speed_max);
+            read_float(node, "zero_to_100_min", validation.zero_to_100_min);
+            read_float(node, "zero_to_100_max", validation.zero_to_100_max);
+            read_float(node, "braking_distance_min", validation.braking_distance_min);
+            read_float(node, "braking_distance_max", validation.braking_distance_max);
+            read_float(node, "skidpad_g_min", validation.skidpad_g_min);
+            read_float(node, "skidpad_g_max", validation.skidpad_g_max);
+        }
+
+        bool validate_preset(car_preset& preset, const string& name)
+        {
+            auto finite_range = [](float value, float minimum, float maximum) { return std::isfinite(value) && value >= minimum && value <= maximum; };
+            bool valid = true;
+            auto require = [&](bool condition, const char* field)
+            {
+                if (!condition)
+                {
+                    SP_LOG_ERROR("car preset %s has invalid %s", name.c_str(), field);
+                    valid = false;
+                }
+            };
+
+            require(finite_range(preset.mass, 200.0f, 5000.0f), "mass");
+            require(finite_range(preset.length, 2.0f, 8.0f), "length");
+            require(finite_range(preset.width, 1.0f, 3.0f), "width");
+            require(finite_range(preset.height, 0.7f, 3.0f), "height");
+            require(finite_range(preset.wheelbase, 1.5f, 5.0f), "wheelbase");
+            require(finite_range(preset.track_front, 1.0f, 2.5f) && finite_range(preset.track_rear, 1.0f, 2.5f), "track");
+            require(finite_range(preset.front_wheel_radius, 0.2f, 0.7f) && finite_range(preset.rear_wheel_radius, 0.2f, 0.7f), "wheel_radius");
+            require(finite_range(preset.front_wheel_width, 0.1f, 0.6f) && finite_range(preset.rear_wheel_width, 0.1f, 0.6f), "wheel_width");
+            require(finite_range(preset.suspension_travel, 0.04f, 0.5f), "suspension_travel");
+            require(finite_range(preset.front_spring_freq, 0.5f, 5.0f) && finite_range(preset.rear_spring_freq, 0.5f, 5.0f), "spring_frequency");
+            require(finite_range(preset.front_damping_ratio, 0.1f, 2.0f) && finite_range(preset.rear_damping_ratio, 0.1f, 2.0f), "damping_ratio");
+            require(finite_range(preset.max_steer_angle, 0.1f, 1.2f), "max_steer_angle");
+            require(finite_range(preset.tire_friction, 0.3f, 2.5f), "tire_friction");
+            require(preset.gear_count >= 3 && preset.gear_count <= max_gears, "gear_count");
+            require(preset.drivetrain_type >= 0 && preset.drivetrain_type <= 2, "drivetrain_type");
+            require(preset.diff_type >= 0 && preset.diff_type <= 2, "diff_type");
+            require(finite_range(preset.engine_idle_rpm, 300.0f, 2000.0f) && finite_range(preset.engine_redline_rpm, preset.engine_idle_rpm + 500.0f, 20000.0f) && finite_range(preset.engine_max_rpm, preset.engine_redline_rpm, 22000.0f), "engine_speed_range");
+            require(finite_range(preset.engine_inertia, 0.01f, 10.0f) && finite_range(preset.engine_rpm_smoothing, 0.1f, 100.0f), "engine_response");
+            require(finite_range(preset.final_drive, 0.1f, 10.0f) && finite_range(preset.drivetrain_efficiency, 0.1f, 1.0f), "drivetrain_ratio");
+            for (int i = 0; i < std::clamp(preset.gear_count, 0, max_gears); i++)
+            {
+                if (i != 1)
+                {
+                    require(finite_range(fabsf(preset.gear_ratios[i]), 0.1f, 10.0f), "gear_ratio");
+                }
+            }
+            require(finite_range(preset.brake_thermal_mass, 0.1f, 100.0f), "brake_thermal_mass");
+            require(finite_range(preset.load_reference, 100.0f, 20000.0f), "load_reference");
+            require(finite_range(preset.tire_temp_range, 1.0f, 300.0f), "tire_temp_range");
+            require(finite_range(preset.tire_vertical_stiffness, 10000.0f, 1000000.0f), "tire_vertical_stiffness");
+            require(finite_range(preset.tire_relaxation_length, 0.01f, 5.0f), "tire_relaxation_length");
+            require(finite_range(preset.tire_pressure, 0.5f, 6.0f) && finite_range(preset.tire_pressure_optimal, 0.5f, 6.0f), "tire_pressure");
+            require(finite_range(preset.lat_B, 0.1f, 50.0f) && finite_range(preset.lat_C, 0.1f, 5.0f) && finite_range(preset.lat_D, 0.1f, 3.0f), "lateral_tire_coefficients");
+            require(finite_range(preset.long_B, 0.1f, 50.0f) && finite_range(preset.long_C, 0.1f, 5.0f) && finite_range(preset.long_D, 0.1f, 3.0f), "longitudinal_tire_coefficients");
+            require(finite_range(preset.max_susp_force, 1000.0f, 500000.0f) && finite_range(preset.max_damper_velocity, 0.1f, 50.0f), "suspension_force_limits");
+            require(finite_range(preset.steering_rate, 0.1f, 20.0f) && finite_range(preset.steering_linearity, 0.1f, 5.0f), "steering_response");
+            require(finite_range(preset.steering_deadzone, 0.0f, 0.5f) && finite_range(preset.input_deadzone, 0.0f, 0.5f), "input_deadzones");
+            require(finite_range(preset.center_of_mass_x, -preset.width * 0.5f, preset.width * 0.5f), "center_of_mass_x");
+            require(finite_range(preset.center_of_mass_y, -preset.height, preset.height), "center_of_mass_y");
+            require(finite_range(preset.center_of_mass_z, -preset.length * 0.5f, preset.length * 0.5f), "center_of_mass_z");
+            auto validate_geometry = [&](const suspension_geometry& geometry, const char* field)
+            {
+                bool geometry_valid = finite_range(geometry.chassis_inset, 0.1f, 0.9f) && finite_range(geometry.arm_span, 0.05f, 0.6f) && finite_range(geometry.strut_top_y, 0.1f, 1.2f) && finite_range(geometry.strut_top_inset, 0.05f, 0.8f) && geometry.upper_upright_y > geometry.lower_upright_y && geometry.upper_inner_y > geometry.lower_inner_y;
+                require(geometry_valid, field);
+            };
+            validate_geometry(preset.front_geometry, "front_suspension_geometry");
+            validate_geometry(preset.rear_geometry, "rear_suspension_geometry");
+
+            require(finite_range(preset.assists.steering_speed_reduction, 0.0f, 0.9f), "steering_speed_reduction");
+            require(finite_range(preset.assists.steering_speed_reference, 5.0f, 100.0f), "steering_speed_reference");
+            require(finite_range(preset.assists.abs_level, 0.0f, 1.0f), "abs_level");
+            require(finite_range(preset.assists.traction_control_level, 0.0f, 1.0f), "traction_control_level");
+            require(finite_range(preset.validation.settle_speed_max, 0.001f, 1.0f), "settle_speed_max");
+            require(finite_range(preset.validation.zero_to_100_min, 0.5f, 30.0f) && finite_range(preset.validation.zero_to_100_max, 0.5f, 30.0f) && preset.validation.zero_to_100_min < preset.validation.zero_to_100_max, "zero_to_100_range");
+            require(finite_range(preset.validation.braking_distance_min, 5.0f, 200.0f) && finite_range(preset.validation.braking_distance_max, 5.0f, 200.0f) && preset.validation.braking_distance_min < preset.validation.braking_distance_max, "braking_distance_range");
+            require(finite_range(preset.validation.skidpad_g_min, 0.1f, 3.0f) && finite_range(preset.validation.skidpad_g_max, 0.1f, 3.0f) && preset.validation.skidpad_g_min < preset.validation.skidpad_g_max, "skidpad_range");
+            return valid;
+        }
+
         void load_preset(pugi::xml_node node, car_preset& preset)
         {
             #define READ_FLOAT(member) read_float(node, #member, preset.member)
@@ -189,7 +288,6 @@ namespace car
             READ_FLOAT(load_reference);
             READ_FLOAT(rear_grip_ratio);
             READ_FLOAT(slip_angle_deadband);
-            READ_FLOAT(min_lateral_grip);
             READ_FLOAT(camber_thrust_coeff);
             READ_FLOAT(max_slip_angle);
             READ_FLOAT(tire_pressure);
@@ -251,7 +349,6 @@ namespace car
             READ_FLOAT(center_of_mass_z);
 
             READ_FLOAT(max_steer_angle);
-            READ_FLOAT(high_speed_steer_reduction);
             READ_FLOAT(steering_rate);
             READ_FLOAT(self_align_gain);
             READ_FLOAT(steering_linearity);
@@ -265,7 +362,6 @@ namespace car
 
             READ_FLOAT(airborne_wheel_decay);
             READ_FLOAT(bearing_friction);
-            READ_FLOAT(ground_match_rate);
             READ_FLOAT(handbrake_sliding_factor);
             READ_FLOAT(handbrake_torque);
 
@@ -288,7 +384,6 @@ namespace car
             READ_FLOAT(braking_speed_threshold);
             READ_FLOAT(linear_damping);
             READ_FLOAT(angular_damping);
-            READ_FLOAT(yaw_damping);
 
             READ_BOOL(abs_enabled);
             READ_FLOAT(abs_slip_threshold);
@@ -418,6 +513,12 @@ namespace car
 
         load_suspension_geometry(root.child("front_suspension"), definition.performance.front_geometry);
         load_suspension_geometry(root.child("rear_suspension"), definition.performance.rear_geometry);
+        load_assists(root.child("assists"), definition.performance.assists);
+        load_validation_targets(root.child("validation"), definition.performance.validation);
+        if (!validate_preset(definition.performance, definition.name))
+        {
+            return nullptr;
+        }
 
         definitions.push_back(std::move(definition));
         car_definition& stored = definitions.back();
