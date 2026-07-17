@@ -1085,7 +1085,7 @@ namespace car
 
     inline float get_wheel_temp_grip_factor(int i)
     {
-        return is_valid_wheel(i) ? get_tire_temp_grip_factor(wheels[i].thermal.avg_surface()) : 1.0f;
+        return is_valid_wheel(i) ? get_tire_condition_modifiers(wheels[i].thermal.avg_surface(), wheels[i].thermal.core, wheels[i].wear, wheels[i].tire_load).peak_grip : 1.0f;
     }
 
     inline float get_wheel_surface_temp(int i, int zone)

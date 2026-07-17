@@ -77,6 +77,33 @@ namespace car
         return 1.0f - penalty;
     }
 
+    struct tire_condition_modifiers
+    {
+        float peak_grip = 1.0f;
+        float stiffness = 1.0f;
+        float relaxation = 1.0f;
+    };
+
+    inline tire_condition_modifiers get_tire_condition_modifiers(float surface_temperature, float core_temperature, float wear, float load)
+    {
+        tire_condition_modifiers modifiers;
+        float temperature_range = PxMax(tuning::spec.tire_temp_range, 1.0f);
+        float core_deviation = PxClamp(fabsf(core_temperature - tuning::spec.tire_optimal_temp) / temperature_range, 0.0f, 1.5f);
+        float pressure_ratio = PxClamp(tuning::spec.tire_pressure / PxMax(tuning::spec.tire_pressure_optimal, 0.1f), 0.6f, 1.4f);
+        float pressure_error = pressure_ratio - 1.0f;
+        float pressure_grip = PxClamp(1.0f - pressure_error * pressure_error * 0.45f, 0.75f, 1.0f);
+        float pressure_stiffness = powf(pressure_ratio, 0.55f);
+        float temperature_stiffness = PxClamp(1.0f - core_deviation * core_deviation * 0.22f, 0.55f, 1.0f);
+        float wear_clamped = PxClamp(wear, 0.0f, 1.0f);
+        float wear_grip = PxClamp(1.0f - wear_clamped * tuning::spec.tire_grip_wear_loss, 0.20f, 1.0f);
+        float wear_stiffness = 1.0f - wear_clamped * 0.18f;
+        float load_ratio = PxClamp(load / PxMax(tuning::spec.load_reference, 1.0f), 0.25f, 3.0f);
+        modifiers.peak_grip = PxClamp(get_tire_temp_grip_factor(surface_temperature) * pressure_grip * wear_grip, 0.15f, 1.0f);
+        modifiers.stiffness = PxClamp(temperature_stiffness * pressure_stiffness * wear_stiffness, 0.55f, 1.30f);
+        modifiers.relaxation = PxClamp(powf(load_ratio, 0.12f) * (1.0f + wear_clamped * 0.20f) / modifiers.stiffness, 0.65f, 1.80f);
+        return modifiers;
+    }
+
     inline float get_surface_friction(surface_type surface)
     {
         static constexpr float friction[] = {

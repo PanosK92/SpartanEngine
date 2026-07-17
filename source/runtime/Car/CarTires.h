@@ -94,9 +94,12 @@ namespace car
             float slip_denominator = PxMax(PxMax(absolute_longitudinal_speed, absolute_surface_speed), 0.01f);
             float raw_slip_ratio = PxClamp((surface_speed - longitudinal_speed) / slip_denominator, -1.0f, 1.0f);
             float raw_slip_angle = atan2f(lateral_speed, PxMax(absolute_longitudinal_speed, 0.5f));
-            float relaxation_length = PxMax(tuning::spec.tire_relaxation_length, 0.05f);
-            float longitudinal_blend = 1.0f - expf(-PxMax(ground_speed, absolute_surface_speed) * dt / relaxation_length);
-            float lateral_blend = 1.0f - expf(-ground_speed * dt / relaxation_length);
+            tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
+            float relaxation_length = PxMax(tuning::spec.tire_relaxation_length * condition.relaxation, 0.05f);
+            float longitudinal_length = relaxation_length * (fabsf(raw_slip_ratio) > fabsf(w.slip_ratio) ? 0.85f : 0.65f);
+            float lateral_length = relaxation_length * (fabsf(raw_slip_angle) > fabsf(w.slip_angle) ? 1.10f : 0.85f);
+            float longitudinal_blend = 1.0f - expf(-PxMax(ground_speed, absolute_surface_speed) * dt / longitudinal_length);
+            float lateral_blend = 1.0f - expf(-ground_speed * dt / lateral_length);
             w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, longitudinal_blend);
             w.slip_angle = lerp(w.slip_angle, raw_slip_angle, lateral_blend);
 
@@ -269,17 +272,16 @@ namespace car
                 SP_LOG_INFO("[%s] vx=%.3f, vy=%.3f, ws=%.3f", wheel_name, vx, vy, wheel_speed);
             }
 
-            float wear_factor    = 1.0f - w.wear * tuning::spec.tire_grip_wear_loss;
             float base_grip      = tuning::spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
-            float temp_factor    = get_tire_temp_grip_factor(w.thermal.avg_surface());
+            tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
             float camber_factor  = get_camber_grip_factor(dyn_camb);
             float surface_factor = get_surface_friction(w.contact_surface);
             // rear_grip_ratio is a per axle mu scale for tire compound differences, 1.0 means matched
             float axle_grip_scale = is_rear(i) ? tuning::spec.rear_grip_ratio : 1.0f;
             // camber mainly costs lateral grip, temp and wear apply to both directions without a floor
             float shared_grip     = base_grip * surface_factor * axle_grip_scale;
-            float long_grip_scale = temp_factor * wear_factor;
-            float lat_grip_scale  = temp_factor * wear_factor * camber_factor;
+            float long_grip_scale = condition.peak_grip;
+            float lat_grip_scale  = condition.peak_grip * camber_factor;
             float peak_force_long = shared_grip * long_grip_scale;
             float peak_force_lat  = shared_grip * lat_grip_scale;
 
@@ -324,9 +326,10 @@ namespace car
             float load_norm = w.tire_load / tuning::spec.load_reference;
             float B_load_scale = powf(1.0f / PxMax(load_norm, tuning::spec.load_B_scale_min), 0.4f);
             float pressure_ratio = tuning::spec.tire_pressure / PxMax(tuning::spec.tire_pressure_optimal, 0.1f);
-            float pressure_B_scale = 1.0f + (pressure_ratio - 1.0f) * 0.5f;
-            float lat_B_eff  = tuning::spec.lat_B * B_load_scale * pressure_B_scale;
-            float long_B_eff = tuning::spec.long_B * B_load_scale;
+            float lat_B_eff  = tuning::spec.lat_B * B_load_scale * condition.stiffness;
+            float long_B_eff = tuning::spec.long_B * B_load_scale * condition.stiffness;
+            float lat_E_eff  = tuning::spec.lat_E * PxMin(condition.stiffness, 1.0f);
+            float long_E_eff = tuning::spec.long_E * PxMin(condition.stiffness, 1.0f);
 
             float long_input = w.slip_ratio;
             float lat_input  = tanf(pacejka_slip_angle);
@@ -342,8 +345,8 @@ namespace car
             float Fy0 = 0.0f;
             if (rho > 1e-4f)
             {
-                Fx0 = (norm_long / rho) * pacejka(rho * s_peak, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
-                Fy0 = (norm_lat / rho)  * pacejka(rho * a_peak, lat_B_eff,  tuning::spec.lat_C,  tuning::spec.lat_D,  tuning::spec.lat_E);
+                Fx0 = (norm_long / rho) * pacejka(rho * s_peak, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, long_E_eff);
+                Fy0 = (norm_lat / rho)  * pacejka(rho * a_peak, lat_B_eff,  tuning::spec.lat_C,  tuning::spec.lat_D,  lat_E_eff);
             }
 
             float dynamic_lat_f  = -Fy0 * peak_force_lat;
