@@ -1,10 +1,6 @@
 <?xml version="1.0"?>
 <car name="Mitsubishi Lancer Evolution IX">
 
-    <!-- placeholder body, swap the model when a real evo asset is added -->
-    <body model="project\models\ferrari_laferrari\scene.gltf" scale="2.0" forward_z="-1"
-        hide_parts="tire 1,tire 2,tire 3,tire 4,brakerear" />
-
     <wheels model="project\models\wheel\model.blend"
         front_wheel_radius="0.322" rear_wheel_radius="0.322" front_wheel_width="0.235" rear_wheel_width="0.235" wheel_mass="22"
         albedo="project\models\wheel\albedo.jpeg" metalness="project\models\wheel\metalness.png"
@@ -44,7 +40,7 @@
         brake_force="7500" brake_bias_front="0.6" reverse_power_ratio="0.5"
         brake_ambient_temp="30" brake_optimal_temp="350" brake_fade_temp="650" brake_max_temp="850"
         brake_heat_coefficient="0.015" brake_cooling_base="8" brake_cooling_airflow="1.2" brake_thermal_mass="5.5"
-        handbrake_torque="6000" handbrake_sliding_factor="0.8" />
+        handbrake_torque="6000" />
 
     <!-- angles in radians -->
     <suspension

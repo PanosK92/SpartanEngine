@@ -270,7 +270,6 @@ namespace car
         // wheels
         float airborne_wheel_decay;
         float bearing_friction;
-        float handbrake_sliding_factor;
         float handbrake_torque;
 
         // drivetrain layout (0 = rwd, 1 = fwd, 2 = awd)
@@ -338,7 +337,7 @@ namespace car
         std::string name;
         std::string file_path;
 
-        // body visual, optional, a car without one still spawns four wheels
+        // body visual, optional, a missing model uses a generic body
         std::string body_model;
         float       body_scale     = 1.0f;
         float       body_forward_z = 1.0f;         // sign of the local z axis the nose points at
@@ -361,6 +360,7 @@ namespace car
     {
         const char* name;
         car_preset* instance;
+        const car_definition* definition;
     };
 
     // filled from .car files, a deque never relocates so pointers into it stay valid

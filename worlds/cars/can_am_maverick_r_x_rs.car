@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<car name="2026 Can-Am Maverick R X rs">
+    <wheels model="project\models\wheel\model.blend"
+        front_wheel_radius="0.4064" rear_wheel_radius="0.4064" front_wheel_width="0.254" rear_wheel_width="0.254" wheel_mass="30"
+        albedo="project\models\wheel\albedo.jpeg" metalness="project\models\wheel\metalness.png"
+        normal="project\models\wheel\normal.png" roughness="project\models\wheel\roughness.png" />
+
+    <chassis mass="1016" length="3.556" width="1.985" height="1.815"
+        wheelbase="2.743" track_front="1.731" track_rear="1.731"
+        center_of_mass_x="0" center_of_mass_y="-0.68" center_of_mass_z="0" />
+
+    <engine engine_idle_rpm="1000" engine_redline_rpm="8600" engine_max_rpm="8800"
+        engine_peak_torque="230" engine_peak_torque_rpm="6500"
+        engine_inertia="0.2" engine_friction="0.025" engine_rpm_smoothing="8"
+        turbo_enabled="true" boost_max_pressure="1.5" boost_spool_rate="5" boost_wastegate_rpm="8200" boost_torque_mult="0.35" boost_min_rpm="2200" />
+
+    <transmission gear_ratios="-4,0,3.6,2.8,2.2,1.75,1.43,1.2,1.02,0,0" gear_count="9" final_drive="8"
+        shift_up_rpm="8500" shift_down_rpm="3500" shift_time="0.1"
+        clutch_engagement_rate="18" drivetrain_efficiency="0.84" manual_transmission="false"
+        downshift_blip_amount="0.35" downshift_blip_duration="0.12"
+        upshift_speed_base="0,0,34,46,60,76,94,116,0,0,0"
+        upshift_speed_sport="0,0,43,56,72,91,111,135,0,0,0"
+        downshift_speeds="0,0,0,18,32,46,62,80,102,0,0" />
+
+    <drivetrain drivetrain_type="2" torque_split_front="0.4" diff_type="2"
+        lsd_preload="130" lsd_lock_ratio_accel="0.6" lsd_lock_ratio_decel="0.3" lsd_viscous="160"
+        driveshaft_stiffness="5000" />
+
+    <brakes brake_force="7600" brake_bias_front="0.6" reverse_power_ratio="0.55"
+        brake_ambient_temp="30" brake_optimal_temp="280" brake_fade_temp="580" brake_max_temp="780"
+        brake_heat_coefficient="0.014" brake_cooling_base="8" brake_cooling_airflow="1.6" brake_thermal_mass="6.5"
+        handbrake_torque="5200" />
+
+    <suspension suspension_height="1.04" suspension_travel="0.557"
+        upright_mass="18" suspension_link_mass="4" steering_rack_mass="5"
+        front_spring_freq="1.35" rear_spring_freq="1.45" front_damping_ratio="0.76" rear_damping_ratio="0.8"
+        damping_bump_ratio="0.65" damping_rebound_ratio="1.35"
+        front_arb_stiffness="3000" rear_arb_stiffness="0"
+        max_susp_force="32000" max_damper_velocity="10" bump_stop_stiffness="70000" bump_stop_threshold="0.82"
+        front_camber="-0.010472" rear_camber="-0.006981" front_toe="0.001745" rear_toe="0.003491" />
+
+    <front_suspension mechanism="double_wishbone"
+        chassis_inset="0.43" upper_inner_y="0.3" lower_inner_y="-0.28" upper_upright_y="0.31" lower_upright_y="-0.3"
+        arm_span="0.31" strut_top_y="0.86" strut_top_inset="0.25" tie_rod_y="0.04" tie_rod_z="-0.17" link_spread_y="0.23" link_spread_z="0.3" />
+
+    <rear_suspension mechanism="multi_link"
+        chassis_inset="0.4" upper_inner_y="0.31" lower_inner_y="-0.29" upper_upright_y="0.32" lower_upright_y="-0.31"
+        arm_span="0.32" strut_top_y="0.9" strut_top_inset="0.26" tie_rod_y="0.03" tie_rod_z="0.17" link_spread_y="0.25" link_spread_z="0.32" />
+
+    <steering max_steer_angle="0.62" steering_rate="1.8"
+        self_align_gain="0.9" steering_linearity="1.15" steering_deadzone="0.001" />
+
+    <tires lat_B="7.5" lat_C="1.4" lat_D="1" lat_E="-0.08" long_B="11" long_C="1.45" long_D="1" long_E="-0.1"
+        load_B_scale_min="0.45" pneumatic_trail_max="0.06" pneumatic_trail_peak="0.2"
+        tire_friction="1" min_slip_speed="0.4" load_sensitivity="0.88" load_reference="3200" rear_grip_ratio="1"
+        slip_angle_deadband="0.014" camber_thrust_coeff="0.008" max_slip_angle="1.3"
+        tire_pressure="1.1" tire_pressure_optimal="1.1" tire_vertical_stiffness="90000" rolling_resistance="0.025"
+        tire_ambient_temp="30" tire_optimal_temp="70" tire_temp_range="60"
+        tire_heat_from_slip="18" tire_heat_from_rolling="0.22" tire_cooling_rate="2.5" tire_cooling_airflow="0.05"
+        tire_grip_temp_factor="0.18" tire_min_temp="5" tire_max_temp="240"
+        tire_relaxation_length="0.5" tire_wear_rate="0.000014" tire_wear_heat_mult="2.2" tire_grip_wear_loss="0.3"
+        tire_core_transfer_rate="0.4" tire_surface_response="2.4" />
+
+    <aero drag_coeff="0.68" frontal_area="2.4" side_area="4.6"
+        lift_coeff_front="0.02" lift_coeff_rear="0.03" drs_enabled="false" drs_rear_cl_factor="0.3"
+        ground_effect_enabled="false" ground_effect_multiplier="1" ground_effect_height_ref="0.25" ground_effect_height_max="0.6"
+        yaw_aero_enabled="true" yaw_drag_multiplier="2.3" yaw_side_force_coeff="1.15"
+        pitch_aero_enabled="true" pitch_sensitivity="0.2"
+        aero_center_height="0.8" aero_center_front_z="0.7" aero_center_rear_z="-0.65" />
+
+    <assists abs_enabled="true" abs_slip_threshold="0.2" abs_release_rate="0.62" abs_pulse_frequency="10" abs_load_sensitivity="0.28"
+        tc_enabled="true" tc_slip_threshold="0.18" tc_power_reduction="0.58" tc_response_rate="9"
+        steering_speed_reduction="0.35" steering_speed_reference="60" abs_level="0.8" traction_control_level="0.65" />
+
+    <input throttle_smoothing="7" brake_smoothing="8" input_deadzone="0.01" />
+    <simulation braking_speed_threshold="3" linear_damping="0.002" angular_damping="0.12"
+        airborne_wheel_decay="0.995" bearing_friction="0.24" />
+    <validation settle_speed_max="0.08" zero_to_100_min="4.5" zero_to_100_max="7"
+        braking_distance_min="34" braking_distance_max="52" skidpad_g_min="0.65" skidpad_g_max="1" />
+    <upgrades engine_stage_max="0" suspension_stage_max="0" tires_stage_max="0"
+        brakes_stage_max="0" aero_stage_max="0" weight_stage_max="0" />
+</car>

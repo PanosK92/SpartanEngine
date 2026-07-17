@@ -310,6 +310,7 @@ namespace car
         destroy_multibody();
         if (body)             { body->release();             body = nullptr; }
         if (material)         { material->release();         material = nullptr; }
+        if (wheel_guard_material) { wheel_guard_material->release(); wheel_guard_material = nullptr; }
         if (wheel_sweep_mesh) { wheel_sweep_mesh->release(); wheel_sweep_mesh = nullptr; }
     }
 
@@ -404,10 +405,19 @@ namespace car
             return false;
         }
         material->setRestitutionCombineMode(PxCombineMode::eMIN);
+        wheel_guard_material = params.physics->createMaterial(0.0f, 0.0f, 0.0f);
+        if (!wheel_guard_material)
+        {
+            material->release();
+            material = nullptr;
+            return false;
+        }
+        wheel_guard_material->setFrictionCombineMode(PxCombineMode::eMIN);
+        wheel_guard_material->setRestitutionCombineMode(PxCombineMode::eMIN);
 
         // spawn at the spring equilibrium height instead of above it, plus a small clearance so
         // the wheel sweep cylinder doesn't start already overlapping the ground on the first tick
-        float front_mass_per_wheel = cfg.mass * get_weight_distribution_front() * 0.5f;
+        float front_mass_per_wheel = chassis_mass() * get_weight_distribution_front() * 0.5f;
         float front_omega = 2.0f * PxPi * tuning::spec.front_spring_freq;
         float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
         float expected_sag = PxClamp((front_mass_per_wheel * 9.81f) / front_stiffness, 0.0f, cfg.suspension_travel * 0.8f);
@@ -419,6 +429,8 @@ namespace car
         {
             material->release();
             material = nullptr;
+            wheel_guard_material->release();
+            wheel_guard_material = nullptr;
             return false;
         }
 
@@ -508,6 +520,10 @@ namespace car
 
         PxVec3 com(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
         PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
+        if (multibody.initialized)
+        {
+            update_assembled_center_of_mass();
+        }
 
         if (!vertices.empty())
         {
@@ -890,6 +906,7 @@ namespace car
         // caller (physics::tickvehicle) already runs this at a fixed sub-step, no clamp needed
         tick_validation(dt);
         update_input(dt);
+        update_handbrake_wheel_locks();
         PxScene* scene = body->getScene();
         if (!scene)
         {
@@ -1250,11 +1267,6 @@ namespace car
         }
         return PxVec3(0);
     }
-
-    inline void set_draw_raycasts(bool enabled)   { tuning::draw_raycasts = enabled; }
-    inline bool get_draw_raycasts()               { return tuning::draw_raycasts; }
-    inline void set_draw_suspension(bool enabled) { tuning::draw_suspension = enabled; }
-    inline bool get_draw_suspension()             { return tuning::draw_suspension; }
 
     inline const aero_debug_data& get_aero_debug() { return aero_debug; }
     inline const shape_2d& get_shape_data() { return shape_data_ref(); }

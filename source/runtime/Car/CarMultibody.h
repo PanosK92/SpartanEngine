@@ -44,6 +44,12 @@ namespace car
 
     inline multibody_state multibody;
 
+    inline PxU32 multibody_collision_group()
+    {
+        const PxU32 collision_group = static_cast<PxU32>(reinterpret_cast<uintptr_t>(body) >> 4);
+        return collision_group != 0 ? collision_group : 1;
+    }
+
     struct actor_motion_state
     {
         PxVec3 linear_velocity = PxVec3(0.0f);
@@ -178,7 +184,7 @@ namespace car
         shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
     }
 
-    inline PxRigidDynamic* create_mechanism_actor(const PxTransform& pose, const PxGeometry& geometry, float mass)
+    inline PxRigidDynamic* create_mechanism_actor(const PxTransform& pose, const PxGeometry& geometry, float mass, bool collision_guard = false)
     {
         PxRigidDynamic* actor = multibody.physics->createRigidDynamic(pose);
         if (!actor)
@@ -186,14 +192,28 @@ namespace car
             return nullptr;
         }
 
-        PxShape* shape = multibody.physics->createShape(geometry, *material);
+        PxMaterial* shape_material = collision_guard && wheel_guard_material ? wheel_guard_material : material;
+        PxShape* shape = multibody.physics->createShape(geometry, *shape_material);
         if (!shape)
         {
             actor->release();
             return nullptr;
         }
 
-        configure_mechanism_shape(shape);
+        if (collision_guard)
+        {
+            shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
+            shape->setContactOffset(0.005f);
+            shape->setRestOffset(0.0f);
+            PxFilterData filter_data = shape->getSimulationFilterData();
+            filter_data.word2 = 2;
+            filter_data.word3 = multibody_collision_group();
+            shape->setSimulationFilterData(filter_data);
+        }
+        else
+        {
+            configure_mechanism_shape(shape);
+        }
         actor->attachShape(*shape);
         shape->release();
         PxRigidBodyExt::setMassAndUpdateInertia(*actor, PxMax(mass, 0.1f));
@@ -448,7 +468,7 @@ namespace car
         PxTransform wheel_pose(wheel_world, chassis_pose.q * alignment);
 
         corner.upright = create_mechanism_actor(wheel_pose, PxBoxGeometry(0.04f, 0.18f, 0.06f), tuning::spec.upright_mass);
-        corner.wheel_body = create_mechanism_actor(wheel_pose, PxSphereGeometry(cfg.wheel_radius_for(wheel_index)), cfg.wheel_mass);
+        corner.wheel_body = create_mechanism_actor(wheel_pose, PxSphereGeometry(cfg.wheel_radius_for(wheel_index) * 0.90f), cfg.wheel_mass, true);
         if (!corner.upright || !corner.wheel_body)
         {
             return false;
@@ -711,6 +731,12 @@ namespace car
         return actor->getLinearVelocity() + actor->getAngularVelocity().cross(world_point - actor->getGlobalPose().p);
     }
 
+    inline PxVec3 ground_point_velocity(const wheel& wheel_state)
+    {
+        const PxRigidDynamic* ground = wheel_state.contact_actor ? wheel_state.contact_actor->is<PxRigidDynamic>() : nullptr;
+        return ground ? ground->getLinearVelocity() + ground->getAngularVelocity().cross(wheel_state.contact_point - ground->getGlobalPose().p) : PxVec3(0.0f);
+    }
+
     inline void refresh_wheel_actor_state()
     {
         PxVec3 fallback_axis = body ? body->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f)) : PxVec3(1.0f, 0.0f, 0.0f);
@@ -818,13 +844,13 @@ namespace car
             }
             float compression = corner.shock_rest_length - length;
             float damper = spring_damping[i] * (relative_speed < 0.0f ? tuning::spec.damping_bump_ratio : tuning::spec.damping_rebound_ratio);
-            float force_magnitude = spring_stiffness[i] * compression - damper * relative_speed;
+            float force_magnitude = PxMax(spring_stiffness[i] * compression, 0.0f) - damper * relative_speed;
             float bump_start = cfg.suspension_travel * tuning::spec.bump_stop_threshold;
             if (compression > bump_start)
             {
                 force_magnitude += (compression - bump_start) * tuning::spec.bump_stop_stiffness;
             }
-            force_magnitude = PxClamp(force_magnitude, 0.0f, tuning::spec.max_susp_force);
+            force_magnitude = PxClamp(force_magnitude, -tuning::spec.max_susp_force, tuning::spec.max_susp_force);
             PxVec3 force = direction * force_magnitude;
             PxRigidBodyExt::addForceAtPos(*body, force, top, PxForceMode::eFORCE);
             PxRigidBodyExt::addForceAtPos(*corner.upright, -force, bottom, PxForceMode::eFORCE);

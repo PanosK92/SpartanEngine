@@ -59,6 +59,13 @@ namespace spartan
     {
         // car prefabs are created from multiple world loading threads, s_cars is shared
         std::mutex car_list_mutex;
+        constexpr float car_spawn_margin = 1.0f;
+
+        float get_car_lower_extent(const car::car_preset& preset)
+        {
+            const float wheel_extent = preset.suspension_height + std::max(preset.front_wheel_radius, preset.rear_wheel_radius);
+            return std::max(preset.height * 0.5f, wheel_extent);
+        }
 
         enum class CarMaterialSlot
         {
@@ -134,8 +141,7 @@ namespace spartan
             wheel->AddTag(is_left ? "wheel_left" : "wheel_right");
         }
 
-        // physics-free version of ScaleWheelEntityToRadius for prop wheels,
-        // measures the mesh bounds directly so it works regardless of active state
+        // scales prop wheels without a physics component
         void scale_wheel_to_radius(Entity* wheel_entity, float target_radius)
         {
             Render* renderable = wheel_entity->GetComponent<Render>();
@@ -144,15 +150,14 @@ namespace spartan
                 return;
             }
 
-            const math::BoundingBox aabb = renderable->GetBoundingBoxMesh() * wheel_entity->GetMatrix();
-            const math::Vector3 extents  = aabb.GetExtents();
+            const math::Vector3 extents  = renderable->GetBoundingBoxMesh().GetExtents();
             const float measured_radius  = std::max({ extents.x, extents.y, extents.z });
             if (!std::isfinite(measured_radius) || measured_radius <= 1e-5f)
             {
                 return;
             }
 
-            wheel_entity->SetScale(wheel_entity->GetScaleLocal() * (target_radius / measured_radius));
+            wheel_entity->SetScaleLocal(math::Vector3(target_radius / measured_radius));
         }
 
         std::string resolve_car_file(const std::string& file)
@@ -304,7 +309,10 @@ namespace spartan
         const Color skeleton_color_wheel       = Color(0.38f, 0.78f, 0.96f, 1.0f);
         const Color skeleton_color_contact     = Color(0.20f, 1.00f, 0.42f, 1.0f);
         const Color skeleton_color_tire_force  = Color(1.00f, 0.30f, 0.68f, 1.0f);
+        const Color skeleton_color_long_force  = Color(1.00f, 0.62f, 0.12f, 1.0f);
+        const Color skeleton_color_torque      = Color(1.00f, 0.18f, 0.18f, 1.0f);
         const Color skeleton_color_aero        = Color(0.15f, 0.92f, 1.00f, 1.0f);
+        const Color skeleton_color_collision   = Color(0.72f, 0.28f, 1.00f, 1.0f);
 
         math::Vector3 lerp_skeleton(const math::Vector3& a, const math::Vector3& b, float t)
         {
@@ -443,6 +451,106 @@ namespace spartan
             Renderer::DrawLine(end - tangent * radius * 1.7f, end + tangent * radius * 1.7f, color, color);
             Renderer::DrawLine(end - bitangent * radius * 1.7f, end + bitangent * radius * 1.7f, color, color);
         }
+
+        Color get_skeleton_tire_temperature_color(float temperature, float wear)
+        {
+            const float ambient = ::car::tuning::spec.tire_ambient_temp;
+            const float optimal = std::max(::car::tuning::spec.tire_optimal_temp, ambient + 1.0f);
+            const float maximum = std::max(::car::tuning::spec.tire_max_temp, optimal + 1.0f);
+            const float brightness = 1.0f - std::clamp(wear, 0.0f, 1.0f) * 0.55f;
+            if (temperature <= optimal)
+            {
+                const float t = std::clamp((temperature - ambient) / (optimal - ambient), 0.0f, 1.0f);
+                return Color((0.12f + t * 0.18f) * brightness, (0.42f + t * 0.58f) * brightness, (1.0f - t * 0.65f) * brightness, 1.0f);
+            }
+            const float t = std::clamp((temperature - optimal) / (maximum - optimal), 0.0f, 1.0f);
+            return Color((0.30f + t * 0.70f) * brightness, (1.0f - t * 0.82f) * brightness, (0.35f - t * 0.25f) * brightness, 1.0f);
+        }
+
+        void draw_skeleton_torque_arc(const math::Vector3& center, const math::Vector3& axis_input, float radius, float normalized_torque, const Color& color)
+        {
+            if (fabsf(normalized_torque) < 0.001f || axis_input.LengthSquared() < 0.0001f)
+            {
+                return;
+            }
+            const math::Vector3 axis = axis_input.Normalized();
+            const math::Vector3 reference = fabsf(axis.y) < 0.9f ? math::Vector3::Up : math::Vector3::Right;
+            const math::Vector3 tangent = math::Vector3::Cross(axis, reference).Normalized();
+            const math::Vector3 bitangent = math::Vector3::Cross(axis, tangent).Normalized();
+            const float direction = normalized_torque > 0.0f ? 1.0f : -1.0f;
+            const float span = std::clamp(fabsf(normalized_torque), 0.0f, 1.0f) * math::pi * 1.5f;
+            const int segments = 14;
+            math::Vector3 previous = center + tangent * radius;
+            for (int segment = 1; segment <= segments; segment++)
+            {
+                const float angle = direction * span * static_cast<float>(segment) / static_cast<float>(segments);
+                const math::Vector3 point = center + (tangent * cosf(angle) + bitangent * sinf(angle)) * radius;
+                Renderer::DrawLine(previous, point, color, color);
+                previous = point;
+            }
+            const float end_angle = direction * span;
+            const math::Vector3 radial = tangent * cosf(end_angle) + bitangent * sinf(end_angle);
+            const math::Vector3 direction_at_end = (-tangent * sinf(end_angle) + bitangent * cosf(end_angle)) * direction;
+            Renderer::DrawLine(previous, previous - direction_at_end * radius * 0.28f + radial * radius * 0.16f, color, color);
+            Renderer::DrawLine(previous, previous - direction_at_end * radius * 0.28f - radial * radius * 0.16f, color, color);
+        }
+
+        template<typename Transform>
+        void draw_skeleton_chassis_shapes(physx::PxRigidDynamic* body, Transform&& to_render)
+        {
+            if (!body)
+            {
+                return;
+            }
+
+            const physx::PxU32 shape_count = body->getNbShapes();
+            if (shape_count == 0)
+            {
+                return;
+            }
+            std::vector<physx::PxShape*> shapes(shape_count);
+            body->getShapes(shapes.data(), shape_count);
+            for (physx::PxShape* shape : shapes)
+            {
+                const physx::PxTransform shape_pose = body->getGlobalPose() * shape->getLocalPose();
+                const physx::PxGeometry& shape_geometry = shape->getGeometry();
+                if (shape_geometry.getType() == physx::PxGeometryType::eCONVEXMESH)
+                {
+                    const physx::PxConvexMeshGeometry& geometry = static_cast<const physx::PxConvexMeshGeometry&>(shape_geometry);
+                    if (!geometry.convexMesh)
+                    {
+                        continue;
+                    }
+                    const physx::PxVec3* vertices = geometry.convexMesh->getVertices();
+                    const physx::PxU8* indices = geometry.convexMesh->getIndexBuffer();
+                    for (physx::PxU32 polygon_index = 0; polygon_index < geometry.convexMesh->getNbPolygons(); polygon_index++)
+                    {
+                        physx::PxHullPolygon polygon;
+                        if (!geometry.convexMesh->getPolygonData(polygon_index, polygon))
+                        {
+                            continue;
+                        }
+                        for (physx::PxU32 edge_index = 0; edge_index < polygon.mNbVerts; edge_index++)
+                        {
+                            const physx::PxU8 index_a = indices[polygon.mIndexBase + edge_index];
+                            const physx::PxU8 index_b = indices[polygon.mIndexBase + (edge_index + 1) % polygon.mNbVerts];
+                            Renderer::DrawLine(to_render(shape_pose.transform(geometry.scale.transform(vertices[index_a]))), to_render(shape_pose.transform(geometry.scale.transform(vertices[index_b]))), skeleton_color_collision, skeleton_color_collision);
+                        }
+                    }
+                }
+                else if (shape_geometry.getType() == physx::PxGeometryType::eBOX)
+                {
+                    const physx::PxBoxGeometry& geometry = static_cast<const physx::PxBoxGeometry&>(shape_geometry);
+                    const physx::PxVec3 h = geometry.halfExtents;
+                    const physx::PxVec3 vertices[8] = { {-h.x, -h.y, -h.z}, {h.x, -h.y, -h.z}, {h.x, h.y, -h.z}, {-h.x, h.y, -h.z}, {-h.x, -h.y, h.z}, {h.x, -h.y, h.z}, {h.x, h.y, h.z}, {-h.x, h.y, h.z} };
+                    const int edges[12][2] = { {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7} };
+                    for (const auto& edge : edges)
+                    {
+                        Renderer::DrawLine(to_render(shape_pose.transform(vertices[edge[0]])), to_render(shape_pose.transform(vertices[edge[1]])), skeleton_color_collision, skeleton_color_collision);
+                    }
+                }
+            }
+        }
     }
 
     Car* Car::Create(const Config& config)
@@ -499,9 +607,17 @@ namespace spartan
             if (car->m_body_entity)
             {
                 car->m_body_entity->SetParent(car->m_vehicle_entity);
-                car->m_body_entity->SetPositionLocal(math::Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.07f));
-                car->m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
-                car->m_body_entity->SetScaleLocal(1.1f);
+                if (definition->body_model.empty())
+                {
+                    car->m_body_entity->SetPositionLocal(math::Vector3::Zero);
+                    car->m_body_entity->SetRotationLocal(math::Quaternion::Identity);
+                }
+                else
+                {
+                    car->m_body_entity->SetPositionLocal(math::Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.07f));
+                    car->m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
+                    car->m_body_entity->SetScaleLocal(1.1f);
+                }
 
                 physics->SetChassisEntity(car->m_body_entity, excluded_wheel_entities);
             }
@@ -637,16 +753,16 @@ namespace spartan
         m_body_render_states.clear();
 
         m_visualization_preset = preset;
-        if (preset != CarVisualizationPreset::Skeleton || !m_body_entity)
+        if (preset != CarVisualizationPreset::Skeleton || !m_vehicle_entity)
         {
             return;
         }
 
-        std::vector<Entity*> body_entities;
-        body_entities.push_back(m_body_entity);
-        m_body_entity->GetDescendants(&body_entities);
+        std::vector<Entity*> render_entities;
+        render_entities.push_back(m_vehicle_entity);
+        m_vehicle_entity->GetDescendants(&render_entities);
 
-        for (Entity* entity : body_entities)
+        for (Entity* entity : render_entities)
         {
             if (entity && entity->GetComponent<Render>())
             {
@@ -657,6 +773,92 @@ namespace spartan
         for (const BodyRenderState& state : m_body_render_states)
         {
             state.entity->SetActive(false);
+        }
+    }
+
+    void Car::LoadDefinition(const car::car_definition* definition)
+    {
+        if (!definition || definition == m_definition || !m_vehicle_entity)
+        {
+            return;
+        }
+
+        Physics* physics = m_vehicle_entity->GetComponent<Physics>();
+        if (!physics)
+        {
+            return;
+        }
+
+        const CarVisualizationPreset visualization_preset = m_visualization_preset;
+        if (visualization_preset == CarVisualizationPreset::Skeleton)
+        {
+            SetVisualizationPreset(CarVisualizationPreset::Full);
+        }
+
+        const math::Vector3 current_position = m_vehicle_entity->GetPosition();
+        const math::Quaternion current_rotation = m_vehicle_entity->GetRotation();
+        float ground_height = current_position.y - get_car_lower_extent(::car::tuning::spec);
+        bool has_ground_contact = false;
+        for (int i = 0; i < ::car::wheel_count; i++)
+        {
+            const physx::PxVec3& contact_point = ::car::wheels[i].contact_point;
+            if (::car::wheels[i].grounded && std::isfinite(contact_point.y))
+            {
+                ground_height = has_ground_contact ? std::max(ground_height, contact_point.y) : contact_point.y;
+                has_ground_contact = true;
+            }
+        }
+        const float target_height = ground_height + get_car_lower_extent(definition->performance) + car_spawn_margin;
+        const math::Vector3 target_position(current_position.x, std::max(current_position.y, target_height), current_position.z);
+        const math::Quaternion target_rotation = math::Quaternion::FromEulerAngles(0.0f, current_rotation.Yaw(), 0.0f);
+        physics->SetBodyTransform(target_position, target_rotation, false);
+
+        if (m_body_entity)
+        {
+            m_body_entity->SetActive(false);
+            World::RemoveEntity(m_body_entity);
+        }
+
+        m_body_entity   = nullptr;
+        m_window_entity = nullptr;
+        m_definition    = definition;
+        ::car::load_car(definition->performance);
+
+        std::vector<Entity*> excluded_wheel_entities;
+        m_body_entity = CreateBody(&excluded_wheel_entities);
+        if (m_body_entity)
+        {
+            m_body_entity->SetParent(m_vehicle_entity);
+            if (definition->body_model.empty())
+            {
+                m_body_entity->SetPositionLocal(math::Vector3::Zero);
+                m_body_entity->SetRotationLocal(math::Quaternion::Identity);
+            }
+            else
+            {
+                m_body_entity->SetPositionLocal(math::Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.07f));
+                m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
+                m_body_entity->SetScaleLocal(1.1f);
+            }
+            physics->SetChassisEntity(m_body_entity, excluded_wheel_entities);
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            const WheelIndex wheel_index = static_cast<WheelIndex>(i);
+            if (Entity* wheel_entity = physics->GetWheelEntity(wheel_index))
+            {
+                const float radius = i < 2 ? ::car::cfg.front_wheel_radius : ::car::cfg.rear_wheel_radius;
+                const float width  = i < 2 ? ::car::cfg.front_wheel_width : ::car::cfg.rear_wheel_width;
+                physics->ScaleWheelEntityToDimensions(wheel_entity, radius, width);
+            }
+        }
+
+        default_car        = m_body_entity;
+        default_car_window = m_window_entity;
+        if (visualization_preset == CarVisualizationPreset::Skeleton)
+        {
+            SetVisualizationPreset(CarVisualizationPreset::Skeleton);
         }
     }
 
@@ -694,6 +896,7 @@ namespace spartan
         auto to_world = [&](const math::Vector3& local) { return vehicle_position + vehicle_rotation * local; };
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
         auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(from_px(value)); };
+        draw_skeleton_chassis_shapes(::car::body, to_render);
 
         math::Vector3 wheel_local[4];
         math::Vector3 wheel_world[4];
@@ -721,16 +924,28 @@ namespace spartan
             const int wheel_segments = 20;
             physx::PxVec3 previous_left;
             physx::PxVec3 previous_right;
+            physx::PxVec3 previous_effective;
+            physx::PxVec3 previous_temperature[3];
+            const float inside_direction = i == 0 || i == 2 ? 1.0f : -1.0f;
+            const float zone_offset[3] = { inside_direction * wheel_half_width * 0.66f, 0.0f, -inside_direction * wheel_half_width * 0.66f };
+            const Color zone_color[3] = { get_skeleton_tire_temperature_color(::car::wheels[i].thermal.surface[0], ::car::wheels[i].wear), get_skeleton_tire_temperature_color(::car::wheels[i].thermal.surface[1], ::car::wheels[i].wear), get_skeleton_tire_temperature_color(::car::wheels[i].thermal.surface[2], ::car::wheels[i].wear) };
             for (int segment = 0; segment <= wheel_segments; segment++)
             {
                 const float angle = static_cast<float>(segment) / static_cast<float>(wheel_segments) * math::pi * 2.0f;
                 const physx::PxVec3 radial = (wheel_radial_y * cosf(angle) + wheel_radial_z * sinf(angle)) * wheel_radius;
+                const physx::PxVec3 effective_point = wheel_pose.p + (wheel_radial_y * cosf(angle) + wheel_radial_z * sinf(angle)) * ::car::wheels[i].effective_radius;
                 const physx::PxVec3 left = wheel_left + radial;
                 const physx::PxVec3 right = wheel_right + radial;
+                const physx::PxVec3 temperature_point[3] = { wheel_pose.p + wheel_axis * zone_offset[0] + radial, wheel_pose.p + wheel_axis * zone_offset[1] + radial, wheel_pose.p + wheel_axis * zone_offset[2] + radial };
                 if (segment > 0)
                 {
                     Renderer::DrawLine(to_render(previous_left), to_render(left), skeleton_color_wheel, skeleton_color_wheel);
                     Renderer::DrawLine(to_render(previous_right), to_render(right), skeleton_color_wheel, skeleton_color_wheel);
+                    Renderer::DrawLine(to_render(previous_effective), to_render(effective_point), skeleton_color_contact, skeleton_color_contact);
+                    for (int zone = 0; zone < 3; zone++)
+                    {
+                        Renderer::DrawLine(to_render(previous_temperature[zone]), to_render(temperature_point[zone]), zone_color[zone], zone_color[zone]);
+                    }
                 }
                 if (segment % 4 == 0)
                 {
@@ -738,6 +953,11 @@ namespace spartan
                 }
                 previous_left = left;
                 previous_right = right;
+                previous_effective = effective_point;
+                for (int zone = 0; zone < 3; zone++)
+                {
+                    previous_temperature[zone] = temperature_point[zone];
+                }
             }
 
             draw_skeleton_cylinder(to_render(wheel_left), to_render(wheel_right), 0.045f, skeleton_color_joint);
@@ -759,18 +979,22 @@ namespace spartan
             }
             const physx::PxVec3 spin_marker = wheel_pose.q.rotate(physx::PxVec3(0.0f, wheel_radius * 0.9f, 0.0f));
             Renderer::DrawLine(wheel_world[i], to_render(wheel_pose.p + spin_marker), skeleton_color_joint, skeleton_color_joint);
-            const float average_wheel_radius = (::car::cfg.front_wheel_radius + ::car::cfg.rear_wheel_radius) * 0.5f;
-            const float service_brake_total = ::car::tuning::spec.brake_force * average_wheel_radius * ::car::input.brake;
+            const math::Vector3 wheel_axis_render = (to_render(wheel_pose.p + wheel_axis) - wheel_world[i]).Normalized();
+            const float wheel_torque_reference = std::max(::car::tuning::spec.handbrake_torque + ::car::tuning::spec.brake_force * wheel_radius, 1.0f);
+            draw_skeleton_torque_arc(wheel_world[i], wheel_axis_render, wheel_radius * 0.72f, ::car::wheels[i].net_torque / wheel_torque_reference, skeleton_color_torque);
+            Renderer::DrawSphere(wheel_world[i], 0.052f, 7, get_skeleton_tire_temperature_color(::car::wheels[i].thermal.core, ::car::wheels[i].wear));
             const float axle_brake_share = i < 2 ? ::car::tuning::spec.brake_bias_front : 1.0f - ::car::tuning::spec.brake_bias_front;
             const physx::PxVec3 chassis_forward = ::car::body->getGlobalPose().q.rotate(physx::PxVec3(0.0f, 0.0f, 1.0f));
-            const float forward_speed_kmh = fabsf(::car::body->getLinearVelocity().dot(chassis_forward)) * 3.6f;
-            const bool service_braking = !::car::is_in_reverse() && forward_speed_kmh > ::car::tuning::spec.braking_speed_threshold;
-            float applied_brake_torque = service_braking ? service_brake_total * axle_brake_share * 0.5f * ::car::get_brake_efficiency(::car::wheels[i].brake_temp) * ::car::assisted_actuators.brake_torque_scale[i] : 0.0f;
+            const float forward_speed = fabsf(::car::body->getLinearVelocity().dot(chassis_forward));
+            const bool reverse_requested = !::car::tuning::spec.manual_transmission && forward_speed < 0.5f && ::car::input.brake > 0.8f && ::car::input.throttle < ::car::tuning::spec.input_deadzone && ::car::is_in_forward_gear() && !::car::is_shifting;
+            const bool service_braking = ::car::input.brake > ::car::tuning::spec.input_deadzone && !::car::is_in_reverse() && !reverse_requested;
+            const float wheel_radius_for_brake = ::car::cfg.wheel_radius_for(i);
+            float applied_brake_torque = service_braking ? ::car::tuning::spec.brake_force * wheel_radius_for_brake * ::car::input.brake * axle_brake_share * 0.5f * ::car::get_brake_efficiency(::car::wheels[i].brake_temp) * ::car::assisted_actuators.brake_torque_scale[i] : 0.0f;
             if (i >= 2)
             {
                 applied_brake_torque += ::car::tuning::spec.handbrake_torque * ::car::input.handbrake;
             }
-            const float brake_reference = std::max(::car::tuning::spec.brake_force * average_wheel_radius * 0.5f + (i >= 2 ? ::car::tuning::spec.handbrake_torque : 0.0f), 1.0f);
+            const float brake_reference = std::max(::car::tuning::spec.brake_force * wheel_radius_for_brake * axle_brake_share * 0.5f + (i >= 2 ? ::car::tuning::spec.handbrake_torque : 0.0f), 1.0f);
             const float brake_actuation = std::clamp(applied_brake_torque / brake_reference, 0.0f, 1.0f);
             const float caliper_size = 0.050f + brake_actuation * 0.016f;
             Renderer::DrawSphere(to_render(wheel_pose.p + wheel_radial_y * brake_radius * 0.72f + wheel_radial_z * brake_radius * 0.45f), caliper_size, 6, brake_color);
@@ -814,6 +1038,22 @@ namespace spartan
             draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f, spring_color);
             draw_skeleton_joint(shock_top, skeleton_color_joint);
             draw_skeleton_joint(shock_bottom, skeleton_color_joint);
+            const math::Vector3 shock_axis = (shock_top - shock_bottom).Normalized();
+            const math::Vector3 spring_force_vector = shock_axis * (::car::spring_force[i] * 0.00001f);
+            Renderer::DrawLine(shock_top, shock_top + spring_force_vector, spring_color, spring_color);
+            Renderer::DrawLine(shock_bottom, shock_bottom - spring_force_vector, spring_color, spring_color);
+            const float current_compression = corner.shock_rest_length - corner.shock_length;
+            if (current_compression > ::car::cfg.suspension_travel * ::car::tuning::spec.bump_stop_threshold)
+            {
+                Renderer::DrawSphere(shock_bottom, 0.065f, 8, skeleton_color_torque);
+            }
+            physx::PxVec3 sweep_origin;
+            physx::PxVec3 sweep_endpoint;
+            bool sweep_hit = false;
+            ::car::get_debug_sweep(i, sweep_origin, sweep_endpoint, sweep_hit);
+            const Color& sweep_color = sweep_hit ? skeleton_color_contact : skeleton_color_collision;
+            Renderer::DrawLine(to_render(sweep_origin), to_render(sweep_endpoint), sweep_color, sweep_color);
+            Renderer::DrawSphere(to_render(sweep_endpoint), 0.025f, 6, sweep_color);
             if (::car::wheels[i].grounded)
             {
                 const ::car::wheel& wheel = ::car::wheels[i];
@@ -824,11 +1064,42 @@ namespace spartan
                 }
                 const physx::PxVec3 wheel_lateral = wheel.contact_normal.cross(wheel_forward).getNormalized();
                 const physx::PxVec3 normal_endpoint = wheel.contact_point + wheel.contact_normal * (wheel.tire_load * 0.00002f);
-                const physx::PxVec3 force_endpoint = wheel.contact_point + (wheel_forward * wheel.longitudinal_force + wheel_lateral * wheel.lateral_force) * 0.00002f;
+                const physx::PxVec3 longitudinal_endpoint = wheel.contact_point + wheel_forward * wheel.longitudinal_force * 0.00002f;
+                const physx::PxVec3 lateral_endpoint = wheel.contact_point + wheel_lateral * wheel.lateral_force * 0.00002f;
+                const float rolling_resistance_force = ::car::tuning::spec.rolling_resistance * wheel.tire_load;
+                const float rolling_direction = -std::clamp(corner.wheel_body->getLinearVelocity().dot(wheel_forward) / 0.5f, -1.0f, 1.0f);
+                const physx::PxVec3 rolling_endpoint = wheel.contact_point + wheel_forward * rolling_direction * rolling_resistance_force * 0.00004f;
                 const math::Vector3 contact = to_render(wheel.contact_point);
-                Renderer::DrawSphere(contact, 0.045f, 8, skeleton_color_contact);
+                Color contact_color = skeleton_color_contact;
+                if (wheel.contact_surface == ::car::surface_gravel)
+                {
+                    contact_color = Color(0.76f, 0.56f, 0.28f, 1.0f);
+                }
+                else if (wheel.contact_surface == ::car::surface_grass)
+                {
+                    contact_color = Color(0.18f, 0.72f, 0.18f, 1.0f);
+                }
+                else if (wheel.contact_surface == ::car::surface_ice)
+                {
+                    contact_color = Color(0.65f, 0.90f, 1.00f, 1.0f);
+                }
+                else if (wheel.contact_surface == ::car::surface_wet_asphalt)
+                {
+                    contact_color = Color(0.25f, 0.48f, 1.00f, 1.0f);
+                }
+                if (wheel.contact_actor && wheel.contact_actor->is<physx::PxRigidDynamic>())
+                {
+                    contact_color = Color(1.00f, 0.90f, 0.20f, 1.0f);
+                }
+                Renderer::DrawSphere(contact, 0.045f, 8, contact_color);
                 Renderer::DrawLine(contact, to_render(normal_endpoint), skeleton_color_contact, skeleton_color_contact);
-                Renderer::DrawLine(contact, to_render(force_endpoint), skeleton_color_tire_force, skeleton_color_tire_force);
+                Renderer::DrawLine(contact, to_render(longitudinal_endpoint), skeleton_color_long_force, skeleton_color_long_force);
+                Renderer::DrawLine(contact, to_render(lateral_endpoint), skeleton_color_tire_force, skeleton_color_tire_force);
+                Renderer::DrawLine(contact, to_render(rolling_endpoint), skeleton_color_aero, skeleton_color_aero);
+                const float trail = std::max(::car::tuning::spec.pneumatic_trail_max * (1.0f - fabsf(wheel.slip_angle) / std::max(::car::tuning::spec.pneumatic_trail_peak, 0.01f)), 0.0f);
+                const float aligning_torque = -wheel.lateral_force * trail * ::car::tuning::spec.self_align_gain;
+                const math::Vector3 contact_normal_render = (to_render(wheel.contact_point + wheel.contact_normal) - contact).Normalized();
+                draw_skeleton_torque_arc(wheel_world[i], contact_normal_render, wheel_radius * 0.48f, aligning_torque / 500.0f, skeleton_color_steering);
             }
         }
 
@@ -872,6 +1143,9 @@ namespace spartan
             draw_skeleton_shaft(shock_top_world[left], shock_top_world[right], 0.020f, 0.0f, anti_roll_twist, loaded_anti_roll_color);
             draw_skeleton_cylinder(shock_top_world[left], left_arm_end, 0.014f, loaded_anti_roll_color);
             draw_skeleton_cylinder(shock_top_world[right], right_arm_end, 0.014f, loaded_anti_roll_color);
+            const math::Vector3 anti_roll_force = vehicle_rotation * math::Vector3::Up * (compression_difference * stiffness * 0.00001f);
+            Renderer::DrawLine(shock_bottom_world[left], shock_bottom_world[left] - anti_roll_force, loaded_anti_roll_color, loaded_anti_roll_color);
+            Renderer::DrawLine(shock_bottom_world[right], shock_bottom_world[right] + anti_roll_force, loaded_anti_roll_color, loaded_anti_roll_color);
         };
         draw_anti_roll_bar(0, 1, ::car::tuning::spec.front_arb_stiffness);
         draw_anti_roll_bar(2, 3, ::car::tuning::spec.rear_arb_stiffness);
@@ -889,7 +1163,7 @@ namespace spartan
             draw_aero_force(::car::aero_debug.position, ::car::aero_debug.drag_force);
             draw_aero_force(::car::aero_debug.front_aero_pos, ::car::aero_debug.front_downforce);
             draw_aero_force(::car::aero_debug.rear_aero_pos, ::car::aero_debug.rear_downforce);
-            draw_aero_force(::car::aero_debug.position, ::car::aero_debug.side_force);
+            draw_aero_force(::car::aero_debug.side_aero_pos, ::car::aero_debug.side_force);
         }
 
         if (::car::multibody.rack)
@@ -914,7 +1188,19 @@ namespace spartan
         const float torque_load = std::clamp(fabsf(driveshaft_torque) / 6000.0f, 0.0f, 1.0f);
         const Color loaded_drivetrain_color = Color(0.25f - torque_load * 0.08f, 0.72f + torque_load * 0.18f, 1.00f, 1.0f);
         const float motor_load = ::car::tuning::spec.electric_enabled ? std::clamp(fabsf(::car::motor_torque) / std::max(::car::tuning::spec.electric_motor_torque, 1.0f), 0.0f, 1.0f) : 0.0f;
-        const Color power_unit_color = ::car::is_shifting ? skeleton_color_spring : Color(0.25f, 0.72f + motor_load * 0.24f, 1.0f, 1.0f);
+        Color power_unit_color = Color(0.25f, 0.72f + motor_load * 0.24f, 1.0f, 1.0f);
+        if (::car::rev_limiter_active)
+        {
+            power_unit_color = skeleton_color_torque;
+        }
+        else if (::car::tc_active)
+        {
+            power_unit_color = Color(1.0f, 0.55f + ::car::tc_reduction * 0.35f, 0.10f, 1.0f);
+        }
+        else if (::car::is_shifting)
+        {
+            power_unit_color = skeleton_color_spring;
+        }
         const float front_pinion_rotation = (::car::get_wheel_rotation(0) + ::car::get_wheel_rotation(1)) * 0.5f * ::car::tuning::spec.final_drive;
         const float rear_pinion_rotation  = (::car::get_wheel_rotation(2) + ::car::get_wheel_rotation(3)) * 0.5f * ::car::tuning::spec.final_drive;
         auto wheel_drivetrain_color = [&](int wheel_index)
@@ -931,14 +1217,16 @@ namespace spartan
             Renderer::DrawSphere(front_diff, 0.11f, 8, skeleton_color_drivetrain);
             draw_skeleton_shaft(front_diff, wheel_world[0], 0.04f, ::car::get_wheel_rotation(0), ::car::wheels[0].drive_torque * 0.00005f, wheel_drivetrain_color(0));
             draw_skeleton_shaft(front_diff, wheel_world[1], 0.04f, ::car::get_wheel_rotation(1), ::car::wheels[1].drive_torque * 0.00005f, wheel_drivetrain_color(1));
-            draw_skeleton_shaft(gearbox, front_diff, 0.055f, front_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
+            const float front_shaft_radius = drivetrain_type == 2 ? 0.035f + ::car::tuning::spec.torque_split_front * 0.04f : 0.055f;
+            draw_skeleton_shaft(gearbox, front_diff, front_shaft_radius, front_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
         }
         if (drives_rear)
         {
             Renderer::DrawSphere(rear_diff, 0.11f, 8, skeleton_color_drivetrain);
             draw_skeleton_shaft(rear_diff, wheel_world[2], 0.04f, ::car::get_wheel_rotation(2), ::car::wheels[2].drive_torque * 0.00005f, wheel_drivetrain_color(2));
             draw_skeleton_shaft(rear_diff, wheel_world[3], 0.04f, ::car::get_wheel_rotation(3), ::car::wheels[3].drive_torque * 0.00005f, wheel_drivetrain_color(3));
-            draw_skeleton_shaft(gearbox, rear_diff, 0.055f, rear_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
+            const float rear_shaft_radius = drivetrain_type == 2 ? 0.035f + (1.0f - ::car::tuning::spec.torque_split_front) * 0.04f : 0.055f;
+            draw_skeleton_shaft(gearbox, rear_diff, rear_shaft_radius, rear_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
         }
     }
 
@@ -1184,8 +1472,7 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            // lift the car above ground to prevent collision issues on reset
-            math::Vector3 reset_position = m_spawn_position + math::Vector3(0.0f, 0.5f, 0.0f);
+            math::Vector3 reset_position = m_spawn_position + math::Vector3(0.0f, get_car_lower_extent(::car::tuning::spec) + car_spawn_margin, 0.0f);
             physics->SetBodyTransform(reset_position, math::Quaternion::Identity);
             m_chase_camera.initialized = false;
         }
@@ -1354,10 +1641,30 @@ namespace spartan
 
     Entity* Car::CreateBody(std::vector<Entity*>* out_excluded_entities)
     {
-        // a car without a body model still spawns four wheels
-        if (!m_definition || m_definition->body_model.empty())
+        if (!m_definition)
         {
             return nullptr;
+        }
+        if (m_definition->body_model.empty())
+        {
+            Entity* car_entity = World::CreateEntity();
+            car_entity->SetObjectName(FileSystem::GetFileNameWithoutExtensionFromFilePath(m_definition->file_path));
+            car_entity->AddTag("body");
+            auto create_part = [&](const char* name, const math::Vector3& position, const math::Vector3& scale)
+            {
+                Entity* part = World::CreateEntity();
+                part->SetObjectName(name);
+                part->SetParent(car_entity);
+                part->SetPositionLocal(position);
+                part->SetScaleLocal(scale);
+                Render* renderable = part->AddComponent<Render>();
+                renderable->SetMesh(MeshType::Cube);
+                renderable->SetDefaultMaterial();
+            };
+            create_part("generic_lower_body", math::Vector3(0.0f, -::car::cfg.height * 0.18f, 0.0f), math::Vector3(::car::cfg.width * 0.92f, ::car::cfg.height * 0.38f, ::car::cfg.length * 0.84f));
+            create_part("generic_cabin", math::Vector3(0.0f, ::car::cfg.height * 0.22f, -::car::cfg.length * 0.08f), math::Vector3(::car::cfg.width * 0.68f, ::car::cfg.height * 0.42f, ::car::cfg.length * 0.48f));
+            create_part("generic_roof", math::Vector3(0.0f, ::car::cfg.height * 0.48f, -::car::cfg.length * 0.08f), math::Vector3(::car::cfg.width * 0.72f, ::car::cfg.height * 0.05f, ::car::cfg.length * 0.52f));
+            return car_entity;
         }
 
         uint32_t mesh_flags  = Mesh::GetDefaultFlags();

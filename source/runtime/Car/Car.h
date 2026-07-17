@@ -128,6 +128,7 @@ namespace spartan
         bool GetShowTelemetry() const { return m_show_telemetry; }
         void SetVisualizationPreset(CarVisualizationPreset preset);
         CarVisualizationPreset GetVisualizationPreset() const { return m_visualization_preset; }
+        void LoadDefinition(const car::car_definition* definition);
 
         // camera orbit (right stick control)
         void AddCameraOrbitYaw(float delta);

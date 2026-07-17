@@ -131,7 +131,7 @@ namespace spartan
 
         // tag all shapes on an actor with a collision type in word2
         // used by the simulation filter shader to suppress specific pairs
-        void tag_actor_shapes(PxRigidActor* actor, PxU32 collision_type)
+        void tag_actor_shapes(PxRigidActor* actor, PxU32 collision_type, PxU32 collision_group = 0)
         {
             PxShape* shapes[16];
             PxU32 count = actor->getShapes(shapes, 16);
@@ -139,6 +139,7 @@ namespace spartan
             {
                 PxFilterData fd = shapes[i]->getSimulationFilterData();
                 fd.word2 = collision_type;
+                fd.word3 = collision_group;
                 shapes[i]->setSimulationFilterData(fd);
             }
         }
@@ -1006,12 +1007,6 @@ namespace spartan
             "GetRedlineRPM",                &Physics::GetRedlineRPM,
             "IsShifting",                   &Physics::IsShifting,
 
-            "SetDrawRaycasts",              &Physics::SetDrawRaycasts,
-            "GetDrawRaycasts",              &Physics::GetDrawRaycasts,
-            "SetDrawSuspension",            &Physics::SetDrawSuspension,
-            "GetDrawSuspension",            &Physics::GetDrawSuspension,
-            "DrawDebugVisualization",       &Physics::DrawDebugVisualization,
-
             "SyncWheelOffsetsFromEntities", &Physics::SyncWheelOffsetsFromEntities,
 
             "GetClothStiffness",            &Physics::GetClothStiffness,
@@ -1565,7 +1560,7 @@ namespace spartan
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }
 
-    void Physics::SetBodyTransform(const Vector3& position, const Quaternion& rotation)
+    void Physics::SetBodyTransform(const Vector3& position, const Quaternion& rotation, bool rebuild_vehicle)
     {
         // reset interpolation state to avoid lerping from old position to new teleport position
         m_interpolation_initialized = false;
@@ -1601,12 +1596,15 @@ namespace spartan
                 car::wheels[i].angular_velocity = 0.0f;
             }
 
-            if (!car::rebuild_multibody(false))
+            if (rebuild_vehicle && !car::rebuild_multibody(false))
             {
                 SP_LOG_ERROR("failed to rebuild suspension after vehicle reset");
             }
-            car::reset_drivetrain_transients();
-            car::reset_wheel_thermals();
+            if (rebuild_vehicle)
+            {
+                car::reset_drivetrain_transients();
+                car::reset_wheel_thermals();
+            }
             return;
         }
 
@@ -1727,6 +1725,7 @@ namespace spartan
         }
 
         m_chassis_entity = entity;
+        m_chassis_entities_to_exclude = entities_to_exclude;
         if (entity)
         {
             // store base position so we can offset from it
@@ -1740,7 +1739,7 @@ namespace spartan
             // re-tag after shape replacement
             if (car::body)
             {
-                tag_actor_shapes(car::body, 2);
+                tag_actor_shapes(car::body, 2, car::multibody_collision_group());
             }
         }
         else
@@ -2108,74 +2107,6 @@ namespace spartan
         return r;
     }
 
-    void Physics::ScaleWheelEntityToRadius(Entity* wheel_entity, float target_radius)
-    {
-        if (!wheel_entity)
-        {
-            SP_LOG_WARNING("ScaleWheelEntityToRadius: null wheel_entity");
-            return;
-        }
-        if (!std::isfinite(target_radius) || target_radius <= 0.0f)
-        {
-            SP_LOG_WARNING("ScaleWheelEntityToRadius: invalid target_radius %.3f", target_radius);
-            return;
-        }
-
-        Render* renderable = wheel_entity->GetComponent<Render>();
-        if (!renderable)
-        {
-            SP_LOG_WARNING("ScaleWheelEntityToRadius: '%s' has no Render component", wheel_entity->GetObjectName().c_str());
-            return;
-        }
-
-        // refresh the aabb so it reflects the current local scale before we read its extents
-        renderable->Tick();
-
-        BoundingBox aabb    = renderable->GetBoundingBox();
-        Vector3     extents = aabb.GetExtents();
-        Vector3     center  = aabb.GetCenter();
-        if (extents.IsNaN() || center.IsNaN() || !std::isfinite(extents.x) || !std::isfinite(extents.y) || !std::isfinite(extents.z))
-        {
-            SP_LOG_WARNING("ScaleWheelEntityToRadius: non finite bbox on '%s', cannot rescale", wheel_entity->GetObjectName().c_str());
-            return;
-        }
-
-        float measured_radius = std::max({ extents.x, extents.y, extents.z });
-        if (!std::isfinite(measured_radius) || measured_radius <= 1e-5f)
-        {
-            SP_LOG_WARNING("ScaleWheelEntityToRadius: measured radius %.4f on '%s' is degenerate, skipping",
-                measured_radius, wheel_entity->GetObjectName().c_str());
-            return;
-        }
-
-        float scale_factor = target_radius / measured_radius;
-        if (!std::isfinite(scale_factor) || scale_factor <= 0.0f)
-        {
-            SP_LOG_WARNING("ScaleWheelEntityToRadius: invalid scale factor %.4f, skipping", scale_factor);
-            return;
-        }
-
-        Vector3 current_scale = wheel_entity->GetScaleLocal();
-        Vector3 new_scale(
-            current_scale.x * scale_factor,
-            current_scale.y * scale_factor,
-            current_scale.z * scale_factor);
-
-        if (!new_scale.IsFinite() || new_scale.x <= 0.0f || new_scale.y <= 0.0f || new_scale.z <= 0.0f)
-        {
-            SP_LOG_WARNING("ScaleWheelEntityToRadius: new scale would be invalid (%.3f, %.3f, %.3f), skipping",
-                new_scale.x, new_scale.y, new_scale.z);
-            return;
-        }
-
-        wheel_entity->SetScale(new_scale);
-        renderable->Tick();
-
-        SP_LOG_INFO("ScaleWheelEntityToRadius: '%s' measured r=%.3f, target r=%.3f, scale factor %.3f -> new scale (%.3f, %.3f, %.3f)",
-            wheel_entity->GetObjectName().c_str(), measured_radius, target_radius, scale_factor,
-            new_scale.x, new_scale.y, new_scale.z);
-    }
-
     void Physics::ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width)
     {
         if (!wheel_entity || !std::isfinite(target_radius) || !std::isfinite(target_width) || target_radius <= 0.0f || target_width <= 0.0f)
@@ -2189,17 +2120,25 @@ namespace spartan
             return;
         }
 
-        renderable->Tick();
-        Vector3 extents = renderable->GetBoundingBox().GetExtents();
+        Vector3 extents = renderable->GetBoundingBoxMesh().GetExtents();
         if (!extents.IsFinite() || extents.x <= 0.0001f || extents.y <= 0.0001f || extents.z <= 0.0001f)
         {
             return;
         }
 
-        Vector3 scale = wheel_entity->GetScaleLocal();
-        scale.x *= target_width / (extents.x * 2.0f);
-        scale.y *= target_radius / extents.y;
-        scale.z *= target_radius / extents.z;
+        Vector3 scale;
+        if (extents.x <= extents.y && extents.x <= extents.z)
+        {
+            scale = Vector3(target_width / (extents.x * 2.0f), target_radius / extents.y, target_radius / extents.z);
+        }
+        else if (extents.y <= extents.x && extents.y <= extents.z)
+        {
+            scale = Vector3(target_radius / extents.x, target_width / (extents.y * 2.0f), target_radius / extents.z);
+        }
+        else
+        {
+            scale = Vector3(target_radius / extents.x, target_radius / extents.y, target_width / (extents.z * 2.0f));
+        }
         if (!scale.IsFinite() || scale.x <= 0.0f || scale.y <= 0.0f || scale.z <= 0.0f)
         {
             return;
@@ -2764,26 +2703,6 @@ namespace spartan
         return car::get_is_shifting();
     }
 
-    void Physics::SetDrawRaycasts(bool enabled)
-    {
-        car::set_draw_raycasts(enabled);
-    }
-
-    bool Physics::GetDrawRaycasts() const
-    {
-        return car::get_draw_raycasts();
-    }
-
-    void Physics::SetDrawSuspension(bool enabled)
-    {
-        car::set_draw_suspension(enabled);
-    }
-
-    bool Physics::GetDrawSuspension() const
-    {
-        return car::get_draw_suspension();
-    }
-
     Vector3 Physics::TransformVehiclePointToRender(const Vector3& point) const
     {
         return m_vehicle_render_position + m_vehicle_render_rotation * (m_vehicle_physics_rotation.Conjugate() * (point - m_vehicle_physics_position));
@@ -2794,102 +2713,6 @@ namespace spartan
         Quaternion result = m_vehicle_render_rotation * m_vehicle_physics_rotation.Conjugate() * rotation;
         result.Normalize();
         return result;
-    }
-
-    void Physics::DrawDebugVisualization()
-    {
-        if (m_body_type != BodyType::Vehicle)
-        {
-            return;
-        }
-
-        using namespace physx;
-
-        // colors for visualization
-        const Color color_ray_hit    = Color(0.0f, 1.0f, 0.0f, 1.0f);   // green - ray hit ground
-        const Color color_ray_miss   = Color(1.0f, 0.0f, 0.0f, 1.0f);   // red - ray missed
-        const Color color_susp_top   = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - suspension top
-        const Color color_susp_bot   = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - suspension bottom/wheel
-
-        Entity* vehicle_entity = GetEntity();
-        Vector3 vehicle_pos = vehicle_entity ? vehicle_entity->GetPosition() : Vector3::Zero;
-
-        for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
-        {
-            Entity* wheel_entity = m_wheel_entities[w];
-            const car::suspension_corner& corner = car::multibody.corners[w];
-            if (!wheel_entity || !corner.wheel_body)
-            {
-                continue;
-            }
-
-            Vector3 wheel_position;
-            Quaternion wheel_rotation;
-            from_px_transform(corner.wheel_body->getGlobalPose(), wheel_position, wheel_rotation);
-            if (!wheel_position.IsFinite() || !wheel_rotation.IsFinite())
-            {
-                continue;
-            }
-            Vector3 wheel_center_v = TransformVehiclePointToRender(wheel_position);
-            wheel_rotation         = TransformVehicleRotationToRender(wheel_rotation);
-            Vector3 susp_top_v     = car::body ? TransformVehiclePointToRender(from_px_vec3(car::body->getGlobalPose().transform(corner.chassis_shock_anchor))) : vehicle_pos;
-
-            // suspension line
-            if (car::get_draw_suspension())
-            {
-                Renderer::DrawLine(susp_top_v, wheel_center_v, color_susp_top, color_susp_bot);
-            }
-
-            // cylinder wireframe at wheel center
-            if (car::get_draw_raycasts())
-            {
-                float radius     = car::get_wheel_radius();
-                float half_width = car::get_wheel_width() * 0.5f;
-
-                Vector3 right_v = wheel_rotation * Vector3::Right;
-                Vector3 fwd_v   = wheel_rotation * Vector3::Forward;
-                Vector3 up_v    = wheel_rotation * Vector3::Up;
-
-                PxVec3 right(right_v.x, right_v.y, right_v.z);
-                PxVec3 fwd  (fwd_v.x,   fwd_v.y,   fwd_v.z);
-                PxVec3 up   (up_v.x,    up_v.y,    up_v.z);
-
-                PxVec3 center(wheel_center_v.x, wheel_center_v.y, wheel_center_v.z);
-                PxVec3 left_center  = center - right * half_width;
-                PxVec3 right_center = center + right * half_width;
-
-                const int segments = 16;
-                PxVec3 prev_l, prev_r;
-                for (int s = 0; s <= segments; s++)
-                {
-                    float angle = (2.0f * PxPi * s) / segments;
-                    PxVec3 offset = fwd * (cosf(angle) * radius) + up * (sinf(angle) * radius);
-                    PxVec3 pl = left_center + offset;
-                    PxVec3 pr = right_center + offset;
-
-                    if (s > 0)
-                    {
-                        Color col = car::is_wheel_grounded(w) ? color_ray_hit : color_ray_miss;
-                        Renderer::DrawLine(math::Vector3(prev_l.x, prev_l.y, prev_l.z), math::Vector3(pl.x, pl.y, pl.z), col, col);
-                        Renderer::DrawLine(math::Vector3(prev_r.x, prev_r.y, prev_r.z), math::Vector3(pr.x, pr.y, pr.z), col, col);
-                    }
-                    prev_l = pl;
-                    prev_r = pr;
-                }
-
-                // connecting lines between caps (4 cardinal points)
-                for (int s = 0; s < 4; s++)
-                {
-                    float angle = (2.0f * PxPi * s) / 4;
-                    PxVec3 offset = fwd * (cosf(angle) * radius) + up * (sinf(angle) * radius);
-                    PxVec3 pl = left_center + offset;
-                    PxVec3 pr = right_center + offset;
-                    Color col = car::is_wheel_grounded(w) ? color_ray_hit : color_ray_miss;
-                    Renderer::DrawLine(math::Vector3(pl.x, pl.y, pl.z), math::Vector3(pr.x, pr.y, pr.z), col, col);
-                }
-            }
-        }
-
     }
 
     void Physics::SyncWheelOffsetsFromEntities()
@@ -3135,8 +2958,12 @@ namespace spartan
                 {
                     SP_LOG_ERROR("failed to place car suspension assembly");
                 }
+                if (m_chassis_entity)
+                {
+                    BuildChassisConvexShapes(m_chassis_entity, m_chassis_entities_to_exclude);
+                }
                 car::body->userData = reinterpret_cast<void*>(GetEntity());
-                tag_actor_shapes(car::body, 2);
+                tag_actor_shapes(car::body, 2, car::multibody_collision_group());
 
                 // run the vehicle force model in lockstep with the fixed physics step
                 PhysicsWorld::SetVehicleStepCallback([this](float dt) { TickVehicleSubstep(dt); });

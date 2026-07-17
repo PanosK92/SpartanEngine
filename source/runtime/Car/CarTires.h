@@ -32,6 +32,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace car
 {
+    constexpr float handbrake_lock_force = 1e8f;
+
+    inline void update_handbrake_wheel_locks()
+    {
+        const bool handbrake_locked = input.handbrake >= 0.999f;
+        for (int i : { rear_left, rear_right })
+        {
+            suspension_corner& corner = multibody.corners[i];
+            if (corner.wheel_joint)
+            {
+                corner.wheel_joint->setDriveVelocity(0.0f);
+                corner.wheel_joint->setDriveForceLimit(handbrake_locked ? handbrake_lock_force : 0.0f);
+                corner.wheel_joint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, handbrake_locked);
+            }
+            if (handbrake_locked && corner.wheel_body)
+            {
+                const PxVec3 wheel_axis = corner.wheel_body->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+                const PxVec3 angular_velocity = corner.wheel_body->getAngularVelocity();
+                corner.wheel_body->setAngularVelocity(angular_velocity - wheel_axis * angular_velocity.dot(wheel_axis));
+                wheels[i].angular_velocity = 0.0f;
+                wheels[i].net_torque = 0.0f;
+            }
+        }
+    }
+
     inline void update_tire_slip_state(float dt)
     {
         PxTransform chassis_pose = body->getGlobalPose();
@@ -57,7 +82,7 @@ namespace car
                 wheel_forward = chassis_pose.q.rotate(PxVec3(0.0f, 0.0f, 1.0f));
             }
             PxVec3 wheel_lateral = w.contact_normal.cross(wheel_forward).getNormalized();
-            PxVec3 wheel_velocity = wheel_actor->getLinearVelocity();
+            PxVec3 wheel_velocity = wheel_actor->getLinearVelocity() - ground_point_velocity(w);
             wheel_velocity -= w.contact_normal * wheel_velocity.dot(w.contact_normal);
             float longitudinal_speed = wheel_velocity.dot(wheel_forward);
             float lateral_speed = wheel_velocity.dot(wheel_lateral);
@@ -112,6 +137,12 @@ namespace car
             {
                 w.angular_velocity = wheel_actor->getAngularVelocity().dot(wheel_axis);
             }
+            const bool handbrake_locked = is_rear(i) && input.handbrake >= 0.999f;
+            if (handbrake_locked)
+            {
+                w.angular_velocity = 0.0f;
+                w.net_torque = 0.0f;
+            }
 
             // floor wheel geometry so slip and torque calculations remain finite
             float wr_raw  = cfg.wheel_radius_for(i);
@@ -154,7 +185,7 @@ namespace car
                 w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
 
                 w.net_torque -= w.angular_velocity * tuning::spec.bearing_friction * wmoi;
-                if (input.handbrake > tuning::spec.input_deadzone && is_rear(i))
+                if (!handbrake_locked && input.handbrake > tuning::spec.input_deadzone && is_rear(i))
                 {
                     float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : (w.angular_velocity < 0.0f) ? 1.0f : 0.0f;
                     w.net_torque += hb_sign * tuning::spec.handbrake_torque * input.handbrake;
@@ -193,7 +224,7 @@ namespace car
             }
 
             PxVec3 world_pos = wheel_actor ? wheel_actor->getGlobalPose().p : pose.transform(wheel_offsets[i]);
-            PxVec3 wheel_vel = wheel_actor ? wheel_actor->getLinearVelocity() : body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p);
+            PxVec3 wheel_vel = (wheel_actor ? wheel_actor->getLinearVelocity() : body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p)) - ground_point_velocity(w);
             wheel_vel -= w.contact_normal * wheel_vel.dot(w.contact_normal);
 
             PxVec3 wheel_lat = wheel_axis;
@@ -356,11 +387,11 @@ namespace car
 
             // camber determines heat distribution across zones:
             // negative camber loads the inside zone more under cornering
-            float camber_bias = dyn_camb * 3.0f;
+            float camber_bias = -dyn_camb * 3.0f;
             float zone_heat[3] = {
-                base_heat * (1.0f + camber_bias),  // inside: more heat with negative camber
-                base_heat,                          // middle: uniform
-                base_heat * (1.0f - camber_bias)   // outside: less heat with negative camber
+                PxMax(base_heat * (1.0f + camber_bias), 0.0f),
+                base_heat,
+                PxMax(base_heat * (1.0f - camber_bias), 0.0f)
             };
 
             float surface_resp = tuning::spec.tire_surface_response;
@@ -394,13 +425,6 @@ namespace car
             float wear_amount = wear_rate * slip_v * dt;
             w.wear = PxMin(w.wear + PxMax(wear_amount, 0.0f), 1.0f);
 
-            if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
-            {
-                float sliding_f = tuning::spec.handbrake_sliding_factor * peak_force_long;
-                long_f = (fabsf(vx) > 0.01f) ? ((vx > 0.0f ? -1.0f : 1.0f) * sliding_f * input.handbrake) : 0.0f;
-                lat_f *= (1.0f - 0.5f * input.handbrake);
-            }
-
             w.lateral_force = lat_f;
             w.longitudinal_force = long_f;
 
@@ -417,7 +441,7 @@ namespace car
 
             w.net_torque -= w.angular_velocity * tuning::spec.bearing_friction * wmoi; // bearing drag
 
-            if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
+            if (!handbrake_locked && is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
             {
                 float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : (w.angular_velocity < 0.0f) ? 1.0f : 0.0f;
                 w.net_torque += hb_sign * tuning::spec.handbrake_torque * input.handbrake;

@@ -231,14 +231,23 @@ namespace spartan
             bool is_character_vs_vehicle =
                 (filter_data0.word2 == 1 && filter_data1.word2 == 2) ||
                 (filter_data0.word2 == 2 && filter_data1.word2 == 1);
+            bool is_same_vehicle =
+                filter_data0.word2 == 2 &&
+                filter_data1.word2 == 2 &&
+                filter_data0.word3 != 0 &&
+                filter_data0.word3 == filter_data1.word3;
 
-            if (is_character_vs_vehicle)
+            if (is_character_vs_vehicle || is_same_vehicle)
             {
                 return PxFilterFlag::eSUPPRESS;
             }
 
-            return PxDefaultSimulationFilterShader(attributes0, filter_data0, attributes1, filter_data1,
-                pair_flags, constant_block, constant_block_size);
+            PxFilterFlags filter_flags = PxDefaultSimulationFilterShader(attributes0, filter_data0, attributes1, filter_data1, pair_flags, constant_block, constant_block_size);
+            if (!PxFilterObjectIsTrigger(attributes0) && !PxFilterObjectIsTrigger(attributes1))
+            {
+                pair_flags |= PxPairFlag::eDETECT_CCD_CONTACT;
+            }
+            return filter_flags;
         }
     }
 
@@ -258,6 +267,7 @@ namespace spartan
         scene_desc.cpuDispatcher  = PxDefaultCpuDispatcherCreate(2);
         scene_desc.filterShader   = collision_filter_shader;
         scene_desc.flags         |= PxSceneFlag::eENABLE_CCD; // enable continuous collision detection to reduce tunneling
+        scene_desc.ccdMaxPasses   = 4;
         scene                     = physics->createScene(scene_desc);
         SP_ASSERT(scene);
 

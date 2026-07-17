@@ -184,7 +184,7 @@ namespace car
             return;
         }
 
-        float speed_kmh = forward_speed * 3.6f;
+        float speed_kmh = fabsf(forward_speed) * 3.6f;
 
         // reverse
         if (forward_speed < -1.0f && input.brake > 0.1f && throttle < 0.1f && current_gear != 0)
@@ -228,11 +228,28 @@ namespace car
                 upshift_threshold += 10.0f;
             }
 
-            bool speed_trigger = speed_kmh > upshift_threshold;
-            bool rpm_trigger   = engine_rpm > tuning::spec.shift_up_rpm;
+            bool speed_trigger = speed_kmh >= upshift_threshold;
+            float driven_angular_velocity = 0.0f;
+            int driven_wheel_count = 0;
+            for (int i = 0; i < wheel_count; i++)
+            {
+                if (is_driven(i))
+                {
+                    driven_angular_velocity += wheels[i].angular_velocity;
+                    driven_wheel_count++;
+                }
+            }
+            float coupled_engine_rpm = engine_rpm;
+            if (driven_wheel_count > 0)
+            {
+                float average_wheel_rpm = fabsf(driven_angular_velocity / static_cast<float>(driven_wheel_count)) * 60.0f / (2.0f * PxPi);
+                coupled_engine_rpm = wheel_rpm_to_engine_rpm(average_wheel_rpm, current_gear);
+            }
+            float shift_rpm = PxMax(engine_rpm, coupled_engine_rpm);
+            bool rpm_trigger = shift_rpm >= tuning::spec.shift_up_rpm;
 
             // track how long the engine has been sitting at redline
-            if (engine_rpm > tuning::spec.shift_up_rpm)
+            if (shift_rpm >= tuning::spec.shift_up_rpm)
             {
                 redline_hold_timer += dt;
             }
@@ -569,9 +586,33 @@ namespace car
         motor_torque       = 0.0f;
     }
 
+    inline float brake_torque_sign(int wheel_index)
+    {
+        const wheel& wheel_state = wheels[wheel_index];
+        if (fabsf(wheel_state.angular_velocity) > 0.1f)
+        {
+            return wheel_state.angular_velocity > 0.0f ? -1.0f : 1.0f;
+        }
+
+        PxRigidDynamic* wheel_actor = multibody.corners[wheel_index].wheel_body;
+        if (!wheel_actor || !wheel_state.grounded)
+        {
+            return 0.0f;
+        }
+
+        PxVec3 wheel_axis = wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+        PxVec3 wheel_forward = wheel_axis.cross(wheel_state.contact_normal);
+        if (wheel_forward.normalize() < 1e-4f)
+        {
+            return 0.0f;
+        }
+        float longitudinal_speed = (wheel_actor->getLinearVelocity() - ground_point_velocity(wheel_state)).dot(wheel_forward);
+        return fabsf(longitudinal_speed) > 0.05f ? (longitudinal_speed > 0.0f ? -1.0f : 1.0f) : 0.0f;
+    }
+
     // service brakes: writes brake torque into net_torque (integrated once in apply_tire_forces),
     // while also accumulating brake heat and toggling abs per wheel
-    inline void apply_service_brakes(float forward_speed_kmh, float forward_speed_ms, float dt)
+    inline void apply_service_brakes(float forward_speed_ms, float dt)
     {
         if (input.brake <= tuning::spec.input_deadzone)
         {
@@ -586,39 +627,29 @@ namespace car
             return;
         }
 
-        if (fabsf(forward_speed_kmh) > tuning::spec.braking_speed_threshold)
+        bool reverse_requested = !tuning::spec.manual_transmission && fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < tuning::spec.input_deadzone && is_in_forward_gear() && !is_shifting;
+        if (reverse_requested)
         {
-            float avg_r = (cfg.front_wheel_radius + cfg.rear_wheel_radius) * 0.5f;
-            float total_torque = tuning::spec.brake_force * avg_r * input.brake;
-            float front_t = total_torque * tuning::spec.brake_bias_front * 0.5f;
-            float rear_t  = total_torque * (1.0f - tuning::spec.brake_bias_front) * 0.5f;
-
-            for (int i = 0; i < wheel_count; i++)
-            {
-                float t = is_front(i) ? front_t : rear_t;
-
-                float brake_efficiency = get_brake_efficiency(wheels[i].brake_temp);
-                t *= brake_efficiency * assisted_actuators.brake_torque_scale[i];
-
-                float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;
-                wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, tuning::spec.brake_max_temp);
-
-                // physical wheel actors integrate the accumulated brake torque
-                float sign = (wheels[i].angular_velocity > 0.0f) ? -1.0f : (wheels[i].angular_velocity < 0.0f) ? 1.0f : 0.0f;
-                wheels[i].net_torque += sign * t;
-            }
+            current_gear = 0;
+            is_shifting  = true;
+            shift_timer  = tuning::spec.shift_time * 2.0f;
+            return;
         }
-        else
-        {
-            for (int i = 0; i < wheel_count; i++) abs_active[i] = false;
 
-            // reverse request: auto only, full stop + brake hold while in forward gear
-            if (!tuning::spec.manual_transmission && fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < tuning::spec.input_deadzone && is_in_forward_gear() && !is_shifting)
-            {
-                current_gear = 0;
-                is_shifting  = true;
-                shift_timer  = tuning::spec.shift_time * 2.0f;
-            }
+        float front_t = tuning::spec.brake_force * cfg.front_wheel_radius * input.brake * tuning::spec.brake_bias_front * 0.5f;
+        float rear_t  = tuning::spec.brake_force * cfg.rear_wheel_radius * input.brake * (1.0f - tuning::spec.brake_bias_front) * 0.5f;
+
+        for (int i = 0; i < wheel_count; i++)
+        {
+            float t = is_front(i) ? front_t : rear_t;
+
+            float brake_efficiency = get_brake_efficiency(wheels[i].brake_temp);
+            t *= brake_efficiency * assisted_actuators.brake_torque_scale[i];
+
+            float heat = fabsf(wheels[i].angular_velocity) * t * tuning::spec.brake_heat_coefficient * dt;
+            wheels[i].brake_temp = PxMin(wheels[i].brake_temp + heat, tuning::spec.brake_max_temp);
+
+            wheels[i].net_torque += brake_torque_sign(i) * t;
         }
     }
 
@@ -721,9 +752,6 @@ namespace car
             relax_drivetrain(dt);
         }
 
-        apply_service_brakes(forward_speed_kmh, forward_speed_ms, dt);
-
-        // handbrake is handled exclusively inside apply_tire_forces (force + torque),
-        // coasting wheel sync lives there too
+        apply_service_brakes(forward_speed_ms, dt);
     }
 }

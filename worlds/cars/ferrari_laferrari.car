@@ -44,7 +44,7 @@
         brake_force="12000" brake_bias_front="0.62" reverse_power_ratio="0.5"
         brake_ambient_temp="30" brake_optimal_temp="400" brake_fade_temp="700" brake_max_temp="900"
         brake_heat_coefficient="0.015" brake_cooling_base="8" brake_cooling_airflow="1.5" brake_thermal_mass="5"
-        handbrake_torque="2500" handbrake_sliding_factor="0.75" />
+        handbrake_torque="2500" />
 
     <!-- angles in radians -->
     <suspension

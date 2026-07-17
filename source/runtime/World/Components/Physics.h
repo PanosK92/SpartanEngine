@@ -161,7 +161,7 @@ namespace spartan
         // misc
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
-        void SetBodyTransform(const math::Vector3& position, const math::Quaternion& rotation); // teleport physics body
+        void SetBodyTransform(const math::Vector3& position, const math::Quaternion& rotation, bool rebuild_vehicle = true); // teleport physics body
 
         // vehicle controls (only works when body type is Vehicle)
         void SetVehicleThrottle(float value);   // 0 to 1
@@ -187,10 +187,7 @@ namespace spartan
         // visual wheels scaled smaller than this leave the chassis hull bottoming out on the ground
         // before the wheels can touch, so the springs never produce force and the car can't move
         float GetTargetWheelRadius() const;
-        // scale a wheel entity uniformly so its largest aabb half extent matches target_radius.
-        // must be called before SyncWheelOffsetsFromEntities or ComputeWheelRadiusFromEntity to
-        // ensure the cooked sweep cylinder and visual wheel agree on the actual physical size
-        void ScaleWheelEntityToRadius(Entity* wheel_entity, float target_radius);
+        // derives an absolute scale from the unscaled local mesh bounds
         void ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width);
 
         // vehicle metrics (read-only, for display/debugging)
@@ -272,12 +269,6 @@ namespace spartan
         float GetRedlineRPM() const;                            // engine redline rpm
         bool IsShifting() const;                                // is gearbox currently shifting
 
-        // debug visualization
-        void SetDrawRaycasts(bool enabled);
-        bool GetDrawRaycasts() const;
-        void SetDrawSuspension(bool enabled);
-        bool GetDrawSuspension() const;
-        void DrawDebugVisualization();                          // call each frame to draw debug lines
         math::Vector3 TransformVehiclePointToRender(const math::Vector3& point) const;
         math::Quaternion TransformVehicleRotationToRender(const math::Quaternion& rotation) const;
 
@@ -353,6 +344,7 @@ namespace spartan
 
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;
+        std::vector<Entity*> m_chassis_entities_to_exclude;
         math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
         float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
 

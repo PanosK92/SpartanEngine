@@ -6037,10 +6037,6 @@ namespace spartan
             {
                 static_cast<Physics*>(component)->ShiftToNeutral();
             }
-            else if (*type == ComponentType::Physics && action == "draw_debug_visualization")
-            {
-                static_cast<Physics*>(component)->DrawDebugVisualization();
-            }
             else if (*type == ComponentType::AudioSource && action == "play")
             {
                 static_cast<AudioSource*>(component)->PlayClip();

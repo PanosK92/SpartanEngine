@@ -155,7 +155,7 @@ namespace car
             require(finite_range(preset.track_front, 1.0f, 2.5f) && finite_range(preset.track_rear, 1.0f, 2.5f), "track");
             require(finite_range(preset.front_wheel_radius, 0.2f, 0.7f) && finite_range(preset.rear_wheel_radius, 0.2f, 0.7f), "wheel_radius");
             require(finite_range(preset.front_wheel_width, 0.1f, 0.6f) && finite_range(preset.rear_wheel_width, 0.1f, 0.6f), "wheel_width");
-            require(finite_range(preset.suspension_travel, 0.04f, 0.5f), "suspension_travel");
+            require(finite_range(preset.suspension_travel, 0.04f, 0.7f), "suspension_travel");
             require(finite_range(preset.front_spring_freq, 0.5f, 5.0f) && finite_range(preset.rear_spring_freq, 0.5f, 5.0f), "spring_frequency");
             require(finite_range(preset.front_damping_ratio, 0.1f, 2.0f) && finite_range(preset.rear_damping_ratio, 0.1f, 2.0f), "damping_ratio");
             require(finite_range(preset.max_steer_angle, 0.1f, 1.2f), "max_steer_angle");
@@ -362,7 +362,6 @@ namespace car
 
             READ_FLOAT(airborne_wheel_decay);
             READ_FLOAT(bearing_friction);
-            READ_FLOAT(handbrake_sliding_factor);
             READ_FLOAT(handbrake_torque);
 
             READ_INT(drivetrain_type);
@@ -525,7 +524,7 @@ namespace car
 
         // register for the hud preset selector
         stored.performance.name = stored.name.c_str();
-        preset_registry.push_back({ stored.name.c_str(), &stored.performance });
+        preset_registry.push_back({ stored.name.c_str(), &stored.performance, &stored });
         preset_count        = static_cast<int>(preset_registry.size());
         active_preset_index = std::clamp(active_preset_index, 0, preset_count - 1);
 

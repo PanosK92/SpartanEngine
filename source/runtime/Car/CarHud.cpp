@@ -458,46 +458,6 @@ namespace spartan::car_hud
             }
         }
 
-        // shared spring coil visual. label and percentage are now rendered as ImGui text by the caller
-        void draw_coil(ImDrawList* dl, float compression, ImVec2 center_top, float max_h, float min_h)
-        {
-            float ext     = 1.0f - std::clamp(compression, 0.0f, 1.0f);
-            float spring_h = min_h + (max_h - min_h) * ext;
-
-            ImU32 col = (compression > 0.8f) ? accent_danger
-                       : (compression > 0.5f) ? accent_warn
-                       : accent_ok;
-
-            float cx     = center_top.x;
-            float top_y  = center_top.y;
-            dl->AddRectFilled(ImVec2(cx - 18, top_y), ImVec2(cx + 18, top_y + 6), IM_COL32(100, 110, 124, 255), 2.0f);
-
-            const int segs = 7;
-            float seg_h = spring_h / segs;
-            float hw    = 22.0f;
-            float top   = top_y + 8.0f;
-            for (int i = 0; i < segs; ++i)
-            {
-                float y1 = top + i * seg_h;
-                float y2 = top + (i + 0.5f) * seg_h;
-                float y3 = top + (i + 1) * seg_h;
-                if (i % 2 == 0)
-                {
-                    dl->AddLine(ImVec2(cx - hw, y1), ImVec2(cx + hw, y2), col, 3.5f);
-                    dl->AddLine(ImVec2(cx + hw, y2), ImVec2(cx - hw, y3), col, 3.5f);
-                }
-                else
-                {
-                    dl->AddLine(ImVec2(cx + hw, y1), ImVec2(cx - hw, y2), col, 3.5f);
-                    dl->AddLine(ImVec2(cx - hw, y2), ImVec2(cx + hw, y3), col, 3.5f);
-                }
-            }
-
-            float bot = top + spring_h;
-            dl->AddRectFilled(ImVec2(cx - 18, bot), ImVec2(cx + 18, bot + 6), IM_COL32(100, 110, 124, 255), 2.0f);
-            dl->AddLine(ImVec2(cx, top_y + 6), ImVec2(cx, bot), IM_COL32(70, 80, 92, 255), 2.0f);
-        }
-
         // helper: a thin horizontal level meter used in the engine section
         void draw_level_bar(const char* label, float level, ImU32 color)
         {
@@ -846,8 +806,53 @@ namespace spartan::car_hud
     {
         void section_header(const char* title)
         {
-            ImGui::Spacing();
-            ImGui::SeparatorText(title);
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            float width = ImGui::GetContentRegionAvail().x;
+            dl->AddRectFilled(pos, ImVec2(pos.x + 3.0f, pos.y + 20.0f), accent_info, 2.0f);
+            dl->AddText(ImVec2(pos.x + 11.0f, pos.y + 2.0f), text_primary, title);
+            dl->AddLine(ImVec2(pos.x + 11.0f, pos.y + 20.0f), ImVec2(pos.x + width, pos.y + 20.0f), panel_border, 1.0f);
+            ImGui::Dummy(ImVec2(width, 27.0f));
+        }
+
+        void draw_telemetry_summary(Physics* physics)
+        {
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImVec2 tl = ImGui::GetCursorScreenPos();
+            float width = ImGui::GetContentRegionAvail().x;
+            const float height = 58.0f;
+            ImVec2 br(tl.x + width, tl.y + height);
+            draw_panel_background(dl, tl, br, 7.0f);
+
+            const float speed = physics->GetLinearVelocity().Length() * 3.6f;
+            const float rpm = physics->GetEngineRPM();
+            const float redline = std::max(physics->GetRedlineRPM(), 1.0f);
+            const float boost = physics->GetBoostPressure();
+            const char* gear = physics->GetCurrentGearString();
+            const float left_width = std::clamp(width * 0.30f, 250.0f, 390.0f);
+
+            dl->AddText(ImVec2(tl.x + 16.0f, tl.y + 10.0f), text_label, "ACTIVE CAR");
+            dl->AddText(ImVec2(tl.x + 16.0f, tl.y + 29.0f), text_primary, car::tuning::spec.name);
+
+            auto metric = [&](float x, const char* label, const char* value, ImU32 color)
+            {
+                dl->AddText(ImVec2(x, tl.y + 9.0f), text_label, label);
+                dl->AddText(ImVec2(x, tl.y + 28.0f), color, value);
+            };
+
+            char speed_text[24];
+            char rpm_text[24];
+            char boost_text[24];
+            snprintf(speed_text, sizeof(speed_text), "%.0f km/h", speed);
+            snprintf(rpm_text, sizeof(rpm_text), "%.0f rpm", rpm);
+            snprintf(boost_text, sizeof(boost_text), "%.2f bar", boost);
+            const float metric_width = (width - left_width - 24.0f) * 0.25f;
+            metric(tl.x + left_width, "SPEED", speed_text, text_primary);
+            metric(tl.x + left_width + metric_width, "GEAR", gear, physics->IsShifting() ? accent_warn : text_primary);
+            metric(tl.x + left_width + metric_width * 2.0f, "ENGINE", rpm_text, rpm >= redline ? accent_danger : accent_warn);
+            metric(tl.x + left_width + metric_width * 3.0f, "BOOST", boost_text, accent_info);
+
+            ImGui::Dummy(ImVec2(width, height + 6.0f));
         }
 
         void section_setup(Car* car_instance, Physics* physics)
@@ -863,7 +868,7 @@ namespace spartan::car_hud
             }
             if (visualization_preset == static_cast<int>(CarVisualizationPreset::Skeleton))
             {
-                ImGui::TextColored(imvec4_from_u32(text_dim), "blue chassis driveline and wheels  silver links and joints  orange suspension center of mass and shifting power unit  green steering and contact load  purple anti roll  red brakes  pink tire force  cyan aero force");
+                ImGui::TextColored(imvec4_from_u32(text_dim), "blue frame driveline and wheels  purple collision hull and sweep misses  silver links and joints  orange suspension longitudinal force and shifting power unit  green steering contact load and effective tire radius  heat colored tire zones  red brakes torque and bump stops  pink lateral force  cyan aero and rolling resistance");
             }
 
             ImGui::SetNextItemWidth(260.0f);
@@ -875,7 +880,7 @@ namespace spartan::car_hud
                     if (ImGui::Selectable(car::preset_registry[i].name, selected))
                     {
                         car::active_preset_index = i;
-                        car::load_car(*car::preset_registry[i].instance);
+                        car_instance->LoadDefinition(car::preset_registry[i].definition);
                     }
                     if (selected)
                     {
@@ -947,12 +952,20 @@ namespace spartan::car_hud
                 hud_tooltip("Differential type: Open splits torque freely, Locked equalises wheel speed, LSD biases under load.");
                 ImGui::EndTable();
             }
-            ImGui::SetNextItemWidth(160.0f);
-            ImGui::SliderFloat("High speed steering assist", &car::tuning::spec.assists.steering_speed_reduction, 0.0f, 0.9f, "%.2f");
-            ImGui::SetNextItemWidth(160.0f);
-            ImGui::SliderFloat("ABS level", &car::tuning::spec.assists.abs_level, 0.0f, 1.0f, "%.2f");
-            ImGui::SetNextItemWidth(160.0f);
-            ImGui::SliderFloat("TCS level", &car::tuning::spec.assists.traction_control_level, 0.0f, 1.0f, "%.2f");
+            if (ImGui::BeginTable("##assist_levels", 3, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
+            {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::SliderFloat("Steering assist", &car::tuning::spec.assists.steering_speed_reduction, 0.0f, 0.9f, "%.2f");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::SliderFloat("ABS level", &car::tuning::spec.assists.abs_level, 0.0f, 1.0f, "%.2f");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::SliderFloat("TCS level", &car::tuning::spec.assists.traction_control_level, 0.0f, 1.0f, "%.2f");
+                ImGui::EndTable();
+            }
 
             auto draw_stages = [](const char* name, int& level, int maxs)
             {
@@ -1018,126 +1031,11 @@ namespace spartan::car_hud
             ImGui::NewLine();
         }
 
-        void draw_tire_cell(Physics* physics, WheelIndex wheel, const char* label, const ImVec2& tire_size)
-        {
-            ImGui::TextColored(imvec4_from_u32(text_primary), "%s", label);
-            ImGui::SameLine();
-            ImGui::TextColored(imvec4_from_u32(text_dim), "  wear %.0f%%", physics->GetWheelWear(wheel) * 100.0f);
-
-            {
-                ImDrawList* dl = ImGui::GetWindowDrawList();
-                ImVec2 base    = ImGui::GetCursorScreenPos();
-                float  cell_w  = ImGui::GetContentRegionAvail().x;
-                ImVec2 tl(base.x + (cell_w - tire_size.x) * 0.5f, base.y + 2.0f);
-                draw_tire_block(dl, physics, wheel, tl, tire_size, true);
-                ImGui::Dummy(ImVec2(cell_w, tire_size.y + 4.0f));
-            }
-
-            float slip_angle = physics->GetWheelSlipAngle(wheel) * 57.2958f;
-            float slip_ratio = physics->GetWheelSlipRatio(wheel) * 100.0f;
-            ImGui::TextColored(imvec4_from_u32(accent_warn), "%.1f\xC2\xB0", slip_angle);
-            ImGui::SameLine();
-            ImGui::TextColored(imvec4_from_u32(text_dim), "sa");
-            ImGui::SameLine(0.0f, 10.0f);
-            ImGui::TextColored(imvec4_from_u32(IM_COL32(200, 130, 255, 255)), "%.0f%%", slip_ratio);
-            ImGui::SameLine();
-            ImGui::TextColored(imvec4_from_u32(text_dim), "sr");
-
-            float s_in  = physics->GetWheelSurfaceTemp(wheel, 0);
-            float s_mid = physics->GetWheelSurfaceTemp(wheel, 1);
-            float s_out = physics->GetWheelSurfaceTemp(wheel, 2);
-            float core  = physics->GetWheelCoreTemp(wheel);
-            float grip  = physics->GetWheelTempGripFactor(wheel);
-            float brk_t = physics->GetWheelBrakeTemp(wheel);
-            ImU32 brake_color = (brk_t > 700.0f) ? accent_danger : (brk_t > 400.0f ? accent_warn : text_primary);
-
-            ImGui::TextColored(imvec4_from_u32(temp_color(s_in)),  "%.0f", s_in);
-            ImGui::SameLine(0.0f, 4.0f);
-            ImGui::TextColored(imvec4_from_u32(text_dim), "/");
-            ImGui::SameLine(0.0f, 4.0f);
-            ImGui::TextColored(imvec4_from_u32(temp_color(s_mid)), "%.0f", s_mid);
-            ImGui::SameLine(0.0f, 4.0f);
-            ImGui::TextColored(imvec4_from_u32(text_dim), "/");
-            ImGui::SameLine(0.0f, 4.0f);
-            ImGui::TextColored(imvec4_from_u32(temp_color(s_out)), "%.0f", s_out);
-            ImGui::SameLine(0.0f, 8.0f);
-            ImGui::TextColored(imvec4_from_u32(temp_color(core)), "c%.0f", core);
-            ImGui::SameLine(0.0f, 8.0f);
-            ImGui::TextColored(imvec4_from_u32(text_primary), "g%.0f%%", grip * 100.0f);
-            ImGui::SameLine(0.0f, 8.0f);
-            ImGui::TextColored(imvec4_from_u32(brake_color), "b%.0f", brk_t);
-        }
-
-        void draw_susp_cell(Physics* physics, WheelIndex wheel, const char* label, int hist_i,
-            float history[][120], int hist_pos, int hist_n,
-            float max_h, float min_h, float coil_w, float spark_h)
-        {
-            float comp = physics->GetWheelCompression(wheel);
-            ImU32 comp_color = (comp > 0.8f) ? accent_danger : (comp > 0.5f ? accent_warn : accent_ok);
-
-            ImGui::TextColored(imvec4_from_u32(text_primary), "%s", label);
-            ImGui::SameLine();
-            ImGui::TextColored(imvec4_from_u32(comp_color), "  %.0f%%", comp * 100.0f);
-            int wheel_index = static_cast<int>(wheel);
-            ImGui::TextColored(imvec4_from_u32(text_dim), "camber %+.2f  toe %+.2f  bump %+.2f  mr %.2f", car::get_wheel_dynamic_camber(wheel_index) * 180.0f / pi, car::get_wheel_dynamic_toe(wheel_index) * 180.0f / pi, car::get_wheel_bump_steer(wheel_index) * 180.0f / pi, car::get_wheel_motion_ratio(wheel_index));
-
-            if (ImGui::BeginTable("##susp_cell", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoBordersInBody))
-            {
-                ImGui::TableSetupColumn("##coil",  ImGuiTableColumnFlags_WidthFixed, coil_w);
-                ImGui::TableSetupColumn("##spark", ImGuiTableColumnFlags_WidthStretch);
-
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                {
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
-                    ImVec2 base = ImGui::GetCursorScreenPos();
-                    ImVec2 center_top(base.x + coil_w * 0.5f, base.y + 2.0f);
-                    draw_coil(dl, comp, center_top, max_h, min_h);
-                    ImGui::Dummy(ImVec2(coil_w, max_h + 8.0f));
-                }
-
-                ImGui::TableNextColumn();
-                {
-                    ImDrawList* dl  = ImGui::GetWindowDrawList();
-                    ImVec2 base     = ImGui::GetCursorScreenPos();
-                    float  w_avail  = std::max(80.0f, ImGui::GetContentRegionAvail().x);
-                    ImVec2 tl(base.x, base.y + 4.0f);
-                    ImVec2 br(tl.x + w_avail - 4.0f, tl.y + spark_h);
-                    dl->AddRectFilled(tl, br, IM_COL32(18, 22, 28, 230), 4.0f);
-                    dl->AddRect(tl, br, IM_COL32(70, 80, 92, 160), 4.0f, 1.0f);
-                    float ww = br.x - tl.x;
-                    float hh = br.y - tl.y;
-                    ImVec2 prev_pt(0, 0);
-                    for (int k = 0; k < hist_n; ++k)
-                    {
-                        int idx_k = (hist_pos + k) % hist_n;
-                        float v = std::clamp(history[hist_i][idx_k], 0.0f, 1.0f);
-                        ImVec2 pt(tl.x + (float)k / (hist_n - 1) * ww, br.y - v * (hh - 2.0f) - 1.0f);
-                        if (k > 0)
-                        {
-                            dl->AddLine(prev_pt, pt, comp_color, 1.4f);
-                        }
-                        prev_pt = pt;
-                    }
-                    ImGui::Dummy(ImVec2(ww, spark_h + 4.0f));
-                }
-                ImGui::EndTable();
-            }
-        }
-
         void section_chassis(Physics* physics)
         {
             section_header("Chassis");
-            ImGui::TextColored(imvec4_from_u32(text_dim), "tires: force arrows, slip, temps  |  suspension: green nominal, amber hard, red bottomed");
-
-            const ImVec2 tire_size = ImVec2(52.0f, 84.0f);
-            const float max_h = 90.0f;
-            const float min_h = 32.0f;
-            const float coil_w = 48.0f;
-            const float spark_h = 56.0f;
             const char* labels[4] = { "FL", "FR", "RL", "RR" };
             const WheelIndex idx[4] = { WheelIndex::FrontLeft, WheelIndex::FrontRight, WheelIndex::RearLeft, WheelIndex::RearRight };
-
             static constexpr int hist_n = 120;
             static float history[4][hist_n] = {};
             static int hist_pos = 0;
@@ -1147,69 +1045,104 @@ namespace spartan::car_hud
             }
             hist_pos = (hist_pos + 1) % hist_n;
 
-            if (ImGui::BeginTable("##chassis", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_NoPadOuterX))
+            if (ImGui::BeginTable("##corner_cards", 4, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_NoPadOuterX))
             {
-                ImGui::TableSetupColumn("##tires", ImGuiTableColumnFlags_WidthStretch, 0.5f);
-                ImGui::TableSetupColumn("##susp",  ImGuiTableColumnFlags_WidthStretch, 0.5f);
                 ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "Tires");
-                if (ImGui::BeginTable("##tires_grid", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersInnerV))
+                for (int i = 0; i < 4; i++)
                 {
-                    for (int i = 0; i < 4; ++i)
-                    {
-                        if ((i % 2) == 0)
-                        {
-                            ImGui::TableNextRow();
-                        }
-                        ImGui::TableNextColumn();
-                        ImGui::PushID(i);
-                        draw_tire_cell(physics, idx[i], labels[i], tire_size);
-                        ImGui::PopID();
-                    }
-                    ImGui::EndTable();
-                }
+                    ImGui::TableSetColumnIndex(i);
+                    ImGui::PushID(i);
+                    const float compression = physics->GetWheelCompression(idx[i]);
+                    const ImU32 compression_color = compression > 0.8f ? accent_danger : (compression > 0.5f ? accent_warn : accent_ok);
+                    ImGui::TextColored(imvec4_from_u32(text_primary), "%s", labels[i]);
+                    ImGui::SameLine();
+                    ImGui::TextColored(imvec4_from_u32(compression_color), "  suspension %.0f%%", compression * 100.0f);
 
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "Suspension");
-                if (ImGui::BeginTable("##susp_grid", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersInnerV))
-                {
-                    for (int i = 0; i < 4; ++i)
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+                    ImVec2 tire_pos = ImGui::GetCursorScreenPos();
+                    float cell_width = ImGui::GetContentRegionAvail().x;
+                    const ImVec2 tire_size(42.0f, 68.0f);
+                    draw_tire_block(dl, physics, idx[i], ImVec2(tire_pos.x + 5.0f, tire_pos.y + 2.0f), tire_size, true);
+
+                    const float slip_angle = physics->GetWheelSlipAngle(idx[i]) * 57.2958f;
+                    const float slip_ratio = physics->GetWheelSlipRatio(idx[i]) * 100.0f;
+                    const float wear = physics->GetWheelWear(idx[i]) * 100.0f;
+                    const float core = physics->GetWheelCoreTemp(idx[i]);
+                    const float brake = physics->GetWheelBrakeTemp(idx[i]);
+                    const float grip = physics->GetWheelTempGripFactor(idx[i]) * 100.0f;
+                    const float text_x = tire_pos.x + 58.0f;
+                    dl->AddText(ImVec2(text_x, tire_pos.y + 2.0f), text_label, "SLIP");
+                    char value[48];
+                    snprintf(value, sizeof(value), "%+.1f deg  %+.0f%%", slip_angle, slip_ratio);
+                    dl->AddText(ImVec2(text_x, tire_pos.y + 18.0f), accent_warn, value);
+                    dl->AddText(ImVec2(text_x, tire_pos.y + 38.0f), text_label, "TIRE");
+                    snprintf(value, sizeof(value), "%.0f C  %.0f%% grip", core, grip);
+                    dl->AddText(ImVec2(text_x, tire_pos.y + 54.0f), temp_color(core), value);
+                    ImGui::Dummy(ImVec2(cell_width, tire_size.y + 7.0f));
+
+                    const float surface_in = physics->GetWheelSurfaceTemp(idx[i], 0);
+                    const float surface_mid = physics->GetWheelSurfaceTemp(idx[i], 1);
+                    const float surface_out = physics->GetWheelSurfaceTemp(idx[i], 2);
+                    ImGui::TextColored(imvec4_from_u32(text_label), "surface");
+                    ImGui::SameLine();
+                    ImGui::TextColored(imvec4_from_u32(temp_color(surface_mid)), "%.0f / %.0f / %.0f C", surface_in, surface_mid, surface_out);
+                    ImGui::TextColored(imvec4_from_u32(text_label), "wear");
+                    ImGui::SameLine();
+                    ImGui::TextColored(imvec4_from_u32(wear_color(wear * 0.01f)), "%.0f%%", wear);
+                    ImGui::SameLine(0.0f, 12.0f);
+                    ImGui::TextColored(imvec4_from_u32(text_label), "brake");
+                    ImGui::SameLine();
+                    ImGui::TextColored(imvec4_from_u32(brake > 700.0f ? accent_danger : (brake > 400.0f ? accent_warn : text_primary)), "%.0f C", brake);
+                    ImGui::TextColored(imvec4_from_u32(text_dim), "camber %+.2f  toe %+.2f  bump %+.2f", car::get_wheel_dynamic_camber(i) * 180.0f / pi, car::get_wheel_dynamic_toe(i) * 180.0f / pi, car::get_wheel_bump_steer(i) * 180.0f / pi);
+
+                    ImVec2 graph_tl = ImGui::GetCursorScreenPos();
+                    const float graph_width = std::max(80.0f, ImGui::GetContentRegionAvail().x - 4.0f);
+                    const float graph_height = 34.0f;
+                    ImVec2 graph_br(graph_tl.x + graph_width, graph_tl.y + graph_height);
+                    dl->AddRectFilled(graph_tl, graph_br, IM_COL32(18, 22, 28, 230), 4.0f);
+                    ImVec2 previous;
+                    for (int sample = 0; sample < hist_n; sample++)
                     {
-                        if ((i % 2) == 0)
+                        const int history_index = (hist_pos + sample) % hist_n;
+                        const float value_y = std::clamp(history[i][history_index], 0.0f, 1.0f);
+                        const ImVec2 point(graph_tl.x + static_cast<float>(sample) / static_cast<float>(hist_n - 1) * graph_width, graph_br.y - value_y * (graph_height - 4.0f) - 2.0f);
+                        if (sample > 0)
                         {
-                            ImGui::TableNextRow();
+                            dl->AddLine(previous, point, compression_color, 1.4f);
                         }
-                        ImGui::TableNextColumn();
-                        ImGui::PushID(i + 10);
-                        draw_susp_cell(physics, idx[i], labels[i], i, history, hist_pos, hist_n, max_h, min_h, coil_w, spark_h);
-                        ImGui::PopID();
+                        previous = point;
                     }
-                    ImGui::EndTable();
+                    dl->AddRect(graph_tl, graph_br, panel_border, 4.0f, 1.0f);
+                    ImGui::Dummy(ImVec2(graph_width, graph_height + 3.0f));
+                    ImGui::PopID();
                 }
                 ImGui::EndTable();
             }
 
-            ImGui::TextColored(imvec4_from_u32(text_label), "derived roll stiffness");
-            ImGui::SameLine();
-            ImGui::TextColored(imvec4_from_u32(text_primary), "front %.0f  rear %.0f Nm/rad", car::get_axle_roll_stiffness(true), car::get_axle_roll_stiffness(false));
             float psi     = physics->GetTirePressure();
             float psi_opt = physics->GetTirePressureOptimal();
             float dpsi    = psi - psi_opt;
             ImU32 pc = (fabsf(dpsi) < 0.1f) ? accent_ok : (fabsf(dpsi) < 0.3f ? accent_warn : accent_danger);
-            ImGui::TextColored(imvec4_from_u32(text_label), "pressure");
-            ImGui::SameLine();
-            ImGui::TextColored(imvec4_from_u32(pc), "%.2f bar (%+.2f)", psi, dpsi);
-            ImGui::SameLine(0.0f, 20.0f);
-            ImGui::TextColored(imvec4_from_u32(text_label), "ride");
-            ImGui::SameLine();
-            if (car::aero_debug.valid)
+            if (ImGui::BeginTable("##chassis_summary", 3, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
             {
-                ImGui::TextColored(imvec4_from_u32(text_primary), "%.2f m", car::aero_debug.ride_height);
-            }
-            else
-            {
-                ImGui::TextColored(imvec4_from_u32(text_dim), "n/a");
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextColored(imvec4_from_u32(text_label), "ROLL STIFFNESS");
+                ImGui::TextColored(imvec4_from_u32(text_primary), "F %.0f  R %.0f Nm/rad", car::get_axle_roll_stiffness(true), car::get_axle_roll_stiffness(false));
+                ImGui::TableNextColumn();
+                ImGui::TextColored(imvec4_from_u32(text_label), "TIRE PRESSURE");
+                ImGui::TextColored(imvec4_from_u32(pc), "%.2f bar  %+.2f", psi, dpsi);
+                ImGui::TableNextColumn();
+                ImGui::TextColored(imvec4_from_u32(text_label), "RIDE HEIGHT");
+                if (car::aero_debug.valid)
+                {
+                    ImGui::TextColored(imvec4_from_u32(text_primary), "%.2f m", car::aero_debug.ride_height);
+                }
+                else
+                {
+                    ImGui::TextColored(imvec4_from_u32(text_dim), "n/a");
+                }
+                ImGui::EndTable();
             }
         }
 
@@ -1538,23 +1471,9 @@ namespace spartan::car_hud
             }
         }
 
-        void section_debug(Physics* physics)
+        void section_audio_tools()
         {
-            section_header("Debug");
-
-            bool draw_rays = physics->GetDrawRaycasts();
-            bool draw_susp = physics->GetDrawSuspension();
-            if (ImGui::Checkbox("Draw raycasts", &draw_rays))
-            {
-                physics->SetDrawRaycasts(draw_rays);
-            }
-            hud_tooltip("Draws wheel raycasts in the 3D viewport. Green = ground hit, red = miss.");
-            ImGui::SameLine(0.0f, 16.0f);
-            if (ImGui::Checkbox("Draw suspension", &draw_susp))
-            {
-                physics->SetDrawSuspension(draw_susp);
-            }
-            hud_tooltip("Draws the suspension line between top mount and wheel contact in the 3D viewport.");
+            section_header("Audio tools");
 
             if (ImGui::CollapsingHeader("Sound tuning"))
             {
@@ -1635,33 +1554,32 @@ namespace spartan::car_hud
             return;
         }
 
-        if (car_instance->GetVisualizationPreset() == CarVisualizationPreset::Full)
-        {
-            physics->DrawDebugVisualization();
-        }
-
         ImGuiIO& io = ImGui::GetIO();
         if (io.DisplaySize.x < 200.0f || io.DisplaySize.y < 200.0f)
         {
             return;
         }
 
-        // wide square-ish panel. min width stops a skinny imgui.ini save from collapsing it into a tall strip
-        const float win_w = std::clamp(io.DisplaySize.x * 0.55f, 1100.0f, 1400.0f);
-        const float win_h = std::clamp(io.DisplaySize.y * 0.78f, 720.0f, 920.0f);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(1100.0f, 640.0f), ImVec2(io.DisplaySize.x, io.DisplaySize.y));
+        const float win_w = std::clamp(io.DisplaySize.x * 0.68f, 1180.0f, 1560.0f);
+        const float win_h = std::clamp(io.DisplaySize.y * 0.88f, 760.0f, 1000.0f);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(1180.0f, 700.0f), ImVec2(io.DisplaySize.x, io.DisplaySize.y));
         ImGui::SetNextWindowSize(ImVec2(win_w, win_h), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - win_w - 16.0f, 36.0f), ImGuiCond_FirstUseEver);
 
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 10.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 5.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 5.0f));
+
         if (ImGui::Begin("Telemetry", p_open, ImGuiWindowFlags_NoCollapse))
         {
-            // one-shot expand if a previous session saved a skinny window
             ImVec2 cur = ImGui::GetWindowSize();
-            if (cur.x < 1100.0f)
+            if (cur.x < 1180.0f)
             {
                 ImGui::SetWindowSize(ImVec2(win_w, std::max(cur.y, win_h * 0.85f)));
             }
 
+            draw_telemetry_summary(physics);
             if (ImGui::BeginChild("##telemetry_funnel", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
             {
                 section_setup(car_instance, physics);
@@ -1679,10 +1597,11 @@ namespace spartan::car_hud
                     ImGui::EndTable();
                 }
 
-                section_debug(physics);
+                section_audio_tools();
             }
             ImGui::EndChild();
         }
         ImGui::End();
+        ImGui::PopStyleVar(4);
     }
 }

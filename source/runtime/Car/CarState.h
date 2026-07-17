@@ -81,9 +81,6 @@ namespace car
         constexpr float surface_friction_grass       = 0.4f;
         constexpr float surface_friction_ice         = 0.1f;
 
-        // debug
-        inline bool draw_raycasts   = true;
-        inline bool draw_suspension = true;
         inline bool log_pacejka     = false;
         inline bool log_telemetry   = false;
         // writes a per-tick csv (car_telemetry.csv) to the working directory
@@ -156,6 +153,7 @@ namespace car
         PxVec3 side_force       = PxVec3(0);
         PxVec3 front_aero_pos   = PxVec3(0);
         PxVec3 rear_aero_pos    = PxVec3(0);
+        PxVec3 side_aero_pos    = PxVec3(0);
         float  ride_height      = 0.0f;
         float  yaw_angle        = 0.0f;
         float  ground_effect_factor = 1.0f;
@@ -275,6 +273,7 @@ namespace car
     // get external linkage. see the comment on aero_debug above for why this matters
     inline PxRigidDynamic* body             = nullptr;
     inline PxMaterial*     material         = nullptr;
+    inline PxMaterial*     wheel_guard_material = nullptr;
     inline PxConvexMesh*   wheel_sweep_mesh = nullptr;
     inline config          cfg;
     inline car_preset      base_spec;

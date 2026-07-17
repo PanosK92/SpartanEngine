@@ -245,6 +245,7 @@ namespace car
         aero_debug.velocity = vel;
         aero_debug.front_aero_pos = front_pos;
         aero_debug.rear_aero_pos = rear_pos;
+        aero_debug.side_aero_pos = (front_pos + rear_pos) * 0.5f;
         aero_debug.ride_height = cfg.suspension_height;
         aero_debug.ground_effect_factor = 1.0f;
         aero_debug.yaw_angle = 0.0f;
@@ -306,6 +307,7 @@ namespace car
             float side_aero_z = (tuning::spec.aero_center_front_z + tuning::spec.aero_center_rear_z) * 0.5f;
             PxVec3 side_aero_pos = pose.p + pose.q.rotate(PxVec3(0, aero_height, side_aero_z));
             safe_add_force_at_pos(body, side_force_vec, side_aero_pos);
+            aero_debug.side_aero_pos = side_aero_pos;
         }
 
         // downforce
@@ -369,8 +371,11 @@ namespace car
             if (wheels[i].grounded && wheels[i].tire_load > 0.0f)
             {
                 PxVec3 rr_force = local_fwd * rr_direction * tuning::spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load;
-                PxVec3 wheel_pos = pose.transform(wheel_offsets[i]);
-                safe_add_force_at_pos(body, rr_force, wheel_pos);
+                safe_add_force_at_pos(body, rr_force, wheels[i].contact_point);
+                if (const PxRigidDynamic* ground_actor = wheels[i].contact_actor ? wheels[i].contact_actor->is<PxRigidDynamic>() : nullptr)
+                {
+                    safe_add_force_at_pos(const_cast<PxRigidDynamic*>(ground_actor), -rr_force, wheels[i].contact_point);
+                }
             }
         }
 
