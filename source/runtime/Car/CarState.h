@@ -241,6 +241,7 @@ namespace car
         float        lateral_force        = 0.0f;
         float        longitudinal_force   = 0.0f;
         float        net_torque           = 0.0f;
+        float        drive_torque         = 0.0f;
         tire_thermal thermal;
         float        brake_temp           = 30.0f;
         float        wear                 = 0.0f;
@@ -296,6 +297,7 @@ namespace car
     inline float           tc_reduction            = 0.0f;
     inline bool            tc_active               = false;
     inline float           engine_rpm              = 800.0f;
+    inline float           engine_rotation         = 0.0f;
     // gear encoding: 0 = reverse, 1 = neutral (gear_ratios[1] == 0 acts as the sentinel),
     // 2..8 = forward gears. use the helpers below rather than literal-comparing the index.
     inline int             current_gear            = 1;
@@ -751,6 +753,7 @@ namespace car
         fixed |= sanitize_float(w.dynamic_toe);
         fixed |= sanitize_float(w.bump_steer);
         fixed |= sanitize_float(w.motion_ratio);
+        fixed |= sanitize_float(w.drive_torque);
         return fixed;
     }
 

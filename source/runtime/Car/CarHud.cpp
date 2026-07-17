@@ -861,6 +861,10 @@ namespace spartan::car_hud
             {
                 car_instance->SetVisualizationPreset(static_cast<CarVisualizationPreset>(visualization_preset));
             }
+            if (visualization_preset == static_cast<int>(CarVisualizationPreset::Skeleton))
+            {
+                ImGui::TextColored(imvec4_from_u32(text_dim), "blue chassis driveline and wheels  silver links and joints  orange suspension center of mass and shifting power unit  green steering and contact load  purple anti roll  red brakes  pink tire force  cyan aero force");
+            }
 
             ImGui::SetNextItemWidth(260.0f);
             if (ImGui::BeginCombo("Car", car::tuning::spec.name))

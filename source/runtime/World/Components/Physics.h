@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Component.h"
 #include <vector>
+#include <memory>
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
 #include "../../RHI/RHI_Vertex.h"
@@ -37,6 +38,7 @@ namespace sol
 namespace spartan
 {
     class Entity;
+    class Mesh;
     class PhysicsWorld;
     namespace math { class Quaternion; }
 
@@ -400,6 +402,7 @@ namespace spartan
         std::vector<uint32_t> m_cloth_indices;           // triangle indices for normal recalculation
         std::vector<RHI_Vertex_PosTexNorTan> m_cloth_base_vertices; // cached original vertices (for tex/tan preservation)
         std::vector<uint32_t> m_cloth_weld_map;          // maps each vertex to its canonical (lowest-index coincident) vertex
+        std::shared_ptr<Mesh> m_cloth_mesh;
         uint32_t m_cloth_global_vertex_offset = 0;       // offset into the global geometry buffer
         uint32_t m_cloth_vertex_count         = 0;
         float m_cloth_stiffness               = 0.9f;    // constraint stiffness (0-1)

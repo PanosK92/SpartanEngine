@@ -373,17 +373,9 @@ namespace car
     // apply differential torque to a single axle (left/right wheel pair)
     inline void apply_axle_diff(int left, int right, float axle_torque)
     {
-        if (tuning::spec.diff_type == 0)
-        {
-            wheels[left].net_torque  += axle_torque * 0.5f;
-            wheels[right].net_torque += axle_torque * 0.5f;
-        }
-        else if (tuning::spec.diff_type == 1)
-        {
-            wheels[left].net_torque  += axle_torque * 0.5f;
-            wheels[right].net_torque += axle_torque * 0.5f;
-        }
-        else
+        float left_torque = axle_torque * 0.5f;
+        float right_torque = axle_torque * 0.5f;
+        if (tuning::spec.diff_type == 2)
         {
             float w_left  = wheels[left].angular_velocity;
             float w_right = wheels[right].angular_velocity;
@@ -407,9 +399,13 @@ namespace car
             float lock_torque = tuning::spec.lsd_preload * smooth_ramp + torque_lock + fabsf(viscous);
             float bias_sign = (delta_w > 0.0f) ? -1.0f : 1.0f;
 
-            wheels[left].net_torque  += axle_torque * 0.5f + bias_sign * lock_torque * 0.5f;
-            wheels[right].net_torque += axle_torque * 0.5f - bias_sign * lock_torque * 0.5f;
+            left_torque += bias_sign * lock_torque * 0.5f;
+            right_torque -= bias_sign * lock_torque * 0.5f;
         }
+        wheels[left].net_torque += left_torque;
+        wheels[right].net_torque += right_torque;
+        wheels[left].drive_torque += left_torque;
+        wheels[right].drive_torque += right_torque;
     }
 
     // route torque to driven axle(s) based on drivetrain layout

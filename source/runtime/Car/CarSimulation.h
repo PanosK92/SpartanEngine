@@ -560,6 +560,7 @@ namespace car
     inline void reset_drivetrain_transients()
     {
         engine_rpm = tuning::spec.engine_idle_rpm;
+        engine_rotation = 0.0f;
         current_gear = (tuning::spec.gear_count > 2) ? 2 : 1;
         shift_timer = 0.0f;
         is_shifting = false;
@@ -944,12 +945,20 @@ namespace car
         // --- physics subsystems ---
         refresh_wheel_actor_state();
         for (int i = 0; i < wheel_count; i++)
+        {
             wheels[i].net_torque = 0.0f;
+            wheels[i].drive_torque = 0.0f;
+        }
 
         update_multibody(dt);
         update_suspension(scene, dt);
         update_tire_slip_state(dt);
         apply_drivetrain(forward_speed * 3.6f, dt);
+        engine_rotation = fmodf(engine_rotation + engine_rpm * PxPi * 2.0f / 60.0f * dt, PxPi * 2.0f);
+        if (!std::isfinite(engine_rotation))
+        {
+            engine_rotation = 0.0f;
+        }
 
         apply_tire_forces(dt);
         apply_self_aligning_torque();

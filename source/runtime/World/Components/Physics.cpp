@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/PhysicsWorld.h"
 #include "../../Car/Car.h"
 #include "../../Car/CarSimulation.h"
+#include "../../Geometry/Mesh.h"
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/GeometryBuffer.h"
@@ -3682,6 +3683,20 @@ namespace spartan
             SP_LOG_ERROR("Cloth mesh has no geometry");
             return;
         }
+
+        Mesh* source_mesh = renderable->GetMesh();
+        uint32_t source_sub_mesh_index = renderable->GetSubMeshIndex();
+        shared_ptr<Mesh> cloth_mesh = make_shared<Mesh>();
+        cloth_mesh->SetObjectName(source_mesh->GetObjectName());
+        cloth_mesh->SetType(source_mesh->GetType());
+        cloth_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+        cloth_mesh->ReserveSubMeshes(source_sub_mesh_index + 1);
+        vector<RHI_Vertex_PosTexNorTan> cloth_mesh_vertices = vertices;
+        vector<uint32_t> cloth_mesh_indices = indices;
+        cloth_mesh->AddGeometry(cloth_mesh_vertices, cloth_mesh_indices, false, source_sub_mesh_index);
+        cloth_mesh->CreateGpuBuffers();
+        renderable->SetMesh(cloth_mesh.get(), source_sub_mesh_index);
+        m_cloth_mesh = move(cloth_mesh);
 
         // store the global geometry buffer offset so we can update vertices in-place later
         m_cloth_global_vertex_offset = renderable->GetVertexOffset();
