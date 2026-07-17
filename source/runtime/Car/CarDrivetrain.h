@@ -26,13 +26,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarPacejka.h"
 //==========================================
 
-// drivetrain: engine torque curve, turbo boost, automatic/manual gearbox with
-// rev-match downshifts, clutch, driveshaft compliance, differentials, traction
-// control, engine braking, service brakes, and the apply_drivetrain orchestrator
-// that runs once per tick.
+// engine gearbox differential brake and drivetrain torque orchestration
 
 namespace car
 {
+    inline float angular_velocity_to_rpm(float angular_velocity)
+    {
+        return angular_velocity * 60.0f / (2.0f * PxPi);
+    }
+
+    inline float get_driven_wheel_radius()
+    {
+        float raw_radius = tuning::spec.drivetrain_type == 1 ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
+        return std::isfinite(raw_radius) && raw_radius > 0.0f ? PxMax(raw_radius, 0.05f) : 0.34f;
+    }
+
+    inline float get_average_driven_angular_velocity(bool absolute, int* count = nullptr)
+    {
+        float angular_velocity = 0.0f;
+        int driven_count = 0;
+        for (int i = 0; i < wheel_count; i++)
+        {
+            if (is_driven(i))
+            {
+                angular_velocity += absolute ? fabsf(wheels[i].angular_velocity) : wheels[i].angular_velocity;
+                driven_count++;
+            }
+        }
+        if (count)
+        {
+            *count = driven_count;
+        }
+        return driven_count > 0 ? angular_velocity / static_cast<float>(driven_count) : 0.0f;
+    }
+
     inline void update_boost(float throttle, float rpm, float dt)
     {
         if (!tuning::spec.turbo_enabled)
@@ -220,7 +247,6 @@ namespace car
             }
         }
 
-        // forward gears
         if (current_gear >= 2)
         {
             bool can_shift = shift_cooldown <= 0.0f;
@@ -232,22 +258,9 @@ namespace car
             }
 
             bool speed_trigger = speed_kmh >= upshift_threshold;
-            float driven_angular_velocity = 0.0f;
             int driven_wheel_count = 0;
-            for (int i = 0; i < wheel_count; i++)
-            {
-                if (is_driven(i))
-                {
-                    driven_angular_velocity += fabsf(wheels[i].angular_velocity);
-                    driven_wheel_count++;
-                }
-            }
-            float coupled_engine_rpm = engine_rpm;
-            if (driven_wheel_count > 0)
-            {
-                float average_wheel_rpm = driven_angular_velocity / static_cast<float>(driven_wheel_count) * 60.0f / (2.0f * PxPi);
-                coupled_engine_rpm = wheel_rpm_to_engine_rpm(average_wheel_rpm, current_gear);
-            }
+            float average_wheel_rpm = angular_velocity_to_rpm(get_average_driven_angular_velocity(true, &driven_wheel_count));
+            float coupled_engine_rpm = driven_wheel_count > 0 ? wheel_rpm_to_engine_rpm(average_wheel_rpm, current_gear) : engine_rpm;
             float shift_rpm = PxMax(engine_rpm, coupled_engine_rpm);
             bool rpm_trigger = shift_rpm >= tuning::spec.shift_up_rpm;
 
@@ -276,14 +289,11 @@ namespace car
                 return;
             }
 
-            // lugging protection: drop a gear when rpm falls below shift_down_rpm, guarded so
-            // the target gear does not land near the upshift point and cause hunting
+            // lugging protection avoids target gears near the upshift threshold
             if (can_shift && current_gear > 2 && engine_rpm < tuning::spec.shift_down_rpm)
             {
                 float ratio          = fabsf(tuning::spec.gear_ratios[current_gear - 1]) * tuning::spec.final_drive;
-                float driven_r_raw   = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
-                float driven_r       = (std::isfinite(driven_r_raw) && driven_r_raw > 0.0f) ? PxMax(driven_r_raw, 0.05f) : 0.34f;
-                float potential_rpm  = (fabsf(forward_speed) / driven_r) * (60.0f / (2.0f * PxPi)) * ratio;
+                float potential_rpm  = angular_velocity_to_rpm(fabsf(forward_speed) / get_driven_wheel_radius()) * ratio;
                 if (potential_rpm < tuning::spec.shift_up_rpm * 0.85f)
                 {
                     current_gear--;
@@ -319,9 +329,7 @@ namespace car
                     for (int g = current_gear - 1; g >= 2; g--)
                     {
                         float ratio = fabsf(tuning::spec.gear_ratios[g]) * tuning::spec.final_drive;
-                        float driven_r_raw = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
-                        float driven_r = (std::isfinite(driven_r_raw) && driven_r_raw > 0.0f) ? PxMax(driven_r_raw, 0.05f) : 0.34f;
-                        float potential_rpm = (forward_speed / driven_r) * (60.0f / (2.0f * PxPi)) * ratio;
+                        float potential_rpm = angular_velocity_to_rpm(forward_speed / get_driven_wheel_radius()) * ratio;
                         if (potential_rpm < tuning::spec.shift_up_rpm * 0.85f)
                         {
                             target = g;
@@ -454,7 +462,7 @@ namespace car
         engine_rpm = PxClamp(engine_rpm, tuning::spec.engine_idle_rpm, tuning::spec.engine_max_rpm);
     }
 
-    // engine braking: torque pushed into net_torque and integrated once in apply_tire_forces
+    // engine braking enters the shared wheel torque accumulator
     inline void apply_engine_braking(int driven_count)
     {
         engine_brake_torque = 0.0f;
@@ -473,15 +481,7 @@ namespace car
 
         float eb_total = tuning::spec.engine_friction * engine_rpm * 0.1f * fabsf(tuning::spec.gear_ratios[current_gear]) * tuning::spec.final_drive;
         engine_brake_torque = eb_total;
-        float average_angular_velocity = 0.0f;
-        for (int i = 0; i < wheel_count; i++)
-        {
-            if (is_driven(i))
-            {
-                average_angular_velocity += wheels[i].angular_velocity;
-            }
-        }
-        average_angular_velocity /= static_cast<float>(driven_count);
+        float average_angular_velocity = get_average_driven_angular_velocity(false);
         constexpr float brake_dir_band = 1.0f;
         float direction = PxClamp(average_angular_velocity / brake_dir_band, -1.0f, 1.0f);
         apply_drive_torque(-direction * eb_total);
@@ -581,26 +581,26 @@ namespace car
         return fabsf(longitudinal_speed) > 0.05f ? (longitudinal_speed > 0.0f ? -1.0f : 1.0f) : 0.0f;
     }
 
-    // service brakes: writes brake torque into net_torque (integrated once in apply_tire_forces),
-    // while also accumulating brake heat and toggling abs per wheel
+    // service brakes add wheel torque heat and abs modulation
     inline void apply_service_brakes(float forward_speed_ms, float dt)
     {
         if (input.brake <= tuning::spec.input_deadzone)
         {
-            for (int i = 0; i < wheel_count; i++) abs_active[i] = false;
+            clear_abs_state();
             return;
         }
 
         // in reverse the brake pedal is the reverse throttle, apply_drivetrain already routed the drive torque
         if (is_in_reverse())
         {
-            for (int i = 0; i < wheel_count; i++) abs_active[i] = false;
+            clear_abs_state();
             return;
         }
 
         bool reverse_requested = !tuning::spec.manual_transmission && fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < tuning::spec.input_deadzone && is_in_forward_gear() && !is_shifting;
         if (reverse_requested)
         {
+            clear_abs_state();
             current_gear = 0;
             is_shifting  = true;
             shift_timer  = tuning::spec.shift_time * 2.0f;
@@ -639,22 +639,14 @@ namespace car
             downshift_blip_timer -= dt;
         }
 
-        // average angular velocity of driven wheels (used for rpm tracking)
-        float driven_w_sum = 0.0f;
         int driven_count = 0;
-        for (int i = 0; i < wheel_count; i++)
-        {
-            if (is_driven(i)) { driven_w_sum += wheels[i].angular_velocity; driven_count++; }
-        }
-        float avg_wheel_rpm    = (driven_count > 0 ? driven_w_sum / driven_count : 0.0f) * 60.0f / (2.0f * PxPi);
+        float avg_wheel_rpm    = angular_velocity_to_rpm(get_average_driven_angular_velocity(false, &driven_count));
         float wheel_driven_rpm = wheel_rpm_to_engine_rpm(fabsf(avg_wheel_rpm), current_gear);
 
         bool coasting = input.throttle < tuning::spec.input_deadzone && input.brake < tuning::spec.input_deadzone;
         if (coasting && is_in_forward_gear())
         {
-            float driven_r_raw      = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
-            float driven_r          = (std::isfinite(driven_r_raw) && driven_r_raw > 0.0f) ? PxMax(driven_r_raw, 0.05f) : 0.34f;
-            float ground_wheel_rpm  = fabsf(forward_speed_ms) / driven_r * 60.0f / (2.0f * PxPi);
+            float ground_wheel_rpm  = angular_velocity_to_rpm(fabsf(forward_speed_ms) / get_driven_wheel_radius());
             float ground_driven_rpm = wheel_rpm_to_engine_rpm(ground_wheel_rpm, current_gear);
             wheel_driven_rpm        = PxMax(wheel_driven_rpm, ground_driven_rpm);
         }

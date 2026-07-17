@@ -25,15 +25,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarPacejka.h"
 //==========================================
 
-// tire forces and self-aligning torque. this is the main coupling point between
-// the chassis and the ground: it produces per-wheel lateral / longitudinal forces
-// from slip, runs the 3-zone thermal model and applies tire wear
-// wheel torques are accumulated here and integrated by the physical wheel actors
+// tire forces thermal state wear and self aligning torque
+// physx wheel actors integrate the accumulated drivetrain brake and tire torques
 
 namespace car
 {
     constexpr float handbrake_lock_force = 1e8f;
 
+    inline float get_effective_wheel_radius(int wheel_index, float tire_load)
+    {
+        float raw_radius = cfg.wheel_radius_for(wheel_index);
+        float radius = std::isfinite(raw_radius) && raw_radius > 0.0f ? PxMax(raw_radius, 0.05f) : 0.34f;
+        float deflection = tuning::spec.tire_vertical_stiffness > 1000.0f ? PxClamp(tire_load / tuning::spec.tire_vertical_stiffness, 0.0f, 0.05f) : 0.0f;
+        return PxMax(radius - deflection * 0.55f, 0.05f);
+    }
+
+    // full handbrake locks rear joints while partial input remains torque based
     inline void update_handbrake_wheel_locks()
     {
         const bool handbrake_locked = input.handbrake >= 0.999f;
@@ -64,6 +71,12 @@ namespace car
         {
             wheel& w = wheels[i];
             PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
+            tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
+            w.condition_grip = condition.peak_grip;
+            w.condition_stiffness = condition.stiffness;
+            w.condition_relaxation = condition.relaxation;
+            w.temperature_grip = condition.temperature_grip;
+            w.wear_grip = condition.wear_grip;
             if (!wheel_actor || !w.grounded || w.tire_load <= 0.0f)
             {
                 w.slip_ratio = 0.0f;
@@ -71,9 +84,7 @@ namespace car
                 continue;
             }
 
-            float wheel_radius = PxMax(cfg.wheel_radius_for(i), 0.05f);
-            float tire_deflection = tuning::spec.tire_vertical_stiffness > 1000.0f ? PxClamp(w.tire_load / tuning::spec.tire_vertical_stiffness, 0.0f, 0.05f) : 0.0f;
-            float effective_radius = PxMax(wheel_radius - tire_deflection * 0.55f, 0.05f);
+            float effective_radius = get_effective_wheel_radius(i, w.tire_load);
             PxVec3 wheel_axis = wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
             PxVec3 wheel_forward = wheel_axis.cross(w.contact_normal);
             wheel_forward -= w.contact_normal * wheel_forward.dot(w.contact_normal);
@@ -94,10 +105,6 @@ namespace car
             float slip_denominator = PxMax(PxMax(absolute_longitudinal_speed, absolute_surface_speed), 0.01f);
             float raw_slip_ratio = PxClamp((surface_speed - longitudinal_speed) / slip_denominator, -1.0f, 1.0f);
             float raw_slip_angle = atan2f(lateral_speed, PxMax(absolute_longitudinal_speed, 0.5f));
-            tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
-            w.condition_grip = condition.peak_grip;
-            w.condition_stiffness = condition.stiffness;
-            w.condition_relaxation = condition.relaxation;
             float relaxation_length = PxMax(tuning::spec.tire_relaxation_length * condition.relaxation, 0.05f);
             float longitudinal_length = relaxation_length * (fabsf(raw_slip_ratio) > fabsf(w.slip_ratio) ? 0.85f : 0.65f);
             float lateral_length = relaxation_length * (fabsf(raw_slip_angle) > fabsf(w.slip_angle) ? 1.10f : 0.85f);
@@ -136,6 +143,7 @@ namespace car
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
+            w.brake_efficiency = get_brake_efficiency(w.brake_temp);
             const char* wheel_name = wheel_names[i];
             PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
             PxVec3 wheel_axis = wheel_actor ? wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f)) : chassis_right;
@@ -150,16 +158,8 @@ namespace car
                 w.net_torque = 0.0f;
             }
 
-            // floor wheel geometry so slip and torque calculations remain finite
-            float wr_raw  = cfg.wheel_radius_for(i);
-            float wr      = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
             float wmoi    = (std::isfinite(wheel_moi[i]) && wheel_moi[i] > 0.0f) ? wheel_moi[i] : 1.0f;
-            float defl = 0.0f;
-            if (tuning::spec.tire_vertical_stiffness > 1000.0f)
-            {
-                defl = PxClamp(w.tire_load / tuning::spec.tire_vertical_stiffness, 0.0f, 0.05f);
-            }
-            float wr_eff = PxMax(wr - defl * 0.55f, 0.05f);
+            float wr_eff = get_effective_wheel_radius(i, w.tire_load);
 
             float dyn_camb = is_front(i) ? tuning::spec.front_camber : tuning::spec.rear_camber;
             if (wheel_actor)
@@ -273,15 +273,14 @@ namespace car
             }
 
             float base_grip      = tuning::spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
-            tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
             float camber_factor  = get_camber_grip_factor(dyn_camb);
             float surface_factor = get_surface_friction(w.contact_surface);
-            // rear_grip_ratio is a per axle mu scale for tire compound differences, 1.0 means matched
+            // rear grip ratio represents compound differences between axles
             float axle_grip_scale = is_rear(i) ? tuning::spec.rear_grip_ratio : 1.0f;
-            // camber mainly costs lateral grip, temp and wear apply to both directions without a floor
+            // camber modifies lateral grip only
             float shared_grip     = base_grip * surface_factor * axle_grip_scale;
-            float long_grip_scale = condition.peak_grip;
-            float lat_grip_scale  = condition.peak_grip * camber_factor;
+            float long_grip_scale = w.condition_grip;
+            float lat_grip_scale  = w.condition_grip * camber_factor;
             float peak_force_long = shared_grip * long_grip_scale;
             float peak_force_lat  = shared_grip * lat_grip_scale;
 
@@ -326,10 +325,10 @@ namespace car
             float load_norm = w.tire_load / tuning::spec.load_reference;
             float B_load_scale = powf(1.0f / PxMax(load_norm, tuning::spec.load_B_scale_min), 0.4f);
             float pressure_ratio = tuning::spec.tire_pressure / PxMax(tuning::spec.tire_pressure_optimal, 0.1f);
-            float lat_B_eff  = tuning::spec.lat_B * B_load_scale * condition.stiffness;
-            float long_B_eff = tuning::spec.long_B * B_load_scale * condition.stiffness;
-            float lat_E_eff  = tuning::spec.lat_E * PxMin(condition.stiffness, 1.0f);
-            float long_E_eff = tuning::spec.long_E * PxMin(condition.stiffness, 1.0f);
+            float lat_B_eff  = tuning::spec.lat_B * B_load_scale * w.condition_stiffness;
+            float long_B_eff = tuning::spec.long_B * B_load_scale * w.condition_stiffness;
+            float lat_E_eff  = tuning::spec.lat_E * PxMin(w.condition_stiffness, 1.0f);
+            float long_E_eff = tuning::spec.long_E * PxMin(w.condition_stiffness, 1.0f);
 
             float long_input = w.slip_ratio;
             float lat_input  = tanf(pacejka_slip_angle);

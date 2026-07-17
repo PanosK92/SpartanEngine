@@ -43,20 +43,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarPresets.h"
 //==========================================
 
-// vehicle dynamics state: structs, globals, telemetry, debug helpers.
-// this is the shared substrate every other car sim header pulls in; it owns no physics
-// logic of its own - that lives in CarPacejka / CarAero / CarSuspension / CarDrivetrain /
-// CarTires / CarSimulation.
+// shared vehicle state telemetry and physx safety helpers
 
 namespace car
 {
     using namespace physx;
 
-    //= tuning namespace ===========================================================
-
-    // swap active car spec at runtime
-    // defined in CarSimulation.h because it also has to update the cached cfg geometry,
-    // recompute wheel offsets and refresh the body's mass and inertia tensor
+    // preset loading rebuilds cached geometry and mass properties
     void load_car(const car_preset& new_spec);
     void reset_drivetrain_transients();
     void reset_wheel_thermals();
@@ -66,12 +59,11 @@ namespace car
 
     namespace tuning
     {
-        // active car specification, load_car applies a definition loaded from a .car file
         inline car_preset spec = car_preset();
 
-        // simulation-level parameters (not part of car spec)
+        // global environment and surface constants
         constexpr float air_density                  = 1.225f;
-        // lateral grip peaks at a slightly negative camber, quadratic loss either side, per rad squared
+        // lateral grip peaks at a small negative camber
         constexpr float camber_optimal               = -0.0436f;
         constexpr float camber_grip_loss             = 16.0f;
         constexpr float surface_friction_asphalt     = 1.0f;
@@ -83,14 +75,11 @@ namespace car
 
         inline bool log_pacejka     = false;
         inline bool log_telemetry   = false;
-        // writes a per-tick csv (car_telemetry.csv) to the working directory
-        // path is logged on first open so it's easy to find
+        // file telemetry opens lazily in the working directory
         inline bool log_to_file     = true;
     }
 
-    // load_car body lives in CarSimulation.h so it can touch the physics body and geometry
-
-    // guards a nan or inf vector before it reaches physx and trips an invalid parameter warning
+    // rejects invalid vectors before physx api calls
     inline bool is_finite_vec(const PxVec3& v)
     {
         return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
@@ -159,15 +148,10 @@ namespace car
         float  ground_effect_factor = 1.0f;
         bool   valid            = false;
     };
-    // inline (not inline static) at namespace scope: gives external linkage so all TUs
-    // that include this header share ONE instance. inline static at namespace scope keeps
-    // the per-TU semantics of `static`, which silently splits state across translation
-    // units. that was the root cause of wheel_offsets[i].y being 0 in physics.cpp tu while
-    // compute_constants wrote -0.35 in some other tu, so suspension never produced spring
-    // force and the chassis sat on the ground
+    // namespace state must use inline external linkage to remain shared across translation units
     inline aero_debug_data aero_debug;
 
-    // stored shape data for visualization (2D projections of convex hull)
+    // chassis silhouette data for visualization
     struct shape_2d
     {
         std::vector<std::pair<float, float>> side_profile;   // (z, y) points for side view
@@ -178,7 +162,7 @@ namespace car
         bool valid = false;
     };
 
-    // function-local static for odr safety
+    // function local storage avoids duplicate definitions
     inline shape_2d& shape_data_ref()
     {
         static shape_2d instance;
@@ -203,8 +187,7 @@ namespace car
         float suspension_travel   = 0.20f;
         float suspension_height   = 0.35f;
 
-        // cached geometry filled by compute_constants, source of truth for all consumers
-        // non zero defaults so wheel placement and force math stay sane if a preset overlay is skipped
+        // safe defaults remain authoritative until preset geometry is applied
         float wheelbase           = 2.6f;
         float track_front         = 1.6f;
         float track_rear          = 1.6f;
@@ -213,7 +196,7 @@ namespace car
         float wheel_width_for(int i) const  { return (i == front_left || i == front_right) ? front_wheel_width  : rear_wheel_width;  }
     };
 
-    // 3-zone surface temperature + core temperature
+    // tire surface zones and core thermal state
     struct tire_thermal
     {
         float surface[3] = { 50.0f, 50.0f, 50.0f }; // inside, middle, outside
@@ -229,7 +212,7 @@ namespace car
         bool         grounded             = false;
         PxVec3       contact_point        = PxVec3(0);
         PxVec3       contact_normal       = PxVec3(0, 1, 0);
-        // ground actor under this wheel, the engine layer maps it to a surface_type per tick
+        // engine layer maps the ground actor to a surface type
         const PxRigidActor* contact_actor = nullptr;
         float        angular_velocity     = 0.0f;
         float        rotation             = 0.0f;
@@ -253,6 +236,9 @@ namespace car
         float        condition_grip       = 1.0f;
         float        condition_stiffness  = 1.0f;
         float        condition_relaxation = 1.0f;
+        float        temperature_grip     = 1.0f;
+        float        wear_grip            = 1.0f;
+        float        brake_efficiency     = 1.0f;
         float        shock_length         = 0.0f;
         float        shock_rest_length    = 0.0f;
         float        shock_velocity       = 0.0f;
@@ -285,8 +271,7 @@ namespace car
         int weight = 0;
     };
 
-    // all of the following are `inline` (not `inline static`) at namespace scope so they
-    // get external linkage. see the comment on aero_debug above for why this matters
+    // shared state for the single active vehicle
     inline PxRigidDynamic* body             = nullptr;
     inline PxMaterial*     material         = nullptr;
     inline PxMaterial*     wheel_guard_material = nullptr;
@@ -302,11 +287,9 @@ namespace car
     inline float           wheel_moi[wheel_count];
     inline float           spring_stiffness[wheel_count];
     inline float           spring_damping[wheel_count];
-    // per wheel spring force after arb, capping and scaling, exposed for telemetry so
-    // we can correlate compression with the force actually pushed into the body
+    // final suspension force applied at each corner
     inline float           spring_force[wheel_count]   = {};
-    // raw sweep distance from the suspension attach point to ground, before clamping.
-    // negative means the sweep started already overlapping the ground via emtd
+    // negative sweep distance means the wheel geometry overlaps the surface
     inline float           sweep_distance[wheel_count] = {};
     inline float           abs_phase               = 0.0f;
     inline bool            abs_active[wheel_count] = {};
@@ -314,8 +297,7 @@ namespace car
     inline bool            tc_active               = false;
     inline float           engine_rpm              = 800.0f;
     inline float           engine_rotation         = 0.0f;
-    // gear encoding: 0 = reverse, 1 = neutral (gear_ratios[1] == 0 acts as the sentinel),
-    // 2..8 = forward gears. use the helpers below rather than literal-comparing the index.
+    // gear indices are zero reverse one neutral and two onward forward
     inline int             current_gear            = 1;
 
     inline bool is_in_reverse()      { return current_gear == 0; }
@@ -325,9 +307,8 @@ namespace car
     inline bool            is_shifting             = false;
     inline float           clutch                  = 1.0f;
     inline float           shift_cooldown          = 0.0f;
-    // cooldown after a shift completes before the next auto-shift can occur
+    // cooldown prevents automatic shift hunting
     inline constexpr float shift_cooldown_time     = 0.5f;
-    // "large" static friction gain applied under the low-slip static-friction model,
     inline int             last_shift_direction    = 0;
     inline float           previous_automatic_throttle = 0.0f;
     inline float           boost_pressure          = 0.0f;
@@ -335,8 +316,7 @@ namespace car
     inline bool            rev_limiter_active      = false;
     inline float           downshift_blip_timer    = 0.0f;
     inline float           driveshaft_twist        = 0.0f;
-    // engine flywheel inertia reflected to each driven wheel through the current gearing,
-    // added to wheel_moi during spin integration so low gears resist wheel speed changes
+    // reflected engine inertia is added to each driven wheel inertia
     inline float           reflected_engine_inertia = 0.0f;
     inline bool            drs_active              = false;
     inline float           longitudinal_accel      = 0.0f;
@@ -344,15 +324,12 @@ namespace car
     inline PxVec3          prev_velocity           = PxVec3(0);
     inline float           vehicle_sleep_timer     = 0.0f;
     inline bool            vehicle_sleeping        = false;
-    // total engine braking torque routed to the driven axle this tick before any per wheel split
+    // total engine braking torque routed to the driven axle
     inline float           engine_brake_torque     = 0.0f;
     inline float           engine_output_torque    = 0.0f;
     inline float           axle_drive_torque       = 0.0f;
 
-    // telemetry: writes a per-tick csv of body + per-wheel state to car_telemetry.csv
-    // in the working directory. opens lazily, closes when tuning::log_to_file is off,
-    // and flushes periodically so the file survives a crash. columns tuned for
-    // diagnosing handling: spin out, self align, weight transfer, thermals, grip, geometry
+    // telemetry writes fixed step body wheel and component state to csv
     struct telemetry_dump
     {
         FILE* file          = nullptr;
@@ -480,6 +457,7 @@ namespace car
                 SP_LOG_INFO("car telemetry: writing to %s", abs_path);
             }
 
+            // header and writer order form one external schema and must remain aligned
             fprintf(file,
                 // time + body state
                 "frame,time,dt,car_name,"
@@ -528,7 +506,7 @@ namespace car
                 "fl_brake_eff,fr_brake_eff,rl_brake_eff,rr_brake_eff,"
                 "fl_grip_temp_f,fr_grip_temp_f,rl_grip_temp_f,rr_grip_temp_f,"
                 "fl_grip_wear_f,fr_grip_wear_f,rl_grip_wear_f,rr_grip_wear_f,"
-                // new geometry effective loaded radius and dynamic camber used in slip grip calcs
+                // effective wheel geometry used by tire forces
                 "fl_eff_r,fr_eff_r,rl_eff_r,rr_eff_r,"
                 "fl_dyn_camb,fr_dyn_camb,rl_dyn_camb,rr_dyn_camb,"
                 "fl_abs,fr_abs,rl_abs,rr_abs,"
@@ -548,9 +526,19 @@ namespace car
             return true;
         }
 
+        void write_wheel_state(int i)
+        {
+            const wheel& w = wheels[i];
+            fprintf(file, "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", w.rotation, w.drive_torque, w.brake_torque, w.compression_velocity, static_cast<int>(w.contact_surface), w.contact_point.x, w.contact_point.y, w.contact_point.z, w.contact_normal.x, w.contact_normal.z, w.dynamic_toe, w.bump_steer, w.motion_ratio, w.shock_length, w.shock_rest_length, w.shock_velocity, w.thermal.surface[0], w.thermal.surface[1], w.thermal.surface[2], w.condition_grip, w.condition_stiffness, w.condition_relaxation, wheel_moi[i], spring_stiffness[i], spring_damping[i]);
+        }
+
         void tick(float dt, float speed_kmh)
         {
-            if (!tuning::log_to_file) { close(); return; }
+            if (!tuning::log_to_file)
+            {
+                close();
+                return;
+            }
             if (!open_if_needed())
             {
                 return;
@@ -580,13 +568,6 @@ namespace car
             {
                 body_slip_deg = atan2f(lateral_speed, forward_speed) * 180.0f / PxPi;
             }
-
-            // derive handling multipliers for this tick, inlined to avoid include cycle
-            auto brake_eff = [](float t){ float amb=tuning::spec.brake_ambient_temp; float opt=PxMax(tuning::spec.brake_optimal_temp,amb+10.f); float fad=PxMax(tuning::spec.brake_fade_temp,opt+10.f); if(t>=fad)return 0.6f; if(t<opt){float u=PxClamp((t-amb)/PxMax(opt-amb,1.f),0.f,1.f);return 0.8f+0.2f*u;} float u=(t-opt)/PxMax(fad-opt,1.f); return PxClamp(1.f-0.4f*u,0.5f,1.f); };
-            auto temp_gf  = [](float s){ float dev=fabsf(s-tuning::spec.tire_optimal_temp); float n=PxClamp(dev/PxMax(tuning::spec.tire_temp_range,1.f),0.f,1.f); return 1.f - n*n * tuning::spec.tire_grip_temp_factor; };
-            float be_fl = brake_eff(wheels[front_left].brake_temp),  be_fr=brake_eff(wheels[front_right].brake_temp),  be_rl=brake_eff(wheels[rear_left].brake_temp),  be_rr=brake_eff(wheels[rear_right].brake_temp);
-            float tg_fl = temp_gf(wheels[front_left].thermal.avg_surface()), tg_fr=temp_gf(wheels[front_right].thermal.avg_surface()), tg_rl=temp_gf(wheels[rear_left].thermal.avg_surface()), tg_rr=temp_gf(wheels[rear_right].thermal.avg_surface());
-            float wg_fl = 1.f - wheels[front_left].wear * tuning::spec.tire_grip_wear_loss, wg_fr=1.f - wheels[front_right].wear * tuning::spec.tire_grip_wear_loss, wg_rl=1.f - wheels[rear_left].wear * tuning::spec.tire_grip_wear_loss, wg_rr=1.f - wheels[rear_right].wear * tuning::spec.tire_grip_wear_loss;
 
             fprintf(file,
                 "%d,%.3f,%.4f,\"%s\","
@@ -626,11 +607,7 @@ namespace car
                 "%.6g,%.6g,%.6g,%.6g,"
                 "%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%d,%.6g,%d,"
                 "%.6g,%.6g,%.6g,%.6g,%.6g,"
-                "%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
-                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
-                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
-                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,"
-                "%.6g,%.6g,%.6g,%.6g,%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g",
+                "%d,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,",
                 frame_counter, elapsed_time, dt, tuning::spec.name ? tuning::spec.name : "",
                 pose.p.x, pose.p.y, pose.p.z,
                 speed_kmh, forward_speed, lateral_speed,
@@ -677,9 +654,9 @@ namespace car
                 wheels[front_left].thermal.core, wheels[front_right].thermal.core,
                 wheels[rear_left].thermal.core,  wheels[rear_right].thermal.core,
                 // effs and factors what actually multiplies grip brake this tick
-                be_fl, be_fr, be_rl, be_rr,
-                tg_fl, tg_fr, tg_rl, tg_rr,
-                wg_fl, wg_fr, wg_rl, wg_rr,
+                wheels[front_left].brake_efficiency, wheels[front_right].brake_efficiency, wheels[rear_left].brake_efficiency, wheels[rear_right].brake_efficiency,
+                wheels[front_left].temperature_grip, wheels[front_right].temperature_grip, wheels[rear_left].temperature_grip, wheels[rear_right].temperature_grip,
+                wheels[front_left].wear_grip, wheels[front_right].wear_grip, wheels[rear_left].wear_grip, wheels[rear_right].wear_grip,
                 // computed geometry used in this ticks slip and force
                 wheels[front_left].effective_radius, wheels[front_right].effective_radius,
                 wheels[rear_left].effective_radius,  wheels[rear_right].effective_radius,
@@ -692,11 +669,15 @@ namespace car
                 input_target.throttle, input_target.brake, input_target.steering, input_target.handbrake,
                 tuning::spec.gear_ratios[current_gear], shift_timer, shift_cooldown, last_shift_direction, engine_rotation, boost_pressure, motor_torque, engine_output_torque, axle_drive_torque, driveshaft_twist, driveshaft_twist * tuning::spec.driveshaft_stiffness, reflected_engine_inertia, rev_limiter_active ? 1 : 0, downshift_blip_timer, abs_phase, vehicle_sleeping ? 1 : 0, vehicle_sleep_timer, drs_active ? 1 : 0,
                 assisted_actuators.engine_torque_scale, assisted_actuators.brake_torque_scale[front_left], assisted_actuators.brake_torque_scale[front_right], assisted_actuators.brake_torque_scale[rear_left], assisted_actuators.brake_torque_scale[rear_right],
-                aero_debug.valid ? 1 : 0, aero_debug.ride_height, aero_debug.yaw_angle, aero_debug.ground_effect_factor, aero_debug.drag_force.x, aero_debug.drag_force.y, aero_debug.drag_force.z, aero_debug.front_downforce.x, aero_debug.front_downforce.y, aero_debug.front_downforce.z, aero_debug.rear_downforce.x, aero_debug.rear_downforce.y, aero_debug.rear_downforce.z, aero_debug.side_force.x, aero_debug.side_force.y, aero_debug.side_force.z,
-                wheels[front_left].rotation, wheels[front_left].drive_torque, wheels[front_left].brake_torque, wheels[front_left].compression_velocity, static_cast<int>(wheels[front_left].contact_surface), wheels[front_left].contact_point.x, wheels[front_left].contact_point.y, wheels[front_left].contact_point.z, wheels[front_left].contact_normal.x, wheels[front_left].contact_normal.z, wheels[front_left].dynamic_toe, wheels[front_left].bump_steer, wheels[front_left].motion_ratio, wheels[front_left].shock_length, wheels[front_left].shock_rest_length, wheels[front_left].shock_velocity, wheels[front_left].thermal.surface[0], wheels[front_left].thermal.surface[1], wheels[front_left].thermal.surface[2], wheels[front_left].condition_grip, wheels[front_left].condition_stiffness, wheels[front_left].condition_relaxation, wheel_moi[front_left], spring_stiffness[front_left], spring_damping[front_left],
-                wheels[front_right].rotation, wheels[front_right].drive_torque, wheels[front_right].brake_torque, wheels[front_right].compression_velocity, static_cast<int>(wheels[front_right].contact_surface), wheels[front_right].contact_point.x, wheels[front_right].contact_point.y, wheels[front_right].contact_point.z, wheels[front_right].contact_normal.x, wheels[front_right].contact_normal.z, wheels[front_right].dynamic_toe, wheels[front_right].bump_steer, wheels[front_right].motion_ratio, wheels[front_right].shock_length, wheels[front_right].shock_rest_length, wheels[front_right].shock_velocity, wheels[front_right].thermal.surface[0], wheels[front_right].thermal.surface[1], wheels[front_right].thermal.surface[2], wheels[front_right].condition_grip, wheels[front_right].condition_stiffness, wheels[front_right].condition_relaxation, wheel_moi[front_right], spring_stiffness[front_right], spring_damping[front_right],
-                wheels[rear_left].rotation, wheels[rear_left].drive_torque, wheels[rear_left].brake_torque, wheels[rear_left].compression_velocity, static_cast<int>(wheels[rear_left].contact_surface), wheels[rear_left].contact_point.x, wheels[rear_left].contact_point.y, wheels[rear_left].contact_point.z, wheels[rear_left].contact_normal.x, wheels[rear_left].contact_normal.z, wheels[rear_left].dynamic_toe, wheels[rear_left].bump_steer, wheels[rear_left].motion_ratio, wheels[rear_left].shock_length, wheels[rear_left].shock_rest_length, wheels[rear_left].shock_velocity, wheels[rear_left].thermal.surface[0], wheels[rear_left].thermal.surface[1], wheels[rear_left].thermal.surface[2], wheels[rear_left].condition_grip, wheels[rear_left].condition_stiffness, wheels[rear_left].condition_relaxation, wheel_moi[rear_left], spring_stiffness[rear_left], spring_damping[rear_left],
-                wheels[rear_right].rotation, wheels[rear_right].drive_torque, wheels[rear_right].brake_torque, wheels[rear_right].compression_velocity, static_cast<int>(wheels[rear_right].contact_surface), wheels[rear_right].contact_point.x, wheels[rear_right].contact_point.y, wheels[rear_right].contact_point.z, wheels[rear_right].contact_normal.x, wheels[rear_right].contact_normal.z, wheels[rear_right].dynamic_toe, wheels[rear_right].bump_steer, wheels[rear_right].motion_ratio, wheels[rear_right].shock_length, wheels[rear_right].shock_rest_length, wheels[rear_right].shock_velocity, wheels[rear_right].thermal.surface[0], wheels[rear_right].thermal.surface[1], wheels[rear_right].thermal.surface[2], wheels[rear_right].condition_grip, wheels[rear_right].condition_stiffness, wheels[rear_right].condition_relaxation, wheel_moi[rear_right], spring_stiffness[rear_right], spring_damping[rear_right]);
+                aero_debug.valid ? 1 : 0, aero_debug.ride_height, aero_debug.yaw_angle, aero_debug.ground_effect_factor, aero_debug.drag_force.x, aero_debug.drag_force.y, aero_debug.drag_force.z, aero_debug.front_downforce.x, aero_debug.front_downforce.y, aero_debug.front_downforce.z, aero_debug.rear_downforce.x, aero_debug.rear_downforce.y, aero_debug.rear_downforce.z, aero_debug.side_force.x, aero_debug.side_force.y, aero_debug.side_force.z);
+            for (int i = 0; i < wheel_count; i++)
+            {
+                if (i > 0)
+                {
+                    fputc(',', file);
+                }
+                write_wheel_state(i);
+            }
             for (int i = 0; i < wheel_count; i++)
             {
                 fprintf(file, ",%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", wheels[i].hub_position.x, wheels[i].hub_position.y, wheels[i].hub_position.z, wheels[i].hub_linear_velocity.x, wheels[i].hub_linear_velocity.y, wheels[i].hub_linear_velocity.z, wheels[i].hub_angular_velocity.x, wheels[i].hub_angular_velocity.y, wheels[i].hub_angular_velocity.z);
@@ -722,7 +703,7 @@ namespace car
     inline PxVec3           debug_suspension_top[wheel_count];
     inline PxVec3           debug_suspension_bottom[wheel_count];
 
-    // pre-filter that skips the car's own body during suspension sweeps/raycasts
+    // suspension queries skip the chassis while mechanism shapes remain query disabled
     class SelfFilterCallback : public PxQueryFilterCallback
     {
     public:
@@ -740,8 +721,7 @@ namespace car
     };
     inline SelfFilterCallback self_filter;
 
-    // wheel state heals: scrub nan or inf out of the per wheel fields so a single division by zero
-    // anywhere in the sim cannot poison angular velocity or rotation for the rest of the run
+    // sanitization prevents one invalid wheel value from poisoning physx
     inline bool sanitize_float(float& v, float fallback = 0.0f)
     {
         if (!std::isfinite(v))
@@ -815,12 +795,12 @@ namespace car
         if (tuning::spec.drivetrain_type == 0)
         {
             return is_rear(i);
-        }   // rwd
+        }
         if (tuning::spec.drivetrain_type == 1)
         {
             return is_front(i);
-        }  // fwd
-        return true;                                                // awd
+        }
+        return true;
     }
     inline float lerp(float a, float b, float t){ return a + (b - a) * t; }
     inline float exp_decay(float rate, float dt){ return 1.0f - expf(-rate * dt); }

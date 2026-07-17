@@ -1205,13 +1205,12 @@ namespace engine_sound
                 mono_layers += turbo;
                 mono_layers = m_dc_blocker.process(mono_layers);
 
-                // per-channel mix, exhaust is stereo, layers are summed
-                // optional gentle drive but no hard tanh (it was squaring the signal)
+                // channel drive preserves exhaust stereo without hard clipping
                 float drive = 1.0f + throttle * 0.2f + rpm_norm * 0.1f + params.drive_extra;
                 float left  = (exhaust_l * params.exhaust_level + mono_layers) * drive;
                 float right = (exhaust_r * params.exhaust_level + mono_layers) * drive;
 
-                // auto-leveler is the only loudness control, target is runtime-tweakable
+                // leveler is the final loudness control
                 m_leveler.target = params.leveler_target;
                 m_leveler.process(left, right);
 

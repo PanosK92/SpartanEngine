@@ -99,9 +99,7 @@ namespace car
 
         const char* name;
 
-        // chassis (physical dimensions and mass)
-        // these drive the simulation geometry, weight transfer, inertia and the
-        // body itself so swapping presets actually changes the car's physical footprint
+        // chassis dimensions set physical footprint static weight distribution and inertia
         float mass;                  // kg, curb weight with fluids
         float length;                // m, overall vehicle length
         float width;                 // m, overall vehicle width (no mirrors)
@@ -136,7 +134,7 @@ namespace car
         float downshift_blip_amount;
         float downshift_blip_duration;
 
-        // gearbox (indices: 0=reverse, 1=neutral, 2=1st, 3=2nd, ...)
+        // gear indices are zero reverse one neutral and two onward forward
         float gear_ratios[max_gears];
         int   gear_count;
         float final_drive;
@@ -226,7 +224,7 @@ namespace car
         float damping_rebound_ratio;
         float damping_bump_high_speed_ratio;
         float damping_rebound_high_speed_ratio;
-        float damper_knee_velocity;
+        float damper_knee_velocity; // m per s transition between low and high speed damping
         float front_arb_stiffness;
         float rear_arb_stiffness;
         float max_susp_force;
@@ -234,7 +232,7 @@ namespace car
         float bump_stop_stiffness;
         float bump_stop_threshold;
         float bump_stop_progression;
-        float packer_threshold;
+        float packer_threshold; // fraction of suspension travel where packer stiffness begins
         float packer_stiffness;
 
         // aerodynamics

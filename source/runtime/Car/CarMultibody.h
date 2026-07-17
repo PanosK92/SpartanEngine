@@ -1,9 +1,12 @@
 #pragma once
+#include "CarPacejka.h"
 
+// physx suspension assembly and spring damper force coupling
 namespace car
 {
     static constexpr int max_suspension_members = 8;
     static constexpr int max_suspension_joints  = 96;
+    static constexpr float wheel_guard_radius_scale = 0.75f;
 
     struct suspension_member
     {
@@ -46,6 +49,7 @@ namespace car
 
     inline PxU32 multibody_collision_group()
     {
+        // matching groups suppress contacts between parts of the same vehicle
         const PxU32 collision_group = static_cast<PxU32>(reinterpret_cast<uintptr_t>(body) >> 4);
         return collision_group != 0 ? collision_group : 1;
     }
@@ -179,6 +183,7 @@ namespace car
             return;
         }
 
+        // mechanism shapes carry inertia while custom suspension and tire forces handle contact
         shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
         shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
         shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
@@ -202,6 +207,7 @@ namespace car
 
         if (collision_guard)
         {
+            // the inset guard prevents tunneling while sweep tire forces remain primary
             shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
             shape->setContactOffset(0.005f);
             shape->setRestOffset(0.0f);
@@ -468,14 +474,18 @@ namespace car
         PxTransform wheel_pose(wheel_world, chassis_pose.q * alignment);
 
         corner.upright = create_mechanism_actor(wheel_pose, PxBoxGeometry(0.04f, 0.18f, 0.06f), tuning::spec.upright_mass);
-        corner.wheel_body = create_mechanism_actor(wheel_pose, PxSphereGeometry(cfg.wheel_radius_for(wheel_index) * 0.90f), cfg.wheel_mass, true);
+        // guard stays inside the sweep tire so custom contact remains primary
+        corner.wheel_body = create_mechanism_actor(wheel_pose, PxSphereGeometry(cfg.wheel_radius_for(wheel_index) * wheel_guard_radius_scale), cfg.wheel_mass, true);
         if (!corner.upright || !corner.wheel_body)
         {
             return false;
         }
         float wheel_inertia = PxMax(wheel_moi[wheel_index], 0.1f);
         corner.wheel_body->setMassSpaceInertiaTensor(PxVec3(wheel_inertia, wheel_inertia * 0.65f, wheel_inertia * 0.65f));
+        // the physx default angular limit prevents high gear upshifts
         corner.wheel_body->setMaxAngularVelocity(500.0f);
+        // guard recovery is capped so deep contacts cannot launch the chassis
+        corner.wheel_body->setMaxDepenetrationVelocity(2.0f);
 
         corner.wheel_joint = PxRevoluteJointCreate(*multibody.physics, corner.upright, PxTransform(PxIdentity), corner.wheel_body, PxTransform(PxIdentity));
         if (!corner.wheel_joint)
@@ -818,6 +828,7 @@ namespace car
 
     inline float compute_damper_force(float velocity, float base_damping)
     {
+        // negative velocity is bump and the knee blends low and high speed damping
         bool bump = velocity < 0.0f;
         float low_speed_ratio = bump ? tuning::spec.damping_bump_ratio : tuning::spec.damping_rebound_ratio;
         float high_speed_ratio = bump ? tuning::spec.damping_bump_high_speed_ratio : tuning::spec.damping_rebound_high_speed_ratio;
@@ -870,6 +881,7 @@ namespace car
                 float bump_progress = PxClamp(bump_compression / bump_travel, 0.0f, 1.0f);
                 force_magnitude += bump_compression * tuning::spec.bump_stop_stiffness * (1.0f + tuning::spec.bump_stop_progression * bump_progress * bump_progress);
             }
+            // packer threshold is a fraction of suspension travel
             float packer_start = cfg.suspension_travel * tuning::spec.packer_threshold;
             if (compression > packer_start)
             {

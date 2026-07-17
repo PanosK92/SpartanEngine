@@ -46,11 +46,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    // static member initialization
     std::vector<Car*> Car::s_cars;
 
-    // entities shared with other files (external linkage required)
-    // resolved lazily on world load, see the camera discovery in Tick
+    // shared entities use external linkage and resolve lazily during world load
     Entity* default_camera     = nullptr;
     Entity* default_car        = nullptr;
     Entity* default_car_window = nullptr;
@@ -627,16 +625,15 @@ namespace spartan
 
             // skid marks are defined in the world as a prefab override on the vehicle, not added here
 
-            // store camera_follows flag - car will auto-enter when play mode starts
+            // camera follow enters the car when play mode starts
             car->m_camera_follows = config.camera_follows;
 
-            // set globals for backward compatibility
+            // legacy default entity follows the single active vehicle
             default_car = car->m_body_entity;
         }
         else
         {
-            // non-drivable display car: same deterministic hierarchy as the drivable one,
-            // a root with the body bolted on and free spinning wheels, just without physics
+            // display cars keep the same visual hierarchy without vehicle physics
             car->m_vehicle_entity = World::CreateEntity();
             car->m_vehicle_entity->SetObjectName("vehicle");
             car->m_vehicle_entity->SetPosition(config.position);
@@ -714,6 +711,7 @@ namespace spartan
 
     void Car::ShutdownAll()
     {
+        std::lock_guard<std::mutex> lock(car_list_mutex);
         for (Car* car : s_cars)
         {
             car->m_vehicle_entity = nullptr;
@@ -731,8 +729,9 @@ namespace spartan
         Input::GamepadVibrate(0.0f, 0.0f);
     }
 
-    std::vector<Car*>& Car::GetAll()
+    std::vector<Car*> Car::GetAll()
     {
+        std::lock_guard<std::mutex> lock(car_list_mutex);
         return s_cars;
     }
 
@@ -848,8 +847,8 @@ namespace spartan
             const WheelIndex wheel_index = static_cast<WheelIndex>(i);
             if (Entity* wheel_entity = physics->GetWheelEntity(wheel_index))
             {
-                const float radius = i < 2 ? ::car::cfg.front_wheel_radius : ::car::cfg.rear_wheel_radius;
-                const float width  = i < 2 ? ::car::cfg.front_wheel_width : ::car::cfg.rear_wheel_width;
+                const float radius = ::car::cfg.wheel_radius_for(i);
+                const float width  = ::car::cfg.wheel_width_for(i);
                 physics->ScaleWheelEntityToDimensions(wheel_entity, radius, width);
             }
         }
@@ -983,18 +982,14 @@ namespace spartan
             const float wheel_torque_reference = std::max(::car::tuning::spec.handbrake_torque + ::car::tuning::spec.brake_force * wheel_radius, 1.0f);
             draw_skeleton_torque_arc(wheel_world[i], wheel_axis_render, wheel_radius * 0.72f, ::car::wheels[i].net_torque / wheel_torque_reference, skeleton_color_torque);
             Renderer::DrawSphere(wheel_world[i], 0.052f, 7, get_skeleton_tire_temperature_color(::car::wheels[i].thermal.core, ::car::wheels[i].wear));
-            const float axle_brake_share = i < 2 ? ::car::tuning::spec.brake_bias_front : 1.0f - ::car::tuning::spec.brake_bias_front;
-            const physx::PxVec3 chassis_forward = ::car::body->getGlobalPose().q.rotate(physx::PxVec3(0.0f, 0.0f, 1.0f));
-            const float forward_speed = fabsf(::car::body->getLinearVelocity().dot(chassis_forward));
-            const bool reverse_requested = !::car::tuning::spec.manual_transmission && forward_speed < 0.5f && ::car::input.brake > 0.8f && ::car::input.throttle < ::car::tuning::spec.input_deadzone && ::car::is_in_forward_gear() && !::car::is_shifting;
-            const bool service_braking = ::car::input.brake > ::car::tuning::spec.input_deadzone && !::car::is_in_reverse() && !reverse_requested;
+            const float axle_brake_share = ::car::is_front(i) ? ::car::tuning::spec.brake_bias_front : 1.0f - ::car::tuning::spec.brake_bias_front;
             const float wheel_radius_for_brake = ::car::cfg.wheel_radius_for(i);
-            float applied_brake_torque = service_braking ? ::car::tuning::spec.brake_force * wheel_radius_for_brake * ::car::input.brake * axle_brake_share * 0.5f * ::car::get_brake_efficiency(::car::wheels[i].brake_temp) * ::car::assisted_actuators.brake_torque_scale[i] : 0.0f;
-            if (i >= 2)
+            float applied_brake_torque = fabsf(::car::wheels[i].brake_torque);
+            if (::car::is_rear(i))
             {
                 applied_brake_torque += ::car::tuning::spec.handbrake_torque * ::car::input.handbrake;
             }
-            const float brake_reference = std::max(::car::tuning::spec.brake_force * wheel_radius_for_brake * axle_brake_share * 0.5f + (i >= 2 ? ::car::tuning::spec.handbrake_torque : 0.0f), 1.0f);
+            const float brake_reference = std::max(::car::tuning::spec.brake_force * wheel_radius_for_brake * axle_brake_share * 0.5f + (::car::is_rear(i) ? ::car::tuning::spec.handbrake_torque : 0.0f), 1.0f);
             const float brake_actuation = std::clamp(applied_brake_torque / brake_reference, 0.0f, 1.0f);
             const float caliper_size = 0.050f + brake_actuation * 0.016f;
             Renderer::DrawSphere(to_render(wheel_pose.p + wheel_radial_y * brake_radius * 0.72f + wheel_radial_z * brake_radius * 0.45f), caliper_size, 6, brake_color);
@@ -1016,7 +1011,7 @@ namespace spartan
                 const physx::PxTransform member_pose = member.actor->getGlobalPose();
                 const math::Vector3 start = to_render(member_pose.transform(member.local_start));
                 const math::Vector3 end = to_render(member_pose.transform(member.local_end));
-                const bool tie_rod = i < 2 && ::car::multibody.rack && member_index == corner.member_count - 1;
+                const bool tie_rod = ::car::is_front(i) && ::car::multibody.rack && member_index == corner.member_count - 1;
                 const Color& member_color = tie_rod ? skeleton_color_steering : skeleton_color_control_arm;
                 draw_skeleton_cylinder(start, end, tie_rod ? 0.016f : 0.020f, member_color);
                 draw_skeleton_joint(start, tie_rod ? skeleton_color_steering : skeleton_color_joint);
@@ -1904,15 +1899,14 @@ namespace spartan
             return nullptr;
         }
 
-        // the mesh root is shared via the resource cache, clone so every car gets its own wheels
-        // the root itself is transient so it never leaks into the world file on save
+        // clone the cached wheel root because each car owns wheel transforms
         Entity* wheel_base = wheel_source->Clone();
         wheel_base->SetParent(nullptr);
         wheel_base->SetActive(true);
         wheel_root->SetActive(false);
         wheel_root->SetTransient(true);
 
-        // measure wheel dimensions from the natural mesh scale
+        // wheel bounds must be measured at unit scale before absolute dimension scaling
         wheel_base->SetScale(1.0f);
 
         if (Render* renderable = wheel_base->GetComponent<Render>())
@@ -2534,11 +2528,9 @@ namespace spartan
                 audio_engine->StartSynthesis();
             }
 
-            // update synthesizer parameters
             float load = throttle * (0.5f + rpm_normalized * 0.5f);
             engine_sound::set_parameters(engine_rpm, throttle, load, boost);
 
-            // engine was overpowering at full level, keep the rpm and throttle response but scale it way down
             const float engine_volume_scale = 0.18f;
             float volume = (0.6f + rpm_normalized * 0.3f + throttle * 0.1f) * engine_volume_scale;
             audio_engine->SetVolume(volume);

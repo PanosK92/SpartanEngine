@@ -88,7 +88,7 @@ namespace spartan
 
         // global lifecycle (tick happens automatically through entity system)
         static void ShutdownAll();
-        static std::vector<Car*>& GetAll();
+        static std::vector<Car*> GetAll();
 
         // instance lifecycle
         void Destroy();

@@ -2,7 +2,9 @@
 
 #include <cstdio>
 #include "../Core/Engine.h"
+#include "CarMultibody.h"
 
+// validation scenarios mutate the active global vehicle and may rebuild its assembly
 namespace car
 {
     inline void reset_drivetrain_transients();

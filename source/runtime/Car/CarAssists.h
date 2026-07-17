@@ -1,7 +1,17 @@
 #pragma once
+#include "CarState.h"
 
+// traction control scales engine torque and abs scales each wheel brake torque
 namespace car
 {
+    inline void clear_abs_state()
+    {
+        for (int i = 0; i < wheel_count; i++)
+        {
+            abs_active[i] = false;
+        }
+    }
+
     inline float get_assisted_steering_target(float raw_input)
     {
         float deadzone = PxClamp(tuning::spec.steering_deadzone, 0.0f, 0.95f);
@@ -13,11 +23,6 @@ namespace car
         return PxClamp(filtered_input, -steering_limit, steering_limit);
     }
 
-    inline bool assist_wheel_is_driven(int wheel_index)
-    {
-        return tuning::spec.drivetrain_type == 2 || (tuning::spec.drivetrain_type == 1 && wheel_index < 2) || (tuning::spec.drivetrain_type == 0 && wheel_index >= 2);
-    }
-
     inline void update_assist_controller(bool traction_requested, bool braking_requested, float dt)
     {
         assisted_actuators = assist_command();
@@ -27,7 +32,7 @@ namespace car
             float max_slip = 0.0f;
             for (int i = 0; i < wheel_count; i++)
             {
-                if (assist_wheel_is_driven(i) && wheels[i].grounded)
+                if (is_driven(i) && wheels[i].grounded)
                 {
                     max_slip = PxMax(max_slip, wheels[i].slip_ratio);
                 }
@@ -49,10 +54,7 @@ namespace car
 
         if (!braking_requested)
         {
-            for (int i = 0; i < wheel_count; i++)
-            {
-                abs_active[i] = false;
-            }
+            clear_abs_state();
             return;
         }
 

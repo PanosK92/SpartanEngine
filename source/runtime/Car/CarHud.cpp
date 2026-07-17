@@ -398,8 +398,7 @@ namespace spartan::car_hud
             }
         }
 
-        // shared tire visual, renders the rubber gradient, wear%, force arrows. labels and slip
-        // text are now rendered as regular ImGui text by the caller for clean table layout
+        // draws tire condition and force direction while the caller owns labels
         void draw_tire_block(ImDrawList* dl, Physics* physics, WheelIndex wheel, ImVec2 tl, ImVec2 size, bool with_arrows)
         {
             bool  grounded = physics->IsWheelGrounded(wheel);
@@ -421,7 +420,12 @@ namespace spartan::car_hud
                 int sr = (int)(wr * brightness);
                 int sg = (int)(wg * brightness);
                 int sb = (int)(wb * brightness);
-                if (!grounded) { sr /= 2; sg /= 2; sb /= 2; }
+                if (!grounded)
+                {
+                    sr /= 2;
+                    sg /= 2;
+                    sb /= 2;
+                }
                 ImVec2 stl(tl.x, tl.y + s * strip_h);
                 ImVec2 sbr(br.x, tl.y + (s + 1) * strip_h);
                 float rounding = (s == 0 || s == strips - 1) ? 7.0f : 0.0f;
@@ -798,9 +802,7 @@ namespace spartan::car_hud
         ImGui::PopStyleVar(2);
     }
 
-    // ====================================================================================
-    // telemetry funnel, one scrollable window with setup, chassis, aero, engine, debug
-    // ====================================================================================
+    // telemetry sections share one scrollable window
 
     namespace
     {
@@ -969,21 +971,15 @@ namespace spartan::car_hud
 
             auto draw_stages = [](const char* name, int& level, int maxs)
             {
-                if (maxs <= 0)
-                {
-                    int before = level;
-                    car::clamp_upgrade_stage(level, 0);
-                    if (level != before)
-                    {
-                        car::reapply_upgrades();
-                    }
-                    return;
-                }
                 int before = level;
-                car::clamp_upgrade_stage(level, maxs);
+                car::clamp_upgrade_stage(level, std::max(maxs, 0));
                 if (level != before)
                 {
                     car::reapply_upgrades();
+                }
+                if (maxs <= 0)
+                {
+                    return;
                 }
                 ImGui::PushID(name);
                 ImGui::TextColored(imvec4_from_u32(text_label), "%s", name);
@@ -1211,8 +1207,7 @@ namespace spartan::car_hud
             }
             else if (aero_speed_ms > 0.5f)
             {
-                const float air_density = 1.225f;
-                float dyn_pressure      = 0.5f * air_density * aero_speed_ms * aero_speed_ms;
+                float dyn_pressure      = 0.5f * car::tuning::air_density * aero_speed_ms * aero_speed_ms;
                 drag_n     = dyn_pressure * drag_coeff * frontal_area;
                 front_df_n = fabsf(car::get_lift_coeff_front() * dyn_pressure * frontal_area);
                 rear_df_n  = fabsf(car::get_lift_coeff_rear()  * dyn_pressure * frontal_area);
@@ -1346,7 +1341,7 @@ namespace spartan::car_hud
 
             section_header("Engine / sound");
             ImGui::TextColored(imvec4_from_u32(accent_warn), "RPM %.0f  |  Throttle %.0f%%  |  Boost %.2f bar", rpm, throt * 100.0f, boost);
-            float mot_kw = mot_tq * rpm * (2.0f * 3.14159265f / 60.0f) / 1000.0f;
+            float mot_kw = car::get_motor_power_kw();
             ImGui::Text("ICE %.0f Nm  |  Motor %.0f Nm (%.0f kW)  |  Total %.0f Nm", ice_tq, mot_tq, mot_kw, ice_tq + mot_tq);
 
             if (dbg.ir_taps > 0)

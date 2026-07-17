@@ -148,14 +148,11 @@ namespace car
         SP_LOG_INFO("aero: front/rear area bias=%.0f%%/%.0f%%",
             front_bias * 100.0f, (1.0f - front_bias) * 100.0f);
 
-        // 2D silhouettes for the debug overlay are computed in the dedicated visualization
-        // helper below, not here. the sim routine stays focused on aero inference.
+        // visualization geometry is derived after aero inference
         compute_shape_visualization(vertices, min_pt, max_pt);
     }
 
-    // 2D convex hull via graham scan - used by the visualization overlay to draw
-    // side and front silhouettes of the chassis. kept out of the aero routine so
-    // that physics changes do not require thinking about visualization code.
+    // convex hull supports side and front chassis silhouettes
     inline std::vector<std::pair<float, float>> graham_scan_hull_2d(std::vector<std::pair<float, float>> points)
     {
         if (points.size() < 3)
@@ -232,10 +229,7 @@ namespace car
         PxVec3 vel = body->getLinearVelocity();
         float speed = vel.magnitude();
 
-        // aero application points from mesh-computed center - these are offsets from the
-        // actor origin (pose.p), not from the center of mass. the chassis mesh is authored so
-        // the actor origin coincides with the mesh origin, otherwise the debug arrows will not
-        // sit on the car. the COM itself can still be set independently via set_center_of_mass
+        // aero positions are actor origin offsets because center of mass is independent
         float aero_height = tuning::spec.aero_center_height;
         PxVec3 front_pos = pose.p + pose.q.rotate(PxVec3(0, aero_height, tuning::spec.aero_center_front_z));
         PxVec3 rear_pos  = pose.p + pose.q.rotate(PxVec3(0, aero_height, tuning::spec.aero_center_rear_z));
@@ -273,12 +267,11 @@ namespace car
         float rear_compression  = (wheels[rear_left].compression + wheels[rear_right].compression) * 0.5f;
         float pitch_angle = (rear_compression - front_compression) * cfg.suspension_travel / PxMax(cfg.wheelbase, 0.1f);
 
-        // underbody gap proxy, adding the wheel radius here kept ride_height permanently
-        // above ground_effect_height_max so ground effect could never activate
+        // ride height estimates the current underbody gap
         float avg_compression = (front_compression + rear_compression) * 0.5f;
         float ride_height = cfg.suspension_height - avg_compression * cfg.suspension_travel;
 
-        // drag (only above a tiny speed threshold to avoid normalizing the zero vector)
+        // speed threshold avoids normalizing zero velocity
         PxVec3 drag_force_vec(0);
         if (speed > 0.5f)
         {
@@ -295,10 +288,7 @@ namespace car
             safe_add_force(body, drag_force_vec);
         }
 
-        // side force, applied at the geometric centre of the side silhouette (mid-z between
-        // the front and rear aero centres) so it produces a real yaw moment about the CG
-        // this is the weather-vane effect, stabilising for forward motion when the CG is
-        // ahead of the side aero centre, destabilising for rear-biased CGs which is realistic
+        // side force acts at silhouette center to create weather vane yaw torque
         PxVec3 side_force_vec(0);
         if (tuning::spec.yaw_aero_enabled && fabsf(lateral_speed) > 1.0f)
         {
@@ -310,12 +300,11 @@ namespace car
             aero_debug.side_aero_pos = side_aero_pos;
         }
 
-        // downforce
         PxVec3 front_downforce_vec(0);
         PxVec3 rear_downforce_vec(0);
         float ground_effect_factor = 1.0f;
 
-        // v squared scaling is continuous through zero, a high threshold here steps the load at the cutoff
+        // low threshold keeps quadratic downforce continuous near rest
         if (speed > 1.0f)
         {
             float dyn_pressure = 0.5f * tuning::air_density * speed * speed;

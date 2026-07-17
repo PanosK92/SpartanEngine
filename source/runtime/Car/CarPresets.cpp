@@ -155,6 +155,7 @@ namespace car
             require(finite_range(preset.track_front, 1.0f, 2.5f) && finite_range(preset.track_rear, 1.0f, 2.5f), "track");
             require(finite_range(preset.front_wheel_radius, 0.2f, 0.7f) && finite_range(preset.rear_wheel_radius, 0.2f, 0.7f), "wheel_radius");
             require(finite_range(preset.front_wheel_width, 0.1f, 0.6f) && finite_range(preset.rear_wheel_width, 0.1f, 0.6f), "wheel_width");
+            require(finite_range(preset.suspension_height, 0.05f, 1.5f), "suspension_height");
             require(finite_range(preset.suspension_travel, 0.04f, 0.7f), "suspension_travel");
             require(finite_range(preset.front_spring_freq, 0.5f, 5.0f) && finite_range(preset.rear_spring_freq, 0.5f, 5.0f), "spring_frequency");
             require(finite_range(preset.front_damping_ratio, 0.1f, 2.0f) && finite_range(preset.rear_damping_ratio, 0.1f, 2.0f), "damping_ratio");
@@ -169,6 +170,7 @@ namespace car
             require(finite_range(preset.engine_idle_rpm, 300.0f, 2000.0f) && finite_range(preset.engine_redline_rpm, preset.engine_idle_rpm + 500.0f, 20000.0f) && finite_range(preset.engine_max_rpm, preset.engine_redline_rpm, 22000.0f), "engine_speed_range");
             require(finite_range(preset.engine_inertia, 0.01f, 10.0f) && finite_range(preset.engine_rpm_smoothing, 0.1f, 100.0f), "engine_response");
             require(finite_range(preset.final_drive, 0.1f, 10.0f) && finite_range(preset.drivetrain_efficiency, 0.1f, 1.0f), "drivetrain_ratio");
+            require(std::isfinite(preset.gear_ratios[1]) && fabsf(preset.gear_ratios[1]) <= 1e-6f, "neutral_gear_ratio");
             for (int i = 0; i < std::clamp(preset.gear_count, 0, max_gears); i++)
             {
                 if (i != 1)
@@ -177,6 +179,7 @@ namespace car
                 }
             }
             require(finite_range(preset.brake_thermal_mass, 0.1f, 100.0f), "brake_thermal_mass");
+            require(finite_range(preset.brake_ambient_temp, 0.0f, 100.0f) && finite_range(preset.brake_optimal_temp, preset.brake_ambient_temp, 1000.0f) && finite_range(preset.brake_fade_temp, preset.brake_optimal_temp, 1500.0f) && finite_range(preset.brake_max_temp, preset.brake_fade_temp, 2000.0f), "brake_temperature_range");
             require(finite_range(preset.load_reference, 100.0f, 20000.0f), "load_reference");
             require(finite_range(preset.tire_temp_range, 1.0f, 300.0f), "tire_temp_range");
             require(finite_range(preset.tire_vertical_stiffness, 10000.0f, 1000000.0f), "tire_vertical_stiffness");
@@ -509,9 +512,7 @@ namespace car
             load_preset(wheels, definition.performance);
         }
 
-        // performance attributes can live in any number of thematic sections,
-        // chassis, engine, transmission, etc, each section is read with the full
-        // attribute list so grouping is free form and purely for human readability
+        // thematic sections are free form and later attributes override earlier ones
         for (pugi::xml_node section : root.children())
         {
             const string section_name = section.name();

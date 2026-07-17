@@ -572,13 +572,11 @@ namespace spartan
             m_wheel_offsets_synced = true;
         }
 
-        // one fixed step of the vehicle force model, the caller (PhysicsWorld fixed loop) runs this
-        // immediately before scene->simulate(dt) so the forces apply over exactly this step
+        // force model runs immediately before physx simulation for the same fixed step
         car::tick(dt);
 
-        // map the ground actor under each wheel to a tire surface type (split-mu), done right
-        // after the sweep so the actor is guaranteed alive, applied on the next substep.
-        // cached per actor since classification walks the entity name
+        // surface classification intentionally reaches tire forces one substep later
+        // actor caching avoids repeated entity name classification
         static const PxRigidActor* cached_actor[car::wheel_count]   = {};
         static car::surface_type   cached_surface[car::wheel_count] = {};
         for (int i = 0; i < car::wheel_count; i++)
@@ -2094,19 +2092,6 @@ namespace spartan
         return car::cfg.suspension_height;
     }
 
-    float Physics::GetTargetWheelRadius() const
-    {
-        // the front wheel radius from car cfg is the source of truth, the visual mesh must be
-        // scaled to match this so the cooked sweep cylinder, the spring math and the rendered
-        // wheel all agree on the actual physical size
-        float r = car::cfg.front_wheel_radius;
-        if (!std::isfinite(r) || r <= 0.0f)
-        {
-            return 0.34f;
-        }
-        return r;
-    }
-
     void Physics::ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width)
     {
         if (!wheel_entity || !std::isfinite(target_radius) || !std::isfinite(target_width) || target_radius <= 0.0f || target_width <= 0.0f)
@@ -2120,6 +2105,7 @@ namespace spartan
             return;
         }
 
+        // scale is absolute and derives only from unscaled local mesh bounds
         Vector3 extents = renderable->GetBoundingBoxMesh().GetExtents();
         if (!extents.IsFinite() || extents.x <= 0.0001f || extents.y <= 0.0001f || extents.z <= 0.0001f)
         {
@@ -2646,7 +2632,7 @@ namespace spartan
         {
             return "N";
         }
-        return car::get_current_gear_string();
+        return car::get_gear_string();
     }
 
     float Physics::GetEngineRPM() const
@@ -2941,6 +2927,7 @@ namespace spartan
         }
         else if (m_body_type == BodyType::Vehicle)
         {
+            // vehicle simulation state and the fixed step callback support one active body
             car::setup_params params;
             params.physics = physics;
             params.scene   = scene;

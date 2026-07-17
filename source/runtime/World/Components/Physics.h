@@ -173,24 +173,19 @@ namespace spartan
         void SetWheelEntity(WheelIndex wheel, Entity* entity);
         Entity* GetWheelEntity(WheelIndex wheel) const;
 
-        // vehicle chassis entity (visual body that bounces on suspension)
-        // entities_to_exclude: optional list of entities to skip when building convex shapes (e.g. wheels)
+        // chassis visual entity and optional convex exclusions
         void SetChassisEntity(Entity* entity, const std::vector<Entity*>& entities_to_exclude = {});
         Entity* GetChassisEntity() const { return m_chassis_entity; }
 
-        // vehicle wheel radius (used for spin calculation and physics)
+        // vehicle methods target the single active car simulation
         void SetWheelRadius(float radius);
         float GetWheelRadius() const { return m_wheel_radius; }
         float GetSuspensionHeight() const; // distance from body center to wheel center
         void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
-        // target wheel radius the visual mesh should match, sourced from car::cfg.front_wheel_radius.
-        // visual wheels scaled smaller than this leave the chassis hull bottoming out on the ground
-        // before the wheels can touch, so the springs never produce force and the car can't move
-        float GetTargetWheelRadius() const;
-        // derives an absolute scale from the unscaled local mesh bounds
+        // wheel visual scale derives from unscaled local mesh bounds
         void ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width);
 
-        // vehicle metrics (read-only, for display/debugging)
+        // read only vehicle telemetry
         float GetVehicleThrottle() const;
         float GetVehicleBrake() const;
         float GetVehicleSteering() const;

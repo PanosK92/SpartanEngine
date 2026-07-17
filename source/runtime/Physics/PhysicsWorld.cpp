@@ -220,9 +220,8 @@ namespace spartan
         static PxScene* scene                     = nullptr;
         static PxDefaultCpuDispatcher* dispatcher = nullptr;
 
-        // word2 tags for collision filtering
-        // 1 = character controller, 2 = vehicle
-        // only suppress contacts between character and vehicle; everything else is default
+        // word two tags characters and vehicles while word three groups one vehicle
+        // character vehicle pairs and same vehicle pairs never collide
         PxFilterFlags collision_filter_shader(
             PxFilterObjectAttributes attributes0, PxFilterData filter_data0,
             PxFilterObjectAttributes attributes1, PxFilterData filter_data1,

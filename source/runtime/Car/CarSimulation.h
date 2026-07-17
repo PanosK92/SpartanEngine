@@ -32,162 +32,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarValidation.h"
 //================================
 
-// vehicle dynamics simulation
-//
-// this header is the public api entry point. it owns setup/teardown, the per-tick
-// orchestration, input smoothing, and the user-facing get/set accessors. the heavy
-// physics live in companion headers:
-//
-//   - CarState.h       types, globals, telemetry, debug plumbing
-//   - CarPacejka.h     tire math (pacejka, load/temp/camber/surface factors)
-//   - CarAero.h        drag, downforce, ground effect, drs, rolling resistance,
-//                      mesh-based aero inference, 2d silhouette hull
-//   - CarSuspension.h  sweep-based ground detection, spring/damper + bump stops,
-//                      anti-roll bars, longitudinal + lateral weight transfer,
-//                      ackermann + bump steer
-//   - CarDrivetrain.h  engine torque, turbo, automatic/manual gearbox, clutch,
-//                      driveshaft compliance, differentials, traction control,
-//                      engine braking, service brakes
-//   - CarTires.h       per-wheel tire forces, thermal/wear model and self-aligning torque
-//
-// - runs within the physx 200 hz fixed-timestep loop
-//   all vehicle physics run inside the physx fixed-step update at 200 hz rather
-//   than at the variable render framerate. this keeps the simulation deterministic
-//   and stable regardless of fps, and avoids the jitter that comes from coupling
-//   stiff spring-damper systems to a variable timestep.
-//
-// - pacejka magic formula tires with friction-circle combined slip
-//   pure long and lat curves are evaluated separately then limited by a friction
-//   circle in normalized space. lateral input uses tan(alpha). this gives correct
-//   pure-slip shapes and proper combined grip trade-off without the old magnitude
-//   projection.
-//
-// - 3-zone surface + core tire thermal model
-//   each tire tracks three surface zones (inside, middle, outside) plus a core
-//   temperature. heat flows from friction work into the surface, then conducts
-//   into the core. grip peaks at an optimal temperature and falls off on either
-//   side, so driving style and camber affect grip through temperature.
-//
-// - tire pressure, wear, relaxation length, per-axle dimensions
-//   tire pressure affects cornering stiffness and heat generation — under-inflated
-//   tires flex more, build heat faster, and have lower peak grip. wear accumulates
-//   from slip and temperature, gradually reducing grip. relaxation length models
-//   the lag between a change in slip and the force response, preventing instant
-//   force spikes. front and rear axles can have different tire widths and radii.
-//
-// - load-sensitive grip with nonlinear Fz scaling
-//   real tires produce diminishing grip returns as vertical load increases — a tire
-//   at twice the load does not have twice the grip. this is modeled by scaling the
-//   pacejka output with a power-law function of load, so heavily loaded tires
-//   (outside wheels in a corner) are less efficient than lightly loaded ones.
-//
-// - spring-damper suspension with front/rear damping ratios
-//   each wheel has a spring and damper defined by natural frequency and damping
-//   ratio rather than raw stiffness values, making it easier to tune. front and
-//   rear axles have independent frequencies and ratios, and bump/rebound damping
-//   are split so compression can be softer than extension for better compliance.
-//
-// - anti-roll bars (displacement-based), progressive bump stops
-//   anti-roll bars connect left and right wheels on each axle and resist body roll
-//   by transferring load based on the difference in suspension compression. bump
-//   stops engage near full compression with a steep progressive stiffness curve,
-//   preventing metal-to-metal contact and limiting suspension travel.
-//
-// - lateral weight transfer: geometric + elastic split via roll center heights
-//   cornering forces shift load from inner to outer wheels. this transfer is split
-//   into a geometric component that acts instantly through the roll center, and an
-//   elastic component that passes through the springs and anti-roll bars. the ratio
-//   between front and rear transfer is governed by roll stiffness distribution,
-//   which directly controls the understeer/oversteer balance.
-//
-// - longitudinal weight transfer from body acceleration
-//   under acceleration, load shifts rearward onto the driven wheels; under braking,
-//   it shifts forward. the amount depends on the center of mass height and the
-//   wheelbase length. this changes tire grip per axle dynamically — rear tires gain
-//   grip under throttle while front tires gain grip under braking.
-//
-// - ackermann steering with bump steer and toe
-//   ackermann geometry turns the inner front wheel more than the outer so both
-//   follow concentric arcs, reducing scrub at low speed. bump steer adds small
-//   toe changes as the suspension compresses, simulating real steering geometry
-//   side effects. static toe settings (toe-in or toe-out) affect straight-line
-//   stability and turn-in response.
-//
-// - self-aligning torque via pneumatic trail
-//   the tire contact patch generates a restoring yaw moment because the resultant
-//   lateral force acts behind the steering axis by a distance called pneumatic
-//   trail. this creates a natural centering feel that fades as slip angle increases
-//   and the contact patch distorts, giving progressive feedback through the
-//   steering about how close the front tires are to their grip limit.
-//
-// - engine torque curve, turbo/wastegate, rev limiter
-//   engine output follows a torque-vs-rpm curve with a defined peak. turbo adds
-//   boost pressure that spools up with rpm and is capped by a wastegate threshold.
-//   the rev limiter cuts fuel delivery above max rpm, and engine inertia and
-//   internal friction affect how quickly the engine responds to throttle changes.
-//
-// - 7-speed auto/manual gearbox with rev-match downshifts
-//   the gearbox supports both automatic and manual shifting. automatic mode uses
-//   speed and rpm thresholds with hysteresis to decide shifts, and blocks upshifts
-//   during wheelspin. downshifts trigger a throttle blip to match engine rpm to
-//   wheel speed, reducing driveline shock and rear-end instability on corner entry.
-//
-// - driveshaft torsional compliance
-//   the driveshaft is modeled as a torsional spring rather than a rigid link. this
-//   introduces a small delay between engine torque changes and wheel response,
-//   smoothing out sudden throttle inputs and preventing unrealistic instant torque
-//   delivery that would cause abrupt weight shifts.
-//
-// - open/locked/lsd differentials, rwd/fwd/awd layouts
-//   open diffs split torque equally regardless of wheel speed. locked diffs force
-//   both wheels to the same speed, maximizing traction but causing understeer. lsd
-//   (limited-slip) diffs transfer torque toward the slower wheel based on preload
-//   and lock ratios for acceleration and deceleration independently. the drivetrain
-//   layout determines which axles receive power — rwd, fwd, or awd with a
-//   configurable front/rear torque split.
-//
-// - brake thermal model with front/rear bias and abs
-//   brakes generate heat proportional to rotational speed and applied torque, and
-//   cool via convection from airflow. brake efficiency drops as temperature exceeds
-//   an optimal range, simulating brake fade on long descents or repeated hard stops.
-//   front/rear bias controls the torque distribution. abs pulses brake pressure on
-//   individual wheels when slip ratio exceeds a threshold, preventing lockup.
-//
-// - traction control with slip-based power reduction
-//   traction control monitors driven wheel slip ratios and progressively reduces
-//   engine torque when they exceed a threshold. the response rate controls how
-//   aggressively it intervenes — too slow and the wheels spin, too fast and it
-//   feels intrusive. it only acts on engine output, not brakes.
-//
-// - aerodynamics: drag, downforce, ground effect, drs, pitch/yaw sensitivity
-//   drag opposes motion proportional to speed squared and frontal area. downforce
-//   pushes the car into the ground, increasing tire load and grip at speed, applied
-//   separately at front and rear aero centers. ground effect increases downforce as
-//   ride height decreases. drs reduces rear downforce for higher straight-line
-//   speed. yaw angle increases drag and reduces downforce, and pitch angle shifts
-//   the front/rear aero balance.
-//
-// - physical wheel spin integration
-//   engine, differential, brake and tire torques act on revolute wheel bodies and
-//   physx integrates their angular velocity together with the suspension assembly.
-//
-// - convex hull sweep for ground contact
-//   each wheel casts an oriented convex cylinder around its physical wheel center
-//   to detect ground contact, rather than using a simple raycast. this handles
-//   curbs, bumps, and uneven terrain more accurately because the contact point
-//   and normal reflect the actual wheel shape interacting with the surface geometry.
-//
-// - multiple surface types (asphalt, concrete, wet, gravel, grass, ice)
-//   each surface type has a friction multiplier that scales the tire's peak grip.
-//   the wheel's ground contact query identifies which surface material it is on,
-//   allowing grip to change dynamically as the car moves across different terrain
-//   — for example, dropping two wheels onto grass mid-corner reduces grip on that
-//   side and induces a spin if the driver doesn't correct.
+// public vehicle simulation api and fixed step orchestration
+// include order is intentional because companion headers share namespace state
+// mutable simulation state is process global and supports one active vehicle
+// coordinates use x right y up z forward and physics lengths use metres
+// tick must run once before each physx simulation step
+// fixed order is multibody sweep slip drivetrain tires aligning torque and aero
 
 namespace car
 {
-    // derive the cached wheelbase and track widths from whatever is currently in wheel_offsets.
-    // callers that reposition wheels via set_wheel_offset must invoke this afterwards.
+    // refresh after any direct wheel offset change
     inline void refresh_geometry_cache()
     {
         cfg.wheelbase   = wheel_offsets[front_left].z - wheel_offsets[rear_left].z;
@@ -195,71 +49,36 @@ namespace car
         cfg.track_rear  = wheel_offsets[rear_right].x  - wheel_offsets[rear_left].x;
     }
 
-    // overlay the preset's physical footprint, zero fields keep the engine defaults so a
-    // sparse xml preset cannot collapse the geometry and spawn the body under the ground
+    inline void apply_positive_override(float& target, float value)
+    {
+        if (value > 0.0f)
+        {
+            target = value;
+        }
+    }
+
+    // zero preset dimensions preserve safe engine defaults
     inline void apply_preset_geometry(const car_preset& spec)
     {
-        if (spec.mass        > 0.0f)
-        {
-            cfg.mass = spec.mass;
-        }
-        if (spec.wheelbase   > 0.0f)
-        {
-            cfg.wheelbase = spec.wheelbase;
-        }
-        if (spec.track_front > 0.0f)
-        {
-            cfg.track_front = spec.track_front;
-        }
-        if (spec.track_rear  > 0.0f)
-        {
-            cfg.track_rear = spec.track_rear;
-        }
-        if (spec.length      > 0.0f)
-        {
-            cfg.length = spec.length;
-        }
-        if (spec.width       > 0.0f)
-        {
-            cfg.width = spec.width;
-        }
-        if (spec.height      > 0.0f)
-        {
-            cfg.height = spec.height;
-        }
-        if (spec.suspension_height > 0.0f)
-        {
-            cfg.suspension_height = spec.suspension_height;
-        }
-        if (spec.suspension_travel > 0.0f)
-        {
-            cfg.suspension_travel = spec.suspension_travel;
-        }
-        if (spec.front_wheel_radius > 0.0f)
-        {
-            cfg.front_wheel_radius = spec.front_wheel_radius;
-        }
-        if (spec.rear_wheel_radius > 0.0f)
-        {
-            cfg.rear_wheel_radius = spec.rear_wheel_radius;
-        }
-        if (spec.front_wheel_width > 0.0f)
-        {
-            cfg.front_wheel_width = spec.front_wheel_width;
-        }
-        if (spec.rear_wheel_width > 0.0f)
-        {
-            cfg.rear_wheel_width = spec.rear_wheel_width;
-        }
-        if (spec.wheel_mass > 0.0f)
-        {
-            cfg.wheel_mass = spec.wheel_mass;
-        }
+        apply_positive_override(cfg.mass, spec.mass);
+        apply_positive_override(cfg.wheelbase, spec.wheelbase);
+        apply_positive_override(cfg.track_front, spec.track_front);
+        apply_positive_override(cfg.track_rear, spec.track_rear);
+        apply_positive_override(cfg.length, spec.length);
+        apply_positive_override(cfg.width, spec.width);
+        apply_positive_override(cfg.height, spec.height);
+        apply_positive_override(cfg.suspension_height, spec.suspension_height);
+        apply_positive_override(cfg.suspension_travel, spec.suspension_travel);
+        apply_positive_override(cfg.front_wheel_radius, spec.front_wheel_radius);
+        apply_positive_override(cfg.rear_wheel_radius, spec.rear_wheel_radius);
+        apply_positive_override(cfg.front_wheel_width, spec.front_wheel_width);
+        apply_positive_override(cfg.rear_wheel_width, spec.rear_wheel_width);
+        apply_positive_override(cfg.wheel_mass, spec.wheel_mass);
     }
 
     inline void compute_constants()
     {
-        // floors prevent zero geometry from collapsing wheels to chassis center and feeding nan forces to physx
+        // geometry floors keep wheel placement and force math finite
         float wb_safe = PxMax(cfg.wheelbase,   0.5f);
         float tf_safe = PxMax(cfg.track_front, 0.5f);
         float tr_safe = PxMax(cfg.track_rear,  0.5f);
@@ -277,8 +96,7 @@ namespace car
 
         refresh_geometry_cache();
 
-        // a zero or nan wheel mass collapses wheel_moi to zero and every wheel torque integration
-        // becomes a division by zero, which is the actual upstream source of nan wheel rotation
+        // finite wheel inertia is required before torque integration
         float wheel_mass_safe = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
 
         float wdf = get_weight_distribution_front();
@@ -292,7 +110,6 @@ namespace car
             float mass = axle_mass[axle];
             float omega = 2.0f * PxPi * freq[axle];
 
-            // keep physical wheel inertia finite
             float r_raw  = cfg.wheel_radius_for(i);
             float r      = (std::isfinite(r_raw) && r_raw > 0.0f) ? r_raw : 0.34f;
             float r_safe = PxMax(r, 0.05f);
@@ -310,8 +127,16 @@ namespace car
         destroy_multibody();
         if (body)             { body->release();             body = nullptr; }
         if (material)         { material->release();         material = nullptr; }
-        if (wheel_guard_material) { wheel_guard_material->release(); wheel_guard_material = nullptr; }
-        if (wheel_sweep_mesh) { wheel_sweep_mesh->release(); wheel_sweep_mesh = nullptr; }
+        if (wheel_guard_material)
+        {
+            wheel_guard_material->release();
+            wheel_guard_material = nullptr;
+        }
+        if (wheel_sweep_mesh)
+        {
+            wheel_sweep_mesh->release();
+            wheel_sweep_mesh = nullptr;
+        }
     }
 
     // sweep geometry must match the physical wheel dimensions
@@ -381,10 +206,14 @@ namespace car
         {
             return false;
         }
+        if (body)
+        {
+            SP_LOG_ERROR("car setup supports one active vehicle");
+            return false;
+        }
 
         cfg = params.car_config;
-        // overlay the active preset's physical parameters before deriving anything,
-        // so the body, springs and inertias all use this car's real numbers
+        // preset geometry must be applied before deriving body suspension and wheel constants
         apply_car_spec(tuning::spec, true);
 
         for (int i = 0; i < wheel_count; i++)
@@ -398,7 +227,7 @@ namespace car
         reset_drivetrain_transients();
         reset_wheel_thermals();
 
-        // chassis material: normal friction, zero restitution so curb scrape does not bounce
+        // chassis material uses friction without restitution
         material = params.physics->createMaterial(0.8f, 0.7f, 0.0f);
         if (!material)
         {
@@ -415,8 +244,7 @@ namespace car
         wheel_guard_material->setFrictionCombineMode(PxCombineMode::eMIN);
         wheel_guard_material->setRestitutionCombineMode(PxCombineMode::eMIN);
 
-        // spawn at the spring equilibrium height instead of above it, plus a small clearance so
-        // the wheel sweep cylinder doesn't start already overlapping the ground on the first tick
+        // spawn near spring equilibrium with sweep clearance to avoid initial overlap
         float front_mass_per_wheel = chassis_mass() * get_weight_distribution_front() * 0.5f;
         float front_omega = 2.0f * PxPi * tuning::spec.front_spring_freq;
         float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
@@ -618,17 +446,21 @@ namespace car
             wheels[i].thermal.surface[1] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
             wheels[i].thermal.surface[2] = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
             wheels[i].thermal.core = PxMax(tuning::spec.tire_ambient_temp, 0.0f);
-            wheels[i].effective_radius = (i < 2 ? cfg.front_wheel_radius : cfg.rear_wheel_radius);
+            wheels[i].effective_radius = cfg.wheel_radius_for(i);
             wheels[i].dynamic_camber = 0.0f;
             wheels[i].dynamic_toe = 0.0f;
             wheels[i].bump_steer = 0.0f;
             wheels[i].motion_ratio = 1.0f;
+            wheels[i].condition_grip = 1.0f;
+            wheels[i].condition_stiffness = 1.0f;
+            wheels[i].condition_relaxation = 1.0f;
+            wheels[i].temperature_grip = 1.0f;
+            wheels[i].wear_grip = 1.0f;
+            wheels[i].brake_efficiency = 1.0f;
         }
     }
 
-    // swap the active car preset at runtime
-    // this is the real entry point, the forward declaration in CarState.h points here.
-    // it has to live in CarSimulation.h because it touches the physics body and recomputes geometry.
+    // runtime preset swaps rebuild all geometry and reset transient state
     inline void load_car(const car_preset& new_spec)
     {
         active_upgrades previous_upgrades = upgrades;
@@ -848,8 +680,7 @@ namespace car
         float max_change = tuning::spec.steering_rate * dt;
         input.steering = (fabsf(diff) <= max_change) ? steering_target : input.steering + ((diff > 0) ? max_change : -max_change);
 
-        // rising edge: first-order smoothing with per-pedal rate
-        // falling edge: instantaneous (lift-off should always be felt immediately)
+        // pedals smooth application but release immediately
         input.throttle = (input_target.throttle < input.throttle) ? input_target.throttle
             : lerp(input.throttle, input_target.throttle, exp_decay(tuning::spec.throttle_smoothing, dt));
         input.brake = (input_target.brake < input.brake) ? input_target.brake
@@ -865,8 +696,7 @@ namespace car
             return;
         }
 
-        // heal any nan that crept into per wheel state on a previous tick before it gets
-        // multiplied into a fresh batch of forces and torques and re-poisons the rigid body
+        // sanitize wheel state before it contaminates physx actors
         for (int i = 0; i < wheel_count; i++)
         {
             if (sanitize_wheel_state(i))
@@ -875,8 +705,7 @@ namespace car
             }
         }
 
-        // a pose or velocity with nan would feed nan into every per wheel calculation this tick.
-        // reset the body cleanly if that ever happens so the sim recovers instead of looping warnings
+        // reset invalid body state before it contaminates every wheel
         {
             PxTransform pose = body->getGlobalPose();
             PxVec3 lin = body->getLinearVelocity();
@@ -905,7 +734,7 @@ namespace car
             }
         }
 
-        // caller (physics::tickvehicle) already runs this at a fixed sub-step, no clamp needed
+        // caller supplies the fixed step duration
         tick_validation(dt);
         update_input(dt);
         update_handbrake_wheel_locks();
@@ -935,15 +764,14 @@ namespace car
         float forward_speed = vel.dot(fwd);
         float speed_kmh = vel.magnitude() * 3.6f;
 
-        // accel for weight transfer - short smoothing (~50 ms tau) keeps turn-in and
-        // trail-braking feel crisp without introducing step-response noise
+        // filtered acceleration feeds telemetry and validation only
         PxVec3 right = pose.q.rotate(PxVec3(1, 0, 0));
         PxVec3 accel_vec = (vel - prev_velocity) / PxMax(dt, 0.001f);
         float raw_accel = accel_vec.dot(fwd);
         float raw_lat_accel = accel_vec.dot(right);
-        constexpr float weight_transfer_rate = 20.0f;
-        longitudinal_accel = lerp(longitudinal_accel, raw_accel, exp_decay(weight_transfer_rate, dt));
-        lateral_accel      = lerp(lateral_accel, raw_lat_accel, exp_decay(weight_transfer_rate, dt));
+        constexpr float acceleration_filter_rate = 20.0f;
+        longitudinal_accel = lerp(longitudinal_accel, raw_accel, exp_decay(acceleration_filter_rate, dt));
+        lateral_accel      = lerp(lateral_accel, raw_lat_accel, exp_decay(acceleration_filter_rate, dt));
         prev_velocity = vel;
 
         // brake cooling
@@ -961,7 +789,6 @@ namespace car
             }
         }
 
-        // --- physics subsystems ---
         refresh_wheel_actor_state();
         for (int i = 0; i < wheel_count; i++)
         {
@@ -997,16 +824,9 @@ namespace car
             vehicle_sleep_timer = 0.0f;
         }
 
-        // --- telemetry ---
         if (tuning::log_telemetry)
         {
-            float avg_wheel_w = 0.0f;
-            { int dc = 0; for (int i = 0; i < wheel_count; i++) if (is_driven(i)) { avg_wheel_w += wheels[i].angular_velocity; dc++; } if (dc > 0)
-            {
-                avg_wheel_w /= dc;
-            } }
-            float driven_r_tel = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
-            float wheel_surface_speed = avg_wheel_w * driven_r_tel * 3.6f;
+            float wheel_surface_speed = get_average_driven_angular_velocity(false) * get_driven_wheel_radius() * 3.6f;
             SP_LOG_INFO("rpm=%.0f, speed=%.0f km/h, gear=%s%s, wheel_speed=%.0f km/h, throttle=%.0f%%",
                 engine_rpm, speed_kmh, get_gear_string(), is_shifting ? "(shifting)" : "",
                 wheel_surface_speed, input.throttle * 100.0f);
@@ -1015,16 +835,12 @@ namespace car
         telemetry.tick(dt, speed_kmh);
     }
 
-    // --- public accessors ---
-
     inline float get_speed_kmh()        { return body ? body->getLinearVelocity().magnitude() * 3.6f : 0.0f; }
     inline float get_throttle()         { return input.throttle; }
     inline float get_brake()            { return input.brake; }
     inline float get_steering()         { return input.steering; }
 
-    // wheel sim setters so the visual layer can heal back nan rotation or angular velocity
-    // without these the renderer clamps the display value to zero but the underlying sim
-    // state stays nan and keeps re-poisoning every following tick
+    // visual setters also repair the underlying simulation state
     inline void set_wheel_rotation(int i, float v)
     {
         if (is_valid_wheel(i))
@@ -1088,7 +904,7 @@ namespace car
 
     inline float get_wheel_temp_grip_factor(int i)
     {
-        return is_valid_wheel(i) ? get_tire_condition_modifiers(wheels[i].thermal.avg_surface(), wheels[i].thermal.core, wheels[i].wear, wheels[i].tire_load).peak_grip : 1.0f;
+        return is_valid_wheel(i) ? wheels[i].condition_grip : 1.0f;
     }
 
     inline float get_wheel_surface_temp(int i, int zone)
@@ -1113,11 +929,18 @@ namespace car
     inline void set_abs_enabled(bool enabled) { tuning::spec.abs_enabled = enabled; }
     inline bool get_abs_enabled()             { return tuning::spec.abs_enabled; }
     inline bool is_abs_active(int i)          { return is_valid_wheel(i) && abs_active[i]; }
-    inline bool is_abs_active_any()           { for (int i = 0; i < wheel_count; i++) if (abs_active[i])
+    inline bool is_abs_active_any()
     {
-        return true;
-    } return false; }
-    inline float get_abs_phase()              { return abs_phase; } // 0..1 modulation cycle, grab when >= 0.5
+        for (int i = 0; i < wheel_count; i++)
+        {
+            if (abs_active[i])
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    inline float get_abs_phase()              { return abs_phase; }
 
     inline void  set_tc_enabled(bool enabled) { tuning::spec.tc_enabled = enabled; }
     inline bool  get_tc_enabled()             { return tuning::spec.tc_enabled; }
@@ -1140,7 +963,7 @@ namespace car
         {
             return;
         }
-        current_gear = (current_gear == 0) ? 1 : current_gear + 1; // from reverse, go to neutral first
+        current_gear = (current_gear == 0) ? 1 : current_gear + 1;
         begin_shift(1);
     }
 
@@ -1150,7 +973,7 @@ namespace car
         {
             return;
         }
-        current_gear = (current_gear == 1) ? 0 : current_gear - 1; // from neutral, go to reverse
+        current_gear = (current_gear == 1) ? 0 : current_gear - 1;
         begin_shift(-1);
     }
 
@@ -1165,7 +988,6 @@ namespace car
     }
 
     inline int         get_current_gear()          { return current_gear; }
-    inline const char* get_current_gear_string()   { return get_gear_string(); }
     inline float       get_current_engine_rpm()    { return engine_rpm; }
     inline bool        get_is_shifting()           { return is_shifting; }
     inline float       get_clutch()                { return clutch; }
@@ -1181,8 +1003,7 @@ namespace car
     inline void  set_turbo_enabled(bool enabled)
     {
         tuning::spec.turbo_enabled = enabled;
-        // if enabling turbo on a preset that has no turbo configured, fall back to sensible defaults
-        // so the gauge actually reads non-zero when the engine spools
+        // presets without turbo data receive stable defaults when enabled at runtime
         if (enabled && tuning::spec.boost_max_pressure <= 0.0f)
         {
             tuning::spec.boost_max_pressure  = 1.0f;
@@ -1196,13 +1017,11 @@ namespace car
     inline float get_boost_pressure()            { return boost_pressure; }
     inline float get_boost_max_pressure()        { return tuning::spec.boost_max_pressure; }
 
-    // drs
     inline void set_drs_enabled(bool enabled) { tuning::spec.drs_enabled = enabled; }
     inline bool get_drs_enabled()             { return tuning::spec.drs_enabled; }
     inline void set_drs_active(bool active)   { drs_active = active; }
     inline bool get_drs_active()              { return drs_active; }
 
-    // differential type
     inline void set_diff_type(int type)
     {
         int new_type = PxClamp(type, 0, 2);
@@ -1225,13 +1044,18 @@ namespace car
         return (tuning::spec.diff_type >= 0 && tuning::spec.diff_type <= 2) ? names[tuning::spec.diff_type] : "?";
     }
 
-    // tire wear
     inline float get_wheel_wear(int i)              { return is_valid_wheel(i) ? wheels[i].wear : 0.0f; }
-    inline void  reset_tire_wear()                  { for (int i = 0; i < wheel_count; i++) wheels[i].wear = 0.0f; }
-    inline float get_wheel_wear_grip_factor(int i)  { return is_valid_wheel(i) ? (1.0f - wheels[i].wear * tuning::spec.tire_grip_wear_loss) : 1.0f; }
+    inline void reset_tire_wear()
+    {
+        for (int i = 0; i < wheel_count; i++)
+        {
+            wheels[i].wear = 0.0f;
+        }
+    }
+    inline float get_wheel_wear_grip_factor(int i)  { return is_valid_wheel(i) ? wheels[i].wear_grip : 1.0f; }
 
     inline float get_wheel_brake_temp(int i)       { return is_valid_wheel(i) ? wheels[i].brake_temp : 0.0f; }
-    inline float get_wheel_brake_efficiency(int i) { return is_valid_wheel(i) ? get_brake_efficiency(wheels[i].brake_temp) : 1.0f; }
+    inline float get_wheel_brake_efficiency(int i) { return is_valid_wheel(i) ? wheels[i].brake_efficiency : 1.0f; }
 
     inline void set_wheel_surface(int i, surface_type surface)
     {
