@@ -1689,7 +1689,9 @@ namespace spartan
     {
         static array<Sb_Material, rhi_max_array_size> properties;
         static unordered_set<uint64_t> unique_material_ids;
+        static bool capacity_warning_logged = false;
         uint32_t count = 0;
+        const uint32_t material_slot_count = static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture;
 
         auto should_decode_as_srgb = [](RHI_Texture* texture)
         {
@@ -1716,17 +1718,26 @@ namespace spartan
                    format == RHI_Format::BC7_Unorm;
         };
     
-        auto update_material = [&count, &should_decode_as_srgb](Material* material)
+        auto update_material = [&count, &should_decode_as_srgb, material_slot_count](Material* material)
         {
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
             {
                 return;
             }
-    
+
+            if (count + material_slot_count > rhi_max_array_size)
+            {
+                material->SetIndex(0);
+                if (!capacity_warning_logged)
+                {
+                    SP_LOG_ERROR("material bindless capacity exceeded, overflowing materials will use index 0");
+                    capacity_warning_logged = true;
+                }
+                return;
+            }
+
             unique_material_ids.insert(material->GetObjectId());
             {
-                SP_ASSERT(count < rhi_max_array_size);
-
                 // uv state (tiling, offset, invert, rotation, world_space_uv) intentionally not uploaded here,
                 // it is per-renderable and lives on Sb_DrawData (see WriteDrawData) and Sb_GeometryInfo for rt
                 properties[count].local_width           = material->GetProperty(MaterialProperty::WorldWidth);
@@ -1799,7 +1810,7 @@ namespace spartan
     
             material->SetIndex(count);
 
-            count += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture;
+            count += material_slot_count;
         };
     
         auto update_entities = [update_material]()

@@ -819,6 +819,7 @@ namespace spartan::car_hud
 
         void draw_telemetry_summary(Physics* physics)
         {
+            car::Simulation* simulation = physics->GetVehicleSimulation();
             ImDrawList* dl = ImGui::GetWindowDrawList();
             ImVec2 tl = ImGui::GetCursorScreenPos();
             float width = ImGui::GetContentRegionAvail().x;
@@ -834,7 +835,7 @@ namespace spartan::car_hud
             const float left_width = std::clamp(width * 0.30f, 250.0f, 390.0f);
 
             dl->AddText(ImVec2(tl.x + 16.0f, tl.y + 10.0f), text_label, "ACTIVE CAR");
-            dl->AddText(ImVec2(tl.x + 16.0f, tl.y + 29.0f), text_primary, car::tuning::spec.name);
+            dl->AddText(ImVec2(tl.x + 16.0f, tl.y + 29.0f), text_primary, simulation->get_spec().name);
 
             auto metric = [&](float x, const char* label, const char* value, ImU32 color)
             {
@@ -860,6 +861,10 @@ namespace spartan::car_hud
         void section_setup(Car* car_instance, Physics* physics)
         {
             section_header("Setup");
+            car::Simulation* simulation = physics->GetVehicleSimulation();
+            car::car_preset& spec = simulation->get_spec();
+            car::active_upgrades& upgrades = simulation->get_upgrades();
+            const car::car_preset& base_spec = simulation->get_base_spec();
 
             int visualization_preset = static_cast<int>(car_instance->GetVisualizationPreset());
             const char* visualization_presets[] = { "Full car", "Skeleton" };
@@ -874,14 +879,13 @@ namespace spartan::car_hud
             }
 
             ImGui::SetNextItemWidth(260.0f);
-            if (ImGui::BeginCombo("Car", car::tuning::spec.name))
+            if (ImGui::BeginCombo("Car", spec.name))
             {
-                for (int i = 0; i < car::preset_count; ++i)
+                for (size_t i = 0; i < car::preset_registry.size(); ++i)
                 {
-                    bool selected = (i == car::active_preset_index);
+                    bool selected = car::preset_registry[i].definition == car_instance->GetDefinition();
                     if (ImGui::Selectable(car::preset_registry[i].name, selected))
                     {
-                        car::active_preset_index = i;
                         car_instance->LoadDefinition(car::preset_registry[i].definition);
                     }
                     if (selected)
@@ -894,13 +898,13 @@ namespace spartan::car_hud
             ImGui::SameLine();
             if (ImGui::SmallButton("Reset stock"))
             {
-                car::reset_upgrades();
+                simulation->reset_upgrades();
             }
             hud_tooltip("removes all upgrades, restores base preset");
             ImGui::SameLine();
             if (ImGui::SmallButton("Run validation"))
             {
-                car::request_validation();
+                simulation->request_validation();
             }
             hud_tooltip("runs deterministic settle acceleration braking coastdown handling and bump scenarios");
 
@@ -959,23 +963,23 @@ namespace spartan::car_hud
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::SliderFloat("Steering assist", &car::tuning::spec.assists.steering_speed_reduction, 0.0f, 0.9f, "%.2f");
+                ImGui::SliderFloat("Steering assist", &spec.assists.steering_speed_reduction, 0.0f, 0.9f, "%.2f");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::SliderFloat("ABS level", &car::tuning::spec.assists.abs_level, 0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat("ABS level", &spec.assists.abs_level, 0.0f, 1.0f, "%.2f");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::SliderFloat("TCS level", &car::tuning::spec.assists.traction_control_level, 0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat("TCS level", &spec.assists.traction_control_level, 0.0f, 1.0f, "%.2f");
                 ImGui::EndTable();
             }
 
-            auto draw_stages = [](const char* name, int& level, int maxs)
+            auto draw_stages = [&](const char* name, int& level, int maxs)
             {
                 int before = level;
-                car::clamp_upgrade_stage(level, std::max(maxs, 0));
+                simulation->clamp_upgrade_stage(level, std::max(maxs, 0));
                 if (level != before)
                 {
-                    car::reapply_upgrades();
+                    simulation->reapply_upgrades();
                 }
                 if (maxs <= 0)
                 {
@@ -1001,7 +1005,7 @@ namespace spartan::car_hud
                     if (ImGui::SmallButton(lbl))
                     {
                         level = s;
-                        car::reapply_upgrades();
+                        simulation->reapply_upgrades();
                     }
                     if (pushed)
                     {
@@ -1013,16 +1017,16 @@ namespace spartan::car_hud
                 ImGui::SameLine(0.0f, 16.0f);
             };
 
-            draw_stages("Eng", car::upgrades.engine, car::base_spec.engine_stage_max);
-            draw_stages("Sus", car::upgrades.suspension, car::base_spec.suspension_stage_max);
-            draw_stages("Tir", car::upgrades.tires, car::base_spec.tires_stage_max);
-            draw_stages("Brk", car::upgrades.brakes, car::base_spec.brakes_stage_max);
-            draw_stages("Aer", car::upgrades.aero, car::base_spec.aero_stage_max);
-            draw_stages("Wgt", car::upgrades.weight, car::base_spec.weight_stage_max);
-            if (car::base_spec.engine_peak_torque > 0.0f)
+            draw_stages("Eng", upgrades.engine, base_spec.engine_stage_max);
+            draw_stages("Sus", upgrades.suspension, base_spec.suspension_stage_max);
+            draw_stages("Tir", upgrades.tires, base_spec.tires_stage_max);
+            draw_stages("Brk", upgrades.brakes, base_spec.brakes_stage_max);
+            draw_stages("Aer", upgrades.aero, base_spec.aero_stage_max);
+            draw_stages("Wgt", upgrades.weight, base_spec.weight_stage_max);
+            if (base_spec.engine_peak_torque > 0.0f)
             {
                 ImGui::TextColored(imvec4_from_u32(text_dim), "tq %.0f/%.0f",
-                    car::tuning::spec.engine_peak_torque, car::base_spec.engine_peak_torque);
+                    spec.engine_peak_torque, base_spec.engine_peak_torque);
             }
             ImGui::NewLine();
         }
@@ -1030,6 +1034,7 @@ namespace spartan::car_hud
         void section_chassis(Physics* physics)
         {
             section_header("Chassis");
+            car::Simulation* simulation = physics->GetVehicleSimulation();
             const char* labels[4] = { "FL", "FR", "RL", "RR" };
             const WheelIndex idx[4] = { WheelIndex::FrontLeft, WheelIndex::FrontRight, WheelIndex::RearLeft, WheelIndex::RearRight };
             static constexpr int hist_n = 120;
@@ -1089,7 +1094,7 @@ namespace spartan::car_hud
                     ImGui::TextColored(imvec4_from_u32(text_label), "brake");
                     ImGui::SameLine();
                     ImGui::TextColored(imvec4_from_u32(brake > 700.0f ? accent_danger : (brake > 400.0f ? accent_warn : text_primary)), "%.0f C", brake);
-                    ImGui::TextColored(imvec4_from_u32(text_dim), "camber %+.2f  toe %+.2f  bump %+.2f", car::get_wheel_dynamic_camber(i) * 180.0f / pi, car::get_wheel_dynamic_toe(i) * 180.0f / pi, car::get_wheel_bump_steer(i) * 180.0f / pi);
+                    ImGui::TextColored(imvec4_from_u32(text_dim), "camber %+.2f  toe %+.2f  bump %+.2f", simulation->get_wheel_dynamic_camber(i) * 180.0f / pi, simulation->get_wheel_dynamic_toe(i) * 180.0f / pi, simulation->get_wheel_bump_steer(i) * 180.0f / pi);
 
                     ImVec2 graph_tl = ImGui::GetCursorScreenPos();
                     const float graph_width = std::max(80.0f, ImGui::GetContentRegionAvail().x - 4.0f);
@@ -1124,15 +1129,15 @@ namespace spartan::car_hud
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 ImGui::TextColored(imvec4_from_u32(text_label), "ROLL STIFFNESS");
-                ImGui::TextColored(imvec4_from_u32(text_primary), "F %.0f  R %.0f Nm/rad", car::get_axle_roll_stiffness(true), car::get_axle_roll_stiffness(false));
+                ImGui::TextColored(imvec4_from_u32(text_primary), "F %.0f  R %.0f Nm/rad", simulation->get_axle_roll_stiffness(true), simulation->get_axle_roll_stiffness(false));
                 ImGui::TableNextColumn();
                 ImGui::TextColored(imvec4_from_u32(text_label), "TIRE PRESSURE");
                 ImGui::TextColored(imvec4_from_u32(pc), "%.2f bar  %+.2f", psi, dpsi);
                 ImGui::TableNextColumn();
                 ImGui::TextColored(imvec4_from_u32(text_label), "RIDE HEIGHT");
-                if (car::aero_debug.valid)
+                if (simulation->get_aero_debug().valid)
                 {
-                    ImGui::TextColored(imvec4_from_u32(text_primary), "%.2f m", car::aero_debug.ride_height);
+                    ImGui::TextColored(imvec4_from_u32(text_primary), "%.2f m", simulation->get_aero_debug().ride_height);
                 }
                 else
                 {
@@ -1146,16 +1151,17 @@ namespace spartan::car_hud
         {
             ImDrawList* dl = ImGui::GetWindowDrawList();
             section_header("Aerodynamics");
+            car::Simulation* simulation = physics->GetVehicleSimulation();
 
             math::Vector3 velocity = physics->GetLinearVelocity();
             float speed_kmh        = velocity.Length() * 3.6f;
             float aero_speed_ms    = speed_kmh / 3.6f;
 
-            const car::aero_debug_data& aero = car::get_aero_debug();
-            float frontal_area = car::get_frontal_area();
-            float side_area    = car::get_side_area();
-            float drag_coeff   = car::get_drag_coeff();
-            const car::shape_2d& shape = car::get_shape_data();
+            const car::aero_debug_data& aero = simulation->get_aero_debug();
+            float frontal_area = simulation->get_frontal_area();
+            float side_area    = simulation->get_side_area();
+            float drag_coeff   = simulation->get_drag_coeff();
+            const car::shape_2d& shape = simulation->get_shape_data();
 
             const float avail_w = ImGui::GetContentRegionAvail().x;
             const float side_view_w  = std::clamp(avail_w * 0.58f, 200.0f, 320.0f);
@@ -1209,8 +1215,8 @@ namespace spartan::car_hud
             {
                 float dyn_pressure      = 0.5f * car::tuning::air_density * aero_speed_ms * aero_speed_ms;
                 drag_n     = dyn_pressure * drag_coeff * frontal_area;
-                front_df_n = fabsf(car::get_lift_coeff_front() * dyn_pressure * frontal_area);
-                rear_df_n  = fabsf(car::get_lift_coeff_rear()  * dyn_pressure * frontal_area);
+                front_df_n = fabsf(simulation->get_lift_coeff_front() * dyn_pressure * frontal_area);
+                rear_df_n  = fabsf(simulation->get_lift_coeff_rear()  * dyn_pressure * frontal_area);
             }
             float total_df = front_df_n + rear_df_n;
 
@@ -1329,19 +1335,20 @@ namespace spartan::car_hud
             }
         }
 
-        void section_engine(Physics* /*physics*/)
+        void section_engine(Physics* physics)
         {
             const engine_sound::debug_data& dbg = engine_sound::get_debug();
+            car::Simulation* simulation = physics->GetVehicleSimulation();
 
-            float ice_tq = car::get_engine_torque_current();
-            float mot_tq = car::get_motor_torque();
-            float rpm    = car::get_current_engine_rpm();
-            float boost  = car::get_boost_pressure();
+            float ice_tq = simulation->get_engine_torque_current();
+            float mot_tq = simulation->get_motor_torque();
+            float rpm    = simulation->get_current_engine_rpm();
+            float boost  = simulation->get_boost_pressure();
             float throt  = dbg.throttle;
 
             section_header("Engine / sound");
             ImGui::TextColored(imvec4_from_u32(accent_warn), "RPM %.0f  |  Throttle %.0f%%  |  Boost %.2f bar", rpm, throt * 100.0f, boost);
-            float mot_kw = car::get_motor_power_kw();
+            float mot_kw = simulation->get_motor_power_kw();
             ImGui::Text("ICE %.0f Nm  |  Motor %.0f Nm (%.0f kW)  |  Total %.0f Nm", ice_tq, mot_tq, mot_kw, ice_tq + mot_tq);
 
             if (dbg.ir_taps > 0)

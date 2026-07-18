@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Terrain.h"
 #include "../World/Prefab.h"
 #include "../Car/Car.h"
+#include "../Car/CarSimulation.h"
 #include "../Car/CarState.h"
 #include "../Resource/ResourceCache.h"
 #include "../Animation/Animation.h"
@@ -4863,6 +4864,20 @@ namespace spartan
                 return json_error("world is loading");
             }
 
+            std::string error;
+            Car* car = find_car_from_request(request, error);
+            if (!car)
+            {
+                return json_error(error);
+            }
+            Entity* entity = car->GetRootEntity();
+            Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr;
+            if (!physics)
+            {
+                return json_error("target car has no vehicle simulation");
+            }
+            ::car::Simulation* simulation = physics->GetVehicleSimulation();
+
             int max_rows = 200;
             if (const std::optional<std::string> rows_arg = get_argument(request, "max_rows"))
             {
@@ -4886,11 +4901,11 @@ namespace spartan
             std::string csv_text;
             std::string path;
             int total_lines = 0;
-            const bool ok = ::car::telemetry.snapshot_tail(max_rows, csv_text, path, total_lines);
+            const bool ok = simulation->snapshot_telemetry_tail(max_rows, csv_text, path, total_lines);
 
             std::string json = "{\"ok\":true";
             json += ",\"path\":" + json_string(path);
-            json += ",\"log_to_file\":" + json_bool(::car::tuning::log_to_file);
+            json += ",\"log_to_file\":" + json_bool(simulation->get_log_to_file());
             json += ",\"total_lines\":" + std::to_string(total_lines);
             json += ",\"returned_data_rows\":" + std::to_string(std::max(0, std::min(max_rows, std::max(0, total_lines - 1))));
             json += ",\"file_ready\":" + json_bool(ok && total_lines > 0);

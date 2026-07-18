@@ -69,7 +69,13 @@ namespace spartan
 
     namespace
     {
-        std::function<void(float)> vehicle_step_callback; // see PhysicsWorld::SetVehicleStepCallback
+        struct VehicleStepCallback
+        {
+            const void* owner;
+            std::function<void(float)> callback;
+        };
+
+        vector<VehicleStepCallback> vehicle_step_callbacks;
     }
 
     namespace picking
@@ -296,6 +302,7 @@ namespace spartan
 
         // release controller manager (owned by physics component system)
         Physics::Shutdown();
+        vehicle_step_callbacks.clear();
 
         // release physx resources
         PX_RELEASE(scene);
@@ -338,11 +345,20 @@ namespace spartan
                     // simulate one fixed time step
                     lock_guard<recursive_mutex> lock(physx_mutex);
 
-                    // run the vehicle force model in lockstep with the integration so its forces
-                    // are consumed by exactly this step and it reads the pose from the previous one
-                    if (vehicle_step_callback)
+                    // snapshot entries so callback registration can change during an update
+                    vector<VehicleStepCallback> callbacks;
+                    callbacks.reserve(vehicle_step_callbacks.size());
+                    for (const VehicleStepCallback& entry : vehicle_step_callbacks)
                     {
-                        vehicle_step_callback(fixed_time_step);
+                        callbacks.push_back(entry);
+                    }
+                    for (const VehicleStepCallback& entry : callbacks)
+                    {
+                        const bool registered = any_of(vehicle_step_callbacks.begin(), vehicle_step_callbacks.end(), [&entry](const VehicleStepCallback& current) { return current.owner == entry.owner; });
+                        if (registered)
+                        {
+                            entry.callback(fixed_time_step);
+                        }
                     }
 
                     // buoyancy from the fft water, applied per step so the force integrates consistently
@@ -450,10 +466,30 @@ namespace spartan
         return 1.0f / settings::hz;
     }
 
-    void PhysicsWorld::SetVehicleStepCallback(const function<void(float)>& callback)
+    void PhysicsWorld::RegisterVehicleStepCallback(const void* owner, const function<void(float)>& callback)
     {
         lock_guard<recursive_mutex> lock(physx_mutex);
-        vehicle_step_callback = callback;
+        if (!owner || !callback)
+        {
+            return;
+        }
+
+        for (VehicleStepCallback& entry : vehicle_step_callbacks)
+        {
+            if (entry.owner == owner)
+            {
+                entry.callback = callback;
+                return;
+            }
+        }
+
+        vehicle_step_callbacks.push_back({ owner, callback });
+    }
+
+    void PhysicsWorld::UnregisterVehicleStepCallback(const void* owner)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        vehicle_step_callbacks.erase(remove_if(vehicle_step_callbacks.begin(), vehicle_step_callbacks.end(), [owner](const VehicleStepCallback& entry) { return entry.owner == owner; }), vehicle_step_callbacks.end());
     }
 
     bool PhysicsWorld::RaycastStatic(const Vector3& origin, const Vector3& direction, float max_distance, Vector3& hit_position)
@@ -492,5 +528,59 @@ namespace spartan
         }
 
         return false;
+    }
+
+    bool PhysicsWorld::SphereCast(const Vector3& origin, const Vector3& direction, float radius, float max_distance, uint32_t ignored_collision_group, Vector3& hit_position, float& hit_distance, Entity*& hit_entity)
+    {
+        hit_entity   = nullptr;
+        hit_distance = max_distance;
+
+        if (!scene || radius <= 0.0f || max_distance <= 0.0f || direction.LengthSquared() <= 0.0f)
+        {
+            return false;
+        }
+
+        class QueryFilter : public PxQueryFilterCallback
+        {
+        public:
+            explicit QueryFilter(PxU32 ignored_group) : m_ignored_group(ignored_group) {}
+
+            PxQueryHitType::Enum preFilter(const PxFilterData&, const PxShape* shape, const PxRigidActor*, PxHitFlags&) override
+            {
+                const PxFilterData shape_data = shape->getSimulationFilterData();
+                return m_ignored_group != 0 && shape_data.word3 == m_ignored_group ? PxQueryHitType::eNONE : PxQueryHitType::eBLOCK;
+            }
+
+            PxQueryHitType::Enum postFilter(const PxFilterData&, const PxQueryHit&, const PxShape*, const PxRigidActor*) override
+            {
+                return PxQueryHitType::eBLOCK;
+            }
+
+        private:
+            PxU32 m_ignored_group;
+        };
+
+        const Vector3 normalized_direction = direction.Normalized();
+        const PxVec3 px_origin(origin.x, origin.y, origin.z);
+        const PxVec3 px_direction(normalized_direction.x, normalized_direction.y, normalized_direction.z);
+        const PxSphereGeometry geometry(radius);
+        const PxTransform pose(px_origin);
+        PxSweepBuffer hit;
+        PxQueryFilterData filter_data(PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER);
+        QueryFilter filter(ignored_collision_group);
+
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        if (!scene->sweep(geometry, pose, px_direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data, &filter) || !hit.hasBlock)
+        {
+            return false;
+        }
+
+        hit_position = Vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z);
+        hit_distance = hit.block.distance;
+        if (hit.block.actor && hit.block.actor->userData)
+        {
+            hit_entity = static_cast<Entity*>(hit.block.actor->userData);
+        }
+        return true;
     }
 }

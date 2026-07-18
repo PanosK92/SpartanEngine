@@ -49,9 +49,7 @@ namespace spartan
     std::vector<Car*> Car::s_cars;
 
     // shared entities use external linkage and resolve lazily during world load
-    Entity* default_camera     = nullptr;
-    Entity* default_car        = nullptr;
-    Entity* default_car_window = nullptr;
+    Entity* default_camera = nullptr;
 
     namespace
     {
@@ -450,11 +448,11 @@ namespace spartan
             Renderer::DrawLine(end - bitangent * radius * 1.7f, end + bitangent * radius * 1.7f, color, color);
         }
 
-        Color get_skeleton_tire_temperature_color(float temperature, float wear)
+        Color get_skeleton_tire_temperature_color(float temperature, float wear, const ::car::car_preset& preset)
         {
-            const float ambient = ::car::tuning::spec.tire_ambient_temp;
-            const float optimal = std::max(::car::tuning::spec.tire_optimal_temp, ambient + 1.0f);
-            const float maximum = std::max(::car::tuning::spec.tire_max_temp, optimal + 1.0f);
+            const float ambient = preset.tire_ambient_temp;
+            const float optimal = std::max(preset.tire_optimal_temp, ambient + 1.0f);
+            const float maximum = std::max(preset.tire_max_temp, optimal + 1.0f);
             const float brightness = 1.0f - std::clamp(wear, 0.0f, 1.0f) * 0.55f;
             if (temperature <= optimal)
             {
@@ -571,20 +569,10 @@ namespace spartan
         car->m_is_drivable    = config.drivable;
         car->m_paint_preset   = config.paint_preset;
         car->m_paint_color    = config.paint_color;
+        car->m_customize_materials = config.customize_materials;
 
         if (config.drivable)
         {
-            // the definition's performance drives the simulation
-            ::car::load_car(definition->performance);
-            for (int i = 0; i < ::car::preset_count; i++)
-            {
-                if (::car::preset_registry[i].instance == &definition->performance)
-                {
-                    ::car::active_preset_index = i;
-                    break;
-                }
-            }
-
             // create vehicle entity with physics
             car->m_vehicle_entity = World::CreateEntity();
             car->m_vehicle_entity->SetObjectName("vehicle");
@@ -593,9 +581,9 @@ namespace spartan
 
             Physics* physics = car->m_vehicle_entity->AddComponent<Physics>();
             physics->SetStatic(false);
-            // mass comes from the active car preset, applied inside car::setup
-            // we seed a sensible fallback so Physics::GetMass returns something useful before vehicle setup
-            physics->SetMass(::car::tuning::spec.mass > 0.0f ? ::car::tuning::spec.mass : 1500.0f);
+            physics->SetMass(definition->performance.mass > 0.0f ? definition->performance.mass : 1500.0f);
+            physics->SetVehiclePreset(definition->performance);
+            physics->SetVehicleHighQuality(config.high_quality_physics);
             physics->SetBodyType(BodyType::Vehicle);
             physics->SetCar(car);  // car ticks automatically through entity system
 
@@ -612,7 +600,7 @@ namespace spartan
                 }
                 else
                 {
-                    car->m_body_entity->SetPositionLocal(math::Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.07f));
+                    car->m_body_entity->SetPositionLocal(math::Vector3(0.0f, physics->GetVehicleSimulation()->get_chassis_visual_offset_y(), 0.07f));
                     car->m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
                     car->m_body_entity->SetScaleLocal(1.1f);
                 }
@@ -628,8 +616,6 @@ namespace spartan
             // camera follow enters the car when play mode starts
             car->m_camera_follows = config.camera_follows;
 
-            // legacy default entity follows the single active vehicle
-            default_car = car->m_body_entity;
         }
         else
         {
@@ -666,7 +652,6 @@ namespace spartan
             }
 
             car->CreateAudioSources(car->m_vehicle_entity);
-            default_car = car->m_body_entity;
         }
 
         {
@@ -690,6 +675,7 @@ namespace spartan
         config.static_physics = node.attribute("static_physics").as_bool(false);
         config.show_telemetry = node.attribute("telemetry").as_bool(false);
         config.camera_follows = node.attribute("camera_follows").as_bool(false);
+        config.customize_materials = node.attribute("customize_materials").as_bool(true);
         config.paint_preset   = parse_paint_preset(node.attribute("paint_preset").as_string("metallic"));
         config.paint_color.r  = node.attribute("paint_color_r").as_float(config.paint_color.r);
         config.paint_color.g  = node.attribute("paint_color_g").as_float(config.paint_color.g);
@@ -714,6 +700,13 @@ namespace spartan
         std::lock_guard<std::mutex> lock(car_list_mutex);
         for (Car* car : s_cars)
         {
+            if (car->m_vehicle_entity)
+            {
+                if (Physics* physics = car->m_vehicle_entity->GetComponent<Physics>())
+                {
+                    physics->SetCar(nullptr);
+                }
+            }
             car->m_vehicle_entity = nullptr;
             car->m_body_entity    = nullptr;
             car->m_window_entity  = nullptr;
@@ -721,9 +714,7 @@ namespace spartan
         }
         s_cars.clear();
 
-        default_camera     = nullptr;
-        default_car        = nullptr;
-        default_car_window = nullptr;
+        default_camera = nullptr;
 
         // stop any vibration
         Input::GamepadVibrate(0.0f, 0.0f);
@@ -796,12 +787,12 @@ namespace spartan
 
         const math::Vector3 current_position = m_vehicle_entity->GetPosition();
         const math::Quaternion current_rotation = m_vehicle_entity->GetRotation();
-        float ground_height = current_position.y - get_car_lower_extent(::car::tuning::spec);
+        float ground_height = current_position.y - get_car_lower_extent(m_definition->performance);
         bool has_ground_contact = false;
         for (int i = 0; i < ::car::wheel_count; i++)
         {
-            const physx::PxVec3& contact_point = ::car::wheels[i].contact_point;
-            if (::car::wheels[i].grounded && std::isfinite(contact_point.y))
+            const math::Vector3 contact_point = physics->GetWheelContactPoint(static_cast<WheelIndex>(i));
+            if (physics->IsWheelGrounded(static_cast<WheelIndex>(i)) && std::isfinite(contact_point.y))
             {
                 ground_height = has_ground_contact ? std::max(ground_height, contact_point.y) : contact_point.y;
                 has_ground_contact = true;
@@ -821,7 +812,7 @@ namespace spartan
         m_body_entity   = nullptr;
         m_window_entity = nullptr;
         m_definition    = definition;
-        ::car::load_car(definition->performance);
+        physics->SetVehiclePreset(definition->performance);
 
         std::vector<Entity*> excluded_wheel_entities;
         m_body_entity = CreateBody(&excluded_wheel_entities);
@@ -835,7 +826,7 @@ namespace spartan
             }
             else
             {
-                m_body_entity->SetPositionLocal(math::Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.07f));
+                m_body_entity->SetPositionLocal(math::Vector3(0.0f, physics->GetVehicleSimulation()->get_chassis_visual_offset_y(), 0.07f));
                 m_body_entity->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Right, math::pi * 0.5f));
                 m_body_entity->SetScaleLocal(1.1f);
             }
@@ -847,14 +838,13 @@ namespace spartan
             const WheelIndex wheel_index = static_cast<WheelIndex>(i);
             if (Entity* wheel_entity = physics->GetWheelEntity(wheel_index))
             {
-                const float radius = ::car::cfg.wheel_radius_for(i);
-                const float width  = ::car::cfg.wheel_width_for(i);
+                const bool is_front = i == 0 || i == 1;
+                const float radius = is_front ? definition->performance.front_wheel_radius : definition->performance.rear_wheel_radius;
+                const float width  = is_front ? definition->performance.front_wheel_width : definition->performance.rear_wheel_width;
                 physics->ScaleWheelEntityToDimensions(wheel_entity, radius, width);
             }
         }
 
-        default_car        = m_body_entity;
-        default_car_window = m_window_entity;
         if (visualization_preset == CarVisualizationPreset::Skeleton)
         {
             SetVisualizationPreset(CarVisualizationPreset::Skeleton);
@@ -873,6 +863,16 @@ namespace spartan
         {
             return;
         }
+
+        ::car::Simulation* simulation = physics->GetVehicleSimulation();
+        physx::PxRigidDynamic* body = simulation->get_body();
+        if (!body)
+        {
+            return;
+        }
+        const ::car::config& config = simulation->get_config();
+        const ::car::car_preset& preset = simulation->get_spec();
+        const ::car::multibody_state& multibody = simulation->get_multibody_state();
 
         Entity* wheel_entities[4] =
         {
@@ -895,7 +895,7 @@ namespace spartan
         auto to_world = [&](const math::Vector3& local) { return vehicle_position + vehicle_rotation * local; };
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
         auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(from_px(value)); };
-        draw_skeleton_chassis_shapes(::car::body, to_render);
+        draw_skeleton_chassis_shapes(body, to_render);
 
         math::Vector3 wheel_local[4];
         math::Vector3 wheel_world[4];
@@ -903,7 +903,8 @@ namespace spartan
         math::Vector3 shock_bottom_world[4];
         for (int i = 0; i < 4; i++)
         {
-            const ::car::suspension_corner& corner = ::car::multibody.corners[i];
+            const ::car::suspension_corner& corner = multibody.corners[i];
+            const ::car::wheel& wheel = simulation->get_wheel_state(i);
             if (!corner.upright || !corner.wheel_body)
             {
                 return;
@@ -912,8 +913,8 @@ namespace spartan
             const physx::PxTransform wheel_pose = corner.wheel_body->getGlobalPose();
             wheel_world[i] = to_render(wheel_pose.p);
             wheel_local[i] = vehicle_rotation.Conjugate() * (wheel_world[i] - vehicle_position);
-            const float wheel_radius = ::car::cfg.wheel_radius_for(i);
-            const float wheel_half_width = ::car::cfg.wheel_width_for(i) * 0.5f;
+            const float wheel_radius = config.wheel_radius_for(i);
+            const float wheel_half_width = config.wheel_width_for(i) * 0.5f;
             const physx::PxQuat query_rotation = corner.upright->getGlobalPose().q;
             const physx::PxVec3 wheel_axis = query_rotation.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
             const physx::PxVec3 wheel_radial_y = query_rotation.rotate(physx::PxVec3(0.0f, 1.0f, 0.0f));
@@ -927,12 +928,12 @@ namespace spartan
             physx::PxVec3 previous_temperature[3];
             const float inside_direction = i == 0 || i == 2 ? 1.0f : -1.0f;
             const float zone_offset[3] = { inside_direction * wheel_half_width * 0.66f, 0.0f, -inside_direction * wheel_half_width * 0.66f };
-            const Color zone_color[3] = { get_skeleton_tire_temperature_color(::car::wheels[i].thermal.surface[0], ::car::wheels[i].wear), get_skeleton_tire_temperature_color(::car::wheels[i].thermal.surface[1], ::car::wheels[i].wear), get_skeleton_tire_temperature_color(::car::wheels[i].thermal.surface[2], ::car::wheels[i].wear) };
+            const Color zone_color[3] = { get_skeleton_tire_temperature_color(wheel.thermal.surface[0], wheel.wear, preset), get_skeleton_tire_temperature_color(wheel.thermal.surface[1], wheel.wear, preset), get_skeleton_tire_temperature_color(wheel.thermal.surface[2], wheel.wear, preset) };
             for (int segment = 0; segment <= wheel_segments; segment++)
             {
                 const float angle = static_cast<float>(segment) / static_cast<float>(wheel_segments) * math::pi * 2.0f;
                 const physx::PxVec3 radial = (wheel_radial_y * cosf(angle) + wheel_radial_z * sinf(angle)) * wheel_radius;
-                const physx::PxVec3 effective_point = wheel_pose.p + (wheel_radial_y * cosf(angle) + wheel_radial_z * sinf(angle)) * ::car::wheels[i].effective_radius;
+                const physx::PxVec3 effective_point = wheel_pose.p + (wheel_radial_y * cosf(angle) + wheel_radial_z * sinf(angle)) * wheel.effective_radius;
                 const physx::PxVec3 left = wheel_left + radial;
                 const physx::PxVec3 right = wheel_right + radial;
                 const physx::PxVec3 temperature_point[3] = { wheel_pose.p + wheel_axis * zone_offset[0] + radial, wheel_pose.p + wheel_axis * zone_offset[1] + radial, wheel_pose.p + wheel_axis * zone_offset[2] + radial };
@@ -961,9 +962,9 @@ namespace spartan
 
             draw_skeleton_cylinder(to_render(wheel_left), to_render(wheel_right), 0.045f, skeleton_color_joint);
             const float brake_radius = wheel_radius * 0.62f;
-            const float brake_temperature_range = std::max(::car::tuning::spec.brake_fade_temp - ::car::tuning::spec.brake_ambient_temp, 1.0f);
-            const float brake_heat = std::clamp((::car::wheels[i].brake_temp - ::car::tuning::spec.brake_ambient_temp) / brake_temperature_range, 0.0f, 1.0f);
-            const float abs_flash = ::car::abs_active[i] ? 0.35f : 0.0f;
+            const float brake_temperature_range = std::max(preset.brake_fade_temp - preset.brake_ambient_temp, 1.0f);
+            const float brake_heat = std::clamp((wheel.brake_temp - preset.brake_ambient_temp) / brake_temperature_range, 0.0f, 1.0f);
+            const float abs_flash = simulation->is_abs_active(i) ? 0.35f : 0.0f;
             const Color brake_color = Color(1.0f, std::min(0.16f + brake_heat * 0.62f + abs_flash, 1.0f), 0.10f + abs_flash, 1.0f);
             physx::PxVec3 previous_brake;
             for (int segment = 0; segment <= 16; segment++)
@@ -979,17 +980,18 @@ namespace spartan
             const physx::PxVec3 spin_marker = wheel_pose.q.rotate(physx::PxVec3(0.0f, wheel_radius * 0.9f, 0.0f));
             Renderer::DrawLine(wheel_world[i], to_render(wheel_pose.p + spin_marker), skeleton_color_joint, skeleton_color_joint);
             const math::Vector3 wheel_axis_render = (to_render(wheel_pose.p + wheel_axis) - wheel_world[i]).Normalized();
-            const float wheel_torque_reference = std::max(::car::tuning::spec.handbrake_torque + ::car::tuning::spec.brake_force * wheel_radius, 1.0f);
-            draw_skeleton_torque_arc(wheel_world[i], wheel_axis_render, wheel_radius * 0.72f, ::car::wheels[i].net_torque / wheel_torque_reference, skeleton_color_torque);
-            Renderer::DrawSphere(wheel_world[i], 0.052f, 7, get_skeleton_tire_temperature_color(::car::wheels[i].thermal.core, ::car::wheels[i].wear));
-            const float axle_brake_share = ::car::is_front(i) ? ::car::tuning::spec.brake_bias_front : 1.0f - ::car::tuning::spec.brake_bias_front;
-            const float wheel_radius_for_brake = ::car::cfg.wheel_radius_for(i);
-            float applied_brake_torque = fabsf(::car::wheels[i].brake_torque);
-            if (::car::is_rear(i))
+            const float wheel_torque_reference = std::max(preset.handbrake_torque + preset.brake_force * wheel_radius, 1.0f);
+            draw_skeleton_torque_arc(wheel_world[i], wheel_axis_render, wheel_radius * 0.72f, wheel.net_torque / wheel_torque_reference, skeleton_color_torque);
+            Renderer::DrawSphere(wheel_world[i], 0.052f, 7, get_skeleton_tire_temperature_color(wheel.thermal.core, wheel.wear, preset));
+            const bool is_front_wheel = i < 2;
+            const float axle_brake_share = is_front_wheel ? preset.brake_bias_front : 1.0f - preset.brake_bias_front;
+            const float wheel_radius_for_brake = config.wheel_radius_for(i);
+            float applied_brake_torque = fabsf(wheel.brake_torque);
+            if (!is_front_wheel)
             {
-                applied_brake_torque += ::car::tuning::spec.handbrake_torque * ::car::input.handbrake;
+                applied_brake_torque += preset.handbrake_torque * simulation->get_handbrake();
             }
-            const float brake_reference = std::max(::car::tuning::spec.brake_force * wheel_radius_for_brake * axle_brake_share * 0.5f + (::car::is_rear(i) ? ::car::tuning::spec.handbrake_torque : 0.0f), 1.0f);
+            const float brake_reference = std::max(preset.brake_force * wheel_radius_for_brake * axle_brake_share * 0.5f + (!is_front_wheel ? preset.handbrake_torque : 0.0f), 1.0f);
             const float brake_actuation = std::clamp(applied_brake_torque / brake_reference, 0.0f, 1.0f);
             const float caliper_size = 0.050f + brake_actuation * 0.016f;
             Renderer::DrawSphere(to_render(wheel_pose.p + wheel_radial_y * brake_radius * 0.72f + wheel_radial_z * brake_radius * 0.45f), caliper_size, 6, brake_color);
@@ -1011,21 +1013,22 @@ namespace spartan
                 const physx::PxTransform member_pose = member.actor->getGlobalPose();
                 const math::Vector3 start = to_render(member_pose.transform(member.local_start));
                 const math::Vector3 end = to_render(member_pose.transform(member.local_end));
-                const bool tie_rod = ::car::is_front(i) && ::car::multibody.rack && member_index == corner.member_count - 1;
+                const bool tie_rod = is_front_wheel && multibody.rack && member_index == corner.member_count - 1;
                 const Color& member_color = tie_rod ? skeleton_color_steering : skeleton_color_control_arm;
                 draw_skeleton_cylinder(start, end, tie_rod ? 0.016f : 0.020f, member_color);
                 draw_skeleton_joint(start, tie_rod ? skeleton_color_steering : skeleton_color_joint);
                 draw_skeleton_joint(end, tie_rod ? skeleton_color_steering : skeleton_color_joint);
             }
 
-            const math::Vector3 shock_top = to_render(::car::body->getGlobalPose().transform(corner.chassis_shock_anchor));
+            const math::Vector3 shock_top = to_render(body->getGlobalPose().transform(corner.chassis_shock_anchor));
             const math::Vector3 shock_bottom = to_render(upright_pose.transform(corner.upright_shock_anchor));
             shock_top_world[i] = shock_top;
             shock_bottom_world[i] = shock_bottom;
             const math::Vector3 shock_mid = lerp_skeleton(shock_top, shock_bottom, 0.48f);
-            const float spring_load = std::clamp(fabsf(::car::spring_force[i]) / std::max(::car::tuning::spec.max_susp_force, 1.0f), 0.0f, 1.0f);
-            const float damper_velocity = fabsf(::car::wheels[i].compression_velocity) * ::car::cfg.suspension_travel;
-            const float damper_load = std::clamp(damper_velocity / std::max(::car::tuning::spec.max_damper_velocity, 0.1f), 0.0f, 1.0f);
+            const float suspension_force = simulation->get_wheel_suspension_force(i);
+            const float spring_load = std::clamp(fabsf(suspension_force) / std::max(preset.max_susp_force, 1.0f), 0.0f, 1.0f);
+            const float damper_velocity = fabsf(wheel.compression_velocity) * config.suspension_travel;
+            const float damper_load = std::clamp(damper_velocity / std::max(preset.max_damper_velocity, 0.1f), 0.0f, 1.0f);
             const Color spring_color = Color(1.0f, 0.72f + spring_load * 0.25f, 0.12f + spring_load * 0.55f, 1.0f);
             const Color damper_color = Color(1.0f, 0.38f + damper_load * 0.45f, 0.12f, 1.0f);
             draw_skeleton_cylinder(shock_top, shock_mid, 0.030f, damper_color);
@@ -1034,24 +1037,23 @@ namespace spartan
             draw_skeleton_joint(shock_top, skeleton_color_joint);
             draw_skeleton_joint(shock_bottom, skeleton_color_joint);
             const math::Vector3 shock_axis = (shock_top - shock_bottom).Normalized();
-            const math::Vector3 spring_force_vector = shock_axis * (::car::spring_force[i] * 0.00001f);
+            const math::Vector3 spring_force_vector = shock_axis * (suspension_force * 0.00001f);
             Renderer::DrawLine(shock_top, shock_top + spring_force_vector, spring_color, spring_color);
             Renderer::DrawLine(shock_bottom, shock_bottom - spring_force_vector, spring_color, spring_color);
             const float current_compression = corner.shock_rest_length - corner.shock_length;
-            if (current_compression > ::car::cfg.suspension_travel * ::car::tuning::spec.bump_stop_threshold)
+            if (current_compression > config.suspension_travel * preset.bump_stop_threshold)
             {
                 Renderer::DrawSphere(shock_bottom, 0.065f, 8, skeleton_color_torque);
             }
             physx::PxVec3 sweep_origin;
             physx::PxVec3 sweep_endpoint;
             bool sweep_hit = false;
-            ::car::get_debug_sweep(i, sweep_origin, sweep_endpoint, sweep_hit);
+            simulation->get_debug_sweep(i, sweep_origin, sweep_endpoint, sweep_hit);
             const Color& sweep_color = sweep_hit ? skeleton_color_contact : skeleton_color_collision;
             Renderer::DrawLine(to_render(sweep_origin), to_render(sweep_endpoint), sweep_color, sweep_color);
             Renderer::DrawSphere(to_render(sweep_endpoint), 0.025f, 6, sweep_color);
-            if (::car::wheels[i].grounded)
+            if (wheel.grounded)
             {
-                const ::car::wheel& wheel = ::car::wheels[i];
                 physx::PxVec3 wheel_forward = wheel_axis.cross(wheel.contact_normal);
                 if (wheel_forward.normalize() < 0.0001f)
                 {
@@ -1061,7 +1063,7 @@ namespace spartan
                 const physx::PxVec3 normal_endpoint = wheel.contact_point + wheel.contact_normal * (wheel.tire_load * 0.00002f);
                 const physx::PxVec3 longitudinal_endpoint = wheel.contact_point + wheel_forward * wheel.longitudinal_force * 0.00002f;
                 const physx::PxVec3 lateral_endpoint = wheel.contact_point + wheel_lateral * wheel.lateral_force * 0.00002f;
-                const float rolling_resistance_force = ::car::tuning::spec.rolling_resistance * wheel.tire_load;
+                const float rolling_resistance_force = preset.rolling_resistance * wheel.tire_load;
                 const float rolling_direction = -std::clamp(corner.wheel_body->getLinearVelocity().dot(wheel_forward) / 0.5f, -1.0f, 1.0f);
                 const physx::PxVec3 rolling_endpoint = wheel.contact_point + wheel_forward * rolling_direction * rolling_resistance_force * 0.00004f;
                 const math::Vector3 contact = to_render(wheel.contact_point);
@@ -1091,8 +1093,8 @@ namespace spartan
                 Renderer::DrawLine(contact, to_render(longitudinal_endpoint), skeleton_color_long_force, skeleton_color_long_force);
                 Renderer::DrawLine(contact, to_render(lateral_endpoint), skeleton_color_tire_force, skeleton_color_tire_force);
                 Renderer::DrawLine(contact, to_render(rolling_endpoint), skeleton_color_aero, skeleton_color_aero);
-                const float trail = std::max(::car::tuning::spec.pneumatic_trail_max * (1.0f - fabsf(wheel.slip_angle) / std::max(::car::tuning::spec.pneumatic_trail_peak, 0.01f)), 0.0f);
-                const float aligning_torque = -wheel.lateral_force * trail * ::car::tuning::spec.self_align_gain;
+                const float trail = std::max(preset.pneumatic_trail_max * (1.0f - fabsf(wheel.slip_angle) / std::max(preset.pneumatic_trail_peak, 0.01f)), 0.0f);
+                const float aligning_torque = -wheel.lateral_force * trail * preset.self_align_gain;
                 const math::Vector3 contact_normal_render = (to_render(wheel.contact_point + wheel.contact_normal) - contact).Normalized();
                 draw_skeleton_torque_arc(wheel_world[i], contact_normal_render, wheel_radius * 0.48f, aligning_torque / 500.0f, skeleton_color_steering);
             }
@@ -1101,8 +1103,8 @@ namespace spartan
         const float front_z = (wheel_local[0].z + wheel_local[1].z) * 0.5f;
         const float rear_z  = (wheel_local[2].z + wheel_local[3].z) * 0.5f;
         const float frame_y = 0.04f;
-        const float front_frame_half_width = ::car::cfg.track_front * 0.30f;
-        const float rear_frame_half_width = ::car::cfg.track_rear * 0.30f;
+        const float front_frame_half_width = config.track_front * 0.30f;
+        const float rear_frame_half_width = config.track_rear * 0.30f;
         const math::Vector3 frame_front_left = to_world(math::Vector3(-front_frame_half_width, frame_y, front_z));
         const math::Vector3 frame_front_right = to_world(math::Vector3(front_frame_half_width, frame_y, front_z));
         const math::Vector3 frame_rear_left = to_world(math::Vector3(-rear_frame_half_width, frame_y, rear_z));
@@ -1127,14 +1129,14 @@ namespace spartan
             {
                 return;
             }
-            const ::car::suspension_corner& left_corner = ::car::multibody.corners[left];
-            const ::car::suspension_corner& right_corner = ::car::multibody.corners[right];
+            const ::car::suspension_corner& left_corner = multibody.corners[left];
+            const ::car::suspension_corner& right_corner = multibody.corners[right];
             const float compression_difference = (left_corner.shock_rest_length - left_corner.shock_length) - (right_corner.shock_rest_length - right_corner.shock_length);
-            const float anti_roll_load = std::clamp(fabsf(compression_difference * stiffness) / std::max(::car::tuning::spec.max_susp_force, 1.0f), 0.0f, 1.0f);
+            const float anti_roll_load = std::clamp(fabsf(compression_difference * stiffness) / std::max(preset.max_susp_force, 1.0f), 0.0f, 1.0f);
             const Color loaded_anti_roll_color = Color(0.82f + anti_roll_load * 0.18f, 0.35f + anti_roll_load * 0.30f, 1.0f, 1.0f);
             const math::Vector3 left_arm_end = lerp_skeleton(shock_top_world[left], shock_bottom_world[left], 0.24f);
             const math::Vector3 right_arm_end = lerp_skeleton(shock_top_world[right], shock_bottom_world[right], 0.24f);
-            const float anti_roll_twist = compression_difference / std::max(::car::cfg.suspension_travel, 0.01f) * math::pi;
+            const float anti_roll_twist = compression_difference / std::max(config.suspension_travel, 0.01f) * math::pi;
             draw_skeleton_shaft(shock_top_world[left], shock_top_world[right], 0.020f, 0.0f, anti_roll_twist, loaded_anti_roll_color);
             draw_skeleton_cylinder(shock_top_world[left], left_arm_end, 0.014f, loaded_anti_roll_color);
             draw_skeleton_cylinder(shock_top_world[right], right_arm_end, 0.014f, loaded_anti_roll_color);
@@ -1142,29 +1144,30 @@ namespace spartan
             Renderer::DrawLine(shock_bottom_world[left], shock_bottom_world[left] - anti_roll_force, loaded_anti_roll_color, loaded_anti_roll_color);
             Renderer::DrawLine(shock_bottom_world[right], shock_bottom_world[right] + anti_roll_force, loaded_anti_roll_color, loaded_anti_roll_color);
         };
-        draw_anti_roll_bar(0, 1, ::car::tuning::spec.front_arb_stiffness);
-        draw_anti_roll_bar(2, 3, ::car::tuning::spec.rear_arb_stiffness);
+        draw_anti_roll_bar(0, 1, preset.front_arb_stiffness);
+        draw_anti_roll_bar(2, 3, preset.rear_arb_stiffness);
 
-        const physx::PxTransform body_pose = ::car::body->getGlobalPose();
-        const math::Vector3 center_of_mass = to_render(body_pose.transform(::car::body->getCMassLocalPose().p));
+        const physx::PxTransform body_pose = body->getGlobalPose();
+        const math::Vector3 center_of_mass = to_render(body_pose.transform(body->getCMassLocalPose().p));
         Renderer::DrawSphere(center_of_mass, 0.075f, 10, skeleton_color_spring);
-        if (::car::aero_debug.valid)
+        const ::car::aero_debug_data& aero_debug = simulation->get_aero_debug();
+        if (aero_debug.valid)
         {
             auto draw_aero_force = [&](const physx::PxVec3& position, const physx::PxVec3& force)
             {
                 const math::Vector3 start = to_render(position);
                 Renderer::DrawLine(start, to_render(position + force * 0.00002f), skeleton_color_aero, skeleton_color_aero);
             };
-            draw_aero_force(::car::aero_debug.position, ::car::aero_debug.drag_force);
-            draw_aero_force(::car::aero_debug.front_aero_pos, ::car::aero_debug.front_downforce);
-            draw_aero_force(::car::aero_debug.rear_aero_pos, ::car::aero_debug.rear_downforce);
-            draw_aero_force(::car::aero_debug.side_aero_pos, ::car::aero_debug.side_force);
+            draw_aero_force(aero_debug.position, aero_debug.drag_force);
+            draw_aero_force(aero_debug.front_aero_pos, aero_debug.front_downforce);
+            draw_aero_force(aero_debug.rear_aero_pos, aero_debug.rear_downforce);
+            draw_aero_force(aero_debug.side_aero_pos, aero_debug.side_force);
         }
 
-        if (::car::multibody.rack)
+        if (multibody.rack)
         {
-            const physx::PxTransform rack_pose = ::car::multibody.rack->getGlobalPose();
-            const float half_width = ::car::cfg.track_front * 0.35f;
+            const physx::PxTransform rack_pose = multibody.rack->getGlobalPose();
+            const float half_width = config.track_front * 0.35f;
             const math::Vector3 rack_left = to_render(rack_pose.transform(physx::PxVec3(-half_width, 0.0f, 0.0f)));
             const math::Vector3 rack_right = to_render(rack_pose.transform(physx::PxVec3(half_width, 0.0f, 0.0f)));
             draw_skeleton_cylinder(rack_left, rack_right, 0.025f, skeleton_color_steering);
@@ -1172,61 +1175,66 @@ namespace spartan
             draw_skeleton_joint(rack_right, skeleton_color_steering);
         }
 
-        const int drivetrain_type = ::car::tuning::spec.drivetrain_type;
+        const int drivetrain_type = preset.drivetrain_type;
         const bool drives_front = drivetrain_type == 1 || drivetrain_type == 2;
         const bool drives_rear  = drivetrain_type == 0 || drivetrain_type == 2;
         const math::Vector3 front_diff = to_world(math::Vector3(0.0f, -0.02f, front_z));
         const math::Vector3 rear_diff  = to_world(math::Vector3(0.0f, -0.02f, rear_z));
         const math::Vector3 gearbox    = to_world(math::Vector3(0.0f, 0.02f, 0.0f));
-        const float driveshaft_twist  = ::car::get_driveshaft_twist();
-        const float driveshaft_torque = ::car::get_driveshaft_torque();
+        const float driveshaft_twist  = simulation->get_driveshaft_twist();
+        const float driveshaft_torque = simulation->get_driveshaft_torque();
         const float torque_load = std::clamp(fabsf(driveshaft_torque) / 6000.0f, 0.0f, 1.0f);
         const Color loaded_drivetrain_color = Color(0.25f - torque_load * 0.08f, 0.72f + torque_load * 0.18f, 1.00f, 1.0f);
-        const float motor_load = ::car::tuning::spec.electric_enabled ? std::clamp(fabsf(::car::motor_torque) / std::max(::car::tuning::spec.electric_motor_torque, 1.0f), 0.0f, 1.0f) : 0.0f;
+        const float motor_load = preset.electric_enabled ? std::clamp(fabsf(simulation->get_motor_torque()) / std::max(preset.electric_motor_torque, 1.0f), 0.0f, 1.0f) : 0.0f;
         Color power_unit_color = Color(0.25f, 0.72f + motor_load * 0.24f, 1.0f, 1.0f);
-        if (::car::rev_limiter_active)
+        if (simulation->get_rev_limiter_active())
         {
             power_unit_color = skeleton_color_torque;
         }
-        else if (::car::tc_active)
+        else if (simulation->is_tc_active())
         {
-            power_unit_color = Color(1.0f, 0.55f + ::car::tc_reduction * 0.35f, 0.10f, 1.0f);
+            power_unit_color = Color(1.0f, 0.55f + simulation->get_tc_reduction() * 0.35f, 0.10f, 1.0f);
         }
-        else if (::car::is_shifting)
+        else if (simulation->get_is_shifting())
         {
             power_unit_color = skeleton_color_spring;
         }
-        const float front_pinion_rotation = (::car::get_wheel_rotation(0) + ::car::get_wheel_rotation(1)) * 0.5f * ::car::tuning::spec.final_drive;
-        const float rear_pinion_rotation  = (::car::get_wheel_rotation(2) + ::car::get_wheel_rotation(3)) * 0.5f * ::car::tuning::spec.final_drive;
+        const float front_pinion_rotation = (simulation->get_wheel_rotation(0) + simulation->get_wheel_rotation(1)) * 0.5f * preset.final_drive;
+        const float rear_pinion_rotation  = (simulation->get_wheel_rotation(2) + simulation->get_wheel_rotation(3)) * 0.5f * preset.final_drive;
         auto wheel_drivetrain_color = [&](int wheel_index)
         {
-            const float wheel_torque_load = std::clamp(fabsf(::car::wheels[wheel_index].drive_torque) / 6000.0f, 0.0f, 1.0f);
+            const float wheel_torque_load = std::clamp(fabsf(simulation->get_wheel_state(wheel_index).drive_torque) / 6000.0f, 0.0f, 1.0f);
             return Color(0.25f - wheel_torque_load * 0.08f, 0.72f + wheel_torque_load * 0.18f, 1.0f, 1.0f);
         };
 
         const math::Vector3 flywheel_axis = vehicle_rotation * math::Vector3::Right * 0.10f;
-        draw_skeleton_shaft(gearbox - flywheel_axis, gearbox + flywheel_axis, 0.075f + ::car::clutch * 0.015f, ::car::engine_rotation, 0.0f, power_unit_color);
+        draw_skeleton_shaft(gearbox - flywheel_axis, gearbox + flywheel_axis, 0.075f + simulation->get_clutch() * 0.015f, simulation->get_engine_rotation(), 0.0f, power_unit_color);
         Renderer::DrawSphere(gearbox, 0.10f, 8, power_unit_color);
         if (drives_front)
         {
             Renderer::DrawSphere(front_diff, 0.11f, 8, skeleton_color_drivetrain);
-            draw_skeleton_shaft(front_diff, wheel_world[0], 0.04f, ::car::get_wheel_rotation(0), ::car::wheels[0].drive_torque * 0.00005f, wheel_drivetrain_color(0));
-            draw_skeleton_shaft(front_diff, wheel_world[1], 0.04f, ::car::get_wheel_rotation(1), ::car::wheels[1].drive_torque * 0.00005f, wheel_drivetrain_color(1));
-            const float front_shaft_radius = drivetrain_type == 2 ? 0.035f + ::car::tuning::spec.torque_split_front * 0.04f : 0.055f;
+            draw_skeleton_shaft(front_diff, wheel_world[0], 0.04f, simulation->get_wheel_rotation(0), simulation->get_wheel_state(0).drive_torque * 0.00005f, wheel_drivetrain_color(0));
+            draw_skeleton_shaft(front_diff, wheel_world[1], 0.04f, simulation->get_wheel_rotation(1), simulation->get_wheel_state(1).drive_torque * 0.00005f, wheel_drivetrain_color(1));
+            const float front_shaft_radius = drivetrain_type == 2 ? 0.035f + preset.torque_split_front * 0.04f : 0.055f;
             draw_skeleton_shaft(gearbox, front_diff, front_shaft_radius, front_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
         }
         if (drives_rear)
         {
             Renderer::DrawSphere(rear_diff, 0.11f, 8, skeleton_color_drivetrain);
-            draw_skeleton_shaft(rear_diff, wheel_world[2], 0.04f, ::car::get_wheel_rotation(2), ::car::wheels[2].drive_torque * 0.00005f, wheel_drivetrain_color(2));
-            draw_skeleton_shaft(rear_diff, wheel_world[3], 0.04f, ::car::get_wheel_rotation(3), ::car::wheels[3].drive_torque * 0.00005f, wheel_drivetrain_color(3));
-            const float rear_shaft_radius = drivetrain_type == 2 ? 0.035f + (1.0f - ::car::tuning::spec.torque_split_front) * 0.04f : 0.055f;
+            draw_skeleton_shaft(rear_diff, wheel_world[2], 0.04f, simulation->get_wheel_rotation(2), simulation->get_wheel_state(2).drive_torque * 0.00005f, wheel_drivetrain_color(2));
+            draw_skeleton_shaft(rear_diff, wheel_world[3], 0.04f, simulation->get_wheel_rotation(3), simulation->get_wheel_state(3).drive_torque * 0.00005f, wheel_drivetrain_color(3));
+            const float rear_shaft_radius = drivetrain_type == 2 ? 0.035f + (1.0f - preset.torque_split_front) * 0.04f : 0.055f;
             draw_skeleton_shaft(gearbox, rear_diff, rear_shaft_radius, rear_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
         }
     }
 
     void Car::Destroy()
     {
+        if (m_is_occupied)
+        {
+            Exit();
+        }
+
         {
             std::lock_guard<std::mutex> lock(car_list_mutex);
             auto it = std::find(s_cars.begin(), s_cars.end(), this);
@@ -1238,6 +1246,10 @@ namespace spartan
 
         if (m_vehicle_entity)
         {
+            if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+            {
+                physics->SetCar(nullptr);
+            }
             World::RemoveEntity(m_vehicle_entity);
         }
         else if (m_body_entity)
@@ -1253,6 +1265,14 @@ namespace spartan
         if (m_is_occupied || !m_is_drivable)
         {
             return;
+        }
+
+        for (Car* car : GetAll())
+        {
+            if (car && car != this && car->IsOccupied())
+            {
+                car->Exit();
+            }
         }
 
         m_is_occupied = true;
@@ -1467,7 +1487,8 @@ namespace spartan
         }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            math::Vector3 reset_position = m_spawn_position + math::Vector3(0.0f, get_car_lower_extent(::car::tuning::spec) + car_spawn_margin, 0.0f);
+            const car::car_preset preset = m_definition ? m_definition->performance : car::car_preset();
+            math::Vector3 reset_position = m_spawn_position + math::Vector3(0.0f, get_car_lower_extent(preset) + car_spawn_margin, 0.0f);
             physics->SetBodyTransform(reset_position, math::Quaternion::Identity);
             m_chase_camera.initialized = false;
         }
@@ -1642,6 +1663,7 @@ namespace spartan
         }
         if (m_definition->body_model.empty())
         {
+            const ::car::car_preset& preset = m_definition->performance;
             Entity* car_entity = World::CreateEntity();
             car_entity->SetObjectName(FileSystem::GetFileNameWithoutExtensionFromFilePath(m_definition->file_path));
             car_entity->AddTag("body");
@@ -1656,9 +1678,9 @@ namespace spartan
                 renderable->SetMesh(MeshType::Cube);
                 renderable->SetDefaultMaterial();
             };
-            create_part("generic_lower_body", math::Vector3(0.0f, -::car::cfg.height * 0.18f, 0.0f), math::Vector3(::car::cfg.width * 0.92f, ::car::cfg.height * 0.38f, ::car::cfg.length * 0.84f));
-            create_part("generic_cabin", math::Vector3(0.0f, ::car::cfg.height * 0.22f, -::car::cfg.length * 0.08f), math::Vector3(::car::cfg.width * 0.68f, ::car::cfg.height * 0.42f, ::car::cfg.length * 0.48f));
-            create_part("generic_roof", math::Vector3(0.0f, ::car::cfg.height * 0.48f, -::car::cfg.length * 0.08f), math::Vector3(::car::cfg.width * 0.72f, ::car::cfg.height * 0.05f, ::car::cfg.length * 0.52f));
+            create_part("generic_lower_body", math::Vector3(0.0f, -preset.height * 0.18f, 0.0f), math::Vector3(preset.width * 0.92f, preset.height * 0.38f, preset.length * 0.84f));
+            create_part("generic_cabin", math::Vector3(0.0f, preset.height * 0.22f, -preset.length * 0.08f), math::Vector3(preset.width * 0.68f, preset.height * 0.42f, preset.length * 0.48f));
+            create_part("generic_roof", math::Vector3(0.0f, preset.height * 0.48f, -preset.length * 0.08f), math::Vector3(preset.width * 0.72f, preset.height * 0.05f, preset.length * 0.52f));
             return car_entity;
         }
 
@@ -1733,8 +1755,17 @@ namespace spartan
                 }
 
                 const std::string context = get_material_context(descendant, renderable);
+                const CarMaterialSlot material_slot = resolve_car_material_slot(descendant, renderable);
+                if (material_slot == CarMaterialSlot::MainGlass && (contains(context, "object_58") || contains(context, "windshield")))
+                {
+                    m_window_entity = descendant;
+                }
+                if (!m_customize_materials)
+                {
+                    continue;
+                }
 
-                switch (resolve_car_material_slot(descendant, renderable))
+                switch (material_slot)
                 {
                     case CarMaterialSlot::BodyPaint:
                     {
@@ -1797,8 +1828,7 @@ namespace spartan
 
                         if (contains(context, "object_58") || contains(context, "windshield"))
                         {
-                            m_window_entity      = descendant;
-                            default_car_window   = descendant;
+                            m_window_entity = descendant;
                         }
                         break;
                     }
@@ -1942,7 +1972,7 @@ namespace spartan
             return;
         }
 
-        const ::car::car_preset& preset = ::car::tuning::spec;
+        const ::car::car_preset& preset = m_definition->performance;
         const float front_wheel_radius  = preset.front_wheel_radius > 0.0f ? preset.front_wheel_radius : 0.34f;
         const float rear_wheel_radius   = preset.rear_wheel_radius  > 0.0f ? preset.rear_wheel_radius  : 0.35f;
         const float front_wheel_width   = preset.front_wheel_width  > 0.0f ? preset.front_wheel_width  : 0.245f;

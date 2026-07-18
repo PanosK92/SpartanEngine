@@ -1066,6 +1066,10 @@ namespace spartan
             }
             entities_pending.clear();
         }
+        pending_remove.clear();
+        play_mode_spawned_ids.clear();
+        play_mode_snapshot.clear();
+        was_in_editor_mode = true;
         camera = nullptr;
         light  = nullptr;
         file_path.clear();

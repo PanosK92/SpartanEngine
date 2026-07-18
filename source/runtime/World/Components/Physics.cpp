@@ -224,6 +224,21 @@ namespace spartan
         buoyancy::bodies.push_back(this);
     }
 
+    car::Simulation* Physics::EnsureVehicleSimulation()
+    {
+        if (!m_vehicle_simulation)
+        {
+            m_vehicle_simulation = make_unique<car::Simulation>();
+            m_vehicle_simulation->set_telemetry_path("car_telemetry_" + to_string(GetEntity()->GetObjectId()) + ".csv");
+        }
+        return m_vehicle_simulation.get();
+    }
+
+    uint32_t Physics::GetVehicleCollisionGroup() const
+    {
+        return m_vehicle_simulation ? m_vehicle_simulation->multibody_collision_group() : 0;
+    }
+
     Physics::~Physics()
     {
         {
@@ -290,11 +305,10 @@ namespace spartan
         // serialize physx writes, async scene loading runs this on worker threads in parallel
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
-        // stop driving the vehicle force model from the fixed physics loop
-        if (m_body_type == BodyType::Vehicle)
+        PhysicsWorld::UnregisterVehicleStepCallback(this);
+        if (m_vehicle_simulation && m_vehicle_simulation->get_body())
         {
-            PhysicsWorld::SetVehicleStepCallback(nullptr);
-            car::destroy();
+            m_vehicle_simulation->destroy();
             m_actors.clear();
             m_actors_active.clear();
         }
@@ -484,7 +498,7 @@ namespace spartan
 
     void Physics::TickVehicle(bool is_playing)
     {
-        if (m_actors.empty() || !m_actors[0])
+        if (!m_vehicle_simulation_active || m_actors.empty() || !m_actors[0])
         {
             return;
         }
@@ -493,7 +507,7 @@ namespace spartan
 
         if (is_playing)
         {
-            // the vehicle force model (car::tick) is driven from PhysicsWorld's fixed-step loop via
+            // the vehicle force model is driven from PhysicsWorld's fixed-step loop via
             // the registered substep callback so it runs exactly once per scene->simulate step. that
             // keeps the forces it applies in lockstep with the integration, reading a freshly
             // integrated pose each step instead of accumulating several substeps worth of force into
@@ -560,9 +574,21 @@ namespace spartan
 
     void Physics::TickVehicleSubstep(float dt)
     {
-        if (m_actors.empty() || !m_actors[0])
+        if (!m_vehicle_simulation_active || m_actors.empty() || !m_actors[0])
         {
             return;
+        }
+
+        if (m_vehicle_simulation_interval > 0.0f)
+        {
+            m_vehicle_simulation_accumulator += dt;
+            if (m_vehicle_simulation_accumulator + 0.000001f < m_vehicle_simulation_interval)
+            {
+                return;
+            }
+            dt = m_vehicle_simulation_accumulator;
+            m_vehicle_simulation_accumulator = 0.0f;
+            m_vehicle_simulation->clear_force_accumulators();
         }
 
         // sync wheel offsets once at start of play
@@ -573,21 +599,19 @@ namespace spartan
         }
 
         // force model runs immediately before physx simulation for the same fixed step
-        car::tick(dt);
+        m_vehicle_simulation->tick(dt);
 
         // surface classification intentionally reaches tire forces one substep later
         // actor caching avoids repeated entity name classification
-        static const PxRigidActor* cached_actor[car::wheel_count]   = {};
-        static car::surface_type   cached_surface[car::wheel_count] = {};
         for (int i = 0; i < car::wheel_count; i++)
         {
-            const PxRigidActor* ground = car::wheels[i].contact_actor;
-            if (ground != cached_actor[i])
+            const PxRigidActor* ground = m_vehicle_simulation->get_wheel_state(i).contact_actor;
+            if (ground != m_wheel_ground_actors[i])
             {
-                cached_actor[i]   = ground;
-                cached_surface[i] = classify_ground_actor(ground);
+                m_wheel_ground_actors[i]   = ground;
+                m_wheel_ground_surfaces[i] = static_cast<uint8_t>(classify_ground_actor(ground));
             }
-            car::set_wheel_surface(i, cached_surface[i]);
+            m_vehicle_simulation->set_wheel_surface(i, static_cast<car::surface_type>(m_wheel_ground_surfaces[i]));
         }
     }
 
@@ -1314,7 +1338,50 @@ namespace spartan
         }
 
         m_body_type = type;
+        if (m_body_type == BodyType::Vehicle)
+        {
+            EnsureVehicleSimulation();
+        }
         Create();
+    }
+
+    void Physics::SetVehiclePreset(const car::car_preset& preset)
+    {
+        EnsureVehicleSimulation()->load_car(preset);
+    }
+
+    void Physics::SetVehicleSimulationActive(bool active)
+    {
+        if (m_body_type != BodyType::Vehicle || m_vehicle_simulation_active == active)
+        {
+            return;
+        }
+
+        car::Simulation* simulation = EnsureVehicleSimulation();
+        if (!active)
+        {
+            simulation->set_force_retention(false);
+        }
+        simulation->set_simulation_enabled(active);
+        if (active)
+        {
+            simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f);
+            m_wheel_offsets_synced = false;
+            m_interpolation_initialized = false;
+        }
+        m_vehicle_simulation_accumulator = 0.0f;
+        m_vehicle_simulation_active = active;
+    }
+
+    void Physics::SetVehicleSimulationFrequency(float frequency)
+    {
+        car::Simulation* simulation = EnsureVehicleSimulation();
+        const float fixed_time_step = PhysicsWorld::GetFixedTimeStep();
+        const float requested_interval = frequency > 0.0f ? 1.0f / frequency : 0.0f;
+        m_vehicle_simulation_interval = requested_interval > fixed_time_step ? requested_interval : 0.0f;
+        m_vehicle_simulation_accumulator = 0.0f;
+        simulation->clear_force_accumulators();
+        simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f);
     }
 
     void Physics::SetClothPinDirection(const Vector3& direction)
@@ -1580,29 +1647,31 @@ namespace spartan
             return;
         }
 
-        // for vehicles, use the car body directly
-        if (m_body_type == BodyType::Vehicle && car::body)
+        // for vehicles, use the simulation body directly
+        PxRigidDynamic* vehicle_body = m_vehicle_simulation->get_body();
+        if (m_body_type == BodyType::Vehicle && vehicle_body)
         {
             PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
-            car::body->setGlobalPose(pose);
-            car::body->setLinearVelocity(PxVec3(0, 0, 0));
-            car::body->setAngularVelocity(PxVec3(0, 0, 0));
+            vehicle_body->setGlobalPose(pose);
+            vehicle_body->setLinearVelocity(PxVec3(0, 0, 0));
+            vehicle_body->setAngularVelocity(PxVec3(0, 0, 0));
 
             // reset wheel angular velocities
             for (int i = 0; i < 4; i++)
             {
-                car::wheels[i].angular_velocity = 0.0f;
+                m_vehicle_simulation->set_wheel_angular_velocity(i, 0.0f);
             }
 
-            if (rebuild_vehicle && !car::rebuild_multibody(false))
+            if (rebuild_vehicle && !m_vehicle_simulation->rebuild_multibody(false))
             {
                 SP_LOG_ERROR("failed to rebuild suspension after vehicle reset");
             }
             if (rebuild_vehicle)
             {
-                car::reset_drivetrain_transients();
-                car::reset_wheel_thermals();
+                m_vehicle_simulation->reset_drivetrain_transients();
+                m_vehicle_simulation->reset_wheel_thermals();
             }
+            m_vehicle_simulation->clear_force_accumulators();
             return;
         }
 
@@ -1628,7 +1697,7 @@ namespace spartan
             return;
         }
 
-        car::set_throttle(value);
+        m_vehicle_simulation->set_throttle(value);
     }
 
     void Physics::SetVehicleBrake(float value)
@@ -1638,7 +1707,7 @@ namespace spartan
             return;
         }
 
-        car::set_brake(value);
+        m_vehicle_simulation->set_brake(value);
     }
 
     void Physics::SetVehicleSteering(float value)
@@ -1648,7 +1717,7 @@ namespace spartan
             return;
         }
 
-        car::set_steering(value);
+        m_vehicle_simulation->set_steering(value);
     }
 
     void Physics::SetVehicleHandbrake(float value)
@@ -1658,7 +1727,7 @@ namespace spartan
             return;
         }
 
-        car::set_handbrake(value);
+        m_vehicle_simulation->set_handbrake(value);
     }
 
     void Physics::SetWheelEntity(WheelIndex wheel, Entity* entity)
@@ -1698,7 +1767,7 @@ namespace spartan
                     }
 
                     Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
-                    car::set_wheel_offset(index, local_pos.x, local_pos.z);
+                    m_vehicle_simulation->set_wheel_offset(index, local_pos.x, local_pos.z);
                 }
             }
         }
@@ -1731,13 +1800,15 @@ namespace spartan
             SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f), excluding %zu entities",
                 entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z, entities_to_exclude.size());
 
-            // build convex hull shapes from the chassis mesh hierarchy
-            BuildChassisConvexShapes(entity, entities_to_exclude);
+            if (m_vehicle_high_quality)
+            {
+                BuildChassisConvexShapes(entity, entities_to_exclude);
+            }
 
             // re-tag after shape replacement
-            if (car::body)
+            if (PxRigidDynamic* body = m_vehicle_simulation->get_body())
             {
-                tag_actor_shapes(car::body, 2, car::multibody_collision_group());
+                tag_actor_shapes(body, 2, m_vehicle_simulation->multibody_collision_group());
             }
         }
         else
@@ -1748,7 +1819,7 @@ namespace spartan
 
     void Physics::BuildChassisConvexShapes(Entity* chassis_entity, const vector<Entity*>& entities_to_exclude)
     {
-        if (!car::body || !chassis_entity)
+        if (!m_vehicle_simulation->get_body() || !chassis_entity)
         {
             return;
         }
@@ -1759,7 +1830,7 @@ namespace spartan
             return;
         }
 
-        // car::set_chassis below mutates shapes on car::body which is already attached to the
+        // setting the chassis mutates shapes on a body that is already attached to the
         // scene, async load runs this on worker threads so serialize against other physx writes
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
@@ -1830,7 +1901,7 @@ namespace spartan
         Quaternion chassis_world_rot_inv = chassis_world_rot.Conjugate();
 
         // keep the chassis hull above the wheel attachment plane
-        const float chassis_hull_min_y = -car::cfg.suspension_height;
+        const float chassis_hull_min_y = -m_vehicle_simulation->get_config().suspension_height;
 
         // collect ALL vertices from all meshes into a single list, transformed to vehicle body space
         vector<PxVec3> all_vertices;
@@ -1959,7 +2030,7 @@ namespace spartan
         const PxVec3* hull_verts = convex_mesh->getVertices();
         std::vector<PxVec3> convex_hull_vertices(hull_verts, hull_verts + hull_vert_count);
 
-        if (!car::set_chassis(convex_mesh, convex_hull_vertices, physics))
+        if (!m_vehicle_simulation->set_chassis(convex_mesh, convex_hull_vertices, physics))
         {
             SP_LOG_ERROR("Failed to set chassis");
             convex_mesh->release();
@@ -1992,13 +2063,14 @@ namespace spartan
 
         m_wheel_radius = radius;
 
-        car::cfg.front_wheel_radius = radius;
-        car::cfg.rear_wheel_radius  = radius;
+        car::config& config = m_vehicle_simulation->get_config();
+        config.front_wheel_radius = radius;
+        config.rear_wheel_radius  = radius;
 
         // recalculate and update body height based on actual wheel radius
-        if (car::body)
+        if (PxRigidDynamic* body = m_vehicle_simulation->get_body())
         {
-            // car::body is in the scene, async load reaches this from car prefab workers
+            // the body is in the scene, async load reaches this from car prefab workers
             lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
             // equilibrium body height: at rest the spring is compressed by expected_sag and the
@@ -2006,19 +2078,19 @@ namespace spartan
             // -suspension_height + compression*travel, so body_y = radius + suspension_height - sag.
             // spawning at this height puts the car immediately at rest instead of letting it bounce
             // through 2*sag of vertical travel on the first ticks
-            float front_mass_per_wheel = car::chassis_mass() * car::get_weight_distribution_front() * 0.5f;
-            float front_omega = 2.0f * math::pi * car::tuning::spec.front_spring_freq;
+            float front_mass_per_wheel = m_vehicle_simulation->chassis_mass() * m_vehicle_simulation->get_weight_distribution_front() * 0.5f;
+            float front_omega = 2.0f * math::pi * m_vehicle_simulation->get_spec().front_spring_freq;
             float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
             float front_load = front_mass_per_wheel * 9.81f;
-            float expected_sag = std::clamp(front_load / front_stiffness, 0.0f, car::cfg.suspension_travel * 0.8f);
-            const float correct_body_height = radius + car::cfg.suspension_height - expected_sag + 0.02f;
+            float expected_sag = std::clamp(front_load / front_stiffness, 0.0f, config.suspension_travel * 0.8f);
+            const float correct_body_height = radius + config.suspension_height - expected_sag + 0.02f;
 
             // update body position with correct height
-            PxTransform pose = car::body->getGlobalPose();
+            PxTransform pose = body->getGlobalPose();
             pose.p.y = correct_body_height;
-            car::body->setGlobalPose(pose);
+            body->setGlobalPose(pose);
 
-            if (!car::rebuild_vehicle_geometry())
+            if (!m_vehicle_simulation->rebuild_vehicle_geometry())
             {
                 SP_LOG_ERROR("failed to rebuild suspension after wheel radius change");
             }
@@ -2027,7 +2099,7 @@ namespace spartan
         }
         else
         {
-            car::rebuild_vehicle_geometry();
+            m_vehicle_simulation->rebuild_vehicle_geometry();
         }
 
         SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
@@ -2089,7 +2161,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::cfg.suspension_height;
+        return m_vehicle_simulation->get_config().suspension_height;
     }
 
     void Physics::ScaleWheelEntityToDimensions(Entity* wheel_entity, float target_radius, float target_width)
@@ -2140,7 +2212,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_throttle();
+        return m_vehicle_simulation->get_throttle();
     }
 
     float Physics::GetVehicleBrake() const
@@ -2149,7 +2221,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_brake();
+        return m_vehicle_simulation->get_brake();
     }
 
     float Physics::GetVehicleSteering() const
@@ -2158,7 +2230,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_steering();
+        return m_vehicle_simulation->get_steering();
     }
 
     float Physics::GetVehicleHandbrake() const
@@ -2167,7 +2239,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_handbrake();
+        return m_vehicle_simulation->get_handbrake();
     }
 
     bool Physics::IsWheelGrounded(WheelIndex wheel) const
@@ -2176,7 +2248,7 @@ namespace spartan
         {
             return false;
         }
-        return car::is_wheel_grounded(static_cast<int>(wheel));
+        return m_vehicle_simulation->is_wheel_grounded(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelCompression(WheelIndex wheel) const
@@ -2185,7 +2257,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_compression(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_compression(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelSuspensionForce(WheelIndex wheel) const
@@ -2194,7 +2266,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_suspension_force(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_suspension_force(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelSlipAngle(WheelIndex wheel) const
@@ -2203,7 +2275,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_slip_angle(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_slip_angle(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelSlipRatio(WheelIndex wheel) const
@@ -2212,7 +2284,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_slip_ratio(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_slip_ratio(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelTireLoad(WheelIndex wheel) const
@@ -2221,7 +2293,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_tire_load(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_tire_load(static_cast<int>(wheel));
     }
 
     Vector3 Physics::GetWheelContactPoint(WheelIndex wheel) const
@@ -2231,7 +2303,7 @@ namespace spartan
         {
             return Vector3::Zero;
         }
-        return from_px_vec3(car::wheels[i].contact_point);
+        return from_px_vec3(m_vehicle_simulation->get_wheel_state(i).contact_point);
     }
 
     Vector3 Physics::GetWheelContactNormal(WheelIndex wheel) const
@@ -2241,7 +2313,7 @@ namespace spartan
         {
             return Vector3::Up;
         }
-        return from_px_vec3(car::wheels[i].contact_normal);
+        return from_px_vec3(m_vehicle_simulation->get_wheel_state(i).contact_normal);
     }
 
     float Physics::GetWheelSlipMagnitude(WheelIndex wheel) const
@@ -2251,8 +2323,8 @@ namespace spartan
             return 0.0f;
         }
         int i           = static_cast<int>(wheel);
-        float slip_ratio = car::get_wheel_slip_ratio(i);
-        float slip_angle = car::get_wheel_slip_angle(i);
+        float slip_ratio = m_vehicle_simulation->get_wheel_slip_ratio(i);
+        float slip_angle = m_vehicle_simulation->get_wheel_slip_angle(i);
         return sqrtf(slip_ratio * slip_ratio + slip_angle * slip_angle);
     }
 
@@ -2263,7 +2335,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::cfg.wheel_width_for(i);
+        return m_vehicle_simulation->get_config().wheel_width_for(i);
     }
 
     float Physics::GetWheelLateralForce(WheelIndex wheel) const
@@ -2272,7 +2344,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_lateral_force(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_lateral_force(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelLongitudinalForce(WheelIndex wheel) const
@@ -2281,7 +2353,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_longitudinal_force(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_longitudinal_force(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelAngularVelocity(WheelIndex wheel) const
@@ -2290,7 +2362,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_angular_velocity(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_angular_velocity(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelRPM(WheelIndex wheel) const
@@ -2307,7 +2379,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_temperature(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_temperature(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelTempGripFactor(WheelIndex wheel) const
@@ -2316,7 +2388,7 @@ namespace spartan
         {
             return 1.0f;
         }
-        return car::get_wheel_temp_grip_factor(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_temp_grip_factor(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelBrakeTemp(WheelIndex wheel) const
@@ -2325,7 +2397,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_brake_temp(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_brake_temp(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelBrakeEfficiency(WheelIndex wheel) const
@@ -2334,7 +2406,7 @@ namespace spartan
         {
             return 1.0f;
         }
-        return car::get_wheel_brake_efficiency(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_brake_efficiency(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelSurfaceTemp(WheelIndex wheel, int zone) const
@@ -2343,7 +2415,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_surface_temp(static_cast<int>(wheel), zone);
+        return m_vehicle_simulation->get_wheel_surface_temp(static_cast<int>(wheel), zone);
     }
 
     float Physics::GetWheelCoreTemp(WheelIndex wheel) const
@@ -2352,7 +2424,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_core_temp(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_core_temp(static_cast<int>(wheel));
     }
 
     float Physics::GetTirePressure() const
@@ -2361,7 +2433,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_tire_pressure();
+        return m_vehicle_simulation->get_tire_pressure();
     }
 
     float Physics::GetTirePressureOptimal() const
@@ -2370,14 +2442,14 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_tire_pressure_optimal();
+        return m_vehicle_simulation->get_tire_pressure_optimal();
     }
 
     void Physics::SetAbsEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::set_abs_enabled(enabled);
+            m_vehicle_simulation->set_abs_enabled(enabled);
         }
     }
 
@@ -2387,7 +2459,7 @@ namespace spartan
         {
             return false;
         }
-        return car::get_abs_enabled();
+        return m_vehicle_simulation->get_abs_enabled();
     }
 
     bool Physics::IsAbsActive(WheelIndex wheel) const
@@ -2396,7 +2468,7 @@ namespace spartan
         {
             return false;
         }
-        return car::is_abs_active(static_cast<int>(wheel));
+        return m_vehicle_simulation->is_abs_active(static_cast<int>(wheel));
     }
 
     bool Physics::IsAbsActiveAny() const
@@ -2405,7 +2477,7 @@ namespace spartan
         {
             return false;
         }
-        return car::is_abs_active_any();
+        return m_vehicle_simulation->is_abs_active_any();
     }
 
     float Physics::GetAbsPhase() const
@@ -2414,14 +2486,14 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_abs_phase();
+        return m_vehicle_simulation->get_abs_phase();
     }
 
     void Physics::SetTcEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::set_tc_enabled(enabled);
+            m_vehicle_simulation->set_tc_enabled(enabled);
         }
     }
 
@@ -2431,7 +2503,7 @@ namespace spartan
         {
             return false;
         }
-        return car::get_tc_enabled();
+        return m_vehicle_simulation->get_tc_enabled();
     }
 
     bool Physics::IsTcActive() const
@@ -2440,7 +2512,7 @@ namespace spartan
         {
             return false;
         }
-        return car::is_tc_active();
+        return m_vehicle_simulation->is_tc_active();
     }
 
     float Physics::GetTcReduction() const
@@ -2449,14 +2521,14 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_tc_reduction();
+        return m_vehicle_simulation->get_tc_reduction();
     }
 
     void Physics::SetTurboEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::set_turbo_enabled(enabled);
+            m_vehicle_simulation->set_turbo_enabled(enabled);
         }
     }
 
@@ -2466,7 +2538,7 @@ namespace spartan
         {
             return false;
         }
-        return car::get_turbo_enabled();
+        return m_vehicle_simulation->get_turbo_enabled();
     }
 
     float Physics::GetBoostPressure() const
@@ -2475,7 +2547,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_boost_pressure();
+        return m_vehicle_simulation->get_boost_pressure();
     }
 
     float Physics::GetBoostMaxPressure() const
@@ -2484,7 +2556,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_boost_max_pressure();
+        return m_vehicle_simulation->get_boost_max_pressure();
     }
 
     // drs
@@ -2492,7 +2564,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::set_drs_enabled(enabled);
+            m_vehicle_simulation->set_drs_enabled(enabled);
         }
     }
 
@@ -2502,14 +2574,14 @@ namespace spartan
         {
             return false;
         }
-        return car::get_drs_enabled();
+        return m_vehicle_simulation->get_drs_enabled();
     }
 
     void Physics::SetDrsActive(bool active)
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::set_drs_active(active);
+            m_vehicle_simulation->set_drs_active(active);
         }
     }
 
@@ -2519,7 +2591,7 @@ namespace spartan
         {
             return false;
         }
-        return car::get_drs_active();
+        return m_vehicle_simulation->get_drs_active();
     }
 
     // differential
@@ -2527,7 +2599,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::set_diff_type(type);
+            m_vehicle_simulation->set_diff_type(type);
         }
     }
 
@@ -2537,7 +2609,7 @@ namespace spartan
         {
             return 2;
         }
-        return car::get_diff_type();
+        return m_vehicle_simulation->get_diff_type();
     }
 
     const char* Physics::GetDiffTypeName() const
@@ -2546,7 +2618,7 @@ namespace spartan
         {
             return "N/A";
         }
-        return car::get_diff_type_name();
+        return m_vehicle_simulation->get_diff_type_name();
     }
 
     // tire wear
@@ -2556,7 +2628,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_wheel_wear(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_wear(static_cast<int>(wheel));
     }
 
     float Physics::GetWheelWearGripFactor(WheelIndex wheel) const
@@ -2565,14 +2637,14 @@ namespace spartan
         {
             return 1.0f;
         }
-        return car::get_wheel_wear_grip_factor(static_cast<int>(wheel));
+        return m_vehicle_simulation->get_wheel_wear_grip_factor(static_cast<int>(wheel));
     }
 
     void Physics::ResetTireWear()
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::reset_tire_wear();
+            m_vehicle_simulation->reset_tire_wear();
         }
     }
 
@@ -2580,7 +2652,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::set_manual_transmission(enabled);
+            m_vehicle_simulation->set_manual_transmission(enabled);
         }
     }
 
@@ -2590,14 +2662,14 @@ namespace spartan
         {
             return false;
         }
-        return car::get_manual_transmission();
+        return m_vehicle_simulation->get_manual_transmission();
     }
 
     void Physics::ShiftUp()
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::shift_up();
+            m_vehicle_simulation->shift_up();
         }
     }
 
@@ -2605,7 +2677,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::shift_down();
+            m_vehicle_simulation->shift_down();
         }
     }
 
@@ -2613,7 +2685,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Vehicle)
         {
-            car::shift_to_neutral();
+            m_vehicle_simulation->shift_to_neutral();
         }
     }
 
@@ -2623,7 +2695,7 @@ namespace spartan
         {
             return 1;
         } // neutral
-        return car::get_current_gear();
+        return m_vehicle_simulation->get_current_gear();
     }
 
     const char* Physics::GetCurrentGearString() const
@@ -2632,7 +2704,7 @@ namespace spartan
         {
             return "N";
         }
-        return car::get_gear_string();
+        return m_vehicle_simulation->get_gear_string();
     }
 
     float Physics::GetEngineRPM() const
@@ -2641,7 +2713,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_current_engine_rpm();
+        return m_vehicle_simulation->get_current_engine_rpm();
     }
 
     float Physics::GetEngineTorque() const
@@ -2650,7 +2722,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_engine_torque_current();
+        return m_vehicle_simulation->get_engine_torque_current();
     }
 
     float Physics::GetMotorTorque() const
@@ -2659,7 +2731,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_motor_torque();
+        return m_vehicle_simulation->get_motor_torque();
     }
 
     float Physics::GetIdleRPM() const
@@ -2668,7 +2740,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_idle_rpm();
+        return m_vehicle_simulation->get_idle_rpm();
     }
 
     float Physics::GetRedlineRPM() const
@@ -2677,7 +2749,7 @@ namespace spartan
         {
             return 0.0f;
         }
-        return car::get_redline_rpm();
+        return m_vehicle_simulation->get_redline_rpm();
     }
 
     bool Physics::IsShifting() const
@@ -2686,7 +2758,7 @@ namespace spartan
         {
             return false;
         }
-        return car::get_is_shifting();
+        return m_vehicle_simulation->get_is_shifting();
     }
 
     Vector3 Physics::TransformVehiclePointToRender(const Vector3& point) const
@@ -2760,10 +2832,10 @@ namespace spartan
             Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
 
             // update the physics wheel offset x and z to match the mesh position
-            car::set_wheel_offset(i, local_pos.x, local_pos.z);
+            m_vehicle_simulation->set_wheel_offset(i, local_pos.x, local_pos.z);
         }
 
-        if (!car::rebuild_multibody())
+        if (!m_vehicle_simulation->rebuild_multibody())
         {
             SP_LOG_ERROR("failed to rebuild car suspension after wheel synchronization");
         }
@@ -2782,7 +2854,7 @@ namespace spartan
             return;
         }
 
-        car::set_center_of_mass(x, y, z);
+        m_vehicle_simulation->set_center_of_mass(x, y, z);
     }
 
     Vector3 Physics::GetCenterOfMassOffset() const
@@ -2792,7 +2864,7 @@ namespace spartan
             return Vector3::Zero;
         }
 
-        return Vector3(car::get_center_of_mass_x(), car::get_center_of_mass_y(), car::get_center_of_mass_z());
+        return Vector3(m_vehicle_simulation->get_center_of_mass_x(), m_vehicle_simulation->get_center_of_mass_y(), m_vehicle_simulation->get_center_of_mass_z());
     }
 
     void Physics::SetMeshConvexSourceEntity(Entity* entity)
@@ -2822,7 +2894,7 @@ namespace spartan
             }
 
             bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
-            PxRigidDynamic* wheel_actor = car::multibody.corners[i].wheel_body;
+            PxRigidDynamic* wheel_actor = m_vehicle_simulation->get_multibody_state().corners[i].wheel_body;
             if (!wheel_actor)
             {
                 continue;
@@ -2927,33 +2999,39 @@ namespace spartan
         }
         else if (m_body_type == BodyType::Vehicle)
         {
-            // vehicle simulation state and the fixed step callback support one active body
+            EnsureVehicleSimulation();
             car::setup_params params;
             params.physics = physics;
             params.scene   = scene;
+            params.multibody_enabled = m_vehicle_high_quality;
 
-            if (car::setup(params))
+            if (m_vehicle_simulation->setup(params))
             {
                 m_actors.resize(1, nullptr);
-                m_actors[0] = car::body;
+                PxRigidDynamic* body = m_vehicle_simulation->get_body();
+                m_actors[0] = body;
                 m_actors_active.resize(1, true);
 
                 Vector3 pos = GetEntity()->GetPosition();
-                PxTransform current_pose = car::body->getGlobalPose();
-                car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
-                if (!car::rebuild_multibody(false))
+                PxTransform current_pose = body->getGlobalPose();
+                body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
+                if (!m_vehicle_simulation->rebuild_multibody(false))
                 {
                     SP_LOG_ERROR("failed to place car suspension assembly");
                 }
-                if (m_chassis_entity)
+                if (m_vehicle_high_quality && m_chassis_entity)
                 {
                     BuildChassisConvexShapes(m_chassis_entity, m_chassis_entities_to_exclude);
                 }
-                car::body->userData = reinterpret_cast<void*>(GetEntity());
-                tag_actor_shapes(car::body, 2, car::multibody_collision_group());
+                body->userData = reinterpret_cast<void*>(GetEntity());
+                tag_actor_shapes(body, 2, m_vehicle_simulation->multibody_collision_group());
+                if (!m_vehicle_simulation_active)
+                {
+                    m_vehicle_simulation->set_simulation_enabled(false);
+                }
 
                 // run the vehicle force model in lockstep with the fixed physics step
-                PhysicsWorld::SetVehicleStepCallback([this](float dt) { TickVehicleSubstep(dt); });
+                PhysicsWorld::RegisterVehicleStepCallback(this, [this](float dt) { TickVehicleSubstep(dt); });
             }
             else
             {

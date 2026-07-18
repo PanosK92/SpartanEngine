@@ -57,18 +57,17 @@ namespace spartan
         static float GetInterpolationAlpha();
         static float GetFixedTimeStep();
 
-        // vehicle force model hook, invoked once per fixed simulation step right before
-        // scene->simulate so the car applies its forces for exactly one integration step
-        // and reads a freshly integrated body pose, this keeps the spring-damper and tire
-        // forces stable regardless of render framerate instead of lumping several substeps
-        // worth of force into a single integration step
-        static void SetVehicleStepCallback(const std::function<void(float)>& callback);
+        // vehicle force model hooks, invoked once per fixed simulation step before scene simulation
+        static void RegisterVehicleStepCallback(const void* owner, const std::function<void(float)>& callback);
+        static void UnregisterVehicleStepCallback(const void* owner);
 
         // cast a ray against static geometry and return the closest hit position
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, math::Vector3& hit_position);
 
         // cast a ray against static geometry and return the closest hit position + the entity that was hit
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, math::Vector3& hit_position, Entity*& hit_entity);
+
+        static bool SphereCast(const math::Vector3& origin, const math::Vector3& direction, float radius, float max_distance, uint32_t ignored_collision_group, math::Vector3& hit_position, float& hit_distance, Entity*& hit_entity);
 
         // global physx scene lock, used to serialize all reads and writes that touch
         // PxScene/PxRigidActor/PxShape state, async scene loading runs Physics::Create on

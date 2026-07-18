@@ -73,6 +73,8 @@ namespace spartan
             bool          static_physics = false;  // kinematic physics on the body (for display)
             bool          show_telemetry = false;  // shows vehicle telemetry hud
             bool          camera_follows = false;  // attach camera to follow the car
+            bool          customize_materials = true;
+            bool          high_quality_physics = true;
             MaterialPaintPreset paint_preset = MaterialPaintPreset::Metallic;
             Color               paint_color  = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         };
@@ -100,6 +102,7 @@ namespace spartan
         Entity* GetRootEntity() const  { return m_vehicle_entity ? m_vehicle_entity : m_body_entity; }
         Entity* GetBodyEntity() const  { return m_body_entity; }
         Entity* GetWindowEntity() const { return m_window_entity; }
+        const car::car_definition* GetDefinition() const { return m_definition; }
 
         // vehicle interaction
         void Enter();
@@ -210,6 +213,7 @@ namespace spartan
         CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
+        bool              m_customize_materials = true;
         ChaseCameraState  m_chase_camera;
 
         struct BodyRenderState

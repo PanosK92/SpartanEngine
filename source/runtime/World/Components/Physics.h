@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "Component.h"
+#include <cstdint>
 #include <vector>
 #include <memory>
 #include "../../Math/Vector3.h"
@@ -33,6 +34,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace sol
 {
     class state_view;
+}
+
+namespace car
+{
+    struct car_preset;
+    class Simulation;
 }
 
 namespace spartan
@@ -168,6 +175,9 @@ namespace spartan
         void SetVehicleBrake(float value);      // 0 to 1
         void SetVehicleSteering(float value);   // -1 (left) to 1 (right)
         void SetVehicleHandbrake(float value);  // 0 to 1 (locks rear wheels for drifting)
+        void SetVehicleSimulationActive(bool active);
+        bool IsVehicleSimulationActive() const { return m_vehicle_simulation_active; }
+        void SetVehicleHighQuality(bool high_quality) { m_vehicle_high_quality = high_quality; }
 
         // vehicle wheel entities (visual meshes that rotate with physics)
         void SetWheelEntity(WheelIndex wheel, Entity* entity);
@@ -273,6 +283,10 @@ namespace spartan
         // car owner - set this to have the car tick automatically through the entity system
         void SetCar(class Car* car) { m_car = car; }
         class Car* GetCar() const   { return m_car; }
+        car::Simulation* GetVehicleSimulation() const { return m_vehicle_simulation.get(); }
+        uint32_t GetVehicleCollisionGroup() const;
+        void SetVehiclePreset(const car::car_preset& preset);
+        void SetVehicleSimulationFrequency(float frequency);
 
         // center of mass (for tuning handling characteristics)
         void SetCenterOfMassOffset(const math::Vector3& offset);
@@ -301,6 +315,7 @@ namespace spartan
         void TickController(bool is_playing, float delta_time);
         void TickVehicle(bool is_playing);
         void TickVehicleSubstep(float dt); // vehicle force model, runs once per fixed physics step in lockstep with integration
+        car::Simulation* EnsureVehicleSimulation();
         void TickCloth(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
@@ -336,6 +351,10 @@ namespace spartan
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
         math::Vector3 m_wheel_mesh_center_offsets[static_cast<int>(WheelIndex::Count)] = {};
         bool m_wheel_offsets_synced = false;  // flag to ensure wheel offsets are synced from entities once
+        const void* m_wheel_ground_actors[static_cast<int>(WheelIndex::Count)] = {};
+        uint8_t m_wheel_ground_surfaces[static_cast<int>(WheelIndex::Count)] = {};
+        bool m_vehicle_simulation_active = true;
+        bool m_vehicle_high_quality = true;
 
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;
@@ -368,6 +387,9 @@ namespace spartan
 
         // car owner (ticked automatically through entity system)
         class Car* m_car = nullptr;
+        std::unique_ptr<car::Simulation> m_vehicle_simulation;
+        float m_vehicle_simulation_interval = 0.0f;
+        float m_vehicle_simulation_accumulator = 0.0f;
 
         // cloth simulation state
         struct ClothParticle

@@ -538,8 +538,6 @@ namespace car
         // register for the hud preset selector
         stored.performance.name = stored.name.c_str();
         preset_registry.push_back({ stored.name.c_str(), &stored.performance, &stored });
-        preset_count        = static_cast<int>(preset_registry.size());
-        active_preset_index = std::clamp(active_preset_index, 0, preset_count - 1);
 
         SP_LOG_INFO("loaded car: %s (%s)", stored.name.c_str(), path.c_str());
         return &stored;

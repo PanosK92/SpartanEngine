@@ -376,8 +376,6 @@ namespace car
     // filled from .car files, a deque never relocates so pointers into it stay valid
     inline std::deque<car_definition> definitions;
     inline std::vector<preset_entry> preset_registry;
-    inline int preset_count        = 0;
-    inline int active_preset_index = 0;
 
     // load one .car file, cached by path, also registers it for the hud preset selector
     const car_definition* load_car_file(const std::string& file_path);
