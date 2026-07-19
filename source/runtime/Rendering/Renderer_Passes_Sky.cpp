@@ -62,8 +62,6 @@ namespace spartan
                     cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                     cmd_list->Dispatch(tex_lut_sky_view);
-
-                    tex_lut_sky_view->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
                 }
 
                 // cloud shadow map, cumulus transmittance along the sun projected on the cloud
@@ -85,8 +83,6 @@ namespace spartan
                     // chain remove that high frequency before lighting samples the map
                     Pass_Blur(cmd_list, tex_cloud_shadow, false, 4.0f, 0);
                     Pass_Downscale(cmd_list, tex_cloud_shadow, Renderer_DownsampleFilter::Average);
-
-                    tex_cloud_shadow->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
                 }
 
                 RHI_PipelineState pso;
@@ -102,8 +98,6 @@ namespace spartan
                 RHI_Texture* tex_grid  = GetStandardTexture(Renderer_StandardTexture::Sky_star_grid);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_stars ? tex_stars : GetStandardTexture(Renderer_StandardTexture::Black));
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex6, tex_grid  ? tex_grid  : GetStandardTexture(Renderer_StandardTexture::Black));
-                // cloud noise volume rides the tex3d srv slot
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
 
                 // values[0].x carries the warmup blend during the burst (1, 1/2, 1/3 ... so the
                 // full bakes average progressively with no ghost of the previous sky), 0.0 in
@@ -130,7 +124,6 @@ namespace spartan
                     const uint32_t dispatch_x        = (quarter_w + thread_group_size - 1) / thread_group_size;
                     const uint32_t dispatch_y        = (quarter_h + thread_group_size - 1) / thread_group_size;
                     cmd_list->Dispatch(dispatch_x, dispatch_y);
-                    cmd_list->InsertBarrier(tex_skysphere, RHI_BarrierType::EnsureWriteThenRead);
                 }
             }
             else
@@ -163,13 +156,12 @@ namespace spartan
                     pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
                     cmd_list->SetPipelineState(pso);
 
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
-
                     const uint32_t mip_count = tex_skysphere->GetMipCount();
                     const uint32_t base_w    = tex_skysphere->GetWidth();
                     const uint32_t base_h    = tex_skysphere->GetHeight();
                     for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++)
                     {
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere, 0, mip_level);
                         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere, mip_level, 1);
 
                         m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
@@ -185,14 +177,187 @@ namespace spartan
                         const uint32_t dispatch_x = (mip_w + 7) / 8;
                         const uint32_t dispatch_y = (mip_h + 7) / 8;
                         cmd_list->Dispatch(dispatch_x, dispatch_y);
-                        cmd_list->InsertBarrier(tex_skysphere, RHI_BarrierType::EnsureWriteThenRead);
-                        // flip the just-written mip back to shader_read so the next iteration's srv sample can read it
-                        cmd_list->InsertBarrier(tex_skysphere, RHI_Image_Layout::Shader_Read, mip_level, 1);
                     }
                 }
             }
         }
         cmd_list->EndTimeblock();
+
+        Pass_Clouds_Environment(cmd_list);
+    }
+
+    void Renderer::Pass_Clouds_Render(RHI_CommandList* cmd_list, uint32_t eye_layer)
+    {
+        RHI_Texture* tex_raw      = GetRenderTarget(Renderer_RenderTarget::cloud_raw);
+        RHI_Texture* tex_distance = GetRenderTarget(Renderer_RenderTarget::cloud_raw_distance);
+
+        RHI_PipelineState pso;
+        pso.name             = "clouds_render";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::clouds_render_c);
+        cmd_list->SetPipelineState(pso);
+
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_raw, rhi_all_mips, 0, true, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_distance, rhi_all_mips, 0, true, eye_layer);
+        cmd_list->PushConstants(m_pcb_pass_cpu);
+        cmd_list->Dispatch(tex_raw);
+    }
+
+    void Renderer::Pass_Clouds_Temporal(RHI_CommandList* cmd_list, uint32_t eye_layer)
+    {
+        const Renderer_RenderTarget resolved_targets[] = { Renderer_RenderTarget::cloud_resolved_0, Renderer_RenderTarget::cloud_resolved_1 };
+        const Renderer_RenderTarget distance_targets[] = { Renderer_RenderTarget::cloud_resolved_distance_0, Renderer_RenderTarget::cloud_resolved_distance_1 };
+        const uint32_t history_index = m_pass_state.cloud_history_index;
+        const uint32_t output_index  = 1u - history_index;
+        RHI_Texture* tex_output          = GetRenderTarget(resolved_targets[output_index]);
+        RHI_Texture* tex_output_distance = GetRenderTarget(distance_targets[output_index]);
+
+        RHI_PipelineState pso;
+        pso.name             = "clouds_temporal";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::clouds_temporal_c);
+        cmd_list->SetPipelineState(pso);
+
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::cloud_raw), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::cloud_raw_distance), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(resolved_targets[history_index]), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(distance_targets[history_index]), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_output, rhi_all_mips, 0, true, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_output_distance, rhi_all_mips, 0, true, eye_layer);
+        m_pcb_pass_cpu.set_f3_value(m_pass_state.cloud_history_valid ? 0.0f : 1.0f);
+        cmd_list->PushConstants(m_pcb_pass_cpu);
+        cmd_list->Dispatch(tex_output);
+    }
+
+    void Renderer::Pass_Clouds_Composite(RHI_CommandList* cmd_list, uint32_t eye_layer, RHI_Texture* tex_scene)
+    {
+        const Renderer_RenderTarget resolved_targets[] = { Renderer_RenderTarget::cloud_resolved_0, Renderer_RenderTarget::cloud_resolved_1 };
+        const Renderer_RenderTarget distance_targets[] = { Renderer_RenderTarget::cloud_resolved_distance_0, Renderer_RenderTarget::cloud_resolved_distance_1 };
+        const uint32_t output_index = 1u - m_pass_state.cloud_history_index;
+        RHI_Texture* tex_composite  = GetRenderTarget(Renderer_RenderTarget::cloud_composite);
+
+        RHI_PipelineState pso;
+        pso.name             = "clouds_composite";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::clouds_composite_c);
+        cmd_list->SetPipelineState(pso);
+
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_scene);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(resolved_targets[output_index]), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(distance_targets[output_index]), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_composite);
+        cmd_list->PushConstants(m_pcb_pass_cpu);
+        cmd_list->Dispatch(tex_composite);
+        cmd_list->Blit(tex_composite, tex_scene, false);
+    }
+
+    void Renderer::Pass_Clouds_Environment(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::cloud_environment);
+        if (!tex_environment)
+        {
+            return;
+        }
+
+        if (!World::GetDirectionalLight())
+        {
+            if (m_pass_state.cloud_environment_dirty)
+            {
+                cmd_list->ClearTexture(tex_environment, Color::standard_black);
+                m_pass_state.cloud_environment_dirty = false;
+            }
+            return;
+        }
+
+        const bool cadence_frame = (m_cb_frame_cpu.frame & 15u) == 0u;
+        if (!m_pass_state.cloud_environment_dirty && !cadence_frame)
+        {
+            return;
+        }
+
+        RHI_Shader* shader = GetShader(Renderer_Shader::clouds_environment_c);
+        if (!shader || !shader->IsCompiled())
+        {
+            return;
+        }
+
+        cmd_list->BeginTimeblock("clouds_environment");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "clouds_environment";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, 0, 1);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->Dispatch(tex_environment);
+            Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+
+            RHI_PipelineState filter_pso;
+            filter_pso.name             = "clouds_environment_filter";
+            filter_pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
+            cmd_list->SetPipelineState(filter_pso);
+            const uint32_t mip_count = tex_environment->GetMipCount();
+            const uint32_t base_w    = tex_environment->GetWidth();
+            const uint32_t base_h    = tex_environment->GetHeight();
+            for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++)
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_environment, 0, mip_level);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+                m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                cmd_list->Dispatch((max(1u, base_w >> mip_level) + 7) / 8, (max(1u, base_h >> mip_level) + 7) / 8);
+            }
+        }
+        cmd_list->EndTimeblock();
+        m_pass_state.cloud_environment_dirty = false;
+    }
+
+    bool Renderer::Pass_Clouds_Prepare(RHI_CommandList* cmd_list, uint32_t eye_layer)
+    {
+        if (!World::GetDirectionalLight())
+        {
+            m_pass_state.cloud_history_valid = false;
+            return false;
+        }
+
+        RHI_Shader* shader_render    = GetShader(Renderer_Shader::clouds_render_c);
+        RHI_Shader* shader_temporal  = GetShader(Renderer_Shader::clouds_temporal_c);
+        RHI_Shader* shader_composite = GetShader(Renderer_Shader::clouds_composite_c);
+        if (!shader_render || !shader_render->IsCompiled() || !shader_temporal || !shader_temporal->IsCompiled() || !shader_composite || !shader_composite->IsCompiled())
+        {
+            m_pass_state.cloud_history_valid = false;
+            return false;
+        }
+
+        cmd_list->BeginTimeblock("clouds_prepare");
+        {
+            Pass_Clouds_Render(cmd_list, eye_layer);
+            Pass_Clouds_Temporal(cmd_list, eye_layer);
+        }
+        cmd_list->EndTimeblock();
+        return true;
+    }
+
+    void Renderer::Pass_Clouds(RHI_CommandList* cmd_list, uint32_t eye_layer, bool last_eye)
+    {
+        cmd_list->BeginTimeblock("clouds_composite");
+        {
+            Pass_Clouds_Composite(cmd_list, eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render));
+        }
+        cmd_list->EndTimeblock();
+
+        if (last_eye)
+        {
+            m_pass_state.cloud_history_index = 1u - m_pass_state.cloud_history_index;
+            m_pass_state.cloud_history_valid = true;
+        }
     }
 
     void Renderer::Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list)
@@ -208,9 +373,6 @@ namespace spartan
 
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
             cmd_list->Dispatch(tex_lut_brdf_specular);
-
-            // permanent srv transition
-            cmd_list->InsertBarrier(tex_lut_brdf_specular, RHI_Image_Layout::Shader_Read, 0, 1);
         }
         cmd_list->EndTimeblock();
     }
@@ -231,8 +393,6 @@ namespace spartan
 
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
                 cmd_list->Dispatch(tex_lut_atmosphere_transmittance);
-
-                tex_lut_atmosphere_transmittance->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             }
 
             // multi-scatter lut
@@ -245,8 +405,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
                 cmd_list->Dispatch(tex_lut_atmosphere_multiscatter);
-
-                tex_lut_atmosphere_multiscatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             }
         }
         cmd_list->EndTimeblock();
@@ -254,8 +412,8 @@ namespace spartan
 
     void Renderer::Pass_CloudNoise(RHI_CommandList* cmd_list)
     {
-        // bakes the 3d noise volume sampled by the cloud raymarch inside Pass_Skysphere
-        // expensive but only runs once at startup, output stays resident in shader read layout
+        // bakes the 3d noise volume sampled by the cloud passes
+        // expensive but only runs once at startup
         RHI_Texture* tex_cloud_noise = GetRenderTarget(Renderer_RenderTarget::cloud_noise);
         if (!tex_cloud_noise)
         {
@@ -277,8 +435,6 @@ namespace spartan
 
             cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_cloud_noise);
             cmd_list->Dispatch(tex_cloud_noise);
-
-            tex_cloud_noise->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }
@@ -299,10 +455,6 @@ namespace spartan
 
         cmd_list->BeginTimeblock("wind_field");
         {
-            // pre-transition to General before the pipeline bind so SetStandardResources skips
-            // the SRV binding for this texture, avoiding a self-conflict during the compute dispatch
-            tex_wind->SetLayout(RHI_Image_Layout::General, cmd_list);
-
             RHI_PipelineState pso;
             pso.name             = "wind_field";
             pso.shaders[Compute] = shader;
@@ -310,8 +462,6 @@ namespace spartan
 
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_wind);
             cmd_list->Dispatch(tex_wind);
-
-            tex_wind->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }

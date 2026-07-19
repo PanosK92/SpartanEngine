@@ -162,6 +162,8 @@ namespace spartan
         {
             switch (scope)
             {
+                case RHI_Barrier_Scope::None:
+                    return VK_PIPELINE_STAGE_2_NONE;
                 case RHI_Barrier_Scope::Graphics:
                     return VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
                            VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
@@ -301,7 +303,7 @@ namespace spartan
             if (scope_src != RHI_Barrier_Scope::Auto)
             {
                 barrier.srcStageMask  = scope_to_stages(scope_src, is_depth);
-                barrier.srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+                barrier.srcAccessMask = scope_src == RHI_Barrier_Scope::None ? VK_ACCESS_2_NONE : get<1>(get_layout_sync_info(barrier.oldLayout, false, is_depth));
             }
             else
             {
@@ -313,7 +315,7 @@ namespace spartan
             if (scope_dst != RHI_Barrier_Scope::Auto)
             {
                 barrier.dstStageMask  = scope_to_stages(scope_dst, is_depth);
-                barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+                barrier.dstAccessMask = get<1>(get_layout_sync_info(barrier.newLayout, true, is_depth));
             }
             else
             {
@@ -331,6 +333,7 @@ namespace spartan
                 VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT    |
                 VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
                 VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT  |
                 VK_PIPELINE_STAGE_2_TRANSFER_BIT       |
                 VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT   |
                 VK_PIPELINE_STAGE_2_HOST_BIT           |
@@ -339,6 +342,37 @@ namespace spartan
             VkPipelineStageFlags2 filtered = stages & compute_valid;
             return filtered ? filtered : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
         }
+    }
+
+    RHI_Image_Layout RHI_CommandList::GetTrackedImageLayout(void* image, uint32_t mip_index)
+    {
+        auto [it, inserted] = m_tracked_image_layouts.try_emplace(image);
+        if (inserted)
+        {
+            for (uint32_t mip = 0; mip < rhi_max_mip_count; mip++)
+            {
+                it->second[mip] = barrier_helpers::get_layout(nullptr, image, mip);
+            }
+        }
+        return it->second[mip_index];
+    }
+
+    void RHI_CommandList::SetTrackedImageLayout(void* image, uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout)
+    {
+        auto [it, inserted] = m_tracked_image_layouts.try_emplace(image);
+        if (inserted)
+        {
+            for (uint32_t mip = 0; mip < rhi_max_mip_count; mip++)
+            {
+                it->second[mip] = barrier_helpers::get_layout(nullptr, image, mip);
+            }
+        }
+        const uint32_t mip_end = min(mip_index + mip_range, rhi_max_mip_count);
+        for (uint32_t mip = mip_index; mip < mip_end; mip++)
+        {
+            it->second[mip] = layout;
+        }
+        barrier_helpers::set_layout(nullptr, image, mip_index, mip_range, layout);
     }
 
     void RHI_CommandList::InsertBarrier(const RHI_Barrier& barrier)
@@ -372,12 +406,12 @@ namespace spartan
                 static thread_local vector<RHI_Image_Layout> layouts;
                 layouts.clear();
                 layouts.resize(mip_range);
-                RHI_Image_Layout first_layout  = barrier_helpers::get_layout(texture, image, mip_index);
+                RHI_Image_Layout first_layout  = texture ? GetTrackedTextureLayout(texture, mip_index) : GetTrackedImageLayout(image, mip_index);
                 bool all_match_target          = true;
                 bool all_same_source           = true;
                 for (uint32_t i = 0; i < mip_range; i++)
                 {
-                    layouts[i] = barrier_helpers::get_layout(texture, image, mip_index + i);
+                    layouts[i] = texture ? GetTrackedTextureLayout(texture, mip_index + i) : GetTrackedImageLayout(image, mip_index + i);
                     if (layouts[i] != barrier.layout)
                     {
                         all_match_target = false;
@@ -420,61 +454,61 @@ namespace spartan
                     return;
                 }
 
-                // defer barriers and batch them (if eligible)
-                if (!m_render_pass_active)
-                {
-                    bool immediate = first_layout == RHI_Image_Layout::Max                  ||
-                                     first_layout == RHI_Image_Layout::Preinitialized       ||
-                                     first_layout == RHI_Image_Layout::Transfer_Source      || barrier.layout == RHI_Image_Layout::Transfer_Source      ||
-                                     first_layout == RHI_Image_Layout::Transfer_Destination || barrier.layout == RHI_Image_Layout::Transfer_Destination ||
-                                     first_layout == RHI_Image_Layout::Present_Source       || barrier.layout == RHI_Image_Layout::Present_Source;
+                const bool immediate = first_layout == RHI_Image_Layout::Max                  ||
+                                       first_layout == RHI_Image_Layout::Preinitialized       ||
+                                       first_layout == RHI_Image_Layout::Transfer_Source      || barrier.layout == RHI_Image_Layout::Transfer_Source      ||
+                                       first_layout == RHI_Image_Layout::Transfer_Destination || barrier.layout == RHI_Image_Layout::Transfer_Destination ||
+                                       first_layout == RHI_Image_Layout::Present_Source       || barrier.layout == RHI_Image_Layout::Present_Source;
 
-                    if (!immediate)
+                for (const auto& vk_barrier : vk_barriers)
+                {
+                    RHI_Image_Layout old_layout = layouts[vk_barrier.subresourceRange.baseMipLevel - mip_index];
+                    PendingBarrierInfo pending  = {};
+                    pending.barrier             = barrier;
+                    pending.image               = image;
+                    pending.aspect_mask         = aspect_mask;
+                    pending.mip_index           = vk_barrier.subresourceRange.baseMipLevel;
+                    pending.mip_range           = vk_barrier.subresourceRange.levelCount;
+                    pending.array_length        = array_length;
+                    pending.layout_old          = old_layout;
+                    pending.layout_new          = barrier.layout;
+                    pending.is_depth            = is_depth;
+                    bool merged = false;
+                    for (size_t i = m_pending_barriers.size(); i > 0; i--)
                     {
-                        for (const auto& vk_barrier : vk_barriers)
+                        PendingBarrierInfo& existing = m_pending_barriers[i - 1];
+                        if (existing.barrier.type == RHI_Barrier::Type::ImageLayout && existing.image == pending.image && existing.mip_index == pending.mip_index && existing.mip_range == pending.mip_range && existing.array_length == pending.array_length)
                         {
-                            RHI_Image_Layout old_layout = layouts[vk_barrier.subresourceRange.baseMipLevel - mip_index];
-                            PendingBarrierInfo pending  = {};
-                            pending.barrier             = barrier;
-                            pending.image               = image;
-                            pending.aspect_mask         = aspect_mask;
-                            pending.mip_index           = vk_barrier.subresourceRange.baseMipLevel;
-                            pending.mip_range           = vk_barrier.subresourceRange.levelCount;
-                            pending.array_length        = array_length;
-                            pending.layout_old          = old_layout;
-                            pending.layout_new          = barrier.layout;
-                            pending.is_depth            = is_depth;
-                            m_pending_barriers.push_back(pending);
+                            existing.barrier.layout     = barrier.layout;
+                            existing.barrier.scope_dst  = barrier.scope_dst;
+                            existing.barrier.access_dst = barrier.access_dst;
+                            existing.barrier.usage_dst  = barrier.usage_dst;
+                            existing.layout_new = barrier.layout;
+                            if (existing.layout_old == existing.layout_new)
+                            {
+                                m_pending_barriers.erase(m_pending_barriers.begin() + i - 1);
+                            }
+                            merged = true;
+                            break;
                         }
-                        barrier_helpers::set_layout(texture, image, mip_index, mip_range, barrier.layout);
-                        return;
                     }
-                }
-
-                if (m_queue->GetType() == RHI_Queue_Type::Compute)
-                {
-                    for (auto& b : vk_barriers)
+                    if (!merged)
                     {
-                        b.srcStageMask = barrier_helpers::sanitize_compute_stages(b.srcStageMask);
-                        b.dstStageMask = barrier_helpers::sanitize_compute_stages(b.dstStageMask);
+                        m_pending_barriers.push_back(pending);
                     }
                 }
-
-                // flush pending deferred barriers first, otherwise this immediate transition records before them and gpu layout drifts from the tracker
-                if (!m_pending_barriers.empty())
+                if (texture)
+                {
+                    SetTrackedTextureLayout(texture, mip_index, mip_range, barrier.layout);
+                }
+                else
+                {
+                    SetTrackedImageLayout(image, mip_index, mip_range, barrier.layout);
+                }
+                if (!m_batch_barrier_flush && (immediate || m_render_pass_active))
                 {
                     FlushBarriers();
                 }
-
-                VkDependencyInfo dependency_info        = {};
-                dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
-                dependency_info.imageMemoryBarrierCount = static_cast<uint32_t>(vk_barriers.size());
-                dependency_info.pImageMemoryBarriers    = vk_barriers.data();
-
-                RenderPassEnd();
-                vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
-                Profiler::m_rhi_pipeline_barriers++;
-                barrier_helpers::set_layout(texture, image, mip_index, mip_range, barrier.layout);
                 break;
             }
 
@@ -492,16 +526,13 @@ namespace spartan
                                               barrier.texture->GetFormat() == RHI_Format::D32_Float ||
                                               barrier.texture->GetFormat() == RHI_Format::D32_Float_S8X24_Uint;
                 pending.has_per_mip_views   = barrier.texture->HasPerMipViews();
-                pending.per_mip_count       = barrier.texture->GetMipCount();
+                pending.mip_index           = barrier.mip_index == rhi_all_mips ? 0 : barrier.mip_index;
+                pending.mip_range           = barrier.mip_index == rhi_all_mips ? barrier.texture->GetMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
+                pending.per_mip_count       = pending.mip_range;
 
-                if (pending.has_per_mip_views)
+                for (uint32_t mip = 0; mip < pending.per_mip_count; mip++)
                 {
-                    for (uint32_t mip = 0; mip < pending.per_mip_count; ++mip)
-                        pending.per_mip_layouts[mip] = barrier.texture->GetLayout(mip);
-                }
-                else
-                {
-                    pending.per_mip_layouts[0] = barrier.texture->GetLayout(0);
+                    pending.per_mip_layouts[mip] = GetTrackedTextureLayout(barrier.texture, pending.mip_index + mip);
                 }
 
                 m_pending_barriers.push_back(pending);
@@ -540,7 +571,8 @@ namespace spartan
         {
             return;
         }
-        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+        TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::Shader_Read, RHI_Barrier_Scope::Compute);
     }
 
     void RHI_CommandList::AdoptUnorderedAccess(RHI_Texture* texture)
@@ -549,7 +581,8 @@ namespace spartan
         {
             return;
         }
-        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+        TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
     }
 
     void RHI_CommandList::FlushBarriers()
@@ -619,6 +652,85 @@ namespace spartan
                     break;
             }
         };
+        auto access_to_mask = [](RHI_Resource_Access access)
+        {
+            VkAccessFlags2 mask = 0;
+            if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Read)) != 0)
+            {
+                mask |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+            }
+            if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Write)) != 0)
+            {
+                mask |= VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+            }
+            return mask;
+        };
+        auto usage_to_stage = [](RHI_Resource_Usage usage)
+        {
+            switch (usage)
+            {
+                case RHI_Resource_Usage::Vertex:
+                case RHI_Resource_Usage::Index:    return static_cast<VkPipelineStageFlags2>(VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT);
+                case RHI_Resource_Usage::Indirect: return static_cast<VkPipelineStageFlags2>(VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT);
+                case RHI_Resource_Usage::Transfer: return static_cast<VkPipelineStageFlags2>(VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+                default:                           return static_cast<VkPipelineStageFlags2>(0);
+            }
+        };
+        auto usage_to_access = [](RHI_Resource_Usage usage, RHI_Resource_Access access)
+        {
+            switch (usage)
+            {
+                case RHI_Resource_Usage::Vertex:   return static_cast<VkAccessFlags2>(VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT);
+                case RHI_Resource_Usage::Index:    return static_cast<VkAccessFlags2>(VK_ACCESS_2_INDEX_READ_BIT);
+                case RHI_Resource_Usage::Indirect: return static_cast<VkAccessFlags2>(VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT);
+                case RHI_Resource_Usage::Transfer:
+                {
+                    VkAccessFlags2 mask = 0;
+                    mask |= (static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Read)) != 0 ? VK_ACCESS_2_TRANSFER_READ_BIT : 0;
+                    mask |= (static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Write)) != 0 ? VK_ACCESS_2_TRANSFER_WRITE_BIT : 0;
+                    return mask;
+                }
+                default:                           return static_cast<VkAccessFlags2>(0);
+            }
+        };
+        auto apply_image_usage = [](VkImageMemoryBarrier2& barrier, RHI_Resource_Usage usage, RHI_Resource_Access access, bool source, bool is_depth)
+        {
+            if (usage != RHI_Resource_Usage::Attachment && usage != RHI_Resource_Usage::Transfer && usage != RHI_Resource_Usage::ShadingRate)
+            {
+                return;
+            }
+
+            VkPipelineStageFlags2 stages = 0;
+            VkAccessFlags2 access_mask   = 0;
+            if (usage == RHI_Resource_Usage::ShadingRate)
+            {
+                stages      = VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+                access_mask = VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+            }
+            else
+            {
+                stages = usage == RHI_Resource_Usage::Transfer ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : (is_depth ? VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+                if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Read)) != 0)
+                {
+                    access_mask |= usage == RHI_Resource_Usage::Transfer ? VK_ACCESS_2_TRANSFER_READ_BIT : (is_depth ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT : VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT);
+                }
+                if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Write)) != 0)
+                {
+                    access_mask |= usage == RHI_Resource_Usage::Transfer ? VK_ACCESS_2_TRANSFER_WRITE_BIT : (is_depth ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+                }
+            }
+
+            if (source)
+            {
+                barrier.srcStageMask  = stages;
+                barrier.srcAccessMask = access_mask;
+            }
+            else
+            {
+                barrier.dstStageMask  = stages;
+                barrier.dstAccessMask = access_mask;
+            }
+        };
 
         static thread_local vector<VkImageMemoryBarrier2> image_barriers;
         static thread_local vector<VkBufferMemoryBarrier2> buffer_barriers;
@@ -638,7 +750,7 @@ namespace spartan
                         effective_dst = pso_scope_hint;
                     }
 
-                    image_barriers.push_back(barrier_helpers::create_image_barrier(
+                    VkImageMemoryBarrier2 vk_barrier = barrier_helpers::create_image_barrier(
                         pending.layout_old,
                         pending.layout_new,
                         pending.image,
@@ -649,7 +761,18 @@ namespace spartan
                         pending.is_depth,
                         pending.barrier.scope_src,
                         effective_dst
-                    ));
+                    );
+                    if (pending.barrier.access_src != RHI_Resource_Access::None)
+                    {
+                        vk_barrier.srcAccessMask = access_to_mask(pending.barrier.access_src);
+                    }
+                    if (pending.barrier.access_dst != RHI_Resource_Access::None)
+                    {
+                        vk_barrier.dstAccessMask = access_to_mask(pending.barrier.access_dst);
+                    }
+                    apply_image_usage(vk_barrier, pending.barrier.usage_src, pending.barrier.access_src, true, pending.is_depth);
+                    apply_image_usage(vk_barrier, pending.barrier.usage_dst, pending.barrier.access_dst, false, pending.is_depth);
+                    image_barriers.push_back(vk_barrier);
                     break;
                 }
 
@@ -684,12 +807,23 @@ namespace spartan
                             vk_barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)];
                             vk_barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
                             vk_barrier.subresourceRange.aspectMask     = pending.aspect_mask;
-                            vk_barrier.subresourceRange.baseMipLevel   = mip;
+                            vk_barrier.subresourceRange.baseMipLevel   = pending.mip_index + mip;
                             vk_barrier.subresourceRange.levelCount     = 1;
                             vk_barrier.subresourceRange.baseArrayLayer = 0;
                             vk_barrier.subresourceRange.layerCount     = pending.array_length;
 
                             set_sync_access_masks(vk_barrier, layout, pending.barrier.sync_type);
+                            if (pending.barrier.scope_src == RHI_Barrier_Scope::None)
+                            {
+                                vk_barrier.srcAccessMask = VK_ACCESS_2_NONE;
+                            }
+                            if (pending.barrier.access_src != RHI_Resource_Access::None)
+                            {
+                                vk_barrier.srcAccessMask = access_to_mask(pending.barrier.access_src);
+                                vk_barrier.dstAccessMask = access_to_mask(pending.barrier.access_dst);
+                            }
+                            apply_image_usage(vk_barrier, pending.barrier.usage_src, pending.barrier.access_src, true, pending.is_depth);
+                            apply_image_usage(vk_barrier, pending.barrier.usage_dst, pending.barrier.access_dst, false, pending.is_depth);
                             image_barriers.push_back(vk_barrier);
                         }
                     }
@@ -708,12 +842,23 @@ namespace spartan
                             vk_barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)];
                             vk_barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
                             vk_barrier.subresourceRange.aspectMask     = pending.aspect_mask;
-                            vk_barrier.subresourceRange.baseMipLevel   = 0;
-                            vk_barrier.subresourceRange.levelCount     = pending.per_mip_count;
+                            vk_barrier.subresourceRange.baseMipLevel   = pending.mip_index;
+                            vk_barrier.subresourceRange.levelCount     = pending.mip_range;
                             vk_barrier.subresourceRange.baseArrayLayer = 0;
                             vk_barrier.subresourceRange.layerCount     = pending.array_length;
 
                             set_sync_access_masks(vk_barrier, layout, pending.barrier.sync_type);
+                            if (pending.barrier.scope_src == RHI_Barrier_Scope::None)
+                            {
+                                vk_barrier.srcAccessMask = VK_ACCESS_2_NONE;
+                            }
+                            if (pending.barrier.access_src != RHI_Resource_Access::None)
+                            {
+                                vk_barrier.srcAccessMask = access_to_mask(pending.barrier.access_src);
+                                vk_barrier.dstAccessMask = access_to_mask(pending.barrier.access_dst);
+                            }
+                            apply_image_usage(vk_barrier, pending.barrier.usage_src, pending.barrier.access_src, true, pending.is_depth);
+                            apply_image_usage(vk_barrier, pending.barrier.usage_dst, pending.barrier.access_dst, false, pending.is_depth);
                             image_barriers.push_back(vk_barrier);
                         }
                     }
@@ -738,6 +883,26 @@ namespace spartan
                     vk_barrier.offset                 = pending.barrier.offset;
                     vk_barrier.size                   = (pending.barrier.size == 0) ? VK_WHOLE_SIZE : pending.barrier.size;
 
+                    if (pending.barrier.access_src != RHI_Resource_Access::None)
+                    {
+                        vk_barrier.srcAccessMask = access_to_mask(pending.barrier.access_src);
+                        vk_barrier.dstAccessMask = access_to_mask(pending.barrier.access_dst);
+                    }
+                    if (pending.barrier.scope_src == RHI_Barrier_Scope::None)
+                    {
+                        vk_barrier.srcAccessMask = VK_ACCESS_2_NONE;
+                    }
+                    if (VkPipelineStageFlags2 stage = usage_to_stage(pending.barrier.usage_src))
+                    {
+                        vk_barrier.srcStageMask  = stage;
+                        vk_barrier.srcAccessMask = usage_to_access(pending.barrier.usage_src, pending.barrier.access_src);
+                    }
+                    if (VkPipelineStageFlags2 stage = usage_to_stage(pending.barrier.usage_dst))
+                    {
+                        vk_barrier.dstStageMask  = stage;
+                        vk_barrier.dstAccessMask = usage_to_access(pending.barrier.usage_dst, pending.barrier.access_dst);
+                    }
+
                     buffer_barriers.push_back(vk_barrier);
                     break;
                 }
@@ -758,6 +923,12 @@ namespace spartan
             }
         }
 
+        if (image_barriers.empty() && buffer_barriers.empty())
+        {
+            m_pending_barriers.clear();
+            return;
+        }
+
         VkDependencyInfo dependency_info         = {};
         dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
         dependency_info.imageMemoryBarrierCount  = static_cast<uint32_t>(image_barriers.size());
@@ -765,7 +936,9 @@ namespace spartan
         dependency_info.bufferMemoryBarrierCount = static_cast<uint32_t>(buffer_barriers.size());
         dependency_info.pBufferMemoryBarriers    = buffer_barriers.data();
 
+        m_flushing_barriers = true;
         RenderPassEnd();
+        m_flushing_barriers = false;
         vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
         m_pending_barriers.clear();
@@ -821,6 +994,7 @@ namespace spartan
 
         void set_dynamic(const RHI_PipelineState pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout)
         {
+            lock_guard<mutex> lock(RHI_Device::GetDescriptorSetMutex());
             VkDescriptorSet descriptor_set = static_cast<VkDescriptorSet>(layout->GetOrCreateDescriptorSet());
 
             array<uint32_t, 10> dynamic_offsets;
@@ -841,6 +1015,7 @@ namespace spartan
 
         void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
         {
+            lock_guard<mutex> lock(RHI_Device::GetDescriptorSetMutex());
             array<VkDescriptorSet, static_cast<size_t>(RHI_Device_Bindless_Resource::Max)> sets;
             for (size_t i = 0; i < sets.size(); i++)
             {
@@ -1059,8 +1234,6 @@ namespace spartan
             m_object_name = name;
         }
 
-        // semaphores
-        m_rendering_complete_semaphore          = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, (string(name) + "_binary").c_str());
         m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, (string(name) + "timeline").c_str());
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
@@ -1074,16 +1247,21 @@ namespace spartan
     void RHI_CommandList::Begin()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
+        ResetTrackedResources();
      
         // begin command buffer
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
     
         // set states
         m_state     = RHI_CommandListState::Recording;
         m_pso       = RHI_PipelineState();
         m_cull_mode = RHI_CullMode::Max;
+        m_scissor_valid = false;
+        m_viewport_valid = false;
+        m_vrs_valid = false;
     
         // set dynamic states
         if (m_queue->GetType() == RHI_Queue_Type::Graphics)
@@ -1130,13 +1308,9 @@ namespace spartan
         FlushBarriers();
         SP_ASSERT_VK(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)));
 
-        // only signal a binary semaphore when explicitly provided (e.g. swapchain present).
-        // the cmd list's own binary semaphore is not auto-signaled because with multi-submit
-        // per frame (async compute overlap), intermediate submits would signal it repeatedly
-        // without a corresponding wait, violating the vulkan spec for binary semaphores.
         RHI_SyncPrimitive* semaphore_binary = semaphore_signal;
 
-        m_queue->Submit(
+        m_last_timeline_signal_value = m_queue->Submit(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
             semaphore_wait,                               // wait semaphore (binary)
@@ -1145,6 +1319,7 @@ namespace spartan
             semaphore_timeline_wait,                      // wait semaphore (timeline, for cross-queue sync)
             timeline_wait_value                           // value to wait on
         );
+        CommitTrackedResources();
 
         if (semaphore_wait)
         {
@@ -1166,7 +1341,7 @@ namespace spartan
 
         // wait
         uint64_t timeout_nanoseconds = 10'000'000'000; // 10 seconds
-        m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds);
+        m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds, m_last_timeline_signal_value);
         m_state = RHI_CommandListState::Idle;
 
         if (log_wait_time)
@@ -1187,6 +1362,8 @@ namespace spartan
         {
             return;
         }
+        RenderPassEnd();
+        ResetTrackedBindings();
 
         // determine if the new render pass should clear the render targets or not
         if ((m_pso.shaders[RHI_Shader_Type::Vertex] != nullptr && m_pso.shaders[RHI_Shader_Type::Vertex] == pso.shaders[RHI_Shader_Type::Vertex]) && m_pso.render_target_array_index == pso.render_target_array_index)
@@ -1208,9 +1385,17 @@ namespace spartan
 
         // get (or create) a pipeline which matches the requested pipeline state
         m_pso = pso;
-        RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, m_descriptor_layout_current);
-
-        RenderPassBegin();
+        RHI_DescriptorSetLayout* descriptor_layout_shared = nullptr;
+        RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, descriptor_layout_shared);
+        const uint64_t descriptor_layout_key = reinterpret_cast<uint64_t>(descriptor_layout_shared);
+        auto [layout_it, inserted] = m_descriptor_layouts_local.try_emplace(descriptor_layout_key);
+        if (inserted)
+        {
+            layout_it->second = make_unique<RHI_DescriptorSetLayout>(*descriptor_layout_shared);
+        }
+        m_descriptor_layout_current = layout_it->second.get();
+        m_descriptor_layout_current->ClearBindings();
+        m_render_pass_pending = m_pso.IsGraphics();
 
         // set pipeline
         {
@@ -1229,11 +1414,6 @@ namespace spartan
             // set some dynamic states
             if (m_pso.IsGraphics())
             {
-                // binding a new pipeline invalidates all dynamic state, so reset the
-                // cached cull mode to ensure the next SetCullMode call always executes
-                m_cull_mode = RHI_CullMode::Max;
-
-                // cull mode - must be set after every pipeline bind since dynamic state is invalidated
                 if (m_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe)
                 {
                     SetCullMode(RHI_CullMode::None);
@@ -1251,10 +1431,10 @@ namespace spartan
                 scissor_rect.height = static_cast<float>(m_pso.GetHeight());
                 SetScissorRectangle(scissor_rect);
 
-                // vertex and index buffer state
-                m_buffer_id_index    = 0;
-                m_buffer_id_vertex   = 0;
-                m_buffer_id_instance = 0;
+                RHI_Viewport viewport;
+                viewport.width  = static_cast<float>(m_pso.GetWidth());
+                viewport.height = static_cast<float>(m_pso.GetHeight());
+                SetViewport(viewport);
             }
 
         }
@@ -1266,7 +1446,6 @@ namespace spartan
 
             // set standard resources (dynamic descriptors)
             Renderer::SetStandardResources(this);
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout(), m_descriptor_layout_current);
         }
     }
 
@@ -1321,12 +1500,14 @@ namespace spartan
     void RHI_CommandList::RenderPassBegin()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        RenderPassEnd();
-    
+        SP_ASSERT(!m_render_pass_active);
+        m_render_pass_pending = false;
+
         if (!m_pso.IsGraphics())
         {
             return;
         }
+        SynchronizeRenderTargets();
     
         VkRenderingInfo rendering_info      = {};
         rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
@@ -1386,7 +1567,7 @@ namespace spartan
                     color_attachment.imageView                 = m_pso.is_multiview && rt->GetRhiRtvMultiview()
                         ? static_cast<VkImageView>(rt->GetRhiRtvMultiview())
                         : static_cast<VkImageView>(rt->GetRhiRtv(m_pso.render_target_array_index));
-                    color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
+                    color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(GetTrackedTextureLayout(rt, 0))];
                     color_attachment.loadOp                    = m_load_color_render_targets[i] ? VK_ATTACHMENT_LOAD_OP_LOAD : get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
                     color_attachment.clearValue.color          = { m_pso.clear_color[i].r, m_pso.clear_color[i].g, m_pso.clear_color[i].b, m_pso.clear_color[i].a };
@@ -1419,9 +1600,9 @@ namespace spartan
             attachment_depth_stencil.imageView                       = m_pso.is_multiview && rt->GetRhiDsvMultiview()
                 ? static_cast<VkImageView>(rt->GetRhiDsvMultiview())
                 : static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_array_index));
-            attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
+            attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(GetTrackedTextureLayout(rt, 0))];
             attachment_depth_stencil.loadOp                          = m_load_depth_render_target ? VK_ATTACHMENT_LOAD_OP_LOAD : get_depth_load_op(m_pso.clear_depth);
-            attachment_depth_stencil.storeOp                         = m_pso.depth_stencil_state->GetDepthWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_NONE;
+            attachment_depth_stencil.storeOp                         = VK_ATTACHMENT_STORE_OP_STORE;
             attachment_depth_stencil.clearValue.depthStencil.depth   = m_pso.clear_depth;
             attachment_depth_stencil.clearValue.depthStencil.stencil = m_pso.clear_stencil;
     
@@ -1443,7 +1624,7 @@ namespace spartan
     
             attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
             attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrs_input_texture->GetRhiRtv());
-            attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(m_pso.vrs_input_texture->GetLayout(0))];
+            attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(GetTrackedTextureLayout(m_pso.vrs_input_texture, 0))];
             attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
     
             rendering_info.pNext = &attachment_shading_rate;
@@ -1457,19 +1638,12 @@ namespace spartan
         {
             // variable rate shading
             RHI_Device::SetVariableRateShading(this, m_pso.vrs_input_texture != nullptr);
-    
-            // set viewport
-            RHI_Viewport viewport;
-            viewport.width  = static_cast<float>(m_pso.GetWidth());
-            viewport.height = static_cast<float>(m_pso.GetHeight());
-            SetViewport(viewport);
         }
     
-        // reset
-        m_load_depth_render_target = false;
+        m_load_depth_render_target = m_pso.render_target_depth_texture != nullptr;
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
-            m_load_color_render_targets[i] = false;
+            m_load_color_render_targets[i] = m_pso.render_target_color_textures[i] != nullptr;
         }
         m_render_pass_active = true;
     }
@@ -1481,6 +1655,11 @@ namespace spartan
 
     void RHI_CommandList::RenderPassEnd()
     {
+        if (m_render_pass_pending && !m_flushing_barriers)
+        {
+            RenderPassBegin();
+        }
+
         if (!m_render_pass_active)
         {
             return;
@@ -1560,8 +1739,8 @@ namespace spartan
         SP_ASSERT_MSG((texture->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearBlit flag");
         SP_ASSERT(texture && texture->GetRhiSrv());
 
-        // one of the required layouts for clear functions
-        texture->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
+        PrepareForExternalWrite(texture, RHI_Image_Layout::Transfer_Destination, RHI_Barrier_Scope::Transfer);
+        FlushBarriers();
 
         VkImageSubresourceRange image_subresource_range = {};
         image_subresource_range.baseMipLevel            = 0;
@@ -1599,6 +1778,7 @@ namespace spartan
                 1,
                 &image_subresource_range);
         }
+        TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::Transfer_Destination, RHI_Barrier_Scope::Transfer, RHI_Resource_Usage::Transfer);
     }
 
     void RHI_CommandList::Draw(const uint32_t vertex_count, const uint32_t vertex_start_index /*= 0*/)
@@ -1639,6 +1819,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(args_buffer != nullptr);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
 
@@ -1659,6 +1840,8 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(args_buffer  != nullptr);
         SP_ASSERT(count_buffer != nullptr);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
+        TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
 
@@ -1682,6 +1865,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(args_buffer != nullptr);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
 
@@ -1710,6 +1894,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(args_buffer != nullptr);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
 
@@ -1827,8 +2012,16 @@ namespace spartan
         }
 
         // save the initial layouts
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = source->GetLayouts();
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
+        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = {};
+        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = {};
+        for (uint32_t mip = 0; mip < source->GetMipCount(); mip++)
+        {
+            layouts_initial_source[mip] = GetTrackedTextureLayout(source, mip);
+        }
+        for (uint32_t mip = 0; mip < destination->GetMipCount(); mip++)
+        {
+            layouts_initial_destination[mip] = GetTrackedTextureLayout(destination, mip);
+        }
 
         // transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
@@ -1873,8 +2066,8 @@ namespace spartan
         SP_ASSERT((source->GetFlags() & RHI_Texture_ClearBlit) != 0);
         SP_ASSERT((destination->GetFlags() & RHI_Texture_ClearBlit) != 0);
 
-        RHI_Image_Layout src_layout_initial = source->GetLayout(0);
-        RHI_Image_Layout dst_layout_initial = destination->GetLayout(0);
+        RHI_Image_Layout src_layout_initial = GetTrackedTextureLayout(source, 0);
+        RHI_Image_Layout dst_layout_initial = GetTrackedTextureLayout(destination, 0);
 
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
@@ -1940,7 +2133,7 @@ namespace spartan
         blit_region.dstOffsets[1]                 = destination_blit_size;
 
         // save the initial layout
-        RHI_Image_Layout source_layout_initial = source->GetLayout(0);
+        RHI_Image_Layout source_layout_initial = GetTrackedTextureLayout(source, 0);
         if (source_layout_initial == RHI_Image_Layout::Max)
         {
             source_layout_initial = RHI_Image_Layout::General;
@@ -1996,7 +2189,7 @@ namespace spartan
         uint32_t dst_height = Xr::GetRecommendedHeight();
 
         // save the initial layout
-        RHI_Image_Layout source_layout_initial = source->GetLayout(0);
+        RHI_Image_Layout source_layout_initial = GetTrackedTextureLayout(source, 0);
         if (source_layout_initial == RHI_Image_Layout::Max)
         {
             source_layout_initial = RHI_Image_Layout::General;
@@ -2145,8 +2338,16 @@ namespace spartan
         }
 
         // save the initial layouts
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source = source->GetLayouts();
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
+        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = {};
+        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = {};
+        for (uint32_t mip = 0; mip < source->GetMipCount(); mip++)
+        {
+            layouts_initial_source[mip] = GetTrackedTextureLayout(source, mip);
+        }
+        for (uint32_t mip = 0; mip < destination->GetMipCount(); mip++)
+        {
+            layouts_initial_destination[mip] = GetTrackedTextureLayout(destination, mip);
+        }
 
         // transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
@@ -2197,7 +2398,7 @@ namespace spartan
         copy_region.extent.depth              = 1;
 
         // transition to blit appropriate layouts
-        RHI_Image_Layout layout_initial_source = source->GetLayout(0);
+        RHI_Image_Layout layout_initial_source = GetTrackedTextureLayout(source, 0);
         if (layout_initial_source == RHI_Image_Layout::Max)
         {
             layout_initial_source = RHI_Image_Layout::General;
@@ -2224,15 +2425,9 @@ namespace spartan
         SP_ASSERT_MSG(source && destination, "Invalid source/destination");
         SP_ASSERT_MSG(source->GetWidth() && source->GetHeight(), "Source must have valid dimensions");
 
-        // barrier to transfer src
-        InsertBarrier(
-            source->GetRhiResource(),
-            source->GetFormat(),
-            0,  // mip start
-            1,  // mip count
-            1,  // array length
-            RHI_Image_Layout::Transfer_Source
-        );
+        RHI_Image_Layout layout_initial = GetTrackedTextureLayout(source, 0);
+        InsertBarrier(source, RHI_Image_Layout::Transfer_Source, 0, 1);
+        FlushBarriers();
 
         // copy region (single mip/full extent)
         VkBufferImageCopy region{};
@@ -2254,15 +2449,24 @@ namespace spartan
             1, &region
         );
 
-        // barrier back to shader read (or your tracked layout)
-        InsertBarrier(
-            source->GetRhiResource(),
-            source->GetFormat(),
-            0,
-            1,
-            1,
-            RHI_Image_Layout::Shader_Read
-        );
+        InsertBarrier(source, layout_initial, 0, 1);
+
+        VkBufferMemoryBarrier2 buffer_barrier = {};
+        buffer_barrier.sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        buffer_barrier.srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        buffer_barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        buffer_barrier.dstStageMask  = VK_PIPELINE_STAGE_2_HOST_BIT;
+        buffer_barrier.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+        buffer_barrier.buffer        = static_cast<VkBuffer>(destination->GetRhiResource());
+        buffer_barrier.offset        = 0;
+        buffer_barrier.size          = VK_WHOLE_SIZE;
+
+        VkDependencyInfo dependency_info = {};
+        dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependency_info.bufferMemoryBarrierCount = 1;
+        dependency_info.pBufferMemoryBarriers    = &buffer_barrier;
+        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(GetRhiResource()), &dependency_info);
+        Profiler::m_rhi_pipeline_barriers++;
     }
 
     void RHI_CommandList::CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size)
@@ -2298,6 +2502,18 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(viewport.width != 0);
         SP_ASSERT(viewport.height != 0);
+        if (m_viewport_valid && m_viewport_x == viewport.x && m_viewport_y == viewport.y && m_viewport_width == viewport.width && m_viewport_height == viewport.height && m_viewport_depth_min == viewport.depth_min && m_viewport_depth_max == viewport.depth_max)
+        {
+            return;
+        }
+
+        m_viewport_x         = viewport.x;
+        m_viewport_y         = viewport.y;
+        m_viewport_width     = viewport.width;
+        m_viewport_height    = viewport.height;
+        m_viewport_depth_min = viewport.depth_min;
+        m_viewport_depth_max = viewport.depth_max;
+        m_viewport_valid     = true;
 
         VkViewport vk_viewport = {};
         vk_viewport.x          = viewport.x;
@@ -2318,6 +2534,16 @@ namespace spartan
     void RHI_CommandList::SetScissorRectangle(const math::Rectangle& scissor_rectangle) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (m_scissor_valid && m_scissor_x == scissor_rectangle.x && m_scissor_y == scissor_rectangle.y && m_scissor_width == scissor_rectangle.width && m_scissor_height == scissor_rectangle.height)
+        {
+            return;
+        }
+
+        m_scissor_x      = scissor_rectangle.x;
+        m_scissor_y      = scissor_rectangle.y;
+        m_scissor_width  = scissor_rectangle.width;
+        m_scissor_height = scissor_rectangle.height;
+        m_scissor_valid  = true;
 
         VkRect2D vk_scissor;
         vk_scissor.offset.x      = static_cast<int32_t>(scissor_rectangle.x);
@@ -2357,6 +2583,8 @@ namespace spartan
         {
             instance = Renderer::GetBuffer(Renderer_Buffer::DummyInstance);
         }
+        TrackBufferRead(0, const_cast<RHI_Buffer*>(vertex), RHI_Resource_Usage::Vertex);
+        TrackBufferRead(1, instance, RHI_Resource_Usage::Vertex);
     
         // prepare buffers and offsets arrays
         VkBuffer vertex_buffers[2] = {
@@ -2391,6 +2619,7 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(buffer != nullptr);
         SP_ASSERT(buffer->GetRhiResource() != nullptr);
+        TrackBufferRead(2, const_cast<RHI_Buffer*>(buffer), RHI_Resource_Usage::Index);
 
         if (m_buffer_id_index == buffer->GetObjectId())
         {
@@ -2462,70 +2691,62 @@ namespace spartan
 
         if (!m_descriptor_layout_current)
         {
-            SP_LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetObjectName().c_str());
+            TrackTextureUsage(slot, nullptr, mip_index, mip_range, array_layer, uav);
+            return;
+        }
+        if (!IsTextureBindingUsed(slot, uav))
+        {
             return;
         }
 
         // if the texture is null or it's still loading, ignore it
         if (!texture || texture->GetResourceState() != ResourceState::PreparedForGpu)
         {
+            if (m_descriptor_layout_current->SetTexture(slot, nullptr, mip_index, mip_range, array_layer, uav ? RHI_Image_Layout::General : RHI_Image_Layout::Shader_Read, uav))
+            {
+                TrackTextureUsage(slot, nullptr, mip_index, mip_range, array_layer, uav);
+                m_bind_dynamic = true;
+            }
             return;
         }
 
-        // get some texture info
-        const uint32_t mip_count        = texture->GetMipCount();
-        const bool mip_specified        = mip_index != rhi_all_mips;
-        const uint32_t mip_start        = mip_specified ? mip_index : 0;
-        RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
-
-        SP_ASSERT_MSG(current_layout != RHI_Image_Layout::Preinitialized, "Invalid layout");
-
-        // transition to appropriate layout (if needed)
+        RHI_Image_Layout target_layout = RHI_Image_Layout::Shader_Read;
+        if (uav)
         {
-            RHI_Image_Layout target_layout = RHI_Image_Layout::Max;
-            if (uav)
-            {
-                SP_ASSERT(texture->IsUav());
-                
-                // according to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
-                // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
-                target_layout = RHI_Image_Layout::General;
-            }
-            else
-            {
-                SP_ASSERT(texture->IsSrv());
-                target_layout = RHI_Image_Layout::Shader_Read;
-            }
-
-            // verify that an appropriate layout has been deduced
-            SP_ASSERT(target_layout != RHI_Image_Layout::Max);
-
-            // determine if a layout transition is needed
-            bool transition_required = current_layout != target_layout;
-            {
-                bool rest_mips_have_same_layout = true;
-                array<RHI_Image_Layout, rhi_max_mip_count> layouts = texture->GetLayouts();
-                for (uint32_t i = mip_start; i < mip_count; i++)
-                {
-                    if (target_layout != layouts[i])
-                    {
-                        rest_mips_have_same_layout = false;
-                        break;
-                    }
-                }
-
-                transition_required = !rest_mips_have_same_layout ? true : transition_required;
-            }
-
-            // transition
-            if (transition_required)
-            {
-                texture->SetLayout(target_layout, this, mip_index, mip_range);
-            }
+            SP_ASSERT(texture->IsUav());
+            target_layout = RHI_Image_Layout::General;
+        }
+        else
+        {
+            SP_ASSERT(texture->IsSrv());
         }
 
-        // set (will only happen if it's not already set)
-        m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range, array_layer);
+        const bool is_attachment = find(m_pso.render_target_color_textures.begin(), m_pso.render_target_color_textures.end(), texture) != m_pso.render_target_color_textures.end() || m_pso.render_target_depth_texture == texture;
+        if (is_attachment)
+        {
+            if (m_descriptor_layout_current->SetTexture(slot, nullptr, mip_index, mip_range, array_layer, target_layout, uav))
+            {
+                TrackTextureUsage(slot, nullptr, mip_index, mip_range, array_layer, uav);
+                m_bind_dynamic = true;
+            }
+            return;
+        }
+
+        if (!m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range, array_layer, target_layout, uav))
+        {
+            return;
+        }
+        TrackTextureUsage(slot, texture, mip_index, mip_range, array_layer, uav);
+
+        if (m_descriptor_layout_current->ResolveTextureBindingOverlap(texture, mip_index, mip_range, array_layer, !uav))
+        {
+            target_layout = RHI_Image_Layout::General;
+            if (slot < m_max_tracked_resource_slots)
+            {
+                (uav ? m_tracked_textures_uav[slot] : m_tracked_textures_srv[slot]).layout = RHI_Image_Layout::General;
+            }
+            m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range, array_layer, target_layout, uav);
+        }
 
         // todo: detect if there are changes, otherwise don't bother binding
         m_bind_dynamic = true;
@@ -2543,6 +2764,8 @@ namespace spartan
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        const RHI_Resource_Access access = GetBufferAccess(slot);
+        TrackBufferUsage(slot, buffer && buffer->GetRhiResource() && access != RHI_Resource_Access::None ? buffer : nullptr, access);
 
         if (!m_descriptor_layout_current)
         {
@@ -3002,11 +3225,19 @@ namespace spartan
 
     void RHI_CommandList::PreDraw()
     {
-        FlushBarriers();
-
-        if (!m_render_pass_active && m_pso.IsGraphics())
+        SynchronizeResources();
+        if (m_render_pass_pending)
         {
             RenderPassBegin();
+        }
+        else
+        {
+            FlushBarriers();
+            if (!m_render_pass_active && m_pso.IsGraphics())
+            {
+                m_render_pass_pending = true;
+                RenderPassBegin();
+            }
         }
 
         if (m_bind_dynamic)

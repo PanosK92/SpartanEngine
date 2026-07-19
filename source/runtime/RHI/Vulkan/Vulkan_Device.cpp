@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
+#include "../RHI_CommandList.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -261,10 +262,14 @@ namespace spartan
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",          // to obtain precise memory usage information from Vulkan Memory Allocator
+            "VK_EXT_memory_priority",
+            "VK_EXT_pageable_device_local_memory",
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_KHR_robustness2",
             "VK_KHR_synchronization2",
+            "VK_KHR_push_descriptor",
+            "VK_KHR_compute_shader_derivatives",
             "VK_KHR_get_memory_requirements2",
             "VK_EXT_mutable_descriptor_type", // added for XeSS mutable descriptor support
             // openxr requirements
@@ -281,6 +286,9 @@ namespace spartan
             "VK_KHR_ray_query",
             "VK_KHR_ray_tracing_maintenance1"
         };
+        bool memory_priority_supported              = false;
+        bool memory_priority_enabled                = false;
+        bool pageable_device_local_memory_supported = false;
 
         vector<const char*> get_extensions_device()
         {
@@ -307,6 +315,8 @@ namespace spartan
                 if (found)
                 {
                     extensions_supported.emplace_back(requested);
+                    memory_priority_supported              |= strcmp(requested, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) == 0;
+                    pageable_device_local_memory_supported |= strcmp(requested, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME) == 0;
                 }
                 else
                 {
@@ -699,6 +709,10 @@ namespace spartan
             allocator_info.instance               = RHI_Context::instance;
             allocator_info.vulkanApiVersion       = vulkan_version::used;
             allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+            if (extensions::memory_priority_enabled)
+            {
+                allocator_info.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT;
+            }
             if (RHI_Device::IsSupportedRayTracing())
             {
                 allocator_info.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
@@ -748,7 +762,7 @@ namespace spartan
         unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> layouts;
         unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
         unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
-        uint64_t current_frame = 0;
+        atomic<uint64_t> current_frame = 0;
 
         const string pipeline_cache_path = "pipeline_cache.bin";
 
@@ -1061,7 +1075,7 @@ namespace spartan
                                                               VK_SHADER_STAGE_MISS_BIT_KHR |
                                                               VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
-                VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+                VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
 
                 VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {};
                 binding_flags_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
@@ -1203,11 +1217,13 @@ namespace spartan
     {
         VkPhysicalDeviceFeatures2 features                                           = {};
         VkPhysicalDeviceRobustness2FeaturesEXT features_robustness                   = {};
-        VkPhysicalDeviceVulkan14Features features_1_4                                = {};
         VkPhysicalDeviceVulkan13Features features_1_3                                = {};
         VkPhysicalDeviceVulkan12Features features_1_2                                = {};
         VkPhysicalDeviceVulkan11Features features_1_1                                = {};
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs                  = {};
+        VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR features_derivatives     = {};
+        VkPhysicalDeviceMemoryPriorityFeaturesEXT features_memory_priority           = {};
+        VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT features_pageable_memory = {};
         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT features_mutable_descriptor = {}; // xess
         VkPhysicalDeviceRayQueryFeaturesKHR features_ray_query                       = {};
         VkPhysicalDeviceAccelerationStructureFeaturesKHR features_accel_struct       = {};
@@ -1218,18 +1234,22 @@ namespace spartan
             // features that will be enabled
             features_vrs.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
             features_vrs.pNext                  = nullptr;
+            features_derivatives.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR;
+            features_derivatives.pNext          = &features_vrs;
+            features_memory_priority.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
+            features_memory_priority.pNext      = &features_derivatives;
+            features_pageable_memory.sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT;
+            features_pageable_memory.pNext      = extensions::memory_priority_supported ? static_cast<void*>(&features_memory_priority) : static_cast<void*>(&features_derivatives);
             features_robustness.sType           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            features_robustness.pNext           = &features_vrs;
+            features_robustness.pNext           = extensions::pageable_device_local_memory_supported ? static_cast<void*>(&features_pageable_memory) : (extensions::memory_priority_supported ? static_cast<void*>(&features_memory_priority) : static_cast<void*>(&features_derivatives));
             features_1_1.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
             features_1_1.pNext                  = &features_robustness;
             features_1_2.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
             features_1_2.pNext                  = &features_1_1;
             features_1_3.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
             features_1_3.pNext                  = &features_1_2;
-            features_1_4.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-            features_1_4.pNext                  = &features_1_3;
             features_mutable_descriptor.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
-            features_mutable_descriptor.pNext   = &features_1_4;
+            features_mutable_descriptor.pNext   = &features_1_3;
             features_accel_struct.sType         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
             features_accel_struct.pNext         = &features_mutable_descriptor;
             features_ray_query.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
@@ -1242,9 +1262,18 @@ namespace spartan
             // detect which features are supported
             VkPhysicalDeviceFragmentShadingRateFeaturesKHR support_vrs                  = {};
             support_vrs.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR support_derivatives     = {};
+            support_derivatives.sType                                                   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR;
+            support_derivatives.pNext                                                   = &support_vrs;
+            VkPhysicalDeviceMemoryPriorityFeaturesEXT support_memory_priority            = {};
+            support_memory_priority.sType                                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
+            support_memory_priority.pNext                                                = &support_derivatives;
+            VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT support_pageable_memory = {};
+            support_pageable_memory.sType                                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT;
+            support_pageable_memory.pNext                                                = extensions::memory_priority_supported ? static_cast<void*>(&support_memory_priority) : static_cast<void*>(&support_derivatives);
             VkPhysicalDeviceRobustness2FeaturesEXT support_robustness                   = {};
             support_robustness.sType                                                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            support_robustness.pNext                                                    = &support_vrs;
+            support_robustness.pNext                                                    = extensions::pageable_device_local_memory_supported ? static_cast<void*>(&support_pageable_memory) : (extensions::memory_priority_supported ? static_cast<void*>(&support_memory_priority) : static_cast<void*>(&support_derivatives));
             VkPhysicalDeviceVulkan11Features support_1_1                                = {};
             support_1_1.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
             support_1_1.pNext                                                           = &support_robustness;
@@ -1254,12 +1283,9 @@ namespace spartan
             VkPhysicalDeviceVulkan13Features support_1_3                                = {};
             support_1_3.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
             support_1_3.pNext                                                           = &support_1_2;
-            VkPhysicalDeviceVulkan14Features support_1_4                                = {};
-            support_1_4.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-            support_1_4.pNext                                                           = &support_1_3;
             VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT support_mutable_descriptor = {};
             support_mutable_descriptor.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
-            support_mutable_descriptor.pNext                                            = &support_1_4;
+            support_mutable_descriptor.pNext                                            = &support_1_3;
             VkPhysicalDeviceAccelerationStructureFeaturesKHR support_accel_struct       = {};
             support_accel_struct.sType                                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
             support_accel_struct.pNext                                                  = &support_mutable_descriptor;
@@ -1284,13 +1310,19 @@ namespace spartan
                     // support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
                     features_vrs.attachmentFragmentShadingRate = VK_TRUE;
                 }
-                else
-                {
-                    support_robustness.pNext = features_vrs.pNext; // remove from chain
-                }
 
                 // misc
                 {
+                    features_derivatives.computeDerivativeGroupQuads = support_derivatives.computeDerivativeGroupQuads;
+                    features_derivatives.computeDerivativeGroupLinear = support_derivatives.computeDerivativeGroupLinear;
+                    features_memory_priority.memoryPriority = support_memory_priority.memoryPriority;
+                    features_pageable_memory.pageableDeviceLocalMemory = support_pageable_memory.pageableDeviceLocalMemory;
+                    extensions::memory_priority_enabled = features_memory_priority.memoryPriority == VK_TRUE;
+                    features_1_2.vulkanMemoryModel = support_1_2.vulkanMemoryModel;
+                    features_1_2.vulkanMemoryModelDeviceScope = support_1_2.vulkanMemoryModelDeviceScope;
+                    features_1_2.storageBuffer8BitAccess = support_1_2.storageBuffer8BitAccess;
+                    features_1_1.storageBuffer16BitAccess = support_1_1.storageBuffer16BitAccess;
+
                     // tessellation
                     SP_ASSERT(support.features.tessellationShader == VK_TRUE);
                     features.features.tessellationShader = VK_TRUE;
@@ -1371,6 +1403,9 @@ namespace spartan
                     SP_ASSERT(support_1_2.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
                     features_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 
+                    SP_ASSERT(support_1_2.descriptorBindingStorageBufferUpdateAfterBind == VK_TRUE);
+                    features_1_2.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+
                     SP_ASSERT(support_1_2.descriptorBindingPartiallyBound == VK_TRUE);
                     features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
@@ -1383,9 +1418,6 @@ namespace spartan
                     SP_ASSERT(support_robustness.nullDescriptor == VK_TRUE);
                     features_robustness.nullDescriptor = VK_TRUE;
 
-                    // My 6900 XT doesn't support this even though vulkan 1.4 is "supported", classic AMD...
-                    //SP_ASSERT(support_1_4.pushDescriptor == VK_TRUE);
-                    //features_1_4.pushDescriptor = VK_TRUE;
                 }
 
                 // amd fidelityfx cas/spd
@@ -1768,6 +1800,7 @@ namespace spartan
                 }
             }
   
+            vector<const char*> extensions_supported = extensions::get_extensions_device();
             device_features::detect(&m_is_shading_rate_supported, &m_xess_supported, &m_is_ray_tracing_supported);
 
             // create
@@ -1777,7 +1810,6 @@ namespace spartan
                 create_info.queueCreateInfoCount         = static_cast<uint32_t>(queue_create_infos.size());
                 create_info.pQueueCreateInfos            = queue_create_infos.data();
                 create_info.pNext                        = &device_features::features;
-                vector<const char*> extensions_supported = extensions::get_extensions_device();
                 create_info.enabledExtensionCount        = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
@@ -1819,7 +1851,7 @@ namespace spartan
         // budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation
         vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, static_cast<uint32_t>(frame_count));
 
-        descriptors::current_frame = frame_count;
+        descriptors::current_frame.store(frame_count, memory_order_relaxed);
 
         // evict descriptor sets unused for 300+ frames to prevent unbounded growth
         constexpr uint64_t max_unused_frames = 300;
@@ -1842,7 +1874,7 @@ namespace spartan
 
     uint64_t RHI_Device::GetDescriptorSetFrame()
     {
-        return descriptors::current_frame;
+        return descriptors::current_frame.load(memory_order_relaxed);
     }
 
     void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
@@ -1856,6 +1888,7 @@ namespace spartan
             return;
         }
 
+        lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
         for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
         {
             if (it->second.IsReferingToResource(resource))
@@ -2141,6 +2174,11 @@ namespace spartan
         return descriptors::sets;
     }
 
+    mutex& RHI_Device::GetDescriptorSetMutex()
+    {
+        return descriptors::descriptor_pipeline_mutex;
+    }
+
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
     {
         if (descriptor.type == RHI_Descriptor_Type::Image)
@@ -2172,8 +2210,9 @@ namespace spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
+    void RHI_Device::UpdateBindlessMaterials(RHI_CommandList* cmd_list, array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
     {
+        lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
         if (textures)
         {
             descriptors::bindless::update_textures(textures);
@@ -2189,6 +2228,7 @@ namespace spartan
     {
         if (parameters)
         {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
             descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::LightParameters, parameters);
         }
     }
@@ -2197,6 +2237,7 @@ namespace spartan
     {
         if (samplers)
         {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
             descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersComparison, &(*samplers)[0], 1);
             descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersRegular, &(*samplers)[1], 8);
         }
@@ -2206,6 +2247,7 @@ namespace spartan
     {
         if (buffer)
         {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
             descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::Aabbs, buffer);
         }
     }
@@ -2214,6 +2256,7 @@ namespace spartan
     {
         if (buffer)
         {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
             descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::DrawData, buffer);
         }
     }
@@ -2222,6 +2265,7 @@ namespace spartan
     {
         if (buffer)
         {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
             descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::GeometryVertices, buffer);
         }
     }
@@ -2230,6 +2274,7 @@ namespace spartan
     {
         if (buffer)
         {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
             descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::GeometryIndices, buffer);
         }
     }
@@ -2238,6 +2283,7 @@ namespace spartan
     {
         if (buffer)
         {
+            lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
             descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::Instances, buffer);
         }
     }
@@ -2296,12 +2342,32 @@ namespace spartan
         buffer_create_info.size               = size;
         buffer_create_info.usage              = flags_usage;
         buffer_create_info.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
+        array<uint32_t, 3> queue_families      = {};
+        uint32_t queue_family_count            = 0;
+        auto add_queue_family = [&](uint32_t queue_family)
+        {
+            if (find(queue_families.begin(), queue_families.begin() + queue_family_count, queue_family) == queue_families.begin() + queue_family_count)
+            {
+                queue_families[queue_family_count++] = queue_family;
+            }
+        };
+        add_queue_family(queues::index_graphics);
+        add_queue_family(queues::index_compute);
+        add_queue_family(queues::index_copy);
+        if (queue_family_count > 1)
+        {
+            buffer_create_info.sharingMode           = VK_SHARING_MODE_CONCURRENT;
+            buffer_create_info.queueFamilyIndexCount = queue_family_count;
+            buffer_create_info.pQueueFamilyIndices   = queue_families.data();
+        }
 
         // allocation info
         VmaAllocationCreateInfo allocation_create_info = {};
         allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
         allocation_create_info.flags                   = 0;            // flags vma
         allocation_create_info.requiredFlags           = flags_memory; // flags vulkan
+        bool gpu_writable = (flags_usage & (VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR)) != 0;
+        allocation_create_info.priority = gpu_writable ? 0.9f : ((flags_memory & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0 ? 0.7f : 0.3f);
         
         // for large buffers (>16mb), use dedicated allocations to avoid vma pooling
         const uint64_t size_16_mb = 16 * 1024 * 1024;
@@ -2429,6 +2495,8 @@ namespace spartan
             VmaAllocationCreateInfo create_info_allocation  = {};
             create_info_allocation.usage                    = VMA_MEMORY_USAGE_AUTO;
             create_info_allocation.flags                    = (texture->GetFlags() & RHI_Texture_Mappable) ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
+            bool gpu_writable = texture->IsRtv() || texture->IsDsv() || texture->IsUav();
+            create_info_allocation.priority = texture->GetFlags() & RHI_Texture_Mappable ? 0.3f : (gpu_writable ? 0.9f : 0.7f);
             
             // for large textures (>16mb), use dedicated allocations to avoid vma pooling
             // this ensures memory is returned to the driver when freed rather than held in pools
@@ -2666,6 +2734,12 @@ namespace spartan
         {
             return;
         }
+        if (cmd_list->m_vrs_valid && cmd_list->m_vrs_enabled == enabled)
+        {
+            return;
+        }
+        cmd_list->m_vrs_enabled = enabled;
+        cmd_list->m_vrs_valid   = true;
 
         // set the fragment shading rate state for the current pipeline
         VkExtent2D fragment_size = { 1, 1 };

@@ -118,6 +118,11 @@ namespace spartan
         void ClearData();
         void PrepareForGpu();
         void DestroyResourceImmediate();
+        void InvalidateGpuState() { ClearLayouts(); }
+        RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layouts[mip]; }
+        const std::array<RHI_Image_Layout, rhi_max_mip_count>& GetLayouts() const { return m_layouts; }
+        void SetLayoutDirect(uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout);
+        void ClearLayouts();
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
         static void ShutdownCompressionPool();
 
@@ -155,13 +160,6 @@ namespace spartan
                    m_bits_per_channel == 8                          &&
                    !(IsRtv() || IsDsv());
         }
-
-        // layout
-        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
-        RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layouts[mip]; }
-        const std::array<RHI_Image_Layout, rhi_max_mip_count>& GetLayouts() const { return m_layouts; }
-        void SetLayoutDirect(uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout);
-        void ClearLayouts();
 
         // viewport
         const auto& GetViewport() const { return m_viewport; }
@@ -207,6 +205,13 @@ namespace spartan
         void* m_mapped_data                                             = nullptr;
 
     private:
+        friend class RHI_CommandList;
+        friend class RHI_DescriptorSet;
+        friend class RHI_DescriptorSetLayout;
+        friend class RHI_Device;
+        friend class RHI_VendorTechnology;
+
+        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0);
         void ComputeMemoryUsage();
     };
 }

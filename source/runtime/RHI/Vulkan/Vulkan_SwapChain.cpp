@@ -529,7 +529,7 @@ namespace spartan
                 { 
                     cmd_list->WaitForExecution();
                 }
-                SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Idle);
+                signal_semaphore->SetUserCmdList(nullptr);
             }
 
             // acquire with a reasonable timeout

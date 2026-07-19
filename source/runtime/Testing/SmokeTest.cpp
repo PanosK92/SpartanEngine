@@ -280,22 +280,7 @@ namespace spartan
 
         if (RHI_CommandList* cmd = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
-            cmd->InsertBarrier(
-                texture->GetRhiResource(),
-                texture->GetFormat(),
-                0, 1, 1,
-                RHI_Image_Layout::Attachment
-            );
-
-            // Clear
             cmd->ClearTexture(texture.get(), Color(1, 0, 0, 1));
-
-            cmd->InsertBarrier(
-                texture->GetRhiResource(),
-                texture->GetFormat(),
-                0, 1, 1,
-                RHI_Image_Layout::Shader_Read
-            );
 
             RHI_CommandList::ImmediateExecutionEnd(cmd);
         }
@@ -314,19 +299,14 @@ namespace spartan
             RHI_Texture_Type::Type2D,
             64, 64, 1, 1,
             RHI_Format::R8G8B8A8_Unorm,
-            RHI_Texture_Srv | RHI_Texture_Uav,
+            RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_ClearBlit,
             "smoke_test_barrier"
         );
 
         if (RHI_CommandList* cmd = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
-            cmd->InsertBarrier(
-                texture->GetRhiResource(),
-                texture->GetFormat(),
-                0, 1, 1,
-                RHI_Image_Layout::General
-            );
-
+            cmd->ClearTexture(texture.get(), Color(1, 0, 0, 1));
+            cmd->ClearTexture(texture.get(), Color(0, 1, 0, 1));
             RHI_CommandList::ImmediateExecutionEnd(cmd);
         }
         else

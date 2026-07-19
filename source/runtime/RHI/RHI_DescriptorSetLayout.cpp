@@ -54,9 +54,24 @@ namespace spartan
         {
             m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.slot));
             m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.stage));
+            m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.type));
+            m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.as_array));
+            m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.array_length));
+            m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.struct_size));
         }
 
         CreateRhiResource();
+    }
+
+    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_DescriptorSetLayout& source)
+    {
+        m_object_name    = source.m_object_name;
+        m_rhi_resource   = source.m_rhi_resource;
+        m_owns_resource  = false;
+        m_descriptors    = source.m_descriptors;
+        m_slot_to_index  = source.m_slot_to_index;
+        m_layout_hash    = source.m_layout_hash;
+        m_bindings.resize(m_descriptors.size());
     }
 
     RHI_DescriptorBinding* RHI_DescriptorSetLayout::FindBinding(uint32_t slot)
@@ -91,7 +106,14 @@ namespace spartan
     void RHI_DescriptorSetLayout::SetBuffer(uint32_t slot, RHI_Buffer* buffer)
     {
         uint32_t actual_slot = slot + rhi_shader_register_shift_u;
-        if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
+        RHI_DescriptorBinding* binding = FindBinding(actual_slot);
+        if (!binding)
+        {
+            actual_slot = slot + rhi_shader_register_shift_t;
+            binding = FindBinding(actual_slot);
+        }
+
+        if (binding)
         {
             binding->resource       = static_cast<void*>(buffer);
             binding->range          = buffer->GetObjectSize();
@@ -100,15 +122,11 @@ namespace spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer /*= rhi_all_mips*/)
+    bool RHI_DescriptorSetLayout::SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, RHI_Image_Layout layout, bool storage)
     {
-        bool mip_specified      = mip_index != rhi_all_mips;
-        RHI_Image_Layout layout = texture->GetLayout(mip_specified ? mip_index : 0);
-
         SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read);
 
-        bool is_storage    = layout == RHI_Image_Layout::General;
-        uint32_t shift     = is_storage ? rhi_shader_register_shift_u : rhi_shader_register_shift_t;
+        uint32_t shift     = storage ? rhi_shader_register_shift_u : rhi_shader_register_shift_t;
         uint32_t actual_slot = slot + shift;
 
         if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
@@ -119,7 +137,46 @@ namespace spartan
             binding->mip_range   = mip_range;
             binding->array_layer = array_layer;
             m_dirty = true;
+            return true;
         }
+        return false;
+    }
+
+    bool RHI_DescriptorSetLayout::ResolveTextureBindingOverlap(RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, bool storage)
+    {
+        if (!texture)
+        {
+            return false;
+        }
+
+        bool overlap = false;
+        const uint32_t clear_mip_start = mip_index == rhi_all_mips ? 0 : mip_index;
+        const uint32_t clear_mip_count = mip_index == rhi_all_mips ? texture->GetMipCount() : (mip_range == 0 ? 1 : mip_range);
+        const uint32_t clear_mip_end   = clear_mip_start + clear_mip_count;
+
+        for (size_t i = 0; i < m_bindings.size(); i++)
+        {
+            RHI_DescriptorBinding& binding   = m_bindings[i];
+            const RHI_Descriptor& descriptor = m_descriptors[i];
+            const bool type_matches          = storage ? descriptor.type == RHI_Descriptor_Type::TextureStorage : descriptor.type == RHI_Descriptor_Type::Image;
+            if (!type_matches || binding.resource != texture)
+            {
+                continue;
+            }
+
+            const uint32_t binding_mip_start = binding.mip == rhi_all_mips ? 0 : binding.mip;
+            const uint32_t binding_mip_count = binding.mip == rhi_all_mips ? texture->GetMipCount() : (binding.mip_range == 0 ? 1 : binding.mip_range);
+            const uint32_t binding_mip_end   = binding_mip_start + binding_mip_count;
+            const bool mip_overlap           = clear_mip_start < binding_mip_end && binding_mip_start < clear_mip_end;
+            const bool layer_overlap         = array_layer == rhi_all_mips || binding.array_layer == rhi_all_mips || array_layer == binding.array_layer;
+            if (mip_overlap && layer_overlap)
+            {
+                binding.layout = RHI_Image_Layout::General;
+                m_dirty = true;
+                overlap = true;
+            }
+        }
+        return overlap;
     }
 
     void RHI_DescriptorSetLayout::SetAccelerationStructure(uint32_t slot, RHI_AccelerationStructure* tlas)

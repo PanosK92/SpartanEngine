@@ -165,19 +165,20 @@ namespace spartan
         }
     }
 
-    void RHI_Queue::Submit(
+    uint64_t RHI_Queue::Submit(
         void* cmd_buffer, const uint32_t wait_flags,
         RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal,
         RHI_SyncPrimitive* semaphore_timeline_wait, uint64_t timeline_wait_value
     )
     {
         lock_guard<mutex> lock(get_mutex(this));
+        uint64_t timeline_signal_value = 0;
 
         ID3D12CommandQueue* d3d12_queue = static_cast<ID3D12CommandQueue*>(m_rhi_resource);
         ID3D12GraphicsCommandList* d3d12_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_buffer);
         if (!d3d12_queue || !d3d12_cmd_list)
         {
-            return;
+            return timeline_signal_value;
         }
 
         // gpu-side wait, queue->Wait blocks the queue until the fence reaches value, mirrors vulkan binary/timeline waits
@@ -201,9 +202,11 @@ namespace spartan
         }
         if (semaphore_timeline_signal && semaphore_timeline_signal->GetRhiResource())
         {
-            uint64_t next_value = semaphore_timeline_signal->GetNextSignalValue();
-            d3d12_queue->Signal(static_cast<ID3D12Fence*>(semaphore_timeline_signal->GetRhiResource()), next_value);
+            timeline_signal_value = semaphore_timeline_signal->GetNextSignalValue();
+            d3d12_queue->Signal(static_cast<ID3D12Fence*>(semaphore_timeline_signal->GetRhiResource()), timeline_signal_value);
         }
+
+        return timeline_signal_value;
     }
 
     bool RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)

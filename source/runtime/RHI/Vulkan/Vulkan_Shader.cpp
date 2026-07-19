@@ -104,6 +104,11 @@ namespace spartan
             // target profile
             arguments.emplace_back("-T");
             arguments.emplace_back(GetTargetProfile());
+            if (m_shader_type == RHI_Shader_Type::Compute)
+            {
+                arguments.emplace_back("-D");
+                arguments.emplace_back("SP_SHADER_STAGE_COMPUTE=1");
+            }
 
             // spir-v
             {
@@ -112,8 +117,6 @@ namespace spartan
 
                 // this prevents all sorts of issues with constant buffers having random data
                 arguments.emplace_back("-fspv-preserve-bindings");  // preserves all bindings declared within the module, even when those bindings are unused
-                arguments.emplace_back("-fspv-preserve-interface"); // preserves all interface variables in the entry point, even when those variables are unused
-
                 // shift registers to avoid conflicts
                 arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
                 arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_b)); arguments.emplace_back("all"); // binding number shift for b-type (buffer) register

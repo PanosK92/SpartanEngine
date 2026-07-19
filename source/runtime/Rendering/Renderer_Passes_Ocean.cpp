@@ -55,12 +55,9 @@ namespace spartan
             return;
         }
 
-        // keep the descriptors valid for the geometry passes that always declare the srvs, even with no water present
         const Water* water = m_pass_state.ocean;
         if (!water)
         {
-            tex_displacement->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             return;
         }
 
@@ -77,8 +74,6 @@ namespace spartan
             shader_assemble && shader_assemble->IsCompiled();
         if (!shaders_ready)
         {
-            tex_displacement->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             return;
         }
 
@@ -112,12 +107,6 @@ namespace spartan
 
         cmd_list->BeginTimeblock("ocean");
         {
-            tex_spectrum->SetLayout(RHI_Image_Layout::General, cmd_list);
-            tex_fft_a->SetLayout(RHI_Image_Layout::General, cmd_list);
-            tex_fft_b->SetLayout(RHI_Image_Layout::General, cmd_list);
-            tex_displacement->SetLayout(RHI_Image_Layout::General, cmd_list);
-            tex_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
-
             // spectrum init, only when the parameters changed
             if (m_pass_state.ocean_spectrum_dirty)
             {
@@ -129,7 +118,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(n / 8, n / 8, cascades);
-                cmd_list->InsertBarrier(tex_spectrum, RHI_BarrierType::EnsureWriteThenRead);
 
                 m_pass_state.ocean_spectrum_dirty = false;
             }
@@ -146,8 +134,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(n / 8, n / 8, cascades);
-                cmd_list->InsertBarrier(tex_fft_a, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_fft_b, RHI_BarrierType::EnsureWriteThenRead);
             }
 
             // inverse fft, one dimension at a time, in place on the working textures
@@ -161,8 +147,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(1, n, cascades);
-                cmd_list->InsertBarrier(tex_fft_a, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_fft_b, RHI_BarrierType::EnsureWriteThenRead);
             }
             {
                 RHI_PipelineState pso;
@@ -174,8 +158,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(1, n, cascades);
-                cmd_list->InsertBarrier(tex_fft_a, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_fft_b, RHI_BarrierType::EnsureWriteThenRead);
             }
 
             // assemble displacement, surface slope and foam from the spatial-domain fields
@@ -193,9 +175,6 @@ namespace spartan
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(n / 8, n / 8, cascades);
             }
-
-            tex_displacement->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }

@@ -88,6 +88,11 @@ namespace spartan
             arguments.emplace_back("-Wno-ignored-attributes");  // silence vk::image_format and similar vulkan-only attributes on the d3d12 path
             // api define so shared hlsl can pick d3d12 specific register bindings
             arguments.emplace_back("-D"); arguments.emplace_back("API_D3D12=1");
+            if (m_shader_type == RHI_Shader_Type::Compute)
+            {
+                arguments.emplace_back("-D");
+                arguments.emplace_back("SP_SHADER_STAGE_COMPUTE=1");
+            }
             #ifdef DEBUG                                                    
             arguments.emplace_back("-Od");                      // disable optimizations
             arguments.emplace_back("-Zi");                      // enable debug information

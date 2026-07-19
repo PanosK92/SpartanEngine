@@ -96,6 +96,7 @@ namespace spartan
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip_range));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(array_layer));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(layout));
             return hash;
         }
     };

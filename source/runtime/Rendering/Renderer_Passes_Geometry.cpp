@@ -273,10 +273,6 @@ namespace spartan
 
             uint32_t thread_group_count = (m_cull_task_count + 255) / 256;
             cmd_list->Dispatch(thread_group_count, 1, 1);
-
-            // surviving_instances feeds phase b, instance_dispatch_args drives its indirect dispatch
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::SurvivingInstances));
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::InstanceDispatchArgs));
         }
         cmd_list->EndTimeblock();
 
@@ -304,10 +300,6 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->DispatchIndirect(GetBuffer(Renderer_Buffer::InstanceDispatchArgs), 0);
-
-            // meshlet_instances and triangle_dispatch_args feed the triangle cull pass
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::MeshletInstances));
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
         }
         cmd_list->EndTimeblock();
 
@@ -333,10 +325,6 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->DispatchIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), 0);
-
-            // indirect_draw_args + visible_triangles feed the final indirect draw, plus indirect args needed for the indirect-draw stage
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::VisibleTriangles));
         }
         cmd_list->EndTimeblock();
     }
@@ -464,9 +452,6 @@ namespace spartan
                 }
             }
 
-            // grass is rasterized once in the g-buffer pass now, the opaque depth blit moved there too so the
-            // opaque output still carries grass occlusion, gbuffer_depth stays an attachment for the g-buffer pass
-            tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
         }
         cmd_list->EndTimeblock();
     }
@@ -646,7 +631,6 @@ namespace spartan
                 RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
                 RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
                 cmd_list->Blit(tex_depth, tex_depth_output, false, Renderer::GetResolutionScale());
-                tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
 
                 // single source of truth for motion vector previous transforms, the indirect, tessellated and transparent
                 // paths all read transform_previous from the draw data snapshot taken in UpdateDrawCalls so updating here once
@@ -658,12 +642,6 @@ namespace spartan
                 }
             }
 
-            // early transition gbuffer to shader read for the compute lighting batch, depth likewise
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }
@@ -770,10 +748,6 @@ namespace spartan
                     const uint32_t blades_per_cell = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(lod_cap) / std::max(cells_in_ring, 1.0f))));
                     cmd_list->Dispatch(groups, groups, blades_per_cell);
                 }
-
-                // populate writes feed both the args build pass and the raster reads downstream
-                cmd_list->InsertBarrier(buf_count);
-                cmd_list->InsertBarrier(buf_instances);
             }
 
             // args build, reads grass_count and writes grass_indirect_args[lod].instance_count
@@ -797,8 +771,6 @@ namespace spartan
                 m_pcb_pass_cpu.v[3] = static_cast<float>(renderer_max_grass_lod_count);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(1, 1, 1);
-
-                cmd_list->InsertBarrier(buf_args);
             }
         }
         cmd_list->EndTimeblock();
@@ -911,9 +883,6 @@ namespace spartan
 
         cmd_list->BeginTimeblock("meshlet_visualize");
         {
-            // gbuffer left depth in Shader_Read; promote it back to an attachment so we can do a read-only depth test
-            tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
-
             // mode 1/2 color/wireframe by meshlet id, mode 3/4 color/wireframe by post-cull draw id
             bool wireframe                  = (mode == 2 || mode == 4);
             bool color_by_draw_id           = (mode == 3 || mode == 4);
@@ -954,9 +923,6 @@ namespace spartan
             m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
-
-            // restore the layout the rest of the frame expects
-            tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }

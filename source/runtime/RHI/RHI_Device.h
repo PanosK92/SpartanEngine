@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_PhysicalDevice.h"
 #include <memory>
 #include <map>
+#include <mutex>
 #include <vector>
 #include "RHI_Descriptor.h"
 #include "../Rendering/Renderer_Definitions.h"
@@ -32,6 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    class RHI_CommandList;
+
     class RHI_Device
     {
     public:
@@ -49,11 +52,12 @@ namespace spartan
         // descriptors
         static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const std::vector<RHI_DescriptorWithBinding>& descriptors);
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
+        static std::mutex& GetDescriptorSetMutex();
         static uint64_t GetDescriptorSetFrame();
         static void DescriptorSetInvalidateReferencingResource(void* resource);
         static void* GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Bindless_Resource resource_type);
-        static void UpdateBindlessMaterials(std::array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters);
+        static void UpdateBindlessMaterials(RHI_CommandList* cmd_list, std::array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters);
         static void UpdateBindlessLights(RHI_Buffer* parameters);
         static void UpdateBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers);
         static void UpdateBindlessAABBs(RHI_Buffer* buffer);

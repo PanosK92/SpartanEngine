@@ -42,6 +42,32 @@ namespace spartan
         bool m_has_loaded_user_settings = false;
         string file_path                = "spartan.xml";
 
+        void resolve_file_path()
+        {
+            if (FileSystem::Exists(file_path))
+            {
+                return;
+            }
+
+            string current = FileSystem::GetWorkingDirectory();
+            for (uint32_t level = 0; level < 16; level++)
+            {
+                const string candidate = current + "/binaries/spartan.xml";
+                if (FileSystem::Exists(candidate))
+                {
+                    file_path = candidate;
+                    return;
+                }
+
+                const string parent = FileSystem::GetParentDirectory(current);
+                if (parent == current)
+                {
+                    break;
+                }
+                current = parent;
+            }
+        }
+
         // helper to convert cvar name to xml-safe name (e.g., "r.bloom" -> "r_bloom")
         string cvar_name_to_xml(const char* name)
         {
@@ -141,7 +167,10 @@ namespace spartan
                 }
 
                 // this setting can be mapped directly to the resource cache (no need to wait for it to initialize)
-                ResourceCache::SetUseRootShaderDirectory(root.child("UseRootShaderDirectory").text().as_bool());
+                if (pugi::xml_node use_root_shader_directory = root.child("UseRootShaderDirectory"))
+                {
+                    ResourceCache::SetUseRootShaderDirectory(use_root_shader_directory.text().as_bool());
+                }
             }
 
             m_has_loaded_user_settings = true;
@@ -150,6 +179,7 @@ namespace spartan
 
     void Settings::LoadPreInitSettings()
     {
+        resolve_file_path();
         if (!FileSystem::Exists(file_path))
         {
             return;
@@ -162,11 +192,15 @@ namespace spartan
         }
 
         pugi::xml_node root = doc.child("Settings");
-        ResourceCache::SetUseRootShaderDirectory(root.child("UseRootShaderDirectory").text().as_bool());
+        if (pugi::xml_node use_root_shader_directory = root.child("UseRootShaderDirectory"))
+        {
+            ResourceCache::SetUseRootShaderDirectory(use_root_shader_directory.text().as_bool());
+        }
     }
 
     void Settings::Initialize()
     {
+        resolve_file_path();
         if (FileSystem::Exists(file_path))
         {
             load();

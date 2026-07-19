@@ -60,8 +60,6 @@ namespace spartan
                 m_pass_state.cleared_reflections = true;
             }
 
-            cmd_list->InsertBarrier(tex_frame, RHI_BarrierType::EnsureReadThenWrite);
-
             cmd_list->BeginMarker("apply");
             {
                 RHI_PipelineState pso;
@@ -122,18 +120,10 @@ namespace spartan
             RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
             if (!tlas || !tlas->GetRhiResource())
             {
-                tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
                 cmd_list->ClearTexture(tex_reflections, Color(1.0f, 1.0f, 0.0f, 1.0f));
                 cmd_list->EndTimeblock();
                 return;
             }
-
-            tex_reflections_position->SetLayout(RHI_Image_Layout::General, cmd_list);
-            tex_reflections_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
-            tex_reflections_albedo->SetLayout(RHI_Image_Layout::General, cmd_list);
-            cmd_list->InsertBarrier(tex_reflections_position, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrier(tex_reflections_normal, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrier(tex_reflections_albedo, RHI_BarrierType::EnsureReadThenWrite);
 
             RHI_PipelineState pso;
             pso.name                   = "reflections_trace";
@@ -142,12 +132,11 @@ namespace spartan
             pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
             cmd_list->SetPipelineState(pso);
 
-            // phase 2 overlaps async compute ssao writes, do not transition ssao here
+            // phase 2 overlaps async compute ssao writes, skip ssao
             SetCommonTextures(cmd_list, eye_layer, false);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             
             RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             
             // reset and bind the per-hit geometry info ring as uav
@@ -163,9 +152,6 @@ namespace spartan
             uint32_t width  = tex_reflections_position->GetWidth();
             uint32_t height = tex_reflections_position->GetHeight();
             cmd_list->TraceRays(width, height);
-            cmd_list->InsertBarrier(tex_reflections_position, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_reflections_normal, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_reflections_albedo, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -193,14 +179,6 @@ namespace spartan
 
         cmd_list->BeginTimeblock("reflections_shade");
         {
-            tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
-            cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
-            
-            tex_reflections_position->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_reflections_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_reflections_albedo->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-
             RHI_PipelineState pso;
             pso.name             = "reflections_shade";
             pso.shaders[Compute] = GetShader(Renderer_Shader::reflections_shade_c);
@@ -228,7 +206,6 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
             
             cmd_list->Dispatch(tex_reflections);
-            cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -273,10 +250,6 @@ namespace spartan
                 pso.shaders[Compute] = shader_pack;
                 cmd_list->SetPipelineState(pso);
 
-                cmd_list->InsertBarrier(tex_mv,     RHI_BarrierType::EnsureReadThenWrite);
-                cmd_list->InsertBarrier(tex_normal, RHI_BarrierType::EnsureReadThenWrite);
-                cmd_list->InsertBarrier(tex_view_z, RHI_BarrierType::EnsureReadThenWrite);
-                cmd_list->InsertBarrier(tex_in,     RHI_BarrierType::EnsureReadThenWrite);
                 SetCommonTextures(cmd_list, eye_layer);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex,   tex_reflections);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,   tex_mv);
@@ -284,10 +257,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3,  tex_view_z);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex4,  tex_in);
                 cmd_list->Dispatch(tex_reflections);
-                cmd_list->InsertBarrier(tex_mv,     RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_normal, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_view_z, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_in,     RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndMarker();
 
@@ -299,7 +268,6 @@ namespace spartan
                     cmd_list->EndTimeblock();
                     return;
                 }
-                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndMarker();
 
@@ -310,11 +278,9 @@ namespace spartan
                 pso.shaders[Compute] = shader_unpack;
                 cmd_list->SetPipelineState(pso);
 
-                cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_out);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_reflections);
                 cmd_list->Dispatch(tex_reflections);
-                cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndMarker();
         }
@@ -396,7 +362,6 @@ namespace spartan
                 uint32_t width  = tex_shadows->GetWidth();
                 uint32_t height = tex_shadows->GetHeight();
                 cmd_list->TraceRays(width, height);
-                cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndMarker();
 
@@ -473,10 +438,6 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value(tan_light_angular_radius);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            cmd_list->InsertBarrier(tex_mv,     RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrier(tex_normal, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrier(tex_view_z, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrier(tex_in,     RHI_BarrierType::EnsureReadThenWrite);
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_shadows);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_mv);
@@ -484,10 +445,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
             cmd_list->SetTexture(Renderer_BindingsUav::tex4, tex_in);
             cmd_list->Dispatch(tex_shadows);
-            cmd_list->InsertBarrier(tex_mv,     RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_normal, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_view_z, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_in,     RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndMarker();
 
@@ -498,7 +455,6 @@ namespace spartan
                 cmd_list->EndMarker();
                 return;
             }
-            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndMarker();
 
@@ -509,11 +465,9 @@ namespace spartan
             pso.shaders[Compute] = shader_unpack;
             cmd_list->SetPipelineState(pso);
 
-            cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureReadThenWrite);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_shadows);
             cmd_list->Dispatch(tex_shadows);
-            cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndMarker();
     }
@@ -618,7 +572,6 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
 
-            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
 
             // reset and bind the per-hit geometry info ring as uav
@@ -636,9 +589,6 @@ namespace spartan
 
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->TraceRays(width, height);
-
-            for (uint32_t i = 0; i < 6; i++)
-                cmd_list->InsertBarrier(reservoirs[i], RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -697,10 +647,8 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex5, normal_prev);
             }
 
-            // skysphere on tex3 so the random replay shift sees the same sky the initial trace did
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
             {
-                tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             }
 
@@ -716,9 +664,6 @@ namespace spartan
             // any of the per pass values, this dispatches with whatever the renderer tagged
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-
-            for (uint32_t i = 0; i < 6; i++)
-                cmd_list->InsertBarrier(reservoirs[i], RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -765,10 +710,8 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             cmd_list->SetBuffer(Renderer_BindingsUav::restir_pairing,     GetBuffer(Renderer_Buffer::RestirPairing));
 
-            // skysphere on tex3 so the random replay shift sees the same sky the initial trace did
             if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
             {
-                tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             }
 
@@ -781,11 +724,6 @@ namespace spartan
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), shift[1], rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), shift[2], rhi_all_mips, 0, true);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-
-            for (uint32_t i = 0; i < 3; i++)
-            {
-                cmd_list->InsertBarrier(shift[i], RHI_BarrierType::EnsureWriteThenRead);
-            }
         }
         cmd_list->EndTimeblock();
 
@@ -817,12 +755,6 @@ namespace spartan
 
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-
-            for (uint32_t i = 0; i < 6; i++)
-            {
-                cmd_list->InsertBarrier(reservoirs_spatial[i], RHI_BarrierType::EnsureWriteThenRead);
-            }
-            cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
 
@@ -995,11 +927,6 @@ namespace spartan
         Pass_ReSTIR_Temporal(cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
         const bool ran_spatial = Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
 
-        if (!ran_spatial)
-        {
-            cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
-        }
-
         // sample duplication map, lin 2026 5, counts shifted copies of the same initial candidate
         // around each pixel in the final reservoirs, next frame's temporal pass reads it at the
         // backprojected pixel to adaptively reduce the confidence cap in correlated regions
@@ -1022,7 +949,6 @@ namespace spartan
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_duplication, rhi_all_mips, 0, true);
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                     cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-                    cmd_list->InsertBarrier(tex_duplication, RHI_BarrierType::EnsureWriteThenRead);
                 }
                 cmd_list->EndTimeblock();
             }
@@ -1073,10 +999,6 @@ namespace spartan
                 pso.shaders[Compute] = shader_pack;
                 cmd_list->SetPipelineState(pso);
 
-                cmd_list->InsertBarrier(tex_mv,     RHI_BarrierType::EnsureReadThenWrite);
-                cmd_list->InsertBarrier(tex_normal, RHI_BarrierType::EnsureReadThenWrite);
-                cmd_list->InsertBarrier(tex_view_z, RHI_BarrierType::EnsureReadThenWrite);
-                cmd_list->InsertBarrier(tex_in,     RHI_BarrierType::EnsureReadThenWrite);
                 SetCommonTextures(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_gi_raw);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_mv);
@@ -1084,10 +1006,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3, tex_view_z);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex4, tex_in);
                 cmd_list->Dispatch(tex_gi_raw);
-                cmd_list->InsertBarrier(tex_mv,     RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_normal, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_view_z, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_in,     RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndMarker();
 
@@ -1100,7 +1018,6 @@ namespace spartan
                     cmd_list->EndTimeblock();
                     return;
                 }
-                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndMarker();
 
@@ -1111,11 +1028,9 @@ namespace spartan
                 pso.shaders[Compute] = shader_unpack;
                 cmd_list->SetPipelineState(pso);
 
-                cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureReadThenWrite);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_out);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
                 cmd_list->Dispatch(tex_gi_denoised);
-                cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndMarker();
         }
@@ -1139,8 +1054,6 @@ namespace spartan
 
         cmd_list->BeginTimeblock("screen_space_shadows");
         {
-            cmd_list->InsertBarrier(tex_sss, RHI_BarrierType::EnsureReadThenWrite);
-
             RHI_PipelineState pso;
             pso.name             = "screen_space_shadows";
             pso.shaders[Compute] = GetShader(Renderer_Shader::sss_c_bend);
@@ -1197,8 +1110,6 @@ namespace spartan
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                         cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
                     }
-
-                    cmd_list->InsertBarrier(tex_sss, RHI_BarrierType::EnsureWriteThenRead);
                 }
             }
         }
@@ -1242,11 +1153,6 @@ namespace spartan
             cmd_list->Dispatch(CLUSTER_COUNT_X, CLUSTER_COUNT_Y, CLUSTER_COUNT_Z);
             m_pcb_pass_cpu.eye_index = saved_eye;
 
-            // the light pass reads both buffers via the cross queue timeline, the barrier keeps
-            // any later compute work that touches them on the same queue correctly ordered
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterLightIndices));
-            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterStats));
         }
         cmd_list->EndTimeblock();
     }
@@ -1333,9 +1239,6 @@ namespace spartan
             const uint32_t thread_dim = 8;
             const uint32_t groups     = (static_cast<uint32_t>(disc_size_px) + thread_dim - 1) / thread_dim;
 
-            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
-
-            // one dispatch per light with a barrier between them, same pattern as editor icons
             for (uint32_t i = 1; i < m_count_active_lights; i++)
             {
                 m_pcb_pass_cpu.set_f3_value(near_distance, size_scale, intensity_scale);
@@ -1343,7 +1246,6 @@ namespace spartan
                 m_pcb_pass_cpu.set_f2_value(disc_size_px, fade_length);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(groups, groups, 1);
-                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
             }
         }
         cmd_list->EndTimeblock();
@@ -1397,8 +1299,6 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->Dispatch(light_diffuse, Renderer::GetResolutionScale());
-            cmd_list->InsertBarrier(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -1412,8 +1312,6 @@ namespace spartan
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
         RHI_Texture* tex_gi               = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
-
-        cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
         {

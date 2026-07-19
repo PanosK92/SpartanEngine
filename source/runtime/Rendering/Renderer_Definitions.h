@@ -94,6 +94,8 @@ namespace spartan
     const uint32_t renderer_resolution_blur_scratch = 4096; // ping pong target reused by every blur pass
     const uint32_t renderer_resolution_skysphere_w  = 4096; // skysphere panorama width
     const uint32_t renderer_resolution_skysphere_h  = 2048; // skysphere panorama height
+    const uint32_t renderer_resolution_cloud_environment_w = 512;
+    const uint32_t renderer_resolution_cloud_environment_h = 256;
     const uint32_t renderer_resolution_brdf_lut     = 512;  // pre integrated brdf lookup table
     const uint32_t renderer_resolution_restir_min   = 64;   // minimum restir output dimension regardless of scale
     const uint32_t renderer_particle_volume_width   = 160;
@@ -300,6 +302,10 @@ namespace spartan
         skysphere_sky_view_lut_c,
         clouds_noise_c,
         clouds_shadow_c,
+        clouds_render_c,
+        clouds_temporal_c,
+        clouds_composite_c,
+        clouds_environment_c,
         blur_gaussian_c,
         blur_gaussian_bilateral_c,
         variable_rate_shading_c,
@@ -390,6 +396,14 @@ namespace spartan
         lut_sky_view,
         cloud_noise,
         cloud_shadow,
+        cloud_raw,
+        cloud_raw_distance,
+        cloud_resolved_0,
+        cloud_resolved_distance_0,
+        cloud_resolved_1,
+        cloud_resolved_distance_1,
+        cloud_environment,
+        cloud_composite,
         light_diffuse,
         light_specular,
         light_volumetric,

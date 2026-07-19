@@ -298,6 +298,12 @@ namespace spartan
         static void Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
+        static void Pass_Clouds_Render(RHI_CommandList* cmd_list, uint32_t eye_layer);
+        static void Pass_Clouds_Temporal(RHI_CommandList* cmd_list, uint32_t eye_layer);
+        static void Pass_Clouds_Composite(RHI_CommandList* cmd_list, uint32_t eye_layer, RHI_Texture* tex_scene);
+        static void Pass_Clouds_Environment(RHI_CommandList* cmd_list);
+        static bool Pass_Clouds_Prepare(RHI_CommandList* cmd_list, uint32_t eye_layer);
+        static void Pass_Clouds(RHI_CommandList* cmd_list, uint32_t eye_layer, bool last_eye);
         // passes - lighting
         static void Pass_LightClusterAssign(RHI_CommandList* cmd_list);
         static void Pass_LightClusterVisualize(RHI_CommandList* cmd_list);
@@ -456,6 +462,16 @@ namespace spartan
             uint32_t sky_frames_remaining      = 0;
             bool     sky_warmup_this_frame     = false;
             float    sky_warmup_blend          = 1.0f;
+
+            bool     cloud_history_valid       = false;
+            uint32_t cloud_history_index       = 0;
+            bool     cloud_environment_dirty   = true;
+            Light*   cloud_light               = nullptr;
+            math::Quaternion cloud_light_rotation = math::Quaternion::Identity;
+            math::Vector3 cloud_wind            = math::Vector3::Zero;
+            float    cloud_light_intensity      = -1.0f;
+            float    cloud_coverage             = -1.0f;
+            double   cloud_time                 = 0.0;
 
             // vrs
             RHI_Texture* vrs_last_cleared_texture = nullptr;

@@ -481,11 +481,7 @@ namespace spartan
 
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
     {
-        // release old render targets before allocating new ones so that the gpu resources
-        // (and their layout tracking entries) are fully retired first; without this, the
-        // old shared_ptr destructor runs after the new texture is constructed, and if the
-        // driver happens to reuse a vkimage handle the destructor's RemoveLayout call
-        // erases the freshly-inserted entry for the new image
+        // release old render targets before allocating replacements
         if (create_render)
         {
             at(render_targets, Renderer_RenderTarget::frame_render)                = nullptr;
@@ -501,6 +497,13 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::light_specular)              = nullptr;
             at(render_targets, Renderer_RenderTarget::light_volumetric)            = nullptr;
             at(render_targets, Renderer_RenderTarget::particle_volume)             = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_raw)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_raw_distance)          = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_0)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_0)   = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_1)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1)   = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_composite)             = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders)     = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = nullptr;
             at(render_targets, Renderer_RenderTarget::sss)                         = nullptr;
@@ -606,6 +609,22 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, hiz_mip_count, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "depth_occluders_hiz");
         };
 
+        auto create_clouds = [&]()
+        {
+            const uint32_t width_cloud  = max((width_render + 1) / 2, 1u);
+            const uint32_t height_cloud = max((height_render + 1) / 2, 1u);
+            const uint32_t flags        = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+            at(render_targets, Renderer_RenderTarget::cloud_raw)                 = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_raw");
+            at(render_targets, Renderer_RenderTarget::cloud_raw_distance)        = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_raw_distance");
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_0)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_0");
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_0) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_0");
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_1)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_1");
+            at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_1");
+            at(render_targets, Renderer_RenderTarget::cloud_composite)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_composite");
+            m_pass_state.cloud_history_valid = false;
+            m_pass_state.cloud_history_index = 0;
+        };
+
         auto create_lighting_buffers = [&]()
         {
             // light_* textures are produced by the compute lighting batch, concurrent sharing keeps
@@ -679,6 +698,7 @@ namespace spartan
             // cumulus transmittance toward the sun, projected on the cloud base plane, read by lighting and fog
             // float4 so the shared gaussian blur can soften it in place, mips kill distant screen-space moire
             at(render_targets, Renderer_RenderTarget::cloud_shadow)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, compute_mip_count(1024, 1024, 16),                 RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "cloud_shadow");
+            at(render_targets, Renderer_RenderTarget::cloud_environment)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 1, compute_mip_count(renderer_resolution_cloud_environment_w, renderer_resolution_cloud_environment_h, 16), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "cloud_environment");
 
             at(render_targets, Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_blur_scratch, renderer_resolution_blur_scratch, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
@@ -711,6 +731,7 @@ namespace spartan
         if (create_render)
         {
             create_gbuffer();
+            create_clouds();
             create_lighting_buffers();
             UpdateOptionalRenderTargets(); // ssao, rt reflections, restir (reservoirs and output ring)
             create_shadow_atlas_and_misc();
@@ -829,6 +850,10 @@ namespace spartan
             { Renderer_Shader::skysphere_sky_view_lut_c,              RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "SKY_VIEW_LUT"      },
             { Renderer_Shader::clouds_noise_c,                        RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_NOISE"       },
             { Renderer_Shader::clouds_shadow_c,                       RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_SHADOW"      },
+            { Renderer_Shader::clouds_render_c,                       RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_RENDER"      },
+            { Renderer_Shader::clouds_temporal_c,                     RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_TEMPORAL"    },
+            { Renderer_Shader::clouds_composite_c,                    RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_COMPOSITE"   },
+            { Renderer_Shader::clouds_environment_c,                  RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_ENVIRONMENT" },
 
             // post-process
             { Renderer_Shader::fxaa_c,                                RHI_Shader_Type::Compute, "fxaa/fxaa.hlsl"                                                             },

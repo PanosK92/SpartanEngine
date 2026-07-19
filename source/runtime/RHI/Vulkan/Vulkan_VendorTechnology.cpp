@@ -228,11 +228,12 @@ namespace spartan
         nrd_pool pool_gi;
         nrd_pool pool_screen;
 
-        nrd::Resource make_resource(RHI_Texture* texture)
+        nrd::Resource make_resource(RHI_Texture* texture, bool storage)
         {
             nrd::Resource resource = {};
             resource.vk.image  = reinterpret_cast<VKNonDispatchableHandle>(texture->GetRhiResource());
             resource.vk.format = static_cast<VKEnum>(vulkan_format[rhi_format_to_index(texture->GetFormat())]);
+            resource.state     = storage ? nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::Layout::SHADER_RESOURCE_STORAGE, nri::StageBits::COMPUTE_SHADER } : nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE, nri::Layout::SHADER_RESOURCE, nri::StageBits::COMPUTE_SHADER };
             resource.userArg   = texture;
             return resource;
         }
@@ -478,7 +479,7 @@ namespace spartan
         tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->PrepareForExternalWrite(tex_output);
         cmd_list->FlushBarriers();
 
         intel::params_execute.colorTexture               = intel::to_xess_image_view(tex_color);
@@ -504,6 +505,10 @@ namespace spartan
 
         _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &intel::params_execute);
         SP_ASSERT(result == XESS_RESULT_SUCCESS);
+        cmd_list->AdoptComputeShaderResource(tex_color);
+        cmd_list->AdoptComputeShaderResource(tex_velocity);
+        cmd_list->AdoptComputeShaderResource(tex_depth);
+        cmd_list->AdoptUnorderedAccess(tex_output);
     #endif
     }
 
@@ -546,7 +551,7 @@ namespace spartan
         tex_normal_roughness->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_view_z->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_signal_in->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_signal_out->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->PrepareForExternalWrite(tex_signal_out);
         cmd_list->FlushBarriers();
 
         if (pool.last_frame_index != common::cb_frame->frame)
@@ -569,9 +574,9 @@ namespace spartan
         nrd::Identifier denoiser_id = nrd_common::id_gi;
         nrd::ResourceSnapshot snapshot = {};
         snapshot.restoreInitialState = true;
-        snapshot.SetResource(nrd::ResourceType::IN_MV, nvidia::make_resource(tex_mv));
-        snapshot.SetResource(nrd::ResourceType::IN_NORMAL_ROUGHNESS, nvidia::make_resource(tex_normal_roughness));
-        snapshot.SetResource(nrd::ResourceType::IN_VIEWZ, nvidia::make_resource(tex_view_z));
+        snapshot.SetResource(nrd::ResourceType::IN_MV, nvidia::make_resource(tex_mv, false));
+        snapshot.SetResource(nrd::ResourceType::IN_NORMAL_ROUGHNESS, nvidia::make_resource(tex_normal_roughness, false));
+        snapshot.SetResource(nrd::ResourceType::IN_VIEWZ, nvidia::make_resource(tex_view_z, false));
 
         if (preset == Nrd_Preset::Gi)
         {
@@ -582,8 +587,8 @@ namespace spartan
             {
                 return false;
             }
-            snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in));
-            snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out));
+            snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out, true));
         }
         else if (preset == Nrd_Preset::Reflections)
         {
@@ -594,8 +599,8 @@ namespace spartan
             {
                 return false;
             }
-            snapshot.SetResource(nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in));
-            snapshot.SetResource(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out));
+            snapshot.SetResource(nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out, true));
         }
         else
         {
@@ -607,8 +612,8 @@ namespace spartan
             {
                 return false;
             }
-            snapshot.SetResource(nrd::ResourceType::IN_PENUMBRA, nvidia::make_resource(tex_signal_in));
-            snapshot.SetResource(nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY, nvidia::make_resource(tex_signal_out));
+            snapshot.SetResource(nrd::ResourceType::IN_PENUMBRA, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY, nvidia::make_resource(tex_signal_out, true));
         }
 
         nri::CommandBufferVKDesc cmd_desc = {};
@@ -617,6 +622,11 @@ namespace spartan
 
         const nrd::Identifier denoisers[] = { denoiser_id };
         pool.integration.DenoiseVK(denoisers, 1, cmd_desc, snapshot);
+        cmd_list->AdoptComputeShaderResource(tex_mv);
+        cmd_list->AdoptComputeShaderResource(tex_normal_roughness);
+        cmd_list->AdoptComputeShaderResource(tex_view_z);
+        cmd_list->AdoptComputeShaderResource(tex_signal_in);
+        cmd_list->AdoptUnorderedAccess(tex_signal_out);
         return true;
     #else
         return false;

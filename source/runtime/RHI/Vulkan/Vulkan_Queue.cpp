@@ -143,13 +143,14 @@ namespace spartan
         SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));
     }
 
-    void RHI_Queue::Submit(
+    uint64_t RHI_Queue::Submit(
         void* cmd_buffer, const uint32_t wait_flags,
         RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal,
         RHI_SyncPrimitive* semaphore_timeline_wait, uint64_t timeline_wait_value
     )
     {
         lock_guard<mutex> lock(get_mutex(this));
+        uint64_t timeline_signal_value = 0;
     
         // wait semaphore setup (binary + optional timeline)
         VkSemaphoreSubmitInfo semaphores_list_wait[2] = {};
@@ -187,7 +188,8 @@ namespace spartan
             semaphores_list_signal[signal_semaphore_count].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
             semaphores_list_signal[signal_semaphore_count].semaphore = static_cast<VkSemaphore>(semaphore_timeline_signal->GetRhiResource());
             semaphores_list_signal[signal_semaphore_count].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR;
-            semaphores_list_signal[signal_semaphore_count].value     = semaphore_timeline_signal->GetNextSignalValue(); // signal
+            timeline_signal_value = semaphore_timeline_signal->GetNextSignalValue();
+            semaphores_list_signal[signal_semaphore_count].value = timeline_signal_value;
             signal_semaphore_count++;
         }
     
@@ -224,6 +226,8 @@ namespace spartan
     
             SP_ASSERT_VK(result);
         }
+
+        return timeline_signal_value;
     }
 
     bool RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)

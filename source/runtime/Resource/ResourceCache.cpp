@@ -54,18 +54,18 @@ namespace spartan
         vector<shared_ptr<IResource>> m_resources;
         recursive_mutex m_mutex;
         bool use_root_shader_directory = false;
+        bool root_shader_directory_resolved = false;
+        string root_shader_directory;
         unordered_map<string, unique_ptr<mutex>> m_in_flight_mutexes;
         mutex m_in_flight_map_mutex;
 
-        // walks up from the working directory to the repository root, identified by a .git entry, so the
-        // root shader directory resolves to the git tracked source no matter where the engine is launched from
-        string resolve_root_shader_directory(const string& shaders_relative)
+        string resolve_root_shader_directory()
         {
             string current = FileSystem::GetWorkingDirectory();
             for (uint32_t level = 0; level < 16; level++)
             {
-                const string candidate = current + "/" + shaders_relative;
-                if (FileSystem::Exists(current + "/.git") && FileSystem::IsDirectory(candidate))
+                const string candidate = current + "/data/shaders";
+                if (FileSystem::IsDirectory(current + "/source/runtime") && FileSystem::IsDirectory(candidate))
                 {
                     return candidate;
                 }
@@ -181,11 +181,23 @@ namespace spartan
         string directory = m_standard_resource_directories[static_cast<uint32_t>(resource_directory_type)];
         if (use_root_shader_directory && resource_directory_type == ResourceDirectory::Shaders)
         {
-            // resolve against the repository root so it works from any working directory, fall back to the local copy
-            const string root_directory = resolve_root_shader_directory(directory);
-            if (!root_directory.empty())
+            if (!root_shader_directory_resolved)
             {
-                return root_directory;
+                root_shader_directory          = resolve_root_shader_directory();
+                root_shader_directory_resolved = true;
+                if (root_shader_directory.empty())
+                {
+                    SP_LOG_WARNING("Root shader directory was requested but no source tree was found");
+                }
+                else
+                {
+                    SP_LOG_INFO("Using root shader directory: %s", root_shader_directory.c_str());
+                }
+            }
+
+            if (!root_shader_directory.empty())
+            {
+                return root_shader_directory;
             }
         }
         return directory;
@@ -249,6 +261,11 @@ namespace spartan
 
     void ResourceCache::SetUseRootShaderDirectory(const bool _use_root_shader_directory)
     {
+        if (use_root_shader_directory != _use_root_shader_directory)
+        {
+            root_shader_directory.clear();
+            root_shader_directory_resolved = false;
+        }
         use_root_shader_directory = _use_root_shader_directory;
     }
 

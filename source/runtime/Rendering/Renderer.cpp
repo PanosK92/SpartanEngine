@@ -146,13 +146,7 @@ namespace spartan
                 return nullptr;
             }
 
-            uint32_t width            = texture->GetWidth();
-            uint32_t height           = texture->GetHeight();
-            uint32_t bits_per_channel = texture->GetBitsPerChannel();
-            uint32_t channel_count    = texture->GetChannelCount();
-            size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
-
-            auto staging = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
+            auto staging = make_shared<RHI_Buffer>(RHI_Buffer_Type::Readback, texture->GetObjectSize(), 1, nullptr, true, "screenshot_staging");
             if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
             {
                 cmd_list->CopyTextureToBuffer(texture, staging.get());
@@ -614,10 +608,12 @@ namespace spartan
             RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
         }
 
-        if (initialize || World::HaveMaterialsChangedThisFrame())
+        const bool materials_changed = initialize || World::HaveMaterialsChangedThisFrame();
+        if (materials_changed)
         {
             UpdateMaterials(cmd_list);
-            RHI_Device::UpdateBindlessMaterials(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters));
+            cmd_list->PrepareTexturesForSampling(&m_bindless_textures);
+            RHI_Device::UpdateBindlessMaterials(cmd_list, &m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters));
         }
 
         if (m_bindless_samplers_dirty)
@@ -784,25 +780,22 @@ namespace spartan
 
             // age based deletion, never flush here while a command list may still reference old targets
 
-            // after recreation the gpu is idle and all images sit in their initial layout
-            // (general or undefined), but the per-texture layout tracking may still hold the
-            // layout from the last frame (e.g. shader_read).  resetting to Max (unknown)
-            // forces the next InsertBarrier to emit an Undefined -> target transition, which
-            // the spec guarantees is always valid regardless of the actual gpu-side layout.
+            // invalidate gpu state after recreating the resources
             for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_RenderTarget::max); i++)
             {
                 if (RHI_Texture* rt = GetRenderTarget(static_cast<Renderer_RenderTarget>(i)))
                 {
-                    rt->ClearLayouts();
+                    rt->InvalidateGpuState();
                 }
             }
 
-            // the layout reset above invalidates one-shot render targets (luts, skysphere)
-            // because the Undefined transition discards their contents
+            // recreate one shot targets after gpu resources change
             m_pass_state.brdf_lut_produced       = false;
             m_pass_state.atmosphere_lut_produced = false;
             m_pass_state.cloud_noise_produced    = false;
             m_pass_state.sky_first_frame         = true;
+            m_pass_state.cloud_history_valid     = false;
+            m_pass_state.cloud_environment_dirty = true;
             m_taau_reset_history                 = true;
 
             CreateSamplers();
@@ -850,6 +843,8 @@ namespace spartan
         }
 
         CreateRenderTargets(true, true, true);
+        m_pass_state.cloud_history_valid     = false;
+        m_pass_state.cloud_environment_dirty = true;
         CreateSamplers();
     }
 
@@ -1572,7 +1567,7 @@ namespace spartan
             if (m_swapchain->IsImageAcquired())
             {
                 m_cmd_list_present->RenderPassEnd();
-                m_cmd_list_present->InsertBarrier(m_swapchain->GetRhiRt(), m_swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+                m_cmd_list_present->PrepareForPresent(m_swapchain.get());
 
                 m_cmd_list_present->Submit(
                     m_swapchain->GetImageAcquiredSemaphore(),
@@ -1619,8 +1614,7 @@ namespace spartan
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth),    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, false, eye_layer);
 
-        // ssao is written on async compute in parallel with graphics phase 2, skip the srv bind
-        // there so d3d12 does not emit a cross-queue transition while the uav write is in flight
+        // ssao is written on async compute, skip binding it during graphics phase 2
         if (bind_ssao)
         {
             RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
@@ -2881,19 +2875,34 @@ namespace spartan
 
     bool Renderer::UpdateSkysphereConvergenceState()
     {
-        // re-arm temporal convergence whenever the directional light changes
         const uint32_t temporal_convergence_frames = 8;
-
         Light* directional_light         = World::GetDirectionalLight();
         const bool has_directional_light = directional_light != nullptr;
-
-        const bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) ||
-                                   (has_directional_light != m_pass_state.sky_had_directional_light);
-
-        if (m_pass_state.sky_first_frame || light_changed)
+        const Quaternion light_rotation  = has_directional_light && directional_light->GetEntity() ? directional_light->GetEntity()->GetRotation() : Quaternion::Identity;
+        const float light_intensity      = has_directional_light ? directional_light->GetIntensityPhotometric() : 0.0f;
+        const float cloud_coverage       = has_directional_light ? directional_light->GetCloudCoverage() : 0.0f;
+        const Vector3 wind               = World::GetWind();
+        const double expected_time       = m_pass_state.cloud_time + static_cast<double>(m_cb_frame_cpu.delta_time);
+        const bool time_discontinuous    = !m_pass_state.sky_first_frame && abs(m_cb_frame_cpu.time - expected_time) > 0.25;
+        const bool camera_teleported     = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() > 250000.0f;
+        const bool light_changed         = directional_light != m_pass_state.cloud_light ||
+                                           light_rotation != m_pass_state.cloud_light_rotation ||
+                                           abs(light_intensity - m_pass_state.cloud_light_intensity) > 0.01f ||
+                                           abs(cloud_coverage - m_pass_state.cloud_coverage) > 0.001f;
+        const bool wind_changed          = (wind - m_pass_state.cloud_wind).LengthSquared() > 0.0001f;
+        const bool cloud_state_changed   = m_pass_state.sky_first_frame || light_changed || wind_changed || time_discontinuous || camera_teleported;
+        if (cloud_state_changed)
         {
-            m_pass_state.sky_frames_remaining = temporal_convergence_frames;
+            m_pass_state.sky_frames_remaining   = temporal_convergence_frames;
+            m_pass_state.cloud_history_valid     = false;
+            m_pass_state.cloud_environment_dirty = true;
         }
+        m_pass_state.cloud_light           = directional_light;
+        m_pass_state.cloud_light_rotation  = light_rotation;
+        m_pass_state.cloud_light_intensity = light_intensity;
+        m_pass_state.cloud_coverage        = cloud_coverage;
+        m_pass_state.cloud_wind            = wind;
+        m_pass_state.cloud_time            = m_cb_frame_cpu.time;
 
         // capture this frame's warmup status before we decrement, so Pass_Skysphere can pick
         // between the full-burst and the partial-dispatch mode on the same frame
@@ -2910,15 +2919,9 @@ namespace spartan
             m_pass_state.sky_frames_remaining--;
         }
 
-        // animated clouds drift with the world wind and slowly evolve in place, both of which
-        // only surface on the panorama when the skysphere bake runs that frame. always re-bake
-        // when there is a directional light, the shader spreads the cost over 16 frames by only
-        // computing 1/16 of the pixels per dispatch (phase pattern keyed off buffer_frame.frame).
-        // the warmup burst above is still honoured so sun direction changes do a full bake to
-        // converge the panorama before switching to the partial-dispatch animation mode
         m_pass_state.sky_first_frame           = false;
         m_pass_state.sky_had_directional_light = has_directional_light;
-        return has_directional_light;
+        return has_directional_light || light_changed || cloud_state_changed;
     }
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
@@ -2926,26 +2929,20 @@ namespace spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
         cmd_list->SetTexture(Renderer_BindingsSrv::tex_perlin, GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
 
-        // wind field is the same texture that gets written by Pass_WindField as a uav
-        // skip binding it as an srv while it is in general layout, otherwise the descriptor
-        // would carry a stale shader-read layout into the dispatch and trip vulkan validation
-        // also skip on non-graphics queues, the wind_field write happens on graphics and binding
-        // it on async compute would race with that write across queue families
         bool is_graphics_queue = cmd_list->GetQueue() && cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics;
         RHI_Texture* tex_wind  = GetRenderTarget(Renderer_RenderTarget::wind_field);
-        if (is_graphics_queue && tex_wind && tex_wind->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        if (is_graphics_queue && tex_wind)
         {
             cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
         }
 
-        // fft ocean cascades, bound only once Pass_Ocean has transitioned them to shader read, same guard as the wind field
         RHI_Texture* tex_ocean_disp = GetRenderTarget(Renderer_RenderTarget::ocean_displacement);
         RHI_Texture* tex_ocean_norm = GetRenderTarget(Renderer_RenderTarget::ocean_normal);
-        if (is_graphics_queue && tex_ocean_disp && tex_ocean_disp->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        if (is_graphics_queue && tex_ocean_disp)
         {
             cmd_list->SetTexture(Renderer_BindingsSrv::ocean_displacement, tex_ocean_disp);
         }
-        if (is_graphics_queue && tex_ocean_norm && tex_ocean_norm->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        if (is_graphics_queue && tex_ocean_norm)
         {
             cmd_list->SetTexture(Renderer_BindingsSrv::ocean_normal, tex_ocean_norm);
         }
@@ -3004,7 +3001,7 @@ namespace spartan
 
         if (update_skysphere)
         {
-            if (!m_pass_state.atmosphere_lut_produced || (directional_light && directional_light->NeedsSkysphereUpdate()))
+            if (!m_pass_state.atmosphere_lut_produced)
             {
                 Pass_Lut_AtmosphericScattering(cmd_list);
                 m_pass_state.atmosphere_lut_produced = true;
@@ -3033,22 +3030,6 @@ namespace spartan
 
     void Renderer::Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list)
     {
-        // d3d12 bindless materials are never settexture'd, so they never pick up pixel_shader_resource via that path
-        // ensure they are in full shader_read before depth/gbuffer pixel shaders sample them
-        if (GetRhiApiType() == RHI_Api_Type::D3d12)
-        {
-            unordered_set<RHI_Texture*> seen;
-            for (RHI_Texture* tex : m_bindless_textures)
-            {
-                if (!tex || !tex->GetRhiResource() || !seen.insert(tex).second)
-                {
-                    continue;
-                }
-                tex->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            }
-            cmd_list->FlushBarriers();
-        }
-
         Pass_HiZ(cmd_list);
         Pass_IndirectCull(cmd_list);
         // populate the gpu procedural grass ring before the geometry rasters that consume it
@@ -3057,13 +3038,6 @@ namespace spartan
         Pass_Depth_Prepass(cmd_list);
         Pass_GBuffer(cmd_list, false);
         Pass_MeshletVisualize(cmd_list);
-
-        // gbuffer to shader read before submit
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
     }
 
     void Renderer::Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list)
@@ -3081,7 +3055,12 @@ namespace spartan
         Pass_Light(cmd_list, false, eye_layer);
         Pass_Light_Composition(cmd_list, false, eye_layer);
 
+        const bool clouds_prepared = Pass_Clouds_Prepare(cmd_list, eye_layer);
         cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+        if (clouds_prepared)
+        {
+            Pass_Clouds_Composite(cmd_list, eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque));
+        }
 
         if (eye == 0)
         {
@@ -3095,19 +3074,7 @@ namespace spartan
             Pass_Light_Composition(cmd_list, true, eye_layer);
         }
 
-        // particles render after transparents so smoke composites over ground decals like skid marks
-        // instead of being painted over by them, first eye only so the simulation is not stepped twice
-        if (eye == 0)
-        {
-            Pass_Particles(cmd_list);
-        }
-
         // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         Pass_Reflections_Trace(cmd_list, eye_layer);
 
         Pass_Light_Ibl(cmd_list, eye_layer);
@@ -3116,6 +3083,18 @@ namespace spartan
 
         Pass_Reflections_Apply(cmd_list, eye_layer);
         Pass_LightFlares(cmd_list, eye_layer);
+        if (clouds_prepared)
+        {
+            const bool xr_stereo = Xr::IsSessionRunning() && Xr::GetStereoMode();
+            Pass_Clouds(cmd_list, eye_layer, !xr_stereo || eye == Xr::eye_count - 1);
+        }
+
+        // particles remain foreground content and composite after world space clouds
+        if (eye == 0)
+        {
+            Pass_Particles(cmd_list);
+        }
+
         Pass_AA_Upscale(cmd_list, eye_layer);
         Pass_PostProcess(cmd_list, eye_layer);
 
@@ -3150,9 +3129,7 @@ namespace spartan
         Light* directional_light       = World::GetDirectionalLight();
         RHI_Queue* queue_graphics      = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
-        // flush host-visible frame cb and light uploads before compute batch a, the host->device barrier
-        // was recorded on this graphics list and is invisible to the compute queue until this submit,
-        // same-queue order after the previous present so waiting on this timeline also covers that
+        // submit uploads before compute batch a
         cmd_list_graphics_present->Submit(nullptr, false);
         RHI_SyncPrimitive* uploads_timeline = cmd_list_graphics_present->GetTimelineSemaphore();
         const uint64_t uploads_value        = cmd_list_graphics_present->GetLastTimelineSignalValue();
@@ -3240,14 +3217,5 @@ namespace spartan
         // overwrite and the *_previous slots resolve to this frame's data, which is exactly
         // what restir's temporal validity gate needs to read next frame
         Pass_ReSTIR_SwapGBufferHistory();
-
-        // early transitions for next frame
-        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
-        cmd_list_graphics_present->FlushBarriers();
     }
 }

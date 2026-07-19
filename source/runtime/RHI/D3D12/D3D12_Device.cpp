@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_Texture.h"
+#include "../RHI_CommandList.h"
 #include "../RHI_Sampler.h"
 #include <wrl/client.h>
 #include "../RHI_Queue.h"
@@ -1243,7 +1244,7 @@ namespace spartan::d3d12_descriptors
 
 namespace spartan
 {
-    void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
+    void RHI_Device::UpdateBindlessMaterials(RHI_CommandList* cmd_list, array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
     {
         // copy each texture's srv into the bindless_textures zone
         if (textures)
@@ -1259,6 +1260,10 @@ namespace spartan
                 if (!tex || !tex->GetRhiSrv())
                 {
                     continue;
+                }
+                if (cmd_list)
+                {
+                    cmd_list->PrepareTextureForSampling(tex);
                 }
 
                 // tex->GetRhiSrv() stores the cpu handle ptr of the source srv (see D3D12_Texture)
@@ -1647,12 +1652,18 @@ namespace spartan
         {
             return;
         }
+        if (cmd_list->m_vrs_valid && cmd_list->m_vrs_enabled == enabled)
+        {
+            return;
+        }
 
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList5> cmd_list5;
         if (FAILED(d3d_cmd_list->QueryInterface(IID_PPV_ARGS(&cmd_list5))))
         {
             return;
         }
+        cmd_list->m_vrs_enabled = enabled;
+        cmd_list->m_vrs_valid   = true;
 
         if (enabled)
         {
@@ -1704,6 +1715,12 @@ namespace spartan
         return descriptors;
     }
 
+    mutex& RHI_Device::GetDescriptorSetMutex()
+    {
+        static mutex descriptor_mutex;
+        return descriptor_mutex;
+    }
+
     uint64_t RHI_Device::GetDescriptorSetFrame() { return 0; }
 
     void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
@@ -1713,6 +1730,7 @@ namespace spartan
             return;
         }
 
+        lock_guard<mutex> lock(GetDescriptorSetMutex());
         unordered_map<uint64_t, RHI_DescriptorSet>& sets = GetDescriptorSets();
         for (auto it = sets.begin(); it != sets.end();)
         {

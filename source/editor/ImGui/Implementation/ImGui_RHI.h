@@ -569,7 +569,7 @@ namespace ImGui::RHI
         {
             if (swapchain->IsImageAcquired())
             {
-                cmd_list->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+                cmd_list->PrepareForPresent(swapchain);
                 // use per-swapchain-image semaphore to signal rendering complete
                 cmd_list->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
             }

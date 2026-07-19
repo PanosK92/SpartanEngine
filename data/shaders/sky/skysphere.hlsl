@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= includes =========
 #include "../common.hlsl"
-#include "clouds.hlsl"
+#include "planet.hlsl"
 //====================
 
 // constants - atmosphere
 static const float3 up_direction       = float3(0.0, 1.0, 0.0);
-static const float earth_radius        = 6360e3;
-static const float atmosphere_radius   = 6460e3;
-static const float3 earth_center       = float3(0.0, -earth_radius, 0.0);
+static const float earth_radius        = planet_earth_radius;
+static const float atmosphere_radius   = planet_atmosphere_radius;
+static const float3 earth_center       = planet_earth_center;
 
 // constants - scattering coefficients at sea level
 static const float3 rayleigh_scatter   = float3(5.802e-6, 13.558e-6, 33.1e-6);
@@ -835,7 +835,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     tex_uav.GetDimensions(res.x, res.y);
 
     // bake mode, set by Pass_Skysphere via the first push constant float
-    //   warmup > 0, the first n frames after a sun, coverage or app start change, the cpu
+    //   warmup > 0, the first n frames after a sun or app start change, the cpu
     //            issues a full sized dispatch and every output pixel runs the full bake, the
     //            value is the progressive blend for that frame (1, 1/2, 1/3 ...) so the first
     //            frame fully replaces the panorama, no ghost of the old sky survives, and the
@@ -889,29 +889,6 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     
     // sky luminance, one fetch from the per frame sky view lut instead of a 32 step march
     float3 luminance = sample_sky_view_lut(tex3, GET_SAMPLER(sampler_bilinear_clamp), view_dir, sun_dir, 0.0);
-    
-    // volumetric clouds, only marched above the actual horizon so the bottom hemisphere mirror
-    // for ibl stays clean, uses orig_view because view_dir was already flipped for the mirror
-    float3 cloud_in_scatter = float3(0.0, 0.0, 0.0);
-    float  cloud_trans      = 1.0;
-    if (!below_horizon)
-    {
-        // white noise spatial phase plus a golden ratio sequence keyed to the refresh cycle,
-        // every rebake of a pixel marches with a fresh offset and the temporal blend averages
-        // the march noise out. the phase used to be interleaved gradient noise, which carries
-        // diagonal line structure by construction, and because neighbouring pixels keep phase
-        // correlated residual errors through the blend those diagonals printed into the
-        // panorama as permanent stripes across every cloud, a full avalanche integer hash has
-        // no spatial structure so the residual error reads as fine unstructured grain instead
-        float phase        = float(cloud_hash_uint(pixel.x + cloud_hash_uint(pixel.y))) / 4294967295.0;
-        uint  jitter_cycle = warmup ? buffer_frame.frame : (buffer_frame.frame >> 4u);
-        float cloud_jitter = frac(phase + float(jitter_cycle & 255u) * 0.6180339887);
-        clouds_evaluate(cam_pos, orig_view, sun_dir,
-            tex3d, tex,
-            GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp),
-            cloud_jitter, cloud_in_scatter, cloud_trans);
-        luminance = luminance * cloud_trans;
-    }
     
     // sun disc only, all night celestials are gathered below
     float3 sun_col = float3(0, 0, 0);
@@ -975,9 +952,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         night_celestials *= night_factor;
     }
 
-    // clouds occlude the sun disc, night ambient atmosphere, stars, moon and milky way
-    // luminance carries the physical sky already attenuated by cloud_trans
-    float3 final_color = luminance + cloud_in_scatter + (night_ambient + sun_col + night_celestials) * cloud_trans;
+    float3 final_color = luminance + night_ambient + sun_col + night_celestials;
     // chroma preserving clamp so the sun disc and any other hdr spike carry the directional
     // light's temperature into the panorama instead of clipping every channel to the cap
     final_color        = hdr_clamp_chroma(final_color, 100.0);
@@ -985,14 +960,8 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     // temporal accumulation, behaviour depends on bake mode
     //   warmup, progressive average of the jittered full bakes, frame n blends at 1/n so the
     //   first frame fully replaces the panorama and the burst lands on the exact mean, the
-    //   old fixed 0.1 blend left ~43 percent of the previous sky in the history after the
-    //   burst, which is what smeared ghost cloud stamps across the sky after coverage changes
-    //   steady, gentle blend averages the last ~16 refreshes of each pixel, the march jitter
-    //   cycles between refreshes so cloud march noise integrates out instead of being written
-    //   raw, and the cloud field time is snapped per refresh cycle in clouds.hlsl so every
-    //   refresh of a cycle sees one coherent field, motion then arrives as a small step that
-    //   this blend crossfades. at one refresh per 16 frames the lag is ~4.5 s, under 60 m of
-    //   cloud drift at the shipped wind speeds, invisible for slow evolving cumulus
+    //   old fixed 0.1 blend left ~43 percent of the previous sky in the history after the burst
+    //   steady, gentle blend smooths the interleaved panorama refresh
     float4 prev = tex_uav[pixel];
     final_color = lerp(prev.rgb, final_color, warmup ? warmup_blend : 0.06);
 

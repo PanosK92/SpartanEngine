@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../Core/SpartanObject.h"
+#include <atomic>
 //================================
 
 namespace spartan
@@ -44,11 +45,12 @@ namespace spartan
         ~RHI_SyncPrimitive();
 
         void Wait(const uint64_t timeout_nanoseconds);
+        void Wait(const uint64_t timeout_nanoseconds, const uint64_t value);
         void Signal(const uint64_t value);
         bool IsSignaled();
         void Reset();
-        uint64_t GetNextSignalValue() { return ++m_value; }
-        uint64_t GetValue() const     { return m_value; }
+        uint64_t GetNextSignalValue() { return m_value.fetch_add(1, std::memory_order_relaxed) + 1; }
+        uint64_t GetValue() const     { return m_value.load(std::memory_order_relaxed); }
         void* GetRhiResource()        { return m_rhi_resource; }
 
         // signaler command list
@@ -58,7 +60,7 @@ namespace spartan
     private:
         RHI_CommandList* m_user_cmd_list = nullptr;
         RHI_SyncPrimitive_Type m_type    = RHI_SyncPrimitive_Type::Max;
-        uint64_t m_value                 = 0;
+        std::atomic<uint64_t> m_value    = 0;
         void* m_rhi_resource             = nullptr;
     };
 }

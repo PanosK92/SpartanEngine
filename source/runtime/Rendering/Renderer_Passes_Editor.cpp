@@ -120,9 +120,6 @@ namespace spartan
                     uint32_t groups_x = (renderer_editor_icon_size_px + thread_x - 1) / thread_x;
                     uint32_t groups_y = (renderer_editor_icon_size_px + thread_y - 1) / thread_y;
                     cmd_list->Dispatch(groups_x, groups_y, 1);
-
-                    // per-icon barrier to avoid out-of-order uav writes on overlapping icons
-                    cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
                 };
                 for (const auto& [texture, pos_world] : m_icons)
                 {

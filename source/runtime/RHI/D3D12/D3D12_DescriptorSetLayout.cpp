@@ -37,7 +37,7 @@ namespace spartan
     {
         // m_rhi_resource is a stable pointer encoding of m_layout_hash, no real com object to release
         // routing through the deletion queue keeps lifecycle parity with the vulkan path
-        if (m_rhi_resource)
+        if (m_rhi_resource && m_owns_resource)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, m_rhi_resource);
             m_rhi_resource = nullptr;

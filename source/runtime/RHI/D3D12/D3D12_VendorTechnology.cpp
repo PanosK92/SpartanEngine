@@ -215,11 +215,12 @@ namespace spartan
         nrd_pool pool_gi;
         nrd_pool pool_screen;
 
-        nrd::Resource make_resource(RHI_Texture* texture)
+        nrd::Resource make_resource(RHI_Texture* texture, bool storage)
         {
             nrd::Resource resource = {};
             resource.d3d12.resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
             resource.d3d12.format   = static_cast<DXGIFormat>(d3d12_format[rhi_format_to_index(texture->GetFormat())]);
+            resource.state          = storage ? nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::Layout::SHADER_RESOURCE_STORAGE, nri::StageBits::COMPUTE_SHADER } : nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE, nri::Layout::SHADER_RESOURCE, nri::StageBits::COMPUTE_SHADER };
             resource.userArg        = texture;
             return resource;
         }
@@ -453,7 +454,7 @@ namespace spartan
         cmd_list->EnsureComputeShaderResource(tex_velocity);
         cmd_list->EnsureComputeShaderResource(tex_depth);
         cmd_list->EnsureComputeShaderResource(tex_mask);
-        tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->PrepareForExternalWrite(tex_output);
         cmd_list->FlushBarriers();
 
         intel::params_execute                              = {};
@@ -538,7 +539,7 @@ namespace spartan
         cmd_list->EnsureComputeShaderResource(tex_normal_roughness);
         cmd_list->EnsureComputeShaderResource(tex_view_z);
         cmd_list->EnsureComputeShaderResource(tex_signal_in);
-        tex_signal_out->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->PrepareForExternalWrite(tex_signal_out);
         cmd_list->FlushBarriers();
 
         if (pool.last_frame_index != common::cb_frame->frame)
@@ -561,9 +562,9 @@ namespace spartan
         nrd::Identifier denoiser_id = nrd_common::id_gi;
         nrd::ResourceSnapshot snapshot = {};
         snapshot.restoreInitialState = true;
-        snapshot.SetResource(nrd::ResourceType::IN_MV, nvidia::make_resource(tex_mv));
-        snapshot.SetResource(nrd::ResourceType::IN_NORMAL_ROUGHNESS, nvidia::make_resource(tex_normal_roughness));
-        snapshot.SetResource(nrd::ResourceType::IN_VIEWZ, nvidia::make_resource(tex_view_z));
+        snapshot.SetResource(nrd::ResourceType::IN_MV, nvidia::make_resource(tex_mv, false));
+        snapshot.SetResource(nrd::ResourceType::IN_NORMAL_ROUGHNESS, nvidia::make_resource(tex_normal_roughness, false));
+        snapshot.SetResource(nrd::ResourceType::IN_VIEWZ, nvidia::make_resource(tex_view_z, false));
 
         if (preset == Nrd_Preset::Gi)
         {
@@ -574,8 +575,8 @@ namespace spartan
             {
                 return false;
             }
-            snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in));
-            snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out));
+            snapshot.SetResource(nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out, true));
         }
         else if (preset == Nrd_Preset::Reflections)
         {
@@ -586,8 +587,8 @@ namespace spartan
             {
                 return false;
             }
-            snapshot.SetResource(nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in));
-            snapshot.SetResource(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out));
+            snapshot.SetResource(nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nvidia::make_resource(tex_signal_out, true));
         }
         else
         {
@@ -599,8 +600,8 @@ namespace spartan
             {
                 return false;
             }
-            snapshot.SetResource(nrd::ResourceType::IN_PENUMBRA, nvidia::make_resource(tex_signal_in));
-            snapshot.SetResource(nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY, nvidia::make_resource(tex_signal_out));
+            snapshot.SetResource(nrd::ResourceType::IN_PENUMBRA, nvidia::make_resource(tex_signal_in, false));
+            snapshot.SetResource(nrd::ResourceType::OUT_SHADOW_TRANSLUCENCY, nvidia::make_resource(tex_signal_out, true));
         }
 
         nri::CommandBufferD3D12Desc cmd_desc = {};

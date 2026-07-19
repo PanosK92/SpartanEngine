@@ -66,13 +66,18 @@ namespace spartan
 
     void RHI_SyncPrimitive::Wait(const uint64_t timeout)
     {
+        Wait(timeout, GetValue());
+    }
+
+    void RHI_SyncPrimitive::Wait(const uint64_t timeout, const uint64_t value)
+    {
         if (!m_rhi_resource)
         {
             return;
         }
 
         ID3D12Fence* fence = static_cast<ID3D12Fence*>(m_rhi_resource);
-        if (fence->GetCompletedValue() >= m_value)
+        if (fence->GetCompletedValue() >= value)
         {
             return;
         }
@@ -83,7 +88,7 @@ namespace spartan
             return;
         }
 
-        if (SUCCEEDED(fence->SetEventOnCompletion(m_value, event_handle)))
+        if (SUCCEEDED(fence->SetEventOnCompletion(value, event_handle)))
         {
             // d3d12 waits in milliseconds, vulkan callers pass nanoseconds, scale appropriately
             DWORD timeout_ms = INFINITE;
@@ -122,7 +127,7 @@ namespace spartan
             return true;
         }
 
-        return static_cast<ID3D12Fence*>(m_rhi_resource)->GetCompletedValue() >= m_value;
+        return static_cast<ID3D12Fence*>(m_rhi_resource)->GetCompletedValue() >= GetValue();
     }
 
     void RHI_SyncPrimitive::Reset()

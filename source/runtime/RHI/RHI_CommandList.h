@@ -63,6 +63,33 @@ namespace spartan
         bool has_per_mip_views                                          = false;
     };
 
+    struct RHI_Tracked_Usage
+    {
+        RHI_Resource_Access access = RHI_Resource_Access::None;
+        RHI_Resource_Usage usage   = RHI_Resource_Usage::None;
+        RHI_Barrier_Scope scope    = RHI_Barrier_Scope::All;
+        RHI_Queue_Type queue       = RHI_Queue_Type::Max;
+        RHI_Image_Layout layout    = RHI_Image_Layout::Max;
+    };
+
+    struct RHI_Tracked_Texture_Binding
+    {
+        RHI_Texture* texture       = nullptr;
+        uint32_t mip_index         = 0;
+        uint32_t mip_range         = 0;
+        uint32_t array_layer       = rhi_all_mips;
+        RHI_Resource_Access access = RHI_Resource_Access::None;
+        RHI_Resource_Usage usage   = RHI_Resource_Usage::Shader;
+        RHI_Image_Layout layout    = RHI_Image_Layout::Max;
+    };
+
+    struct RHI_Tracked_Buffer_Binding
+    {
+        RHI_Buffer* buffer         = nullptr;
+        RHI_Resource_Access access = RHI_Resource_Access::None;
+        RHI_Resource_Usage usage   = RHI_Resource_Usage::None;
+    };
+
     class RHI_CommandList : public SpartanObject
     {
     public:
@@ -109,6 +136,11 @@ namespace spartan
         void Blit(RHI_Texture* source, RHI_SwapChain* destination);
         void BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer);
         void BlitToXrSwapchain(RHI_Texture* source); // blit to openxr swapchain with aspect ratio preservation
+        void PrepareForPresent(RHI_SwapChain* swapchain);
+        void PrepareTextureForUpload(RHI_Texture* texture);
+        void PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
+        void PrepareBufferForCompute(RHI_Buffer* buffer);
+        void PrepareBufferForReadback(RHI_Buffer* buffer);
 
         // copy
         void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
@@ -176,32 +208,10 @@ namespace spartan
         // buffer
         void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
 
-        // barriers - unified interface
-        void InsertBarrier(const RHI_Barrier& barrier);
-        void FlushBarriers();
-        // rebind engine descriptor heaps and invalidate root signatures after an external library (e.g. xess) mutated cmd list state
-        void RestoreAfterExternalPass();
-        // transition to non_pixel (depth also keeps depth_read) for external compute that rejects pixel_shader_resource
-        void EnsureComputeShaderResource(RHI_Texture* texture);
-        // adopt gpu state after an external pass that already transitioned the resource, no barrier emitted
-        void AdoptComputeShaderResource(RHI_Texture* texture);
-        void AdoptUnorderedAccess(RHI_Texture* texture);
-
-        // barriers - convenience overloads
-        void InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip = rhi_all_mips, uint32_t mip_range = 0);
-        void InsertBarrier(RHI_Texture* texture, RHI_BarrierType sync_type);
-        void InsertBarrier(RHI_Buffer* buffer);
-        void InsertBarrier(void* image, RHI_Format format, uint32_t mip_index, uint32_t mip_range, uint32_t array_length, RHI_Image_Layout layout);
-
-        // layouts
-        static void RemoveLayout(void* image);
-        static RHI_Image_Layout GetImageLayout(void* image, uint32_t mip_index);
-
         // misc
         void RenderPassEnd();
-        RHI_SyncPrimitive* GetRenderingCompleteSemaphore()         { return m_rendering_complete_semaphore.get(); }
         RHI_SyncPrimitive* GetTimelineSemaphore()                  { return m_rendering_complete_semaphore_timeline.get(); }
-        uint64_t GetLastTimelineSignalValue() const                { return m_rendering_complete_semaphore_timeline ? m_rendering_complete_semaphore_timeline->GetValue() : 0; }
+        uint64_t GetLastTimelineSignalValue() const                { return m_last_timeline_signal_value; }
         const RHI_CommandListState GetState() const                { return m_state; }
         RHI_Queue* GetQueue() const                                { return m_queue; }
         void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
@@ -213,12 +223,46 @@ namespace spartan
         void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
+        friend class RHI_Texture;
+        friend class RHI_VendorTechnology;
+        friend class RHI_Device;
+
+        void RestoreAfterExternalPass();
+        void EnsureComputeShaderResource(RHI_Texture* texture);
+        void AdoptComputeShaderResource(RHI_Texture* texture);
+        void AdoptUnorderedAccess(RHI_Texture* texture);
+        void PrepareTextureForSampling(RHI_Texture* texture);
+        static void RemoveLayout(void* image);
+        static RHI_Image_Layout GetImageLayout(void* image, uint32_t mip_index);
+        void InsertBarrier(const RHI_Barrier& barrier);
+        void FlushBarriers();
+        void InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip = rhi_all_mips, uint32_t mip_range = 0);
+        void InsertBarrier(RHI_Texture* texture, RHI_BarrierType sync_type);
+        void InsertBarrier(RHI_Buffer* buffer);
+        void InsertBarrier(void* image, RHI_Format format, uint32_t mip_index, uint32_t mip_range, uint32_t array_length, RHI_Image_Layout layout);
         void PreDraw();
         void RenderPassBegin();
+        void TrackTextureUsage(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, bool uav);
+        void TrackBufferUsage(uint32_t slot, RHI_Buffer* buffer, RHI_Resource_Access access);
+        void TrackBufferRead(uint32_t slot, RHI_Buffer* buffer, RHI_Resource_Usage usage);
+        void TrackExternalTextureUsage(RHI_Texture* texture, RHI_Resource_Access access, RHI_Image_Layout layout, RHI_Barrier_Scope scope, RHI_Resource_Usage usage = RHI_Resource_Usage::Shader);
+        void PrepareForExternalWrite(RHI_Texture* texture, RHI_Image_Layout layout = RHI_Image_Layout::General, RHI_Barrier_Scope scope = RHI_Barrier_Scope::Compute);
+        void SynchronizeRenderTargets();
+        void SynchronizeResources(bool include_bindings = true);
+        void ResetTrackedBindings();
+        void ResetTrackedResources();
+        void CommitTrackedResources();
+        RHI_Image_Layout GetTrackedTextureLayout(RHI_Texture* texture, uint32_t mip_index);
+        void SetTrackedTextureLayout(RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout);
+        RHI_Image_Layout GetTrackedImageLayout(void* image, uint32_t mip_index);
+        void SetTrackedImageLayout(void* image, uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout);
+        bool IsTextureBindingUsed(uint32_t slot, bool storage) const;
+        RHI_Resource_Access GetBufferAccess(uint32_t slot) const;
+        RHI_Barrier_Scope GetResourceScope() const;
 
         // sync
-        std::shared_ptr<RHI_SyncPrimitive> m_rendering_complete_semaphore;
         std::shared_ptr<RHI_SyncPrimitive> m_rendering_complete_semaphore_timeline;
+        uint64_t m_last_timeline_signal_value = 0;
 
         // misc
         uint64_t m_buffer_id_vertex                          = 0;
@@ -232,18 +276,48 @@ namespace spartan
         uint64_t m_gpu_frame_reference_tick                  = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
+        std::unordered_map<uint64_t, std::unique_ptr<RHI_DescriptorSetLayout>> m_descriptor_layouts_local;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
+        mutable float m_scissor_x                            = 0.0f;
+        mutable float m_scissor_y                            = 0.0f;
+        mutable float m_scissor_width                        = 0.0f;
+        mutable float m_scissor_height                       = 0.0f;
+        mutable bool m_scissor_valid                         = false;
+        mutable float m_viewport_x                           = 0.0f;
+        mutable float m_viewport_y                           = 0.0f;
+        mutable float m_viewport_width                       = 0.0f;
+        mutable float m_viewport_height                      = 0.0f;
+        mutable float m_viewport_depth_min                   = 0.0f;
+        mutable float m_viewport_depth_max                   = 0.0f;
+        mutable bool m_viewport_valid                        = false;
+        mutable bool m_vrs_enabled                           = false;
+        mutable bool m_vrs_valid                             = false;
         bool m_render_pass_active                            = false;
+        bool m_render_pass_pending                           = false;
         std::stack<const char*> m_active_timeblocks;
         std::stack<const char*> m_debug_label_stack;
         std::stack<int32_t> m_breadcrumb_gpu_slots;
         bool m_bind_dynamic = false;
+        bool m_batch_barrier_flush = false;
+        bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
         std::vector<PendingBarrierInfo> m_pending_barriers;
         RHI_Queue* m_queue = nullptr;
         bool m_load_depth_render_target = false;
         std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
+        static constexpr uint32_t m_max_tracked_resource_slots = 64;
+        std::array<RHI_Tracked_Texture_Binding, m_max_tracked_resource_slots> m_tracked_textures_srv;
+        std::array<RHI_Tracked_Texture_Binding, m_max_tracked_resource_slots> m_tracked_textures_uav;
+        std::array<RHI_Tracked_Texture_Binding, rhi_max_render_target_count + 2> m_tracked_attachments;
+        std::array<RHI_Tracked_Buffer_Binding, m_max_tracked_resource_slots> m_tracked_buffers;
+        std::array<RHI_Tracked_Buffer_Binding, 5> m_tracked_buffers_read;
+        std::unordered_map<uint64_t, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_tracked_texture_history;
+        std::unordered_map<uint64_t, RHI_Tracked_Usage> m_tracked_buffer_history;
+        std::unordered_map<RHI_Texture*, std::array<RHI_Tracked_Usage, rhi_max_mip_count>> m_current_texture_usage;
+        std::unordered_map<RHI_Buffer*, RHI_Tracked_Usage> m_current_buffer_usage;
+        std::unordered_map<RHI_Texture*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_texture_layouts;
+        std::unordered_map<void*, std::array<RHI_Image_Layout, rhi_max_mip_count>> m_tracked_image_layouts;
 
         // one sbt per pipeline (keyed by pipeline handle) so it's created once and reused
         std::unordered_map<void*, std::unique_ptr<RHI_Buffer>> m_shader_binding_tables;

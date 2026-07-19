@@ -360,8 +360,7 @@ namespace spartan
                 }
 
                 cmd_list->CopyBufferToBuffer(pool::staging.get(), pool::input.get(), staging_size);
-                cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(pool::input.get()).from(RHI_Barrier_Scope::Transfer).to(RHI_Barrier_Scope::Compute));
-                cmd_list->FlushBarriers();
+                cmd_list->PrepareBufferForCompute(pool::input.get());
 
                 RHI_PipelineState pso;
                 pso.name = pso_name;
@@ -399,8 +398,7 @@ namespace spartan
                     cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
                 }
 
-                cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(pool::output.get()).from(RHI_Barrier_Scope::Compute).to(RHI_Barrier_Scope::Transfer));
-                cmd_list->FlushBarriers();
+                cmd_list->PrepareBufferForReadback(pool::output.get());
 
                 uint64_t copy_size = static_cast<uint64_t>(total_blocks) * output_element_size;
                 cmd_list->CopyBufferToBuffer(pool::output.get(), pool::readback.get(), copy_size);

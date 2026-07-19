@@ -295,8 +295,7 @@ namespace spartan
             {
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
         
-                cmd_list->InsertBarrier(texture, layout, 0, mip_count);
-                cmd_list->FlushBarriers();
+                cmd_list->PrepareTextureForUpload(texture);
         
                 vkCmdCopyBufferToImage(
                     static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),

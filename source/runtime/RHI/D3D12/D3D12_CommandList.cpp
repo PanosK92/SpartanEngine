@@ -1040,8 +1040,6 @@ namespace spartan
 
         m_state = RHI_CommandListState::Idle;
 
-        // create sync primitives, the timeline mirrors vulkan's per-cmd-list timeline used for cross-queue ordering
-        m_rendering_complete_semaphore          = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, (string(name) + "_rendering_complete").c_str());
         m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, (string(name) + "_timeline").c_str());
 
         // create timestamp/occlusion query heaps and matching readback buffers, queries side-table holds them
@@ -1117,6 +1115,7 @@ namespace spartan
         bind_shader_visible_heaps(cmd_list);
 
         cmd_state::reset(this);
+        ResetTrackedResources();
         // record the queue type so push_transition can mask compute-invalid state bits when recording on a compute queue
         cmd_state::get(this).is_compute_queue = (m_queue && m_queue->GetType() == RHI_Queue_Type::Compute);
 
@@ -1144,6 +1143,9 @@ namespace spartan
         m_buffer_id_index    = 0;
         m_render_pass_active = false;
         m_pso                = RHI_PipelineState();
+        m_scissor_valid      = false;
+        m_viewport_valid     = false;
+        m_vrs_valid          = false;
     }
 
     void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal,
@@ -1164,7 +1166,6 @@ namespace spartan
             cmd_state::flush(cmd_list, b);
             cmd_state::commit_states_to_global(cmd_list, b);
         }
-
         // resolve any queries (timestamp, occlusion) into their readback buffers before close
         // ResolveQueryData is only valid before Close, the readback can be mapped after the fence signals
         {
@@ -1177,36 +1178,11 @@ namespace spartan
         SP_ASSERT_MSG(d3d12_utility::error::check(cmd_list->Close()), "Failed to close command list");
 
         ID3D12CommandQueue* queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(m_queue->GetType()));
-
-        // gpu-side wait on a producer queue's signaled value before this cmd list executes
-        if (semaphore_wait && semaphore_wait->GetRhiResource())
-        {
-            queue->Wait(static_cast<ID3D12Fence*>(semaphore_wait->GetRhiResource()), semaphore_wait->GetValue());
-        }
-        if (semaphore_timeline_wait && semaphore_timeline_wait->GetRhiResource() && timeline_wait_value > 0)
-        {
-            queue->Wait(static_cast<ID3D12Fence*>(semaphore_timeline_wait->GetRhiResource()), timeline_wait_value);
-        }
-
-        ID3D12CommandList* cmd_lists[] = { cmd_list };
-        queue->ExecuteCommandLists(1, cmd_lists);
+        m_last_timeline_signal_value = m_queue->Submit(cmd_list, 0, semaphore_wait, semaphore_signal, m_rendering_complete_semaphore_timeline.get(), semaphore_timeline_wait, timeline_wait_value);
+        CommitTrackedResources();
 
         m_rhi_fence_value++;
         queue->Signal(static_cast<ID3D12Fence*>(m_rhi_fence), m_rhi_fence_value);
-
-        // signal this cmd list's timeline so a downstream cross-queue Submit can wait on the captured value
-        if (m_rendering_complete_semaphore_timeline && m_rendering_complete_semaphore_timeline->GetRhiResource())
-        {
-            uint64_t next_value = m_rendering_complete_semaphore_timeline->GetNextSignalValue();
-            queue->Signal(static_cast<ID3D12Fence*>(m_rendering_complete_semaphore_timeline->GetRhiResource()), next_value);
-        }
-
-        // signal the consumer's sync primitive so a downstream Submit can Wait on it
-        if (semaphore_signal && semaphore_signal->GetRhiResource())
-        {
-            uint64_t next_value = semaphore_signal->GetNextSignalValue();
-            queue->Signal(static_cast<ID3D12Fence*>(semaphore_signal->GetRhiResource()), next_value);
-        }
 
         if (semaphore_wait)
         {
@@ -1265,6 +1241,7 @@ namespace spartan
         {
             return;
         }
+        ResetTrackedBindings();
 
         // determine load flags by comparing render targets with the previous pso
         // matching vertex shader and array index means this pso continues drawing into the same attachments,
@@ -1389,6 +1366,7 @@ namespace spartan
         {
             return;
         }
+        SynchronizeRenderTargets();
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
@@ -1437,7 +1415,7 @@ namespace spartan
 
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(rt->GetRhiResource());
                 cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                rt->SetLayoutDirect(0, rt->GetMipCount(), RHI_Image_Layout::Attachment);
+                SetTrackedTextureLayout(rt, 0, rt->GetMipCount(), RHI_Image_Layout::Attachment);
 
                 rtv_handles[i].ptr = reinterpret_cast<SIZE_T>(rtv);
                 rtv_count          = i + 1;
@@ -1462,7 +1440,7 @@ namespace spartan
             {
                 ID3D12Resource* depth_resource = static_cast<ID3D12Resource*>(depth->GetRhiResource());
                 cmd_state::push_transition(b, depth_resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-                depth->SetLayoutDirect(0, depth->GetMipCount(), RHI_Image_Layout::Attachment);
+                SetTrackedTextureLayout(depth, 0, depth->GetMipCount(), RHI_Image_Layout::Attachment);
 
                 dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv);
                 dsv_ptr        = &dsv_handle;
@@ -1531,7 +1509,7 @@ namespace spartan
             ID3D12Resource* vrs_resource = static_cast<ID3D12Resource*>(vrs->GetRhiResource());
 
             cmd_state::push_transition(b, vrs_resource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
-            vrs->SetLayoutDirect(0, vrs->GetMipCount(), RHI_Image_Layout::Shading_Rate_Attachment);
+            SetTrackedTextureLayout(vrs, 0, vrs->GetMipCount(), RHI_Image_Layout::Shading_Rate_Attachment);
             cmd_state::flush(cmd_list, b);
 
             RHI_Device::SetVariableRateShading(this, true);
@@ -1578,9 +1556,10 @@ namespace spartan
 
         if (texture->IsDepthStencilFormat() && texture->GetRhiDsv(0))
         {
+            PrepareForExternalWrite(texture, RHI_Image_Layout::Attachment, RHI_Barrier_Scope::Graphics);
             // ClearDepthStencilView requires the resource to be in depth_write state
             cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-            texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Attachment);
+            SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::Attachment);
             cmd_state::flush(cmd_list, b);
 
             D3D12_CPU_DESCRIPTOR_HANDLE dsv = {};
@@ -1594,6 +1573,7 @@ namespace spartan
                 (clear_depth == rhi_depth_load || clear_depth == rhi_depth_dont_care) ? 1.0f : clear_depth,
                 static_cast<UINT8>((clear_stencil == rhi_stencil_load || clear_stencil == rhi_stencil_dont_care) ? 0 : clear_stencil),
                 0, nullptr);
+            TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::Attachment, RHI_Barrier_Scope::Graphics, RHI_Resource_Usage::Attachment);
         }
         else if (texture->GetRhiRtv(0))
         {
@@ -1602,15 +1582,17 @@ namespace spartan
                 return;
             }
 
+            PrepareForExternalWrite(texture, RHI_Image_Layout::Attachment, RHI_Barrier_Scope::Graphics);
             // ClearRenderTargetView requires the resource to be in render_target state
             cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
-            texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Attachment);
+            SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::Attachment);
             cmd_state::flush(cmd_list, b);
 
             D3D12_CPU_DESCRIPTOR_HANDLE rtv = {};
             rtv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiRtv(0));
             float c[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
             cmd_list->ClearRenderTargetView(rtv, c, 0, nullptr);
+            TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::Attachment, RHI_Barrier_Scope::Graphics, RHI_Resource_Usage::Attachment);
         }
     }
 
@@ -1625,6 +1607,7 @@ namespace spartan
         {
             return;
         }
+        SynchronizeResources();
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->DrawInstanced(vertex_count, 1, vertex_start_index, 0);
         Profiler::m_rhi_draw++;
@@ -1640,6 +1623,7 @@ namespace spartan
         {
             return;
         }
+        SynchronizeResources();
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->DrawIndexedInstanced(index_count, instance_count, index_offset, vertex_offset, instance_start_index);
         Profiler::m_rhi_draw++;
@@ -1648,6 +1632,7 @@ namespace spartan
     void RHI_CommandList::DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
@@ -1662,6 +1647,7 @@ namespace spartan
             return;
         }
 
+        SynchronizeResources();
         // command signature is created once and shared across all single-shot indexed indirect draws,
         // args layout matches D3D12_DRAW_INDEXED_ARGUMENTS which mirrors VkDrawIndexedIndirectCommand
         static ID3D12CommandSignature* command_signature = nullptr;
@@ -1696,6 +1682,8 @@ namespace spartan
     void RHI_CommandList::DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
+        TrackBufferRead(4, count_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
@@ -1710,6 +1698,7 @@ namespace spartan
             return;
         }
 
+        SynchronizeResources();
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
         {
@@ -1752,6 +1741,7 @@ namespace spartan
         {
             return;
         }
+        SynchronizeResources();
         flush_pending_bindings(cmd_list, this, true);
         cmd_list->Dispatch(x, y, z);
     }
@@ -1759,6 +1749,7 @@ namespace spartan
     void RHI_CommandList::DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
@@ -1773,6 +1764,7 @@ namespace spartan
             return;
         }
 
+        SynchronizeResources();
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
         {
@@ -1806,6 +1798,7 @@ namespace spartan
     void RHI_CommandList::DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
@@ -1820,6 +1813,7 @@ namespace spartan
             return;
         }
 
+        SynchronizeResources();
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
         {
@@ -1863,6 +1857,7 @@ namespace spartan
             return;
         }
 
+        SynchronizeResources();
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
         if (FAILED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd4))))
@@ -1970,8 +1965,16 @@ namespace spartan
         auto& b = cmd_state::get(this);
 
         // save the layouts the textures had before the blit so they can be restored after, matching the vulkan semantics
-        const std::array<RHI_Image_Layout, rhi_max_mip_count> src_layouts_initial = source->GetLayouts();
-        const std::array<RHI_Image_Layout, rhi_max_mip_count> dst_layouts_initial = destination->GetLayouts();
+        std::array<RHI_Image_Layout, rhi_max_mip_count> src_layouts_initial = {};
+        std::array<RHI_Image_Layout, rhi_max_mip_count> dst_layouts_initial = {};
+        for (uint32_t mip = 0; mip < source->GetMipCount(); mip++)
+        {
+            src_layouts_initial[mip] = GetTrackedTextureLayout(source, mip);
+        }
+        for (uint32_t mip = 0; mip < destination->GetMipCount(); mip++)
+        {
+            dst_layouts_initial[mip] = GetTrackedTextureLayout(destination, mip);
+        }
         auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
 
         // copyresource requires identical resource footprints including mip and array counts
@@ -2196,7 +2199,7 @@ namespace spartan
             cmd_list->CopyResource(dst, src);
 
             // leave source layout consistent with d3d12 state, the rhi layout map will be re-synced by the next pass
-            source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
+            SetTrackedTextureLayout(source, 0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
 
             // backbuffer stays in copy_dest, the present-time barrier in SubmitAndPresent transitions it to present
             b.swapchain_bb_transitioned = dst;
@@ -2230,7 +2233,7 @@ namespace spartan
         // the blit swapped in its own root signature and pso, force the next graphics bind to restore the bindless layout
         b.has_root_signature_graphics = false;
 
-        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Shader_Read);
+        SetTrackedTextureLayout(source, 0, source->GetMipCount(), RHI_Image_Layout::Shader_Read);
 
         // backbuffer is now in render_target, the present-time barrier in SubmitAndPresent transitions it to present
         b.swapchain_bb_transitioned = dst;
@@ -2254,8 +2257,8 @@ namespace spartan
         auto& b = cmd_state::get(this);
 
         // save the layouts the textures had before the blit so they can be restored after, matching the vulkan semantics
-        const RHI_Image_Layout src_layout_initial = source->GetLayout(0);
-        const RHI_Image_Layout dst_layout_initial = destination->GetLayout(0);
+        const RHI_Image_Layout src_layout_initial = GetTrackedTextureLayout(source, 0);
+        const RHI_Image_Layout dst_layout_initial = GetTrackedTextureLayout(destination, 0);
         auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
 
         const bool dims_match   = source->GetWidth()  == destination->GetWidth()
@@ -2371,7 +2374,7 @@ namespace spartan
         d3d12_state::SetSubresourceCount(xr_image, 1);
 
         // save the source layout so it can be restored after the blit
-        RHI_Image_Layout source_layout_initial = source->GetLayout(0);
+        RHI_Image_Layout source_layout_initial = GetTrackedTextureLayout(source, 0);
         if (source_layout_initial == RHI_Image_Layout::Max)
         {
             source_layout_initial = RHI_Image_Layout::General;
@@ -2482,13 +2485,26 @@ namespace spartan
 
         cmd_list->CopyResource(dst, src);
 
-        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
+        SetTrackedTextureLayout(source, 0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
         b.swapchain_bb_transitioned = dst;
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (m_viewport_valid && m_viewport_x == viewport.x && m_viewport_y == viewport.y && m_viewport_width == viewport.width && m_viewport_height == viewport.height && m_viewport_depth_min == viewport.depth_min && m_viewport_depth_max == viewport.depth_max)
+        {
+            return;
+        }
+
+        m_viewport_x         = viewport.x;
+        m_viewport_y         = viewport.y;
+        m_viewport_width     = viewport.width;
+        m_viewport_height    = viewport.height;
+        m_viewport_depth_min = viewport.depth_min;
+        m_viewport_depth_max = viewport.depth_max;
+        m_viewport_valid     = true;
+
         D3D12_VIEWPORT vp = {};
         vp.TopLeftX = viewport.x;
         vp.TopLeftY = viewport.y;
@@ -2502,6 +2518,17 @@ namespace spartan
     void RHI_CommandList::SetScissorRectangle(const math::Rectangle& scissor_rectangle) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (m_scissor_valid && m_scissor_x == scissor_rectangle.x && m_scissor_y == scissor_rectangle.y && m_scissor_width == scissor_rectangle.width && m_scissor_height == scissor_rectangle.height)
+        {
+            return;
+        }
+
+        m_scissor_x      = scissor_rectangle.x;
+        m_scissor_y      = scissor_rectangle.y;
+        m_scissor_width  = scissor_rectangle.width;
+        m_scissor_height = scissor_rectangle.height;
+        m_scissor_valid  = true;
+
         const D3D12_RECT r =
         {
             static_cast<LONG>(scissor_rectangle.x),
@@ -2548,6 +2575,8 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(vertex && vertex->GetRhiResource());
+        TrackBufferRead(0, const_cast<RHI_Buffer*>(vertex), RHI_Resource_Usage::Vertex);
+        TrackBufferRead(1, instance, RHI_Resource_Usage::Vertex);
 
         D3D12_VERTEX_BUFFER_VIEW views[2] = {};
         views[0].BufferLocation = static_cast<ID3D12Resource*>(vertex->GetRhiResource())->GetGPUVirtualAddress();
@@ -2578,6 +2607,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(buffer && buffer->GetRhiResource());
+        TrackBufferRead(2, const_cast<RHI_Buffer*>(buffer), RHI_Resource_Usage::Index);
 
         if (m_buffer_id_index == buffer->GetObjectId())
         {
@@ -2663,6 +2693,8 @@ namespace spartan
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        const RHI_Resource_Access access = GetBufferAccess(slot);
+        TrackBufferUsage(slot, buffer && buffer->GetRhiResource() && access != RHI_Resource_Access::None ? buffer : nullptr, access);
         if (!buffer || !buffer->GetRhiResource())
         {
             return;
@@ -2674,9 +2706,31 @@ namespace spartan
             return;
         }
 
-        // engine only declares a uav SetBuffer overload (Renderer_BindingsUav), so this path is uav-only
-        // slots beyond what the bindless root signature exposes (u0..u56) are skipped
-        if (slot >= d3d12_root_slot::uav_space0_count)
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
+
+        if (access == RHI_Resource_Access::Read)
+        {
+            if (slot >= d3d12_root_slot::srv_space0_count)
+            {
+                return;
+            }
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+            desc.Shader4ComponentMapping        = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            desc.Format                         = DXGI_FORMAT_UNKNOWN;
+            desc.ViewDimension                  = D3D12_SRV_DIMENSION_BUFFER;
+            desc.Buffer.NumElements             = buffer->GetElementCount();
+            desc.Buffer.StructureByteStride     = buffer->GetStride();
+            uint32_t idx                        = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
+            D3D12_CPU_DESCRIPTOR_HANDLE h       = d3d12_descriptors::GetCbvSrvUavCpuHandle(idx);
+            RHI_Context::device->CreateShaderResourceView(resource, &desc, h);
+            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            b.srv[slot] = h;
+            b.srv_dirty = true;
+            return;
+        }
+
+        if (access == RHI_Resource_Access::None || slot >= d3d12_root_slot::uav_space0_count)
         {
             return;
         }
@@ -2686,13 +2740,11 @@ namespace spartan
         desc.ViewDimension              = D3D12_UAV_DIMENSION_BUFFER;
         desc.Buffer.NumElements         = buffer->GetElementCount();
         desc.Buffer.StructureByteStride = buffer->GetStride();
+        uint32_t idx                    = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
+        D3D12_CPU_DESCRIPTOR_HANDLE h   = d3d12_descriptors::GetCbvSrvUavCpuHandle(idx);
 
-        uint32_t idx = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
-        D3D12_CPU_DESCRIPTOR_HANDLE h = d3d12_descriptors::GetCbvSrvUavCpuHandle(idx);
-        ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
         RHI_Context::device->CreateUnorderedAccessView(resource, nullptr, &desc, h);
 
-        // ensure the buffer is in unordered_access state at draw/dispatch time
         cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         b.uav[slot]   = h;
@@ -2816,15 +2868,21 @@ namespace spartan
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const bool uav, const uint32_t array_layer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (!IsTextureBindingUsed(slot, uav))
+        {
+            return;
+        }
 
         auto& b = cmd_state::get(this);
 
         if (!texture)
         {
+            TrackTextureUsage(slot, nullptr, mip_index, mip_range, array_layer, uav);
             if (uav) { if (slot < d3d12_root_slot::uav_space0_count) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }
             else     { if (slot < d3d12_root_slot::srv_space0_count) { b.srv[slot].ptr = 0; b.srv_dirty = true; } }
             return;
         }
+        TrackTextureUsage(slot, texture, mip_index, mip_range, array_layer, uav);
 
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
         const bool mip_specified = mip_index != rhi_all_mips;
@@ -2873,11 +2931,11 @@ namespace spartan
             push_transition_for_view(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             if (covers_full)
             {
-                texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::General);
+                SetTrackedTextureLayout(texture, 0, total_mips, RHI_Image_Layout::General);
             }
             else
             {
-                texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::General);
+                SetTrackedTextureLayout(texture, covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::General);
             }
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
@@ -2919,11 +2977,11 @@ namespace spartan
             push_transition_for_view(read_state);
             if (covers_full)
             {
-                texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::Shader_Read);
+                SetTrackedTextureLayout(texture, 0, total_mips, RHI_Image_Layout::Shader_Read);
             }
             else
             {
-                texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::Shader_Read);
+                SetTrackedTextureLayout(texture, covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::Shader_Read);
             }
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
@@ -3389,7 +3447,9 @@ namespace spartan
 
                 if (barrier.texture)
                 {
-                    barrier.texture->SetLayoutDirect(0, barrier.texture->GetMipCount(), layout_tracked);
+                    const uint32_t mip_index = barrier.mip_index == rhi_all_mips ? 0 : barrier.mip_index;
+                    const uint32_t mip_range = barrier.mip_index == rhi_all_mips ? barrier.texture->GetMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
+                    SetTrackedTextureLayout(barrier.texture, mip_index, mip_range, layout_tracked);
                 }
                 break;
             }
@@ -3398,6 +3458,10 @@ namespace spartan
                 if (!barrier.texture)
                 {
                     return;
+                }
+                if (barrier.usage_src == RHI_Resource_Usage::Attachment || barrier.usage_dst == RHI_Resource_Usage::Attachment)
+                {
+                    break;
                 }
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(barrier.texture->GetRhiResource());
                 cmd_state::push_uav_barrier(b, resource);
@@ -3410,7 +3474,20 @@ namespace spartan
                     return;
                 }
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(barrier.buffer->GetRhiResource());
-                cmd_state::push_uav_barrier(b, resource);
+                D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                switch (barrier.usage_dst)
+                {
+                    case RHI_Resource_Usage::Vertex:   state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER; break;
+                    case RHI_Resource_Usage::Index:    state = D3D12_RESOURCE_STATE_INDEX_BUFFER;               break;
+                    case RHI_Resource_Usage::Indirect: state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;          break;
+                    case RHI_Resource_Usage::Shader:   state = barrier.access_dst == RHI_Resource_Access::Read ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE : D3D12_RESOURCE_STATE_UNORDERED_ACCESS; break;
+                    default: break;
+                }
+
+                if (!cmd_state::push_transition(b, resource, state))
+                {
+                    cmd_state::push_uav_barrier(b, resource);
+                }
                 break;
             }
         }
@@ -3454,7 +3531,7 @@ namespace spartan
         auto& b = cmd_state::get(this);
         const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat());
         cmd_state::push_transition(b, resource, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, true);
-        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
     }
 
     void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture)
@@ -3473,7 +3550,8 @@ namespace spartan
         auto& b = cmd_state::get(this);
         const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat());
         cmd_state::adopt_state(b, resource, state);
-        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+        TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::Shader_Read, RHI_Barrier_Scope::Compute);
     }
 
     void RHI_CommandList::AdoptUnorderedAccess(RHI_Texture* texture)
@@ -3491,7 +3569,8 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
         cmd_state::adopt_state(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::General);
+        SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::General);
+        TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Compute);
     }
 
     void RHI_CommandList::InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip, uint32_t mip_range)

@@ -355,7 +355,6 @@ namespace spartan
             "SetCloudCoverage",             &Light::SetCloudCoverage,
             "GetCloudCoverage",             &Light::GetCloudCoverage,
 
-            "NeedsSkysphereUpdate",         &Light::NeedsSkysphereUpdate,
             "GetSliceCount",                &Light::GetSliceCount,
 
             "GetAtlasOffset",               &Light::GetAtlasOffset,
@@ -813,35 +812,6 @@ namespace spartan
         SetAreaWidth(e[0]);
         SetAreaHeight(e[1]);
         return true;
-    }
-
-    bool Light::NeedsSkysphereUpdate() const
-    {
-        if (m_light_type != LightType::Directional)
-        {
-            return false;
-        }
-
-        // the sky derives its color from the atmosphere, direction, intensity and cloud coverage affect it
-        static Quaternion last_rotation           = Quaternion::Identity;
-        static float last_intensity_photometric   = numeric_limits<float>::max();
-        static float last_cloud_coverage          = numeric_limits<float>::max();
-
-        Quaternion current_rotation = GetEntity() ? GetEntity()->GetRotation() : Quaternion::Identity;
-
-        bool rotation_changed  = current_rotation != last_rotation;
-        bool intensity_changed = abs(m_intensity_photometric - last_intensity_photometric) > 0.01f;
-        bool coverage_changed  = abs(m_cloud_coverage - last_cloud_coverage) > 0.001f;
-
-        if (rotation_changed || intensity_changed || coverage_changed)
-        {
-            last_rotation              = current_rotation;
-            last_intensity_photometric = m_intensity_photometric;
-            last_cloud_coverage        = m_cloud_coverage;
-            return true;
-        }
-
-        return false;
     }
 
     void Light::SetAtlasRectangle(uint32_t slice, const math::Rectangle& rectangle)

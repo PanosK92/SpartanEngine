@@ -3873,6 +3873,10 @@ public:
                 shape->release();
             }
         }
+        if (PxScene* scene = body->getScene())
+        {
+            scene->flushQueryUpdates();
+        }
 
         PxVec3 com(spec.center_of_mass_x, spec.center_of_mass_y, spec.center_of_mass_z);
         PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);

@@ -35,12 +35,14 @@ namespace spartan
     public:
         RHI_DescriptorSetLayout() = default;
         RHI_DescriptorSetLayout(const RHI_Descriptor* descriptors, size_t count, const char* name);
+        RHI_DescriptorSetLayout(const RHI_DescriptorSetLayout& source);
         ~RHI_DescriptorSetLayout();
 
         // binding api - O(1) slot lookup
         void SetConstantBuffer(uint32_t slot, RHI_Buffer* constant_buffer);
         void SetBuffer(uint32_t slot, RHI_Buffer* buffer);
-        void SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer = rhi_all_mips);
+        bool SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, RHI_Image_Layout layout, bool storage);
+        bool ResolveTextureBindingOverlap(RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, bool storage);
         void SetAccelerationStructure(uint32_t slot, RHI_AccelerationStructure* tlas);
 
         // dynamic offsets for bound buffers
@@ -64,6 +66,7 @@ namespace spartan
 
         // vulkan descriptor set layout
         void* m_rhi_resource = nullptr;
+        bool m_owns_resource = true;
 
         // layout info (immutable after construction)
         std::vector<RHI_Descriptor> m_descriptors;

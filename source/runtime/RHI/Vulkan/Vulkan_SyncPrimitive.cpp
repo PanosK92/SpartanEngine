@@ -148,6 +148,11 @@ namespace spartan
 
     void RHI_SyncPrimitive::Wait(const uint64_t timeout_nanoseconds)
     {
+        Wait(timeout_nanoseconds, GetValue());
+    }
+
+    void RHI_SyncPrimitive::Wait(const uint64_t timeout_nanoseconds, const uint64_t value)
+    {
         SP_ASSERT(m_type == RHI_SyncPrimitive_Type::Fence || m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
 
         if (m_type == RHI_SyncPrimitive_Type::Fence)
@@ -156,7 +161,7 @@ namespace spartan
         }
         else
         { 
-            semaphore::wait(m_value, timeout_nanoseconds, m_rhi_resource);
+            semaphore::wait(value, timeout_nanoseconds, m_rhi_resource);
         }
     }
 
@@ -176,7 +181,7 @@ namespace spartan
             return fence::is_signaled(m_rhi_resource);
         }
 
-        return semaphore::get_value(m_rhi_resource) == m_value;
+        return semaphore::get_value(m_rhi_resource) >= GetValue();
     }
 
     void RHI_SyncPrimitive::Reset()

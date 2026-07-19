@@ -338,9 +338,30 @@ namespace spartan
         EnsureWriteThenWrite  // WAW: order prior write before new write (e.g., sequential computes on same UAV)
     };
 
+    enum class RHI_Resource_Access : uint8_t
+    {
+        None      = 0,
+        Read      = 1 << 0,
+        Write     = 1 << 1,
+        ReadWrite = 3
+    };
+
+    enum class RHI_Resource_Usage : uint8_t
+    {
+        None,
+        Shader,
+        Attachment,
+        Transfer,
+        ShadingRate,
+        Vertex,
+        Index,
+        Indirect
+    };
+
     // allows specifying barrier scope instead of conservative auto-deduction
     enum class RHI_Barrier_Scope : uint8_t
     {
+        None,
         Auto,     // deduce from layout/usage (default, conservative)
         Graphics, // vertex/fragment/tessellation stages
         Compute,  // compute stage only
@@ -374,6 +395,10 @@ namespace spartan
         uint32_t array_length      = 1;
         RHI_Image_Layout layout    = RHI_Image_Layout::Max;
         RHI_BarrierType sync_type  = RHI_BarrierType::EnsureWriteThenRead;
+        RHI_Resource_Access access_src = RHI_Resource_Access::None;
+        RHI_Resource_Access access_dst = RHI_Resource_Access::None;
+        RHI_Resource_Usage usage_src   = RHI_Resource_Usage::None;
+        RHI_Resource_Usage usage_dst   = RHI_Resource_Usage::None;
 
         // for buffer barriers
         RHI_Buffer* buffer = nullptr;
@@ -415,6 +440,20 @@ namespace spartan
             b.type      = Type::ImageSync;
             b.texture   = tex;
             b.sync_type = sync;
+            b.mip_index = std::numeric_limits<uint32_t>::max();
+            b.mip_range = 0;
+            return b;
+        }
+
+        static RHI_Barrier image_sync(RHI_Texture* tex, RHI_Resource_Access access_src, RHI_Resource_Access access_dst, uint32_t mip = std::numeric_limits<uint32_t>::max(), uint32_t range = 0)
+        {
+            RHI_Barrier b;
+            b.type       = Type::ImageSync;
+            b.texture    = tex;
+            b.access_src = access_src;
+            b.access_dst = access_dst;
+            b.mip_index  = mip;
+            b.mip_range  = range;
             return b;
         }
 
@@ -426,6 +465,18 @@ namespace spartan
             b.buffer = buf;
             b.offset = off;
             b.size   = sz;
+            return b;
+        }
+
+        static RHI_Barrier buffer_sync(RHI_Buffer* buf, RHI_Resource_Access access_src, RHI_Resource_Access access_dst, uint64_t off = 0, uint64_t sz = 0)
+        {
+            RHI_Barrier b;
+            b.type       = Type::BufferSync;
+            b.buffer     = buf;
+            b.access_src = access_src;
+            b.access_dst = access_dst;
+            b.offset     = off;
+            b.size       = sz;
             return b;
         }
 

@@ -140,16 +140,21 @@ float3 unpack_vertex_oct(uint packed)
     return normalize(n);
 }
 
-// gpu-driven indirect drawing uav bindings
+// gpu-driven indirect drawing buffers
 // indirect_draw_args is a single-slot buffer used as the args for the final non-indexed indirect draw
 //   slot 0 layout matches VkDrawIndirectCommand for the first 16 bytes: vertex_count, instance_count, first_vertex, first_instance
 //   the cpu primes instance_count = 1 each frame, vertex_count is atomically bumped by triangle cull (in 3-vertex steps)
+#if defined(SP_SHADER_STAGE_COMPUTE)
 RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u31);
-RWStructuredBuffer<DrawData> indirect_draw_data         : register(u32);
-// meshlet_instances is the meshlet-cull survivor list, the triangle cull dispatches one workgroup per entry
+#endif
+StructuredBuffer<DrawData> indirect_draw_data           : register(t32);
+#if defined(SP_SHADER_STAGE_COMPUTE)
 RWStructuredBuffer<MeshletInstance> meshlet_instances   : register(u33);
-// visible_triangles is the triangle-cull survivor list, packed via VISIBLE_TRI_PACK
 RWStructuredBuffer<uint> visible_triangles              : register(u34);
+#else
+StructuredBuffer<MeshletInstance> meshlet_instances     : register(t33);
+StructuredBuffer<uint> visible_triangles                : register(t34);
+#endif
 // triangle_dispatch_args is the indirect dispatch args for the triangle cull, group_count_x is the meshlet survivor count
 RWStructuredBuffer<IndirectDispatchArgs> triangle_dispatch_args : register(u35);
 
@@ -162,9 +167,8 @@ RWStructuredBuffer<uint>  tex_compress_in      : register(u40);
 RWStructuredBuffer<uint4> tex_compress_out     : register(u41); // bc3, bc5 (16 bytes per block)
 RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u42); // bc1 (8 bytes per block)
 
-// per-meshlet bounds (read-only, declared as rw to keep slot management uniform with other indirect buffers)
 // the struct is compressed to 16 bytes, see shared_buffers.h MeshletBounds and the meshlet_decode_* helpers below for the dequant
-RWStructuredBuffer<MeshletBounds> meshlet_bounds : register(u43);
+StructuredBuffer<MeshletBounds> meshlet_bounds   : register(t43);
 
 // dequant helpers, kept in one place so the meshlet cull, triangle cull and the visible-triangle vertex pull stay in lockstep
 // the lod aabb (min, extent, diag) lives on DrawData per renderable, build_meshlets quantized the bounds against the same aabb on the cpu so this round trip is loss-free for the conservative sphere

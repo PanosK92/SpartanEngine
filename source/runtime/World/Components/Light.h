@@ -184,7 +184,6 @@ namespace spartan
         bool IsVolumetricEffective() const;
 
         // misc
-        bool NeedsSkysphereUpdate() const;
         uint32_t GetSliceCount() const;
 
         // atlas

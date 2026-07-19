@@ -315,8 +315,6 @@ namespace spartan
                 uint32_t dispatch_y = (output_height + thread_group_count - 1) / thread_group_count;
                 
                 cmd_list->Dispatch(dispatch_x, dispatch_y);
-                
-                cmd_list->InsertBarrier(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
             }
         }
         cmd_list->EndMarker();
@@ -345,8 +343,6 @@ namespace spartan
                 uint32_t dispatch_y = (big_height + thread_group_count - 1) / thread_group_count;
                 
                 cmd_list->Dispatch(dispatch_x, dispatch_y);
-                
-                 cmd_list->InsertBarrier(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
             }
         }
         cmd_list->EndMarker();
@@ -405,9 +401,6 @@ namespace spartan
 
         cmd_list->BeginTimeblock("aa_upscale");
         {
-            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->FlushBarriers();
-
             bool is_stereo = eye_layer != rhi_all_mips;
             Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
 
@@ -440,9 +433,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
                 cmd_list->Dispatch(tex_out);
 
-                cmd_list->InsertBarrier(tex_out,     RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
-                cmd_list->FlushBarriers();
                 cmd_list->Copy(tex_out, tex_history, false);
 
                 m_taau_reset_history = false;
@@ -457,8 +447,6 @@ namespace spartan
             {
                 cmd_list->Blit(tex_in, tex_out, false, resolution_scale);
             }
-
-            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
 
             // generate mips for refraction roughness
             Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
@@ -527,9 +515,7 @@ namespace spartan
 
     void Renderer::Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised)
     {
-        cmd_list->InsertBarrier(tex_denoised, RHI_BarrierType::EnsureReadThenWrite);
         Pass_Blit(cmd_list, tex_raw, tex_denoised);
-        cmd_list->InsertBarrier(tex_denoised, RHI_BarrierType::EnsureWriteThenRead);
     }
 
     void Renderer::Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)
@@ -558,8 +544,6 @@ namespace spartan
                 ? GetBuffer(Renderer_Buffer::SpdCounterCompute)
                 : GetBuffer(Renderer_Buffer::SpdCounter);
 
-            cmd_list->InsertBarrier(spd_counter);
-
             RHI_PipelineState pso;
             pso.name             = "downscale";
             pso.shaders[Compute] = shader_c;
@@ -573,7 +557,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     tex, mip_start, 1);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count);
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
-            cmd_list->InsertBarrier(tex, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndMarker();
     }
@@ -801,10 +784,6 @@ namespace spartan
             cmd_list->Dispatch((emit_counts[i] + thread_group - 1) / thread_group, 1, 1);
         }
 
-        // barrier: emit -> simulate
-        cmd_list->InsertBarrier(buf_a);
-        cmd_list->InsertBarrier(buf_counter);
-
         // simulate
         {
             RHI_PipelineState pso;
@@ -819,9 +798,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
             cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
-
-        // barrier: simulate -> render
-        cmd_list->InsertBarrier(buf_a);
 
         // render, each particle becomes a camera facing quad with the emitter selected blend mode
         // one draw per emitter so each can bind its own smoke texture and only its own range is drawn
@@ -894,9 +870,6 @@ namespace spartan
                 cmd_list->Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
             }
 
-            cmd_list->InsertBarrier(buf_volume_density);
-            cmd_list->InsertBarrier(buf_volume_color);
-
             {
                 RHI_PipelineState pso;
                 pso.name             = "particle_volume_splat";
@@ -908,9 +881,6 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_color,    buf_volume_color);
                 cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
             }
-
-            cmd_list->InsertBarrier(buf_volume_density);
-            cmd_list->InsertBarrier(buf_volume_color);
 
             {
                 RHI_PipelineState pso;
@@ -934,8 +904,6 @@ namespace spartan
 
                 cmd_list->Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
             }
-
-            cmd_list->InsertBarrier(tex_volume, RHI_BarrierType::EnsureWriteThenRead);
 
             {
                 RHI_PipelineState pso;
