@@ -1262,7 +1262,7 @@ namespace spartan
 
     void Car::Enter()
     {
-        if (m_is_occupied || !m_is_drivable)
+        if (m_is_occupied || !m_is_drivable || m_mcp_controlled)
         {
             return;
         }
@@ -2762,7 +2762,7 @@ namespace spartan
 
     void Car::TickEnterExit()
     {
-        if (!m_is_drivable)
+        if (!m_is_drivable || m_mcp_controlled)
         {
             return;
         }

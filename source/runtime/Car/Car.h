@@ -117,7 +117,7 @@ namespace spartan
         void SetHandbrake(float value);
         void ResetToSpawn();
 
-        // when true, keyboard and gamepad pedals are ignored so mcp can drive
+        // when true, external control owns vehicle input and interaction
         void SetMcpControlled(bool controlled) { m_mcp_controlled = controlled; }
         bool IsMcpControlled() const { return m_mcp_controlled; }
 
@@ -208,7 +208,7 @@ namespace spartan
         bool              m_is_drivable     = false;
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
-        bool              m_mcp_controlled  = false;    // mcp owns pedals, keyboard does not overwrite
+        bool              m_mcp_controlled  = false;    // external control owns vehicle input and interaction
         CarView           m_current_view    = CarView::Chase;
         CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
