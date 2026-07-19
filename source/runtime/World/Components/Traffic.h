@@ -145,15 +145,7 @@ namespace spartan
             std::unordered_map<uint64_t, uint16_t> visits;
         };
 
-        struct RoadSample
-        {
-            math::Vector3 position = math::Vector3::Zero;
-            math::Vector3 tangent = math::Vector3::Forward;
-            float half_width = 4.0f;
-        };
-
         void Spawn();
-        void CacheRoads();
         void InitializeLimits(Driver& driver);
         void UpdateTelemetry(Driver& driver, float delta_time);
         void PlanDriver(Driver& driver, float delta_time);
@@ -164,7 +156,6 @@ namespace spartan
         void SetPhysicsActive(Driver& driver, bool active);
         bool GetPlayerState(math::Vector3& position, math::Vector3& velocity) const;
         Trajectory EvaluateTrajectory(const Driver& driver, float steering, bool reverse = false) const;
-        float GetRoadScore(const math::Vector3& position, const math::Vector3& direction, float& road_distance) const;
         bool IsTrafficCorridorClear(const Driver& driver, const math::Vector3& start, const math::Vector3& end, float radius) const;
         bool FindSpawnPosition(uint32_t index, math::Vector3& position, math::Quaternion& rotation);
         bool SampleGround(const math::Vector3& position, math::Vector3& ground_position) const;
@@ -173,7 +164,6 @@ namespace spartan
         float GetNovelty(const Driver& driver, const math::Vector3& position) const;
 
         std::vector<Driver> m_drivers;
-        std::vector<RoadSample> m_road_samples;
         math::Vector3 m_bounds_min = math::Vector3(-220.0f, -10.0f, -380.0f);
         math::Vector3 m_bounds_max = math::Vector3(380.0f, 80.0f, 260.0f);
         std::string m_car_file = "cars/ferrari_laferrari.car";

@@ -583,6 +583,7 @@ namespace spartan
             physics->SetStatic(false);
             physics->SetMass(definition->performance.mass > 0.0f ? definition->performance.mass : 1500.0f);
             physics->SetVehiclePreset(definition->performance);
+            physics->GetVehicleSimulation()->set_log_to_file(config.show_telemetry);
             physics->SetVehicleHighQuality(config.high_quality_physics);
             physics->SetBodyType(BodyType::Vehicle);
             physics->SetCar(car);  // car ticks automatically through entity system
@@ -609,7 +610,7 @@ namespace spartan
             }
 
             car->CreateAudioSources(car->m_vehicle_entity);
-            car->CreateWheels(car->m_vehicle_entity, physics);
+            car->CreateWheels(car->m_vehicle_entity, physics, excluded_wheel_entities);
 
             // skid marks are defined in the world as a prefab override on the vehicle, not added here
 
@@ -1964,7 +1965,7 @@ namespace spartan
         return wheel_base;
     }
 
-    void Car::CreateWheels(Entity* vehicle_ent, Physics* physics)
+    void Car::CreateWheels(Entity* vehicle_ent, Physics* physics, const std::vector<Entity*>& baked_wheel_entities)
     {
         Entity* wheel_base = SpawnWheelBase();
         if (!wheel_base)
@@ -1981,10 +1982,6 @@ namespace spartan
         Entity* wheel_fr = wheel_base->Clone();
         Entity* wheel_rl = wheel_base->Clone();
         Entity* wheel_rr = wheel_base->Clone();
-        physics->ScaleWheelEntityToDimensions(wheel_fl, front_wheel_radius, front_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_fr, front_wheel_radius, front_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_rl, rear_wheel_radius, rear_wheel_width);
-        physics->ScaleWheelEntityToDimensions(wheel_rr, rear_wheel_radius, rear_wheel_width);
 
         const float suspension_height   = physics->GetSuspensionHeight();
         const float preset_wheelbase    = preset.wheelbase   > 0.0f ? preset.wheelbase   : 2.6f;
@@ -1995,30 +1992,106 @@ namespace spartan
         const float half_track_front    = preset_track_front * 0.5f;
         const float half_track_rear     = preset_track_rear  * 0.5f;
         const float wheel_y             = -suspension_height;
+        struct WheelPlacement
+        {
+            math::Vector3 position;
+            float radius;
+        };
+        WheelPlacement placements[4] =
+        {
+            { math::Vector3(-half_track_front, wheel_y, front_z), front_wheel_radius },
+            { math::Vector3(half_track_front, wheel_y, front_z), front_wheel_radius },
+            { math::Vector3(-half_track_rear, wheel_y, rear_z), rear_wheel_radius },
+            { math::Vector3(half_track_rear, wheel_y, rear_z), rear_wheel_radius }
+        };
+        std::vector<WheelPlacement> measured_placements;
+        const math::Matrix vehicle_inverse = vehicle_ent->GetMatrix().Inverted();
+        for (Entity* baked : baked_wheel_entities)
+        {
+            if (to_lower_copy(baked->GetObjectName()).find("tire") == std::string::npos)
+            {
+                continue;
+            }
+            bool nested = false;
+            for (Entity* ancestor = baked->GetParent(); ancestor; ancestor = ancestor->GetParent())
+            {
+                if (to_lower_copy(ancestor->GetObjectName()).find("tire") != std::string::npos)
+                {
+                    nested = true;
+                    break;
+                }
+            }
+            if (nested)
+            {
+                continue;
+            }
+            math::BoundingBox bounds = math::BoundingBox::Zero;
+            std::vector<Entity*> parts = { baked };
+            baked->GetDescendants(&parts);
+            for (Entity* part : parts)
+            {
+                if (Render* renderable = part->GetComponent<Render>())
+                {
+                    const math::BoundingBox part_bounds = renderable->GetBoundingBoxMesh() * part->GetMatrix();
+                    if (bounds == math::BoundingBox::Zero)
+                    {
+                        bounds = part_bounds;
+                    }
+                    else
+                    {
+                        bounds.Merge(part_bounds);
+                    }
+                }
+            }
+            const math::Vector3 extents = bounds.GetExtents();
+            const float radius = std::max({ extents.x, extents.y, extents.z });
+            if (bounds != math::BoundingBox::Zero && extents.IsFinite() && std::isfinite(radius) && radius > 0.01f)
+            {
+                measured_placements.push_back({ vehicle_inverse * bounds.GetCenter(), radius });
+            }
+        }
+        if (measured_placements.size() == 4)
+        {
+            float axle_midpoint = 0.0f;
+            for (const WheelPlacement& placement : measured_placements)
+            {
+                axle_midpoint += placement.position.z;
+            }
+            axle_midpoint *= 0.25f;
+            for (const WheelPlacement& placement : measured_placements)
+            {
+                const int index = placement.position.z >= axle_midpoint ? (placement.position.x < 0.0f ? 0 : 1) : (placement.position.x < 0.0f ? 2 : 3);
+                placements[index] = placement;
+            }
+        }
+        physics->ScaleWheelEntityToDimensions(wheel_fl, placements[0].radius, front_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_fr, placements[1].radius, front_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_rl, placements[2].radius, rear_wheel_width);
+        physics->ScaleWheelEntityToDimensions(wheel_rr, placements[3].radius, rear_wheel_width);
 
         // front left
         wheel_fl->SetObjectName("wheel_front_left");
         wheel_fl->SetParent(vehicle_ent);
-        wheel_fl->SetPositionLocal(math::Vector3(-half_track_front, wheel_y, front_z));
+        wheel_fl->SetPositionLocal(placements[0].position);
         tag_wheel(wheel_fl, true, true);
 
         // front right
         wheel_fr->SetObjectName("wheel_front_right");
         wheel_fr->SetParent(vehicle_ent);
-        wheel_fr->SetPositionLocal(math::Vector3(half_track_front, wheel_y, front_z));
+        wheel_fr->SetPositionLocal(placements[1].position);
         wheel_fr->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
         tag_wheel(wheel_fr, true, false);
 
         // rear left
         wheel_rl->SetObjectName("wheel_rear_left");
         wheel_rl->SetParent(vehicle_ent);
-        wheel_rl->SetPositionLocal(math::Vector3(-half_track_rear, wheel_y, rear_z));
+        wheel_rl->SetPositionLocal(placements[2].position);
         tag_wheel(wheel_rl, false, true);
 
         // rear right
         wheel_rr->SetObjectName("wheel_rear_right");
         wheel_rr->SetParent(vehicle_ent);
-        wheel_rr->SetPositionLocal(math::Vector3(half_track_rear, wheel_y, rear_z));
+        wheel_rr->SetPositionLocal(placements[3].position);
         wheel_rr->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
         tag_wheel(wheel_rr, false, false);
 

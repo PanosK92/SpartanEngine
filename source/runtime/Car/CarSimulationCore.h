@@ -4,12 +4,11 @@ private:
 car_preset spec = car_preset();
 bool log_pacejka = false;
 bool log_telemetry = false;
-bool log_to_file = true;
+bool log_to_file = false;
 std::string telemetry_path = "car_telemetry.csv";
 
 PxRigidDynamic* body = nullptr;
 PxMaterial*     material         = nullptr;
-PxMaterial*     wheel_guard_material = nullptr;
 PxConvexMesh*   wheel_sweep_mesh = nullptr;
 config          cfg;
 car_preset      base_spec;
@@ -531,9 +530,15 @@ public:
     }
 
 
+    inline bool can_apply_force(PxRigidDynamic* body)
+    {
+        return body && body->getScene() && !body->getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION) && !body->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC);
+    }
+
+
     inline void safe_add_force(PxRigidDynamic* body, const PxVec3& force, PxForceMode::Enum mode = PxForceMode::eFORCE)
     {
-        if (!body)
+        if (!can_apply_force(body))
         {
             return;
         }
@@ -548,7 +553,7 @@ public:
 
     inline void safe_add_torque(PxRigidDynamic* body, const PxVec3& torque, PxForceMode::Enum mode = PxForceMode::eFORCE)
     {
-        if (!body)
+        if (!can_apply_force(body))
         {
             return;
         }
@@ -563,7 +568,7 @@ public:
 
     inline void safe_add_force_at_pos(PxRigidDynamic* body, const PxVec3& force, const PxVec3& pos, PxForceMode::Enum mode = PxForceMode::eFORCE)
     {
-        if (!body)
+        if (!can_apply_force(body))
         {
             return;
         }
@@ -1343,7 +1348,7 @@ public:
     }
 
 
-    inline PxRigidDynamic* create_mechanism_actor(const PxTransform& pose, const PxGeometry& geometry, float mass, bool collision_guard = false)
+    inline PxRigidDynamic* create_mechanism_actor(const PxTransform& pose, const PxGeometry& geometry, float mass)
     {
         PxRigidDynamic* actor = multibody.physics->createRigidDynamic(pose);
         if (!actor)
@@ -1351,29 +1356,14 @@ public:
             return nullptr;
         }
 
-        PxMaterial* shape_material = collision_guard && wheel_guard_material ? wheel_guard_material : material;
-        PxShape* shape = multibody.physics->createShape(geometry, *shape_material);
+        PxShape* shape = multibody.physics->createShape(geometry, *material);
         if (!shape)
         {
             actor->release();
             return nullptr;
         }
 
-        if (collision_guard)
-        {
-            // the inset guard prevents tunneling while sweep tire forces remain primary
-            shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
-            shape->setContactOffset(0.005f);
-            shape->setRestOffset(0.0f);
-            PxFilterData filter_data = shape->getSimulationFilterData();
-            filter_data.word2 = 2;
-            filter_data.word3 = multibody_collision_group();
-            shape->setSimulationFilterData(filter_data);
-        }
-        else
-        {
-            configure_mechanism_shape(shape);
-        }
+        configure_mechanism_shape(shape);
         actor->attachShape(*shape);
         shape->release();
         PxRigidBodyExt::setMassAndUpdateInertia(*actor, PxMax(mass, 0.1f));
@@ -1640,8 +1630,7 @@ public:
         PxTransform wheel_pose(wheel_world, chassis_pose.q * alignment);
 
         corner.upright = create_mechanism_actor(wheel_pose, PxBoxGeometry(0.04f, 0.18f, 0.06f), spec.upright_mass);
-        // guard stays inside the sweep tire so custom contact remains primary
-        corner.wheel_body = create_mechanism_actor(wheel_pose, PxSphereGeometry(cfg.wheel_radius_for(wheel_index) * wheel_guard_radius_scale), cfg.wheel_mass, true);
+        corner.wheel_body = create_mechanism_actor(wheel_pose, PxSphereGeometry(cfg.wheel_radius_for(wheel_index) * wheel_inertia_shape_radius_scale), cfg.wheel_mass);
         if (!corner.upright || !corner.wheel_body)
         {
             return false;
@@ -2052,7 +2041,7 @@ public:
                 float target_motion_ratio = PxClamp(fabsf(relative_speed / wheel_vertical_speed), 0.25f, 2.0f);
                 wheels[i].motion_ratio = lerp(wheels[i].motion_ratio, target_motion_ratio, exp_decay(20.0f, delta_time));
             }
-            float compression = corner.shock_rest_length - length;
+            float compression = PxClamp(corner.shock_rest_length - length, 0.0f, cfg.suspension_travel);
             float force_magnitude = PxMax(spring_stiffness[i] * compression, 0.0f) - compute_damper_force(relative_speed, spring_damping[i]);
             float bump_start = cfg.suspension_travel * spec.bump_stop_threshold;
             if (compression > bump_start)
@@ -2087,8 +2076,8 @@ public:
         {
             suspension_corner& left_corner = multibody.corners[left];
             suspension_corner& right_corner = multibody.corners[right];
-            float left_compression = left_corner.shock_rest_length - left_corner.shock_length;
-            float right_compression = right_corner.shock_rest_length - right_corner.shock_length;
+            float left_compression = PxClamp(left_corner.shock_rest_length - left_corner.shock_length, 0.0f, cfg.suspension_travel);
+            float right_compression = PxClamp(right_corner.shock_rest_length - right_corner.shock_length, 0.0f, cfg.suspension_travel);
             float force_magnitude = PxClamp((left_compression - right_compression) * stiffness, -spec.max_susp_force, spec.max_susp_force);
             PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
             PxVec3 left_bottom = left_corner.upright->getGlobalPose().transform(left_corner.upright_shock_anchor);
@@ -2137,7 +2126,7 @@ public:
             // one cooked mesh is scaled per corner to match configured wheel dimensions
             PxMeshScale wheel_scale(PxVec3(wheel_width / source_width, wheel_radius / source_radius, wheel_radius / source_radius), PxQuat(PxIdentity));
             PxConvexMeshGeometry wheel_geometry(wheel_sweep_mesh, wheel_scale);
-            float query_lift = 0.08f;
+            float query_lift = PxMax(0.08f, wheel_radius * 0.5f);
             float query_distance = query_lift + PxMax(0.08f, predicted_travel);
             PxTransform sweep_pose(wheel_center + local_up * query_lift, query_rotation);
             PxSweepBuffer hit;
@@ -2216,7 +2205,7 @@ public:
             float tire_damping = 2.0f * 0.7f * sqrtf(PxMax(spec.tire_vertical_stiffness, 1.0f) * PxMax(cfg.wheel_mass, 1.0f));
             float normal_force = PxClamp(penetration * spec.tire_vertical_stiffness - vertical_velocity * tire_damping, 0.0f, spec.max_susp_force);
 
-            w.grounded = true;
+            w.grounded = normal_force > 0.0f;
             w.contact_point = contact_point;
             w.contact_normal = normal;
             w.contact_actor = hit.block.actor;
@@ -2407,6 +2396,30 @@ public:
     }
 
 
+    inline void set_active_gear(int gear)
+    {
+        gear = PxClamp(gear, 0, spec.gear_count - 1);
+        if (gear == current_gear)
+        {
+            return;
+        }
+
+        float previous_ratio = current_gear == 1 ? 0.0f : spec.gear_ratios[current_gear] * spec.final_drive;
+        float next_ratio = gear == 1 ? 0.0f : spec.gear_ratios[gear] * spec.final_drive;
+        if (fabsf(next_ratio) > 0.001f)
+        {
+            float gearbox_output_angular_velocity = fabsf(previous_ratio) > 0.001f ? gearbox_input_angular_velocity / previous_ratio : get_average_driven_angular_velocity(false);
+            gearbox_input_angular_velocity = gearbox_output_angular_velocity * next_ratio;
+        }
+        else
+        {
+            driveshaft_twist = 0.0f;
+            driveshaft_torque = 0.0f;
+        }
+        current_gear = gear;
+    }
+
+
     inline void update_automatic_gearbox(float dt, float throttle, float forward_speed)
     {
         bool kickdown_requested = throttle > 0.9f && previous_automatic_throttle <= 0.75f;
@@ -2439,7 +2452,7 @@ public:
         // reverse
         if (forward_speed < -1.0f && input.brake > 0.1f && throttle < 0.1f && current_gear != 0)
         {
-            current_gear = 0;
+            set_active_gear(0);
             is_shifting = true;
             shift_timer = spec.shift_time * 2.0f;
             last_shift_direction = -1;
@@ -2449,7 +2462,7 @@ public:
         // neutral to first: clutch engagement, no shift delay
         if (current_gear == 1 && throttle > 0.1f && forward_speed >= -0.5f)
         {
-            current_gear = 2;
+            set_active_gear(2);
             last_shift_direction = 1;
             return;
         }
@@ -2459,7 +2472,7 @@ public:
         {
             if (throttle > 0.1f || forward_speed > 0.5f)
             {
-                current_gear = 2;
+                set_active_gear(2);
                 is_shifting = true;
                 shift_timer = spec.shift_time * 2.0f;
                 last_shift_direction = 1;
@@ -2486,7 +2499,7 @@ public:
 
             if (can_shift && (speed_trigger || rpm_trigger) && current_gear < spec.gear_count - 1 && throttle > 0.1f)
             {
-                current_gear++;
+                set_active_gear(current_gear + 1);
                 is_shifting = true;
                 shift_timer = spec.shift_time;
                 last_shift_direction = 1;
@@ -2501,7 +2514,7 @@ public:
 
             if (can_shift && speed_kmh < downshift_threshold && current_gear > 2)
             {
-                current_gear--;
+                set_active_gear(current_gear - 1);
                 is_shifting = true;
                 shift_timer = spec.shift_time;
                 last_shift_direction = -1;
@@ -2516,7 +2529,7 @@ public:
                 float potential_rpm  = angular_velocity_to_rpm(fabsf(forward_speed) / get_driven_wheel_radius()) * ratio;
                 if (potential_rpm < spec.shift_up_rpm * 0.85f)
                 {
-                    current_gear--;
+                    set_active_gear(current_gear - 1);
                     is_shifting = true;
                     shift_timer = spec.shift_time;
                     last_shift_direction = -1;
@@ -2562,7 +2575,7 @@ public:
 
                     if (target < current_gear)
                     {
-                        current_gear = target;
+                        set_active_gear(target);
                         is_shifting = true;
                         shift_timer = spec.shift_time;
                         last_shift_direction = -1;
@@ -2775,7 +2788,7 @@ public:
         if (reverse_requested)
         {
             clear_abs_state();
-            current_gear = 0;
+            set_active_gear(0);
             is_shifting  = true;
             shift_timer  = spec.shift_time * 2.0f;
             return;
@@ -2854,26 +2867,17 @@ public:
     }
 
 
-    // full handbrake locks rear joints while partial input remains torque based
-    inline void update_handbrake_wheel_locks()
+    inline void update_handbrake()
     {
-        const bool handbrake_locked = input.handbrake >= 0.999f;
+        float brake_torque = spec.handbrake_torque * input.handbrake;
+        bool enabled = brake_torque > 0.0f;
         for (int i : { rear_left, rear_right })
         {
-            suspension_corner& corner = multibody.corners[i];
-            if (corner.wheel_joint)
+            if (PxRevoluteJoint* wheel_joint = multibody.corners[i].wheel_joint)
             {
-                corner.wheel_joint->setDriveVelocity(0.0f);
-                corner.wheel_joint->setDriveForceLimit(handbrake_locked ? handbrake_lock_force : 0.0f);
-                corner.wheel_joint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, handbrake_locked);
-            }
-            if (handbrake_locked && corner.wheel_body)
-            {
-                const PxVec3 wheel_axis = corner.wheel_body->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-                const PxVec3 angular_velocity = corner.wheel_body->getAngularVelocity();
-                corner.wheel_body->setAngularVelocity(angular_velocity - wheel_axis * angular_velocity.dot(wheel_axis));
-                wheels[i].angular_velocity = 0.0f;
-                wheels[i].net_torque = 0.0f;
+                wheel_joint->setDriveVelocity(0.0f);
+                wheel_joint->setDriveForceLimit(brake_torque);
+                wheel_joint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, enabled);
             }
         }
     }
@@ -2967,13 +2971,6 @@ public:
             {
                 w.angular_velocity = wheel_actor->getAngularVelocity().dot(wheel_axis);
             }
-            const bool handbrake_locked = is_rear(i) && input.handbrake >= 0.999f;
-            if (handbrake_locked)
-            {
-                w.angular_velocity = 0.0f;
-                w.net_torque = 0.0f;
-            }
-
             float wmoi    = (std::isfinite(wheel_moi[i]) && wheel_moi[i] > 0.0f) ? wheel_moi[i] : 1.0f;
             float wr_eff = get_effective_wheel_radius(i, w.tire_load);
 
@@ -3004,12 +3001,6 @@ public:
                 w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
 
                 w.net_torque -= w.angular_velocity * spec.bearing_friction * wmoi;
-                if (!handbrake_locked && input.handbrake > spec.input_deadzone && is_rear(i))
-                {
-                    float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : (w.angular_velocity < 0.0f) ? 1.0f : 0.0f;
-                    w.net_torque += hb_sign * spec.handbrake_torque * input.handbrake;
-                }
-
                 float spin_retain = powf(PxClamp(spec.airborne_wheel_decay, 0.0f, 1.0f), dt * 200.0f);
                 if (dt > 1e-5f)
                 {
@@ -3217,12 +3208,6 @@ public:
             }
 
             w.net_torque -= w.angular_velocity * spec.bearing_friction * wmoi; // bearing drag
-
-            if (!handbrake_locked && is_rear(i) && input.handbrake > spec.input_deadzone)
-            {
-                float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : (w.angular_velocity < 0.0f) ? 1.0f : 0.0f;
-                w.net_torque += hb_sign * spec.handbrake_torque * input.handbrake;
-            }
 
             if (wheel_actor)
             {
@@ -3693,11 +3678,6 @@ public:
         destroy_multibody();
         if (body)             { body->release();             body = nullptr; }
         if (material)         { material->release();         material = nullptr; }
-        if (wheel_guard_material)
-        {
-            wheel_guard_material->release();
-            wheel_guard_material = nullptr;
-        }
         if (wheel_sweep_mesh)
         {
             wheel_sweep_mesh->release();
@@ -3793,16 +3773,6 @@ public:
             return false;
         }
         material->setRestitutionCombineMode(PxCombineMode::eMIN);
-        wheel_guard_material = params.physics->createMaterial(0.0f, 0.0f, 0.0f);
-        if (!wheel_guard_material)
-        {
-            material->release();
-            material = nullptr;
-            return false;
-        }
-        wheel_guard_material->setFrictionCombineMode(PxCombineMode::eMIN);
-        wheel_guard_material->setRestitutionCombineMode(PxCombineMode::eMIN);
-
         // spawn near spring equilibrium with sweep clearance to avoid initial overlap
         float front_mass_per_wheel = chassis_mass() * get_weight_distribution_front() * 0.5f;
         float front_omega = 2.0f * PxPi * spec.front_spring_freq;
@@ -3816,8 +3786,6 @@ public:
         {
             material->release();
             material = nullptr;
-            wheel_guard_material->release();
-            wheel_guard_material = nullptr;
             return false;
         }
 
@@ -4390,7 +4358,7 @@ public:
         // caller supplies the fixed step duration
         tick_validation(dt);
         update_input(dt);
-        update_handbrake_wheel_locks();
+        update_handbrake();
         PxScene* scene = body->getScene();
         if (!scene)
         {
@@ -4657,7 +4625,7 @@ inline float get_wheel_temperature(int i) { return is_valid_wheel(i) ? wheels[i]
         {
             return;
         }
-        current_gear = (current_gear == 0) ? 1 : current_gear + 1;
+        set_active_gear((current_gear == 0) ? 1 : current_gear + 1);
         begin_shift(1);
     }
 
@@ -4672,7 +4640,7 @@ inline float get_wheel_temperature(int i) { return is_valid_wheel(i) ? wheels[i]
         {
             downshift_blip_timer = spec.downshift_blip_duration;
         }
-        current_gear = (current_gear == 1) ? 0 : current_gear - 1;
+        set_active_gear((current_gear == 1) ? 0 : current_gear - 1);
         begin_shift(-1);
     }
 
@@ -4683,7 +4651,7 @@ inline float get_wheel_temperature(int i) { return is_valid_wheel(i) ? wheels[i]
         {
             return;
         }
-        current_gear = 1;
+        set_active_gear(1);
         begin_shift(0);
     }
 

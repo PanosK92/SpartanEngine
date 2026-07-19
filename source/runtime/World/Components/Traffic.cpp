@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Traffic.h"
 #include "Physics.h"
-#include "Spline.h"
 #include "../../Car/Car.h"
 #include "../../Car/CarPresets.h"
 #include "../../Core/Engine.h"
@@ -109,7 +108,6 @@ namespace spartan
     void Traffic::Start()
     {
         Stop();
-        CacheRoads();
         Spawn();
     }
 
@@ -130,7 +128,6 @@ namespace spartan
             driver.physics = nullptr;
         }
         m_drivers.clear();
-        m_road_samples.clear();
     }
 
     void Traffic::Tick()
@@ -201,40 +198,6 @@ namespace spartan
                 }
             }
         }
-    }
-
-    void Traffic::CacheRoads()
-    {
-        m_road_samples.clear();
-        for (Entity* entity : World::GetEntities())
-        {
-            Spline* spline = entity ? entity->GetComponent<Spline>() : nullptr;
-            if (!spline || spline->GetProfile() != SplineProfile::Road || (spline->GetControlPointCount() < 2 && !spline->IsAttached()))
-            {
-                continue;
-            }
-
-            const float length = spline->GetLength();
-            if (!std::isfinite(length) || length < 1.0f)
-            {
-                continue;
-            }
-
-            const uint32_t sample_count = std::clamp(static_cast<uint32_t>(ceilf(length / 6.0f)) + 1u, 8u, 256u);
-            for (uint32_t i = 0; i < sample_count; i++)
-            {
-                const float t = static_cast<float>(i) / static_cast<float>(sample_count - 1);
-                RoadSample sample;
-                sample.position = spline->GetPoint(t);
-                sample.tangent = horizontal(spline->GetTangent(t));
-                sample.half_width = std::max(positive_or((spline->GetRoadWidth() + (spline->GetRoadWidthEnd() - spline->GetRoadWidth()) * t) * 0.5f, 4.0f), 1.5f);
-                if (std::isfinite(sample.position.x) && std::isfinite(sample.position.y) && std::isfinite(sample.position.z) && sample.tangent.LengthSquared() > 0.5f)
-                {
-                    m_road_samples.push_back(sample);
-                }
-            }
-        }
-        SP_LOG_INFO("traffic_ai cached %zu road samples", m_road_samples.size());
     }
 
     void Traffic::Spawn()
@@ -1016,47 +979,16 @@ namespace spartan
         result.target_speed = valid_count > 1 ? result.speed_profile[1] : 0.0f;
 
         const uint32_t last_valid = valid_count - 1;
-        const uint32_t middle_valid = last_valid / 2;
-        Vector3 middle_direction = middle_valid > 0 ? horizontal(result.points[middle_valid] - result.points[middle_valid - 1]) : forward;
-        Vector3 final_direction = last_valid > 0 ? horizontal(result.points[last_valid] - result.points[last_valid - 1]) : forward;
-        float middle_road_distance = 1000.0f;
-        float final_road_distance = 1000.0f;
-        const float middle_road_score = GetRoadScore(result.points[middle_valid], middle_direction, middle_road_distance);
-        const float final_road_score = GetRoadScore(result.points[last_valid], final_direction, final_road_distance);
-        const float road_score = middle_road_score * 0.4f + final_road_score * 0.6f;
-        const float road_distance = std::min(middle_road_distance, final_road_distance);
         const float novelty = GetNovelty(driver, result.points[last_valid]);
         const float clearance_score = std::min(result.clearance / preview_length, 1.0f) * 8.0f;
         const float smoothness = 1.0f - std::min(fabsf(steering - driver.steering), 1.0f);
         const float progress_score = Vector3::Dot(result.points[last_valid] - origin, forward) / std::max(preview_length, 1.0f);
-        const float road_weight = road_distance < 8.0f ? 7.0f : (road_distance < 24.0f ? 3.0f : 0.4f);
-        result.score = clearance_score + novelty * driver.exploration * 3.0f + smoothness * driver.persistence * 0.6f + progress_score * 1.5f + road_score * road_weight - slope_penalty * driver.caution;
+        result.score = clearance_score + novelty * driver.exploration * 3.0f + smoothness * driver.persistence * 0.6f + progress_score * 1.5f - slope_penalty * driver.caution;
         if (!result.traversable)
         {
             result.score -= 12.0f;
         }
         return result;
-    }
-
-    float Traffic::GetRoadScore(const Vector3& position, const Vector3& direction, float& road_distance) const
-    {
-        float score = 0.0f;
-        road_distance = 1000.0f;
-        for (const RoadSample& road : m_road_samples)
-        {
-            Vector3 offset = road.position - position;
-            offset.y = 0.0f;
-            const float distance = offset.Length();
-            if (distance >= road_distance)
-            {
-                continue;
-            }
-            road_distance = distance;
-            const float alignment = fabsf(Vector3::Dot(direction, road.tangent));
-            const float proximity = 1.0f - std::clamp(distance / std::max(road.half_width * 2.0f, 1.0f), 0.0f, 1.0f);
-            score = alignment * 0.65f + proximity * 0.35f;
-        }
-        return score;
     }
 
     bool Traffic::IsTrafficCorridorClear(const Driver& driver, const Vector3& start, const Vector3& end, float radius) const
@@ -1109,30 +1041,15 @@ namespace spartan
             Vector3 direction;
             Vector3 candidate;
             Vector3 ground;
-            if (!m_road_samples.empty() && attempt < 384)
+            const float x = m_bounds_min.x + (m_bounds_max.x - m_bounds_min.x) * random_unit();
+            const float z = m_bounds_min.z + (m_bounds_max.z - m_bounds_min.z) * random_unit();
+            if (!SampleGround(Vector3(x, m_bounds_max.y, z), ground))
             {
-                const RoadSample& road = m_road_samples[(index * 37u + attempt * 17u) % m_road_samples.size()];
-                direction = attempt % 2 == 0 ? road.tangent : -road.tangent;
-                const Vector3 road_right = Vector3::Cross(Vector3::Up, road.tangent);
-                const float lane_offset = road.half_width > 3.0f ? std::min(road.half_width * 0.35f, 2.5f) : 0.0f;
-                candidate = road.position + road_right * (attempt % 4 < 2 ? lane_offset : -lane_offset);
-                if (!SampleGround(candidate, ground))
-                {
-                    continue;
-                }
+                continue;
             }
-            else
-            {
-                const float x = m_bounds_min.x + (m_bounds_max.x - m_bounds_min.x) * random_unit();
-                const float z = m_bounds_min.z + (m_bounds_max.z - m_bounds_min.z) * random_unit();
-                if (!SampleGround(Vector3(x, m_bounds_max.y, z), ground))
-                {
-                    continue;
-                }
-                const float yaw = random_unit() * pi * 2.0f;
-                direction = Vector3(sinf(yaw), 0.0f, cosf(yaw));
-                candidate = ground;
-            }
+            const float yaw = random_unit() * pi * 2.0f;
+            direction = Vector3(sinf(yaw), 0.0f, cosf(yaw));
+            candidate = ground;
             candidate.y = ground.y + 1.0f;
             if (!IsInsideBounds(candidate, 4.0f))
             {

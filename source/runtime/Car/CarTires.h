@@ -29,7 +29,4 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarState.h"
 namespace car
 {
-
-    constexpr float handbrake_lock_force = 1e8f;
-
 }

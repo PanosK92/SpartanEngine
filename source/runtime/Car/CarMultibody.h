@@ -6,7 +6,7 @@ namespace car
 
     static constexpr int max_suspension_members = 8;
     static constexpr int max_suspension_joints  = 96;
-    static constexpr float wheel_guard_radius_scale = 0.75f;
+    static constexpr float wheel_inertia_shape_radius_scale = 0.75f;
 
     struct suspension_member
     {

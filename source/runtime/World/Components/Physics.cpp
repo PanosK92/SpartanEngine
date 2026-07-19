@@ -2184,19 +2184,8 @@ namespace spartan
             return;
         }
 
-        Vector3 scale;
-        if (extents.x <= extents.y && extents.x <= extents.z)
-        {
-            scale = Vector3(target_width / (extents.x * 2.0f), target_radius / extents.y, target_radius / extents.z);
-        }
-        else if (extents.y <= extents.x && extents.y <= extents.z)
-        {
-            scale = Vector3(target_radius / extents.x, target_width / (extents.y * 2.0f), target_radius / extents.z);
-        }
-        else
-        {
-            scale = Vector3(target_radius / extents.x, target_radius / extents.y, target_width / (extents.z * 2.0f));
-        }
+        const float measured_radius = max(max(extents.x, extents.y), extents.z);
+        const Vector3 scale(target_radius / measured_radius);
         if (!scale.IsFinite() || scale.x <= 0.0f || scale.y <= 0.0f || scale.z <= 0.0f)
         {
             return;

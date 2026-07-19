@@ -549,8 +549,16 @@ namespace spartan
 
             PxQueryHitType::Enum preFilter(const PxFilterData&, const PxShape* shape, const PxRigidActor*, PxHitFlags&) override
             {
+                if (!shape)
+                {
+                    return PxQueryHitType::eNONE;
+                }
                 const PxFilterData shape_data = shape->getSimulationFilterData();
-                return m_ignored_group != 0 && shape_data.word3 == m_ignored_group ? PxQueryHitType::eNONE : PxQueryHitType::eBLOCK;
+                if (shape_data.word2 == 2 || (m_ignored_group != 0 && shape_data.word3 == m_ignored_group))
+                {
+                    return PxQueryHitType::eNONE;
+                }
+                return PxQueryHitType::eBLOCK;
             }
 
             PxQueryHitType::Enum postFilter(const PxFilterData&, const PxQueryHit&, const PxShape*, const PxRigidActor*) override

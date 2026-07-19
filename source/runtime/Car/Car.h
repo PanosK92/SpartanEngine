@@ -147,7 +147,7 @@ namespace spartan
         // creation helpers
         Entity* CreateBody(std::vector<Entity*>* out_excluded_entities = nullptr);
         Entity* SpawnWheelBase();
-        void CreateWheels(Entity* vehicle_ent, Physics* physics);
+        void CreateWheels(Entity* vehicle_ent, Physics* physics, const std::vector<Entity*>& baked_wheel_entities);
         void CreatePropWheels(Entity* root, const std::vector<Entity*>& baked_wheel_entities);
         void CreateAudioSources(Entity* parent_entity);
 

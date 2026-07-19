@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "Renderer_Definitions.h"
 #include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_Vertex.h"
 #include "../Math/Vector3.h"
 #include "../Math/Plane.h"
-#include "../Geometry/Mesh.h"
 #include "Renderer_Buffers.h"
 #include "../Font/Font.h"
 #include "../Commands/Console/ConsoleCommands.h"
@@ -39,11 +39,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Material;
+    class Mesh;
     class Entity;
     class Camera;
     class Light;
     class Render;
     class Water;
+    enum class MeshType;
     namespace math
     {
         class BoundingBox;
