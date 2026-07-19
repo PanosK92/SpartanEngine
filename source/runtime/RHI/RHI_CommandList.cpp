@@ -560,7 +560,7 @@ namespace spartan
 
     void RHI_CommandList::PrepareTextureForSampling(RHI_Texture* texture)
     {
-        if (texture)
+        if (texture && texture->GetRhiResource() && texture->GetResourceState() == ResourceState::PreparedForGpu)
         {
             InsertBarrier(texture, RHI_Image_Layout::Shader_Read, 0, texture->GetMipCount());
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::Shader_Read, RHI_Barrier_Scope::All);
