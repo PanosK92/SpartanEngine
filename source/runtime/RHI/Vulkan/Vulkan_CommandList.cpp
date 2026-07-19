@@ -525,7 +525,7 @@ namespace spartan
                 pending.is_depth            = barrier.texture->GetFormat() == RHI_Format::D16_Unorm ||
                                               barrier.texture->GetFormat() == RHI_Format::D32_Float ||
                                               barrier.texture->GetFormat() == RHI_Format::D32_Float_S8X24_Uint;
-                pending.has_per_mip_views   = barrier.texture->HasPerMipViews();
+                pending.per_mip_layouts_differ = false;
                 pending.mip_index           = barrier.mip_index == rhi_all_mips ? 0 : barrier.mip_index;
                 pending.mip_range           = barrier.mip_index == rhi_all_mips ? barrier.texture->GetMipCount() : (barrier.mip_range == 0 ? 1 : barrier.mip_range);
                 pending.per_mip_count       = pending.mip_range;
@@ -533,6 +533,10 @@ namespace spartan
                 for (uint32_t mip = 0; mip < pending.per_mip_count; mip++)
                 {
                     pending.per_mip_layouts[mip] = GetTrackedTextureLayout(barrier.texture, pending.mip_index + mip);
+                    if (mip > 0 && pending.per_mip_layouts[mip] != pending.per_mip_layouts[0])
+                    {
+                        pending.per_mip_layouts_differ = true;
+                    }
                 }
 
                 m_pending_barriers.push_back(pending);
@@ -787,7 +791,7 @@ namespace spartan
                         ? barrier_helpers::scope_to_stages(pending.barrier.scope_dst)
                         : barrier_helpers::scope_to_stages(pso_scope_hint, pending.is_depth);
 
-                    if (pending.has_per_mip_views)
+                    if (pending.per_mip_layouts_differ)
                     {
                         for (uint32_t mip = 0; mip < pending.per_mip_count; ++mip)
                         {
@@ -905,6 +909,28 @@ namespace spartan
 
                     buffer_barriers.push_back(vk_barrier);
                     break;
+                }
+            }
+        }
+
+        for (size_t i = 0; i < image_barriers.size(); i++)
+        {
+            VkImageMemoryBarrier2& barrier = image_barriers[i];
+            for (size_t j = i + 1; j < image_barriers.size();)
+            {
+                const VkImageMemoryBarrier2& candidate = image_barriers[j];
+                const bool same_range = barrier.image == candidate.image && barrier.oldLayout == candidate.oldLayout && barrier.newLayout == candidate.newLayout && barrier.subresourceRange.aspectMask == candidate.subresourceRange.aspectMask && barrier.subresourceRange.baseMipLevel == candidate.subresourceRange.baseMipLevel && barrier.subresourceRange.levelCount == candidate.subresourceRange.levelCount && barrier.subresourceRange.baseArrayLayer == candidate.subresourceRange.baseArrayLayer && barrier.subresourceRange.layerCount == candidate.subresourceRange.layerCount;
+                if (same_range)
+                {
+                    barrier.srcStageMask  |= candidate.srcStageMask;
+                    barrier.srcAccessMask |= candidate.srcAccessMask;
+                    barrier.dstStageMask  |= candidate.dstStageMask;
+                    barrier.dstAccessMask |= candidate.dstAccessMask;
+                    image_barriers.erase(image_barriers.begin() + j);
+                }
+                else
+                {
+                    j++;
                 }
             }
         }
@@ -1262,21 +1288,11 @@ namespace spartan
         m_scissor_valid = false;
         m_viewport_valid = false;
         m_vrs_valid = false;
-    
-        // set dynamic states
-        if (m_queue->GetType() == RHI_Queue_Type::Graphics)
-        {
-            // cull mode
-            SetCullMode(RHI_CullMode::Back);
-    
-            // scissor rectangle
-            math::Rectangle scissor_rect;
-            scissor_rect.x      = 0.0f;
-            scissor_rect.y      = 0.0f;
-            scissor_rect.width  = static_cast<float>(m_pso.GetWidth());
-            scissor_rect.height = static_cast<float>(m_pso.GetHeight());
-            SetScissorRectangle(scissor_rect);
-        }
+        m_buffer_id_vertex   = 0;
+        m_buffer_id_instance = 0;
+        m_buffer_id_index    = 0;
+        m_bindless_pipeline_layout = nullptr;
+        m_bindless_pipeline_type   = static_cast<uint8_t>(-1);
     
         // queries
         if (m_queue->GetType() != RHI_Queue_Type::Copy)
@@ -1442,7 +1458,14 @@ namespace spartan
         // bind descriptors
         {
             // set bindless descriptors
-            descriptor_sets::set_bindless(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout());
+            void* pipeline_layout       = m_pipeline->GetRhiResourceLayout();
+            const uint8_t pipeline_type = m_pso.IsGraphics() ? 1 : (m_pso.IsRayTracing() ? 2 : 0);
+            if (m_bindless_pipeline_layout != pipeline_layout || m_bindless_pipeline_type != pipeline_type)
+            {
+                descriptor_sets::set_bindless(m_pso, m_rhi_resource, pipeline_layout);
+                m_bindless_pipeline_layout = pipeline_layout;
+                m_bindless_pipeline_type   = pipeline_type;
+            }
 
             // set standard resources (dynamic descriptors)
             Renderer::SetStandardResources(this);
@@ -1657,7 +1680,20 @@ namespace spartan
     {
         if (m_render_pass_pending && !m_flushing_barriers)
         {
-            RenderPassBegin();
+            bool clear_pending = m_pso.render_target_depth_texture && !m_load_depth_render_target && m_pso.clear_depth != rhi_depth_load && m_pso.clear_depth != rhi_depth_dont_care;
+            for (uint32_t i = 0; i < rhi_max_render_target_count && !clear_pending; i++)
+            {
+                clear_pending = m_pso.render_target_color_textures[i] && !m_load_color_render_targets[i] && m_pso.clear_color[i] != rhi_color_load && m_pso.clear_color[i] != rhi_color_dont_care;
+            }
+
+            if (clear_pending)
+            {
+                RenderPassBegin();
+            }
+            else
+            {
+                m_render_pass_pending = false;
+            }
         }
 
         if (!m_render_pass_active)
@@ -2675,9 +2711,7 @@ namespace spartan
 
         // set (will only happen if it's not already set)
         m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
-
-        // todo: detect if there are changes, otherwise don't bother binding
-        m_bind_dynamic = true;
+        m_bind_dynamic |= m_descriptor_layout_current->IsDirty();
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/, const uint32_t array_layer /*= rhi_all_mips*/)
@@ -2705,7 +2739,7 @@ namespace spartan
             if (m_descriptor_layout_current->SetTexture(slot, nullptr, mip_index, mip_range, array_layer, uav ? RHI_Image_Layout::General : RHI_Image_Layout::Shader_Read, uav))
             {
                 TrackTextureUsage(slot, nullptr, mip_index, mip_range, array_layer, uav);
-                m_bind_dynamic = true;
+                m_bind_dynamic |= m_descriptor_layout_current->IsDirty();
             }
             return;
         }
@@ -2727,7 +2761,7 @@ namespace spartan
             if (m_descriptor_layout_current->SetTexture(slot, nullptr, mip_index, mip_range, array_layer, target_layout, uav))
             {
                 TrackTextureUsage(slot, nullptr, mip_index, mip_range, array_layer, uav);
-                m_bind_dynamic = true;
+                m_bind_dynamic |= m_descriptor_layout_current->IsDirty();
             }
             return;
         }
@@ -2748,17 +2782,14 @@ namespace spartan
             m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range, array_layer, target_layout, uav);
         }
 
-        // todo: detect if there are changes, otherwise don't bother binding
-        m_bind_dynamic = true;
+        m_bind_dynamic |= m_descriptor_layout_current->IsDirty();
     }
 
     void RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         m_descriptor_layout_current->SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
-        
-        // mark descriptor set as needing to be bound
-        m_bind_dynamic = true;
+        m_bind_dynamic |= m_descriptor_layout_current->IsDirty();
     }
 
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
@@ -2774,9 +2805,7 @@ namespace spartan
         }
 
         m_descriptor_layout_current->SetBuffer(slot, buffer);
-
-        // todo: detect if there are changes, otherwise don't bother binding
-        m_bind_dynamic = true;
+        m_bind_dynamic |= m_descriptor_layout_current->IsDirty();
     }
 
     void RHI_CommandList::BeginMarker(const char* name)

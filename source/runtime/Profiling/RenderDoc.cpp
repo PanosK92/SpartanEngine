@@ -39,6 +39,8 @@ namespace spartan
     static RENDERDOC_Version rdc_version = eRENDERDOC_API_Version_1_6_0;
     static RENDERDOC_API_1_6_0* rdc_api  = nullptr;
     static void* rdc_module              = nullptr;
+    static uint32_t capture_count_before = 0;
+    static bool open_capture_when_ready   = false;
 
 #if defined(_WIN32) // windows
     static vector<wstring> get_renderdoc_dll_paths()
@@ -189,11 +191,15 @@ namespace spartan
         // disable muting of validation/debug layer messages
         rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
         rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
-        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_VerifyBufferAccess, 1);
+        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_VerifyBufferAccess, 0);
+        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_RefAllResources, 0);
+        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_CaptureAllCmdLists, 0);
+        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_SoftMemoryLimit, 512);
     }
 
     void RenderDoc::Shutdown()
     {
+        open_capture_when_ready = false;
         if (rdc_module != nullptr)
         {
 #if defined(_WIN32) // windows
@@ -204,21 +210,39 @@ namespace spartan
         }
     }
 
+    void RenderDoc::Tick()
+    {
+        if (!rdc_api || !open_capture_when_ready)
+        {
+            return;
+        }
+
+        const uint32_t capture_count = rdc_api->GetNumCaptures();
+        if (capture_count <= capture_count_before)
+        {
+            return;
+        }
+
+        open_capture_when_ready = false;
+        LaunchRenderDocUi();
+        SP_LOG_INFO("RenderDoc capture is ready, close the engine before replaying it to avoid duplicating GPU memory");
+    }
+
     void RenderDoc::FrameCapture()
     {
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
 
-        // capture the next frame
+        capture_count_before = rdc_api->GetNumCaptures();
+        open_capture_when_ready = true;
         rdc_api->TriggerCapture();
-        //rdc_api->TriggerMultiFrameCapture(2);
-
-        LaunchRenderDocUi();
     }
 
     void RenderDoc::StartCapture()
     {
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
 
+        capture_count_before = rdc_api->GetNumCaptures();
+        open_capture_when_ready = true;
         rdc_api->StartFrameCapture(nullptr, nullptr);
     }
 
@@ -227,8 +251,7 @@ namespace spartan
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
 
         rdc_api->EndFrameCapture(nullptr, nullptr);
-
-        LaunchRenderDocUi();
+        Tick();
     }
 
     void RenderDoc::LaunchRenderDocUi()

@@ -101,31 +101,30 @@ namespace spartan
             cmd_list->BeginTimeblock("icons");
             {
                 RHI_PipelineState pso;
-                pso.name                              = "icons";
-                pso.shaders[RHI_Shader_Type::Compute] = GetShader(Renderer_Shader::icon_c);
+                pso.name                             = "icons";
+                pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::icon_v);
+                pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::icon_p);
+                pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+                pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
+                pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+                pso.render_target_color_textures[0]  = tex_out;
+                pso.clear_color[0]                   = rhi_color_load;
                 cmd_list->SetPipelineState(pso);
 
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-
-                auto dispatch_icon = [&](RHI_Texture* texture, const math::Vector3& pos_world)
+                auto draw_icon = [&](RHI_Texture* texture, const math::Vector3& pos_world)
                 {
                     m_pcb_pass_cpu.set_f3_value(pos_world.x, pos_world.y, pos_world.z);
                     m_pcb_pass_cpu.set_f2_value(static_cast<float>(renderer_editor_icon_size_px), static_cast<float>(renderer_editor_icon_size_px));
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-
-                    const uint32_t thread_x = 32;
-                    const uint32_t thread_y = 32;
-                    uint32_t groups_x = (renderer_editor_icon_size_px + thread_x - 1) / thread_x;
-                    uint32_t groups_y = (renderer_editor_icon_size_px + thread_y - 1) / thread_y;
-                    cmd_list->Dispatch(groups_x, groups_y, 1);
+                    cmd_list->Draw(6);
                 };
                 for (const auto& [texture, pos_world] : m_icons)
                 {
                     if (texture)
                     {
-                        dispatch_icon(texture, pos_world);
+                        draw_icon(texture, pos_world);
                     }
                 }
             }

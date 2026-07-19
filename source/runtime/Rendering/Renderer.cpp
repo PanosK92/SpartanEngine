@@ -529,6 +529,8 @@ namespace spartan
 
             TickLogClusterOverflowRateLimited();
         }
+
+        RenderDoc::Tick();
     }
 
     void Renderer::TickRecreateOptionalRenderTargetsIfNeeded()
@@ -2186,6 +2188,9 @@ namespace spartan
         m_indirect_renderable_count = 0;
         m_cull_task_count           = 0;
         const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
+        const uint32_t indirect_draw_capacity = GetBuffer(Renderer_Buffer::IndirectDrawData)->GetElementCount();
+        const uint32_t cull_task_capacity = GetBuffer(Renderer_Buffer::CullTasks)->GetElementCount();
+        const uint32_t meshlet_instance_capacity = GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount();
 
         // diagnostics, the cull pipeline silently drops survivors once a budget is hit which manifests as
         // distant terrain, leaves or rocks failing to draw, the worst case survivor count is tracked here
@@ -2231,11 +2236,11 @@ namespace spartan
             // so the task budget scales with instance count, not meshlets x instances as the old single-phase path did
             const uint32_t tasks_add = inst_n;
 
-            if (m_indirect_draw_count + 1 > renderer_max_indirect_draws)
+            if (m_indirect_draw_count + 1 > indirect_draw_capacity)
             {
                 continue;
             }
-            if (m_cull_task_count + tasks_add > renderer_max_cull_tasks)
+            if (m_cull_task_count + tasks_add > cull_task_capacity)
             {
                 cull_task_overflow_renderables++;
                 continue;
@@ -2329,21 +2334,21 @@ namespace spartan
         // leaving the user with only whichever renderables won the atomic race drawn, both conditions are reported once per session here
         static bool s_logged_survivor_overflow   = false;
         static bool s_logged_cull_task_overflow  = false;
-        if (!s_logged_survivor_overflow && expected_survivors_worst_case > renderer_max_meshlet_instances)
+        if (!s_logged_survivor_overflow && expected_survivors_worst_case > meshlet_instance_capacity)
         {
             SP_LOG_WARNING(
                 "meshlet cull survivor buffer is too small, worst case %llu > capacity %u, distant or later-submitted geometry may be silently dropped",
                 static_cast<unsigned long long>(expected_survivors_worst_case),
-                renderer_max_meshlet_instances
+                meshlet_instance_capacity
             );
             s_logged_survivor_overflow = true;
         }
         if (!s_logged_cull_task_overflow && cull_task_overflow_renderables > 0)
         {
             SP_LOG_WARNING(
-                "instance cull task budget exhausted, %u renderable lods rejected, raise renderer_max_cull_tasks (current=%u) to keep them in per-instance cull",
+                "instance cull task budget exhausted, %u renderable lods rejected, current capacity is %u",
                 cull_task_overflow_renderables,
-                renderer_max_cull_tasks
+                cull_task_capacity
             );
             s_logged_cull_task_overflow = true;
         }

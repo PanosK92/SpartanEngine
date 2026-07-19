@@ -262,8 +262,6 @@ namespace spartan
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",          // to obtain precise memory usage information from Vulkan Memory Allocator
-            "VK_EXT_memory_priority",
-            "VK_EXT_pageable_device_local_memory",
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_KHR_robustness2",
@@ -302,6 +300,12 @@ namespace spartan
             vector<const char*> extensions_supported;
             for (const auto& requested : extensions_device)
             {
+                const bool ray_tracing_extension = strcmp(requested, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_RAY_QUERY_EXTENSION_NAME) == 0 || strcmp(requested, VK_KHR_RAY_TRACING_MAINTENANCE_1_EXTENSION_NAME) == 0;
+                if (Debugging::IsRenderdocEnabled() && ray_tracing_extension)
+                {
+                    continue;
+                }
+
                 bool found = false;
                 for (const auto& ext : available)
                 {
@@ -835,7 +839,7 @@ namespace spartan
             VkDescriptorPoolCreateInfo pool_create_info = {};
             pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
-            pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
+            pool_create_info.poolSizeCount              = RHI_Device::IsSupportedRayTracing() ? static_cast<uint32_t>(pool_sizes.size()) : static_cast<uint32_t>(pool_sizes.size() - 1);
             pool_create_info.pPoolSizes                 = pool_sizes.data();
             pool_create_info.maxSets                    = rhi_max_descriptor_set_count;
 
@@ -1468,7 +1472,7 @@ namespace spartan
 
                 // ray tracing
                 {
-                    *is_ray_tracing_supported = support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE && support_ray_query.rayQuery == VK_TRUE;
+                    *is_ray_tracing_supported = !Debugging::IsRenderdocEnabled() && support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE && support_ray_query.rayQuery == VK_TRUE;
 
                     if (*is_ray_tracing_supported)
                     {
@@ -2381,6 +2385,20 @@ namespace spartan
         {
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // mappable
+
+            if (Debugging::IsRenderdocEnabled())
+            {
+                VkPhysicalDeviceMemoryProperties memory_properties;
+                vkGetPhysicalDeviceMemoryProperties(RHI_Context::device_physical, &memory_properties);
+                for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
+                {
+                    const VkMemoryPropertyFlags properties = memory_properties.memoryTypes[i].propertyFlags;
+                    if ((properties & flags_memory) == flags_memory && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == 0)
+                    {
+                        allocation_create_info.memoryTypeBits |= 1u << i;
+                    }
+                }
+            }
         }
 
         // allocate

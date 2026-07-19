@@ -24,8 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common.hlsl"
 
-#define THREAD_DIM 8
-
 float light_luminance(float3 color)
 {
     return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
@@ -63,22 +61,55 @@ float flare_facing(LightParameters light, float3 to_camera)
     return max(facing, 0.45f);
 }
 
-[numthreads(THREAD_DIM, THREAD_DIM, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+struct PixelInput
 {
-    // f3: near_distance, size_scale, intensity_scale
-    // f3_2: max_size_px, occlusion, light_index
-    // f2: disc_size_px, fade_length
-    uint light_index = (uint)pass_get_f3_value2().z;
+    float4 position : SV_POSITION;
+    nointerpolation float2 center_pixel : TEXCOORD0;
+    nointerpolation uint light_index : TEXCOORD1;
+    nointerpolation float visible : TEXCOORD2;
+};
+
+PixelInput main_vs(uint vertex_id : SV_VertexID)
+{
+    static const float2 positions[6] =
+    {
+        float2(-1.0f, -1.0f),
+        float2(-1.0f,  1.0f),
+        float2( 1.0f, -1.0f),
+        float2( 1.0f, -1.0f),
+        float2(-1.0f,  1.0f),
+        float2( 1.0f,  1.0f)
+    };
+
+    PixelInput output;
+    const float2 corner     = positions[vertex_id];
+    const float disc_size   = max(pass_get_f2_value().x, 1.0f);
+    const float2 resolution = max(get_render_resolution_active(), float2(1.0f, 1.0f));
+    output.light_index      = (uint)pass_get_f3_value2().z;
+    output.visible          = output.light_index > 0u && output.light_index < buffer_frame.cluster_light_count ? 1.0f : 0.0f;
+
+    LightParameters light = light_parameters[min(output.light_index, max(buffer_frame.cluster_light_count, 1u) - 1u)];
+    float4 center_position = mul(float4(light.position.xyz, 1.0f), get_view_projection());
+    output.visible        *= center_position.w > 0.0f ? 1.0f : 0.0f;
+    output.position        = center_position;
+    output.position.xy    += corner * disc_size / resolution * center_position.w;
+    float2 ndc             = center_position.xy / max(center_position.w, 1e-4f);
+    output.center_pixel    = float2(ndc.x * 0.5f + 0.5f, 1.0f - (ndc.y * 0.5f + 0.5f)) * resolution;
+    return output;
+}
+
+float4 main_ps(PixelInput input) : SV_TARGET
+{
+    uint light_index = input.light_index;
     if (light_index == 0u || light_index >= buffer_frame.cluster_light_count)
     {
-        return;
+        discard;
     }
 
     LightParameters light = light_parameters[light_index];
-    if ((light.flags & (1u << 0)) || light.intensity <= 0.0f)
+    if (input.visible == 0.0f || (light.flags & (1u << 0)) || light.intensity <= 0.0f)
     {
-        return;
+        discard;
     }
 
     float near_distance     = max(pass_get_f3_value().x, 0.0f);
@@ -86,66 +117,38 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float intensity_scale   = max(pass_get_f3_value().z, 0.01f);
     float max_size_px       = max(pass_get_f3_value2().x, 1.0f);
     bool  occlusion_enabled = pass_get_f3_value2().y > 0.5f;
-    float disc_size_px      = max(pass_get_f2_value().x, 1.0f);
     float fade_length       = max(pass_get_f2_value().y, 0.1f);
-
-    if (thread_id.x >= (uint)disc_size_px || thread_id.y >= (uint)disc_size_px)
-    {
-        return;
-    }
 
     float3 camera_pos = get_camera_position();
     float3 to_light   = light.position.xyz - camera_pos;
     float  distance   = length(to_light);
     if (distance < 0.05f)
     {
-        return;
+        discard;
     }
 
-    // gone at near_distance, fully visible at near_distance + fade_length, calibrate via cvars
     float fade = smoothstep(near_distance, near_distance + fade_length, distance);
     if (fade <= 0.0f)
     {
-        return;
+        discard;
     }
 
     float3 to_camera = -to_light / distance;
     float  facing    = flare_facing(light, to_camera);
 
-    float4 clip_pos = mul(float4(light.position.xyz, 1.0f), get_view_projection());
-    if (clip_pos.w <= 0.0f)
-    {
-        return;
-    }
+    float lum = max(light_luminance(light.color.rgb * light.intensity), 1e-4f);
 
-    float2 ndc       = clip_pos.xy / clip_pos.w;
-    float2 screen_uv = float2(ndc.x * 0.5f + 0.5f, 1.0f - (ndc.y * 0.5f + 0.5f));
-    if (screen_uv.x < -0.05f || screen_uv.x > 1.05f || screen_uv.y < -0.05f || screen_uv.y > 1.05f)
-    {
-        return;
-    }
-
-    float2 active_res = get_render_resolution_active();
-    float lum         = max(light_luminance(light.color.rgb * light.intensity), 1e-4f);
-
-    // small screen-space dots, not perspective-projected discs
     float radius_px = (1.5f + 1.25f * flare_emitter_factor(light) + 0.75f * saturate(0.12f * sqrt(lum))) * size_scale;
     radius_px       = clamp(radius_px, 1.0f, max_size_px);
 
-    float2 offset  = float2(thread_id.xy) + 0.5f - disc_size_px * 0.5f;
+    float2 offset  = input.position.xy - input.center_pixel;
     float  dist_px = length(offset);
     if (dist_px > radius_px)
     {
-        return;
+        discard;
     }
 
-    float2 pixel_coord = screen_uv * active_res + offset;
-    if (pixel_coord.x < 0.0f || pixel_coord.y < 0.0f || pixel_coord.x >= active_res.x || pixel_coord.y >= active_res.y)
-    {
-        return;
-    }
-
-    uint2 pixel_coord_int = uint2(pixel_coord);
+    uint2 pixel_coord_int = uint2(input.position.xy);
     float2 render_uv      = (float2(pixel_coord_int) + 0.5f) / max(buffer_frame.resolution_render, float2(1.0f, 1.0f));
     float2 screen_uv_px   = render_uv_to_screen_uv(render_uv);
 
@@ -160,7 +163,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             occlusion        = saturate((scene_dist - distance + 0.5f) / 1.0f);
             if (occlusion <= 0.0f)
             {
-                return;
+                discard;
             }
         }
     }
@@ -171,6 +174,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float brightness = intensity_scale * (0.06f + 0.25f * saturate(0.18f * sqrt(lum))) * fade * facing * occlusion;
     float3 color     = light.color.rgb * (brightness * falloff);
 
-    float4 base              = tex_uav[pixel_coord_int];
-    tex_uav[pixel_coord_int] = float4(base.rgb + color, base.a);
+    return float4(color, 0.0f);
 }

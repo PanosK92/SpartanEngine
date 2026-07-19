@@ -1,7 +1,3 @@
-//= INCLUDES =========
-#include "common.hlsl"
-//====================
-
 /*
 Copyright(c) 2015-2026 Panos Karabelas
 
@@ -27,48 +23,44 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-#define thread_x 32
-#define thread_y 32
-
-[numthreads(thread_x, thread_y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+struct PixelInput
 {
-    // check if thread is within icon bounds
-    float2 icon_size = pass_get_f2_value(); // width, height
-    float icon_x     = icon_size.x;
-    float icon_y     = icon_size.y;
-    if (thread_id.x >= icon_x || thread_id.y >= icon_y)
-        return;
-    
-    // visibility check
-    float3 world_pos         = pass_get_f3_value();
-    world_pos               += buffer_frame.camera_forward.xyz * 0.001f; // push forward to avoid having the icon at the camera, which when projected to screen space can be move eratically
-    float3 camera_to_entity  = normalize(world_pos - buffer_frame.camera_position.xyz);
-    float v_dot_l            = dot(buffer_frame.camera_forward.xyz, camera_to_entity);
-    if (v_dot_l <= 0.5f)
-        return;
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD0;
+    nointerpolation float visible : TEXCOORD1;
+};
 
-    // project world position to screen space
-    float4 clip_pos   = mul(float4(world_pos, 1.0f), buffer_frame.view_projection_unjittered);
-    float2 screen_pos = float2(clip_pos.x / clip_pos.w, clip_pos.y / clip_pos.w) * 0.5f + 0.5f; // ndc to [0,1]
-    screen_pos.y      = 1.0f - screen_pos.y; // flip Y for top-left origin
+PixelInput main_vs(uint vertex_id : SV_VertexID)
+{
+    static const float2 positions[6] =
+    {
+        float2(-1.0f, -1.0f),
+        float2(-1.0f,  1.0f),
+        float2( 1.0f, -1.0f),
+        float2( 1.0f, -1.0f),
+        float2(-1.0f,  1.0f),
+        float2( 1.0f,  1.0f)
+    };
 
-    // convert to pixel coordinates, centering the icon
-    float2 resolution_out;
-    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    float2 icon_offset = float2(thread_id.xy) - float2(icon_x * 0.5f, icon_y * 0.5f); // center it
-    float2 pixel_coord = screen_pos * resolution_out + icon_offset;
+    PixelInput output;
+    const float2 corner         = positions[vertex_id];
+    const float2 icon_size      = pass_get_f2_value();
+    const float2 resolution     = max(buffer_frame.resolution_render, float2(1.0f, 1.0f));
+    float3 world_position       = pass_get_f3_value() + buffer_frame.camera_forward.xyz * 0.001f;
+    const float3 camera_to_icon = normalize(world_position - buffer_frame.camera_position.xyz);
+    output.visible              = dot(buffer_frame.camera_forward.xyz, camera_to_icon) > 0.5f ? 1.0f : 0.0f;
+    output.position             = mul(float4(world_position, 1.0f), buffer_frame.view_projection_unjittered);
+    output.position.xy         += corner * icon_size / resolution * output.position.w;
+    output.uv                   = float2(corner.x * 0.5f + 0.5f, 0.5f - corner.y * 0.5f);
+    return output;
+}
 
-    // check if pixel is within output texture bounds
-    if (pixel_coord.x < 0 || pixel_coord.y < 0 || pixel_coord.x >= resolution_out.x || pixel_coord.y >= resolution_out.y)
-        return;
+float4 main_ps(PixelInput input) : SV_TARGET
+{
+    if (input.visible == 0.0f)
+    {
+        discard;
+    }
 
-    // sample icon texture
-    float2 uv         = (float2(thread_id.xy) + 0.5f) / float2(icon_x, icon_y); 
-    float4 icon_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
-
-    // blend
-    uint2 pixel_coord_int    = uint2(pixel_coord);
-    float4 base_color        = tex_uav[pixel_coord_int];
-    tex_uav[pixel_coord_int] = float4(lerp(base_color.rgb, icon_color.rgb, icon_color.a), base_color.a);
+    return tex.Sample(samplers[sampler_bilinear_clamp], input.uv);
 }

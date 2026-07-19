@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../XR/Xr.h"
 #include "../Core/ThreadPool.h"
+#include "../Core/Debugging.h"
 #include <fstream>
 #ifdef _MSC_VER
 #include "../RHI/RHI_VendorTechnology.h"
@@ -92,6 +93,12 @@ namespace spartan
 
     void Renderer::CreateBuffers()
     {
+        const bool capture_mode                  = Debugging::IsRenderdocEnabled();
+        const uint32_t indirect_draw_capacity    = capture_mode ? 32 * 1024 : renderer_max_indirect_draws;
+        const uint32_t cull_task_capacity        = capture_mode ? 2 * 1024 * 1024 : renderer_max_cull_tasks;
+        const uint32_t meshlet_instance_capacity = capture_mode ? 1024 * 1024 : renderer_max_meshlet_instances;
+        const uint32_t visible_triangle_capacity = capture_mode ? 8 * 1024 * 1024 : renderer_max_visible_triangles;
+
         uint32_t element_count = renderer_draw_data_buffer_count;
 
         // initialization values
@@ -137,21 +144,21 @@ namespace spartan
 
             fr.indirect_draw_data = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
-                renderer_max_indirect_draws, nullptr, true,
+                indirect_draw_capacity, nullptr, true,
                 (string("indirect_draw_data_") + to_string(i)).c_str()
             );
 
             // meshlet-cull survivors, gpu-only (compute writes, vs reads), keep it off the host-visible heap
             fr.meshlet_instances = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_MeshletInstance)),
-                renderer_max_meshlet_instances, nullptr, false,
+                meshlet_instance_capacity, nullptr, false,
                 (string("meshlet_instances_") + to_string(i)).c_str()
             );
 
             // triangle-cull survivors, gpu-only and the largest of the cull buffers, must not land in bar memory
             fr.visible_triangles = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
-                renderer_max_visible_triangles, nullptr, false,
+                visible_triangle_capacity, nullptr, false,
                 (string("visible_triangles_") + to_string(i)).c_str()
             );
 
@@ -164,14 +171,14 @@ namespace spartan
 
             fr.cull_tasks = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_CullTask)),
-                renderer_max_cull_tasks, nullptr, true,
+                cull_task_capacity, nullptr, true,
                 (string("cull_tasks_") + to_string(i)).c_str()
             );
 
             // phase a survivors, gpu-only (compute writes, phase b reads), one entry per visible instance
             fr.surviving_instances = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_SurvivingInstance)),
-                renderer_max_cull_tasks, nullptr, false,
+                cull_task_capacity, nullptr, false,
                 (string("surviving_instances_") + to_string(i)).c_str()
             );
 
@@ -823,7 +830,8 @@ namespace spartan
             { Renderer_Shader::light_c,                               RHI_Shader_Type::Compute, "light.hlsl",                                 RHI_Vertex_Type::Max, rt ? "RAY_TRACING_ENABLED" : nullptr },
             { Renderer_Shader::light_cluster_assign_c,                RHI_Shader_Type::Compute, "light_cluster_assign.hlsl"                                                  },
             { Renderer_Shader::light_cluster_visualize_c,             RHI_Shader_Type::Compute, "light_cluster_visualize.hlsl"                                               },
-            { Renderer_Shader::light_flare_c,                         RHI_Shader_Type::Compute, "light_flare.hlsl"                                                           },
+            { Renderer_Shader::light_flare_v,                         RHI_Shader_Type::Vertex,  "light_flare.hlsl"                                                           },
+            { Renderer_Shader::light_flare_p,                         RHI_Shader_Type::Pixel,   "light_flare.hlsl"                                                           },
             { Renderer_Shader::light_composition_c,                   RHI_Shader_Type::Compute, "light_composition.hlsl"                                                     },
             { Renderer_Shader::light_image_based_c,                   RHI_Shader_Type::Compute, "light_image_based.hlsl"                                                     },
 
@@ -885,7 +893,8 @@ namespace spartan
             { Renderer_Shader::meshlet_visualize_p,                   RHI_Shader_Type::Pixel,   "meshlet_visualize.hlsl"                                                     },
 
             // misc
-            { Renderer_Shader::icon_c,                                RHI_Shader_Type::Compute, "icon.hlsl"                                                                  },
+            { Renderer_Shader::icon_v,                                RHI_Shader_Type::Vertex,  "icon.hlsl"                                                                  },
+            { Renderer_Shader::icon_p,                                RHI_Shader_Type::Pixel,   "icon.hlsl"                                                                  },
             { Renderer_Shader::dithering_c,                           RHI_Shader_Type::Compute, "dithering.hlsl"                                                             },
             { Renderer_Shader::reflections_apply_c,                   RHI_Shader_Type::Compute, "reflections_apply.hlsl"                                                     },
             { Renderer_Shader::auto_exposure_c,                       RHI_Shader_Type::Compute, "auto_exposure.hlsl"                                                         },

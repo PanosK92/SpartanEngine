@@ -28,6 +28,7 @@ namespace spartan
     public:
         static void OnPreDeviceCreation();
         static void Shutdown();
+        static void Tick();
         static void FrameCapture();
         static void StartCapture();
         static void EndCapture();

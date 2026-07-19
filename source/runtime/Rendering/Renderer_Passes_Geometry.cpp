@@ -267,7 +267,7 @@ namespace spartan
             m_pcb_pass_cpu.set_f4_value(
                 static_cast<float>(m_cull_task_count),
                 max_hiz_mip,
-                static_cast<float>(renderer_max_cull_tasks),
+                static_cast<float>(GetBuffer(Renderer_Buffer::SurvivingInstances)->GetElementCount()),
                 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -295,7 +295,7 @@ namespace spartan
             // f4_value: x = max hiz mip, y = meshlet instances cap (drop survivors past this)
             m_pcb_pass_cpu.set_f4_value(
                 max_hiz_mip,
-                static_cast<float>(renderer_max_meshlet_instances),
+                static_cast<float>(GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount()),
                 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -319,8 +319,8 @@ namespace spartan
 
             // f4_value: x = meshlet instances cap, y = per-half visible triangle cap (also the alpha region base, drop survivors past it)
             m_pcb_pass_cpu.set_f4_value(
-                static_cast<float>(renderer_max_meshlet_instances),
-                static_cast<float>(renderer_visible_triangles_half),
+                static_cast<float>(GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount()),
+                static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2),
                 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -384,7 +384,7 @@ namespace spartan
                     cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
                     cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
                     cmd_list->SetCullMode(RHI_CullMode::None);
-                    m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
+                    m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                     cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
                 }
@@ -516,7 +516,7 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,  GetBuffer(Renderer_Buffer::VisibleTriangles));
             cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,     GeometryBuffer::GetMeshletBoundsBuffer());
             cmd_list->SetCullMode(RHI_CullMode::None);
-            m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
         }
@@ -920,7 +920,7 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), 0);
 
-            m_pcb_pass_cpu.set_f4_value(static_cast<float>(renderer_visible_triangles_half), 0.0f, 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f4_value(static_cast<float>(GetBuffer(Renderer_Buffer::VisibleTriangles)->GetElementCount() / 2), 0.0f, 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->DrawIndirect(GetBuffer(Renderer_Buffer::IndirectDrawArgs), arg_stride);
         }

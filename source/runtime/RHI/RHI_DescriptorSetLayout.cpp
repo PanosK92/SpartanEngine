@@ -91,10 +91,17 @@ namespace spartan
         {
             // get descriptor for validation
             const RHI_Descriptor& descriptor = m_descriptors[m_slot_to_index[actual_slot]];
+            const uint64_t range              = constant_buffer->GetStride();
+            const uint32_t dynamic_offset     = constant_buffer->GetOffset();
 
-            binding->resource       = static_cast<void*>(constant_buffer);
-            binding->range          = constant_buffer->GetStride();
-            binding->dynamic_offset = constant_buffer->GetOffset();
+            if (binding->resource == constant_buffer && binding->range == range && binding->dynamic_offset == dynamic_offset)
+            {
+                return;
+            }
+
+            binding->resource       = constant_buffer;
+            binding->range          = range;
+            binding->dynamic_offset = dynamic_offset;
 
             SP_ASSERT_MSG(constant_buffer->GetStrideUnaligned() == descriptor.struct_size, "Size mismatch between CPU and GPU side constant buffer");
             SP_ASSERT_MSG(binding->dynamic_offset % binding->range == 0, "Incorrect dynamic offset");
@@ -115,9 +122,16 @@ namespace spartan
 
         if (binding)
         {
-            binding->resource       = static_cast<void*>(buffer);
-            binding->range          = buffer->GetObjectSize();
-            binding->dynamic_offset = buffer->GetOffset();
+            const uint64_t range          = buffer->GetObjectSize();
+            const uint32_t dynamic_offset = buffer->GetOffset();
+            if (binding->resource == buffer && binding->range == range && binding->dynamic_offset == dynamic_offset)
+            {
+                return;
+            }
+
+            binding->resource       = buffer;
+            binding->range          = range;
+            binding->dynamic_offset = dynamic_offset;
             m_dirty = true;
         }
     }
@@ -131,7 +145,12 @@ namespace spartan
 
         if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
         {
-            binding->resource    = static_cast<void*>(texture);
+            if (binding->resource == texture && binding->layout == layout && binding->mip == mip_index && binding->mip_range == mip_range && binding->array_layer == array_layer)
+            {
+                return true;
+            }
+
+            binding->resource    = texture;
             binding->layout      = layout;
             binding->mip         = mip_index;
             binding->mip_range   = mip_range;
@@ -169,7 +188,7 @@ namespace spartan
             const uint32_t binding_mip_end   = binding_mip_start + binding_mip_count;
             const bool mip_overlap           = clear_mip_start < binding_mip_end && binding_mip_start < clear_mip_end;
             const bool layer_overlap         = array_layer == rhi_all_mips || binding.array_layer == rhi_all_mips || array_layer == binding.array_layer;
-            if (mip_overlap && layer_overlap)
+            if (mip_overlap && layer_overlap && binding.layout != RHI_Image_Layout::General)
             {
                 binding.layout = RHI_Image_Layout::General;
                 m_dirty = true;
@@ -184,8 +203,14 @@ namespace spartan
         uint32_t actual_slot = slot + rhi_shader_register_shift_t;
         if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
         {
-            binding->resource = static_cast<void*>(tlas);
-            binding->range    = tlas ? reinterpret_cast<uint64_t>(tlas->GetRhiResource()) : 0;
+            const uint64_t range = tlas ? reinterpret_cast<uint64_t>(tlas->GetRhiResource()) : 0;
+            if (binding->resource == tlas && binding->range == range)
+            {
+                return;
+            }
+
+            binding->resource = tlas;
+            binding->range    = range;
             m_dirty = true;
         }
     }

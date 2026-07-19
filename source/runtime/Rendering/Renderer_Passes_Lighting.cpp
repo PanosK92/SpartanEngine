@@ -1206,8 +1206,9 @@ namespace spartan
             return;
         }
 
-        RHI_Shader* shader = GetShader(Renderer_Shader::light_flare_c);
-        if (!shader || !shader->IsCompiled())
+        RHI_Shader* shader_v = GetShader(Renderer_Shader::light_flare_v);
+        RHI_Shader* shader_p = GetShader(Renderer_Shader::light_flare_p);
+        if (!shader_v || !shader_p || !shader_v->IsCompiled() || !shader_p->IsCompiled())
         {
             return;
         }
@@ -1221,12 +1222,17 @@ namespace spartan
         cmd_list->BeginTimeblock("light_flares");
         {
             RHI_PipelineState pso;
-            pso.name             = "light_flares";
-            pso.shaders[Compute] = shader;
+            pso.name                             = "light_flares";
+            pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+            pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+            pso.render_target_color_textures[0]  = tex_out;
+            pso.clear_color[0]                   = rhi_color_load;
             cmd_list->SetPipelineState(pso);
 
             SetCommonTextures(cmd_list, eye_layer);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
 
             const float near_distance   = clamp(cvar_light_flares_near_distance.GetValue(), 0.0f, 500.0f);
             const float fade_length     = clamp(cvar_light_flares_fade_length.GetValue(), 0.1f, 500.0f);
@@ -1236,8 +1242,6 @@ namespace spartan
             const float occlusion       = cvar_light_flares_occlusion.GetValueAs<bool>() ? 1.0f : 0.0f;
 
             const float disc_size_px  = min(max_size_px * 2.0f + 2.0f, 128.0f);
-            const uint32_t thread_dim = 8;
-            const uint32_t groups     = (static_cast<uint32_t>(disc_size_px) + thread_dim - 1) / thread_dim;
 
             for (uint32_t i = 1; i < m_count_active_lights; i++)
             {
@@ -1245,7 +1249,7 @@ namespace spartan
                 m_pcb_pass_cpu.set_f3_value2(max_size_px, occlusion, static_cast<float>(i));
                 m_pcb_pass_cpu.set_f2_value(disc_size_px, fade_length);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch(groups, groups, 1);
+                cmd_list->Draw(6);
             }
         }
         cmd_list->EndTimeblock();

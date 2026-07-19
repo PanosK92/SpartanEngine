@@ -60,7 +60,7 @@ namespace spartan
         // for image sync with per-mip views (pre-captured layouts at insert time)
         std::array<RHI_Image_Layout, rhi_max_mip_count> per_mip_layouts = {};
         uint32_t per_mip_count                                          = 0;
-        bool has_per_mip_views                                          = false;
+        bool per_mip_layouts_differ                                     = false;
     };
 
     struct RHI_Tracked_Usage
@@ -299,6 +299,8 @@ namespace spartan
         std::stack<const char*> m_debug_label_stack;
         std::stack<int32_t> m_breadcrumb_gpu_slots;
         bool m_bind_dynamic = false;
+        void* m_bindless_pipeline_layout = nullptr;
+        uint8_t m_bindless_pipeline_type = static_cast<uint8_t>(-1);
         bool m_batch_barrier_flush = false;
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
