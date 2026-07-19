@@ -1046,6 +1046,8 @@ namespace spartan
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)n
 
+        Car::ShutdownAll();
+
         // clear entities
         camera          = nullptr;
         camera_override = nullptr;
@@ -1080,9 +1082,6 @@ namespace spartan
         entity_states.clear();
         material_state_hashes.clear();
         light_state_hashes.clear();
-
-        // drop car module state so the next world does not inherit dangling camera or car pointers
-        Car::ShutdownAll();
 
         // mark for resolve
         resolve = true;

@@ -1417,7 +1417,7 @@
     </Entity>
    </Entity>
   </Entity>
-  <Entity name="spline_car" id="5723169428173956022" active="true" position="1958.04 8.31514 800.637" rotation="0.00100538 -0.826177 0.00147428 0.563408" scale="1 1 1">
+  <Entity name="spline_car" id="5723169428173956022" active="false" position="1958.04 8.31514 800.637" rotation="0.00100538 -0.826177 0.00147428 0.563408" scale="1 1 1">
    <prefab type="car" file="cars/ferrari_laferrari.car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_b="0" paint_color_g="0" paint_color_a="1" />
    <spline_follower spline_entity_id="10358794943034623506" speed="60" follow_mode="0" align_to_spline="true" flip_forward="true" animate_wheels="true" wheel_radius="0" max_steer_angle="35" />
    <prefab_override path="vehicle/wheel_front_right" position="-1.5779 0.622236 -2.43117" rotation="0.203829 1.78683e-07 -7.45058e-08 0.979007" scale="0.367346 0.367346 0.367346" />

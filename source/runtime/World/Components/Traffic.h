@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
+#include <array>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -52,7 +53,54 @@ namespace spartan
         {
             None,
             Brake,
-            Reverse
+            ReverseEscape,
+            ForwardRealign,
+            Cooldown
+        };
+
+        struct VehicleLimits
+        {
+            float mass = 1500.0f;
+            float wheelbase = 2.7f;
+            float half_width = 1.0f;
+            float wheel_radius = 0.34f;
+            float max_steer_angle = 0.6f;
+            float lateral_acceleration = 8.0f;
+            float acceleration = 3.0f;
+            float braking = 8.0f;
+            float drag_factor = 0.0f;
+        };
+
+        struct Telemetry
+        {
+            math::Vector3 velocity = math::Vector3::Zero;
+            float speed = 0.0f;
+            float forward_speed = 0.0f;
+            float lateral_speed = 0.0f;
+            float slip = 0.0f;
+            float grip = 1.0f;
+            float load_factor = 1.0f;
+            float grounded_ratio = 1.0f;
+            float acceleration = 0.0f;
+            float drive_acceleration = 1.0f;
+            float response_factor = 1.0f;
+            bool abs_active = false;
+            bool tc_active = false;
+        };
+
+        struct Trajectory
+        {
+            float steering = 0.0f;
+            float curvature = 0.0f;
+            float clearance = 0.0f;
+            float target_speed = 0.0f;
+            float stopping_distance = 0.0f;
+            float score = -1000000.0f;
+            uint32_t point_count = 0;
+            std::array<math::Vector3, 17> points;
+            std::array<float, 17> speed_profile;
+            bool blocked = false;
+            bool traversable = false;
         };
 
         struct Driver
@@ -61,11 +109,16 @@ namespace spartan
             Entity* entity = nullptr;
             Physics* physics = nullptr;
             uint32_t collision_group = 0;
+            VehicleLimits limits;
+            Telemetry telemetry;
+            Trajectory plan;
             float cruise_speed = 10.0f;
             float caution = 1.0f;
             float persistence = 1.0f;
             float exploration = 1.0f;
             float steering = 0.0f;
+            float throttle = 0.0f;
+            float brake = 0.0f;
             float decision_time = 0.0f;
             float blocked_time = 0.0f;
             float stalled_time = 0.0f;
@@ -74,31 +127,45 @@ namespace spartan
             float spline_time = 0.0f;
             float spline_duration = 0.0f;
             float spline_speed = 0.0f;
+            float previous_speed = 0.0f;
+            float transition_time = 0.0f;
+            float diagnostic_time = 0.0f;
+            float diagnostic_interval = 0.0f;
+            float recovery_steering = 0.0f;
+            float recovery_heading = 0.0f;
             math::Vector3 last_position = math::Vector3::Zero;
+            math::Vector3 recovery_origin = math::Vector3::Zero;
             math::Vector3 spline_start = math::Vector3::Zero;
             math::Vector3 spline_control_a = math::Vector3::Zero;
             math::Vector3 spline_control_b = math::Vector3::Zero;
             math::Vector3 spline_end = math::Vector3::Zero;
             RecoveryState recovery = RecoveryState::None;
             bool physics_active = true;
+            bool plan_initialized = false;
             std::unordered_map<uint64_t, uint16_t> visits;
         };
 
-        struct Trajectory
+        struct RoadSample
         {
-            float steering = 0.0f;
-            float clearance = 0.0f;
-            float score = -1000000.0f;
-            bool traversable = false;
+            math::Vector3 position = math::Vector3::Zero;
+            math::Vector3 tangent = math::Vector3::Forward;
+            float half_width = 4.0f;
         };
 
         void Spawn();
-        void UpdateDriver(Driver& driver, float delta_time);
+        void CacheRoads();
+        void InitializeLimits(Driver& driver);
+        void UpdateTelemetry(Driver& driver, float delta_time);
+        void PlanDriver(Driver& driver, float delta_time);
+        void ControlDriver(Driver& driver, float delta_time);
+        void UpdateRecovery(Driver& driver, float delta_time);
         void UpdateSplineDriver(Driver& driver, float delta_time);
-        void CreateSpline(Driver& driver);
+        bool CreateSpline(Driver& driver);
         void SetPhysicsActive(Driver& driver, bool active);
-        bool GetPlayerPosition(math::Vector3& position) const;
-        Trajectory EvaluateTrajectory(const Driver& driver, float steering) const;
+        bool GetPlayerState(math::Vector3& position, math::Vector3& velocity) const;
+        Trajectory EvaluateTrajectory(const Driver& driver, float steering, bool reverse = false) const;
+        float GetRoadScore(const math::Vector3& position, const math::Vector3& direction, float& road_distance) const;
+        bool IsTrafficCorridorClear(const Driver& driver, const math::Vector3& start, const math::Vector3& end, float radius) const;
         bool FindSpawnPosition(uint32_t index, math::Vector3& position, math::Quaternion& rotation);
         bool SampleGround(const math::Vector3& position, math::Vector3& ground_position) const;
         bool IsInsideBounds(const math::Vector3& position, float margin) const;
@@ -106,6 +173,7 @@ namespace spartan
         float GetNovelty(const Driver& driver, const math::Vector3& position) const;
 
         std::vector<Driver> m_drivers;
+        std::vector<RoadSample> m_road_samples;
         math::Vector3 m_bounds_min = math::Vector3(-220.0f, -10.0f, -380.0f);
         math::Vector3 m_bounds_max = math::Vector3(380.0f, 80.0f, 260.0f);
         std::string m_car_file = "cars/ferrari_laferrari.car";

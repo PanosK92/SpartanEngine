@@ -168,8 +168,10 @@ namespace car
             require(preset.drivetrain_type >= 0 && preset.drivetrain_type <= 2, "drivetrain_type");
             require(preset.diff_type >= 0 && preset.diff_type <= 2, "diff_type");
             require(finite_range(preset.engine_idle_rpm, 300.0f, 2000.0f) && finite_range(preset.engine_redline_rpm, preset.engine_idle_rpm + 500.0f, 20000.0f) && finite_range(preset.engine_max_rpm, preset.engine_redline_rpm, 22000.0f), "engine_speed_range");
-            require(finite_range(preset.engine_inertia, 0.01f, 10.0f) && finite_range(preset.engine_rpm_smoothing, 0.1f, 100.0f), "engine_response");
-            require(finite_range(preset.final_drive, 0.1f, 10.0f) && finite_range(preset.drivetrain_efficiency, 0.1f, 1.0f), "drivetrain_ratio");
+            require(finite_range(preset.engine_peak_torque, 10.0f, 5000.0f) && finite_range(preset.engine_inertia, 0.01f, 10.0f) && finite_range(preset.engine_friction, 0.0f, 10.0f) && finite_range(preset.engine_rpm_smoothing, 0.1f, 100.0f), "engine_response");
+            float crank_axis_length = sqrtf(preset.engine_crank_axis_x * preset.engine_crank_axis_x + preset.engine_crank_axis_y * preset.engine_crank_axis_y + preset.engine_crank_axis_z * preset.engine_crank_axis_z);
+            require(finite_range(crank_axis_length, 0.99f, 1.01f), "engine_crank_axis");
+            require(finite_range(preset.final_drive, 0.1f, 10.0f) && finite_range(preset.clutch_engagement_rate, 0.1f, 100.0f) && finite_range(preset.clutch_max_torque, 10.0f, 10000.0f) && finite_range(preset.driveline_inertia, 0.001f, 10.0f) && finite_range(preset.drivetrain_efficiency, 0.1f, 1.0f) && finite_range(preset.driveshaft_stiffness, 1.0f, 1000000.0f) && finite_range(preset.driveshaft_damping, 0.0f, 10000.0f), "drivetrain");
             require(std::isfinite(preset.gear_ratios[1]) && fabsf(preset.gear_ratios[1]) <= 1e-6f, "neutral_gear_ratio");
             for (int i = 0; i < std::clamp(preset.gear_count, 0, max_gears); i++)
             {
@@ -187,6 +189,8 @@ namespace car
             require(finite_range(preset.tire_pressure, 0.5f, 6.0f) && finite_range(preset.tire_pressure_optimal, 0.5f, 6.0f), "tire_pressure");
             require(finite_range(preset.lat_B, 0.1f, 50.0f) && finite_range(preset.lat_C, 0.1f, 5.0f) && finite_range(preset.lat_D, 0.1f, 3.0f), "lateral_tire_coefficients");
             require(finite_range(preset.long_B, 0.1f, 50.0f) && finite_range(preset.long_C, 0.1f, 5.0f) && finite_range(preset.long_D, 0.1f, 3.0f), "longitudinal_tire_coefficients");
+            require(finite_range(preset.combined_long_B, 0.1f, 50.0f) && finite_range(preset.combined_long_C, 0.1f, 5.0f) && finite_range(preset.combined_long_E, -2.0f, 2.0f), "combined_longitudinal_tire_coefficients");
+            require(finite_range(preset.combined_lat_B, 0.1f, 50.0f) && finite_range(preset.combined_lat_C, 0.1f, 5.0f) && finite_range(preset.combined_lat_E, -2.0f, 2.0f), "combined_lateral_tire_coefficients");
             require(finite_range(preset.max_susp_force, 1000.0f, 500000.0f) && finite_range(preset.max_damper_velocity, 0.1f, 50.0f), "suspension_force_limits");
             require(finite_range(preset.bump_stop_stiffness, 1000.0f, 5000000.0f) && finite_range(preset.bump_stop_threshold, 0.5f, 1.2f), "bump_stop");
             require(finite_range(preset.bump_stop_progression, 0.0f, 20.0f), "bump_stop_progression");
@@ -248,6 +252,9 @@ namespace car
             READ_FLOAT(engine_inertia);
             READ_FLOAT(engine_friction);
             READ_FLOAT(engine_rpm_smoothing);
+            READ_FLOAT(engine_crank_axis_x);
+            READ_FLOAT(engine_crank_axis_y);
+            READ_FLOAT(engine_crank_axis_z);
             READ_FLOAT(downshift_blip_amount);
             READ_FLOAT(downshift_blip_duration);
 
@@ -258,6 +265,8 @@ namespace car
             READ_FLOAT(shift_down_rpm);
             READ_FLOAT(shift_time);
             READ_FLOAT(clutch_engagement_rate);
+            READ_FLOAT(clutch_max_torque);
+            READ_FLOAT(driveline_inertia);
             READ_FLOAT(drivetrain_efficiency);
             READ_BOOL(manual_transmission);
             READ_FLOAT_ARRAY(upshift_speed_base);
@@ -287,6 +296,12 @@ namespace car
             READ_FLOAT(long_C);
             READ_FLOAT(long_D);
             READ_FLOAT(long_E);
+            READ_FLOAT(combined_long_B);
+            READ_FLOAT(combined_long_C);
+            READ_FLOAT(combined_long_E);
+            READ_FLOAT(combined_lat_B);
+            READ_FLOAT(combined_lat_C);
+            READ_FLOAT(combined_lat_E);
             READ_FLOAT(load_B_scale_min);
             READ_FLOAT(pneumatic_trail_max);
             READ_FLOAT(pneumatic_trail_peak);
@@ -392,6 +407,7 @@ namespace car
             READ_INT(aero_stage_max);
             READ_INT(weight_stage_max);
             READ_FLOAT(driveshaft_stiffness);
+            READ_FLOAT(driveshaft_damping);
 
             READ_FLOAT(input_deadzone);
             READ_FLOAT(steering_deadzone);

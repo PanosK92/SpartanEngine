@@ -9,6 +9,7 @@ These values should come from manufacturer specifications or defensible public r
 - chassis mass and dimensions
 - wheelbase and front and rear track
 - wheel and tire radius and width
+- engine crank axis
 - gear ratios and final drive
 - engine speed and torque limits
 - brake bias
@@ -22,7 +23,8 @@ These values describe components that are rarely published and may require estim
 - suspension hardpoints and mechanism
 - upright wheel link and rack masses
 - spring frequency damping ratio and anti-roll stiffness
-- tire Pacejka coefficients relaxation length load sensitivity and vertical stiffness
+- tire pure and combined slip Magic Formula coefficients relaxation length load sensitivity and vertical stiffness
+- clutch capacity driveline inertia and driveshaft stiffness and damping
 - differential preload locking and viscous behavior
 - aero balance ground effect and sensitivity maps
 

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Physics/PhysicsWorld.h"
+#include "../../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #include "../../IO/pugixml.hpp"
 #include <sol/sol.hpp>
@@ -191,6 +192,11 @@ namespace spartan
 
     void Spline::Tick()
     {
+        if (ProgressTracker::IsLoading())
+        {
+            return;
+        }
+
         // only draw spline visualization in edit mode
         if (Engine::IsFlagSet(EngineMode::Playing))
         {

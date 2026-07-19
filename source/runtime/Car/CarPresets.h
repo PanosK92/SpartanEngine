@@ -93,6 +93,14 @@ namespace car
             bump_stop_progression = 3.0f;
             packer_threshold = 1.05f;
             packer_stiffness = 600000.0f;
+            clutch_max_torque = 700.0f;
+            driveline_inertia = 0.08f;
+            driveshaft_damping = 60.0f;
+            engine_crank_axis_x = 1.0f;
+            combined_long_B = 7.0f;
+            combined_long_C = 1.0f;
+            combined_lat_B = 6.0f;
+            combined_lat_C = 1.0f;
             assists              = assist_settings();
             validation           = validation_targets();
         }
@@ -131,6 +139,9 @@ namespace car
         float engine_inertia;
         float engine_friction;
         float engine_rpm_smoothing;
+        float engine_crank_axis_x;
+        float engine_crank_axis_y;
+        float engine_crank_axis_z;
         float downshift_blip_amount;
         float downshift_blip_duration;
 
@@ -142,6 +153,8 @@ namespace car
         float shift_down_rpm;
         float shift_time;
         float clutch_engagement_rate;
+        float clutch_max_torque;
+        float driveline_inertia;
         float drivetrain_efficiency;
         bool  manual_transmission;
 
@@ -177,6 +190,12 @@ namespace car
         float long_C;
         float long_D;
         float long_E;
+        float combined_long_B;
+        float combined_long_C;
+        float combined_long_E;
+        float combined_lat_B;
+        float combined_lat_C;
+        float combined_lat_E;
 
         // load-dependent stiffness
         float load_B_scale_min;
@@ -301,6 +320,7 @@ namespace car
 
         // driveshaft
         float driveshaft_stiffness;  // Nm/rad torsional compliance
+        float driveshaft_damping;
 
         // input behavior
         float input_deadzone;

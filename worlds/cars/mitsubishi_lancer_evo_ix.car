@@ -16,14 +16,14 @@
     <engine
         engine_idle_rpm="800" engine_redline_rpm="7000" engine_max_rpm="7200"
         engine_peak_torque="392" engine_peak_torque_rpm="3000"
-        engine_inertia="0.3" engine_friction="0.025" engine_rpm_smoothing="5"
+        engine_inertia="0.3" engine_friction="0.025" engine_rpm_smoothing="5" engine_crank_axis_x="1" engine_crank_axis_y="0" engine_crank_axis_z="0"
         turbo_enabled="true" boost_max_pressure="1.35" boost_spool_rate="3.5" boost_wastegate_rpm="6000" boost_torque_mult="0.25" boost_min_rpm="2800" />
 
     <!-- 5 speed manual plus reverse, index 0 is reverse, index 1 is neutral -->
     <transmission
         gear_ratios="-3.416,0,2.928,1.95,1.407,1.031,0.72,0,0,0,0" gear_count="7" final_drive="4.529"
         shift_up_rpm="6500" shift_down_rpm="3000" shift_time="0.25"
-        clutch_engagement_rate="12" drivetrain_efficiency="0.82" manual_transmission="false"
+        clutch_engagement_rate="12" clutch_max_torque="650" driveline_inertia="0.10" drivetrain_efficiency="0.82" manual_transmission="false"
         downshift_blip_amount="0.35" downshift_blip_duration="0.15"
         upshift_speed_base="0,0,40,70,105,145,0,0,0,0,0"
         upshift_speed_sport="0,0,55,95,140,195,0,0,0,0,0"
@@ -33,7 +33,7 @@
     <drivetrain
         drivetrain_type="2" torque_split_front="0.5" diff_type="2"
         lsd_preload="100" lsd_lock_ratio_accel="0.45" lsd_lock_ratio_decel="0.2" lsd_viscous="120"
-        driveshaft_stiffness="5000" />
+        driveshaft_stiffness="5000" driveshaft_damping="80" />
 
     <!-- temps in celsius -->
     <brakes
@@ -67,7 +67,7 @@
 
     <!-- pacejka curve constants plus grip, pressure and thermal model -->
     <tires
-        lat_B="10.5" lat_C="1.5" lat_D="1" lat_E="-0.2" long_B="16" long_C="1.55" long_D="1" long_E="-0.2"
+        lat_B="10.5" lat_C="1.5" lat_D="1" lat_E="-0.2" long_B="16" long_C="1.55" long_D="1" long_E="-0.2" combined_long_B="8" combined_long_C="1" combined_long_E="0" combined_lat_B="6" combined_lat_C="1" combined_lat_E="0"
         load_B_scale_min="0.5" pneumatic_trail_max="0.04" pneumatic_trail_peak="0.14"
         tire_friction="1.3" min_slip_speed="0.5" load_sensitivity="0.9" load_reference="4500" rear_grip_ratio="1.0"
         slip_angle_deadband="0.01" camber_thrust_coeff="0.012" max_slip_angle="1.2"

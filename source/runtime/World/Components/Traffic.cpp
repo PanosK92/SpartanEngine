@@ -22,7 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Traffic.h"
 #include "Physics.h"
+#include "Spline.h"
 #include "../../Car/Car.h"
+#include "../../Car/CarPresets.h"
 #include "../../Core/Engine.h"
 #include "../../Core/Timer.h"
 #include "../../FileSystem/FileSystem.h"
@@ -38,13 +40,12 @@ namespace spartan
 {
     namespace
     {
-        constexpr float sensor_radius = 0.65f;
+        constexpr float gravity = 9.81f;
         constexpr float sensor_height = 1.0f;
-        constexpr float trajectory_length = 18.0f;
         constexpr float visit_cell_size = 18.0f;
         constexpr float spawn_separation = 12.0f;
         constexpr float decision_interval = 0.1f;
-        constexpr float steering_samples[] = { -1.0f, -0.7f, -0.4f, 0.0f, 0.4f, 0.7f, 1.0f };
+        constexpr float steering_samples[] = { -1.0f, -0.72f, -0.48f, -0.3f, -0.18f, -0.08f, 0.0f, 0.08f, 0.18f, 0.3f, 0.48f, 0.72f, 1.0f };
 
         Physics* find_physics(Entity* entity)
         {
@@ -56,6 +57,36 @@ namespace spartan
                 }
             }
             return nullptr;
+        }
+
+        Vector3 planar(Vector3 value)
+        {
+            value.y = 0.0f;
+            if (!std::isfinite(value.x) || !std::isfinite(value.z))
+            {
+                return Vector3::Zero;
+            }
+            return value;
+        }
+
+        Vector3 horizontal(Vector3 value)
+        {
+            value = planar(value);
+            if (value.LengthSquared() > 0.0001f)
+            {
+                value.Normalize();
+            }
+            return value;
+        }
+
+        float signed_angle(const Vector3& from, const Vector3& to)
+        {
+            return atan2f(Vector3::Dot(Vector3::Cross(from, to), Vector3::Up), Vector3::Dot(from, to));
+        }
+
+        float positive_or(float value, float fallback)
+        {
+            return std::isfinite(value) && value > 0.0f ? value : fallback;
         }
     }
 
@@ -78,6 +109,7 @@ namespace spartan
     void Traffic::Start()
     {
         Stop();
+        CacheRoads();
         Spawn();
     }
 
@@ -98,6 +130,7 @@ namespace spartan
             driver.physics = nullptr;
         }
         m_drivers.clear();
+        m_road_samples.clear();
     }
 
     void Traffic::Tick()
@@ -110,7 +143,8 @@ namespace spartan
         const float delta_time = std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f);
         const vector<Car*> cars = Car::GetAll();
         Vector3 player_position;
-        const bool has_player = GetPlayerPosition(player_position);
+        Vector3 player_velocity;
+        const bool has_player = GetPlayerState(player_position, player_velocity);
         for (Driver& driver : m_drivers)
         {
             if (!driver.car || find(cars.begin(), cars.end(), driver.car) == cars.end())
@@ -147,14 +181,60 @@ namespace spartan
                 continue;
             }
 
+            UpdateTelemetry(driver, delta_time);
             driver.decision_time += delta_time;
             if (driver.decision_time >= decision_interval)
             {
-                const float decision_time = driver.decision_time;
+                const float elapsed = driver.decision_time;
                 driver.decision_time = 0.0f;
-                UpdateDriver(driver, decision_time);
+                PlanDriver(driver, elapsed);
+            }
+            ControlDriver(driver, delta_time);
+            if (driver.diagnostic_time > 0.0f)
+            {
+                driver.diagnostic_time = std::max(driver.diagnostic_time - delta_time, 0.0f);
+                driver.diagnostic_interval += delta_time;
+                if (driver.diagnostic_interval >= 0.25f)
+                {
+                    driver.diagnostic_interval = 0.0f;
+                    SP_LOG_INFO("traffic_ai %s speed=%.2f spline=%.2f target=%.2f clearance=%.2f traversable=%d blocked=%d throttle=%.2f brake=%.2f plan_steer=%.2f command_steer=%.2f applied_steer=%.2f grip=%.2f load=%.2f grounded=%.2f recovery=%u gear=%d", driver.entity->GetObjectName().c_str(), driver.telemetry.speed, driver.spline_speed, driver.plan.target_speed, driver.plan.clearance, driver.plan.traversable ? 1 : 0, driver.plan.blocked ? 1 : 0, driver.throttle, driver.brake, driver.plan.steering, driver.steering, driver.physics->GetVehicleSteering(), driver.telemetry.grip, driver.telemetry.load_factor, driver.telemetry.grounded_ratio, static_cast<uint32_t>(driver.recovery), driver.physics->GetCurrentGear());
+                }
             }
         }
+    }
+
+    void Traffic::CacheRoads()
+    {
+        m_road_samples.clear();
+        for (Entity* entity : World::GetEntities())
+        {
+            Spline* spline = entity ? entity->GetComponent<Spline>() : nullptr;
+            if (!spline || spline->GetProfile() != SplineProfile::Road || (spline->GetControlPointCount() < 2 && !spline->IsAttached()))
+            {
+                continue;
+            }
+
+            const float length = spline->GetLength();
+            if (!std::isfinite(length) || length < 1.0f)
+            {
+                continue;
+            }
+
+            const uint32_t sample_count = std::clamp(static_cast<uint32_t>(ceilf(length / 6.0f)) + 1u, 8u, 256u);
+            for (uint32_t i = 0; i < sample_count; i++)
+            {
+                const float t = static_cast<float>(i) / static_cast<float>(sample_count - 1);
+                RoadSample sample;
+                sample.position = spline->GetPoint(t);
+                sample.tangent = horizontal(spline->GetTangent(t));
+                sample.half_width = std::max(positive_or((spline->GetRoadWidth() + (spline->GetRoadWidthEnd() - spline->GetRoadWidth()) * t) * 0.5f, 4.0f), 1.5f);
+                if (std::isfinite(sample.position.x) && std::isfinite(sample.position.y) && std::isfinite(sample.position.z) && sample.tangent.LengthSquared() > 0.5f)
+                {
+                    m_road_samples.push_back(sample);
+                }
+            }
+        }
+        SP_LOG_INFO("traffic_ai cached %zu road samples", m_road_samples.size());
     }
 
     void Traffic::Spawn()
@@ -188,7 +268,7 @@ namespace spartan
             config.car_file = car_path;
             config.drivable = true;
             config.customize_materials = false;
-            config.high_quality_physics = false;
+            config.high_quality_physics = true;
             config.paint_preset = MaterialPaintPreset::Metallic;
             config.paint_color = Color(0.15f + hue * 0.65f, 0.2f + fmodf(hue + 0.37f, 1.0f) * 0.55f, 0.2f + fmodf(hue + 0.71f, 1.0f) * 0.55f, 1.0f);
 
@@ -210,6 +290,7 @@ namespace spartan
             entity->SetTransient(true);
             physics->SetBodyTransform(position, rotation);
             physics->SetVehicleSimulationFrequency(m_simulation_frequency);
+            physics->SetManualTransmission(false);
             car->SetMcpControlled(true);
 
             Driver driver;
@@ -217,22 +298,115 @@ namespace spartan
             driver.entity = entity;
             driver.physics = physics;
             driver.collision_group = physics->GetVehicleCollisionGroup();
-            driver.cruise_speed = 8.0f + static_cast<float>((i * 17) % 9) * 0.75f;
+            driver.cruise_speed = 15.0f + static_cast<float>((i * 17) % 9) * 1.25f;
             driver.caution = 0.85f + static_cast<float>((i * 13) % 7) * 0.05f;
             driver.persistence = 0.7f + static_cast<float>((i * 11) % 8) * 0.08f;
             driver.exploration = 0.8f + static_cast<float>((i * 19) % 9) * 0.08f;
             driver.decision_time = decision_interval * static_cast<float>(i % 20) / 20.0f;
             driver.last_position = position;
             driver.spline_speed = driver.cruise_speed;
-            Vector3 initial_velocity = entity->GetForward();
-            initial_velocity.y = 0.0f;
-            initial_velocity.Normalize();
-            physics->SetLinearVelocity(initial_velocity * driver.cruise_speed);
+            InitializeLimits(driver);
+            const Vector3 initial_velocity = horizontal(entity->GetForward()) * std::min(driver.cruise_speed, 10.0f);
+            physics->SetLinearVelocity(initial_velocity);
             m_drivers.push_back(std::move(driver));
         }
     }
 
-    bool Traffic::GetPlayerPosition(Vector3& position) const
+    void Traffic::InitializeLimits(Driver& driver)
+    {
+        const car::car_definition* definition = driver.car ? driver.car->GetDefinition() : nullptr;
+        if (!definition)
+        {
+            return;
+        }
+
+        const car::car_preset& preset = definition->performance;
+        VehicleLimits& limits = driver.limits;
+        limits.mass = std::max(positive_or(preset.mass, limits.mass), 300.0f);
+        limits.wheelbase = std::max(positive_or(preset.wheelbase, limits.wheelbase), 1.5f);
+        limits.half_width = std::max(positive_or(preset.width, limits.half_width * 2.0f) * 0.5f, 0.7f);
+        limits.wheel_radius = std::max(positive_or((preset.front_wheel_radius + preset.rear_wheel_radius) * 0.5f, limits.wheel_radius), 0.2f);
+        limits.max_steer_angle = std::clamp(positive_or(preset.max_steer_angle, limits.max_steer_angle), 0.25f, 0.9f);
+        limits.lateral_acceleration = std::clamp(positive_or(preset.tire_friction, 0.8f) * gravity, 4.0f, 16.0f);
+
+        float highest_forward_ratio = 0.0f;
+        for (int gear = 2; gear < std::clamp(preset.gear_count, 2, car::max_gears); gear++)
+        {
+            highest_forward_ratio = std::max(highest_forward_ratio, positive_or(fabsf(preset.gear_ratios[gear]), 0.0f));
+        }
+        const float final_drive = std::max(positive_or(preset.final_drive, 1.0f), 0.1f);
+        const float drivetrain_efficiency = std::clamp(positive_or(preset.drivetrain_efficiency, 0.8f), 0.2f, 1.0f);
+        const float engine_drive_torque = positive_or(preset.engine_peak_torque, 0.0f) * highest_forward_ratio * final_drive;
+        const float electric_drive_torque = preset.electric_enabled ? positive_or(preset.electric_motor_torque, 0.0f) * final_drive : 0.0f;
+        const float drive_torque = (engine_drive_torque + electric_drive_torque) * drivetrain_efficiency;
+        limits.acceleration = std::clamp(drive_torque / (limits.wheel_radius * limits.mass), 1.0f, limits.lateral_acceleration);
+        limits.braking = std::clamp(positive_or(preset.brake_force, limits.mass * limits.braking) / limits.mass, 3.0f, limits.lateral_acceleration * 1.15f);
+        limits.drag_factor = std::max(0.5f * 1.225f * positive_or(preset.drag_coeff, 0.0f) * positive_or(preset.frontal_area, 0.0f) / limits.mass, 0.0f);
+    }
+
+    void Traffic::UpdateTelemetry(Driver& driver, float delta_time)
+    {
+        Telemetry& telemetry = driver.telemetry;
+        telemetry.velocity = driver.physics->GetLinearVelocity();
+        if (!std::isfinite(telemetry.velocity.x) || !std::isfinite(telemetry.velocity.y) || !std::isfinite(telemetry.velocity.z))
+        {
+            telemetry.velocity = Vector3::Zero;
+        }
+        const Vector3 horizontal_velocity = planar(telemetry.velocity);
+        telemetry.speed = horizontal_velocity.Length();
+        const Vector3 forward = horizontal(driver.entity->GetForward());
+        const Vector3 right = horizontal(driver.entity->GetRight());
+        telemetry.forward_speed = Vector3::Dot(telemetry.velocity, forward);
+        telemetry.lateral_speed = Vector3::Dot(telemetry.velocity, right);
+        telemetry.acceleration = delta_time > 0.0001f ? (telemetry.speed - driver.previous_speed) / delta_time : 0.0f;
+        driver.previous_speed = telemetry.speed;
+        telemetry.abs_active = driver.physics->IsAbsActiveAny();
+        telemetry.tc_active = driver.physics->IsTcActive();
+        telemetry.drive_acceleration = driver.limits.acceleration;
+        const car::car_definition* definition = driver.car->GetDefinition();
+        if (definition)
+        {
+            const car::car_preset& preset = definition->performance;
+            const int gear = driver.physics->GetCurrentGear();
+            if (gear >= 2 && gear < std::clamp(preset.gear_count, 2, car::max_gears))
+            {
+                const float final_drive = std::max(positive_or(preset.final_drive, 1.0f), 0.1f);
+                const float engine_axle_torque = positive_or(driver.physics->GetEngineTorque(), 0.0f) * positive_or(fabsf(preset.gear_ratios[gear]), 0.0f) * final_drive;
+                const float electric_axle_torque = preset.electric_enabled ? positive_or(preset.electric_motor_torque, 0.0f) * final_drive : 0.0f;
+                const float wheel_force = (engine_axle_torque + electric_axle_torque) * std::clamp(positive_or(preset.drivetrain_efficiency, 0.8f), 0.2f, 1.0f) / driver.limits.wheel_radius;
+                telemetry.drive_acceleration = std::clamp(wheel_force / driver.limits.mass, 0.5f, driver.limits.lateral_acceleration);
+            }
+        }
+
+        float slip = 0.0f;
+        float grip = 0.0f;
+        float tire_load = 0.0f;
+        uint32_t grounded = 0;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(WheelIndex::Count); i++)
+        {
+            const WheelIndex wheel = static_cast<WheelIndex>(i);
+            if (driver.physics->IsWheelGrounded(wheel))
+            {
+                grounded++;
+            }
+            slip += positive_or(driver.physics->GetWheelSlipMagnitude(wheel), 0.0f);
+            grip += positive_or(driver.physics->GetWheelTempGripFactor(wheel) * driver.physics->GetWheelWearGripFactor(wheel), 0.35f);
+            tire_load += positive_or(driver.physics->GetWheelTireLoad(wheel), 0.0f);
+        }
+        const bool has_wheel_telemetry = grounded > 0 || tire_load > driver.limits.mass * gravity * 0.05f;
+        telemetry.slip = has_wheel_telemetry ? slip * 0.25f : 0.0f;
+        telemetry.grip = has_wheel_telemetry ? std::clamp(grip * 0.25f, 0.35f, 1.2f) : 1.0f;
+        telemetry.load_factor = has_wheel_telemetry ? std::clamp(tire_load / (driver.limits.mass * gravity), 0.45f, 1.15f) : 1.0f;
+        telemetry.grounded_ratio = has_wheel_telemetry ? static_cast<float>(grounded) * 0.25f : 1.0f;
+        if (driver.throttle > 0.35f && telemetry.grounded_ratio > 0.5f)
+        {
+            const float measured_response = std::clamp(telemetry.acceleration / std::max(telemetry.drive_acceleration * driver.throttle, 0.1f), 0.35f, 1.25f);
+            telemetry.response_factor += (measured_response - telemetry.response_factor) * std::clamp(delta_time * 0.8f, 0.0f, 1.0f);
+        }
+        telemetry.drive_acceleration *= telemetry.response_factor;
+    }
+
+    bool Traffic::GetPlayerState(Vector3& position, Vector3& velocity) const
     {
         const vector<Car*> cars = Car::GetAll();
         for (Car* car : cars)
@@ -240,6 +414,8 @@ namespace spartan
             if (car && car->IsOccupied() && car->GetRootEntity())
             {
                 position = car->GetRootEntity()->GetPosition();
+                Physics* physics = car->GetRootEntity()->GetComponent<Physics>();
+                velocity = physics ? planar(physics->GetLinearVelocity()) : Vector3::Zero;
                 return true;
             }
         }
@@ -254,6 +430,8 @@ namespace spartan
             if (!is_traffic)
             {
                 position = car->GetRootEntity()->GetPosition();
+                Physics* physics = car->GetRootEntity()->GetComponent<Physics>();
+                velocity = physics ? planar(physics->GetLinearVelocity()) : Vector3::Zero;
                 return true;
             }
         }
@@ -271,133 +449,162 @@ namespace spartan
         {
             Vector3 velocity = driver.physics->GetLinearVelocity();
             velocity.y = 0.0f;
-            driver.spline_speed = std::max(velocity.Length(), driver.cruise_speed);
+            driver.spline_speed = std::clamp(velocity.Length(), 2.0f, driver.cruise_speed);
+            driver.throttle = 0.0f;
+            driver.brake = 0.0f;
+            driver.steering = 0.0f;
             driver.car->SetThrottle(0.0f);
             driver.car->SetBrake(0.0f);
             driver.car->SetSteering(0.0f);
             driver.car->SetHandbrake(0.0f);
             driver.physics->SetVehicleSimulationActive(false);
             driver.spline_duration = 0.0f;
+            driver.transition_time = 0.0f;
         }
         else
         {
             driver.physics->SetVehicleSimulationActive(true);
             driver.physics->SetBodyTransform(driver.entity->GetPosition(), driver.entity->GetRotation());
-            Vector3 forward = driver.entity->GetForward();
-            forward.y = 0.0f;
-            forward.Normalize();
+            const Vector3 forward = horizontal(driver.entity->GetForward());
             driver.physics->SetLinearVelocity(forward * driver.spline_speed);
+            driver.physics->SetAngularVelocity(Vector3::Zero);
             driver.last_position = driver.entity->GetPosition();
+            driver.previous_speed = driver.spline_speed;
+            driver.throttle = 0.0f;
+            driver.brake = 0.0f;
+            driver.transition_time = 0.5f;
+            driver.diagnostic_time = 3.0f;
+            driver.diagnostic_interval = 0.25f;
             driver.stalled_time = 0.0f;
             driver.blocked_time = 0.0f;
             driver.recovery = RecoveryState::None;
+            driver.recovery_time = 0.0f;
             driver.decision_time = decision_interval;
+            SP_LOG_INFO("traffic_ai %s physics_on speed=%.2f", driver.entity->GetObjectName().c_str(), driver.spline_speed);
         }
         driver.physics_active = active;
     }
 
-    void Traffic::CreateSpline(Driver& driver)
+    bool Traffic::CreateSpline(Driver& driver)
     {
         Trajectory best;
         for (float steering : steering_samples)
         {
             const Trajectory candidate = EvaluateTrajectory(driver, steering);
-            if (candidate.score > best.score)
+            if (candidate.traversable && candidate.score > best.score)
             {
                 best = candidate;
             }
         }
-
-        Vector3 forward = driver.entity->GetForward();
-        Vector3 right = driver.entity->GetRight();
-        forward.y = 0.0f;
-        right.y = 0.0f;
-        forward.Normalize();
-        right.Normalize();
-
-        float steering = best.score > -999999.0f ? best.steering : 1.0f;
-        float length = best.traversable ? std::clamp(best.clearance - 2.0f, 10.0f, 24.0f) : 6.0f;
-        Vector3 direction = (forward * cosf(steering * 0.9f) + right * sinf(steering * 0.9f)).Normalized();
-        if (!IsInsideBounds(driver.entity->GetPosition() + direction * length, 4.0f))
+        if (!best.traversable || best.point_count < 2)
         {
-            Vector3 center = (m_bounds_min + m_bounds_max) * 0.5f;
-            direction = center - driver.entity->GetPosition();
-            direction.y = 0.0f;
-            direction.Normalize();
-            length = 12.0f;
+            driver.spline_duration = 0.0f;
+            return false;
         }
 
+        const Vector3 forward = horizontal(driver.entity->GetForward());
+        const Vector3 direction = horizontal(best.points[best.point_count - 1] - best.points[best.point_count - 2]);
+        const float length = (best.points[best.point_count - 1] - best.points[0]).Length();
+        if (!std::isfinite(length) || length < 1.0f || forward.LengthSquared() < 0.5f || direction.LengthSquared() < 0.5f)
+        {
+            driver.spline_duration = 0.0f;
+            return false;
+        }
         driver.spline_start = driver.entity->GetPosition();
-        driver.spline_end = driver.spline_start + direction * length;
+        driver.spline_end = best.points[best.point_count - 1];
         driver.spline_control_a = driver.spline_start + forward * (length * 0.35f);
         driver.spline_control_b = driver.spline_end - direction * (length * 0.35f);
-
-        Vector3 ground;
-        if (SampleGround(driver.spline_control_a, ground))
+        Vector3 previous = driver.spline_start;
+        float spline_length = 0.0f;
+        for (uint32_t i = 1; i <= 8; i++)
         {
-            driver.spline_control_a.y = ground.y + 1.0f;
+            const float t = static_cast<float>(i) / 8.0f;
+            const float inverse_t = 1.0f - t;
+            Vector3 point = driver.spline_start * (inverse_t * inverse_t * inverse_t) + driver.spline_control_a * (3.0f * inverse_t * inverse_t * t) + driver.spline_control_b * (3.0f * inverse_t * t * t) + driver.spline_end * (t * t * t);
+            Vector3 ground;
+            if (!SampleGround(point, ground))
+            {
+                driver.spline_duration = 0.0f;
+                return false;
+            }
+            point.y = ground.y + 1.0f;
+            const Vector3 segment = point - previous;
+            const float distance = segment.Length();
+            Vector3 hit_position;
+            float hit_distance = distance;
+            Entity* hit_entity = nullptr;
+            if (distance > 0.001f && PhysicsWorld::SphereCast(previous + Vector3::Up * sensor_height, segment, driver.limits.half_width * 0.75f, distance, driver.collision_group, hit_position, hit_distance, hit_entity))
+            {
+                driver.spline_duration = 0.0f;
+                return false;
+            }
+            if (!IsTrafficCorridorClear(driver, previous, point, driver.limits.half_width + 0.8f))
+            {
+                driver.spline_duration = 0.0f;
+                return false;
+            }
+            spline_length += distance;
+            previous = point;
         }
-        if (SampleGround(driver.spline_control_b, ground))
-        {
-            driver.spline_control_b.y = ground.y + 1.0f;
-        }
-        if (SampleGround(driver.spline_end, ground))
-        {
-            driver.spline_end.y = ground.y + 1.0f;
-        }
-
-        driver.spline_speed = std::clamp(driver.spline_speed, driver.cruise_speed * 0.8f, driver.cruise_speed * 1.2f);
-        driver.spline_duration = length / std::max(driver.spline_speed, 1.0f);
+        driver.spline_speed = std::clamp(best.target_speed, 2.0f, driver.cruise_speed);
+        driver.spline_duration = spline_length / driver.spline_speed;
         driver.spline_time = 0.0f;
-        driver.steering = steering;
+        driver.steering = best.steering;
+        return true;
     }
 
     void Traffic::UpdateSplineDriver(Driver& driver, float delta_time)
     {
         if (driver.spline_duration <= 0.0f || driver.spline_time >= driver.spline_duration)
         {
-            CreateSpline(driver);
-        }
-
-        driver.spline_time = std::min(driver.spline_time + delta_time, driver.spline_duration);
-        const float t = driver.spline_duration > 0.0f ? driver.spline_time / driver.spline_duration : 1.0f;
-        const float inverse_t = 1.0f - t;
-        const Vector3 position = driver.spline_start * (inverse_t * inverse_t * inverse_t) + driver.spline_control_a * (3.0f * inverse_t * inverse_t * t) + driver.spline_control_b * (3.0f * inverse_t * t * t) + driver.spline_end * (t * t * t);
-        for (const Driver& other : m_drivers)
-        {
-            if (&other != &driver && other.entity && (other.entity->GetPosition() - position).LengthSquared() < 12.25f)
+            if (!CreateSpline(driver))
             {
-                driver.spline_duration = 0.0f;
                 return;
             }
         }
-        Vector3 direction = (driver.spline_control_a - driver.spline_start) * (3.0f * inverse_t * inverse_t) + (driver.spline_control_b - driver.spline_control_a) * (6.0f * inverse_t * t) + (driver.spline_end - driver.spline_control_b) * (3.0f * t * t);
-        direction.y = 0.0f;
-        if (direction.LengthSquared() > 0.0001f)
-        {
-            direction.Normalize();
-            driver.entity->SetRotation(Quaternion::FromLookRotation(direction));
-        }
-        driver.entity->SetPosition(position);
-    }
 
-    void Traffic::UpdateDriver(Driver& driver, float delta_time)
-    {
-        if (!driver.car || !driver.entity || !driver.physics)
+        const float next_time = std::min(driver.spline_time + delta_time, driver.spline_duration);
+        const float t = driver.spline_duration > 0.0f ? next_time / driver.spline_duration : 1.0f;
+        const float inverse_t = 1.0f - t;
+        Vector3 position = driver.spline_start * (inverse_t * inverse_t * inverse_t) + driver.spline_control_a * (3.0f * inverse_t * inverse_t * t) + driver.spline_control_b * (3.0f * inverse_t * t * t) + driver.spline_end * (t * t * t);
+        Vector3 ground;
+        if (!SampleGround(position, ground))
         {
+            driver.spline_duration = 0.0f;
+            return;
+        }
+        position.y = ground.y + 1.0f;
+
+        const Vector3 start = driver.entity->GetPosition();
+        Vector3 movement = position - start;
+        const float distance = movement.Length();
+        Vector3 hit_position;
+        float hit_distance = distance;
+        Entity* hit_entity = nullptr;
+        if (distance > 0.001f && PhysicsWorld::SphereCast(start + Vector3::Up * sensor_height, movement, driver.limits.half_width * 0.75f, distance, driver.collision_group, hit_position, hit_distance, hit_entity))
+        {
+            driver.spline_duration = 0.0f;
+            return;
+        }
+        if (!IsTrafficCorridorClear(driver, start, position, driver.limits.half_width + 0.8f))
+        {
+            driver.spline_duration = 0.0f;
             return;
         }
 
-        const Vector3 position = driver.entity->GetPosition();
-        Vector3 forward = driver.entity->GetForward();
-        Vector3 right = driver.entity->GetRight();
-        forward.y = 0.0f;
-        right.y = 0.0f;
-        forward.Normalize();
-        right.Normalize();
-        const Vector3 velocity = driver.physics->GetLinearVelocity();
-        const float speed = velocity.Length();
+        Vector3 direction = (driver.spline_control_a - driver.spline_start) * (3.0f * inverse_t * inverse_t) + (driver.spline_control_b - driver.spline_control_a) * (6.0f * inverse_t * t) + (driver.spline_end - driver.spline_control_b) * (3.0f * t * t);
+        direction = horizontal(direction);
+        if (direction.LengthSquared() > 0.5f)
+        {
+            driver.entity->SetRotation(Quaternion::FromLookRotation(direction));
+        }
+        driver.entity->SetPosition(position);
+        driver.spline_time = next_time;
+    }
 
+    void Traffic::PlanDriver(Driver& driver, float delta_time)
+    {
+        const Vector3 position = driver.entity->GetPosition();
         driver.memory_time += delta_time;
         if (driver.memory_time >= 1.0f)
         {
@@ -421,9 +628,11 @@ namespace spartan
             }
         }
 
-        const float progress = (position - driver.last_position).Length();
+        Vector3 progress_offset = position - driver.last_position;
+        progress_offset.y = 0.0f;
+        const float progress = progress_offset.Length();
         driver.last_position = position;
-        driver.stalled_time = speed < 0.8f && progress < 0.08f ? driver.stalled_time + delta_time : 0.0f;
+        driver.stalled_time = driver.telemetry.speed < 0.8f && progress < 0.1f ? driver.stalled_time + delta_time : 0.0f;
 
         Trajectory best;
         for (float steering : steering_samples)
@@ -434,199 +643,456 @@ namespace spartan
                 best = candidate;
             }
         }
-
-        bool spacing_emergency = false;
-        bool spacing_yielding = false;
-        for (const Driver& other : m_drivers)
-        {
-            if (&other == &driver || !other.entity)
-            {
-                continue;
-            }
-
-            Vector3 relative = other.entity->GetPosition() - position;
-            relative.y = 0.0f;
-            const float distance = relative.Length();
-            if (distance >= 12.0f || distance <= 0.001f)
-            {
-                continue;
-            }
-
-            const float forward_distance = Vector3::Dot(relative, forward);
-            const float lateral_distance = Vector3::Dot(relative, right);
-            if (distance < 3.5f)
-            {
-                spacing_emergency = true;
-            }
-            if (forward_distance > 0.0f && fabsf(lateral_distance) < 4.0f)
-            {
-                spacing_yielding = distance < 10.0f;
-                spacing_emergency = spacing_emergency || distance < 5.0f;
-                const float away = fabsf(lateral_distance) > 0.2f ? (lateral_distance > 0.0f ? -1.0f : 1.0f) : (driver.entity->GetObjectId() < other.entity->GetObjectId() ? -1.0f : 1.0f);
-                const float avoidance_weight = std::clamp((10.0f - distance) / 7.0f, 0.0f, 1.0f);
-                best.steering += (away - best.steering) * avoidance_weight;
-                best.clearance = std::min(best.clearance, std::max(distance - 3.0f, 0.0f));
-            }
-        }
-
+        driver.plan = best;
+        driver.plan_initialized = true;
         driver.blocked_time = best.traversable ? 0.0f : driver.blocked_time + delta_time;
-        if (driver.recovery == RecoveryState::None && (driver.blocked_time > 0.7f || driver.stalled_time > 4.0f))
+        if (driver.recovery == RecoveryState::None && (driver.blocked_time > 0.7f || driver.stalled_time > 3.5f))
         {
             driver.recovery = RecoveryState::Brake;
             driver.recovery_time = 0.0f;
-        }
-
-        if (driver.recovery != RecoveryState::None)
-        {
-            driver.recovery_time += delta_time;
-            if (driver.recovery == RecoveryState::Brake)
-            {
-                driver.car->SetThrottle(0.0f);
-                driver.car->SetBrake(1.0f);
-                driver.car->SetSteering(best.steering);
-                driver.car->SetHandbrake(0.0f);
-                if (speed < 0.5f || driver.recovery_time > 1.2f)
-                {
-                    driver.recovery = RecoveryState::Reverse;
-                    driver.recovery_time = 0.0f;
-                }
-                return;
-            }
-
-            Vector3 reverse_hit;
-            float reverse_distance = 6.0f;
-            Entity* reverse_entity = nullptr;
-            const bool reverse_blocked = PhysicsWorld::SphereCast(position + Vector3::Up * sensor_height, -forward, sensor_radius, 6.0f, driver.collision_group, reverse_hit, reverse_distance, reverse_entity);
-            driver.car->SetThrottle(0.0f);
-            driver.car->SetBrake(reverse_blocked && reverse_distance < 2.0f ? 0.0f : 1.0f);
-            driver.car->SetSteering(-best.steering);
-            driver.car->SetHandbrake(reverse_blocked && reverse_distance < 2.0f ? 1.0f : 0.0f);
-            if (driver.recovery_time > 2.4f || (reverse_blocked && reverse_distance < 2.0f))
-            {
-                driver.recovery = RecoveryState::None;
-                driver.blocked_time = 0.0f;
-                driver.stalled_time = 0.0f;
-                driver.recovery_time = 0.0f;
-            }
-            return;
-        }
-
-        float obstacle_distance = trajectory_length;
-        Vector3 obstacle_position;
-        Entity* obstacle_entity = nullptr;
-        const bool obstacle = PhysicsWorld::SphereCast(position + Vector3::Up * sensor_height, forward, sensor_radius, trajectory_length, driver.collision_group, obstacle_position, obstacle_distance, obstacle_entity);
-        bool emergency = spacing_emergency || (obstacle && obstacle_distance < 2.5f * driver.caution);
-        bool yielding = spacing_yielding;
-        if (obstacle && obstacle_entity)
-        {
-            if (Physics* obstacle_physics = find_physics(obstacle_entity))
-            {
-                const Vector3 relative_velocity = velocity - obstacle_physics->GetLinearVelocity();
-                const float closing_speed = std::max(Vector3::Dot(relative_velocity, forward), 0.0f);
-                const float time_to_collision = closing_speed > 0.1f ? obstacle_distance / closing_speed : 1000.0f;
-                emergency = emergency || time_to_collision < 1.2f * driver.caution;
-                yielding = obstacle_physics->GetBodyType() == BodyType::Vehicle && obstacle_distance < 7.0f && driver.entity->GetObjectId() > obstacle_physics->GetEntity()->GetObjectId();
-            }
-        }
-
-        const float turn_factor = 1.0f - std::min(fabsf(best.steering) * 0.55f, 0.65f);
-        const float clearance_factor = std::clamp(best.clearance / 14.0f, 0.2f, 1.0f);
-        const float target_speed = driver.cruise_speed * turn_factor * clearance_factor;
-        const float speed_error = target_speed - speed;
-        const float steering_blend = 1.0f - expf(-delta_time * (3.0f + driver.persistence));
-        driver.steering += (best.steering - driver.steering) * steering_blend;
-
-        driver.car->SetSteering(driver.steering);
-        driver.car->SetHandbrake(0.0f);
-        if (emergency)
-        {
-            driver.car->SetThrottle(0.0f);
-            driver.car->SetBrake(1.0f);
-        }
-        else if (yielding || speed_error < -1.0f)
-        {
-            driver.car->SetThrottle(0.0f);
-            driver.car->SetBrake(yielding ? 0.55f : std::clamp(-speed_error / 6.0f, 0.0f, 0.65f));
-        }
-        else
-        {
-            driver.car->SetThrottle(std::clamp(0.25f + speed_error / 8.0f, 0.15f, 0.8f));
-            driver.car->SetBrake(0.0f);
+            driver.recovery_origin = position;
         }
     }
 
-    Traffic::Trajectory Traffic::EvaluateTrajectory(const Driver& driver, float steering) const
+    void Traffic::ControlDriver(Driver& driver, float delta_time)
     {
-        Trajectory result;
-        result.steering = steering;
-
-        Vector3 forward = driver.entity->GetForward();
-        Vector3 right = driver.entity->GetRight();
-        forward.y = 0.0f;
-        right.y = 0.0f;
-        forward.Normalize();
-        right.Normalize();
-        const float angle = steering * 0.9f;
-        const Vector3 direction = (forward * cosf(angle) + right * sinf(angle)).Normalized();
-        const Vector3 origin = driver.entity->GetPosition() + Vector3::Up * sensor_height;
-
-        Vector3 hit_position;
-        Entity* hit_entity = nullptr;
-        result.clearance = trajectory_length;
-        PhysicsWorld::SphereCast(origin, direction, sensor_radius, trajectory_length, driver.collision_group, hit_position, result.clearance, hit_entity);
-
-        float slope_penalty = 0.0f;
-        Vector3 previous_ground;
-        if (!SampleGround(driver.entity->GetPosition() + direction * 2.0f, previous_ground))
+        if (driver.recovery != RecoveryState::None)
         {
-            return result;
+            UpdateRecovery(driver, delta_time);
+            return;
+        }
+        if (!driver.plan_initialized)
+        {
+            driver.steering = 0.0f;
+            driver.throttle = 0.0f;
+            driver.brake = 0.0f;
+            driver.car->SetThrottle(0.0f);
+            driver.car->SetBrake(0.0f);
+            driver.car->SetSteering(0.0f);
+            driver.car->SetHandbrake(0.0f);
+            return;
         }
 
-        for (float distance : { 5.0f, 9.0f, 13.0f, 17.0f })
+        const bool transitioning = driver.transition_time > 0.0f;
+        driver.transition_time = std::max(driver.transition_time - delta_time, 0.0f);
+        const float speed = driver.telemetry.speed;
+        float target_speed = driver.plan.target_speed;
+        const float crawl_clearance = driver.limits.half_width * 2.0f + 1.5f;
+        if (!driver.plan.traversable && driver.plan.clearance > crawl_clearance)
         {
-            Vector3 sample_position = driver.entity->GetPosition() + direction * distance;
-            if (!IsInsideBounds(sample_position, 5.0f))
+            target_speed = std::max(target_speed, 3.0f);
+        }
+        if (transitioning)
+        {
+            target_speed = std::max(target_speed, std::min(driver.spline_speed, driver.cruise_speed));
+        }
+        const float available_grip = driver.limits.lateral_acceleration * driver.telemetry.grip * driver.telemetry.load_factor * std::clamp(driver.telemetry.grounded_ratio, 0.3f, 1.0f);
+        const float lateral_use = speed * speed * fabsf(driver.plan.curvature);
+        const float longitudinal_budget = sqrtf(std::max(1.0f - std::min(lateral_use / std::max(available_grip, 0.1f), 1.0f), 0.0f));
+        const float speed_error = target_speed - speed;
+        const float drive_acceleration = std::max(driver.telemetry.drive_acceleration, 0.5f);
+        const float available_braking = std::max(driver.limits.braking * driver.telemetry.grip * driver.telemetry.load_factor * std::clamp(driver.telemetry.grounded_ratio, 0.3f, 1.0f), 1.0f);
+        const float desired_acceleration = std::clamp(speed_error * 0.8f, -available_braking, drive_acceleration);
+        const float actuator_acceleration = desired_acceleration + driver.limits.drag_factor * speed * speed;
+        float throttle_target = actuator_acceleration > 0.0f ? actuator_acceleration / drive_acceleration : 0.0f;
+        float brake_target = actuator_acceleration < 0.0f ? -actuator_acceleration / available_braking : 0.0f;
+        throttle_target *= longitudinal_budget;
+        if (driver.telemetry.tc_active || driver.telemetry.slip > 0.35f)
+        {
+            throttle_target *= std::clamp(1.0f - driver.telemetry.slip, 0.15f, 0.7f);
+        }
+        if (driver.telemetry.abs_active)
+        {
+            brake_target *= 0.85f;
+        }
+        if (!transitioning && driver.plan.blocked && driver.plan.clearance > 0.1f)
+        {
+            const float obstacle_speed = driver.plan.point_count > 0 ? driver.plan.speed_profile[driver.plan.point_count - 1] : 0.0f;
+            const float required_deceleration = std::max(speed * speed - obstacle_speed * obstacle_speed, 0.0f) / (2.0f * driver.plan.clearance);
+            if (required_deceleration > available_braking)
             {
-                return result;
+                throttle_target = 0.0f;
+                brake_target = 1.0f;
             }
-
-            Vector3 ground;
-            if (!SampleGround(sample_position, ground))
-            {
-                return result;
-            }
-            const float rise = fabsf(ground.y - previous_ground.y);
-            if (rise > 2.2f)
-            {
-                return result;
-            }
-            slope_penalty += rise;
-            previous_ground = ground;
         }
 
+        const Vector3 forward = horizontal(driver.entity->GetForward());
         for (const Driver& other : m_drivers)
         {
-            if (&other == &driver || !other.entity)
+            if (&other == &driver || !other.entity || !other.physics)
             {
                 continue;
             }
             Vector3 relative = other.entity->GetPosition() - driver.entity->GetPosition();
             relative.y = 0.0f;
-            const float distance_along = Vector3::Dot(relative, direction);
-            const Vector3 lateral = relative - direction * distance_along;
-            if (distance_along > 0.0f && distance_along < result.clearance && lateral.LengthSquared() < 16.0f)
+            const float longitudinal = Vector3::Dot(relative, forward);
+            const float lateral = fabsf(Vector3::Dot(relative, horizontal(driver.entity->GetRight())));
+            const float rear_closing = Vector3::Dot(other.physics->GetLinearVelocity() - driver.telemetry.velocity, forward);
+            if (longitudinal < -2.0f && longitudinal > -12.0f && lateral < driver.limits.half_width * 2.5f && rear_closing > 2.0f && driver.plan.traversable)
             {
-                result.clearance = std::max(distance_along - 3.0f, 0.0f);
+                brake_target = 0.0f;
+                throttle_target = std::max(throttle_target, std::clamp(rear_closing / 8.0f, 0.25f, 0.75f));
             }
         }
-        const Vector3 future_position = driver.entity->GetPosition() + direction * std::min(result.clearance, trajectory_length);
-        const float novelty = GetNovelty(driver, future_position);
-        const float clearance_score = std::min(result.clearance / trajectory_length, 1.0f) * 7.0f;
+
+        Vector3 velocity_direction = horizontal(driver.telemetry.velocity);
+        float stability_correction = 0.0f;
+        if (speed > 2.0f && velocity_direction.LengthSquared() > 0.5f)
+        {
+            const float velocity_angle = signed_angle(forward, velocity_direction);
+            stability_correction = std::clamp(-velocity_angle * 0.65f - driver.telemetry.lateral_speed / std::max(speed, 1.0f) * 0.35f, -0.35f, 0.35f);
+        }
+        const float steering_target = std::clamp(driver.plan.steering + stability_correction, -1.0f, 1.0f);
+        const float steering_rate = std::clamp(std::max(4.5f - speed * 0.08f, 0.5f) * delta_time, 0.0f, 0.45f);
+        driver.steering += std::clamp(steering_target - driver.steering, -steering_rate, steering_rate);
+        const float pedal_blend = 1.0f - expf(-delta_time * 7.0f);
+        driver.throttle += (std::clamp(throttle_target, 0.0f, 1.0f) - driver.throttle) * pedal_blend;
+        driver.brake += (std::clamp(brake_target, 0.0f, 1.0f) - driver.brake) * pedal_blend;
+
+        driver.car->SetSteering(driver.steering);
+        driver.car->SetThrottle(driver.throttle);
+        driver.car->SetBrake(driver.brake);
+        driver.car->SetHandbrake(0.0f);
+    }
+
+    void Traffic::UpdateRecovery(Driver& driver, float delta_time)
+    {
+        driver.recovery_time += delta_time;
+        const float speed = driver.telemetry.speed;
+        if (driver.recovery == RecoveryState::Brake)
+        {
+            driver.throttle = 0.0f;
+            driver.brake = 1.0f;
+            driver.car->SetThrottle(driver.throttle);
+            driver.car->SetBrake(driver.brake);
+            driver.car->SetSteering(0.0f);
+            driver.car->SetHandbrake(0.0f);
+            if (speed < 0.5f || driver.recovery_time > 1.2f)
+            {
+                Trajectory best_reverse;
+                for (float steering : steering_samples)
+                {
+                    const Trajectory candidate = EvaluateTrajectory(driver, steering, true);
+                    if (candidate.score > best_reverse.score)
+                    {
+                        best_reverse = candidate;
+                    }
+                }
+                driver.recovery_steering = best_reverse.traversable ? best_reverse.steering : (driver.entity->GetObjectId() % 2 == 0 ? -1.0f : 1.0f);
+                driver.recovery_heading = -driver.recovery_steering;
+                driver.recovery = RecoveryState::ReverseEscape;
+                driver.recovery_time = 0.0f;
+            }
+            return;
+        }
+
+        if (driver.recovery == RecoveryState::ReverseEscape)
+        {
+            const Trajectory reverse = EvaluateTrajectory(driver, driver.recovery_steering, true);
+            driver.throttle = 0.0f;
+            driver.brake = reverse.traversable ? (driver.physics->GetCurrentGear() == 0 ? 0.75f : 1.0f) : 0.0f;
+            driver.car->SetThrottle(driver.throttle);
+            driver.car->SetBrake(driver.brake);
+            driver.car->SetSteering(-driver.recovery_steering);
+            driver.car->SetHandbrake(reverse.traversable ? 0.0f : 1.0f);
+            Vector3 escaped_offset = driver.entity->GetPosition() - driver.recovery_origin;
+            escaped_offset.y = 0.0f;
+            const float escaped_distance = escaped_offset.Length();
+            if (!reverse.traversable || escaped_distance > 5.0f || driver.recovery_time > 2.8f)
+            {
+                driver.recovery = RecoveryState::ForwardRealign;
+                driver.recovery_time = 0.0f;
+            }
+            return;
+        }
+
+        if (driver.recovery == RecoveryState::ForwardRealign)
+        {
+            const Trajectory forward = EvaluateTrajectory(driver, driver.recovery_heading);
+            driver.throttle = forward.traversable ? 0.35f : 0.0f;
+            driver.brake = forward.traversable ? 0.0f : 0.8f;
+            driver.car->SetThrottle(driver.throttle);
+            driver.car->SetBrake(driver.brake);
+            driver.car->SetSteering(driver.recovery_heading);
+            driver.car->SetHandbrake(0.0f);
+            if ((forward.traversable && speed > 2.0f) || driver.recovery_time > 2.0f)
+            {
+                driver.recovery = RecoveryState::Cooldown;
+                driver.recovery_time = 0.0f;
+                driver.blocked_time = 0.0f;
+                driver.stalled_time = 0.0f;
+                driver.decision_time = decision_interval;
+            }
+            return;
+        }
+
+        driver.car->SetHandbrake(0.0f);
+        if (driver.recovery_time > 1.5f)
+        {
+            driver.recovery = RecoveryState::None;
+            driver.recovery_time = 0.0f;
+        }
+        else
+        {
+            const float blend = driver.recovery_time / 1.5f;
+            driver.throttle = 0.25f * blend;
+            driver.brake = 0.0f;
+            driver.car->SetThrottle(driver.throttle);
+            driver.car->SetBrake(driver.brake);
+            driver.car->SetSteering(driver.steering * blend);
+        }
+    }
+
+    Traffic::Trajectory Traffic::EvaluateTrajectory(const Driver& driver, float steering, bool reverse) const
+    {
+        Trajectory result;
+        result.steering = steering;
+        const Vector3 origin = driver.entity->GetPosition();
+        const Vector3 forward = horizontal(driver.entity->GetForward()) * (reverse ? -1.0f : 1.0f);
+        const Vector3 right = horizontal(driver.entity->GetRight());
+        const float speed = driver.physics_active ? driver.telemetry.speed : driver.spline_speed;
+        const float preview_length = reverse ? 7.0f : std::clamp(12.0f + speed * 1.1f, 16.0f, 48.0f);
+        const float segment_length = preview_length < 22.0f ? 2.0f : 3.0f;
+        const uint32_t point_count = std::min(static_cast<uint32_t>(ceilf(preview_length / segment_length)) + 1u, static_cast<uint32_t>(result.points.size()));
+        const float steer_angle = steering * driver.limits.max_steer_angle;
+        const float curvature = tanf(steer_angle) / driver.limits.wheelbase * (reverse ? -1.0f : 1.0f);
+        result.curvature = curvature;
+        result.point_count = point_count;
+        result.points[0] = origin;
+        result.clearance = preview_length;
+        uint32_t valid_count = 1;
+
+        Vector3 previous_ground;
+        if (!SampleGround(origin, previous_ground))
+        {
+            return result;
+        }
+
+        float heading = 0.0f;
+        float slope_penalty = 0.0f;
+        float traffic_speed_limit = driver.cruise_speed;
+        bool blocked = false;
+        bool traffic_blocked = false;
+        Vector3 player_position;
+        Vector3 player_velocity;
+        const bool has_player = GetPlayerState(player_position, player_velocity);
+        for (uint32_t i = 1; i < point_count; i++)
+        {
+            const float step = std::min(segment_length, preview_length - segment_length * static_cast<float>(i - 1));
+            const float next_heading = heading + curvature * step;
+            const float segment_heading = (heading + next_heading) * 0.5f;
+            const Vector3 direction = (forward * cosf(segment_heading) + right * sinf(segment_heading)).Normalized();
+            heading = next_heading;
+            Vector3 sample = result.points[i - 1] + direction * step;
+            if (!IsInsideBounds(sample, driver.limits.half_width + 2.0f))
+            {
+                blocked = true;
+                result.clearance = segment_length * static_cast<float>(i - 1);
+                break;
+            }
+
+            Vector3 ground;
+            if (!SampleGround(sample, ground))
+            {
+                blocked = true;
+                result.clearance = segment_length * static_cast<float>(i - 1);
+                break;
+            }
+            const float rise = fabsf(ground.y - previous_ground.y);
+            const Vector3 lateral_direction = Vector3::Cross(Vector3::Up, direction);
+            const float edge_offset = driver.limits.half_width * 0.85f;
+            Vector3 left_ground;
+            Vector3 right_ground;
+            if (!SampleGround(sample - lateral_direction * edge_offset, left_ground) || !SampleGround(sample + lateral_direction * edge_offset, right_ground))
+            {
+                blocked = true;
+                result.clearance = segment_length * static_cast<float>(i - 1);
+                break;
+            }
+            const float cross_rise = std::max(fabsf(left_ground.y - ground.y), fabsf(right_ground.y - ground.y));
+            if (rise > step * 0.45f || cross_rise > std::max(0.65f, edge_offset * 0.6f))
+            {
+                blocked = true;
+                result.clearance = segment_length * static_cast<float>(i - 1);
+                break;
+            }
+            sample.y = ground.y + 1.0f;
+            result.points[i] = sample;
+            valid_count = i + 1;
+
+            Vector3 hit_position;
+            float hit_distance = step;
+            Entity* hit_entity = nullptr;
+            const Vector3 cast_start = result.points[i - 1] + Vector3::Up * sensor_height;
+            if (PhysicsWorld::SphereCast(cast_start, sample - result.points[i - 1], driver.limits.half_width * 0.8f, step, driver.collision_group, hit_position, hit_distance, hit_entity))
+            {
+                blocked = true;
+                result.clearance = segment_length * static_cast<float>(i - 1) + hit_distance;
+                result.points[i] = result.points[i - 1] + (sample - result.points[i - 1]).Normalized() * hit_distance;
+                break;
+            }
+
+            const float sample_time = segment_length * static_cast<float>(i) / std::max(speed, 3.0f);
+            for (const Driver& other : m_drivers)
+            {
+                if (&other == &driver || !other.entity)
+                {
+                    continue;
+                }
+                Vector3 other_velocity = other.physics_active && other.physics ? planar(other.physics->GetLinearVelocity()) : horizontal(other.entity->GetForward()) * other.spline_speed;
+                Vector3 predicted_other = other.entity->GetPosition() + other_velocity * sample_time;
+                Vector3 separation = predicted_other - sample;
+                separation.y = 0.0f;
+                const float safe_radius = driver.limits.half_width + other.limits.half_width + 1.0f;
+                if (separation.LengthSquared() < safe_radius * safe_radius)
+                {
+                    const bool deterministic_yield = driver.entity->GetObjectId() > other.entity->GetObjectId();
+                    const Vector3 candidate_velocity = direction * speed;
+                    const float relative_closing = Vector3::Dot(candidate_velocity - other_velocity, direction);
+                    if (deterministic_yield || relative_closing > 0.0f || separation.LengthSquared() < safe_radius * safe_radius * 0.55f)
+                    {
+                        blocked = true;
+                        traffic_blocked = true;
+                        result.clearance = segment_length * static_cast<float>(i);
+                        traffic_speed_limit = std::max(other_velocity.Length() - 1.0f, 0.0f);
+                        break;
+                    }
+                }
+            }
+            if (blocked)
+            {
+                break;
+            }
+
+            if (has_player)
+            {
+                const Vector3 predicted_player = player_position + player_velocity * sample_time;
+                Vector3 player_separation = predicted_player - sample;
+                player_separation.y = 0.0f;
+                const float player_safe_radius = driver.limits.half_width + 2.7f;
+                if (player_separation.LengthSquared() < player_safe_radius * player_safe_radius)
+                {
+                    blocked = true;
+                    traffic_blocked = true;
+                    result.clearance = segment_length * static_cast<float>(i);
+                    traffic_speed_limit = std::max(player_velocity.Length() - 2.0f, 0.0f);
+                    break;
+                }
+            }
+
+            slope_penalty += rise / std::max(step, 0.1f) + cross_rise / std::max(edge_offset, 0.1f) * 0.5f;
+            previous_ground = ground;
+        }
+
+        result.point_count = valid_count;
+        result.blocked = blocked;
+        result.traversable = result.clearance > (reverse ? 2.5f : std::max(5.0f, speed * 0.35f)) * driver.caution;
+        const float telemetry_grip = driver.telemetry.grip * driver.telemetry.load_factor * std::clamp(driver.telemetry.grounded_ratio, 0.3f, 1.0f);
+        const float grip = driver.limits.lateral_acceleration * (driver.physics_active ? telemetry_grip : 1.0f);
+        const float corner_speed = fabsf(curvature) > 0.0001f ? sqrtf(std::max(grip / fabsf(curvature), 0.0f)) : driver.cruise_speed;
+        const float braking = std::max(driver.limits.braking * (driver.physics_active ? telemetry_grip : 1.0f), 1.0f);
+        result.stopping_distance = speed * speed / (2.0f * braking) + speed * 0.35f;
+
+        for (uint32_t i = 0; i < valid_count; i++)
+        {
+            result.speed_profile[i] = std::min({ driver.cruise_speed, corner_speed, traffic_speed_limit });
+        }
+        if (blocked)
+        {
+            result.speed_profile[valid_count - 1] = traffic_blocked ? traffic_speed_limit : 0.0f;
+        }
+        for (uint32_t i = valid_count - 1; i > 0; i--)
+        {
+            const float distance = (result.points[i] - result.points[i - 1]).Length();
+            result.speed_profile[i - 1] = std::min(result.speed_profile[i - 1], sqrtf(result.speed_profile[i] * result.speed_profile[i] + 2.0f * braking * distance));
+        }
+        result.speed_profile[0] = std::min(result.speed_profile[0], speed);
+        for (uint32_t i = 1; i < valid_count; i++)
+        {
+            const float distance = (result.points[i] - result.points[i - 1]).Length();
+            const float acceleration = driver.physics_active ? driver.telemetry.drive_acceleration : driver.limits.acceleration;
+            result.speed_profile[i] = std::min(result.speed_profile[i], sqrtf(result.speed_profile[i - 1] * result.speed_profile[i - 1] + 2.0f * acceleration * distance));
+        }
+        result.target_speed = valid_count > 1 ? result.speed_profile[1] : 0.0f;
+
+        const uint32_t last_valid = valid_count - 1;
+        const uint32_t middle_valid = last_valid / 2;
+        Vector3 middle_direction = middle_valid > 0 ? horizontal(result.points[middle_valid] - result.points[middle_valid - 1]) : forward;
+        Vector3 final_direction = last_valid > 0 ? horizontal(result.points[last_valid] - result.points[last_valid - 1]) : forward;
+        float middle_road_distance = 1000.0f;
+        float final_road_distance = 1000.0f;
+        const float middle_road_score = GetRoadScore(result.points[middle_valid], middle_direction, middle_road_distance);
+        const float final_road_score = GetRoadScore(result.points[last_valid], final_direction, final_road_distance);
+        const float road_score = middle_road_score * 0.4f + final_road_score * 0.6f;
+        const float road_distance = std::min(middle_road_distance, final_road_distance);
+        const float novelty = GetNovelty(driver, result.points[last_valid]);
+        const float clearance_score = std::min(result.clearance / preview_length, 1.0f) * 8.0f;
         const float smoothness = 1.0f - std::min(fabsf(steering - driver.steering), 1.0f);
-        const float heading_persistence = 1.0f - fabsf(steering);
-        result.score = clearance_score + novelty * driver.exploration * 3.0f + smoothness * driver.persistence + heading_persistence * 0.7f - slope_penalty * driver.caution;
-        result.traversable = result.clearance > 3.0f * driver.caution;
+        const float progress_score = Vector3::Dot(result.points[last_valid] - origin, forward) / std::max(preview_length, 1.0f);
+        const float road_weight = road_distance < 8.0f ? 7.0f : (road_distance < 24.0f ? 3.0f : 0.4f);
+        result.score = clearance_score + novelty * driver.exploration * 3.0f + smoothness * driver.persistence * 0.6f + progress_score * 1.5f + road_score * road_weight - slope_penalty * driver.caution;
+        if (!result.traversable)
+        {
+            result.score -= 12.0f;
+        }
         return result;
+    }
+
+    float Traffic::GetRoadScore(const Vector3& position, const Vector3& direction, float& road_distance) const
+    {
+        float score = 0.0f;
+        road_distance = 1000.0f;
+        for (const RoadSample& road : m_road_samples)
+        {
+            Vector3 offset = road.position - position;
+            offset.y = 0.0f;
+            const float distance = offset.Length();
+            if (distance >= road_distance)
+            {
+                continue;
+            }
+            road_distance = distance;
+            const float alignment = fabsf(Vector3::Dot(direction, road.tangent));
+            const float proximity = 1.0f - std::clamp(distance / std::max(road.half_width * 2.0f, 1.0f), 0.0f, 1.0f);
+            score = alignment * 0.65f + proximity * 0.35f;
+        }
+        return score;
+    }
+
+    bool Traffic::IsTrafficCorridorClear(const Driver& driver, const Vector3& start, const Vector3& end, float radius) const
+    {
+        const Vector3 segment = end - start;
+        const float length_squared = segment.LengthSquared();
+        Vector3 player_position;
+        Vector3 player_velocity;
+        if (GetPlayerState(player_position, player_velocity))
+        {
+            const float t = length_squared > 0.0001f ? std::clamp(Vector3::Dot(player_position - start, segment) / length_squared, 0.0f, 1.0f) : 0.0f;
+            Vector3 separation = player_position - (start + segment * t);
+            separation.y = 0.0f;
+            const float player_radius = radius + 2.7f;
+            if (separation.LengthSquared() < player_radius * player_radius)
+            {
+                return false;
+            }
+        }
+        for (const Driver& other : m_drivers)
+        {
+            if (&other == &driver || !other.entity)
+            {
+                continue;
+            }
+            const Vector3 relative = other.entity->GetPosition() - start;
+            const float t = length_squared > 0.0001f ? std::clamp(Vector3::Dot(relative, segment) / length_squared, 0.0f, 1.0f) : 0.0f;
+            Vector3 separation = other.entity->GetPosition() - (start + segment * t);
+            separation.y = 0.0f;
+            const float combined_radius = radius + other.limits.half_width;
+            if (separation.LengthSquared() < combined_radius * combined_radius)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     bool Traffic::FindSpawnPosition(uint32_t index, Vector3& position, Quaternion& rotation)
@@ -640,15 +1106,39 @@ namespace spartan
 
         for (uint32_t attempt = 0; attempt < 768; attempt++)
         {
-            const float x = m_bounds_min.x + (m_bounds_max.x - m_bounds_min.x) * random_unit();
-            const float z = m_bounds_min.z + (m_bounds_max.z - m_bounds_min.z) * random_unit();
+            Vector3 direction;
+            Vector3 candidate;
             Vector3 ground;
-            if (!SampleGround(Vector3(x, m_bounds_max.y, z), ground))
+            if (!m_road_samples.empty() && attempt < 384)
+            {
+                const RoadSample& road = m_road_samples[(index * 37u + attempt * 17u) % m_road_samples.size()];
+                direction = attempt % 2 == 0 ? road.tangent : -road.tangent;
+                const Vector3 road_right = Vector3::Cross(Vector3::Up, road.tangent);
+                const float lane_offset = road.half_width > 3.0f ? std::min(road.half_width * 0.35f, 2.5f) : 0.0f;
+                candidate = road.position + road_right * (attempt % 4 < 2 ? lane_offset : -lane_offset);
+                if (!SampleGround(candidate, ground))
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                const float x = m_bounds_min.x + (m_bounds_max.x - m_bounds_min.x) * random_unit();
+                const float z = m_bounds_min.z + (m_bounds_max.z - m_bounds_min.z) * random_unit();
+                if (!SampleGround(Vector3(x, m_bounds_max.y, z), ground))
+                {
+                    continue;
+                }
+                const float yaw = random_unit() * pi * 2.0f;
+                direction = Vector3(sinf(yaw), 0.0f, cosf(yaw));
+                candidate = ground;
+            }
+            candidate.y = ground.y + 1.0f;
+            if (!IsInsideBounds(candidate, 4.0f))
             {
                 continue;
             }
 
-            const Vector3 candidate(ground.x, ground.y + 1.0f, ground.z);
             bool separated = true;
             for (Car* car : cars)
             {
@@ -659,24 +1149,25 @@ namespace spartan
                     break;
                 }
             }
+            for (const Driver& driver : m_drivers)
+            {
+                if (driver.entity && (driver.entity->GetPosition() - candidate).LengthSquared() < spawn_separation * spawn_separation)
+                {
+                    separated = false;
+                    break;
+                }
+            }
             if (!separated)
             {
                 continue;
             }
 
-            const float yaw = random_unit() * pi * 2.0f;
-            const Vector3 direction(sinf(yaw), 0.0f, cosf(yaw));
             const Vector3 right(direction.z, 0.0f, -direction.x);
             bool clear = true;
             for (const Vector3& probe_direction : { direction, -direction, right, -right })
             {
                 Vector3 probe_ground;
-                if (!SampleGround(candidate + probe_direction * 2.5f, probe_ground))
-                {
-                    clear = false;
-                    break;
-                }
-                if (fabsf(probe_ground.y - ground.y) > 1.0f)
+                if (!SampleGround(candidate + probe_direction * 2.5f, probe_ground) || fabsf(probe_ground.y - ground.y) > 1.0f)
                 {
                     clear = false;
                     break;
