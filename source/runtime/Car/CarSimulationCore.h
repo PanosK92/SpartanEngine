@@ -2583,7 +2583,7 @@ public:
 
 
     // apply differential torque to a single axle (left/right wheel pair)
-    inline void apply_axle_diff(int left, int right, float axle_torque)
+    inline void apply_axle_diff(int left, int right, float axle_torque, float dt)
     {
         float left_torque = axle_torque * 0.5f;
         float right_torque = axle_torque * 0.5f;
@@ -2603,6 +2603,12 @@ public:
             float torque_lock = lock_ratio * fabsf(axle_torque);
             float viscous = fabsf(effective_delta) * spec.lsd_viscous;
             float lock_torque = spec.lsd_preload * smooth_ramp + torque_lock * smooth_ramp + viscous;
+            float left_inertia = PxMax(wheel_moi[left], 0.1f);
+            float right_inertia = PxMax(wheel_moi[right], 0.1f);
+            float inverse_inertia_sum = 1.0f / left_inertia + 1.0f / right_inertia;
+            float non_reversing_torque = fabsf(delta_w) / (PxMax(dt, 0.001f) * inverse_inertia_sum);
+            constexpr float maximum_speed_error_correction = 0.8f;
+            lock_torque = PxMin(lock_torque, non_reversing_torque * maximum_speed_error_correction);
             float bias_sign = (delta_w > 0.0f) ? -1.0f : 1.0f;
 
             left_torque += bias_sign * lock_torque;
@@ -2616,25 +2622,25 @@ public:
 
 
     // route torque to driven axle(s) based on drivetrain layout
-    inline void apply_drive_torque(float total_torque)
+    inline void apply_drive_torque(float total_torque, float dt)
     {
         if (spec.drivetrain_type == 2)
         {
             // awd - center diff torque split
             float front_torque = total_torque * spec.torque_split_front;
             float rear_torque  = total_torque * (1.0f - spec.torque_split_front);
-            apply_axle_diff(front_left, front_right, front_torque);
-            apply_axle_diff(rear_left,  rear_right,  rear_torque);
+            apply_axle_diff(front_left, front_right, front_torque, dt);
+            apply_axle_diff(rear_left,  rear_right,  rear_torque, dt);
         }
         else if (spec.drivetrain_type == 1)
         {
             // fwd
-            apply_axle_diff(front_left, front_right, total_torque);
+            apply_axle_diff(front_left, front_right, total_torque, dt);
         }
         else
         {
             // rwd
-            apply_axle_diff(rear_left, rear_right, total_torque);
+            apply_axle_diff(rear_left, rear_right, total_torque, dt);
         }
     }
 
@@ -2719,7 +2725,7 @@ public:
         {
             engine_brake_torque = fabsf(mechanical_axle_torque);
         }
-        apply_drive_torque(axle_drive_torque);
+        apply_drive_torque(axle_drive_torque, dt);
         engine_rpm = engine_angular_velocity * 60.0f / (PxPi * 2.0f);
     }
 
