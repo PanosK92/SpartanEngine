@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float SUN_ANGULAR_RADIUS = 0.00465f * 2.0f; // sun disk size in radians
+static const float SUN_ANGULAR_RADIUS = 0.00465f;
 
 // blockers beyond this distance are treated as non occluding, prunes traversal through the far tlas
 static const float SHADOW_RAY_MAX_DISTANCE = 1000.0f;

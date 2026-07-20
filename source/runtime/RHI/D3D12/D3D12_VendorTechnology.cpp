@@ -552,7 +552,14 @@ namespace spartan
         pool.reset_history = false;
 
         nrd::CommonSettings common_settings = {};
-        nrd_common::fill_common_settings(common_settings, common::cb_frame, width, height, reset_history);
+        nrd_common::fill_common_settings(
+            common_settings,
+            common::cb_frame,
+            width,
+            height,
+            reset_history,
+            preset
+        );
         if (pool.integration.SetCommonSettings(common_settings) != nrd::Result::SUCCESS)
         {
             SP_LOG_WARNING("NRD SetCommonSettings failed");
@@ -570,7 +577,7 @@ namespace spartan
         {
             denoiser_id = nrd_common::id_gi;
             nrd::ReblurSettings reblur = {};
-            nrd_common::fill_preset_gi(reblur);
+            nrd_common::fill_preset_gi(reblur, common::cb_frame->delta_time);
             if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
             {
                 return false;
@@ -582,7 +589,7 @@ namespace spartan
         {
             denoiser_id = nrd_common::id_reflections;
             nrd::ReblurSettings reblur = {};
-            nrd_common::fill_preset_reflections(reblur);
+            nrd_common::fill_preset_reflections(reblur, common::cb_frame->delta_time);
             if (pool.integration.SetDenoiserSettings(denoiser_id, &reblur) != nrd::Result::SUCCESS)
             {
                 return false;
@@ -595,7 +602,11 @@ namespace spartan
             denoiser_id = nrd_common::id_shadows;
             const float light_dir[3] = { light_direction->x, light_direction->y, light_direction->z };
             nrd::SigmaSettings sigma = {};
-            nrd_common::fill_preset_shadows(sigma, light_dir);
+            nrd_common::fill_preset_shadows(
+                sigma,
+                light_dir,
+                common::cb_frame->delta_time
+            );
             if (pool.integration.SetDenoiserSettings(denoiser_id, &sigma) != nrd::Result::SUCCESS)
             {
                 return false;

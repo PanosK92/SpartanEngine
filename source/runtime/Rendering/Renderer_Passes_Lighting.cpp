@@ -412,9 +412,9 @@ namespace spartan
             return;
         }
 
-        // directional light for sigma light direction and angular size
+        // sigma must use the same solar angular radius as the shadow rays
         Vector3 light_direction = Vector3::Down;
-        float tan_light_angular_radius = 0.00465f;
+        const float tan_light_angular_radius = tanf(0.00465f);
         for (Entity* entity : World::GetEntities())
         {
             if (Light* light = entity->GetComponent<Light>())
@@ -422,7 +422,6 @@ namespace spartan
                 if (light->GetLightType() == LightType::Directional && light->GetFlag(LightFlags::Shadows) && light->GetIntensityRadiometric() > 0.0f)
                 {
                     light_direction = -light->GetEntity()->GetForward();
-                    tan_light_angular_radius = tanf(max(light->GetAngle() * 0.5f, 0.0001f));
                     break;
                 }
             }

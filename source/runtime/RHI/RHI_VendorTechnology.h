@@ -186,7 +186,14 @@ namespace spartan::nrd_common
 
 
 
-    inline void fill_common_settings(nrd::CommonSettings& settings, const Cb_Frame* cb_frame, uint32_t width, uint32_t height, bool reset_history)
+    inline void fill_common_settings(
+        nrd::CommonSettings& settings,
+        const Cb_Frame* cb_frame,
+        uint32_t width,
+        uint32_t height,
+        bool reset_history,
+        Nrd_Preset preset
+    )
 
     {
 
@@ -254,11 +261,27 @@ namespace spartan::nrd_common
 
         settings.denoisingRange         = (std::max)(cb_frame->camera_far * 0.99f, 1.0f);
 
+        settings.disocclusionThreshold  = preset == Nrd_Preset::Shadows ? 0.02f : 0.01f;
+
         settings.frameIndex             = cb_frame->frame;
 
         settings.accumulationMode       = reset_history ? nrd::AccumulationMode::CLEAR_AND_RESTART : nrd::AccumulationMode::CONTINUE;
 
         settings.isMotionVectorInWorldSpace = false;
+
+    }
+
+
+
+    inline uint32_t get_accumulated_frame_num(float accumulation_time, uint32_t max_frame_num, float delta_time)
+
+    {
+
+        const float fps = delta_time > 0.0f ? 1.0f / delta_time : 60.0f;
+
+        const uint32_t frame_num = nrd::GetMaxAccumulatedFrameNum(accumulation_time, fps);
+
+        return (std::min)((std::max)(frame_num, 1u), max_frame_num);
 
     }
 
@@ -290,7 +313,7 @@ namespace spartan::nrd_common
 
     // restir diffuse gi, temporal heavy, spatial light so material lighting stays
 
-    inline void fill_preset_gi(nrd::ReblurSettings& settings)
+    inline void fill_preset_gi(nrd::ReblurSettings& settings, float delta_time)
 
     {
 
@@ -300,19 +323,27 @@ namespace spartan::nrd_common
 
         settings.specularPrepassBlurRadius         = 0.0f;
 
-        settings.maxBlurRadius                     = 5.0f;
+        settings.maxBlurRadius                     = 8.0f;
 
-        settings.minBlurRadius                     = 0.0f;
+        settings.minBlurRadius                     = 1.0f;
 
-        settings.maxAccumulatedFrameNum            = 48;
+        settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(
+            nrd::REBLUR_DEFAULT_ACCUMULATION_TIME,
+            nrd::REBLUR_MAX_HISTORY_FRAME_NUM,
+            delta_time
+        );
 
-        settings.maxFastAccumulatedFrameNum        = 8;
+        settings.maxFastAccumulatedFrameNum        = get_accumulated_frame_num(
+            nrd::REBLUR_DEFAULT_ACCUMULATION_TIME / 5.0f,
+            settings.maxAccumulatedFrameNum,
+            delta_time
+        );
 
-        settings.minHitDistanceWeight              = 0.05f;
+        settings.minHitDistanceWeight              = 0.08f;
 
-        settings.fireflySuppressorMinRelativeScale = 3.0f;
+        settings.fireflySuppressorMinRelativeScale = 2.5f;
 
-        settings.enableAntiFirefly                 = false;
+        settings.enableAntiFirefly                 = true;
 
     }
 
@@ -320,7 +351,7 @@ namespace spartan::nrd_common
 
     // rt reflections, roughness guided specular reblur
 
-    inline void fill_preset_reflections(nrd::ReblurSettings& settings)
+    inline void fill_preset_reflections(nrd::ReblurSettings& settings, float delta_time)
 
     {
 
@@ -328,15 +359,23 @@ namespace spartan::nrd_common
 
         settings.diffusePrepassBlurRadius          = 0.0f;
 
-        settings.specularPrepassBlurRadius         = 2.0f;
+        settings.specularPrepassBlurRadius         = 30.0f;
 
         settings.maxBlurRadius                     = 30.0f;
 
-        settings.minBlurRadius                     = 0.0f;
+        settings.minBlurRadius                     = 1.0f;
 
-        settings.maxAccumulatedFrameNum            = 32;
+        settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(
+            nrd::REBLUR_DEFAULT_ACCUMULATION_TIME,
+            nrd::REBLUR_MAX_HISTORY_FRAME_NUM,
+            delta_time
+        );
 
-        settings.maxFastAccumulatedFrameNum        = 6;
+        settings.maxFastAccumulatedFrameNum        = get_accumulated_frame_num(
+            nrd::REBLUR_DEFAULT_ACCUMULATION_TIME / 5.0f,
+            settings.maxAccumulatedFrameNum,
+            delta_time
+        );
 
         settings.minHitDistanceWeight              = 0.1f;
 
@@ -352,7 +391,11 @@ namespace spartan::nrd_common
 
     // directional rt shadows, sigma penumbra reconstruction
 
-    inline void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3])
+    inline void fill_preset_shadows(
+        nrd::SigmaSettings& settings,
+        const float light_direction[3],
+        float delta_time
+    )
 
     {
 
@@ -366,7 +409,11 @@ namespace spartan::nrd_common
 
         settings.planeDistanceSensitivity = 0.02f;
 
-        settings.maxStabilizedFrameNum    = 5;
+        settings.maxStabilizedFrameNum    = get_accumulated_frame_num(
+            nrd::SIGMA_DEFAULT_ACCUMULATION_TIME,
+            nrd::SIGMA_MAX_HISTORY_FRAME_NUM,
+            delta_time
+        );
 
     }
 
