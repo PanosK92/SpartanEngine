@@ -202,7 +202,9 @@ namespace spartan
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_raw, rhi_all_mips, 0, true, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_distance, rhi_all_mips, 0, true, eye_layer);
         cmd_list->PushConstants(m_pcb_pass_cpu);
-        cmd_list->Dispatch(tex_raw);
+        const uint32_t dispatch_width = (tex_raw->GetWidth() + 1) / 2;
+        const uint32_t dispatch_height = (tex_raw->GetHeight() + 1) / 2;
+        cmd_list->Dispatch((dispatch_width + 7) / 8, (dispatch_height + 7) / 8);
     }
 
     void Renderer::Pass_Clouds_Temporal(RHI_CommandList* cmd_list, uint32_t eye_layer)
@@ -272,7 +274,7 @@ namespace spartan
             return;
         }
 
-        const bool cadence_frame = (m_cb_frame_cpu.frame & 15u) == 0u;
+        const bool cadence_frame = (m_cb_frame_cpu.frame & 31u) == 0u;
         if (!m_pass_state.cloud_environment_dirty && !cadence_frame)
         {
             return;

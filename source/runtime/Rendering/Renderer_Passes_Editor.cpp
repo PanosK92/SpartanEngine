@@ -115,6 +115,7 @@ namespace spartan
                 {
                     m_pcb_pass_cpu.set_f3_value(pos_world.x, pos_world.y, pos_world.z);
                     m_pcb_pass_cpu.set_f2_value(static_cast<float>(renderer_editor_icon_size_px), static_cast<float>(renderer_editor_icon_size_px));
+                    m_pcb_pass_cpu.set_f4_value(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()), 0.0f, 0.0f);
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);

@@ -121,8 +121,8 @@ static const float3 cloud_ambient_top     = float3(0.95, 0.95, 0.99); // bright 
 static const float  cloud_ambient_factor  = 0.12;   // ambient strength relative to sun luminance
 static const float3 cloud_ground_bounce   = float3(0.045, 0.038, 0.028); // warm terrain bounce onto the undersides
 static const float  cloud_albedo          = 0.97;   // single scattering albedo, near 1 for water clouds
-static const float  cloud_sun_step_base   = 20.0;
-static const float  cloud_sun_step_growth = 1.4;
+static const float  cloud_sun_step_base   = 35.0;
+static const float  cloud_sun_step_growth = 1.8;
 
 // night lighting, moon and airglow share night_sky_* / night_moon_to_sun from common.hlsl
 static const float3 cloud_moon_tint = float3(0.92, 0.97, 1.08) * night_moon_to_sun;
@@ -146,8 +146,8 @@ static const float  cumulus_step_material_max = 56.0;
 static const float  cumulus_step_max      = 470.0;
 static const float  cumulus_range_max     = 60000.0;  // haze leaves ~9 percent contribution at this distance
 static const float  cirrus_range_max      = 80000.0;  // haze leaves ~4 percent here, the old 120 km tail sampled 5 km apart and striped the horizon
-static const int    cirrus_view_steps     = 96;
-static const int    cumulus_sun_steps     = 16;
+static const int    cirrus_view_steps     = 48;
+static const int    cumulus_sun_steps     = 8;
 
 // weather is a 26 km domain, resampling it every view step is wasted work, the cached value
 // is reused for this many steps (at most ~1.9 km at the coarsest step) before a fresh lookup
@@ -327,6 +327,31 @@ float4 cloud_sample_noise(Texture3D noise, SamplerState samp, float3 uvw)
     return noise.SampleLevel(samp, frac(s), 0);
 }
 
+float4 cloud_sample_noise_vertical_cubic(Texture3D noise, SamplerState samp, float3 uvw)
+{
+    float y = uvw.y * cloud_noise_dims - 0.5;
+    float y_base = floor(y);
+    float f = y - y_base;
+    float f2 = f * f;
+    float f3 = f2 * f;
+    float w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
+    float w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
+    float w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
+    float w3 = f3 / 6.0;
+    float g0 = w0 + w1;
+    float g1 = w2 + w3;
+    float y0 = (y_base - 0.5 + w1 / g0) / cloud_noise_dims;
+    float y1 = (y_base + 1.5 + w3 / g1) / cloud_noise_dims;
+    float2 xz = uvw.xz * cloud_noise_dims - 0.5;
+    float2 xz_base = floor(xz);
+    float2 xz_fraction = xz - xz_base;
+    xz_fraction = xz_fraction * xz_fraction * xz_fraction * (xz_fraction * (xz_fraction * 6.0 - 15.0) + 10.0);
+    float2 xz_smooth = (xz_base + 0.5 + xz_fraction) / cloud_noise_dims;
+    float3 uvw0 = float3(xz_smooth.x, y0, xz_smooth.y);
+    float3 uvw1 = float3(xz_smooth.x, y1, xz_smooth.y);
+    return noise.SampleLevel(samp, frac(uvw0), 0) * g0 + noise.SampleLevel(samp, frac(uvw1), 0) * g1;
+}
+
 // low-frequency domain warp, returns a meter-space offset that we add to the sample position
 // before reading the cloud noise. the warp itself tiles at a much larger scale than the
 // thing it warps, so the combined pattern has an effective period far beyond the visible horizon
@@ -383,6 +408,7 @@ float2 cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
     // drift the coverage map along the world wind direction so cloud regions translate over
     // time instead of being parked over the same horizontal patches forever
     float3 pos_d = pos + cloud_wind_drift(cumulus_wind_speed_mul);
+    pos_d.y      = 0.0;
     float3 warp  = cloud_domain_warp(noise, samp, pos_d, cumulus_warp_scale, cumulus_warp_amplitude);
     float3 wpos  = pos_d + warp;
     
@@ -446,7 +472,7 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     // mild vertical anisotropy, sheets stay a bit flatter than towers without collapsing into
     // thin smoke pancakes
     uvw.y            *= lerp(1.12, 1.0, weather.y);
-    float4 shape_n    = cloud_sample_noise(noise, samp, uvw);
+    float4 shape_n    = cloud_sample_noise_vertical_cubic(noise, samp, uvw);
     
     // base shape from low-freq perlin-worley (r), lightly eroded by mid-frequency worley fbm
     // softer carve keeps rounded cauliflower cells instead of pointy smoke filaments
@@ -493,7 +519,7 @@ float cloud_density_cumulus_cheap(float3 pos, Texture3D noise, SamplerState samp
     
     float3 uvw = (pos_n + cumulus_wind_offset) * cumulus_shape_scale;
     uvw.y     *= lerp(1.12, 1.0, weather.y);
-    float4 shape_n = cloud_sample_noise(noise, samp, uvw);
+    float4 shape_n = cloud_sample_noise_vertical_cubic(noise, samp, uvw);
     
     float fbm  = shape_n.g * 0.85 + shape_n.b * 0.15;
     float base = cloud_remap_soft(shape_n.r, fbm - 0.82, 1.0, 0.0, 1.0);
@@ -1151,26 +1177,28 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     uint width;
     uint height;
     tex_uav.GetDimensions(width, height);
-    if (any(tid.xy >= uint2(width, height)))
+    uint2 phase = uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u);
+    uint2 pixel = tid.xy * 2u + phase;
+    if (any(pixel >= uint2(width, height)))
     {
         return;
     }
 
-    float2 uv       = (float2(tid.xy) + 0.5) / float2(width, height);
+    float2 uv       = (float2(pixel) + 0.5) / float2(width, height);
     float3 view_dir = cloud_view_direction(uv);
     float max_distance = cloud_scene_distance(uv);
 
     float3 sun_dir = normalize(-light_parameters[0].direction);
 
-    uint hash    = cloud_hash_uint(tid.x + cloud_hash_uint(tid.y + cloud_hash_uint(buffer_frame.frame)));
+    uint hash    = cloud_hash_uint(pixel.x + cloud_hash_uint(pixel.y + cloud_hash_uint(buffer_frame.frame)));
     float jitter = float(hash) / 4294967295.0;
     float3 radiance;
     float transmittance;
     float representative_distance;
     clouds_evaluate_detailed(get_camera_position(), view_dir, sun_dir, tex3d, tex, GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp), jitter, max_distance, radiance, transmittance, representative_distance);
 
-    tex_uav[tid.xy]  = float4(radiance, transmittance);
-    tex_uav2[tid.xy] = float4(representative_distance, 0.0, 0.0, 0.0);
+    tex_uav[pixel]  = float4(radiance, transmittance);
+    tex_uav2[pixel] = float4(representative_distance, 0.0, 0.0, 0.0);
 }
 #endif
 
@@ -1191,19 +1219,44 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float2 uv       = (float2(tid.xy) + 0.5) / float2(width, height);
     float4 current  = tex.Load(int3(pixel, 0));
     float current_distance = tex2.Load(int3(pixel, 0)).r;
+    uint2 phase = uint2(buffer_frame.frame & 1u, (buffer_frame.frame >> 1u) & 1u);
+    bool current_sample_valid = all((tid.xy & 1u) == phase);
 
-    float4 neighborhood_min = current;
-    float4 neighborhood_max = current;
+    float4 neighborhood_min = 1e30;
+    float4 neighborhood_max = -1e30;
+    float4 reconstruction_sum = 0.0;
+    float reconstruction_weight = 0.0;
+    float distance_sum = 0.0;
+    float distance_weight = 0.0;
     [unroll]
     for (int y = -1; y <= 1; y++)
     {
         [unroll]
         for (int x = -1; x <= 1; x++)
         {
-            float4 sample_value = tex.Load(int3(clamp(pixel + int2(x, y), int2(0, 0), max_pixel), 0));
-            neighborhood_min = min(neighborhood_min, sample_value);
-            neighborhood_max = max(neighborhood_max, sample_value);
+            int2 sample_pixel = clamp(pixel + int2(x, y), int2(0, 0), max_pixel);
+            float sample_distance = tex2.Load(int3(sample_pixel, 0)).r;
+            if (all((uint2(sample_pixel) & 1u) == phase))
+            {
+                float4 sample_value = tex.Load(int3(sample_pixel, 0));
+                float weight = 1.0 / (1.0 + float(x * x + y * y));
+                float sample_opacity_weight = weight * saturate(1.0 - sample_value.a);
+                reconstruction_sum += sample_value * weight;
+                reconstruction_weight += weight;
+                if (sample_distance > 0.0)
+                {
+                    distance_sum += sample_distance * sample_opacity_weight;
+                    distance_weight += sample_opacity_weight;
+                }
+                neighborhood_min = min(neighborhood_min, sample_value);
+                neighborhood_max = max(neighborhood_max, sample_value);
+            }
         }
+    }
+    if (!current_sample_valid)
+    {
+        current = reconstruction_sum / max(reconstruction_weight, 1e-6);
+        current_distance = distance_weight > 1e-6 ? distance_sum / distance_weight : 0.0;
     }
 
     float3 view_dir = cloud_view_direction(uv);
@@ -1254,7 +1307,8 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     {
         history = clamp(history, neighborhood_min, neighborhood_max);
         float motion = saturate(length((previous_uv - uv) * float2(width, height)) * 0.125);
-        float current_weight = lerp(0.08, 0.35, motion);
+        float current_weight = lerp(0.06, 0.35, motion);
+        current_weight *= current_sample_valid ? 1.0 : 0.35;
         current = lerp(history, current, current_weight);
         current_distance = lerp(history_distance, current_distance, current_weight);
     }

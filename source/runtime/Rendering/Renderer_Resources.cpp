@@ -618,8 +618,8 @@ namespace spartan
 
         auto create_clouds = [&]()
         {
-            const uint32_t width_cloud  = max((width_render * 3 + 3) / 4, 1u);
-            const uint32_t height_cloud = max((height_render * 3 + 3) / 4, 1u);
+            const uint32_t width_cloud  = max((width_render + 1) / 2, 1u);
+            const uint32_t height_cloud = max((height_render + 1) / 2, 1u);
             const uint32_t flags        = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
             at(render_targets, Renderer_RenderTarget::cloud_raw)                 = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_raw");
             at(render_targets, Renderer_RenderTarget::cloud_raw_distance)        = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_raw_distance");
