@@ -410,6 +410,7 @@ namespace spartan
         struct FrameResource
         {
             std::shared_ptr<RHI_Buffer> indirect_draw_args;     // single-slot args buffer for the final non-indexed indirect draw
+            std::shared_ptr<RHI_Buffer> cpu_indirect_draw_args;
             std::shared_ptr<RHI_Buffer> indirect_draw_data;     // per-renderable lod draw data
             std::shared_ptr<RHI_Buffer> meshlet_instances;      // meshlet-cull survivor list
             std::shared_ptr<RHI_Buffer> visible_triangles;      // triangle-cull survivor list (packed meshlet_instance + triangle index)
@@ -420,6 +421,7 @@ namespace spartan
         };
         static std::array<FrameResource, renderer_draw_data_buffer_count> m_frame_resources;
         static uint32_t m_frame_resource_index;
+        static uint32_t m_cpu_indirect_draw_arg_count;
 
         // cpu-side draw data staging
         static std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;

@@ -134,6 +134,7 @@ namespace spartan
             run_effect("motion_blur", Renderer_Shader::motion_blur_c, [&]()
             {
                 SetCommonTextures(cmd_list, eye_layer);
+                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(m_pass_state.cloud_history_valid ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
                 // y > 1.5 enables the radial mask debug view (r.motion_blur = 2)
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), cvar_motion_blur.GetValue(), 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -395,7 +396,7 @@ namespace spartan
     {
         RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::frame_output);
-        RHI_Texture* tex_velocity    = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
+        RHI_Texture* tex_velocity    = GetRenderTarget(m_pass_state.cloud_history_valid ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         const float resolution_scale = Renderer::GetResolutionScale();
 
@@ -425,6 +426,7 @@ namespace spartan
                 cmd_list->SetPipelineState(pso);
 
                 SetCommonTextures(cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, tex_velocity);
                 m_pcb_pass_cpu.set_f3_value(m_taau_reset_history ? 1.0f : 0.0f, 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -713,33 +715,33 @@ namespace spartan
             emitter->UpdateRuntime(position, m_cb_frame_cpu.delta_time);
             emit_counts[i] = std::min(emitter->ConsumeEmissionCount(m_cb_frame_cpu.delta_time), range_counts[i]);
 
-            Sb_EmitterParams& params = emitter_params[i];
-            params.position         = position;
-            params.emission_rate    = emitter->GetEmissionRate();
-            params.lifetime         = emitter->GetLifetime();
-            params.start_speed      = emitter->GetStartSpeed();
-            params.start_size       = emitter->GetStartSize();
-            params.end_size         = emitter->GetEndSize();
-            params.start_color      = emitter->GetStartColor();
-            params.end_color        = emitter->GetEndColor();
-            params.gravity_modifier = emitter->GetGravityModifier();
-            params.radius           = emitter->GetEmissionRadius();
-            params.delta_time       = m_cb_frame_cpu.delta_time;
-            params.max_particles    = total_particles;
-            params.range_start      = range_starts[i];
-            params.range_count      = range_counts[i];
-            params.emit_count       = emit_counts[i];
-            params.frame            = m_cb_frame_cpu.frame;
-            params.emitter_count    = emitter_count;
-            params.blend_mode       = static_cast<uint32_t>(emitter->GetBlendMode());
-            params.lighting_mode    = static_cast<uint32_t>(emitter->GetLightingMode());
-            params.render_mode      = static_cast<uint32_t>(emitter->GetRenderMode());
-            params.volume_density   = emitter->GetVolumeDensity();
-            params.volume_anisotropy = emitter->GetVolumeAnisotropy();
-            params.volume_shadowing = emitter->GetVolumeShadowing();
-            params.emission_direction = emitter->GetEmissionDirection();
-            params.emission_cone_angle = emitter->GetEmissionConeAngle();
-            params.directional_blend   = emitter->GetDirectionalBlend();
+            Sb_EmitterParams& params    = emitter_params[i];
+            params.position             = position;
+            params.emission_rate        = emitter->GetEmissionRate();
+            params.lifetime             = emitter->GetLifetime();
+            params.start_speed          = emitter->GetStartSpeed();
+            params.start_size           = emitter->GetStartSize();
+            params.end_size             = emitter->GetEndSize();
+            params.start_color          = emitter->GetStartColor();
+            params.end_color            = emitter->GetEndColor();
+            params.gravity_modifier     = emitter->GetGravityModifier();
+            params.radius               = emitter->GetEmissionRadius();
+            params.delta_time           = m_cb_frame_cpu.delta_time;
+            params.max_particles        = total_particles;
+            params.range_start          = range_starts[i];
+            params.range_count          = range_counts[i];
+            params.emit_count           = emit_counts[i];
+            params.frame                = m_cb_frame_cpu.frame;
+            params.emitter_count        = emitter_count;
+            params.blend_mode           = static_cast<uint32_t>(emitter->GetBlendMode());
+            params.lighting_mode        = static_cast<uint32_t>(emitter->GetLightingMode());
+            params.render_mode          = static_cast<uint32_t>(emitter->GetRenderMode());
+            params.volume_density       = emitter->GetVolumeDensity();
+            params.volume_anisotropy    = emitter->GetVolumeAnisotropy();
+            params.volume_shadowing     = emitter->GetVolumeShadowing();
+            params.emission_direction   = emitter->GetEmissionDirection();
+            params.emission_cone_angle  = emitter->GetEmissionConeAngle();
+            params.directional_blend    = emitter->GetDirectionalBlend();
             params.soft_depth_scale     = emitter->GetSoftDepthScale();
             params.drag                 = emitter->GetDrag();
             params.turbulence_strength  = emitter->GetTurbulenceStrength();

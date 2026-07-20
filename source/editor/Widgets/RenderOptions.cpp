@@ -38,23 +38,36 @@ using namespace spartan::math;
 namespace
 {
     // table
-    int column_count      = 2;
-    ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_Resizable;
-
-    // options sizes
-    #define width_input_numeric 120.0f * spartan::Window::GetDpiScale()
-    #define width_combo_box     120.0f * spartan::Window::GetDpiScale()
+    const int column_count      = 2;
+    const ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg;
 
     // misc
     vector<DisplayMode> display_modes;
     vector<string> display_modes_string;
+    ImGuiTextFilter option_filter;
+    bool current_section_matches_filter = false;
 
     // helper functions
+    bool option_visible(const char* label)
+    {
+        return !option_filter.IsActive() || current_section_matches_filter || option_filter.PassFilter(label);
+    }
+
     bool option_header(const char* title, bool default_open = true)
     {
+        current_section_matches_filter = option_filter.IsActive() && option_filter.PassFilter(title);
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        return ImGuiSp::collapsing_header(title, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
+        ImGuiTreeNodeFlags header_flags = ImGuiTreeNodeFlags_SpanAllColumns;
+        if (default_open || option_filter.IsActive())
+        {
+            header_flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        }
+        if (option_filter.IsActive())
+        {
+            ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+        }
+        return ImGuiSp::collapsing_header(title, header_flags);
     }
 
     void option_first_column()
@@ -70,15 +83,20 @@ namespace
 
     void option_check_box(const char* label, const char* render_option, const char* tooltip = nullptr)
     {
+        if (!option_visible(label))
+        {
+            return;
+        }
+
         option_first_column();
-        ImGui::Text(label);
+        ImGui::TextDisabled("%s", label);
         if (tooltip)
         {
             ImGuiSp::tooltip(tooltip);
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(render_option);
         bool value = ConsoleRegistry::Get().GetAs<float>(render_option) != 0.0f;
         // only write on user interaction, otherwise an async cvar update (eg world load) can be reverted
         if (ImGuiSp::toggle_switch("", &value))
@@ -90,31 +108,41 @@ namespace
 
     void option_check_box(const char* label, bool& value, const char* tooltip = nullptr)
     {
+        if (!option_visible(label))
+        {
+            return;
+        }
+
         option_first_column();
-        ImGui::Text(label);
+        ImGui::TextDisabled("%s", label);
         if (tooltip)
         {
             ImGuiSp::tooltip(tooltip);
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(label);
         ImGuiSp::toggle_switch("", &value);
         ImGui::PopID();
     }
 
     bool option_combo_box(const char* label, const vector<string>& options, uint32_t& selection_index, const char* tooltip = nullptr)
     {
+        if (!option_visible(label))
+        {
+            return false;
+        }
+
         option_first_column();
-        ImGui::Text(label);
+        ImGui::TextDisabled("%s", label);
         if (tooltip)
         {
             ImGuiSp::tooltip(tooltip);
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        ImGui::PushItemWidth(width_combo_box);
+        ImGui::PushID(label);
+        ImGui::PushItemWidth(-FLT_MIN);
         bool result = ImGuiSp::combo_box("", options, &selection_index);
         ImGui::PopItemWidth();
         ImGui::PopID();
@@ -123,8 +151,13 @@ namespace
 
     bool option_value(const char* label, const char* render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
+        if (!option_visible(label))
+        {
+            return false;
+        }
+
         option_first_column();
-        ImGui::Text(label);
+        ImGui::TextDisabled("%s", label);
         if (tooltip)
         {
             ImGuiSp::tooltip(tooltip);
@@ -135,8 +168,8 @@ namespace
         {
             float value = ConsoleRegistry::Get().GetAs<float>(render_option);
 
-            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-            ImGui::PushItemWidth(width_input_numeric);
+            ImGui::PushID(render_option);
+            ImGui::PushItemWidth(-FLT_MIN);
             changed = ImGui::InputFloat("", &value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
@@ -152,28 +185,39 @@ namespace
         return changed;
     }
 
-    void option_float(const char* label, float& option, float step = 0.1f, const char* format = "%.3f")
+    bool option_float(const char* label, float& option, float step = 0.1f, const char* format = "%.3f")
     {
+        if (!option_visible(label))
+        {
+            return false;
+        }
+
         option_first_column();
-        ImGui::Text(label);
+        ImGui::TextDisabled("%s", label);
 
         option_second_column();
         {
-            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-            ImGui::PushItemWidth(width_input_numeric);
-            ImGui::InputFloat("", &option, step, 0.0f, format);
+            ImGui::PushID(label);
+            ImGui::PushItemWidth(-FLT_MIN);
+            const bool changed = ImGui::InputFloat("", &option, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
+            return changed;
         }
     }
 
     void option_int(const char* label, int& option, int step = 1)
     {
+        if (!option_visible(label))
+        {
+            return;
+        }
+
         option_first_column();
-        ImGui::Text(label);
+        ImGui::TextDisabled("%s", label);
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        ImGui::PushItemWidth(width_input_numeric);
+        ImGui::PushID(label);
+        ImGui::PushItemWidth(-FLT_MIN);
         ImGui::InputInt("##shadow_resolution", &option, step);
         ImGui::PopItemWidth();
         ImGui::PopID();
@@ -227,6 +271,18 @@ void RenderOptions::OnVisible()
 
 void RenderOptions::OnTickVisible()
 {
+    const float dpi = Window::GetDpiScale();
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f * dpi);
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+    if (ImGui::InputTextWithHint("##renderer_options_search", "Filter options in the selected tab", option_filter.InputBuf, IM_ARRAYSIZE(option_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
+    {
+        option_filter.Build();
+    }
+    ImGui::PopStyleVar();
+
+    ImGui::Dummy(ImVec2(0.0f, 4.0f * dpi));
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f * dpi, 6.0f * dpi));
     if (ImGui::BeginTabBar("##renderer_options_tabs"))
     {
         // ------------------------------------------------------------------------
@@ -236,8 +292,8 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##rendering", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch, 0.62f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.38f);
                 ImGui::TableHeadersRow();
 
                 if (option_header("Resolution"))
@@ -276,9 +332,7 @@ void RenderOptions::OnTickVisible()
                         "XeSS 3" // AA_Xess_Upscale_Xess
                     };
 
-                    Vector2 res_render = Renderer::GetResolutionRender();
-                    Vector2 res_output = Renderer::GetResolutionOutput();
-                    uint32_t mode      = cvar_antialiasing_upsampling.GetValueAs<uint32_t>();
+                    uint32_t mode = cvar_antialiasing_upsampling.GetValueAs<uint32_t>();
                     if (option_combo_box("Upsampling method", upsamplers, mode))
                     {
                         ConsoleRegistry::Get().SetValueFromString("r.antialiasing_upsampling", to_string(static_cast<float>(mode)));
@@ -316,8 +370,8 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##output", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch, 0.62f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.38f);
                 ImGui::TableHeadersRow();
 
                 if (option_header("Display"))
@@ -352,25 +406,38 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##camera", column_count, flags))
             {
-                ImGui::TableSetupColumn("Effect");
-                ImGui::TableSetupColumn("Value");
+                ImGui::TableSetupColumn("Effect", ImGuiTableColumnFlags_WidthStretch, 0.62f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.38f);
                 ImGui::TableHeadersRow();
 
-                option_value("Bloom intensity", "r.bloom", "Blend factor, set to 0 to disable", 0.01f);
-                option_check_box("Light flares", "r.light_flares", "Distant light coronas");
-                option_value("Flare near distance", "r.light_flares_near_distance", "Meters from camera where flares are fully gone", 1.0f, 0.0f, 500.0f);
-                option_value("Flare fade length", "r.light_flares_fade_length", "Meters over which flares fade in as they get farther", 1.0f, 0.1f, 500.0f);
-                option_value("Flare max distance", "r.light_flares_max_distance", "How far flare-only lights stay visible past draw distance", 10.0f, 100.0f, 10000.0f);
-                option_value("Flare size", "r.light_flares_size_scale", "Global flare size multiplier", 0.05f, 0.01f, 5.0f);
-                option_value("Flare intensity", "r.light_flares_intensity_scale", "Global flare brightness multiplier", 0.05f, 0.01f, 5.0f);
-                option_value("Flare max size", "r.light_flares_max_size_px", "Maximum flare radius in pixels", 0.5f, 1.0f, 16.0f);
-                option_check_box("Flare occlusion", "r.light_flares_occlusion", "Hide flares behind geometry");
-                option_check_box("Motion blur", "r.motion_blur", "Controlled by camera shutter speed");
-                option_check_box("Depth of field", "r.depth_of_field", "Controlled by camera aperture");
-                option_check_box("Film grain", "r.film_grain", "Simulates old film camera noise");
-                option_check_box("Chromatic aberration", "r.chromatic_aberration", "Lens color fringing effect");
-                option_check_box("VHS effect", "r.vhs", "Retro VHS look");
-                option_check_box("Dithering", "r.dithering", "Reduces color banding in gradients");
+                if (option_header("Bloom"))
+                {
+                    option_value("Bloom intensity", "r.bloom", "Blend factor, set to 0 to disable", 0.01f);
+                }
+
+                if (option_header("Light Flares"))
+                {
+                    option_check_box("Light flares", "r.light_flares", "Distant light coronas");
+                    ImGui::BeginDisabled(!cvar_light_flares.GetValueAs<bool>());
+                    option_value("Flare near distance", "r.light_flares_near_distance", "Meters from camera where flares are fully gone", 1.0f, 0.0f, 500.0f);
+                    option_value("Flare fade length", "r.light_flares_fade_length", "Meters over which flares fade in as they get farther", 1.0f, 0.1f, 500.0f);
+                    option_value("Flare max distance", "r.light_flares_max_distance", "How far flare-only lights stay visible past draw distance", 10.0f, 100.0f, 10000.0f);
+                    option_value("Flare size", "r.light_flares_size_scale", "Global flare size multiplier", 0.05f, 0.01f, 5.0f);
+                    option_value("Flare intensity", "r.light_flares_intensity_scale", "Global flare brightness multiplier", 0.05f, 0.01f, 5.0f);
+                    option_value("Flare max size", "r.light_flares_max_size_px", "Maximum flare radius in pixels", 0.5f, 1.0f, 16.0f);
+                    option_check_box("Flare occlusion", "r.light_flares_occlusion", "Hide flares behind geometry");
+                    ImGui::EndDisabled();
+                }
+
+                if (option_header("Camera Effects"))
+                {
+                    option_check_box("Motion blur", "r.motion_blur", "Controlled by camera shutter speed");
+                    option_check_box("Depth of field", "r.depth_of_field", "Controlled by camera aperture");
+                    option_check_box("Film grain", "r.film_grain", "Simulates old film camera noise");
+                    option_check_box("Chromatic aberration", "r.chromatic_aberration", "Lens color fringing effect");
+                    option_check_box("VHS effect", "r.vhs", "Retro VHS look");
+                    option_check_box("Dithering", "r.dithering", "Reduces color banding in gradients");
+                }
 
                 ImGui::EndTable();
             }
@@ -384,24 +451,33 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##world", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch, 0.62f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.38f);
                 ImGui::TableHeadersRow();
 
-                option_value("Fog density", "r.fog", "Controls atmospheric fog strength", 0.1f);
+                if (option_header("Atmosphere"))
+                {
+                    option_value("Fog density", "r.fog", "Controls atmospheric fog strength", 0.1f);
+                }
 
                 if (option_header("Wind"))
                 {
                     Vector3 wind = World::GetWind();
                     float strength = wind.Length();
                     float direction = atan2f(wind.x, wind.z) * (180.0f / 3.14159f);
+                    if (direction < 0.0f)
+                    {
+                        direction += 360.0f;
+                    }
 
                     bool changed = false;
-                    changed |= ImGui::SliderFloat("Strength", &strength, 0.1f, 10.0f, "%.1f");
-                    changed |= ImGui::SliderFloat("Direction (deg)", &direction, 0.0f, 360.0f, "%.1f");
+                    changed |= option_float("Strength", strength, 0.1f, "%.1f");
+                    changed |= option_float("Direction", direction, 1.0f, "%.1f deg");
 
                     if (changed)
                     {
+                        strength = clamp(strength, 0.1f, 10.0f);
+                        direction = clamp(direction, 0.0f, 360.0f);
                         float radians = direction * (3.14159f / 180.0f);
                         wind.x = sinf(radians) * strength;
                         wind.z = cosf(radians) * strength;
@@ -423,25 +499,26 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##debug", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch, 0.62f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.38f);
                 ImGui::TableHeadersRow();
 
                 if (option_header("Performance"))
                 {
                     option_check_box("VSync", "r.vsync", "Synchronize frame updates with monitor refresh");
-                    option_first_column();
-                    string fps_label = "FPS Limit (" + string(
-                        Timer::GetFpsLimitType() == FpsLimitType::FixedToMonitor ? "Fixed to monitor" :
-                        Timer::GetFpsLimitType() == FpsLimitType::Unlocked ? "Unlocked" : "Fixed") + ")";
-                    ImGui::Text(fps_label.c_str());
-                    option_second_column();
+                    if (option_visible("FPS limit"))
                     {
+                        option_first_column();
+                        string fps_label = "FPS limit (" + string(Timer::GetFpsLimitType() == FpsLimitType::FixedToMonitor ? "monitor" : Timer::GetFpsLimitType() == FpsLimitType::Unlocked ? "unlocked" : "fixed") + ")";
+                        ImGui::TextDisabled("%s", fps_label.c_str());
+                        option_second_column();
                         float fps_target = Timer::GetFpsLimit();
-                        ImGui::PushItemWidth(width_input_numeric);
-                        ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
+                        ImGui::PushItemWidth(-FLT_MIN);
+                        if (ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f"))
+                        {
+                            Timer::SetFpsLimit(fps_target);
+                        }
                         ImGui::PopItemWidth();
-                        Timer::SetFpsLimit(fps_target);
                     }
                     option_check_box("Show performance metrics", "r.performance_metrics");
                 }
@@ -467,4 +544,5 @@ void RenderOptions::OnTickVisible()
 
         ImGui::EndTabBar();
     }
+    ImGui::PopStyleVar();
 }

@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Sequencer.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
+#include "Commands/CommandStack.h"
 #include "MCP/McpServer.h"
 #include "../WorldPreviews.h"
 #include "../GeneralWindows.h"
@@ -185,18 +186,26 @@ namespace
 
     namespace buttons_menu
     {
-        void world()
+        void file()
         {
-            if (ImGui::BeginMenu("World"))
+            bool open_new_world_confirmation = false;
+            if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("New"))
+                if (ImGui::MenuItem("New World"))
                 {
-                    spartan::World::Shutdown();
+                    if (spartan::World::GetEntities().empty())
+                    {
+                        spartan::World::Shutdown();
+                    }
+                    else
+                    {
+                        open_new_world_confirmation = true;
+                    }
                 }
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("Load"))
+                if (ImGui::MenuItem("Open World...", "Ctrl+O"))
                 {
                     windows::ShowWorldLoadDialog();
                 }
@@ -215,9 +224,51 @@ namespace
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("Export"))
+                if (ImGui::MenuItem("Export Package..."))
                 {
                     windows::ExportWorld();
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (open_new_world_confirmation)
+            {
+                ImGui::OpenPopup("##new_world_confirmation");
+            }
+            ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            if (ImGui::BeginPopupModal("##new_world_confirmation", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+            {
+                ImGui::TextUnformatted("Create a new world?");
+                ImGui::TextDisabled("The current world will be cleared. Save it first if you need to keep your changes.");
+                ImGui::Separator();
+
+                if (ImGuiSp::button("Cancel", ImVec2(100.0f * spartan::Window::GetDpiScale(), 0.0f)))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGuiSp::button("Create New", ImVec2(100.0f * spartan::Window::GetDpiScale(), 0.0f)))
+                {
+                    spartan::World::Shutdown();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+        }
+
+        void edit()
+        {
+            if (ImGui::BeginMenu("Edit"))
+            {
+                if (ImGui::MenuItem("Undo", "Ctrl+Z"))
+                {
+                    spartan::CommandStack::Undo();
+                }
+
+                if (ImGui::MenuItem("Redo", "Ctrl+Shift+Z"))
+                {
+                    spartan::CommandStack::Redo();
                 }
 
                 ImGui::EndMenu();
@@ -253,7 +304,7 @@ namespace
                     ImGui::EndMenu();
                 }
 
-                if (ImGui::BeginMenu("ImGui"))
+                if (ImGui::BeginMenu("Developer"))
                 {
                     ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
                     ImGui::MenuItem("Style", nullptr, &show_imgui_style_window);
@@ -404,20 +455,20 @@ namespace
             return icon_group_width(1.0f);
         }
 
-        float panel_group_width()
+        float panel_group_width(size_t visible_widget_count = widgets.size(), bool show_overflow = false)
         {
-            return icon_group_width(2.0f + static_cast<float>(widgets.size()));
+            return icon_group_width(2.0f + static_cast<float>(visible_widget_count) + (show_overflow ? 1.0f : 0.0f));
         }
 
-        float get_right_toolbar_width()
+        float get_right_toolbar_width(size_t visible_widget_count = widgets.size(), bool show_overflow = false)
         {
             const float capture_buttons = 2.0f;
-            return snap_group_width() + icon_group_width(capture_buttons) + panel_group_width() + group_gap() * 2.0f;
+            return snap_group_width() + icon_group_width(capture_buttons) + panel_group_width(visible_widget_count, show_overflow) + group_gap() * 2.0f;
         }
 
-        float get_right_toolbar_start(float menubar_width)
+        float get_right_toolbar_start(float menubar_width, size_t visible_widget_count = widgets.size(), bool show_overflow = false)
         {
-            return max(0.0f, menubar_width - get_right_toolbar_width() - buttons_titlebar::get_total_width());
+            return max(0.0f, menubar_width - get_right_toolbar_width(visible_widget_count, show_overflow) - buttons_titlebar::get_total_width());
         }
 
         float centered_y(float menubar_height, float height)
@@ -554,7 +605,7 @@ namespace
                 draw_active_underline();
             }
 
-            ImGuiSp::tooltip("Snap transforms");
+            ImGuiSp::tooltip(snap_enabled ? "Disable transform snapping" : "Enable transform snapping");
 
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);
@@ -589,7 +640,7 @@ namespace
                 draw_active_underline();
             }
 
-            string tooltip = is_visible ? "Close MCP Assistant" : "Open MCP Assistant";
+            string tooltip = is_visible ? "Close Spartan AI" : "Open Spartan AI";
             tooltip += is_running ?
                 "\nMCP active on 127.0.0.1:" + to_string(spartan::McpServer::GetPort()) :
                 "\nMCP inactive";
@@ -640,7 +691,7 @@ namespace
             ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cx - gap - bar_w, cy - bar_h * 0.5f), ImVec2(cx - gap, cy + bar_h * 0.5f), col);
             ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cx + gap, cy - bar_h * 0.5f), ImVec2(cx + gap + bar_w, cy + bar_h * 0.5f), col);
 
-            ImGuiSp::tooltip("Pause (F6)");
+            ImGuiSp::tooltip(is_active ? "Resume (F6)" : "Pause (F6)");
             return pressed;
         }
 
@@ -663,7 +714,7 @@ namespace
             {
                 toggle_playing();
             }
-            ImGuiSp::tooltip("Play (F5)");
+            ImGuiSp::tooltip(is_playing ? "Stop (F5)" : "Play (F5)");
 
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);
@@ -675,7 +726,47 @@ namespace
             }
         }
 
-        void draw_right_groups(float menubar_height, float cursor_pos_x)
+        void draw_overflow_button(float menubar_height, size_t first_hidden_widget)
+        {
+            bool has_active_widget = false;
+            for (size_t i = first_hidden_widget; i < widgets.size(); i++)
+            {
+                has_active_widget |= widgets[i].second->GetVisible();
+            }
+
+            ImGui::SetCursorPosY(centered_y(menubar_height, tool_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
+            push_button_colors(has_active_widget);
+
+            if (ImGui::Button("...", ImVec2(tool_button_width(), tool_button_height())))
+            {
+                ImGui::OpenPopup("##toolbar_overflow");
+            }
+
+            if (has_active_widget)
+            {
+                draw_active_underline();
+            }
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar();
+            ImGuiSp::tooltip("More tools");
+
+            if (ImGui::BeginPopup("##toolbar_overflow"))
+            {
+                for (size_t i = first_hidden_widget; i < widgets.size(); i++)
+                {
+                    Widget* widget = widgets[i].second;
+                    if (ImGui::MenuItem(widget->GetTitle(), nullptr, widget->GetVisible()))
+                    {
+                        widget->SetVisible(!widget->GetVisible());
+                    }
+                }
+                ImGui::EndPopup();
+            }
+        }
+
+        void draw_right_groups(float menubar_height, float cursor_pos_x, size_t visible_widget_count, bool show_overflow)
         {
             float group_x = cursor_pos_x;
 
@@ -714,7 +805,7 @@ namespace
             }
 
             {
-                float width = panel_group_width();
+                float width = panel_group_width(visible_widget_count, show_overflow);
                 draw_group_background(group_x, width, menubar_height);
 
                 static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
@@ -724,15 +815,22 @@ namespace
                 ImGui::SameLine(0, button_gap());
                 draw_mcp_button(menubar_height, -1.0f);
 
-                for (auto& widget_it : widgets)
+                for (size_t i = 0; i < visible_widget_count; i++)
                 {
                     ImGui::SameLine(0, button_gap());
 
+                    auto& widget_it                = widgets[i];
                     Widget* widget_ptr             = widget_it.second;
                     spartan::IconType icon         = widget_it.first;
                     static auto is_widget_visible  = [](Widget* w) { return w->GetVisible(); };
                     static auto set_widget_visible = [](Widget* w) { w->SetVisible(!w->GetVisible()); };
                     toolbar_button(icon, widget_ptr->GetTitle(), is_widget_visible, set_widget_visible, widget_ptr);
+                }
+
+                if (show_overflow)
+                {
+                    ImGui::SameLine(0, button_gap());
+                    draw_overflow_button(menubar_height, visible_widget_count);
                 }
             }
         }
@@ -741,9 +839,23 @@ namespace
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             const float size_avail_x      = viewport->Size.x;
-            const float right_start_x    = get_right_toolbar_start(size_avail_x);
             const float transport_width  = get_transport_width();
             const float transport_min_x  = left_content_end_x + group_gap();
+            size_t visible_widget_count  = widgets.size();
+            bool show_overflow            = false;
+            float right_start_x           = 0.0f;
+
+            while (true)
+            {
+                show_overflow = visible_widget_count < widgets.size();
+                right_start_x = get_right_toolbar_start(size_avail_x, visible_widget_count, show_overflow);
+                if (transport_min_x + transport_width + group_gap() <= right_start_x || visible_widget_count == 0)
+                {
+                    break;
+                }
+                visible_widget_count--;
+            }
+
             const float transport_max_x  = right_start_x - transport_width - group_gap();
             float transport_pos_x        = (size_avail_x - transport_width) * 0.5f;
 
@@ -757,7 +869,7 @@ namespace
             }
 
             draw_transport_group(menubar_height, transport_pos_x);
-            draw_right_groups(menubar_height, right_start_x);
+            draw_right_groups(menubar_height, right_start_x, visible_widget_count, show_overflow);
         }
     }
 
@@ -793,6 +905,8 @@ namespace
             const float window_width = ImGui::GetWindowWidth();
             const float margin = 2.0f * dpi;  // small margin from edge
             float start_x = window_width - (3.0f * button_width) - margin;
+            float separator_x = start_x - separator_gap * 0.5f * dpi;
+            ImGui::GetWindowDrawList()->AddLine(ImVec2(separator_x, ImGui::GetWindowPos().y + menubar_height * 0.24f), ImVec2(separator_x, ImGui::GetWindowPos().y + menubar_height * 0.76f), IM_COL32(255, 255, 255, 24), max(1.0f, dpi));
             ImGui::SetCursorPosX(start_x);
             ImGui::SetCursorPosY(offset_y);
 
@@ -806,6 +920,7 @@ namespace
             {
                 spartan::Window::Minimize();
             }
+            ImGuiSp::tooltip("Minimize");
 
             ImGui::SameLine(0, 0);
             ImGui::SetCursorPosY(offset_y);
@@ -815,6 +930,7 @@ namespace
             {
                 spartan::Window::Maximize();
             }
+            ImGuiSp::tooltip(spartan::Window::IsMaximized() ? "Restore" : "Maximize");
 
             ImGui::PopStyleColor(3);
 
@@ -823,13 +939,14 @@ namespace
 
             // close button with red hover
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.2f, 0.2f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.75f, 0.12f, 0.12f, 0.92f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.62f, 0.08f, 0.08f, 1.0f));
 
             if (ImGuiSp::image_button(spartan::IconType::X, icon_size, false))
             {
                 spartan::Window::Close();
             }
+            ImGuiSp::tooltip("Close");
 
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar();
@@ -870,6 +987,11 @@ void MenuBar::Tick()
 
             const bool ctrl  = ImGui::GetIO().KeyCtrl;
             const bool shift = ImGui::GetIO().KeyShift;
+            if (ctrl && ImGui::IsKeyPressed(ImGuiKey_O, false) && !ImGuiSp::editor_shortcuts_blocked())
+            {
+                windows::ShowWorldLoadDialog();
+            }
+
             if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false) && !ImGuiSp::editor_shortcuts_blocked())
             {
                 if (shift)
@@ -935,7 +1057,9 @@ void MenuBar::Tick()
 
             // menus
             ImGui::SetCursorPosY(menu_y);
-            buttons_menu::world();
+            buttons_menu::file();
+            ImGui::SetCursorPosY(menu_y);
+            buttons_menu::edit();
             ImGui::SetCursorPosY(menu_y);
             buttons_menu::view();
             ImGui::SetCursorPosY(menu_y);

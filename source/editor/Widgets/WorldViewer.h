@@ -42,6 +42,7 @@ private:
     void OnTreeBegin();
     void OnTreeEnd();
     void TreeAddEntity(spartan::Entity* entity);
+    void DrawToolbar();
     void HandleClicking();
 
     // misc

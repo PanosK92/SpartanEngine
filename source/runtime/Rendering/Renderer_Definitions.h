@@ -30,6 +30,7 @@ namespace spartan
 {
     // world draw entries plus imgui draw cmds share this buffer, leave headroom for the editor ui
     const uint32_t renderer_max_draw_calls         = 32768;
+    const uint32_t renderer_max_cpu_indirect_draws = renderer_max_draw_calls * 8;
     const uint32_t renderer_max_instance_count     = 1024;
     const uint32_t renderer_editor_icon_size_px    = 48;
     // hard cap on the restir nee pool, the cpu walker stops appending once this many emissive
@@ -261,9 +262,12 @@ namespace spartan
         gbuffer_v,
         gbuffer_p,
         depth_prepass_v,
+        depth_prepass_multi_draw_v,
         depth_prepass_indirect_alpha_test_p,
         depth_light_v,
+        depth_light_multi_draw_v,
         depth_light_alpha_color_p,
+        depth_light_multi_draw_alpha_color_p,
         fxaa_c,
         taau_c,
         film_grain_c,
@@ -406,6 +410,7 @@ namespace spartan
         cloud_resolved_distance_1,
         cloud_environment,
         cloud_composite,
+        cloud_velocity,
         light_diffuse,
         light_specular,
         light_volumetric,
@@ -517,6 +522,7 @@ namespace spartan
         AABBs,
         GeometryInfo,
         IndirectDrawArgs,          // single-slot args buffer for the final non-indexed indirect draw
+        CpuIndirectDrawArgs,       // frame-rotated cpu-built indexed indirect arguments
         IndirectDrawData,          // per-renderable lod draw data
         MeshletInstances,          // meshlet-cull survivor list, the triangle cull pass dispatches one workgroup per entry
         VisibleTriangles,          // triangle-cull survivor list, one packed (meshlet_instance, triangle_in_meshlet) per entry

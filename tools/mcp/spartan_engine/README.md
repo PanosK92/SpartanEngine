@@ -13,7 +13,7 @@ Spartan exposes engine-aware tools to MCP clients through a Node adapter and the
 
 ## Cursor MCP Setup
 
-Start Spartan with the MCP bridge enabled or open the MCP Assistant widget so it can start the bridge.
+Start Spartan with the MCP bridge enabled or open the Spartan AI widget so it can start the bridge.
 
 Example Cursor MCP entry:
 

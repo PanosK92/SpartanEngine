@@ -80,6 +80,7 @@ namespace spartan
     // per-frame rotated buffers
     array<Renderer::FrameResource, renderer_draw_data_buffer_count> Renderer::m_frame_resources;
     uint32_t Renderer::m_frame_resource_index = 0;
+    uint32_t Renderer::m_cpu_indirect_draw_arg_count = 0;
 
     // line and icon rendering
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
@@ -639,7 +640,10 @@ namespace spartan
             RHI_Buffer* buffer               = GetBuffer(Renderer_Buffer::DrawData);
             const uint32_t frame_byte_offset = m_frame_resource_index * renderer_max_draw_calls * static_cast<uint32_t>(sizeof(Sb_DrawData));
             const uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_draw_data_count;
-            cmd_list->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
+            if (!buffer->GetMappedData())
+            {
+                cmd_list->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
+            }
         }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
         m_draw_data_gpu_synced = true;

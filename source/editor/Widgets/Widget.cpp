@@ -50,6 +50,9 @@ void Widget::Tick()
         return;
     }
 
+    bool draw_contents = false;
+    bool window_appearing = false;
+
     // Begin
     {
         SP_PROFILE_CPU_START(m_title);
@@ -82,24 +85,34 @@ void Widget::Tick()
         OnPreBegin();
 
         // Begin
-        if (ImGui::Begin(m_title, &m_visible, m_flags))
+        draw_contents = ImGui::Begin(m_title, &m_visible, m_flags);
+        ImGuiWindow* current_window = ImGui::GetCurrentWindow();
+        window_appearing = current_window && current_window->Appearing;
+        if (draw_contents)
         {
-            m_window = ImGui::GetCurrentWindow();
+            m_window = current_window;
             m_height = ImGui::GetWindowHeight();
+        }
+        else
+        {
+            m_window = nullptr;
         }
 
         // Callbacks
-        if (m_window && m_window->Appearing)
-        {
-            OnVisible();
-        }
-        else if (!m_visible)
+        if (!m_visible)
         {
             OnInvisible();
         }
+        else if (window_appearing)
+        {
+            OnVisible();
+        }
     }
 
-    OnTickVisible();
+    if (draw_contents)
+    {
+        OnTickVisible();
+    }
 
     // End
     {
@@ -134,6 +147,11 @@ void Widget::OnPreBegin()
 
 spartan::math::Vector2 Widget::GetCenter() const
 {
+    if (!m_window)
+    {
+        return ImGui::GetMainViewport()->GetCenter();
+    }
+
     ImVec2 pos    = m_window->Pos;
     ImVec2 sze    = m_window->Size;
     ImVec2 center = ImVec2(pos.x + sze.x * 0.5f, pos.y + sze.y * 0.5f);

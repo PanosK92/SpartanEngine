@@ -558,6 +558,14 @@ namespace spartan
 
     void RHI_CommandList::RestoreAfterExternalPass()
     {
+        m_bindless_pipeline_layout = nullptr;
+        m_bindless_pipeline_type   = static_cast<uint8_t>(-1);
+        m_dynamic_descriptor_set   = nullptr;
+        m_dynamic_pipeline_layout  = nullptr;
+        m_dynamic_pipeline_type    = static_cast<uint8_t>(-1);
+        m_dynamic_offset_count     = 0;
+        m_bind_dynamic             = true;
+        m_pipeline_state_dirty     = true;
     }
 
     void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture)
@@ -1018,14 +1026,19 @@ namespace spartan
             return VK_PIPELINE_BIND_POINT_COMPUTE;
         }
 
-        void set_dynamic(const RHI_PipelineState pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout)
+        void set_dynamic(const RHI_PipelineState& pso, void* resource, void* pipeline_layout, RHI_DescriptorSetLayout* layout, void*& descriptor_set_bound, void*& pipeline_layout_bound, uint8_t& pipeline_type_bound, array<uint32_t, 10>& dynamic_offsets_bound, uint32_t& dynamic_offset_count_bound)
         {
             lock_guard<mutex> lock(RHI_Device::GetDescriptorSetMutex());
             VkDescriptorSet descriptor_set = static_cast<VkDescriptorSet>(layout->GetOrCreateDescriptorSet());
 
-            array<uint32_t, 10> dynamic_offsets;
+            array<uint32_t, 10> dynamic_offsets = {};
             uint32_t dynamic_offset_count = 0;
             layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
+            const uint8_t pipeline_type = pso.IsGraphics() ? 1 : (pso.IsRayTracing() ? 2 : 0);
+            if (descriptor_set_bound == descriptor_set && pipeline_layout_bound == pipeline_layout && pipeline_type_bound == pipeline_type && dynamic_offset_count_bound == dynamic_offset_count && equal(dynamic_offsets.begin(), dynamic_offsets.begin() + dynamic_offset_count, dynamic_offsets_bound.begin()))
+            {
+                return;
+            }
 
             // nvidia pascal drivers null deref inside vkCmdBindDescriptorSets2, so use the core variant
             vkCmdBindDescriptorSets(
@@ -1037,6 +1050,12 @@ namespace spartan
                 &descriptor_set,
                 dynamic_offset_count,
                 dynamic_offsets.data());
+
+            descriptor_set_bound       = descriptor_set;
+            pipeline_layout_bound      = pipeline_layout;
+            pipeline_type_bound        = pipeline_type;
+            dynamic_offsets_bound      = dynamic_offsets;
+            dynamic_offset_count_bound = dynamic_offset_count;
         }
 
         void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
@@ -1293,6 +1312,11 @@ namespace spartan
         m_buffer_id_index    = 0;
         m_bindless_pipeline_layout = nullptr;
         m_bindless_pipeline_type   = static_cast<uint8_t>(-1);
+        m_dynamic_descriptor_set   = nullptr;
+        m_dynamic_pipeline_layout  = nullptr;
+        m_dynamic_pipeline_type    = static_cast<uint8_t>(-1);
+        m_dynamic_offset_count     = 0;
+        m_pipeline_state_dirty     = false;
     
         // queries
         if (m_queue->GetType() != RHI_Queue_Type::Copy)
@@ -1374,7 +1398,7 @@ namespace spartan
 
         // early exit if the pipeline state hasn't changed
         pso.Prepare();
-        if (m_pso.GetHash() == pso.GetHash())
+        if (!m_pipeline_state_dirty && m_pso.GetHash() == pso.GetHash() && m_pso.use_standard_resources == pso.use_standard_resources)
         {
             return;
         }
@@ -1467,9 +1491,12 @@ namespace spartan
                 m_bindless_pipeline_type   = pipeline_type;
             }
 
-            // set standard resources (dynamic descriptors)
-            Renderer::SetStandardResources(this);
+            if (m_pso.use_standard_resources)
+            {
+                Renderer::SetStandardResources(this);
+            }
         }
+        m_pipeline_state_dirty = false;
     }
 
     RHI_CommandList* RHI_CommandList::ImmediateExecutionBegin(const RHI_Queue_Type queue_type)
@@ -1851,20 +1878,21 @@ namespace spartan
         Profiler::m_rhi_instance_count += instance_count == 1 ? 0 : instance_count;
     }
 
-    void RHI_CommandList::DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    void RHI_CommandList::DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(args_buffer != nullptr);
+        SP_ASSERT(draw_count != 0);
+        SP_ASSERT(args_offset + static_cast<uint64_t>(draw_count) * sizeof(uint32_t) * 5 <= static_cast<uint64_t>(args_buffer->GetElementCount()) * args_buffer->GetStride());
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         PreDraw();
 
-        // single indexed indirect draw, args layout matches VkDrawIndexedIndirectCommand (5 uint32s = 20 bytes)
         vkCmdDrawIndexedIndirect(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkBuffer>(args_buffer->GetRhiResource()),
             static_cast<VkDeviceSize>(args_offset),
-            1u,
+            draw_count,
             sizeof(uint32_t) * 5
         );
 
@@ -3142,7 +3170,7 @@ namespace spartan
         m_active_timeblocks.pop();
     }
 
-    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
+    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory)
     {
         SP_ASSERT(buffer);
         SP_ASSERT(size);
@@ -3156,6 +3184,68 @@ namespace spartan
 
         VkCommandBuffer vk_cmd_buffer = static_cast<VkCommandBuffer>(m_rhi_resource);
         VkBuffer vk_buffer            = static_cast<VkBuffer>(buffer->GetRhiResource());
+
+        if (void* mapped = use_mapped_memory ? buffer->GetMappedData() : nullptr)
+        {
+            memcpy(static_cast<uint8_t*>(mapped) + offset, data, size);
+
+            VkPipelineStageFlags2 dst_stage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            VkAccessFlags2 dst_access       = 0;
+            switch (buffer->GetType())
+            {
+                case RHI_Buffer_Type::Vertex:
+                case RHI_Buffer_Type::Instance:
+                    dst_stage  = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+                    dst_access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Index:
+                    dst_stage  = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+                    dst_access = VK_ACCESS_2_INDEX_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Storage:
+                    dst_access = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Constant:
+                    dst_access = VK_ACCESS_2_UNIFORM_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::ShaderBindingTable:
+                    dst_stage  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+                    dst_access = VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR;
+                    break;
+                case RHI_Buffer_Type::Upload:
+                    dst_stage  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                    dst_access = VK_ACCESS_2_TRANSFER_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Readback:
+                    dst_stage  = VK_PIPELINE_STAGE_2_HOST_BIT;
+                    dst_access = VK_ACCESS_2_HOST_READ_BIT;
+                    break;
+                default:
+                    SP_ASSERT_MSG(false, "Unknown buffer type");
+                    break;
+            }
+
+            VkBufferMemoryBarrier2 barrier = {};
+            barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier.srcStageMask           = VK_PIPELINE_STAGE_2_HOST_BIT;
+            barrier.srcAccessMask          = VK_ACCESS_2_HOST_WRITE_BIT;
+            barrier.dstStageMask           = dst_stage;
+            barrier.dstAccessMask          = dst_access;
+            barrier.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier.buffer                 = vk_buffer;
+            barrier.offset                 = offset;
+            barrier.size                   = size;
+
+            VkDependencyInfo dependency_info = {};
+            dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.bufferMemoryBarrierCount = 1;
+            dependency_info.pBufferMemoryBarriers    = &barrier;
+
+            vkCmdPipelineBarrier2(vk_cmd_buffer, &dependency_info);
+            Profiler::m_rhi_pipeline_barriers++;
+            return;
+        }
 
         // pre-barrier: ensure prior reads from the previous frame complete before we write
         {
@@ -3222,7 +3312,7 @@ namespace spartan
                     barrier_after.dstAccessMask |= VK_ACCESS_2_INDEX_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Storage:
-                    barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT;
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Constant:
                     barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_UNIFORM_READ_BIT;
@@ -3271,7 +3361,7 @@ namespace spartan
 
         if (m_bind_dynamic)
         {
-            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout(), m_descriptor_layout_current);
+            descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout(), m_descriptor_layout_current, m_dynamic_descriptor_set, m_dynamic_pipeline_layout, m_dynamic_pipeline_type, m_dynamic_offsets, m_dynamic_offset_count);
             m_bind_dynamic = false;
         }
     }

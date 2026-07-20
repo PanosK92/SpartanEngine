@@ -54,7 +54,7 @@ namespace
     bool update_check_started     = false;
 
     const float card_rounding      = 8.0f;
-    const float panel_rounding     = 0.0f;
+    const float panel_rounding     = 8.0f;
     const float card_padding       = 12.0f;
     const float card_spacing       = 12.0f;
     const float card_width_base    = 230.0f;
@@ -90,8 +90,9 @@ namespace
     LauncherColors colors;
     ImGuiTextFilter search_filter;
 
-    float last_click_time = -1.0f;
-    int last_click_index  = -1;
+    float last_click_time      = -1.0f;
+    int last_click_index       = -1;
+    bool scroll_to_selection   = false;
 
     unordered_map<string, int64_t> world_last_opened;
 
@@ -161,7 +162,7 @@ namespace
 
     void push_button_style(bool primary)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scaled(6.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, scaled_vec(12.0f, 6.0f));
 
         if (primary)
@@ -218,7 +219,7 @@ namespace
         ImVec2 size      = ImVec2(text_size.x + scaled(16.0f), text_size.y + scaled(6.0f));
         ImDrawList* draw = ImGui::GetWindowDrawList();
 
-        draw->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), bg_col, 0.0f);
+        draw->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), bg_col, size.y * 0.5f);
         draw->AddText(ImVec2(pos.x + scaled(8.0f), pos.y + scaled(3.0f)), text_col, text);
         ImGui::Dummy(size);
     }
@@ -403,6 +404,7 @@ namespace
         {
             selected_visible_index = 0;
             selected_index         = visible_indices[0];
+            scroll_to_selection    = true;
         }
     }
 
@@ -555,83 +557,6 @@ namespace
         float text_w = ImGui::CalcTextSize(text).x;
         ImGui::SetCursorPosX((ImGui::GetWindowWidth() - text_w) * 0.5f);
         ImGui::TextDisabled("%s", text);
-    }
-
-    void text_centered_in_width(const char* text, float width, ImU32 color)
-    {
-        ImVec2 pos = ImGui::GetCursorScreenPos();
-        float text_w = ImGui::CalcTextSize(text).x;
-        float text_x = pos.x + (width - text_w) * 0.5f;
-        ImGui::GetWindowDrawList()->PushClipRect(pos, ImVec2(pos.x + width, pos.y + ImGui::GetTextLineHeight()), true);
-        ImGui::GetWindowDrawList()->AddText(ImVec2(text_x, pos.y), color, text);
-        ImGui::GetWindowDrawList()->PopClipRect();
-        ImGui::Dummy(ImVec2(width, ImGui::GetTextLineHeight()));
-    }
-
-    void text_wrapped_centered(const char* text, float width, ImU32 color)
-    {
-        string value = text ? text : "";
-        const char* cursor = value.c_str();
-        while (*cursor)
-        {
-            const char* line_start = cursor;
-            const char* line_end   = cursor;
-            const char* best_end   = cursor;
-            float best_width       = 0.0f;
-
-            while (*line_end)
-            {
-                const char* next = line_end;
-                while (*next && *next != ' ')
-                {
-                    next++;
-                }
-
-                float candidate_width = ImGui::CalcTextSize(line_start, next).x;
-                if (candidate_width > width && best_end != line_start)
-                {
-                    break;
-                }
-
-                best_end   = next;
-                best_width = candidate_width;
-                line_end   = next;
-
-                while (*line_end == ' ')
-                {
-                    line_end++;
-                }
-
-                if (!*next)
-                {
-                    break;
-                }
-            }
-
-            if (best_end == line_start)
-            {
-                while (*best_end && *best_end != ' ')
-                {
-                    best_end++;
-                }
-                best_width = ImGui::CalcTextSize(line_start, best_end).x;
-                line_end   = best_end;
-            }
-
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            float text_x = pos.x + (width - best_width) * 0.5f;
-            string line(line_start, best_end);
-            ImGui::GetWindowDrawList()->PushClipRect(pos, ImVec2(pos.x + width, pos.y + ImGui::GetTextLineHeight()), true);
-            ImGui::GetWindowDrawList()->AddText(ImVec2(text_x, pos.y), color, line.c_str());
-            ImGui::GetWindowDrawList()->PopClipRect();
-            ImGui::Dummy(ImVec2(width, ImGui::GetTextLineHeight()));
-
-            cursor = line_end;
-            while (*cursor == ' ')
-            {
-                cursor++;
-            }
-        }
     }
 
     void render_prompt_body(const char* body_0, const char* body_1, const char* primary_label, const char* secondary_label, void (*primary_action)(), void (*secondary_action)())
@@ -790,6 +715,12 @@ namespace
         bool is_selected = selected_index == world_index;
         bool loaded      = false;
 
+        if (is_selected && scroll_to_selection)
+        {
+            ImGui::SetScrollHereY(0.5f);
+            scroll_to_selection = false;
+        }
+
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
         {
             float now = static_cast<float>(ImGui::GetTime());
@@ -838,11 +769,15 @@ namespace
 
         float desc_y = title_y + ImGui::GetTextLineHeightWithSpacing();
         const char* description = world.description.empty() ? "No description available." : world.description.c_str();
-        draw_list->AddText(ImGui::GetFont(), body_size, ImVec2(text_min.x, desc_y), colors.text_muted, description);
+        ImVec4 description_clip = ImVec4(text_min.x, desc_y, text_max.x, text_max.y - scaled(28.0f));
+        draw_list->AddText(ImGui::GetFont(), body_size, ImVec2(text_min.x, desc_y), colors.text_muted, description, nullptr, text_max.x - text_min.x, &description_clip);
 
         string source = source_label(world.file_path);
-        float path_y  = text_max.y - ImGui::GetFontSize() * 0.78f;
-        draw_list->AddText(ImGui::GetFont(), path_size, ImVec2(text_min.x, path_y), colors.text_muted, source.c_str());
+        ImVec2 source_size = ImGui::CalcTextSize(source.c_str());
+        ImVec2 chip_min    = ImVec2(text_min.x, text_max.y - source_size.y - scaled(6.0f));
+        ImVec2 chip_max    = ImVec2(chip_min.x + source_size.x + scaled(14.0f), text_max.y);
+        draw_list->AddRectFilled(chip_min, chip_max, colors.chip_bg, (chip_max.y - chip_min.y) * 0.5f);
+        draw_list->AddText(ImGui::GetFont(), path_size, ImVec2(chip_min.x + scaled(7.0f), chip_min.y + scaled(3.0f)), colors.text_muted, source.c_str());
 
         draw_list->PopClipRect();
 
@@ -853,11 +788,11 @@ namespace
             ImVec2 chip_min    = ImVec2(image_min.x + scaled(8.0f), image_min.y + scaled(8.0f));
             ImVec2 chip_max    = ImVec2(chip_min.x + status_size.x + scaled(14.0f), chip_min.y + status_size.y + scaled(6.0f));
 
-            draw_list->AddRectFilled(chip_min, chip_max, colors.warning, 0.0f);
+            draw_list->AddRectFilled(chip_min, chip_max, colors.warning, (chip_max.y - chip_min.y) * 0.5f);
             draw_list->AddText(ImVec2(chip_min.x + scaled(7.0f), chip_min.y + scaled(3.0f)), IM_COL32(0, 0, 0, 255), status);
         }
 
-        if (is_hovered)
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
         {
             ImGui::SetTooltip("%s\n%s", world.name.c_str(), world.file_path.c_str());
         }
@@ -875,9 +810,11 @@ namespace
             ImVec2 center = ImVec2(pos.x + region.x * 0.5f, pos.y + region.y * 0.42f);
             ImDrawList* draw = ImGui::GetWindowDrawList();
 
-            float marker_half = scaled(38.0f);
-            draw->AddRectFilled(ImVec2(center.x - marker_half, center.y - marker_half), ImVec2(center.x + marker_half, center.y + marker_half), colors.preview_bg, 0.0f);
-            draw->AddText(ImVec2(center.x - scaled(58.0f), center.y + scaled(52.0f)), colors.text_muted, search_filter.IsActive() ? "No worlds match your search." : "No worlds found on disk.");
+            const char* message = search_filter.IsActive() ? "No worlds match your search" : "No worlds found on disk";
+            ImVec2 message_size = ImGui::CalcTextSize(message);
+            float marker_half   = scaled(38.0f);
+            draw->AddRectFilled(ImVec2(center.x - marker_half, center.y - marker_half), ImVec2(center.x + marker_half, center.y + marker_half), colors.preview_bg, scaled(8.0f));
+            draw->AddText(ImVec2(center.x - message_size.x * 0.5f, center.y + scaled(52.0f)), colors.text_muted, message);
             return;
         }
 
@@ -908,27 +845,34 @@ namespace
         }
     }
 
-    void draw_toolbar(float content_w)
+    void draw_header(float content_w)
     {
-        string count = to_string(world_files.size()) + " worlds";
-        float count_w = ImGui::CalcTextSize(count.c_str()).x + scaled(16.0f);
-        float button_w = scaled(92.0f);
-        float search_w = content_w - count_w - button_w - scaled(28.0f);
-        float start_x = ImGui::GetCursorPosX();
-
-        if (search_w < scaled(220.0f))
+        const float start_x = ImGui::GetCursorPosX();
+        if (Editor::font_bold)
         {
-            search_w = scaled(220.0f);
+            ImGui::PushFont(Editor::font_bold, 0.0f);
         }
+        ImGui::TextUnformatted("Choose a world");
+        if (Editor::font_bold)
+        {
+            ImGui::PopFont();
+        }
+        ImGui::TextDisabled("Select a world to open in the editor");
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
+        string count = search_filter.IsActive() ? to_string(visible_indices.size()) + " of " + to_string(world_files.size()) + " worlds" : to_string(world_files.size()) + " worlds";
+        float count_w  = ImGui::CalcTextSize(count.c_str()).x + scaled(16.0f);
+        float button_w = scaled(92.0f);
+        float search_w = max(scaled(220.0f), content_w - count_w - button_w - scaled(28.0f));
+
+        ImGui::Dummy(ImVec2(0.0f, scaled(6.0f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scaled(6.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, scaled_vec(12.0f, 8.0f));
         ImGui::SetNextItemWidth(search_w);
-        search_filter.Draw("##world_search");
-        if (!search_filter.IsActive())
+        ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+        if (ImGui::InputTextWithHint("##world_search", "Search worlds", search_filter.InputBuf, IM_ARRAYSIZE(search_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
         {
-            ImVec2 input_min = ImGui::GetItemRectMin();
-            ImGui::GetWindowDrawList()->AddText(ImVec2(input_min.x + scaled(12.0f), input_min.y + scaled(8.0f)), colors.text_muted, "Search worlds, descriptions, or paths...");
+            search_filter.Build();
+            rebuild_visible_indices();
         }
         ImGui::PopStyleVar(2);
 
@@ -973,7 +917,7 @@ namespace
             return;
         }
 
-        float content_height = max(scaled(120.0f), height - scaled(132.0f));
+        float content_height = max(scaled(120.0f), height - scaled(104.0f));
         ImGui::BeginChild("##world_details_content", ImVec2(width - scaled(28.0f), content_height), false);
 
         ImVec2 preview_min = ImGui::GetCursorScreenPos();
@@ -981,64 +925,55 @@ namespace
         draw_world_preview(*world, preview_min, preview_max, 0.0f);
         ImGui::Dummy(ImVec2(width - scaled(28.0f), scaled(170.0f)));
 
-        ImGui::Dummy(ImVec2(0.0f, scaled(10.0f)));
+        ImGui::Dummy(ImVec2(0.0f, scaled(12.0f)));
+
+        string source = source_label(world->file_path);
+        draw_chip(source.c_str(), colors.chip_bg, colors.text_muted);
+        if (is_work_in_progress(*world))
+        {
+            ImGui::SameLine(0.0f, scaled(8.0f));
+            draw_chip("work in progress", colors.warning, IM_COL32(0, 0, 0, 255));
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, scaled(8.0f)));
         if (Editor::font_bold)
         {
             ImGui::PushFont(Editor::font_bold, 0.0f);
         }
-        text_centered_in_width(world->name.c_str(), width - scaled(28.0f), colors.text_primary);
+        ImGui::TextUnformatted(world->name.c_str());
         if (Editor::font_bold)
         {
             ImGui::PopFont();
         }
 
-        float text_width = width - scaled(28.0f);
-        ImGui::SetCursorPosX(scaled(14.0f));
         if (!world->description.empty())
         {
-            text_wrapped_centered(world->description.c_str(), text_width, colors.text_muted);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(colors.text_muted));
+            ImGui::TextWrapped("%s", world->description.c_str());
+            ImGui::PopStyleColor();
         }
         else
         {
-            text_centered_in_width("No description available.", text_width, colors.text_muted);
+            ImGui::TextDisabled("No description available");
         }
 
-        ImGui::Dummy(ImVec2(0.0f, scaled(8.0f)));
-        string source = source_label(world->file_path);
-        float source_chip_w = ImGui::CalcTextSize(source.c_str()).x + scaled(16.0f);
-        float wip_chip_w = is_work_in_progress(*world) ? ImGui::CalcTextSize("work in progress").x + scaled(16.0f) : 0.0f;
-        float chip_gap = wip_chip_w > 0.0f ? scaled(8.0f) : 0.0f;
-        float chip_total_w = source_chip_w + wip_chip_w + chip_gap;
-        ImGui::SetCursorPosX((width - chip_total_w) * 0.5f);
-        draw_chip(source.c_str(), colors.chip_bg, colors.text_muted);
-        if (is_work_in_progress(*world))
-        {
-            ImGui::SameLine(0.0f, chip_gap);
-            draw_chip("work in progress", colors.warning, IM_COL32(0, 0, 0, 255));
-        }
-
-        ImGui::Dummy(ImVec2(0.0f, scaled(8.0f)));
-        text_centered_in_width(world->file_path.c_str(), width - scaled(28.0f), colors.text_muted);
+        ImGui::Dummy(ImVec2(0.0f, scaled(12.0f)));
+        ImGui::TextDisabled("Location");
+        ImGui::PushTextWrapPos();
+        ImGui::TextDisabled("%s", world->file_path.c_str());
+        ImGui::PopTextWrapPos();
 
         ImGui::EndChild();
 
         float footer_w = width - scaled(28.0f);
         ImGui::SetCursorPosX(scaled(14.0f));
-        text_centered_in_width("developer build", footer_w, colors.warning);
-        ImGui::SetCursorPosX(scaled(14.0f));
-        text_centered_in_width("experimental worlds may change", footer_w, colors.warning);
-        ImGui::Dummy(ImVec2(0.0f, scaled(6.0f)));
-
-        float load_w = min(scaled(220.0f), footer_w);
-        ImGui::SetCursorPosX((width - load_w) * 0.5f);
-        if (launcher_button("Load World", ImVec2(load_w, 0.0f), true))
+        if (launcher_button("Open World", ImVec2(footer_w, 0.0f), true))
         {
             load_selected_world();
         }
 
-        float button_w = scaled(118.0f);
-        float button_group_w = button_w * 2.0f + scaled(8.0f);
-        ImGui::SetCursorPosX((width - button_group_w) * 0.5f);
+        float button_w = (footer_w - scaled(8.0f)) * 0.5f;
+        ImGui::SetCursorPosX(scaled(14.0f));
         if (launcher_button("Cancel", ImVec2(button_w, 0.0f)))
         {
             visible_world_list = false;
@@ -1096,6 +1031,7 @@ namespace
         if (target != selected_visible_index)
         {
             select_visible_index(target);
+            scroll_to_selection = true;
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_Enter, false) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false))
@@ -1113,8 +1049,8 @@ namespace
 
         update_colors();
 
-        ImGui::SetNextWindowSize(ImVec2(1600.0f, 900.0f), ImGuiCond_Appearing);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(960.0f, 540.0f), ImVec2(2400.0f, 1350.0f));
+        ImGui::SetNextWindowSize(scaled_vec(1600.0f, 900.0f), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSizeConstraints(scaled_vec(960.0f, 540.0f), scaled_vec(2400.0f, 1350.0f));
         ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, scaled_vec(16.0f, 16.0f));
@@ -1133,11 +1069,12 @@ namespace
 
             float content_w = ImGui::GetContentRegionAvail().x;
             rebuild_visible_indices();
+            draw_header(content_w);
+            ImGui::Dummy(ImVec2(0.0f, scaled(10.0f)));
             handle_keyboard();
 
             ImVec2 remaining = ImGui::GetContentRegionAvail();
-            float bottom_bar_h = ImGui::GetFrameHeightWithSpacing() + scaled(8.0f);
-            float panels_h = max(scaled(260.0f), remaining.y - bottom_bar_h);
+            float panels_h = max(scaled(260.0f), remaining.y);
             float details_w  = min(scaled(details_width_base), max(scaled(320.0f), remaining.x * 0.32f));
             float grid_w     = remaining.x - details_w - scaled(section_spacing);
             if (grid_w < scaled(300.0f))
@@ -1146,7 +1083,6 @@ namespace
                 details_w = remaining.x;
             }
 
-            ImVec2 panels_pos = ImGui::GetCursorPos();
             begin_panel("##world_grid_panel", ImVec2(grid_w, panels_h));
             {
                 ImGui::BeginChild("##world_grid_scroll", ImVec2(grid_w - scaled(28.0f), panels_h - scaled(28.0f)), false);
@@ -1165,9 +1101,6 @@ namespace
                 ImGui::Dummy(ImVec2(0.0f, scaled(section_spacing)));
                 draw_detail_panel(details_w, scaled(430.0f));
             }
-
-            ImGui::SetCursorPos(ImVec2(panels_pos.x, panels_pos.y + panels_h + scaled(8.0f)));
-            draw_toolbar(content_w);
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
@@ -1224,6 +1157,7 @@ void WorldSelector::SetVisible(bool visibility)
     selected_visible_index = 0;
     last_click_index       = -1;
     last_click_time        = -1.0f;
+    scroll_to_selection    = true;
 
     if (!update_check_started)
     {

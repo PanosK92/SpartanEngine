@@ -142,6 +142,12 @@ namespace spartan
                 (string("indirect_draw_args_") + to_string(i)).c_str()
             );
 
+            fr.cpu_indirect_draw_args = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
+                renderer_max_cpu_indirect_draws, nullptr, true,
+                (string("cpu_indirect_draw_args_") + to_string(i)).c_str()
+            );
+
             fr.indirect_draw_data = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
                 indirect_draw_capacity, nullptr, true,
@@ -193,6 +199,7 @@ namespace spartan
         // point the active buffer slots at frame 0
         const FrameResource& fr = m_frame_resources[0];
         at(buffers, Renderer_Buffer::IndirectDrawArgs)     = fr.indirect_draw_args;
+        at(buffers, Renderer_Buffer::CpuIndirectDrawArgs)  = fr.cpu_indirect_draw_args;
         at(buffers, Renderer_Buffer::IndirectDrawData)     = fr.indirect_draw_data;
         at(buffers, Renderer_Buffer::MeshletInstances)     = fr.meshlet_instances;
         at(buffers, Renderer_Buffer::VisibleTriangles)     = fr.visible_triangles;
@@ -511,6 +518,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::cloud_resolved_1)            = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1)   = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_composite)             = nullptr;
+            at(render_targets, Renderer_RenderTarget::cloud_velocity)              = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders)     = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = nullptr;
             at(render_targets, Renderer_RenderTarget::sss)                         = nullptr;
@@ -628,6 +636,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::cloud_resolved_1)          = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_resolved_1");
             at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_1");
             at(render_targets, Renderer_RenderTarget::cloud_composite)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_composite");
+            at(render_targets, Renderer_RenderTarget::cloud_velocity)            = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_velocity");
             m_pass_state.cloud_history_valid = false;
             m_pass_state.cloud_history_index = 0;
         };
@@ -813,8 +822,11 @@ namespace spartan
 
             // depth
             { Renderer_Shader::depth_prepass_v,                       RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::PosUvNorTan  },
+            { Renderer_Shader::depth_prepass_multi_draw_v,            RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::PosUvNorTan, "INDEXED_MULTI_DRAW" },
             { Renderer_Shader::depth_light_v,                         RHI_Shader_Type::Vertex,  "depth_light.hlsl",                           RHI_Vertex_Type::PosUvNorTan  },
+            { Renderer_Shader::depth_light_multi_draw_v,              RHI_Shader_Type::Vertex,  "depth_light.hlsl",                           RHI_Vertex_Type::PosUvNorTan, "INDEXED_MULTI_DRAW" },
             { Renderer_Shader::depth_light_alpha_color_p,             RHI_Shader_Type::Pixel,   "depth_light.hlsl"                                                           },
+            { Renderer_Shader::depth_light_multi_draw_alpha_color_p,  RHI_Shader_Type::Pixel,   "depth_light.hlsl",                           RHI_Vertex_Type::Max,         "INDEXED_MULTI_DRAW" },
 
             // g-buffer
             { Renderer_Shader::gbuffer_v,                             RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan  },
@@ -1278,6 +1290,7 @@ namespace spartan
         const FrameResource& fr = m_frame_resources[m_frame_resource_index];
 
         buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]     = fr.indirect_draw_args;
+        buffers[static_cast<uint8_t>(Renderer_Buffer::CpuIndirectDrawArgs)]  = fr.cpu_indirect_draw_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawData)]     = fr.indirect_draw_data;
         buffers[static_cast<uint8_t>(Renderer_Buffer::MeshletInstances)]     = fr.meshlet_instances;
         buffers[static_cast<uint8_t>(Renderer_Buffer::VisibleTriangles)]     = fr.visible_triangles;
@@ -1285,6 +1298,7 @@ namespace spartan
         buffers[static_cast<uint8_t>(Renderer_Buffer::CullTasks)]            = fr.cull_tasks;
         buffers[static_cast<uint8_t>(Renderer_Buffer::SurvivingInstances)]   = fr.surviving_instances;
         buffers[static_cast<uint8_t>(Renderer_Buffer::InstanceDispatchArgs)] = fr.instance_dispatch_args;
+        m_cpu_indirect_draw_arg_count = 0;
     }
 
     RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)

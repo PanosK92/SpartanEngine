@@ -139,6 +139,7 @@ public:
     bool Show(bool* is_visible, Editor* editor, std::string* directory = nullptr, std::string* file_path = nullptr);
     void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_clicked = callback; }
     void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_double_clicked = callback; }
+    void SetToolbarAction(const std::string& label, const std::function<void()>& callback) { m_toolbar_action_label = label; m_toolbar_action = callback; }
 
 private:
     void ShowTop(bool* is_visible, Editor* editor);
@@ -213,6 +214,8 @@ private:
     // callbacks
     std::function<void(const std::string&)> m_callback_on_item_clicked;
     std::function<void(const std::string&)> m_callback_on_item_double_clicked;
+    std::string m_toolbar_action_label;
+    std::function<void()> m_toolbar_action;
 
     // directory watching for auto refresh on external changes
     std::filesystem::file_time_type m_watch_dir_time{};

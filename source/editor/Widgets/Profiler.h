@@ -68,6 +68,7 @@ public:
 private:
     std::array<float, 400> m_plot;
     Timings m_timings;
+    ImGuiTextFilter m_block_filter;
 
     // timeline state
     float m_timeline_offset_ms       = 0.0f;

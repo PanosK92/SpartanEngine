@@ -1124,7 +1124,7 @@ namespace spartan
             // and the light pass / cpu telemetry reads it back as the count for this frame
             {
                 const uint32_t zero = 0;
-                cmd_list->UpdateBuffer(GetBuffer(Renderer_Buffer::ClusterStats), 0, sizeof(uint32_t), &zero);
+                cmd_list->UpdateBuffer(GetBuffer(Renderer_Buffer::ClusterStats), 0, sizeof(uint32_t), &zero, false);
             }
 
             // when only the directional sun is active there are no clustered lights, the light shader guards

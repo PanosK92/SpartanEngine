@@ -71,6 +71,7 @@ namespace
     ImU32 col_text;
     ImU32 col_text_dim;
     ImU32 col_toolbar_bg;
+    ImU32 col_content_bg;
     ImU32 col_separator;
 
     constexpr std::string_view NewLuaScriptContents = R"(
@@ -123,18 +124,22 @@ return MyScript
 
     void update_colors()
     {
-        ImGuiStyle& style     = ImGui::GetStyle();
-        col_card_bg           = ImGui::ColorConvertFloat4ToU32(ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
-        col_card_bg_hover     = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
-        col_card_bg_selected  = ImGui::ColorConvertFloat4ToU32(ImVec4(0.15f, 0.25f, 0.35f, 1.0f));
-        col_card_border       = ImGui::ColorConvertFloat4ToU32(ImVec4(0.25f, 0.25f, 0.28f, 1.0f));
-        col_card_border_hover = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_CheckMark]);
+        ImGuiStyle& style      = ImGui::GetStyle();
+        const ImVec4 bg        = ImGui::Style::bg_color_1;
+        const ImVec4 surface   = ImGui::Style::bg_color_2;
+        const ImVec4 accent    = ImGui::Style::color_accent_1;
+        col_card_bg            = ImGui::ColorConvertFloat4ToU32(ImGui::Style::lerp(bg, surface, 0.24f));
+        col_card_bg_hover      = ImGui::ColorConvertFloat4ToU32(ImGui::Style::lerp(bg, surface, 0.42f));
+        col_card_bg_selected   = ImGui::ColorConvertFloat4ToU32(ImGui::Style::lerp(bg, accent, 0.20f));
+        col_card_border        = ImGui::ColorConvertFloat4ToU32(ImGui::Style::lerp(bg, surface, 0.72f));
+        col_card_border_hover  = ImGui::ColorConvertFloat4ToU32(accent);
         col_shadow            = IM_COL32(0, 0, 0, 50);
-        col_accent            = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_CheckMark]);
+        col_accent            = ImGui::ColorConvertFloat4ToU32(accent);
         col_text              = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Text]);
         col_text_dim          = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_TextDisabled]);
-        col_toolbar_bg        = ImGui::ColorConvertFloat4ToU32(ImVec4(0.15f, 0.15f, 0.16f, 1.0f));
-        col_separator         = ImGui::ColorConvertFloat4ToU32(ImVec4(0.20f, 0.20f, 0.22f, 1.0f));
+        col_toolbar_bg        = ImGui::ColorConvertFloat4ToU32(ImGui::Style::lerp(bg, surface, 0.18f));
+        col_content_bg        = ImGui::ColorConvertFloat4ToU32(ImGui::Style::lerp(bg, surface, 0.08f));
+        col_separator         = ImGui::ColorConvertFloat4ToU32(ImGui::Style::lerp(bg, surface, 0.62f));
     }
 }
 
@@ -208,6 +213,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
     m_selection_made     = false;
     m_is_hovering_item   = false;
     m_is_hovering_window = false;
+    m_hovered_item_path.clear();
 
     // calculate bottom offset before rendering so ShowMiddle knows the available space
     if (m_type == FileDialog_Type_Browser)
@@ -381,6 +387,17 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     }
 
     float button_height = ImGui::GetFrameHeight();
+    bool is_grid_mode    = m_view_mode == View_Grid;
+    bool is_list_mode    = m_view_mode == View_List;
+    float grid_btn_w     = ImGui::CalcTextSize("Grid").x + ImGui::GetStyle().FramePadding.x * 2;
+    float list_btn_w     = ImGui::CalcTextSize("List").x + ImGui::GetStyle().FramePadding.x * 2;
+    float slider_width   = is_grid_mode && ImGui::GetWindowWidth() >= 520.0f ? 80.0f : 0.0f;
+    float slider_gap     = slider_width > 0.0f ? 8.0f : 0.0f;
+    float action_width   = m_toolbar_action ? ImGui::CalcTextSize(m_toolbar_action_label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2 : 0.0f;
+    float action_gap     = m_toolbar_action ? 8.0f : 0.0f;
+    float item_spacing   = ImGui::GetStyle().ItemSpacing.x;
+    float controls_width = action_width + action_gap + grid_btn_w + item_spacing + list_btn_w + slider_gap + slider_width;
+    float controls_x     = ImGui::GetWindowWidth() - controls_width - 8.0f;
 
     // navigation buttons style
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
@@ -466,6 +483,10 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
     // breadcrumb navigation
     {
+        ImVec2 clip_min = ImGui::GetCursorScreenPos();
+        ImVec2 clip_max = ImVec2(max(clip_min.x, ImGui::GetWindowPos().x + controls_x - 8.0f), clip_min.y + button_height);
+        ImGui::PushClipRect(clip_min, clip_max, true);
+
         char accumulated_path[1024];
         accumulated_path[0] = '\0';
 
@@ -520,26 +541,27 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
             segment_count++;
             token = strtok_s(nullptr, delimiters, &context);
         }
+
+        ImGui::PopClipRect();
     }
 
     // right side: view toggle and size slider (snapped to right edge)
     {
-        // save current mode before buttons (mode may change during button click)
-        bool is_grid_mode = (m_view_mode == View_Grid);
-        bool is_list_mode = (m_view_mode == View_List);
+        ImGui::SetCursorPosX(controls_x);
 
-        // calculate button widths
-        float grid_btn_w  = ImGui::CalcTextSize("Grid").x + ImGui::GetStyle().FramePadding.x * 2;
-        float list_btn_w  = ImGui::CalcTextSize("List").x + ImGui::GetStyle().FramePadding.x * 2;
-        float slider_width = is_grid_mode ? 80.0f : 0.0f;
-        float slider_gap   = is_grid_mode ? 8.0f : 0.0f;
-        float item_spacing = ImGui::GetStyle().ItemSpacing.x;
-        float total_width  = grid_btn_w + item_spacing + list_btn_w + slider_gap + slider_width;
-
-        // position from right edge of window
-        float window_w = ImGui::GetWindowWidth();
-        float right_x  = window_w - total_width - 8.0f;
-        ImGui::SetCursorPosX(right_x);
+        if (m_toolbar_action)
+        {
+            const ImVec4 accent = ImGui::Style::color_accent_1;
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(accent.x, accent.y, accent.z, 0.26f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(accent.x, accent.y, accent.z, 0.42f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(accent.x, accent.y, accent.z, 0.58f));
+            if (ImGui::Button(m_toolbar_action_label.c_str()))
+            {
+                m_toolbar_action();
+            }
+            ImGui::PopStyleColor(3);
+            ImGui::SameLine(0, action_gap);
+        }
 
         // grid view button
         if (is_grid_mode)
@@ -571,7 +593,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         }
 
         // size slider (grid view only)
-        if (is_grid_mode)
+        if (slider_width > 0.0f)
         {
             ImGui::SameLine(0, slider_gap);
             ImGui::SetNextItemWidth(slider_width);
@@ -607,27 +629,12 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         ImGui::SetNextItemWidth(search_width);
 
         // custom search field styling
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.08f, 0.08f, 0.09f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::ColorConvertU32ToFloat4(col_card_bg));
 
-        // placeholder handling
-        bool empty = m_search_filter.InputBuf[0] == '\0';
-        if (empty)
+        ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+        if (ImGui::InputTextWithHint("##search", "Search assets", m_search_filter.InputBuf, IM_ARRAYSIZE(m_search_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        }
-
-        m_search_filter.Draw("##search");
-
-        if (empty)
-        {
-            ImGui::PopStyleColor();
-            // draw placeholder text
-            ImVec2 pos = ImGui::GetItemRectMin();
-            ImGui::GetWindowDrawList()->AddText(
-                ImVec2(pos.x + 8, pos.y + 6),
-                IM_COL32(128, 128, 128, 180),
-                "search files..."
-            );
+            m_search_filter.Build();
         }
 
         ImGui::PopStyleColor();
@@ -681,7 +688,7 @@ void FileDialog::ShowMiddle()
     m_displayed_item_count     = 0;
 
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.09f, 0.09f, 0.10f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertU32ToFloat4(col_content_bg));
 
     if (ImGui::BeginChild("##content", ImVec2(content_width, content_height), false))
     {
@@ -950,6 +957,15 @@ void FileDialog::RenderGridView()
         }
     }
 
+    if (m_displayed_item_count == 0)
+    {
+        const char* message = m_search_filter.IsActive() ? "No assets match your search" : "This folder is empty";
+        const float message_width = ImGui::CalcTextSize(message).x;
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + max(32.0f, ImGui::GetContentRegionAvail().y * 0.35f));
+        ImGui::SetCursorPosX(max(8.0f, (ImGui::GetWindowWidth() - message_width) * 0.5f));
+        ImGui::TextDisabled("%s", message);
+    }
+
     ImGui::Unindent(8.0f);
 }
 
@@ -1089,6 +1105,13 @@ void FileDialog::RenderListView()
                 FileSystem::GetLastWriteTime(item.GetPath()).c_str());
 
             ImGui::PopID();
+        }
+
+        if (m_displayed_item_count == 0)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextDisabled("%s", m_search_filter.IsActive() ? "No assets match your search" : "This folder is empty");
         }
 
         ImGui::EndTable();

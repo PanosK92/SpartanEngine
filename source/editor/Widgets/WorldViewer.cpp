@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Commands/CommandEntityDelete.h"
 #include "Input/Input.h"
 #include "../ImGui/ImGui_Extension.h"
+#include <unordered_set>
 SP_WARNINGS_OFF
 #include "../ImGui/Source/imgui_stdlib.h"
 SP_WARNINGS_ON
@@ -52,6 +53,10 @@ namespace
     Entity* entity_hovered = nullptr;
     ImGuiSp::DragDropPayload drag_drop_payload;
     Entity* entity_copied    = nullptr;
+    ImGuiTextFilter entity_filter;
+    unordered_set<uint64_t> filtered_entity_ids;
+    uint32_t entity_count       = 0;
+    uint32_t filter_match_count = 0;
 
     // inline rename state
     uint64_t rename_entity_id     = 0;
@@ -97,6 +102,76 @@ namespace
         for (Entity* entity : root_entities)
         {
             CollectEntitiesInTreeOrder(entity, entities_in_tree_order);
+        }
+    }
+
+    bool collect_filtered_entities(Entity* entity)
+    {
+        if (!entity || !entity->GetActive())
+        {
+            return false;
+        }
+
+        entity_count++;
+
+        const bool matches = entity_filter.PassFilter(entity->GetObjectName().c_str());
+        if (matches)
+        {
+            filter_match_count++;
+        }
+
+        bool descendant_matches = false;
+        for (Entity* child : entity->GetChildren())
+        {
+            descendant_matches |= collect_filtered_entities(child);
+        }
+
+        if (matches || descendant_matches)
+        {
+            filtered_entity_ids.insert(entity->GetObjectId());
+            return true;
+        }
+
+        return false;
+    }
+
+    uint32_t count_active_entities(Entity* entity)
+    {
+        if (!entity || !entity->GetActive())
+        {
+            return 0;
+        }
+
+        uint32_t count = 1;
+        for (Entity* child : entity->GetChildren())
+        {
+            count += count_active_entities(child);
+        }
+
+        return count;
+    }
+
+    void prepare_entity_filter()
+    {
+        filtered_entity_ids.clear();
+        entity_count       = 0;
+        filter_match_count = 0;
+
+        static vector<Entity*> root_entities;
+        World::GetRootEntities(root_entities);
+
+        if (!entity_filter.IsActive())
+        {
+            for (Entity* entity : root_entities)
+            {
+                entity_count += count_active_entities(entity);
+            }
+            return;
+        }
+
+        for (Entity* entity : root_entities)
+        {
+            collect_filtered_entities(entity);
         }
     }
 
@@ -280,12 +355,16 @@ namespace
 
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 {
-    m_title  = "World";
-    m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
+    m_title = "World";
 }
 
 void WorldViewer::OnTickVisible()
 {
+    prepare_entity_filter();
+    DrawToolbar();
+
+    ImGui::Separator();
+    ImGui::BeginChild("##hierarchy_tree", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
     TreeShow();
 
     // on left click, select entity but only on release
@@ -324,10 +403,31 @@ void WorldViewer::OnTickVisible()
                     }
                 }
 
-                entity_clicked = nullptr;
             }
+
+            entity_clicked = nullptr;
         }
     }
+
+    ImGui::EndChild();
+}
+
+void WorldViewer::DrawToolbar()
+{
+    const string count_text = entity_filter.IsActive() ? to_string(filter_match_count) + (filter_match_count == 1 ? " result" : " results") : to_string(entity_count) + (entity_count == 1 ? " entity" : " entities");
+    const float count_width  = ImGui::CalcTextSize(count_text.c_str()).x;
+    const float search_width = max(120.0f, ImGui::GetContentRegionAvail().x - count_width - ImGui::GetStyle().ItemSpacing.x);
+
+    ImGui::SetNextItemWidth(search_width);
+    ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+    if (ImGui::InputTextWithHint("##hierarchy_search", "Search entities", entity_filter.InputBuf, IM_ARRAYSIZE(entity_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
+    {
+        entity_filter.Build();
+        prepare_entity_filter();
+    }
+
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", count_text.c_str());
 }
 
 void WorldViewer::TreeShow()
@@ -356,6 +456,18 @@ void WorldViewer::TreeShow()
             {
                 TreeAddEntity(entity);
             }
+        }
+
+        const bool has_no_results = entity_filter.IsActive() && filter_match_count == 0;
+        const bool has_no_entities = !entity_filter.IsActive() && entity_count == 0;
+        if (has_no_results || has_no_entities)
+        {
+            const float available_height = ImGui::GetContentRegionAvail().y;
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + max(24.0f, available_height * 0.35f));
+            const char* message = has_no_results ? "No entities match your search" : "No entities in this world";
+            const float message_width = ImGui::CalcTextSize(message).x;
+            ImGui::SetCursorPosX(max(ImGui::GetCursorPosX(), (ImGui::GetWindowWidth() - message_width) * 0.5f));
+            ImGui::TextDisabled("%s", message);
         }
     }
     ImGui::EndDisabled();
@@ -477,10 +589,22 @@ void WorldViewer::TreeAddEntity(Entity* entity)
         return;
     }
 
+    if (entity_filter.IsActive() && filtered_entity_ids.find(entity->GetObjectId()) == filtered_entity_ids.end())
+    {
+        return;
+    }
+
     // set up tree node flags - we handle highlighting manually, so no SpanFullWidth or Selected
     ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_OpenOnArrow;
     const vector<Entity*>& children = entity->GetChildren();
-    bool has_children                        = !children.empty();
+    bool has_children = !children.empty();
+    if (entity_filter.IsActive())
+    {
+        has_children = any_of(children.begin(), children.end(), [](Entity* child)
+        {
+            return child && filtered_entity_ids.find(child->GetObjectId()) != filtered_entity_ids.end();
+        });
+    }
     if (!has_children)
     {
         node_flags |= ImGuiTreeNodeFlags_Leaf;
@@ -496,6 +620,10 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     if (primary_selected && primary_selected->IsDescendantOf(entity) && primary_selected->GetObjectId() != last_selected_entity_id)
     {
         ImGui::SetNextItemOpen(true);
+    }
+    else if (entity_filter.IsActive() && has_children)
+    {
+        ImGui::SetNextItemOpen(true, ImGuiCond_Always);
     }
 
     // use draw list channels to draw highlight behind tree node content
@@ -539,7 +667,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     const float padding      = ImGui::GetStyle().FramePadding.y * 2.0f;
     const float icon_size    = ImGui::GetTextLineHeightWithSpacing() - padding;
     const float text_width   = ImGui::CalcTextSize(entity->GetObjectName().c_str()).x;
-    const float content_width = icon_size + ImGui::GetStyle().ItemSpacing.x + text_width;
+    const float content_width = max(icon_size + ImGui::GetStyle().ItemSpacing.x + text_width, ImGui::GetContentRegionAvail().x);
     
     // calculate content rect (icon + text area only) for hover detection and highlighting
     ImVec2 content_min = ImVec2(row_pos.x, tree_node_min.y);
@@ -1019,7 +1147,7 @@ void WorldViewer::HandleKeyShortcuts()
     }
 
     // Delete - deletes all selected entities
-    if (Input::GetKey(KeyCode::Delete))
+    if (Input::GetKeyDown(KeyCode::Delete))
     {
         if (Camera* camera = World::GetCamera())
         {
@@ -1251,5 +1379,5 @@ void WorldViewer::ActionEntityCreateAudioSource()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<AudioSource>();
-    entity->SetObjectName("Physics");
+    entity->SetObjectName("Audio Source");
 }

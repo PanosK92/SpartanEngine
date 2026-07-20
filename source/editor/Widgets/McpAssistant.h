@@ -75,4 +75,5 @@ private:
     bool m_api_key_file_checked = false;
     bool m_refresh_models_after_key_load = false;
     bool m_mcp_auto_start_attempted = false;
+    bool m_show_settings = false;
 };

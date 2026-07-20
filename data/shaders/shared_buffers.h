@@ -549,6 +549,8 @@ namespace spartan
     using Sb_Particle         = Particle;
     using Sb_EmitterParams    = EmitterParams;
     using Sb_GrassInstance    = GrassInstance;
+
+    static_assert(sizeof(Sb_IndirectDrawArgs) == sizeof(uint32_t) * 5);
 }
 #else
 // hlsl backward compatibility alias

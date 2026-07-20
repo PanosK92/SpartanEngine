@@ -204,7 +204,10 @@ namespace spartan
         cmd_list->PushConstants(m_pcb_pass_cpu);
         const uint32_t dispatch_width = (tex_raw->GetWidth() + 1) / 2;
         const uint32_t dispatch_height = (tex_raw->GetHeight() + 1) / 2;
-        cmd_list->Dispatch((dispatch_width + 7) / 8, (dispatch_height + 7) / 8);
+        cmd_list->Dispatch(
+            (dispatch_width + 7) / 8,
+            (dispatch_height + 7) / 8
+        );
     }
 
     void Renderer::Pass_Clouds_Temporal(RHI_CommandList* cmd_list, uint32_t eye_layer)
@@ -250,7 +253,9 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_scene);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(resolved_targets[output_index]), rhi_all_mips, 0, eye_layer);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(distance_targets[output_index]), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_composite);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), GetRenderTarget(Renderer_RenderTarget::cloud_velocity), rhi_all_mips, 0, true, eye_layer);
         cmd_list->PushConstants(m_pcb_pass_cpu);
         cmd_list->Dispatch(tex_composite);
         cmd_list->Blit(tex_composite, tex_scene, false);
@@ -340,8 +345,13 @@ namespace spartan
 
         cmd_list->BeginTimeblock("clouds_prepare");
         {
+            cmd_list->BeginTimeblock("clouds_render");
             Pass_Clouds_Render(cmd_list, eye_layer);
+            cmd_list->EndTimeblock();
+
+            cmd_list->BeginTimeblock("clouds_temporal");
             Pass_Clouds_Temporal(cmd_list, eye_layer);
+            cmd_list->EndTimeblock();
         }
         cmd_list->EndTimeblock();
         return true;

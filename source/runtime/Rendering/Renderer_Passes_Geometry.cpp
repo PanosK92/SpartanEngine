@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Material.h"
 #include "../Rendering/GeometryBuffer.h"
@@ -45,6 +46,34 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        struct IndexedBatchKey
+        {
+            RHI_Buffer* vertex_buffer = nullptr;
+            RHI_Buffer* index_buffer  = nullptr;
+            RHI_CullMode cull_mode    = RHI_CullMode::Back;
+            bool alpha_tested         = false;
+
+            bool operator==(const IndexedBatchKey& other) const
+            {
+                return vertex_buffer == other.vertex_buffer && index_buffer == other.index_buffer && cull_mode == other.cull_mode && alpha_tested == other.alpha_tested;
+            }
+        };
+
+        struct IndexedBatchKeyHash
+        {
+            size_t operator()(const IndexedBatchKey& key) const
+            {
+                size_t hash = std::hash<RHI_Buffer*>{}(key.vertex_buffer);
+                hash ^= std::hash<RHI_Buffer*>{}(key.index_buffer) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+                hash ^= std::hash<uint32_t>{}(static_cast<uint32_t>(key.cull_mode)) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+                hash ^= std::hash<bool>{}(key.alpha_tested) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+                return hash;
+            }
+        };
+    }
+
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list)
     {
         if (World::GetLightCount() == 0)
@@ -59,9 +88,132 @@ namespace spartan
             return;
         }
 
+        struct ShadowBatch
+        {
+            RHI_Buffer* vertex_buffer = nullptr;
+            RHI_Buffer* index_buffer  = nullptr;
+            RHI_CullMode cull_mode    = RHI_CullMode::Back;
+            bool alpha_tested         = false;
+            uint32_t argument_offset  = 0;
+            vector<Sb_IndirectDrawArgs> arguments;
+        };
+
+        struct ShadowSlice
+        {
+            Light* light = nullptr;
+            uint32_t array_index = 0;
+            math::Rectangle rect;
+            vector<ShadowBatch> batches;
+            unordered_map<IndexedBatchKey, uint32_t, IndexedBatchKeyHash> batch_lookup;
+            vector<const Renderer_DrawCall*> visible_draws;
+            vector<const Renderer_DrawCall*> direct_draws;
+        };
+
+        vector<ShadowSlice> slices;
+        uint32_t argument_count = 0;
+        bool has_alpha_draws = false;
+        for (Entity* entity_light : World::GetEntitiesLights())
+        {
+            Light* light = entity_light->GetComponent<Light>();
+            if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityRadiometric() == 0.0f)
+            {
+                continue;
+            }
+
+            for (uint32_t array_index = 0; array_index < light->GetSliceCount(); array_index++)
+            {
+                const math::Rectangle& rect = light->GetAtlasRectangle(array_index);
+                if (!rect.IsDefined())
+                {
+                    continue;
+                }
+
+                ShadowSlice& slice = slices.emplace_back();
+                slice.light       = light;
+                slice.array_index = array_index;
+                slice.rect        = rect;
+
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    Render* renderable                 = draw_call.renderable;
+                    Material* material                 = renderable->GetMaterial();
+                    const float shadow_distance        = renderable->GetMaxShadowDistance();
+                    if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
+                    {
+                        continue;
+                    }
+
+                    if (!light->IsInViewFrustum(renderable, array_index))
+                    {
+                        continue;
+                    }
+
+                    slice.visible_draws.push_back(&draw_call);
+                    RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
+                    RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
+                    const bool alpha_tested   = array_index == 0 && light->GetLightType() == LightType::Directional && material->IsAlphaTested();
+                    has_alpha_draws          |= alpha_tested;
+                    const bool can_batch      = draw_call.instance_count == 1 && renderable->GetGlobalInstanceOffset() == 0 && vertex_buffer && index_buffer;
+                    if (!can_batch)
+                    {
+                        slice.direct_draws.push_back(&draw_call);
+                        continue;
+                    }
+
+                    const RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                    const IndexedBatchKey key    = { vertex_buffer, index_buffer, cull_mode, alpha_tested };
+                    auto [it, inserted]          = slice.batch_lookup.try_emplace(key, static_cast<uint32_t>(slice.batches.size()));
+                    if (inserted)
+                    {
+                        ShadowBatch* batch   = &slice.batches.emplace_back();
+                        batch->vertex_buffer = vertex_buffer;
+                        batch->index_buffer  = index_buffer;
+                        batch->cull_mode     = cull_mode;
+                        batch->alpha_tested  = alpha_tested;
+                    }
+                    ShadowBatch& batch = slice.batches[it->second];
+
+                    const bool close_to_shadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f;
+                    const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
+                    const uint32_t lod_index_shadow = clamp(renderable->GetLodIndex() + lod_index_bias, 0u, renderable->GetLodCount() - 1);
+                    const uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;
+
+                    Sb_IndirectDrawArgs& argument = batch.arguments.emplace_back();
+                    argument.index_count          = renderable->GetIndexCount(lod_index);
+                    argument.instance_count       = 1;
+                    argument.first_index          = renderable->GetIndexOffset(lod_index);
+                    argument.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(lod_index));
+                    argument.first_instance       = draw_call.draw_data_index;
+                    argument_count++;
+                }
+            }
+        }
+
+        RHI_Buffer* argument_buffer = GetBuffer(Renderer_Buffer::CpuIndirectDrawArgs);
+        RHI_Shader* multi_vertex_shader = GetShader(Renderer_Shader::depth_light_multi_draw_v);
+        RHI_Shader* multi_pixel_shader  = GetShader(Renderer_Shader::depth_light_multi_draw_alpha_color_p);
+        const bool shaders_supported    = multi_vertex_shader && multi_vertex_shader->IsCompiled() && (!has_alpha_draws || (multi_pixel_shader && multi_pixel_shader->IsCompiled()));
+        const bool use_batches          = shaders_supported && argument_buffer && argument_count != 0 && m_cpu_indirect_draw_arg_count + argument_count <= renderer_max_cpu_indirect_draws;
+        if (use_batches)
+        {
+            vector<Sb_IndirectDrawArgs> arguments;
+            arguments.reserve(argument_count);
+            for (ShadowSlice& slice : slices)
+            {
+                for (ShadowBatch& batch : slice.batches)
+                {
+                    batch.argument_offset = static_cast<uint32_t>((m_cpu_indirect_draw_arg_count + arguments.size()) * sizeof(Sb_IndirectDrawArgs));
+                    arguments.insert(arguments.end(), batch.arguments.begin(), batch.arguments.end());
+                }
+            }
+            cmd_list->UpdateBuffer(argument_buffer, m_cpu_indirect_draw_arg_count * sizeof(Sb_IndirectDrawArgs), arguments.size() * sizeof(Sb_IndirectDrawArgs), arguments.data());
+            m_cpu_indirect_draw_arg_count += argument_count;
+        }
+
         RHI_PipelineState pso;
         pso.name                             = "shadow_maps";
-        pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_light_v);
+        pso.shaders[RHI_Shader_Type::Vertex] = use_batches ? multi_vertex_shader : GetShader(Renderer_Shader::depth_light_v);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.clear_depth                      = 0.0f;
@@ -72,96 +224,84 @@ namespace spartan
         {
             cmd_list->SetPipelineState(pso);
 
-            for (Entity* entity_light : World::GetEntitiesLights())
+            for (ShadowSlice& slice : slices)
             {
-                Light* light = entity_light->GetComponent<Light>();
-                if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityRadiometric() == 0.0f)
-                {
-                    continue;
-                }
-    
-                RHI_RasterizerState* new_state = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
-                if (pso.rasterizer_state != new_state)
-                {
-                    pso.rasterizer_state = new_state;
-                    cmd_list->SetPipelineState(pso);
-                }
+                Light* light = slice.light;
+                RHI_RasterizerState* rasterizer_state = light->GetLightType() == LightType::Directional ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+                RHI_Viewport viewport;
+                viewport.x      = slice.rect.x;
+                viewport.y      = slice.rect.y;
+                viewport.width  = slice.rect.width;
+                viewport.height = slice.rect.height;
+                cmd_list->SetViewport(viewport);
+                cmd_list->SetScissorRectangle(slice.rect);
 
-                for (uint32_t array_index = 0; array_index < light->GetSliceCount(); array_index++)
+                if (use_batches)
                 {
-                    const math::Rectangle& rect = light->GetAtlasRectangle(array_index);
-                    if (!rect.IsDefined())
+                    for (ShadowBatch& batch : slice.batches)
                     {
-                        continue;
-                    }
-                    RHI_Viewport viewport;
-                    viewport.x      = rect.x;
-                    viewport.y      = rect.y;
-                    viewport.width  = rect.width;
-                    viewport.height = rect.height;
-                    cmd_list->SetViewport(viewport);
-                    cmd_list->SetScissorRectangle(rect);
-
-                    for (uint32_t i = 0; i < m_draw_call_count; i++)
-                    {
-                        const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                        Render* renderable             = draw_call.renderable;
-                        Material* material                 = renderable->GetMaterial();
-                        const float shadow_distance        = renderable->GetMaxShadowDistance();
-                        if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
+                        RHI_Shader* vertex_shader = multi_vertex_shader;
+                        RHI_Shader* pixel_shader  = batch.alpha_tested ? multi_pixel_shader : nullptr;
+                        if (pso.shaders[RHI_Shader_Type::Vertex] != vertex_shader || pso.shaders[RHI_Shader_Type::Pixel] != pixel_shader || pso.rasterizer_state != rasterizer_state)
                         {
-                            continue;
+                            pso.shaders[RHI_Shader_Type::Vertex] = vertex_shader;
+                            pso.shaders[RHI_Shader_Type::Pixel]  = pixel_shader;
+                            pso.rasterizer_state                 = rasterizer_state;
+                            cmd_list->SetPipelineState(pso);
+                            cmd_list->SetViewport(viewport);
+                            cmd_list->SetScissorRectangle(slice.rect);
                         }
 
-                        // todo: this needs to be recalculate only when the light or the renderable moves, not every frame
-                        if (!light->IsInViewFrustum(renderable, array_index))
-                        {
-                            continue;
-                        }
-
-                        {
-                            bool is_first_cascade = array_index == 0 && light->GetLightType() == LightType::Directional;
-                            bool is_alpha_tested  = material->IsAlphaTested();
-                            RHI_Shader* ps        = (is_first_cascade && is_alpha_tested) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
-                        
-                            if (pso.shaders[RHI_Shader_Type::Pixel] != ps)
-                            {
-                                pso.shaders[RHI_Shader_Type::Pixel] = ps;
-                                cmd_list->SetPipelineState(pso);
-
-                                cmd_list->SetViewport(viewport);
-                                cmd_list->SetScissorRectangle(rect);
-                            }
-                        }
-
-                        m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
+                        m_pcb_pass_cpu.draw_index     = numeric_limits<uint32_t>::max();
                         m_pcb_pass_cpu.is_transparent = 0;
-                        m_pcb_pass_cpu.material_index = material->GetIndex();
-                        m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
-                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
+                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(slice.array_index), 0.0f);
                         cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                        {
-                            cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                            RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
-                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-
-                            // compute lod index
-                            bool close_to_shadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f;                                   // anything within 100 meters of the shadow caster
-                            uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;                              // bias for directional lights
-                            uint32_t lod_index_shadow = clamp(renderable->GetLodIndex() + lod_index_bias, 0u, renderable->GetLodCount() - 1); // lod index biased towards lower quality lod
-                            uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;                             // use normal lod if close to shadow caster, otherwise use light specific lod
-
-                            cmd_list->DrawIndexed(
-                                renderable->GetIndexCount(lod_index),
-                                renderable->GetIndexOffset(lod_index),
-                                renderable->GetVertexOffset(lod_index),
-                                renderable->GetGlobalInstanceOffset() + draw_call.instance_index,
-                                draw_call.instance_count
-                            );
-                        }
+                        cmd_list->SetCullMode(batch.cull_mode);
+                        cmd_list->SetBufferVertex(batch.vertex_buffer);
+                        cmd_list->SetBufferIndex(batch.index_buffer);
+                        cmd_list->DrawIndexedIndirect(argument_buffer, batch.argument_offset, static_cast<uint32_t>(batch.arguments.size()));
                     }
+                }
+
+                auto draw_direct = [&](const Renderer_DrawCall& draw_call)
+                {
+                    Render* renderable = draw_call.renderable;
+                    Material* material = renderable->GetMaterial();
+                    const bool is_first_cascade = slice.array_index == 0 && light->GetLightType() == LightType::Directional;
+                    RHI_Shader* vertex_shader   = use_batches ? multi_vertex_shader : GetShader(Renderer_Shader::depth_light_v);
+                    RHI_Shader* pixel_shader    = is_first_cascade && material->IsAlphaTested() ? (use_batches ? multi_pixel_shader : GetShader(Renderer_Shader::depth_light_alpha_color_p)) : nullptr;
+                    if (pso.shaders[RHI_Shader_Type::Vertex] != vertex_shader || pso.shaders[RHI_Shader_Type::Pixel] != pixel_shader || pso.rasterizer_state != rasterizer_state)
+                    {
+                        pso.shaders[RHI_Shader_Type::Vertex] = vertex_shader;
+                        pso.shaders[RHI_Shader_Type::Pixel]  = pixel_shader;
+                        pso.rasterizer_state                 = rasterizer_state;
+                        cmd_list->SetPipelineState(pso);
+                        cmd_list->SetViewport(viewport);
+                        cmd_list->SetScissorRectangle(slice.rect);
+                    }
+
+                    m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
+                    m_pcb_pass_cpu.is_transparent = 0;
+                    m_pcb_pass_cpu.material_index = material->GetIndex();
+                    m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
+                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(slice.array_index), 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                    RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                    const bool close_to_shadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f;
+                    const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
+                    const uint32_t lod_index_shadow = clamp(renderable->GetLodIndex() + lod_index_bias, 0u, renderable->GetLodCount() - 1);
+                    const uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;
+                    cmd_list->DrawIndexed(renderable->GetIndexCount(lod_index), renderable->GetIndexOffset(lod_index), renderable->GetVertexOffset(lod_index), renderable->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
+                };
+
+                const vector<const Renderer_DrawCall*>& draws = use_batches ? slice.direct_draws : slice.visible_draws;
+                for (const Renderer_DrawCall* draw_call : draws)
+                {
+                    draw_direct(*draw_call);
                 }
             }
         }
@@ -184,13 +324,87 @@ namespace spartan
 
         bool render_occluders = cvar_hiz_occlusion.GetValueAs<bool>() && !m_is_hiz_suppressed;
 
+        struct HiZBatch
+        {
+            RHI_Buffer* vertex_buffer = nullptr;
+            RHI_Buffer* index_buffer  = nullptr;
+            RHI_CullMode cull_mode    = RHI_CullMode::Back;
+            uint32_t argument_offset  = 0;
+            vector<Sb_IndirectDrawArgs> arguments;
+        };
+
+        vector<HiZBatch> batches;
+        unordered_map<IndexedBatchKey, uint32_t, IndexedBatchKeyHash> batch_lookup;
+        vector<const Renderer_DrawCall*> visible_draws;
+        vector<const Renderer_DrawCall*> direct_draws;
+        uint32_t argument_count = 0;
+        if (render_occluders)
+        {
+            for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
+                if (!draw_call.is_occluder)
+                {
+                    continue;
+                }
+
+                visible_draws.push_back(&draw_call);
+                Render* renderable        = draw_call.renderable;
+                RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
+                RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
+                const bool can_batch      = draw_call.instance_count == 1 && renderable->GetGlobalInstanceOffset() == 0 && vertex_buffer && index_buffer;
+                if (!can_batch)
+                {
+                    direct_draws.push_back(&draw_call);
+                    continue;
+                }
+
+                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                cull_mode              = GetRasterizerState(Renderer_RasterizerState::Solid)->GetPolygonMode() == RHI_PolygonMode::Wireframe ? RHI_CullMode::None : cull_mode;
+                const IndexedBatchKey key = { vertex_buffer, index_buffer, cull_mode, false };
+                auto [it, inserted]       = batch_lookup.try_emplace(key, static_cast<uint32_t>(batches.size()));
+                if (inserted)
+                {
+                    HiZBatch* batch      = &batches.emplace_back();
+                    batch->vertex_buffer = vertex_buffer;
+                    batch->index_buffer  = index_buffer;
+                    batch->cull_mode     = cull_mode;
+                }
+                HiZBatch& batch = batches[it->second];
+
+                Sb_IndirectDrawArgs& argument = batch.arguments.emplace_back();
+                argument.index_count          = renderable->GetIndexCount(draw_call.lod_index);
+                argument.instance_count       = 1;
+                argument.first_index          = renderable->GetIndexOffset(draw_call.lod_index);
+                argument.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(draw_call.lod_index));
+                argument.first_instance       = draw_call.draw_data_index;
+                argument_count++;
+            }
+        }
+
+        RHI_Buffer* argument_buffer = GetBuffer(Renderer_Buffer::CpuIndirectDrawArgs);
+        RHI_Shader* multi_vertex_shader = GetShader(Renderer_Shader::depth_prepass_multi_draw_v);
+        const bool use_batches          = multi_vertex_shader && multi_vertex_shader->IsCompiled() && argument_buffer && argument_count != 0 && m_cpu_indirect_draw_arg_count + argument_count <= renderer_max_cpu_indirect_draws;
+        if (use_batches)
+        {
+            vector<Sb_IndirectDrawArgs> arguments;
+            arguments.reserve(argument_count);
+            for (HiZBatch& batch : batches)
+            {
+                batch.argument_offset = static_cast<uint32_t>((m_cpu_indirect_draw_arg_count + arguments.size()) * sizeof(Sb_IndirectDrawArgs));
+                arguments.insert(arguments.end(), batch.arguments.begin(), batch.arguments.end());
+            }
+            cmd_list->UpdateBuffer(argument_buffer, m_cpu_indirect_draw_arg_count * sizeof(Sb_IndirectDrawArgs), arguments.size() * sizeof(Sb_IndirectDrawArgs), arguments.data());
+            m_cpu_indirect_draw_arg_count += argument_count;
+        }
+
         // always start the render pass so the depth texture is cleared to far plane (0.0).
         // without this, the blit and downscale would propagate stale depth into the hi-z
         // mip chain, causing the cull shader to incorrectly occlude objects.
         {
             RHI_PipelineState pso;
             pso.name                             = "occluders";
-            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v);
+            pso.shaders[RHI_Shader_Type::Vertex] = use_batches ? multi_vertex_shader : GetShader(Renderer_Shader::depth_prepass_v);
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -202,15 +416,21 @@ namespace spartan
 
             if (render_occluders)
             {
-                for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
+                if (use_batches)
                 {
-                    const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-
-                    if (!draw_call.is_occluder)
+                    m_pcb_pass_cpu.draw_index = numeric_limits<uint32_t>::max();
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    for (HiZBatch& batch : batches)
                     {
-                        continue;
+                        cmd_list->SetCullMode(batch.cull_mode);
+                        cmd_list->SetBufferVertex(batch.vertex_buffer);
+                        cmd_list->SetBufferIndex(batch.index_buffer);
+                        cmd_list->DrawIndexedIndirect(argument_buffer, batch.argument_offset, static_cast<uint32_t>(batch.arguments.size()));
                     }
+                }
 
+                auto draw_direct = [&](const Renderer_DrawCall& draw_call)
+                {
                     Render* renderable = draw_call.renderable;
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
                     cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
@@ -222,11 +442,13 @@ namespace spartan
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                    cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(draw_call.lod_index),
-                        renderable->GetIndexOffset(draw_call.lod_index),
-                        renderable->GetVertexOffset(draw_call.lod_index)
-                    );
+                    cmd_list->DrawIndexed(renderable->GetIndexCount(draw_call.lod_index), renderable->GetIndexOffset(draw_call.lod_index), renderable->GetVertexOffset(draw_call.lod_index));
+                };
+
+                const vector<const Renderer_DrawCall*>& draws = use_batches ? direct_draws : visible_draws;
+                for (const Renderer_DrawCall* draw_call : draws)
+                {
+                    draw_direct(*draw_call);
                 }
             }
         }
@@ -666,18 +888,13 @@ namespace spartan
             // these never change frame to frame so a single Update covers the lifetime of EnableProceduralGrass
             if (!m_pass_state.grass_args_baked)
             {
-                buf_args->ResetOffset();
-                buf_args->Update(
-                    cmd_list,
-                    &m_pass_state.grass_indirect_args_static[0],
-                    static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs) * renderer_max_grass_lod_count)
-                );
+                cmd_list->UpdateBuffer(buf_args, 0, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs) * renderer_max_grass_lod_count), &m_pass_state.grass_indirect_args_static[0], false);
                 m_pass_state.grass_args_baked = true;
             }
 
             // clear the per lod counters on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops its grass for a frame
             uint32_t zero_counts[renderer_max_grass_lod_count] = { 0u, 0u, 0u };
-            cmd_list->UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0]);
+            cmd_list->UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0], false);
 
             // camera position used as the anchor for the ring grid, the populate shader snaps it to the cell grid
             Camera* camera = World::GetCamera();

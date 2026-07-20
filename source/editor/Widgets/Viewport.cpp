@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "Math/Ray.h"
 #include "../ImGui/ImGui_Extension.h"
+#include "../ImGui/ImGui_Style.h"
 #include "../ImGui/ImGui_TransformGizmo.h"
 #include "Settings.h"
 //========================================
@@ -206,12 +207,12 @@ void Viewport::OnTickVisible()
 
     // let the input system know about the position of this viewport within the editor
     // this will allow the system to properly calculate a relative mouse position
-    Vector2 offset = ImGui::GetCursorPos();
-    offset.y += 34; // TODO: this is probably the tab bar height, find a way to get it properly
+    const ImVec2 screen_pos = ImGui::GetCursorScreenPos();
+    const ImVec2 main_viewport_pos = ImGui::GetMainViewport()->Pos;
+    const Vector2 offset = Vector2(screen_pos.x - main_viewport_pos.x, screen_pos.y - main_viewport_pos.y);
     Input::SetEditorViewportOffset(offset);
 
     // publish the viewport's screen-space rect so other systems can snap overlays to it
-    ImVec2 screen_pos = ImGui::GetCursorScreenPos();
     m_screen_position = Vector2(screen_pos.x, screen_pos.y);
     m_screen_size     = Vector2(static_cast<float>(width), static_cast<float>(height));
 
@@ -221,6 +222,22 @@ void Viewport::OnTickVisible()
     // cache the image rect for hover tests, isitemhovered can return false during drag-drop
     ImVec2 image_rect_min = ImGui::GetItemRectMin();
     ImVec2 image_rect_max = ImGui::GetItemRectMax();
+
+    if (Engine::IsFlagSet(EngineMode::Playing))
+    {
+        const bool paused = Engine::IsFlagSet(EngineMode::Paused);
+        const char* label = paused ? "PAUSED" : "PLAYING";
+        const ImVec4 status_color = paused ? ImGui::Style::color_warning : ImGui::Style::color_ok;
+        const float dpi = Window::GetDpiScale();
+        const ImVec2 text_size = ImGui::CalcTextSize(label);
+        const ImVec2 padding = ImVec2(10.0f * dpi, 5.0f * dpi);
+        const ImVec2 badge_min = ImVec2(image_rect_min.x + 12.0f * dpi, image_rect_min.y + 12.0f * dpi);
+        const ImVec2 badge_max = ImVec2(badge_min.x + text_size.x + padding.x * 2.0f, badge_min.y + text_size.y + padding.y * 2.0f);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(badge_min, badge_max, ImGui::ColorConvertFloat4ToU32(ImVec4(0.02f, 0.02f, 0.02f, 0.82f)), 5.0f * dpi);
+        draw_list->AddRect(badge_min, badge_max, ImGui::ColorConvertFloat4ToU32(status_color), 5.0f * dpi);
+        draw_list->AddText(ImVec2(badge_min.x + padding.x, badge_min.y + padding.y), ImGui::ColorConvertFloat4ToU32(status_color), label);
+    }
 
     // let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());

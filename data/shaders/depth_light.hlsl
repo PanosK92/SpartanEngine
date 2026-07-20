@@ -23,10 +23,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+#ifdef INDEXED_MULTI_DRAW
+gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_or_draw_index : SV_InstanceID)
+{
+    Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
+    const bool is_multi_draw = buffer_pass.draw_index == 0xffffffffu;
+    _draw                    = draw_data[is_multi_draw ? instance_or_draw_index : buffer_pass.draw_index];
+    uint instance_id         = is_multi_draw ? _draw.instance_index : instance_or_draw_index;
+#else
 gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_InstanceID)
 {
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
-    _draw = draw_data[buffer_pass.draw_index];
+    _draw                    = draw_data[buffer_pass.draw_index];
+#endif
 
     float3 f3_value_2 = pass_get_f3_value2();
     uint index_light  = (uint)f3_value_2.x;
@@ -57,7 +66,11 @@ void main_ps(gbuffer_vertex vertex)
     pass_load_draw_data_from_vertex(vertex.material_index);
 
     // distance based alpha threshold
+#ifdef INDEXED_MULTI_DRAW
+    const bool has_albedo       = GetMaterial().has_texture_albedo();
+#else
     const bool has_albedo       = pass_get_f3_value().x == 1.0f;
+#endif
     const float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;
     const float3 position_world = get_position(vertex.position.z, screen_uv);
     float alpha_threshold       = get_alpha_threshold(position_world);

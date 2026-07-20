@@ -269,7 +269,7 @@ float4 motion_blur_reconstruction(
     float2 pixel_velocity  = velocity_sample.xy;
     bool   is_sky          = raw_depth < 0.0001f;
     bool   is_radial       = velocity_sample.z > 0.5f;
-    if (is_sky)
+    if (is_sky && dot(pixel_velocity, pixel_velocity) < 1e-12f)
     {
         pixel_velocity = compute_sky_velocity(uv);
         is_radial      = false;

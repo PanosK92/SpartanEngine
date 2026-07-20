@@ -143,104 +143,79 @@ namespace
     {
         bool visible = false;
 
-        const char* license_text =
-            "MIT License"
-            "\n\n"
-            "Copyright(c) 2015-2026 Panos Karabelas"
-             "\n\n"
-            "Permission is hereby granted, free of charge, to any person obtaining a copy"
-            "of this software and associated documentation files (the \"Software\"), to deal"
-            "in the Software without restriction, including without limitation the rights"
-            "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell"
-            "copies of the Software, and to permit persons to whom the Software is"
-            "furnished to do so, subject to the following conditions:"
-            "\n\n"
-            "The above copyright notice and this permission notice shall be included in all"
-            "copies or substantial portions of the Software."
-            "\n\n"
-            "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR"
-            "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, "
-            "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE"
-            "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER"
-            "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, "
-            "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
+        const char* license_text = R"(MIT License
 
-        void personal_details()
+Copyright(c) 2015-2026 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.)";
+
+        void draw_header()
         {
-            ImGui::BeginGroup();
+            const float dpi = spartan::Window::GetDpiScale();
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f * dpi);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f * dpi, 12.0f * dpi));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
+            if (ImGui::BeginChild("##about_header", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding))
             {
-                // shift text that the buttons and the text align
-                static const float y_shift = 6.0f;
+                ImGuiSp::image(spartan::IconType::Logo, 48.0f * dpi);
+                ImGui::SameLine(0.0f, 12.0f * dpi);
+                ImGui::BeginGroup();
+                if (Editor::font_bold)
+                {
+                    ImGui::PushFont(Editor::font_bold, 0.0f);
+                }
+                ImGui::TextUnformatted("Spartan Engine");
+                if (Editor::font_bold)
+                {
+                    ImGui::PopFont();
+                }
+                ImGui::TextDisabled("Real-time 3D engine for rendering and systems research");
+                ImGui::EndGroup();
 
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                ImGui::Text("Creator");
-
-                ImGui::SameLine();
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
-                if (ImGuiSp::button("Panos Karabelas"))
+                ImGui::Spacing();
+                if (ImGuiSp::button("Website"))
                 {
                     spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
                 }
-
                 ImGui::SameLine();
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                 if (ImGuiSp::button("GitHub"))
                 {
                     spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
                 }
-
                 ImGui::SameLine();
-                ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
-                if (ImGuiSp::button("X"))
+                if (ImGuiSp::button("Sponsor"))
                 {
-                    spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas");
+                    spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
                 }
             }
-            ImGui::EndGroup();
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
+            ImGui::PopStyleVar(2);
         }
 
-       void tab_general()
+        void tab_general()
         {
-            // --- Top Section: Creator & Links (Fixed Height) ---
-            ImGui::Text("Creator");
-            ImGui::SameLine();
+            ImGui::TextWrapped("An open-source real-time 3D engine focused on modern rendering, engine research, and a direct development workflow.");
             ImGui::Spacing();
-
-            ImGui::AlignTextToFramePadding();
-
-            if (ImGuiSp::button("Panos Karabelas"))
-            {
-                spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
-            }
-
-            ImGui::SameLine();
-            if (ImGuiSp::button("GitHub"))
-            {
-                spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
-            }
-
-            ImGui::SameLine();
-            if (ImGuiSp::button("X"))
-            {
-                spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas");
-            }
-
-            ImGui::Spacing();
+            ImGui::TextDisabled("Created and maintained by Panos Karabelas");
             ImGui::Separator();
-            ImGui::Spacing();
 
-            // --- Bottom Section: License (Dynamic Height) ---
-            ImGui::Text("License");
+            ImGui::TextUnformatted("MIT License");
+            ImGui::SameLine();
+            const float copy_width = ImGui::CalcTextSize("Copy license").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            ImGui::SetCursorPosX(max(ImGui::GetCursorPosX(), ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - copy_width));
+            if (ImGuiSp::button("Copy license"))
+            {
+                ImGui::SetClipboardText(license_text);
+            }
 
-            // Push a darker background color for the text area
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-
-            // ImVec2(0.0f, -FLT_MIN) tells ImGui:
-            // X = 0.0f      -> "Use all available width"
-            // Y = -FLT_MIN  -> "Use all remaining vertical space"
             if (ImGui::BeginChild("license_scroll", ImVec2(0.0f, -FLT_MIN), true))
             {
-                // Use GetContentRegionAvail().x to ensure text wraps *before* hitting the scrollbar
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + ImGui::GetContentRegionAvail().x);
                 ImGui::TextUnformatted(license_text);
                 ImGui::PopTextWrapPos();
@@ -405,18 +380,43 @@ namespace
 
         void tab_libraries()
         {
-            ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
+            static ImGuiTextFilter library_filter;
+            uint32_t visible_count = 0;
+            for (const third_party_lib& lib : get_libs())
+            {
+                const string searchable = lib.name + " " + lib.version;
+                visible_count += library_filter.PassFilter(searchable.c_str()) ? 1 : 0;
+            }
+
+            const string count_text = library_filter.IsActive() ? to_string(visible_count) + " of " + to_string(get_libs().size()) : to_string(get_libs().size()) + " libraries";
+            const float count_width = ImGui::CalcTextSize(count_text.c_str()).x;
+            ImGui::SetNextItemWidth(max(160.0f * spartan::Window::GetDpiScale(), ImGui::GetContentRegionAvail().x - count_width - ImGui::GetStyle().ItemSpacing.x));
+            ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+            if (ImGui::InputTextWithHint("##library_filter", "Search libraries", library_filter.InputBuf, IM_ARRAYSIZE(library_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
+            {
+                library_filter.Build();
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", count_text.c_str());
+
+            const ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable;
 
             if (ImGui::BeginTable("##third_party_libs_table", 3, flags, ImVec2(0.0f, -FLT_MIN)))
             {
                 ImGui::TableSetupScrollFreeze(0, 1);
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Version", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-                ImGui::TableSetupColumn("Link", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupColumn("Version", ImGuiTableColumnFlags_WidthFixed, 110.0f * spartan::Window::GetDpiScale());
+                ImGui::TableSetupColumn("Link", ImGuiTableColumnFlags_WidthFixed, 72.0f * spartan::Window::GetDpiScale());
                 ImGui::TableHeadersRow();
 
                 for (const third_party_lib& lib : get_libs())
                 {
+                    const string searchable = lib.name + " " + lib.version;
+                    if (!library_filter.PassFilter(searchable.c_str()))
+                    {
+                        continue;
+                    }
+
                     ImGui::TableNextRow();
 
                     ImGui::TableSetColumnIndex(0);
@@ -429,7 +429,7 @@ namespace
 
                     ImGui::TableSetColumnIndex(2);
                     ImGui::PushID(lib.url.c_str());
-                    if (ImGuiSp::button("URL"))
+                    if (ImGuiSp::button("Open"))
                     {
                         spartan::FileSystem::OpenUrl(lib.url);
                     }
@@ -448,11 +448,15 @@ namespace
 
             center_next_window(editor);
 
-            // fixed size for the About window to prevent it jumping around when switching tabs
-            ImGui::SetNextWindowSize(ImVec2(800.0f * spartan::Window::GetDpiScale(), 500.0f * spartan::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
+            const float dpi = spartan::Window::GetDpiScale();
+            ImGui::SetNextWindowSize(ImVec2(760.0f * dpi, 540.0f * dpi), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSizeConstraints(ImVec2(560.0f * dpi, 420.0f * dpi), ImVec2(FLT_MAX, FLT_MAX));
 
             if (ImGui::Begin("About Spartan Engine", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
             {
+                draw_header();
+                ImGui::Spacing();
+
                 if (ImGui::BeginTabBar("##about_tabs"))
                 {
                     if (ImGui::BeginTabItem("General"))
@@ -468,7 +472,7 @@ namespace
                         ImGui::EndTabItem();
                     }
 
-                    if (ImGui::BeginTabItem("Third Party"))
+                    if (ImGui::BeginTabItem("Third-party"))
                     {
                         tab_libraries();
                         ImGui::EndTabItem();

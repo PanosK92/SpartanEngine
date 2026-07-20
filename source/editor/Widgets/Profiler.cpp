@@ -35,6 +35,20 @@ using namespace spartan::math;
 
 namespace
 {
+    bool toggle_button(const char* label, const bool active)
+    {
+        if (active)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+        }
+        const bool clicked = ImGui::Button(label);
+        if (active)
+        {
+            ImGui::PopStyleColor();
+        }
+        return clicked;
+    }
+
     ImU32 get_time_block_color(const char* name, bool is_compute = false)
     {
         if (is_compute)
@@ -60,26 +74,6 @@ namespace
             static_cast<int>(color.z * 255),
             255
         );
-    }
-
-    void show_time_block(const spartan::TimeBlock& time_block)
-    {
-        const float m_tree_depth_stride = 10;
-
-        const char* name        = time_block.GetName();
-        const float duration    = time_block.GetDuration();
-        const float fraction    = duration / 10.0f;
-        const float width       = fraction * ImGui::GetContentRegionAvail().x;
-        const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
-        const ImVec2 pos        = ImGui::GetCursorPos();
-        const float text_height = ImGui::CalcTextSize(name, nullptr, true).y;
-
-        ImU32 col = get_time_block_color(name);
-
-        ImGui::GetWindowDrawList()->AddRectFilled(pos_screen, ImVec2(pos_screen.x + width, pos_screen.y + text_height), col);
-
-        ImGui::SetCursorPos(ImVec2(pos.x + m_tree_depth_stride * time_block.GetTreeDepth(), pos.y));
-        ImGui::Text("%s - %.3f ms", name, duration);
     }
 
     void show_memory_bar(const char* label, float used_mb, float budget_mb, float total_mb, ImVec2 size = ImVec2(-1, 0))
@@ -131,7 +125,6 @@ namespace
 
 Profiler::Profiler(Editor* editor) : Widget(editor)
 {
-    m_flags        |= ImGuiWindowFlags_NoScrollbar;
     m_title        = "Profiler";
     m_visible      = false;
     m_size_initial = Vector2(1000, 715);
@@ -157,73 +150,91 @@ void Profiler::OnTickVisible()
         m_prev_mode_view      = mode_view;
     }
 
-    // controls
+    const float dpi = spartan::Window::GetDpiScale();
+    if (toggle_button("GPU", mode_hardware == 0))
     {
-        ImGui::Text("Hardware: ");
+        mode_hardware = 0;
+    }
+    ImGui::SameLine();
+    if (toggle_button("CPU", mode_hardware == 1))
+    {
+        mode_hardware = 1;
+    }
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+    if (toggle_button("Timeline", mode_view == 1))
+    {
+        mode_view = 1;
+    }
+    ImGui::SameLine();
+    if (toggle_button("List", mode_view == 0))
+    {
+        mode_view = 0;
+    }
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+    if (toggle_button("Freeze", m_frozen))
+    {
+        m_frozen = !m_frozen;
+    }
+    ImGuiSp::tooltip(m_frozen ? "Resume live capture" : "Freeze the current capture");
+
+    if (mode_view == 1)
+    {
         ImGui::SameLine();
-        if (ImGui::BeginCombo("##mode_hardware", mode_hardware == 0 ? "GPU" : "CPU"))
+        if (ImGuiSp::button("Fit"))
         {
-            if (ImGui::Selectable("GPU", mode_hardware == 0))
+            m_timeline_needs_fit = true;
+            m_user_has_interacted = false;
+        }
+        ImGuiSp::tooltip("Fit all captured blocks");
+    }
+    else
+    {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(140.0f * dpi);
+        if (ImGui::BeginCombo("##mode_sort", mode_sort == 0 ? "Name" : "Duration"))
+        {
+            if (ImGui::Selectable("Name", mode_sort == 0))
             {
-                mode_hardware = 0;
+                mode_sort = 0;
             }
-            if (ImGui::Selectable("CPU", mode_hardware == 1))
+            if (ImGui::Selectable("Duration", mode_sort == 1))
             {
-                mode_hardware = 1;
+                mode_sort = 1;
             }
             ImGui::EndCombo();
         }
+    }
 
-        ImGui::SameLine();
-        ImGui::Text("View: ");
-        ImGui::SameLine();
-        if (ImGui::BeginCombo("##mode_view", mode_view == 0 ? "List" : "Timeline"))
+    const bool show_interval = !m_frozen;
+    const float interval_controls_width = 210.0f * dpi;
+    const bool interval_on_same_row = show_interval && ImGui::GetContentRegionAvail().x >= 420.0f * dpi;
+    ImGui::SetNextItemWidth(interval_on_same_row ? ImGui::GetContentRegionAvail().x - interval_controls_width : -FLT_MIN);
+    ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+    if (ImGui::InputTextWithHint("##profile_filter", "Filter captured blocks", m_block_filter.InputBuf, IM_ARRAYSIZE(m_block_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
+    {
+        m_block_filter.Build();
+    }
+
+    if (show_interval)
+    {
+        if (interval_on_same_row)
         {
-            if (ImGui::Selectable("List", mode_view == 0))
-            {
-                mode_view = 0;
-            }
-            if (ImGui::Selectable("Timeline", mode_view == 1))
-            {
-                mode_view = 1;
-            }
-            ImGui::EndCombo();
+            ImGui::SameLine();
         }
-
-        if (mode_view == 0)
-        {
-            ImGui::SameLine();
-            ImGui::Text("Sort: ");
-            ImGui::SameLine();
-            if (ImGui::BeginCombo("##mode_sort", mode_sort == 0 ? "Alphabetically" : "By Duration"))
-            {
-                if (ImGui::Selectable("Alphabetically", mode_sort == 0))
-                {
-                    mode_sort = 0;
-                }
-                if (ImGui::Selectable("By Duration", mode_sort == 1))
-                {
-                    mode_sort = 1;
-                }
-                ImGui::EndCombo();
-            }
-        }
-
-        // freeze toggle and update interval on the same line
-        ImGui::Text("Freeze");
+        ImGui::TextDisabled("Refresh");
         ImGui::SameLine();
-        ImGuiSp::toggle_switch("##freeze", &m_frozen);
-        if (!m_frozen)
+        float interval = spartan::Profiler::GetUpdateInterval();
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        if (ImGui::SliderFloat("##update_interval", &interval, 0.0f, 0.5f, "%.2f s"))
         {
-            ImGui::SameLine();
-            float interval = spartan::Profiler::GetUpdateInterval();
-            ImGui::SetNextItemWidth(-1);
-            ImGui::SliderFloat("##update_interval", &interval, 0.0f, 0.5f, "Update Interval = %.2f");
             spartan::Profiler::SetUpdateInterval(interval);
         }
-
-        ImGui::Separator();
     }
+    ImGui::Separator();
 
     spartan::TimeBlockType type = mode_hardware == 0 ? spartan::TimeBlockType::Gpu : spartan::TimeBlockType::Cpu;
 
@@ -253,21 +264,56 @@ void Profiler::OnTickVisible()
         {
             sort(time_blocks.begin(), time_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
             {
-                return a.GetName() < b.GetName();
+                return string_view(a.GetName()) < string_view(b.GetName());
             });
         }
 
-        for (uint32_t i = 0; i < time_block_count; i++)
+        uint32_t visible_count = 0;
+        if (ImGui::BeginTable("##profile_list", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
         {
-            if (time_blocks[i].GetType() != type)
+            ImGui::TableSetupColumn("Block", ImGuiTableColumnFlags_WidthStretch, 0.55f);
+            ImGui::TableSetupColumn("Duration", ImGuiTableColumnFlags_WidthFixed, 100.0f * dpi);
+            ImGui::TableSetupColumn("Frame", ImGuiTableColumnFlags_WidthStretch, 0.25f);
+            ImGui::TableHeadersRow();
+
+            for (uint32_t i = 0; i < time_block_count; i++)
             {
-                continue;
+                const spartan::TimeBlock& block = time_blocks[i];
+                if (block.GetType() != type || !block.IsComplete() || !m_block_filter.PassFilter(block.GetName()))
+                {
+                    continue;
+                }
+
+                visible_count++;
+                ImGui::PushID(static_cast<int>(i));
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                const ImVec4 marker_color = ImGui::ColorConvertU32ToFloat4(get_time_block_color(block.GetName(), block.GetQueueType() == spartan::RHI_Queue_Type::Compute));
+                ImGui::ColorButton("##block_color", marker_color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(8.0f * dpi, 8.0f * dpi));
+                ImGui::SameLine();
+                ImGui::TextUnformatted(block.GetName());
+
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%.3f ms", block.GetDuration());
+
+                ImGui::TableSetColumnIndex(2);
+                const float fraction = time_last > 0.0f ? ImClamp(block.GetDuration() / time_last, 0.0f, 1.0f) : 0.0f;
+                char percentage[16];
+                snprintf(percentage, sizeof(percentage), "%.1f%%", fraction * 100.0f);
+                ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), percentage);
+                ImGui::PopID();
             }
-            if (!time_blocks[i].IsComplete())
-            {
-                continue;
-            }
-            show_time_block(time_blocks[i]);
+
+            ImGui::EndTable();
+        }
+
+        if (visible_count == 0)
+        {
+            const char* message = m_block_filter.IsActive() ? "No captured blocks match your filter" : "No captured blocks available";
+            const ImVec2 message_size = ImGui::CalcTextSize(message);
+            ImGui::SetCursorPosX(max(ImGui::GetCursorPosX(), (ImGui::GetWindowWidth() - message_size.x) * 0.5f));
+            ImGui::Dummy(ImVec2(0.0f, 18.0f * dpi));
+            ImGui::TextDisabled("%s", message);
         }
     }
     else
@@ -275,12 +321,12 @@ void Profiler::OnTickVisible()
         // timeline view
 
         // layout constants
-        const float lane_height   = 40.0f;
-        const float lane_padding  = 4.0f;
-        const float label_width   = 120.0f;
-        const float ruler_height  = 34.0f;
+        const float lane_height   = 40.0f * dpi;
+        const float lane_padding  = 4.0f * dpi;
+        const float ruler_height  = 34.0f * dpi;
         const float content_width = ImGui::GetContentRegionAvail().x;
-        const float timeline_width = ImMax(content_width - label_width, 100.0f);
+        const float label_width   = min(120.0f * dpi, content_width * 0.3f);
+        const float timeline_width = ImMax(content_width - label_width, 100.0f * dpi);
 
         // build lane info
         struct LaneInfo
@@ -303,7 +349,7 @@ void Profiler::OnTickVisible()
         {
             for (uint32_t i = 0; i < time_block_count; i++)
             {
-                if (time_blocks[i].GetType() == spartan::TimeBlockType::Cpu && time_blocks[i].IsComplete())
+                if (time_blocks[i].GetType() == spartan::TimeBlockType::Cpu && time_blocks[i].IsComplete() && m_block_filter.PassFilter(time_blocks[i].GetName()))
                 {
                     max_depth = max(max_depth, time_blocks[i].GetTreeDepth());
                 }
@@ -326,7 +372,7 @@ void Profiler::OnTickVisible()
         for (uint32_t i = 0; i < time_block_count; i++)
         {
             const spartan::TimeBlock& block = time_blocks[i];
-            if (!block.IsComplete() || block.GetType() != type)
+            if (!block.IsComplete() || block.GetType() != type || !m_block_filter.PassFilter(block.GetName()))
             {
                 continue;
             }
@@ -437,7 +483,7 @@ void Profiler::OnTickVisible()
 
             // label area background
             draw_list->AddRectFilled(origin, ImVec2(origin.x + label_width - 1.0f, ruler_max.y), IM_COL32(35, 35, 40, 255));
-            draw_list->AddText(ImVec2(origin.x + 8.0f, origin.y + 8.0f), IM_COL32(140, 140, 140, 255), "ms");
+            draw_list->AddText(ImVec2(origin.x + 8.0f * dpi, origin.y + 8.0f * dpi), IM_COL32(140, 140, 140, 255), "ms");
 
             // vertical divider between labels and ruler
             draw_list->AddLine(
@@ -521,7 +567,7 @@ void Profiler::OnTickVisible()
                     snprintf(tick_label, sizeof(tick_label), "%.2f", tick_ms);
                 }
 
-                draw_list->AddText(ImVec2(x + 3.0f, ruler_min.y + 4.0f), IM_COL32(180, 180, 180, 255), tick_label);
+                draw_list->AddText(ImVec2(x + 3.0f * dpi, ruler_min.y + 4.0f * dpi), IM_COL32(180, 180, 180, 255), tick_label);
             }
             draw_list->PopClipRect();
 
@@ -549,7 +595,7 @@ void Profiler::OnTickVisible()
 
             // label text (vertically centered, with padding from the right edge)
             float text_y = y_cursor + (total_lane_height - ImGui::GetTextLineHeight()) * 0.5f;
-            draw_list->AddText(ImVec2(origin.x + 8.0f, text_y), IM_COL32(210, 210, 210, 255), lane.label);
+            draw_list->AddText(ImVec2(origin.x + 8.0f * dpi, text_y), IM_COL32(210, 210, 210, 255), lane.label);
 
             // vertical divider between labels and timeline
             draw_list->AddLine(
@@ -574,7 +620,7 @@ void Profiler::OnTickVisible()
             for (uint32_t i = 0; i < time_block_count; i++)
             {
                 const spartan::TimeBlock& block = time_blocks[i];
-                if (!block.IsComplete() || block.GetType() != lane.block_type)
+                if (!block.IsComplete() || block.GetType() != lane.block_type || !m_block_filter.PassFilter(block.GetName()))
                 {
                     continue;
                 }
@@ -607,24 +653,24 @@ void Profiler::OnTickVisible()
                 float x1 = lane_origin.x + frac_end * timeline_width;
 
                 // minimum width so tiny blocks are still visible and clickable
-                if (x1 - x0 < 3.0f)
+                if (x1 - x0 < 3.0f * dpi)
                 {
-                    x1 = x0 + 3.0f;
+                    x1 = x0 + 3.0f * dpi;
                 }
 
                 // vertical position
                 float depth_offset = lane.use_depth ? (block.GetTreeDepth() * lane_height) : 0.0f;
-                float y0 = y_cursor + depth_offset + 2.0f;
-                float y1 = y0 + lane_height - 4.0f;
+                float y0 = y_cursor + depth_offset + 2.0f * dpi;
+                float y1 = y0 + lane_height - 4.0f * dpi;
 
                 bool is_compute = (block.GetQueueType() == spartan::RHI_Queue_Type::Compute);
                 ImU32 col = get_time_block_color(block.GetName(), is_compute);
 
                 // draw block
-                draw_list->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), col, 2.0f);
+                draw_list->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), col, 2.0f * dpi);
 
                 // subtle border for depth
-                draw_list->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(0, 0, 0, 60), 2.0f);
+                draw_list->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(0, 0, 0, 60), 2.0f * dpi);
 
                 // text label: show "name - Xms" if wide enough, just name if moderate, clipped if narrow
                 float block_width = x1 - x0;
@@ -697,12 +743,6 @@ void Profiler::OnTickVisible()
 
         // info bar below the timeline
         ImGui::Text("%.2f - %.2f ms (%.2f ms visible)", m_timeline_offset_ms, m_timeline_offset_ms + m_timeline_range_ms, m_timeline_range_ms);
-        ImGui::SameLine();
-        if (ImGuiSp::button("Fit"))
-        {
-            m_timeline_needs_fit  = true;
-            m_user_has_interacted = false;
-        }
         ImGui::SameLine();
         ImGui::TextDisabled("scroll: zoom | right-drag: pan");
     }

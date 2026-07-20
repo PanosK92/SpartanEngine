@@ -67,51 +67,65 @@ namespace
     
     static void mesh_import_dialog(Editor* editor)
     {
-        if (mesh_import_dialog_is_visible)
+        if (!mesh_import_dialog_is_visible)
         {
-            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-    
-            // Begin
-            if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
-            {
-                mesh_import_dialog_checkbox(MeshFlags::ImportRemoveRedundantData,
-                    "Remove redundant data",
-                    "Join identical vertices, remove redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
-    
-                mesh_import_dialog_checkbox(MeshFlags::PostProcessNormalizeScale,
-                    "Normalize scale",
-                    "Scale the mesh so that it's not bigger than a cubic unit."
-                );
-    
-                mesh_import_dialog_checkbox(MeshFlags::ImportCombineMeshes,
-                    "Combine meshes",
-                    "Join some meshes, remove some nodes and pre-transform vertices."
-                );
-    
-                mesh_import_dialog_checkbox(MeshFlags::ImportLights,
-                    "Import lights",
-                    "Some models might define lights, they can be imported as well."
-                );
-
-                mesh_import_dialog_checkbox(MeshFlags::PostProcessOptimize,
-                    "Optimize",
-                    "Performs a variety of optimizations aimed at reduce cache misses, overdraw and so on..."
-                );
-
-                // Ok button
-                if (ImGuiSp::button_centered_on_line("Ok", 0.5f))
-                {
-                    spartan::ThreadPool::AddTask([]()
-                    {
-                        spartan::ResourceCache::Load<spartan::Mesh>(mesh_import_file_path, mesh_import_dialog_flags);
-                    });
-
-                    mesh_import_dialog_is_visible = false;
-                }
-            }
-    
-            ImGui::End();
+            return;
         }
+
+        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(440.0f, 0.0f), ImVec2(440.0f, FLT_MAX));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 16.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+
+        if (ImGui::Begin("Import mesh", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
+        {
+            const string file_name = FileSystem::GetFileNameFromFilePath(mesh_import_file_path);
+            ImGui::TextUnformatted("Import settings");
+            ImGui::TextDisabled("%s", file_name.c_str());
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            mesh_import_dialog_checkbox(MeshFlags::ImportRemoveRedundantData, "Clean redundant data", "Join identical vertices and remove invalid or duplicate data");
+            mesh_import_dialog_checkbox(MeshFlags::PostProcessNormalizeScale, "Normalize scale", "Fit the imported mesh within one cubic unit");
+            mesh_import_dialog_checkbox(MeshFlags::ImportCombineMeshes, "Combine compatible meshes", "Reduce hierarchy complexity by joining compatible meshes");
+            mesh_import_dialog_checkbox(MeshFlags::ImportLights, "Import embedded lights", "Create lights defined by the source file");
+            mesh_import_dialog_checkbox(MeshFlags::PostProcessOptimize, "Optimize geometry", "Improve vertex cache use and reduce overdraw");
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            const float button_width = 100.0f;
+            ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x - button_width * 2.0f - ImGui::GetStyle().ItemSpacing.x);
+            if (ImGui::Button("Cancel", ImVec2(button_width, 0.0f)))
+            {
+                mesh_import_dialog_is_visible = false;
+            }
+
+            ImGui::SameLine();
+            const ImVec4 accent = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(accent.x, accent.y, accent.z, 0.40f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(accent.x, accent.y, accent.z, 0.58f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(accent.x, accent.y, accent.z, 0.72f));
+            if (ImGui::Button("Import", ImVec2(button_width, 0.0f)))
+            {
+                spartan::ThreadPool::AddTask([]()
+                {
+                    spartan::ResourceCache::Load<spartan::Mesh>(mesh_import_file_path, mesh_import_dialog_flags);
+                });
+                mesh_import_dialog_is_visible = false;
+            }
+            ImGui::PopStyleColor(3);
+
+            if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+            {
+                mesh_import_dialog_is_visible = false;
+            }
+        }
+
+        ImGui::End();
+        ImGui::PopStyleVar(2);
     }
 }
 
@@ -124,17 +138,11 @@ AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 
     // just clicked, not selected (double clicked, end of dialog)
     file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
+    file_dialog_view->SetToolbarAction("Import Model", []() { show_file_dialog_load = true; });
 }
 
 void AssetBrowser::OnTickVisible()
-{    
-    if (ImGuiSp::button("Import"))
-    {
-        show_file_dialog_load = true;
-    }
-
-    ImGui::SameLine();
-    
+{
     // view
     file_dialog_view->Show(&show_file_dialog_view, m_editor);
 
@@ -150,7 +158,7 @@ void AssetBrowser::OnTickVisible()
 
 void AssetBrowser::ShowMeshImportDialog(const string& file_path)
 {
-    if (FileSystem::IsSupportedModelFile(mesh_import_file_path))
+    if (FileSystem::IsSupportedModelFile(file_path))
     {
         mesh_import_dialog_is_visible = true;
         mesh_import_dialog_flags      = Mesh::GetDefaultFlags();

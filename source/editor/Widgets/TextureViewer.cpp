@@ -244,6 +244,19 @@ namespace
         return clicked;
     }
 
+    void select_texture(const texture_entry& entry)
+    {
+        if (!entry.tex || s.selected_object_id == entry.tex->GetObjectId())
+        {
+            return;
+        }
+
+        s.selected_object_id = entry.tex->GetObjectId();
+        s.mip_level          = 0;
+        s.array_level        = 0;
+        s.request_fit        = true;
+    }
+
     void draw_h_splitter(const char* id, float* size_left, float min_left, float max_left, float total_height, float sign)
     {
         const float thickness = 4.0f;
@@ -293,22 +306,24 @@ namespace
         // source tabs
         if (ImGui::BeginTabBar("##source_tabs", ImGuiTabBarFlags_None))
         {
-            if (ImGui::BeginTabItem("Render Targets"))
+            if (ImGui::BeginTabItem("Render targets"))
             {
                 if (s.source != viewer_state::source_kind::render_targets)
                 {
                     s.source = viewer_state::source_kind::render_targets;
                     refresh_entries();
                 }
+                ImGuiSp::tooltip("Textures produced by renderer passes");
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Bindless Material Textures"))
+            if (ImGui::BeginTabItem("Materials"))
             {
                 if (s.source != viewer_state::source_kind::bindless_materials)
                 {
                     s.source = viewer_state::source_kind::bindless_materials;
                     refresh_entries();
                 }
+                ImGuiSp::tooltip("Textures currently available to materials");
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
@@ -316,14 +331,21 @@ namespace
 
         // search
         ImGui::SetNextItemWidth(260.0f);
-        s.search_filter.Draw("##texture_search", 260.0f);
-        ImGuiSp::tooltip("Filter by name, supports inc and -exc patterns");
-        ImGui::SameLine();
-        if (toggle_button(s.view_grid ? "Grid" : "List", s.view_grid))
+        ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+        if (ImGui::InputTextWithHint("##texture_search", "Search textures", s.search_filter.InputBuf, IM_ARRAYSIZE(s.search_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
         {
-            s.view_grid = !s.view_grid;
+            s.search_filter.Build();
         }
-        ImGuiSp::tooltip(s.view_grid ? "Switch to list mode" : "Switch to grid mode");
+        ImGui::SameLine();
+        if (toggle_button("List", !s.view_grid))
+        {
+            s.view_grid = false;
+        }
+        ImGui::SameLine();
+        if (toggle_button("Grid", s.view_grid))
+        {
+            s.view_grid = true;
+        }
 
         // zoom cluster, right aligned
         char zoom_text[16];
@@ -374,46 +396,45 @@ namespace
         ImGuiSp::tooltip("Reset pan and zoom (R)");
     }
 
-    void draw_type_chips()
+    void draw_type_filter()
     {
         if (s.source != viewer_state::source_kind::bindless_materials)
         {
             return;
         }
-        ImGui::TextDisabled("filter:");
-        ImGui::SameLine();
-        if (ImGui::SmallButton("All"))
-        {
-            s.type_filter_mask = 0xffffffffu;
-        }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("None"))
-        {
-            s.type_filter_mask = 0u;
-        }
-        ImGui::SameLine();
-        ImGui::TextDisabled("|");
-
         const uint32_t types = static_cast<uint32_t>(spartan::MaterialTextureType::Max);
-        for (uint32_t i = 0; i < types; ++i)
+        uint32_t enabled_count = 0;
+        for (uint32_t i = 0; i < types; i++)
         {
-            const uint32_t bit = 1u << i;
-            const bool active  = (s.type_filter_mask & bit) != 0;
+            enabled_count += (s.type_filter_mask & (1u << i)) != 0 ? 1u : 0u;
+        }
+
+        string summary = enabled_count == types ? "All texture types" : enabled_count == 0 ? "No texture types" : to_string(enabled_count) + " texture types";
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        if (ImGui::BeginCombo("##texture_type_filter", summary.c_str()))
+        {
+            if (ImGui::Button("Select all"))
+            {
+                s.type_filter_mask = 0xffffffffu;
+            }
             ImGui::SameLine();
-            if (active)
+            if (ImGui::Button("Clear"))
             {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                s.type_filter_mask = 0u;
             }
-            ImGui::PushID(static_cast<int>(i));
-            if (ImGui::SmallButton(material_texture_type_label(static_cast<spartan::MaterialTextureType>(i))))
+
+            ImGui::Separator();
+            for (uint32_t i = 0; i < types; i++)
             {
-                s.type_filter_mask ^= bit;
+                const uint32_t bit = 1u << i;
+                bool active = (s.type_filter_mask & bit) != 0;
+                if (ImGui::Checkbox(material_texture_type_label(static_cast<spartan::MaterialTextureType>(i)), &active))
+                {
+                    s.type_filter_mask = active ? s.type_filter_mask | bit : s.type_filter_mask & ~bit;
+                }
             }
-            ImGui::PopID();
-            if (active)
-            {
-                ImGui::PopStyleColor();
-            }
+
+            ImGui::EndCombo();
         }
     }
 
@@ -435,7 +456,7 @@ namespace
         ImVec2 row_min = ImGui::GetCursorScreenPos();
         if (ImGui::Selectable("##row", selected, 0, ImVec2(0.0f, row_height)))
         {
-            s.selected_object_id = e.tex->GetObjectId();
+            select_texture(e);
         }
 
         // overlays are pure draws so we never disturb the cursor
@@ -445,6 +466,7 @@ namespace
 
         ImVec2 thumb_min = ImVec2(row_min.x + 4.0f, row_min.y + 2.0f);
         ImVec2 thumb_max = ImVec2(thumb_min.x + thumb_size, thumb_min.y + thumb_size);
+        draw_checkerboard(dl, thumb_min, thumb_max, 5.0f);
         dl->AddImage(reinterpret_cast<ImTextureID>(e.tex), thumb_min, thumb_max);
         dl->AddRect(thumb_min, thumb_max, IM_COL32(20, 20, 20, 255));
 
@@ -454,6 +476,11 @@ namespace
         char info[96];
         snprintf(info, sizeof(info), "%ux%u  %s", e.tex->GetWidth(), e.tex->GetHeight(), rhi_format_to_string(e.tex->GetFormat()));
         dl->AddText(ImVec2(text_x, row_min.y + 4.0f + ImGui::GetTextLineHeight() + 2.0f), col_d, info);
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        {
+            ImGui::SetTooltip("%s\n%ux%u  %s", e.display_name.c_str(), e.tex->GetWidth(), e.tex->GetHeight(), rhi_format_to_string(e.tex->GetFormat()));
+        }
 
         ImGui::PopID();
     }
@@ -472,13 +499,14 @@ namespace
         ImVec2 card_min = ImGui::GetCursorScreenPos();
         if (ImGui::Selectable("##card", selected, 0, ImVec2(card_size, total_h)))
         {
-            s.selected_object_id = e.tex->GetObjectId();
+            select_texture(e);
         }
 
         // overlays via draw list so we leave the layout cursor exactly where Selectable put it
         ImDrawList* dl   = ImGui::GetWindowDrawList();
         ImVec2 thumb_min = ImVec2(card_min.x + 2.0f, card_min.y + 2.0f);
         ImVec2 thumb_max = ImVec2(card_min.x + card_size - 2.0f, card_min.y + card_size - 2.0f);
+        draw_checkerboard(dl, thumb_min, thumb_max, 8.0f);
         dl->AddImage(reinterpret_cast<ImTextureID>(e.tex), thumb_min, thumb_max);
         dl->AddRect(thumb_min, thumb_max, IM_COL32(20, 20, 20, 255));
 
@@ -487,6 +515,11 @@ namespace
         ImVec4 clip(card_min.x, card_min.y + card_size, card_min.x + card_size, card_min.y + total_h);
         dl->AddText(nullptr, 0.0f, ImVec2(card_min.x + 2.0f, card_min.y + card_size), col_t, e.display_name.c_str(), nullptr, 0.0f, &clip);
 
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        {
+            ImGui::SetTooltip("%s\n%ux%u  %s", e.display_name.c_str(), e.tex->GetWidth(), e.tex->GetHeight(), rhi_format_to_string(e.tex->GetFormat()));
+        }
+
         ImGui::PopID();
     }
 
@@ -494,7 +527,7 @@ namespace
     {
         ImGui::BeginChild("##browser_panel", ImVec2(width, height), true);
 
-        draw_type_chips();
+        draw_type_filter();
         if (s.source == viewer_state::source_kind::bindless_materials)
         {
             ImGui::Separator();
@@ -503,7 +536,15 @@ namespace
 
         ImGui::BeginChild("##entries_scroll", ImVec2(0, 0), false);
 
-        if (s.view_grid)
+        if (entries_filtered.empty())
+        {
+            const char* message = entries.empty() ? "No textures available" : "No textures match the current filters";
+            const ImVec2 message_size = ImGui::CalcTextSize(message);
+            const ImVec2 available = ImGui::GetContentRegionAvail();
+            ImGui::SetCursorPos(ImVec2(max(ImGui::GetCursorPosX(), (ImGui::GetWindowWidth() - message_size.x) * 0.5f), ImGui::GetCursorPosY() + max(24.0f, available.y * 0.38f)));
+            ImGui::TextDisabled("%s", message);
+        }
+        else if (s.view_grid)
         {
             const float card     = 96.0f;
             const float padding  = ImGui::GetStyle().ItemSpacing.x;
@@ -651,6 +692,7 @@ namespace
                 // pan with middle button only, left button conflicts with window drag and selection
                 if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
                 {
+                    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
                     s.pan.x += io.MouseDelta.x;
                     s.pan.y += io.MouseDelta.y;
                 }
@@ -722,7 +764,7 @@ namespace
         }
         else
         {
-            const char* msg     = "no texture selected";
+            const char* msg     = "Select a texture to preview";
             ImVec2 text_size    = ImGui::CalcTextSize(msg);
             ImVec2 text_pos     = ImVec2(
                 child_pos.x + (child_size.x - text_size.x) * 0.5f,
@@ -996,7 +1038,7 @@ void TextureViewer::OnTickVisible()
         if (idx < 0)
         {
             idx = 0;
-            s.selected_object_id = entries_filtered[0].tex ? entries_filtered[0].tex->GetObjectId() : 0;
+            select_texture(entries_filtered[0]);
         }
         s.texture_current = entries_filtered[idx].tex;
     }

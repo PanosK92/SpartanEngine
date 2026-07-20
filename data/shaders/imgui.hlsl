@@ -19,9 +19,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= includes =========
-#include "common.hlsl"
-//====================
+//= includes =====================
+#include "shared_buffers.h"
+#include "common_colorspace.hlsl"
+//================================
+
+Texture2D tex                                        : register(t7);
+StructuredBuffer<DrawData> draw_data                 : register(t19, space5);
+SamplerState samplers[]                              : register(s1, space7);
+cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
+
+#ifdef API_D3D12
+cbuffer BufferPass : register(b1) { PassBufferData buffer_pass; };
+#else
+[[vk::push_constant]]
+PassBufferData buffer_pass;
+#endif
+
+static const uint sampler_point_clamp    = 0;
+static const uint sampler_bilinear_clamp = 3;
+
+float3 pack(float3 value)          { return value * 0.5f + 0.5f; }
+float3 pass_get_f3_value()         { return buffer_pass.values[0].xyz; }
+float2 pass_get_f2_value()         { return float2(buffer_pass.values[0].w, buffer_pass.values[1].w); }
 
 struct Vertex_Pos2dUvColor
 {

@@ -57,8 +57,8 @@ Console::~Console()
 void Console::OnTickVisible()
 {
     const float dpi = spartan::Window::GetDpiScale();
+    std::scoped_lock lock(m_mutex);
 
-    // toolbar: [clear] | [info] [warn] [error] | [timestamps] | [filter]
     if (ImGuiSp::button("Clear"))
     {
         Clear();
@@ -68,33 +68,87 @@ void Console::OnTickVisible()
     ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
     ImGui::SameLine();
 
-    const auto button_log_type_visibility_toggle = [this, dpi](uint32_t index)
+    const auto draw_log_type_toggle = [this, dpi](uint32_t index, const char* name)
     {
         ImGui::PushID(static_cast<int>(index));
         bool& visibility = m_log_type_visibility[index];
-        ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(IconType::Console, 15.0f * dpi, false, m_log_type_color[index]))
+        const ImVec4 color = m_log_type_color[index];
+        const string count_text = to_string(m_log_type_count[index]);
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float icon_size = 14.0f * dpi;
+        const ImVec2 button_size = ImVec2(style.FramePadding.x * 2.0f + icon_size + style.ItemInnerSpacing.x + ImGui::CalcTextSize(count_text.c_str()).x, ImGui::GetFrameHeight());
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f * dpi);
+        ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImVec4(color.x, color.y, color.z, 0.24f) : ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x, color.y, color.z, 0.34f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x, color.y, color.z, 0.44f));
+
+        if (ImGui::Button("##log_type_toggle", button_size))
         {
             visibility = !visibility;
+            m_selection.Clear();
         }
-        ImGui::PopStyleColor();
-        ImGui::SameLine();
-        ImGui::Text("%u", m_log_type_count[index]);
-        ImGui::SameLine();
+
+        const ImVec2 button_min = ImGui::GetItemRectMin();
+        const ImVec2 button_max = ImGui::GetItemRectMax();
+        const ImVec4 foreground = visibility ? color : style.Colors[ImGuiCol_TextDisabled];
+        const ImU32 foreground_u32 = ImGui::ColorConvertFloat4ToU32(foreground);
+        const ImVec2 icon_center = ImVec2(button_min.x + style.FramePadding.x + icon_size * 0.5f, (button_min.y + button_max.y) * 0.5f);
+        const float radius = icon_size * 0.4f;
+        const float line_thickness = max(1.0f, 1.25f * dpi);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        if (index == 0)
+        {
+            draw_list->AddCircle(icon_center, radius, foreground_u32, 16, line_thickness);
+            draw_list->AddCircleFilled(ImVec2(icon_center.x, icon_center.y - radius * 0.45f), line_thickness, foreground_u32);
+            draw_list->AddLine(ImVec2(icon_center.x, icon_center.y - radius * 0.08f), ImVec2(icon_center.x, icon_center.y + radius * 0.5f), foreground_u32, line_thickness);
+        }
+        else if (index == 1)
+        {
+            draw_list->AddTriangle(ImVec2(icon_center.x, icon_center.y - radius), ImVec2(icon_center.x - radius, icon_center.y + radius * 0.85f), ImVec2(icon_center.x + radius, icon_center.y + radius * 0.85f), foreground_u32, line_thickness);
+            draw_list->AddLine(ImVec2(icon_center.x, icon_center.y - radius * 0.42f), ImVec2(icon_center.x, icon_center.y + radius * 0.2f), foreground_u32, line_thickness);
+            draw_list->AddCircleFilled(ImVec2(icon_center.x, icon_center.y + radius * 0.52f), line_thickness, foreground_u32);
+        }
+        else
+        {
+            draw_list->AddCircle(icon_center, radius, foreground_u32, 16, line_thickness);
+            draw_list->AddLine(ImVec2(icon_center.x - radius * 0.42f, icon_center.y - radius * 0.42f), ImVec2(icon_center.x + radius * 0.42f, icon_center.y + radius * 0.42f), foreground_u32, line_thickness);
+            draw_list->AddLine(ImVec2(icon_center.x + radius * 0.42f, icon_center.y - radius * 0.42f), ImVec2(icon_center.x - radius * 0.42f, icon_center.y + radius * 0.42f), foreground_u32, line_thickness);
+        }
+
+        const ImVec2 text_size = ImGui::CalcTextSize(count_text.c_str());
+        const ImVec2 text_position = ImVec2(button_min.x + style.FramePadding.x + icon_size + style.ItemInnerSpacing.x, button_min.y + (button_size.y - text_size.y) * 0.5f);
+        draw_list->AddText(text_position, foreground_u32, count_text.c_str());
+
+        const string tooltip = visibility ? string("Hide ") + name + " messages" : string("Show ") + name + " messages";
+        ImGuiSp::tooltip(tooltip.c_str());
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar();
         ImGui::PopID();
     };
 
-    button_log_type_visibility_toggle(0);
-    button_log_type_visibility_toggle(1);
-    button_log_type_visibility_toggle(2);
-
-    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    draw_log_type_toggle(0, "Info");
     ImGui::SameLine();
+    draw_log_type_toggle(1, "Warnings");
+    ImGui::SameLine();
+    draw_log_type_toggle(2, "Errors");
+
+    const float remaining_on_row = ImGui::GetWindowPos().x + ImGui::GetWindowSize().x - ImGui::GetStyle().WindowPadding.x - ImGui::GetItemRectMax().x;
+    const bool search_on_new_row = remaining_on_row < 180.0f * dpi;
+    if (!search_on_new_row)
+    {
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        ImGui::SameLine();
+    }
 
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-    if (ImGui::InputTextWithHint("##console_filter", "Search...", m_log_filter.InputBuf, IM_ARRAYSIZE(m_log_filter.InputBuf)))
+    ImGui::SetNextItemShortcut(ImGuiMod_Ctrl | ImGuiKey_F, ImGuiInputFlags_Tooltip);
+    if (ImGui::InputTextWithHint("##console_filter", "Search logs", m_log_filter.InputBuf, IM_ARRAYSIZE(m_log_filter.InputBuf), ImGuiInputTextFlags_EscapeClearsAll))
     {
         m_log_filter.Build();
+        m_selection.Clear();
     }
     ImGui::Separator();
 
@@ -102,9 +156,6 @@ void Console::OnTickVisible()
     const float input_height = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
     const float available_height = ImGui::GetContentRegionAvail().y;
     const float log_height = available_height - input_height;
-
-    // safety first
-    std::scoped_lock lock(m_mutex);
 
     // log output section with custom text selection support
     {
@@ -125,7 +176,8 @@ void Console::OnTickVisible()
         const float line_height = ImGui::GetTextLineHeightWithSpacing();
         const ImVec4 bg_color_even = ImGui::GetStyle().Colors[ImGuiCol_TableRowBg];
         const ImVec4 bg_color_odd  = ImGui::GetStyle().Colors[ImGuiCol_TableRowBgAlt];
-        const ImVec4 selection_color = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+        const ImVec4 accent = ImGui::Style::color_accent_1;
+        const ImVec4 selection_color = ImVec4(accent.x, accent.y, accent.z, 0.35f);
         const ImVec4 cursor_color = ImGui::GetStyle().Colors[ImGuiCol_Text];
 
         // validate selection bounds - clear if invalid (e.g., logs were removed or filtered)
@@ -156,6 +208,16 @@ void Console::OnTickVisible()
             const ImVec2 mouse_pos = ImGui::GetMousePos();
             const bool is_window_hovered = ImGui::IsWindowHovered();
             const float cursor_blink_time = static_cast<float>(fmod(ImGui::GetTime(), 1.0));
+
+            if (visible_logs.empty())
+            {
+                const char* message = m_logs.empty() ? "Console is clear" : "No logs match the current filters";
+                const ImVec2 message_size = ImGui::CalcTextSize(message);
+                const ImVec2 available = ImGui::GetContentRegionAvail();
+                ImGui::SetCursorPos(ImVec2(max(ImGui::GetCursorPosX(), (ImGui::GetWindowWidth() - message_size.x) * 0.5f), ImGui::GetCursorPosY() + max(24.0f, available.y * 0.38f)));
+                ImGui::TextDisabled("%s", message);
+            }
+
             // track first rendered row position for mouse calculations
             float content_origin_y = 0.0f;
             int first_rendered_row = -1;
@@ -763,7 +825,7 @@ void Console::AddLogPackage(const LogPackage& package)
 
     m_log_type_count[package.error_level]++;
 
-    if (m_log_type_visibility[package.error_level])
+    if (m_log_type_visibility[package.error_level] && !m_user_scrolled_up)
     {
         m_scroll_to_bottom = true;
     }
@@ -771,6 +833,8 @@ void Console::AddLogPackage(const LogPackage& package)
 
 void Console::Clear()
 {
+    std::scoped_lock lock(m_mutex);
+
     m_logs.clear();
     m_logs.shrink_to_fit();
 
@@ -780,6 +844,9 @@ void Console::Clear()
     m_log_type_count[0] = 0;
     m_log_type_count[1] = 0;
     m_log_type_count[2] = 0;
+    m_selection.Clear();
+    m_scroll_to_bottom = false;
+    m_user_scrolled_up = false;
 
     spartan::Log::Clear();
 }

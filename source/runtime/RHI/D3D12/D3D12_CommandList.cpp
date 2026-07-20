@@ -235,8 +235,10 @@ namespace spartan
             // recording on a compute queue, set in Begin() so push_transition can drop graphics-only state bits
             bool is_compute_queue                = false;
             // d3d12 tracks graphics and compute root signatures separately, descriptor tables require the matching root sig
-            bool has_root_signature_graphics     = false;
-            bool has_root_signature_compute      = false;
+            bool has_root_signature_graphics            = false;
+            bool has_root_signature_compute             = false;
+            ID3D12RootSignature* root_signature_graphics = nullptr;
+            ID3D12RootSignature* root_signature_compute  = nullptr;
             // lazily created null descriptors on first use
             D3D12_CPU_DESCRIPTOR_HANDLE null_srv_tex2d = {};
             D3D12_CPU_DESCRIPTOR_HANDLE null_uav_tex2d = {};
@@ -272,6 +274,8 @@ namespace spartan
             b.is_bindless_pipeline       = false;
             b.has_root_signature_graphics = false;
             b.has_root_signature_compute  = false;
+            b.root_signature_graphics     = nullptr;
+            b.root_signature_compute      = nullptr;
             b.is_compute_queue           = false;
             b.swapchain_bb_transitioned  = nullptr;
             b.pending_barriers.clear();
@@ -1143,6 +1147,7 @@ namespace spartan
         m_buffer_id_index    = 0;
         m_render_pass_active = false;
         m_pso                = RHI_PipelineState();
+        m_pipeline_state_dirty = false;
         m_scissor_valid      = false;
         m_viewport_valid     = false;
         m_vrs_valid          = false;
@@ -1237,7 +1242,7 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // early exit if the pipeline state hasn't changed
-        if (m_pso.GetHash() == pso.GetHash())
+        if (!m_pipeline_state_dirty && m_pso.GetHash() == pso.GetHash() && m_pso.use_standard_resources == pso.use_standard_resources)
         {
             return;
         }
@@ -1274,8 +1279,14 @@ namespace spartan
         // ray tracing dispatches go through the compute binding cycle, so it is treated as compute here
         {
             auto& b = cmd_state::get(this);
+            const bool binding_route_changed = b.is_bindless_pipeline && b.is_compute_bound != (is_compute || is_raytracing);
             b.is_compute_bound     = is_compute || is_raytracing;
             b.is_bindless_pipeline = true;
+            if (binding_route_changed)
+            {
+                b.srv_dirty = true;
+                b.uav_dirty = true;
+            }
         }
 
         if (pipeline && pipeline->GetRhiResource())
@@ -1298,18 +1309,29 @@ namespace spartan
             }
 
             auto& b = cmd_state::get(this);
+            bool root_signature_changed = false;
             if (pipeline->GetRhiResourceLayout())
             {
                 ID3D12RootSignature* rs = static_cast<ID3D12RootSignature*>(pipeline->GetRhiResourceLayout());
                 // ray tracing uses the compute root signature binding cycle on dxr
                 if (is_compute || pso.IsRayTracing())
                 {
-                    cmd_list->SetComputeRootSignature(rs);
+                    root_signature_changed = !b.has_root_signature_compute || b.root_signature_compute != rs;
+                    if (root_signature_changed)
+                    {
+                        cmd_list->SetComputeRootSignature(rs);
+                        b.root_signature_compute = rs;
+                    }
                     b.has_root_signature_compute = true;
                 }
                 else
                 {
-                    cmd_list->SetGraphicsRootSignature(rs);
+                    root_signature_changed = !b.has_root_signature_graphics || b.root_signature_graphics != rs;
+                    if (root_signature_changed)
+                    {
+                        cmd_list->SetGraphicsRootSignature(rs);
+                        b.root_signature_graphics = rs;
+                    }
                     b.has_root_signature_graphics = true;
                 }
             }
@@ -1328,10 +1350,9 @@ namespace spartan
             // ray tracing dispatches use the compute root sig
             const bool use_compute_sig = is_compute || is_raytracing;
             const bool root_sig_ready  = use_compute_sig ? b.has_root_signature_compute : b.has_root_signature_graphics;
-            if (root_sig_ready)
+            if (root_sig_ready && root_signature_changed)
             {
                 bind_bindless_tables(cmd_list, use_compute_sig);
-                // mark srv/uav tables dirty so they get flushed before the next draw/dispatch
                 b.srv_dirty = true;
                 b.uav_dirty = true;
             }
@@ -1348,10 +1369,11 @@ namespace spartan
 
         // bind the per-frame constant buffer and standard textures that every scene shader depends on
         // mirrors what Vulkan_CommandList does at the equivalent point in SetPipelineState
-        if (pipeline && pipeline->GetRhiResource())
+        if (pipeline && pipeline->GetRhiResource() && pso.use_standard_resources)
         {
             Renderer::SetStandardResources(this);
         }
+        m_pipeline_state_dirty = false;
     }
 
     void RHI_CommandList::RenderPassBegin()
@@ -1629,9 +1651,12 @@ namespace spartan
         Profiler::m_rhi_draw++;
     }
 
-    void RHI_CommandList::DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    void RHI_CommandList::DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(args_buffer != nullptr);
+        SP_ASSERT(draw_count != 0);
+        SP_ASSERT(args_offset + static_cast<uint64_t>(draw_count) * sizeof(D3D12_DRAW_INDEXED_ARGUMENTS) <= static_cast<uint64_t>(args_buffer->GetElementCount()) * args_buffer->GetStride());
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -1648,8 +1673,6 @@ namespace spartan
         }
 
         SynchronizeResources();
-        // command signature is created once and shared across all single-shot indexed indirect draws,
-        // args layout matches D3D12_DRAW_INDEXED_ARGUMENTS which mirrors VkDrawIndexedIndirectCommand
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
         {
@@ -1672,7 +1695,7 @@ namespace spartan
 
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
-            command_signature, 1u,
+            command_signature, draw_count,
             args_resource, static_cast<UINT64>(args_offset),
             nullptr,       0u
         );
@@ -2878,8 +2901,22 @@ namespace spartan
         if (!texture)
         {
             TrackTextureUsage(slot, nullptr, mip_index, mip_range, array_layer, uav);
-            if (uav) { if (slot < d3d12_root_slot::uav_space0_count) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }
-            else     { if (slot < d3d12_root_slot::srv_space0_count) { b.srv[slot].ptr = 0; b.srv_dirty = true; } }
+            if (uav)
+            {
+                if (slot < d3d12_root_slot::uav_space0_count && b.uav[slot].ptr != 0)
+                {
+                    b.uav[slot].ptr = 0;
+                    b.uav_dirty     = true;
+                }
+            }
+            else
+            {
+                if (slot < d3d12_root_slot::srv_space0_count && b.srv[slot].ptr != 0)
+                {
+                    b.srv[slot].ptr = 0;
+                    b.srv_dirty     = true;
+                }
+            }
             return;
         }
         TrackTextureUsage(slot, texture, mip_index, mip_range, array_layer, uav);
@@ -2959,8 +2996,11 @@ namespace spartan
             {
                 return;
             }
-            b.uav[slot] = h;
-            b.uav_dirty = true;
+            if (!covers_full || b.uav[slot].ptr != h.ptr)
+            {
+                b.uav[slot] = h;
+                b.uav_dirty = true;
+            }
         }
         else
         {
@@ -3005,8 +3045,11 @@ namespace spartan
             {
                 return;
             }
-            b.srv[slot] = h;
-            b.srv_dirty = true;
+            if (!covers_full || b.srv[slot].ptr != h.ptr)
+            {
+                b.srv[slot] = h;
+                b.srv_dirty = true;
+            }
         }
     }
 
@@ -3331,7 +3374,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
+    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory)
     {
         if (!buffer || !data || size == 0)
         {
@@ -3339,7 +3382,7 @@ namespace spartan
         }
 
         // mapped path, persistently mapped upload heap buffers can be memcpyd directly
-        if (buffer->GetMappedData())
+        if (use_mapped_memory && buffer->GetMappedData())
         {
             memcpy(static_cast<uint8_t*>(buffer->GetMappedData()) + offset, data, static_cast<size_t>(size));
             return;
@@ -3513,6 +3556,7 @@ namespace spartan
         b.has_root_signature_compute  = false;
         b.srv_dirty = true;
         b.uav_dirty = true;
+        m_pipeline_state_dirty = true;
     }
 
     void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture)

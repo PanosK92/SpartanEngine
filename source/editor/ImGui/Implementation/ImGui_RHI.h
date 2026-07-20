@@ -101,6 +101,10 @@ namespace ImGui::RHI
         // deferred so the os window is revealed only after the first successful present
         void (*g_platform_show_window)(ImGuiViewport*) = nullptr;
 
+        void reset_render_state(const ImDrawList*, const ImDrawCmd*)
+        {
+        }
+
         void platform_show_window(ImGuiViewport* viewport)
         {
             if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
@@ -309,6 +313,7 @@ namespace ImGui::RHI
         io.BackendFlags        |= ImGuiBackendFlags_RendererHasVtxOffset;
         io.BackendFlags        |= ImGuiBackendFlags_RendererHasTextures;
         io.BackendRendererName  = "RHI";
+        GetPlatformIO().DrawCallback_ResetRenderState = reset_render_state;
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             initialize_platform_interface();
@@ -322,6 +327,7 @@ namespace ImGui::RHI
     {
         // release imgui-owned textures while the context is still alive,
         // the renderer shutdown event fires later and the imtexturedata list is gone by then
+        GetPlatformIO().DrawCallback_ResetRenderState = nullptr;
         destroy_imgui_textures();
         DestroyPlatformWindows();
     }
@@ -433,20 +439,46 @@ namespace ImGui::RHI
         pso.depth_stencil_state              = g_depth_stencil_state.get();
         pso.render_target_swapchain          = swapchain;
         pso.clear_color[0]                   = clear ? Color::standard_black : rhi_color_dont_care;
+        pso.use_standard_resources           = false;
+
+        auto setup_render_state = [&]()
+        {
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, Renderer::GetBuffer(Renderer_Buffer::ConstantFrame));
+            cmd_list->SetBufferVertex(vertex_buffer);
+            cmd_list->SetBufferIndex(index_buffer);
+            cmd_list->SetCullMode(RHI_CullMode::None);
+        };
 
         // start the pass
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
         bool gpu_timing  = is_main_window;
         cmd_list->BeginTimeblock(name, true, spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
-        cmd_list->SetPipelineState(pso);
-        cmd_list->SetBufferVertex(vertex_buffer);
-        cmd_list->SetBufferIndex(index_buffer);
-        cmd_list->SetCullMode(RHI_CullMode::None);
+        setup_render_state();
 
         // render
         {
+            const float L = draw_data->DisplayPos.x;
+            const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+            const float T = draw_data->DisplayPos.y;
+            const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+            Matrix projection
+            (
+                2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
+                0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
+                0.0f, 0.0f, 0.5f, 0.5f,
+                0.0f, 0.0f, 0.0f, 1.0f
+            );
+            const uint32_t draw_index = Renderer::WriteDrawData(projection);
+            rhi_resources->push_constant_buffer_pass.draw_index = draw_index;
+
             uint32_t global_vtx_offset = 0;
             uint32_t global_idx_offset = 0;
+            RHI_Texture* texture_last  = nullptr;
+            uint32_t flags_last        = 0;
+            float mip_level_last       = 0.0f;
+            float array_level_last     = 0.0f;
+            bool state_valid           = false;
             for (uint32_t i = 0; i < static_cast<uint32_t>(draw_data->CmdListsCount); i++)
             {
                 ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
@@ -457,10 +489,22 @@ namespace ImGui::RHI
 
                     if (pcmd->UserCallback != nullptr)
                     {
-                        pcmd->UserCallback(cmd_list_imgui, pcmd);
+                        if (pcmd->UserCallback != GetPlatformIO().DrawCallback_ResetRenderState)
+                        {
+                            pcmd->UserCallback(cmd_list_imgui, pcmd);
+                        }
+                        pso.clear_color[0] = rhi_color_load;
+                        cmd_list->RestoreAfterExternalPass();
+                        setup_render_state();
+                        state_valid = false;
                     }
                     else
                     {
+                        if (draw_index == numeric_limits<uint32_t>::max())
+                        {
+                            continue;
+                        }
+
                         // set scissor rectangle
                         {
                             math::Rectangle rectangle;
@@ -478,7 +522,7 @@ namespace ImGui::RHI
                             float array_level          = 0.0f;
                             bool is_texture_visualised = false;
                             bool is_frame_texture      = false;
-                            bool texture_bound         = false;
+                            RHI_Texture* texture_bound = nullptr;
 
                             if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->GetTexID()))
                             {
@@ -495,15 +539,19 @@ namespace ImGui::RHI
                                         array_level = static_cast<float>(TextureViewer::GetArrayLevel());
                                     }
 
-                                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-                                    texture_bound = true;
+                                    texture_bound = texture;
                                 }
                             }
 
                             // always bind a texture to avoid uninitialized descriptor errors
-                            if (!texture_bound && g_font_atlas)
+                            if (!texture_bound)
                             {
-                                cmd_list->SetTexture(Renderer_BindingsSrv::tex, g_font_atlas.get());
+                                texture_bound = g_font_atlas.get();
+                            }
+                            if (!state_valid || texture_bound != texture_last)
+                            {
+                                cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture_bound);
+                                texture_last = texture_bound;
                             }
 
                             // pack booleans into uint bitfield
@@ -523,35 +571,17 @@ namespace ImGui::RHI
                             flags |= is_texture_visualised ? (1u << 9) : 0;
                             flags |= is_frame_texture      ? (1u << 10) : 0;
 
-                            // store bitfield in m00 and mip/array levels in m23, m30
-                            rhi_resources->push_constant_buffer_pass.set_f3_value(*reinterpret_cast<float*>(&flags), 0.0f, 0.0f);
-                            rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
-                        }
-
-                        // compute transform matrix and write to the bindless draw data buffer
-                        {
-                            const float L = draw_data->DisplayPos.x;
-                            const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-                            const float T = draw_data->DisplayPos.y;
-                            const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-
-                            Matrix projection
-                            (
-                                2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
-                                0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
-                                0.0f, 0.0f, 0.5f, 0.5f,
-                                0.0f, 0.0f, 0.0f, 1.0f
-                            );
-
-                            const uint32_t draw_index = Renderer::WriteDrawData(projection);
-                            if (draw_index == numeric_limits<uint32_t>::max())
+                            if (!state_valid || flags != flags_last || mip_level != mip_level_last || array_level != array_level_last)
                             {
-                                continue;
+                                rhi_resources->push_constant_buffer_pass.set_f3_value(*reinterpret_cast<float*>(&flags), 0.0f, 0.0f);
+                                rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
+                                cmd_list->PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
+                                flags_last       = flags;
+                                mip_level_last   = mip_level;
+                                array_level_last = array_level;
                             }
-                            rhi_resources->push_constant_buffer_pass.draw_index = draw_index;
+                            state_valid = true;
                         }
-
-                        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
 
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }

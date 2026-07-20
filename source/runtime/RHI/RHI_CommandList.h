@@ -119,7 +119,7 @@ namespace spartan
         // draw
         void Draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
         void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
-        void DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset);
+        void DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count = 1);
         void DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count);
         void DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset);
 
@@ -206,10 +206,11 @@ namespace spartan
         void EndTimeblock();
 
         // buffer
-        void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
+        void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory = true);
 
         // misc
         void RenderPassEnd();
+        void RestoreAfterExternalPass();
         RHI_SyncPrimitive* GetTimelineSemaphore()                  { return m_rendering_complete_semaphore_timeline.get(); }
         uint64_t GetLastTimelineSignalValue() const                { return m_last_timeline_signal_value; }
         const RHI_CommandListState GetState() const                { return m_state; }
@@ -227,7 +228,6 @@ namespace spartan
         friend class RHI_VendorTechnology;
         friend class RHI_Device;
 
-        void RestoreAfterExternalPass();
         void EnsureComputeShaderResource(RHI_Texture* texture);
         void AdoptComputeShaderResource(RHI_Texture* texture);
         void AdoptUnorderedAccess(RHI_Texture* texture);
@@ -301,6 +301,12 @@ namespace spartan
         bool m_bind_dynamic = false;
         void* m_bindless_pipeline_layout = nullptr;
         uint8_t m_bindless_pipeline_type = static_cast<uint8_t>(-1);
+        void* m_dynamic_descriptor_set = nullptr;
+        void* m_dynamic_pipeline_layout = nullptr;
+        uint8_t m_dynamic_pipeline_type = static_cast<uint8_t>(-1);
+        std::array<uint32_t, 10> m_dynamic_offsets = {};
+        uint32_t m_dynamic_offset_count = 0;
+        bool m_pipeline_state_dirty = false;
         bool m_batch_barrier_flush = false;
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
