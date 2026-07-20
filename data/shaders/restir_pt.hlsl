@@ -562,14 +562,7 @@ PathSample trace_path_from_primary(
 
     if (!hit.hit)
     {
-        // brdf bounce missed into sky, store sky radiance in rc_L_nee
-        s.flags      |= PATH_FLAG_SKY;
-        s.rc_pos      = dir;
-        s.rc_normal   = -dir;
-        s.rc_L_nee    = sample_sky(dir);
-        s.rc_L_post   = float3(0, 0, 0);
-        s.rc_length   = 0;
-        s.path_length = 1;
+        // primary environment lighting is handled by ibl
         return s;
     }
 
@@ -634,9 +627,6 @@ void ray_gen()
     uint2 launch_size = DispatchRaysDimensions().xy;
     float2 uv = (launch_id + 0.5f) / launch_size;
 
-    if (geometry_infos[0].vertex_offset == 0xFFFFFFFF)
-        return;
-
     // early out for sky pixels (no primary surface)
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
@@ -666,12 +656,12 @@ void ray_gen()
     float3 view_dir  = normalize(get_camera_position() - pos_ws);
 
     Reservoir reservoir = create_empty_reservoir();
+    float3 canonical_gi = float3(0, 0, 0);
 
-    // ris streaming with gris balance mis over a mixed pool of brdf and nee strategies
+    // direct lighting stays in the clustered renderer, restir adds indirect paths only
     // per sample weight is lin 2022 algorithm 1, w_i = target / sum_t(N_t * p_t(y))
     const uint  n_brdf_count  = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
-    const uint  n_light_count = clamp(get_restir_light_candidates(),   1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX);
-    // emtri strategy only adds candidates when the cpu has populated the nee pool
+    const uint  n_light_count = 0u;
     const uint  n_emtri_count = is_emtri_pool_active() ? clamp(get_restir_emtri_candidates(), 1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX) : 0u;
     const float n_brdf        = float(n_brdf_count);
     const float n_light       = float(n_light_count);
@@ -701,6 +691,20 @@ void ray_gen()
             {
                 // single strategy weight, the sun free sky is only reachable through brdf sampling
                 weight = target_pdf / (n_brdf * source_pdf);
+
+                ShiftResult canonical = self_shift_evaluate(
+                    candidate,
+                    pos_ws,
+                    normal_ws,
+                    view_dir,
+                    albedo,
+                    roughness,
+                    metallic
+                );
+                if (canonical.ok)
+                {
+                    canonical_gi += canonical.f_dst / source_pdf;
+                }
             }
         }
 
@@ -811,9 +815,23 @@ void ray_gen()
     tex_reservoir4[launch_id] = t4;
     tex_reservoir5[launch_id] = t5;
 
-    // tex_uav is overwritten by temporal/spatial passes so no shading is needed here
-    // confidence is forwarded so passes that early-out can read a sane value
-    tex_uav[launch_id] = float4(0, 0, 0, saturate(reservoir.confidence));
+    canonical_gi /= n_brdf;
+    canonical_gi /= max(albedo, 0.1f);
+    canonical_gi = soft_saturate_radiance(
+        canonical_gi,
+        get_restir_w_clamp() * 0.05f
+    );
+
+    float hit_dist = 0.0f;
+    if (reservoir.M > 0.0f)
+    {
+        hit_dist = min(
+            length(reservoir.sample.rc_pos - pos_ws),
+            10000.0f
+        );
+    }
+
+    tex_uav[launch_id] = float4(canonical_gi, hit_dist);
 }
 
 [shader("closesthit")]

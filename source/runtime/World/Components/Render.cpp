@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_AccelerationStructure.h"
+#include "../../FileSystem/FileSystem.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/Material.h"
@@ -77,10 +78,12 @@ namespace spartan
         const bool is_procedural    = m_mesh && m_mesh->GetObjectName() == "ocean";
         const bool is_resolvable    = m_mesh && !is_procedural && (is_standard_mesh || ResourceCache::GetByName<Mesh>(m_mesh->GetObjectName()) != nullptr);
         node.append_attribute("mesh_name")      = is_resolvable ? m_mesh->GetObjectName().c_str() : "";
+        node.append_attribute("mesh_path")      = is_resolvable && !is_standard_mesh ? m_mesh->GetResourceFilePath().c_str() : "";
         node.append_attribute("sub_mesh_index") = m_sub_mesh_index;
 
         // material
         node.append_attribute("material_name")    = m_material && !m_material_default ? m_material->GetObjectName().c_str() : "";
+        node.append_attribute("material_path")    = m_material && !m_material_default ? m_material->GetResourceFilePath().c_str() : "";
         node.append_attribute("material_default") = m_material_default;
 
         // per-renderable material overrides, only set fields are written so unset ones keep inheriting from the material
@@ -129,6 +132,7 @@ namespace spartan
     {
         // mesh
         const string mesh_name = node.attribute("mesh_name").as_string();
+        const string mesh_path = node.attribute("mesh_path").as_string();
         m_sub_mesh_index       = node.attribute("sub_mesh_index").as_uint();
         if (!mesh_name.empty())
         {
@@ -159,8 +163,19 @@ namespace spartan
             }
             else
             {
-                // look up in ResourceCache for custom meshes
-                shared_ptr<Mesh> mesh = ResourceCache::GetByName<Mesh>(mesh_name);
+                shared_ptr<Mesh> mesh;
+                if (!mesh_path.empty())
+                {
+                    mesh = ResourceCache::GetByPath<Mesh>(mesh_path);
+                    if (!mesh && FileSystem::IsFile(mesh_path))
+                    {
+                        mesh = ResourceCache::Load<Mesh>(mesh_path);
+                    }
+                }
+                if (!mesh)
+                {
+                    mesh = ResourceCache::GetByName<Mesh>(mesh_name);
+                }
                 if (mesh)
                 {
                     m_mesh = mesh.get();
@@ -175,9 +190,28 @@ namespace spartan
         // material
         m_material_default         = node.attribute("material_default").as_bool(true);
         const string material_name = node.attribute("material_name").as_string();
+        const string material_path = node.attribute("material_path").as_string();
         if (!material_name.empty() && !m_material_default)
         {
-            shared_ptr<Material> material = ResourceCache::GetByName<Material>(material_name);
+            shared_ptr<Material> material;
+            if (!material_path.empty())
+            {
+                material = ResourceCache::GetByPath<Material>(
+                    material_path
+                );
+                if (!material && FileSystem::IsFile(material_path))
+                {
+                    material = ResourceCache::Load<Material>(
+                        material_path
+                    );
+                }
+            }
+            if (!material)
+            {
+                material = ResourceCache::GetByName<Material>(
+                    material_name
+                );
+            }
             if (material)
             {
                 SetMaterial(material);

@@ -38,6 +38,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
+    float depth = get_depth(thread_id.xy);
+    if (depth <= 0.0f)
+    {
+        tex_uav[thread_id.xy] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+        return;
+    }
+
     float visibility = saturate(SIGMA_BackEnd_UnpackShadow(tex[thread_id.xy]).x);
     tex_uav[thread_id.xy] = float4(visibility, 0.0f, 0.0f, 1.0f);
 }

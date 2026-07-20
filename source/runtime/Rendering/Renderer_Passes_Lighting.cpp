@@ -301,10 +301,7 @@ namespace spartan
         {
             return;
         }
-        // restir pt traces its own per-light shadow rays inline in the spatial pass, so this pass would
-        // be redundant work whose output texture nobody reads, skip it and clear to white once
-        bool restir_pt_owns_shadows = cvar_restir_pt.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
-        if (!cvar_ray_traced_shadows.GetValueAs<bool>() || restir_pt_owns_shadows)
+        if (!cvar_ray_traced_shadows.GetValueAs<bool>())
         {
             if (!m_pass_state.cleared_rt_shadows)
             {
@@ -377,8 +374,7 @@ namespace spartan
             return;
         }
 
-        bool restir_pt_owns_shadows = cvar_restir_pt.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
-        if (!cvar_ray_traced_shadows.GetValueAs<bool>() || restir_pt_owns_shadows || !RHI_Device::IsSupportedRayTracing())
+        if (!cvar_ray_traced_shadows.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
         {
             return;
         }
@@ -464,6 +460,7 @@ namespace spartan
             pso.shaders[Compute] = shader_unpack;
             cmd_list->SetPipelineState(pso);
 
+            SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_shadows);
             cmd_list->Dispatch(tex_shadows);
@@ -972,12 +969,25 @@ namespace spartan
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance);
         if (!tex_gi_raw || !tex_gi_denoised || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out)
         {
+            if (tex_gi_raw && tex_gi_denoised)
+            {
+                Pass_BlitRestirFallback(
+                    cmd_list,
+                    tex_gi_raw,
+                    tex_gi_denoised
+                );
+            }
             return;
         }
 
         const uint32_t min_rt_dimension = 64;
         if (tex_gi_raw->GetWidth() < min_rt_dimension || tex_gi_raw->GetHeight() < min_rt_dimension)
         {
+            Pass_BlitRestirFallback(
+                cmd_list,
+                tex_gi_raw,
+                tex_gi_denoised
+            );
             return;
         }
 
@@ -1040,13 +1050,9 @@ namespace spartan
     {
         RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss);
 
-        // screen space contact shadows complement the rasterized shadow map, light.hlsl combines
-        // them with a min() on the primary term, only directional lights march here so the pass
-        // is dead work when either restir owns the full direct term or the ray traced shadow owns
-        // the sun, the rt trace already captures exact contact occlusion and light.hlsl skips the
-        // contact term in that case, the gate below must mirror is_ray_traced_shadows_enabled()
+        // the rt trace already captures exact contact occlusion
         const bool rt_shadows_active = cvar_ray_traced_shadows.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
-        if (cvar_restir_pt.GetValueAs<bool>() || rt_shadows_active)
+        if (rt_shadows_active)
         {
             return;
         }
@@ -1314,7 +1320,6 @@ namespace spartan
         RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
-        RHI_Texture* tex_gi               = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
         {
@@ -1333,7 +1338,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex6, tex_gi);
             cmd_list->Dispatch(tex_out, Renderer::GetResolutionScale());
         }
         cmd_list->EndTimeblock();
@@ -1357,7 +1361,28 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
 
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
+            RHI_Texture* tex_gi = GetRenderTarget(
+                Renderer_RenderTarget::restir_denoised
+            );
+            const bool restir_enabled =
+                cvar_restir_pt.GetValueAs<bool>() &&
+                tex_gi;
+            cmd_list->SetTexture(
+                Renderer_BindingsSrv::tex4,
+                tex_gi ? tex_gi : GetStandardTexture(
+                    Renderer_StandardTexture::Black
+                )
+            );
+
+            m_pcb_pass_cpu.set_f3_value(
+                static_cast<float>(
+                    GetRenderTarget(
+                        Renderer_RenderTarget::skysphere
+                    )->GetMipCount()
+                ),
+                restir_enabled ? 1.0f : 0.0f,
+                max(cvar_restir_pt_intensity.GetValue(), 0.0f)
+            );
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(tex_out, Renderer::GetResolutionScale());
         }

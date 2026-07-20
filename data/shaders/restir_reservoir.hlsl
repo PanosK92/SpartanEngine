@@ -1917,9 +1917,6 @@ float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, floa
     if (!shift.ok)
         return float3(0, 0, 0);
 
-    if (!trace_shift_visibility(r.sample, dst_pos, dst_normal))
-        return float3(0, 0, 0);
-
     // diffuse albedo demodulation, the stored gi is albedo proportional so this yields clean
     // irradiance, the 0.1 floor bounds the divide on near black surfaces
     float3 demod = max(dst_albedo, 0.1f);

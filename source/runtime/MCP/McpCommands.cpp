@@ -47,6 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Car/CarState.h"
 #include "../Resource/ResourceCache.h"
 #include "../Animation/Animation.h"
+#include "../Geometry/GeometryGeneration.h"
 #include "../Geometry/Mesh.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Material.h"
@@ -247,6 +248,324 @@ namespace spartan
             }
 
             return values.size() == expected_count;
+        }
+
+        bool parse_profile(
+            const std::string& value,
+            std::vector<math::Vector2>& profile
+        )
+        {
+            std::stringstream stream(value);
+            std::string part;
+            std::vector<float> values;
+
+            while (std::getline(stream, part, ','))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(part, parsed))
+                {
+                    return false;
+                }
+                values.push_back(parsed);
+            }
+
+            if (
+                values.size() < 6 ||
+                values.size() > 64 ||
+                values.size() % 2 != 0
+            )
+            {
+                return false;
+            }
+
+            for (size_t i = 0; i < values.size(); i += 2)
+            {
+                profile.emplace_back(values[i], values[i + 1]);
+            }
+
+            return true;
+        }
+
+        bool parse_path3(
+            const std::string& value,
+            std::vector<math::Vector3>& path
+        )
+        {
+            std::stringstream stream(value);
+            std::string part;
+            std::vector<float> values;
+            while (std::getline(stream, part, ','))
+            {
+                float parsed = 0.0f;
+                if (!parse_float(part, parsed))
+                {
+                    return false;
+                }
+                values.push_back(parsed);
+            }
+            if (
+                values.size() < 6 ||
+                values.size() > 192 ||
+                values.size() % 3 != 0
+            )
+            {
+                return false;
+            }
+            for (size_t i = 0; i < values.size(); i += 3)
+            {
+                path.emplace_back(
+                    values[i],
+                    values[i + 1],
+                    values[i + 2]
+                );
+            }
+
+            for (size_t i = 1; i < path.size(); i++)
+            {
+                if (
+                    (
+                        path[i] -
+                        path[i - 1]
+                    ).LengthSquared() <= 0.0000001f
+                )
+                {
+                    return false;
+                }
+            }
+            for (size_t i = 1; i + 1 < path.size(); i++)
+            {
+                if (
+                    (
+                        path[i + 1] -
+                        path[i - 1]
+                    ).LengthSquared() <= 0.0000001f
+                )
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        bool profile_has_distinct_neighbors(
+            const std::vector<math::Vector2>& profile,
+            bool closed
+        )
+        {
+            const size_t edge_count =
+                closed ? profile.size() : profile.size() - 1;
+            for (size_t i = 0; i < edge_count; i++)
+            {
+                const size_t next = (i + 1) % profile.size();
+                if (
+                    (
+                        profile[next] -
+                        profile[i]
+                    ).LengthSquared() <= 0.0000001f
+                )
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        bool profile_is_convex_counter_clockwise(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            if (!profile_has_distinct_neighbors(profile, true))
+            {
+                return false;
+            }
+
+            float signed_area_twice = 0.0f;
+            bool has_positive_turn = false;
+            for (size_t i = 0; i < profile.size(); i++)
+            {
+                const math::Vector2& a = profile[i];
+                const math::Vector2& b =
+                    profile[(i + 1) % profile.size()];
+                const math::Vector2& c =
+                    profile[(i + 2) % profile.size()];
+                signed_area_twice +=
+                    a.x * b.y -
+                    b.x * a.y;
+
+                const math::Vector2 edge_a = b - a;
+                const math::Vector2 edge_b = c - b;
+                const float turn =
+                    edge_a.x * edge_b.y -
+                    edge_a.y * edge_b.x;
+                if (turn < -0.00001f)
+                {
+                    return false;
+                }
+                has_positive_turn |= turn > 0.00001f;
+            }
+
+            return signed_area_twice > 0.00001f &&
+                has_positive_turn;
+        }
+
+        bool profile_is_simple(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            auto orientation = [](
+                const math::Vector2& a,
+                const math::Vector2& b,
+                const math::Vector2& c
+            )
+            {
+                return
+                    (b.x - a.x) * (c.y - a.y) -
+                    (b.y - a.y) * (c.x - a.x);
+            };
+            auto on_segment = [](
+                const math::Vector2& a,
+                const math::Vector2& b,
+                const math::Vector2& point
+            )
+            {
+                return
+                    point.x >= std::min(a.x, b.x) - 0.00001f &&
+                    point.x <= std::max(a.x, b.x) + 0.00001f &&
+                    point.y >= std::min(a.y, b.y) - 0.00001f &&
+                    point.y <= std::max(a.y, b.y) + 0.00001f;
+            };
+            auto intersects = [&](
+                const math::Vector2& a,
+                const math::Vector2& b,
+                const math::Vector2& c,
+                const math::Vector2& d
+            )
+            {
+                const float o1 = orientation(a, b, c);
+                const float o2 = orientation(a, b, d);
+                const float o3 = orientation(c, d, a);
+                const float o4 = orientation(c, d, b);
+                if (
+                    (
+                        (o1 > 0.00001f && o2 < -0.00001f) ||
+                        (o1 < -0.00001f && o2 > 0.00001f)
+                    ) &&
+                    (
+                        (o3 > 0.00001f && o4 < -0.00001f) ||
+                        (o3 < -0.00001f && o4 > 0.00001f)
+                    )
+                )
+                {
+                    return true;
+                }
+                if (
+                    std::abs(o1) <= 0.00001f &&
+                    on_segment(a, b, c)
+                )
+                {
+                    return true;
+                }
+                if (
+                    std::abs(o2) <= 0.00001f &&
+                    on_segment(a, b, d)
+                )
+                {
+                    return true;
+                }
+                if (
+                    std::abs(o3) <= 0.00001f &&
+                    on_segment(c, d, a)
+                )
+                {
+                    return true;
+                }
+                return
+                    std::abs(o4) <= 0.00001f &&
+                    on_segment(c, d, b);
+            };
+
+            for (size_t i = 0; i < profile.size(); i++)
+            {
+                const size_t next_i = (i + 1) % profile.size();
+                for (size_t j = i + 1; j < profile.size(); j++)
+                {
+                    const size_t next_j =
+                        (j + 1) % profile.size();
+                    if (
+                        i == j ||
+                        next_i == j ||
+                        next_j == i
+                    )
+                    {
+                        continue;
+                    }
+                    if (
+                        intersects(
+                            profile[i],
+                            profile[next_i],
+                            profile[j],
+                            profile[next_j]
+                        )
+                    )
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        bool profile_is_counter_clockwise(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            if (
+                !profile_has_distinct_neighbors(profile, true) ||
+                !profile_is_simple(profile)
+            )
+            {
+                return false;
+            }
+
+            float signed_area_twice = 0.0f;
+            for (size_t i = 0; i < profile.size(); i++)
+            {
+                const math::Vector2& a = profile[i];
+                const math::Vector2& b =
+                    profile[(i + 1) % profile.size()];
+                signed_area_twice +=
+                    a.x * b.y -
+                    b.x * a.y;
+            }
+            return signed_area_twice > 0.00001f;
+        }
+
+        bool profile_has_valid_revolve_tangents(
+            const std::vector<math::Vector2>& profile
+        )
+        {
+            if (!profile_has_distinct_neighbors(profile, false))
+            {
+                return false;
+            }
+
+            for (size_t i = 1; i + 1 < profile.size(); i++)
+            {
+                if (
+                    (
+                        profile[i + 1] -
+                        profile[i - 1]
+                    ).LengthSquared() <= 0.0000001f
+                )
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         bool parse_int32(const std::string& value, int32_t& result)
@@ -1180,6 +1499,36 @@ namespace spartan
                 return "sheen";
             case MaterialProperty::SubsurfaceScattering:
                 return "subsurface_scattering";
+            case MaterialProperty::FlakeStrength:
+                return "flake_strength";
+            case MaterialProperty::FlakeScale:
+                return "flake_scale";
+            case MaterialProperty::PearlStrength:
+                return "pearl_strength";
+            case MaterialProperty::PearlColorR:
+                return "pearl_color_r";
+            case MaterialProperty::PearlColorG:
+                return "pearl_color_g";
+            case MaterialProperty::PearlColorB:
+                return "pearl_color_b";
+            case MaterialProperty::CoatTintR:
+                return "coat_tint_r";
+            case MaterialProperty::CoatTintG:
+                return "coat_tint_g";
+            case MaterialProperty::CoatTintB:
+                return "coat_tint_b";
+            case MaterialProperty::CoatTintStrength:
+                return "coat_tint_strength";
+            case MaterialProperty::Ior:
+                return "ior";
+            case MaterialProperty::Absorption:
+                return "absorption";
+            case MaterialProperty::Thickness:
+                return "thickness";
+            case MaterialProperty::PaintPreset:
+                return "paint_preset";
+            case MaterialProperty::SurfacePreset:
+                return "surface_preset";
             case MaterialProperty::NormalFromAlbedo:
                 return "normal_from_albedo";
             case MaterialProperty::EmissiveFromAlbedo:
@@ -1257,6 +1606,103 @@ namespace spartan
             if (name == "base_color_a")
             {
                 return MaterialProperty::ColorA;
+            }
+
+            return std::nullopt;
+        }
+
+        std::optional<MaterialPaintPreset> material_paint_preset_from_name(
+            const std::string& name
+        )
+        {
+            if (name == "gloss_solid")
+            {
+                return MaterialPaintPreset::GlossSolid;
+            }
+            if (name == "metallic")
+            {
+                return MaterialPaintPreset::Metallic;
+            }
+            if (name == "satin")
+            {
+                return MaterialPaintPreset::Satin;
+            }
+            if (name == "matte")
+            {
+                return MaterialPaintPreset::Matte;
+            }
+            if (name == "pearl")
+            {
+                return MaterialPaintPreset::Pearl;
+            }
+            if (name == "candy")
+            {
+                return MaterialPaintPreset::Candy;
+            }
+            if (name == "chameleon")
+            {
+                return MaterialPaintPreset::Chameleon;
+            }
+
+            return std::nullopt;
+        }
+
+        std::optional<MaterialSurfacePreset>
+        material_surface_preset_from_name(
+            const std::string& name
+        )
+        {
+            if (name == "glass_clear")
+            {
+                return MaterialSurfacePreset::GlassClear;
+            }
+            if (name == "glass_tinted")
+            {
+                return MaterialSurfacePreset::GlassTinted;
+            }
+            if (name == "headlight_lens")
+            {
+                return MaterialSurfacePreset::HeadlightLens;
+            }
+            if (name == "taillight_lens")
+            {
+                return MaterialSurfacePreset::TaillightLens;
+            }
+            if (name == "rubber")
+            {
+                return MaterialSurfacePreset::RubberTire;
+            }
+            if (name == "carbon_fiber")
+            {
+                return MaterialSurfacePreset::CarbonFiber;
+            }
+            if (name == "chrome")
+            {
+                return MaterialSurfacePreset::Chrome;
+            }
+            if (name == "polished_metal")
+            {
+                return MaterialSurfacePreset::PolishedMetal;
+            }
+            if (name == "brake_disc")
+            {
+                return MaterialSurfacePreset::BrakeDisc;
+            }
+            if (name == "leather")
+            {
+                return MaterialSurfacePreset::Leather;
+            }
+            if (name == "black_plastic")
+            {
+                return MaterialSurfacePreset::BlackPlastic;
+            }
+            if (name == "emissive_red")
+            {
+                return MaterialSurfacePreset::EmissiveRedLight;
+            }
+            if (name == "emissive_white")
+            {
+                return MaterialSurfacePreset::EmissiveWhiteLight;
             }
 
             return std::nullopt;
@@ -2965,21 +3411,355 @@ namespace spartan
                 }
             }
 
-            math::Vector3 hit_position;
-            Entity* hit_entity = nullptr;
-            const bool hit = PhysicsWorld::RaycastStatic(origin, direction, max_distance, hit_position, hit_entity);
+            PhysicsRaycastHit hit_result;
+            const bool hit = PhysicsWorld::RaycastStatic(
+                origin,
+                direction,
+                max_distance,
+                hit_result
+            );
 
             std::string json = "{\"ok\":true";
             json += ",\"hit\":" + json_bool(hit);
             if (hit)
             {
-                json += ",\"position\":" + json_vector3(hit_position);
-                if (hit_entity != nullptr)
+                json += ",\"position\":" +
+                    json_vector3(hit_result.position);
+                json += ",\"normal\":" +
+                    json_vector3(hit_result.normal);
+                json += ",\"distance\":" +
+                    std::to_string(hit_result.distance);
+                if (hit_result.entity != nullptr)
                 {
-                    json += ",\"entity_id\":" + json_string(std::to_string(hit_entity->GetObjectId()));
-                    json += ",\"entity_name\":" + json_string(hit_entity->GetObjectName());
+                    json += ",\"entity_id\":" +
+                        json_string(
+                            std::to_string(
+                                hit_result.entity->GetObjectId()
+                            )
+                        );
+                    json += ",\"entity_name\":" +
+                        json_string(
+                            hit_result.entity->GetObjectName()
+                        );
                 }
             }
+            json += "}";
+            return json;
+        }
+
+        std::string command_entity_snap(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("entity snapping requires edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::string mode = to_lower_copy(
+                get_argument(request, "mode").value_or("floor")
+            );
+            if (
+                mode != "floor" &&
+                mode != "ceiling" &&
+                mode != "wall" &&
+                mode != "surface"
+            )
+            {
+                return json_error("invalid snap mode");
+            }
+
+            float max_distance = 1000.0f;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "max_distance")
+            )
+            {
+                if (
+                    !parse_float(*value, max_distance) ||
+                    max_distance <= 0.0f
+                )
+                {
+                    return json_error("invalid max_distance");
+                }
+            }
+
+            float offset = 0.0f;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "offset")
+            )
+            {
+                if (!parse_float(*value, offset))
+                {
+                    return json_error("invalid offset");
+                }
+            }
+
+            bool align_to_surface =
+                mode == "wall" || mode == "surface";
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "align_to_surface")
+            )
+            {
+                if (!parse_bool(*value, align_to_surface))
+                {
+                    return json_error("invalid align_to_surface");
+                }
+            }
+
+            math::Vector3 target = entity->GetPosition();
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "target")
+            )
+            {
+                if (!parse_vector3(*value, target))
+                {
+                    return json_error("invalid target");
+                }
+            }
+
+            math::Vector3 origin = entity->GetPosition();
+            math::Vector3 direction = math::Vector3::Down;
+            if (mode == "floor")
+            {
+                origin = target +
+                    math::Vector3::Up * (max_distance * 0.5f);
+                direction = math::Vector3::Down;
+            }
+            else if (mode == "ceiling")
+            {
+                origin = target +
+                    math::Vector3::Down * (max_distance * 0.5f);
+                direction = math::Vector3::Up;
+            }
+            else
+            {
+                origin = target;
+                direction = mode == "wall"
+                    ? entity->GetForward()
+                    : math::Vector3::Down;
+            }
+
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "origin")
+            )
+            {
+                if (!parse_vector3(*value, origin))
+                {
+                    return json_error("invalid origin");
+                }
+            }
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "direction")
+            )
+            {
+                if (
+                    !parse_vector3(*value, direction) ||
+                    direction == math::Vector3::Zero
+                )
+                {
+                    return json_error("invalid direction");
+                }
+            }
+
+            PhysicsRaycastHit hit;
+            if (
+                !PhysicsWorld::RaycastStatic(
+                    origin,
+                    direction,
+                    max_distance,
+                    hit,
+                    entity
+                )
+            )
+            {
+                return json_error("snap ray did not hit static geometry");
+            }
+
+            if (align_to_surface)
+            {
+                if (mode == "wall")
+                {
+                    entity->SetRotation(
+                        math::Quaternion::FromLookRotation(
+                            hit.normal,
+                            math::Vector3::Up
+                        )
+                    );
+                }
+                else
+                {
+                    entity->SetRotation(
+                        math::Quaternion::FromRotation(
+                            math::Vector3::Up,
+                            hit.normal
+                        )
+                    );
+                }
+            }
+
+            math::BoundingBox bounds;
+            bool has_bounds = false;
+            std::function<void(Entity*)> merge_bounds =
+                [&](Entity* current)
+            {
+                if (Render* renderable =
+                    current->GetComponent<Render>())
+                {
+                    auto merge_matrix =
+                        [&](const math::Matrix& matrix)
+                    {
+                        const math::BoundingBox world_bounds =
+                            renderable->GetBoundingBoxMesh() *
+                            matrix;
+                        if (!has_bounds)
+                        {
+                            bounds = world_bounds;
+                            has_bounds = true;
+                        }
+                        else
+                        {
+                            bounds.Merge(world_bounds);
+                        }
+                    };
+                    if (renderable->HasInstancing())
+                    {
+                        for (
+                            uint32_t i = 0;
+                            i < renderable->GetInstanceCount();
+                            i++
+                        )
+                        {
+                            merge_matrix(
+                                renderable->GetInstance(i, true)
+                            );
+                        }
+                    }
+                    else
+                    {
+                        merge_matrix(current->GetMatrix());
+                    }
+                }
+                for (Entity* child : current->GetChildren())
+                {
+                    merge_bounds(child);
+                }
+            };
+            merge_bounds(entity);
+            if (!has_bounds)
+            {
+                return json_error("entity has no render bounds");
+            }
+
+            const math::Vector3 pivot = entity->GetPosition();
+            float support_toward_surface =
+                -std::numeric_limits<float>::max();
+            std::function<void(Entity*)> compute_support =
+                [&](Entity* current)
+            {
+                if (Render* renderable =
+                    current->GetComponent<Render>())
+                {
+                    std::array<math::Vector3, 8> corners;
+                    renderable->GetBoundingBoxMesh().GetCorners(
+                        &corners
+                    );
+                    auto accumulate_matrix =
+                        [&](const math::Matrix& matrix)
+                    {
+                        for (const math::Vector3& corner : corners)
+                        {
+                            const math::Vector3 world_corner =
+                                matrix * corner;
+                            support_toward_surface = std::max(
+                                support_toward_surface,
+                                math::Vector3::Dot(
+                                    world_corner - pivot,
+                                    -hit.normal
+                                )
+                            );
+                        }
+                    };
+                    if (renderable->HasInstancing())
+                    {
+                        for (
+                            uint32_t i = 0;
+                            i < renderable->GetInstanceCount();
+                            i++
+                        )
+                        {
+                            accumulate_matrix(
+                                renderable->GetInstance(i, true)
+                            );
+                        }
+                    }
+                    else
+                    {
+                        accumulate_matrix(current->GetMatrix());
+                    }
+                }
+                for (Entity* child : current->GetChildren())
+                {
+                    compute_support(child);
+                }
+            };
+            compute_support(entity);
+            if (
+                support_toward_surface ==
+                -std::numeric_limits<float>::max()
+            )
+            {
+                return json_error(
+                    "failed to compute entity support extent"
+                );
+            }
+            const math::Vector3 final_position =
+                hit.position +
+                hit.normal *
+                (support_toward_surface + offset);
+            entity->SetPosition(final_position);
+
+            has_bounds = false;
+            merge_bounds(entity);
+            std::string json = "{\"ok\":true";
+            json += ",\"mode\":" + json_string(mode);
+            json += ",\"position\":" +
+                json_vector3(entity->GetPosition());
+            json += ",\"rotation\":" +
+                json_quaternion(entity->GetRotation());
+            json += ",\"hit\":{";
+            json += "\"position\":" +
+                json_vector3(hit.position);
+            json += ",\"normal\":" +
+                json_vector3(hit.normal);
+            json += ",\"distance\":" +
+                std::to_string(hit.distance);
+            if (hit.entity)
+            {
+                json += ",\"entity_id\":" +
+                    json_string(
+                        std::to_string(hit.entity->GetObjectId())
+                    );
+                json += ",\"entity_name\":" +
+                    json_string(hit.entity->GetObjectName());
+            }
+            json += "}";
+            json += ",\"bounding_box\":" +
+                json_bounding_box(bounds);
             json += "}";
             return json;
         }
@@ -3908,6 +4688,319 @@ namespace spartan
 
             material->SetTexture(*texture_type, *texture_path, slot);
             return "{\"ok\":true,\"material\":" + material_to_json(material) + "}";
+        }
+
+        std::string command_material_apply_preset(
+            const McpRequest& request
+        )
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("material edits require edit mode");
+            }
+
+            std::string error;
+            Material* material =
+                get_material_from_request(request, error);
+            if (material == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> kind_arg =
+                get_argument(request, "kind");
+            const std::optional<std::string> preset_arg =
+                get_argument(request, "preset");
+            if (!kind_arg || !preset_arg)
+            {
+                return json_error("missing kind or preset");
+            }
+
+            const std::string kind = to_lower_copy(*kind_arg);
+            const std::string preset = to_lower_copy(*preset_arg);
+            if (kind == "paint")
+            {
+                const std::optional<MaterialPaintPreset> parsed =
+                    material_paint_preset_from_name(preset);
+                if (!parsed)
+                {
+                    return json_error("invalid paint preset");
+                }
+
+                Color color(
+                    material->GetProperty(MaterialProperty::ColorR),
+                    material->GetProperty(MaterialProperty::ColorG),
+                    material->GetProperty(MaterialProperty::ColorB),
+                    material->GetProperty(MaterialProperty::ColorA)
+                );
+                if (
+                    const std::optional<std::string> color_arg =
+                        get_argument(request, "color")
+                )
+                {
+                    if (!parse_color(*color_arg, color))
+                    {
+                        return json_error("invalid color");
+                    }
+                }
+                material->ApplyPaintPreset(*parsed, color, true);
+            }
+            else if (kind == "surface")
+            {
+                const std::optional<MaterialSurfacePreset> parsed =
+                    material_surface_preset_from_name(preset);
+                if (!parsed)
+                {
+                    return json_error("invalid surface preset");
+                }
+                material->ApplySurfacePreset(*parsed, true);
+            }
+            else
+            {
+                return json_error("kind must be paint or surface");
+            }
+
+            return "{\"ok\":true,\"material\":" +
+                material_to_json(material) +
+                "}";
+        }
+
+        std::string command_material_semantic_create(
+            const McpRequest& request
+        )
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("material creation requires edit mode");
+            }
+
+            const std::optional<std::string> path_arg =
+                get_argument(request, "path");
+            const std::optional<std::string> semantic_arg =
+                get_argument(request, "semantic");
+            if (
+                !path_arg ||
+                path_arg->empty() ||
+                !semantic_arg
+            )
+            {
+                return json_error("missing path or semantic");
+            }
+
+            const std::string path =
+                FileSystem::GetRelativePath(*path_arg);
+            const std::string semantic =
+                to_lower_copy(*semantic_arg);
+            std::shared_ptr<Material> material =
+                ResourceCache::GetByPath<Material>(path);
+            if (!material && FileSystem::IsFile(path))
+            {
+                material = ResourceCache::Load<Material>(path);
+            }
+            if (!material)
+            {
+                const std::filesystem::path file_path(path);
+                if (file_path.has_parent_path())
+                {
+                    std::filesystem::create_directories(
+                        file_path.parent_path()
+                    );
+                }
+                material = std::make_shared<Material>();
+                material->SetResourceFilePath(path);
+                material = ResourceCache::Cache(material);
+            }
+            if (!material)
+            {
+                return json_error("failed to create material");
+            }
+
+            Color color(0.8f, 0.8f, 0.8f, 1.0f);
+            if (semantic == "painted_wall")
+            {
+                color = Color(0.72f, 0.68f, 0.58f, 1.0f);
+            }
+            else if (semantic == "wood")
+            {
+                color = Color(0.32f, 0.14f, 0.055f, 1.0f);
+            }
+            else if (semantic == "fabric")
+            {
+                color = Color(0.55f, 0.42f, 0.3f, 1.0f);
+            }
+            else if (semantic == "screen")
+            {
+                color = Color(0.005f, 0.008f, 0.012f, 1.0f);
+            }
+            else if (semantic == "screen_on")
+            {
+                color = Color(0.08f, 0.22f, 0.5f, 1.0f);
+            }
+            bool color_overridden = false;
+            if (
+                const std::optional<std::string> color_arg =
+                    get_argument(request, "color")
+            )
+            {
+                if (!parse_color(*color_arg, color))
+                {
+                    return json_error("invalid color");
+                }
+                color_overridden = true;
+            }
+
+            if (semantic == "painted_wall" || semantic == "paint")
+            {
+                material->ApplyPaintPreset(
+                    MaterialPaintPreset::Matte,
+                    color,
+                    false
+                );
+            }
+            else if (semantic == "wood")
+            {
+                material->ApplyPaintPreset(
+                    MaterialPaintPreset::Matte,
+                    color,
+                    false
+                );
+                material->SetProperty(
+                    MaterialProperty::Roughness,
+                    0.72f
+                );
+                material->SetProperty(
+                    MaterialProperty::Sheen,
+                    0.12f
+                );
+            }
+            else if (semantic == "black_plastic")
+            {
+                material->ApplySurfacePreset(
+                    MaterialSurfacePreset::BlackPlastic,
+                    false
+                );
+                if (color_overridden)
+                {
+                    material->SetColor(color);
+                }
+            }
+            else if (semantic == "fabric")
+            {
+                material->ApplyPaintPreset(
+                    MaterialPaintPreset::Matte,
+                    color,
+                    false
+                );
+                material->SetProperty(
+                    MaterialProperty::Roughness,
+                    0.88f
+                );
+                material->SetProperty(
+                    MaterialProperty::Sheen,
+                    0.35f
+                );
+            }
+            else if (semantic == "metal")
+            {
+                material->ApplySurfacePreset(
+                    MaterialSurfacePreset::PolishedMetal,
+                    false
+                );
+                material->SetColor(color);
+            }
+            else if (semantic == "chrome")
+            {
+                material->ApplySurfacePreset(
+                    MaterialSurfacePreset::Chrome,
+                    false
+                );
+                if (color_overridden)
+                {
+                    material->SetColor(color);
+                }
+            }
+            else if (semantic == "glass")
+            {
+                material->ApplySurfacePreset(
+                    MaterialSurfacePreset::GlassClear,
+                    false
+                );
+                if (color_overridden)
+                {
+                    material->SetColor(color);
+                }
+            }
+            else if (semantic == "screen")
+            {
+                material->ApplyPaintPreset(
+                    MaterialPaintPreset::GlossSolid,
+                    color,
+                    false
+                );
+                material->SetProperty(
+                    MaterialProperty::Roughness,
+                    0.18f
+                );
+            }
+            else if (semantic == "screen_on")
+            {
+                material->ApplyPaintPreset(
+                    MaterialPaintPreset::GlossSolid,
+                    color,
+                    false
+                );
+                material->SetProperty(
+                    MaterialProperty::EmissiveFromAlbedo,
+                    0.08f
+                );
+            }
+            else if (semantic == "emissive")
+            {
+                material->ApplySurfacePreset(
+                    MaterialSurfacePreset::EmissiveWhiteLight,
+                    false
+                );
+                material->SetColor(color);
+            }
+            else
+            {
+                return json_error("unsupported semantic material");
+            }
+
+            std::optional<std::filesystem::file_time_type>
+                previous_write_time;
+            if (FileSystem::IsFile(path))
+            {
+                previous_write_time =
+                    std::filesystem::last_write_time(path);
+            }
+            material->SaveToFile(path);
+            if (!FileSystem::IsFile(path))
+            {
+                return json_error("failed to save material");
+            }
+            if (
+                previous_write_time &&
+                std::filesystem::last_write_time(path) <=
+                *previous_write_time
+            )
+            {
+                return json_error("material file was not updated");
+            }
+
+            return "{\"ok\":true,\"semantic\":" +
+                json_string(semantic) +
+                ",\"material\":" +
+                material_to_json(material.get()) +
+                "}";
         }
 
         std::string command_undo_redo(const McpRequest& request)
@@ -6250,6 +7343,978 @@ namespace spartan
             }
 
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
+        }
+
+        std::string command_mesh_generate(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("mesh generation requires edit mode");
+            }
+
+            const std::optional<std::string> shape_arg =
+                get_argument(request, "shape");
+            const std::optional<std::string> path_arg =
+                get_argument(request, "path");
+            if (!shape_arg || !path_arg || path_arg->empty())
+            {
+                return json_error("missing shape or path");
+            }
+
+            const std::string shape = to_lower_copy(*shape_arg);
+            std::string path = *path_arg;
+            if (std::filesystem::path(path).extension() != EXTENSION_MESH)
+            {
+                path += EXTENSION_MESH;
+            }
+            path = FileSystem::GetRelativePath(path);
+
+            bool reuse_existing = false;
+            if (
+                const std::optional<std::string> reuse_arg =
+                    get_argument(request, "reuse_existing")
+            )
+            {
+                if (!parse_bool(*reuse_arg, reuse_existing))
+                {
+                    return json_error("invalid reuse_existing");
+                }
+            }
+
+            if (
+                std::shared_ptr<Mesh> existing =
+                    ResourceCache::GetByPath<Mesh>(path)
+            )
+            {
+                if (!reuse_existing)
+                {
+                    return json_error(
+                        "mesh path is already cached, use a new path or set reuse_existing"
+                    );
+                }
+                std::string json = "{\"ok\":true,\"reused\":true";
+                json += ",\"vertex_count\":" +
+                    std::to_string(existing->GetVertexCount());
+                json += ",\"index_count\":" +
+                    std::to_string(existing->GetIndexCount());
+                json += ",\"resource\":" +
+                    resource_to_json(existing.get());
+                json += "}";
+                return json;
+            }
+            if (FileSystem::IsFile(path))
+            {
+                if (!reuse_existing)
+                {
+                    return json_error(
+                        "mesh path already exists, use a new path or set reuse_existing"
+                    );
+                }
+
+                std::shared_ptr<Mesh> existing =
+                    ResourceCache::Load<Mesh>(path);
+                if (!existing)
+                {
+                    return json_error(
+                        "failed to load existing mesh"
+                    );
+                }
+
+                std::string json =
+                    "{\"ok\":true,\"reused\":true";
+                json += ",\"vertex_count\":" +
+                    std::to_string(existing->GetVertexCount());
+                json += ",\"index_count\":" +
+                    std::to_string(existing->GetIndexCount());
+                json += ",\"resource\":" +
+                    resource_to_json(existing.get());
+                json += "}";
+                return json;
+            }
+
+            std::vector<RHI_Vertex_PosTexNorTan> vertices;
+            std::vector<uint32_t> indices;
+
+            math::Vector3 size = math::Vector3::One;
+            if (const std::optional<std::string> size_arg =
+                get_argument(request, "size"))
+            {
+                if (!parse_vector3(*size_arg, size))
+                {
+                    return json_error("invalid size");
+                }
+            }
+            if (
+                size.x <= 0.0f ||
+                size.y <= 0.0f ||
+                size.z <= 0.0f ||
+                size.x > 1000.0f ||
+                size.y > 1000.0f ||
+                size.z > 1000.0f
+            )
+            {
+                return json_error("size components must be between 0 and 1000");
+            }
+
+            uint32_t segments = 4;
+            if (
+                shape == "revolved_profile" ||
+                shape == "torus" ||
+                shape == "rounded_cylinder"
+            )
+            {
+                segments = 24;
+            }
+            else if (shape == "capsule" || shape == "arch")
+            {
+                segments = 12;
+            }
+            else if (shape == "pipe" || shape == "curved_profile")
+            {
+                segments = 8;
+            }
+            if (const std::optional<std::string> segments_arg =
+                get_argument(request, "segments"))
+            {
+                if (!parse_uint32(*segments_arg, segments))
+                {
+                    return json_error("invalid segments");
+                }
+            }
+
+            if (shape == "rounded_box" || shape == "beveled_box")
+            {
+                const float max_radius = std::min(
+                    { size.x, size.y, size.z }
+                ) * 0.5f;
+                float radius = std::min(
+                    0.05f,
+                    max_radius * 0.25f
+                );
+                const std::optional<std::string> radius_arg =
+                    get_argument(
+                        request,
+                        shape == "rounded_box" ? "radius" : "bevel"
+                    );
+                if (
+                    radius_arg &&
+                    !parse_float(*radius_arg, radius)
+                )
+                {
+                    return json_error("invalid radius");
+                }
+
+                if (radius <= 0.0f || radius >= max_radius)
+                {
+                    return json_error(
+                        "radius must be positive and smaller than half the smallest size component"
+                    );
+                }
+
+                if (shape == "rounded_box")
+                {
+                    if (segments < 1 || segments > 16)
+                    {
+                        return json_error(
+                            "rounded box segments must be between 1 and 16"
+                        );
+                    }
+                    geometry_generation::generate_rounded_box(
+                        &vertices,
+                        &indices,
+                        size,
+                        radius,
+                        segments
+                    );
+                }
+                else
+                {
+                    geometry_generation::generate_beveled_box(
+                        &vertices,
+                        &indices,
+                        size,
+                        radius
+                    );
+                }
+            }
+            else if (shape == "wedge")
+            {
+                geometry_generation::generate_wedge(
+                    &vertices,
+                    &indices,
+                    size
+                );
+            }
+            else if (shape == "torus")
+            {
+                float major_radius = size.x * 0.5f;
+                float minor_radius = std::min(size.y, size.z) * 0.25f;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "major_radius")
+                )
+                {
+                    if (!parse_float(*value, major_radius))
+                    {
+                        return json_error("invalid major_radius");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "minor_radius")
+                )
+                {
+                    if (!parse_float(*value, minor_radius))
+                    {
+                        return json_error("invalid minor_radius");
+                    }
+                }
+                uint32_t minor_segments = 12;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "minor_segments")
+                )
+                {
+                    if (!parse_uint32(*value, minor_segments))
+                    {
+                        return json_error("invalid minor_segments");
+                    }
+                }
+                if (
+                    major_radius <= 0.0f ||
+                    minor_radius <= 0.0f ||
+                    minor_radius >= major_radius ||
+                    segments < 3 ||
+                    segments > 96 ||
+                    minor_segments < 3 ||
+                    minor_segments > 48
+                )
+                {
+                    return json_error("invalid torus dimensions or segments");
+                }
+                geometry_generation::generate_torus(
+                    &vertices,
+                    &indices,
+                    major_radius,
+                    minor_radius,
+                    segments,
+                    minor_segments
+                );
+            }
+            else if (shape == "capsule")
+            {
+                float radius = std::min(size.x, size.z) * 0.5f;
+                float height = size.y;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "radius")
+                )
+                {
+                    if (!parse_float(*value, radius))
+                    {
+                        return json_error("invalid radius");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "height")
+                )
+                {
+                    if (!parse_float(*value, height))
+                    {
+                        return json_error("invalid height");
+                    }
+                }
+                if (
+                    radius <= 0.0f ||
+                    height < radius * 2.0f ||
+                    segments < 4 ||
+                    segments > 48
+                )
+                {
+                    return json_error("invalid capsule dimensions or segments");
+                }
+                geometry_generation::generate_capsule(
+                    &vertices,
+                    &indices,
+                    radius,
+                    height,
+                    segments
+                );
+            }
+            else if (shape == "rounded_cylinder")
+            {
+                float radius = std::min(size.x, size.z) * 0.5f;
+                float height = size.y;
+                float bevel = std::min(radius, height * 0.5f) * 0.15f;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "radius")
+                )
+                {
+                    if (!parse_float(*value, radius))
+                    {
+                        return json_error("invalid radius");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "height")
+                )
+                {
+                    if (!parse_float(*value, height))
+                    {
+                        return json_error("invalid height");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "bevel")
+                )
+                {
+                    if (!parse_float(*value, bevel))
+                    {
+                        return json_error("invalid bevel");
+                    }
+                }
+                uint32_t bevel_segments = 4;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "bevel_segments")
+                )
+                {
+                    if (!parse_uint32(*value, bevel_segments))
+                    {
+                        return json_error("invalid bevel_segments");
+                    }
+                }
+                if (
+                    radius <= 0.0f ||
+                    height <= 0.0f ||
+                    bevel <= 0.0f ||
+                    bevel >= radius ||
+                    bevel * 2.0f >= height ||
+                    segments < 3 ||
+                    segments > 96 ||
+                    bevel_segments < 1 ||
+                    bevel_segments > 16
+                )
+                {
+                    return json_error(
+                        "invalid rounded cylinder dimensions or segments"
+                    );
+                }
+                geometry_generation::generate_rounded_cylinder(
+                    &vertices,
+                    &indices,
+                    radius,
+                    height,
+                    bevel,
+                    segments,
+                    bevel_segments
+                );
+            }
+            else if (shape == "pipe" || shape == "curved_profile")
+            {
+                const std::optional<std::string> path_points_arg =
+                    get_argument(request, "path_points");
+                std::vector<math::Vector3> path_points;
+                if (
+                    !path_points_arg ||
+                    !parse_path3(*path_points_arg, path_points)
+                )
+                {
+                    return json_error(
+                        "path_points must contain 2 to 64 distinct 3d points"
+                    );
+                }
+                if (segments < 3 || segments > 32)
+                {
+                    return json_error(
+                        "sweep segments must be between 3 and 32"
+                    );
+                }
+
+                if (shape == "pipe")
+                {
+                    float radius = 0.02f;
+                    if (
+                        const std::optional<std::string> value =
+                            get_argument(request, "radius")
+                    )
+                    {
+                        if (!parse_float(*value, radius))
+                        {
+                            return json_error("invalid radius");
+                        }
+                    }
+                    if (radius <= 0.0f || radius > 100.0f)
+                    {
+                        return json_error("invalid pipe radius");
+                    }
+                    geometry_generation::generate_pipe(
+                        &vertices,
+                        &indices,
+                        path_points,
+                        radius,
+                        segments
+                    );
+                }
+                else
+                {
+                    const std::optional<std::string> profile_arg =
+                        get_argument(request, "profile");
+                    std::vector<math::Vector2> profile;
+                    if (
+                        !profile_arg ||
+                        !parse_profile(*profile_arg, profile) ||
+                        !profile_is_counter_clockwise(profile)
+                    )
+                    {
+                        return json_error(
+                            "curved profile requires a valid closed profile"
+                        );
+                    }
+                    geometry_generation::generate_swept_profile(
+                        &vertices,
+                        &indices,
+                        path_points,
+                        profile
+                    );
+                }
+            }
+            else if (shape == "arch")
+            {
+                float thickness = size.x * 0.15f;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "thickness")
+                )
+                {
+                    if (!parse_float(*value, thickness))
+                    {
+                        return json_error("invalid thickness");
+                    }
+                }
+                if (
+                    size.y <= size.x * 0.5f ||
+                    thickness <= 0.0f ||
+                    thickness >= size.x * 0.5f ||
+                    segments < 3 ||
+                    segments > 64
+                )
+                {
+                    return json_error("invalid arch dimensions or segments");
+                }
+                geometry_generation::generate_arch(
+                    &vertices,
+                    &indices,
+                    size.x,
+                    size.y,
+                    size.z,
+                    thickness,
+                    segments
+                );
+            }
+            else if (shape == "inset_panel")
+            {
+                float border = std::min(size.x, size.y) * 0.1f;
+                float inset = size.z * 0.12f;
+                float bevel = std::min(
+                    { size.x, size.y, size.z }
+                ) * 0.08f;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "border")
+                )
+                {
+                    if (!parse_float(*value, border))
+                    {
+                        return json_error("invalid border");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "inset")
+                )
+                {
+                    if (!parse_float(*value, inset))
+                    {
+                        return json_error("invalid inset");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "bevel")
+                )
+                {
+                    if (!parse_float(*value, bevel))
+                    {
+                        return json_error("invalid bevel");
+                    }
+                }
+                if (
+                    border <= 0.0f ||
+                    border * 2.0f >= std::min(size.x, size.y) ||
+                    inset <= 0.0f ||
+                    bevel <= 0.0f ||
+                    bevel >= std::min({
+                        size.x,
+                        size.y,
+                        size.z
+                    }) * 0.5f
+                )
+                {
+                    return json_error("invalid inset panel dimensions");
+                }
+                geometry_generation::generate_inset_panel(
+                    &vertices,
+                    &indices,
+                    size,
+                    border,
+                    inset,
+                    bevel
+                );
+            }
+            else if (shape == "tapered_extrusion")
+            {
+                const std::optional<std::string> profile_arg =
+                    get_argument(request, "profile");
+                std::vector<math::Vector2> profile;
+                if (
+                    !profile_arg ||
+                    !parse_profile(*profile_arg, profile) ||
+                    !profile_is_convex_counter_clockwise(profile)
+                )
+                {
+                    return json_error(
+                        "tapered extrusion requires a convex counter clockwise profile"
+                    );
+                }
+                float depth = size.z;
+                float scale_start = 1.0f;
+                float scale_end = 0.5f;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "depth")
+                )
+                {
+                    if (!parse_float(*value, depth))
+                    {
+                        return json_error("invalid depth");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "scale_start")
+                )
+                {
+                    if (!parse_float(*value, scale_start))
+                    {
+                        return json_error("invalid scale_start");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "scale_end")
+                )
+                {
+                    if (!parse_float(*value, scale_end))
+                    {
+                        return json_error("invalid scale_end");
+                    }
+                }
+                if (
+                    depth <= 0.0f ||
+                    scale_start <= 0.0f ||
+                    scale_end <= 0.0f ||
+                    scale_start > 100.0f ||
+                    scale_end > 100.0f
+                )
+                {
+                    return json_error(
+                        "invalid tapered extrusion dimensions"
+                    );
+                }
+                geometry_generation::generate_tapered_extrusion(
+                    &vertices,
+                    &indices,
+                    profile,
+                    depth,
+                    scale_start,
+                    scale_end
+                );
+            }
+            else if (
+                shape == "extruded_profile" ||
+                shape == "revolved_profile"
+            )
+            {
+                const std::optional<std::string> profile_arg =
+                    get_argument(request, "profile");
+                std::vector<math::Vector2> profile;
+                if (
+                    !profile_arg ||
+                    !parse_profile(*profile_arg, profile)
+                )
+                {
+                    return json_error(
+                        "profile must contain between 3 and 32 finite 2d points"
+                    );
+                }
+
+                if (shape == "extruded_profile")
+                {
+                    if (
+                        !profile_is_convex_counter_clockwise(
+                            profile
+                        )
+                    )
+                    {
+                        return json_error(
+                            "extruded profile must be convex and counter clockwise"
+                        );
+                    }
+
+                    float depth = 0.1f;
+                    if (
+                        const std::optional<std::string> depth_arg =
+                            get_argument(request, "depth")
+                    )
+                    {
+                        if (!parse_float(*depth_arg, depth))
+                        {
+                            return json_error("invalid depth");
+                        }
+                    }
+                    if (depth <= 0.0f || depth > 1000.0f)
+                    {
+                        return json_error(
+                            "depth must be between 0 and 1000"
+                        );
+                    }
+                    geometry_generation::generate_extruded_profile(
+                        &vertices,
+                        &indices,
+                        profile,
+                        depth
+                    );
+                }
+                else
+                {
+                    if (
+                        !profile_has_valid_revolve_tangents(
+                            profile
+                        )
+                    )
+                    {
+                        return json_error(
+                            "revolved profile contains duplicate or backtracking points"
+                        );
+                    }
+                    if (segments < 3 || segments > 64)
+                    {
+                        return json_error(
+                            "revolved profile segments must be between 3 and 64"
+                        );
+                    }
+                    bool has_positive_radius = false;
+                    for (const math::Vector2& point : profile)
+                    {
+                        if (point.x < 0.0f || point.x > 1000.0f)
+                        {
+                            return json_error(
+                                "revolved profile radii must be between 0 and 1000"
+                            );
+                        }
+                        has_positive_radius |= point.x > 0.0001f;
+                    }
+                    if (!has_positive_radius)
+                    {
+                        return json_error(
+                            "revolved profile requires a positive radius"
+                        );
+                    }
+                    geometry_generation::generate_revolved_profile(
+                        &vertices,
+                        &indices,
+                        profile,
+                        segments
+                    );
+                }
+            }
+            else
+            {
+                return json_error("unsupported parametric shape");
+            }
+
+            if (
+                vertices.empty() ||
+                indices.empty() ||
+                vertices.size() > 100000 ||
+                indices.size() > 300000
+            )
+            {
+                return json_error(
+                    "generated geometry is empty or exceeds the mesh budget"
+                );
+            }
+
+            const std::filesystem::path file_path(path);
+            if (file_path.has_parent_path())
+            {
+                std::filesystem::create_directories(
+                    file_path.parent_path()
+                );
+            }
+
+            std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();
+            mesh->SetResourceFilePath(path);
+            mesh->SetFlag(
+                static_cast<uint32_t>(
+                    MeshFlags::PostProcessOptimize
+                ),
+                false
+            );
+            mesh->AddGeometry(vertices, indices, false);
+            mesh->SaveToFile(path);
+            if (!FileSystem::IsFile(path))
+            {
+                return json_error(
+                    "failed to save generated mesh"
+                );
+            }
+
+            std::shared_ptr<Mesh> cached =
+                ResourceCache::Cache(mesh);
+            if (!cached)
+            {
+                return json_error("failed to cache generated mesh");
+            }
+            cached->CreateGpuBuffers();
+
+            std::string json = "{\"ok\":true,\"reused\":false";
+            json += ",\"shape\":" + json_string(shape);
+            json += ",\"vertex_count\":" +
+                std::to_string(vertices.size());
+            json += ",\"index_count\":" +
+                std::to_string(indices.size());
+            json += ",\"resource\":" +
+                resource_to_json(cached.get());
+            json += "}";
+            return json;
+        }
+
+        std::string command_mesh_generate_batch(
+            const McpRequest& request
+        )
+        {
+            const std::optional<std::string> count_arg =
+                get_argument(request, "count");
+            uint64_t count = 0;
+            if (
+                !count_arg ||
+                !parse_uint64(*count_arg, count) ||
+                count == 0 ||
+                count > 32
+            )
+            {
+                return json_error("count must be between 1 and 32");
+            }
+
+            const std::vector<std::string> keys =
+            {
+                "shape",
+                "path",
+                "size",
+                "radius",
+                "bevel",
+                "segments",
+                "profile",
+                "depth",
+                "height",
+                "major_radius",
+                "minor_radius",
+                "minor_segments",
+                "bevel_segments",
+                "path_points",
+                "thickness",
+                "border",
+                "inset",
+                "scale_start",
+                "scale_end",
+                "reuse_existing"
+            };
+
+            std::string generated_json = "[";
+            uint32_t generated_count = 0;
+            for (uint64_t i = 0; i < count; i++)
+            {
+                McpRequest item_request;
+                item_request.command = "mesh_generate";
+                for (const std::string& key : keys)
+                {
+                    const std::string batch_key =
+                        "item_" + std::to_string(i) + "_" + key;
+                    const auto it =
+                        request.arguments.find(batch_key);
+                    if (it != request.arguments.end())
+                    {
+                        item_request.arguments[key] = it->second;
+                    }
+                }
+
+                const std::string item_result =
+                    command_mesh_generate(item_request);
+                if (
+                    item_result.find("\"ok\":true") ==
+                    std::string::npos
+                )
+                {
+                    generated_json += "]";
+                    std::string json =
+                        "{\"ok\":false,\"error\":\"failed to generate mesh batch item\"";
+                    json += ",\"generated\":" + generated_json;
+                    json += ",\"generated_count\":" +
+                        std::to_string(generated_count);
+                    json += ",\"failed_index\":" +
+                        std::to_string(i);
+                    json += ",\"failure\":" + item_result;
+                    json += "}";
+                    return json;
+                }
+
+                if (generated_count > 0)
+                {
+                    generated_json += ",";
+                }
+                generated_json += item_result;
+                generated_count++;
+            }
+
+            std::string json =
+                "{\"ok\":true,\"generated\":" +
+                generated_json +
+                "]";
+            json += ",\"generated_count\":" +
+                std::to_string(generated_count);
+            json += "}";
+            return json;
+        }
+
+        std::string command_render_set_mesh(
+            const McpRequest& request
+        )
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("mesh assignment requires edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> mesh_arg =
+                get_argument(request, "mesh");
+            if (!mesh_arg || mesh_arg->empty())
+            {
+                return json_error("missing mesh");
+            }
+
+            std::shared_ptr<IResource> resource =
+                get_resource_shared_by_name_or_path(
+                    *mesh_arg,
+                    ResourceType::Mesh
+                );
+            if (!resource && FileSystem::IsFile(*mesh_arg))
+            {
+                resource = ResourceCache::Load<Mesh>(*mesh_arg);
+            }
+            if (!resource)
+            {
+                return json_error(
+                    "mesh not found by cached name, cached path, or file path"
+                );
+            }
+
+            const std::shared_ptr<Mesh> mesh =
+                std::static_pointer_cast<Mesh>(resource);
+            uint32_t sub_mesh_index = 0;
+            if (
+                const std::optional<std::string> sub_mesh_arg =
+                    get_argument(request, "sub_mesh_index")
+            )
+            {
+                if (
+                    !parse_uint32(
+                        *sub_mesh_arg,
+                        sub_mesh_index
+                    ) ||
+                    sub_mesh_index >= mesh->GetSubMeshCount()
+                )
+                {
+                    return json_error("invalid sub_mesh_index");
+                }
+            }
+
+            Render* renderable = entity->GetComponent<Render>();
+            if (renderable == nullptr)
+            {
+                renderable = entity->AddComponent<Render>();
+            }
+            if (renderable == nullptr)
+            {
+                return json_error("failed to add render component");
+            }
+
+            renderable->SetMesh(
+                mesh.get(),
+                sub_mesh_index
+            );
+            if (renderable->GetMaterial() == nullptr)
+            {
+                renderable->SetDefaultMaterial();
+            }
+
+            if (
+                const std::optional<std::string> material =
+                    get_argument(request, "material")
+            )
+            {
+                std::string material_error;
+                if (
+                    !assign_render_material(
+                        renderable,
+                        *material,
+                        material_error
+                    )
+                )
+                {
+                    return json_error(material_error);
+                }
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"entity\":" +
+                entity_to_json_compact(entity);
+            json += ",\"mesh\":" +
+                resource_to_json(mesh.get());
+            json += ",\"sub_mesh_index\":" +
+                std::to_string(sub_mesh_index);
+            json += "}";
+            return json;
         }
 
         std::string command_entity_create_primitive(const McpRequest& request)
@@ -10285,6 +12350,10 @@ namespace spartan
         {
             return command_world_raycast(request);
         }
+        if (request.command == "entity_snap")
+        {
+            return command_entity_snap(request);
+        }
         if (request.command == "entity_list")
         {
             return command_entity_list(request);
@@ -10336,6 +12405,18 @@ namespace spartan
         if (request.command == "entity_create_empty")
         {
             return command_entity_create_empty(request);
+        }
+        if (request.command == "mesh_generate")
+        {
+            return command_mesh_generate(request);
+        }
+        if (request.command == "mesh_generate_batch")
+        {
+            return command_mesh_generate_batch(request);
+        }
+        if (request.command == "render_set_mesh")
+        {
+            return command_render_set_mesh(request);
         }
         if (request.command == "entity_create_primitive")
         {
@@ -10436,6 +12517,14 @@ namespace spartan
         if (request.command == "material_set_texture")
         {
             return command_material_set_texture(request);
+        }
+        if (request.command == "material_apply_preset")
+        {
+            return command_material_apply_preset(request);
+        }
+        if (request.command == "material_semantic_create")
+        {
+            return command_material_semantic_create(request);
         }
         if (request.command == "component_set")
         {

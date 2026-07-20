@@ -24,66 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-// edge aware bilateral upsample of the half res restir gi texture, weights combine
-// bilinear, depth and normal similarity to avoid edge bleed
-float3 sample_gi_bilateral(float2 uv_dst, float depth_dst_lin, float3 normal_dst)
-{
-    float2 gi_size; tex6.GetDimensions(gi_size.x, gi_size.y);
-    float2 gi_inv = 1.0f / gi_size;
-
-    float2 ctr  = uv_dst * gi_size - 0.5f;
-    float2 base = floor(ctr);
-    float2 frac_uv = ctr - base;
-
-    int2 corners[4];
-    corners[0] = int2(base) + int2(0, 0);
-    corners[1] = int2(base) + int2(1, 0);
-    corners[2] = int2(base) + int2(0, 1);
-    corners[3] = int2(base) + int2(1, 1);
-
-    float w_bilin[4];
-    w_bilin[0] = (1.0f - frac_uv.x) * (1.0f - frac_uv.y);
-    w_bilin[1] = frac_uv.x          * (1.0f - frac_uv.y);
-    w_bilin[2] = (1.0f - frac_uv.x) * frac_uv.y;
-    w_bilin[3] = frac_uv.x          * frac_uv.y;
-
-    float3 sum  = 0.0f;
-    float  norm = 0.0f;
-
-    int2 gi_max = int2(gi_size) - 1;
-    [unroll]
-    for (int i = 0; i < 4; i++)
-    {
-        int2 c = clamp(corners[i], int2(0, 0), gi_max);
-        float2 src_uv = (float2(c) + 0.5f) * gi_inv;
-
-        float d_raw = tex_depth.SampleLevel(samplers[sampler_point_clamp], src_uv, 0).r;
-        if (d_raw <= 0.0f) continue;
-
-        float d_lin = linearize_depth(d_raw);
-        float3 n_src = get_normal(src_uv);
-
-        // bilateral upsample weights, 64 / 16 is the schied 2017 starting point, ~4 deg and ~14 deg
-        float depth_diff = abs(d_lin - depth_dst_lin) / max(depth_dst_lin, 1e-3f);
-        float w_depth    = exp(-depth_diff * 64.0f);
-
-        float ndot     = saturate(dot(normal_dst, n_src));
-        float w_normal = pow(ndot, 16.0f);
-
-        float w = w_bilin[i] * w_depth * w_normal;
-
-        float3 src = tex6.Load(int3(c, 0)).rgb;
-        sum  += src * w;
-        norm += w;
-    }
-
-    if (norm > 1e-5f)
-        return sum / norm;
-
-    // all neighbors disagree on geometry, fall back to nearest texel to avoid halos
-    return tex6.SampleLevel(samplers[sampler_point_clamp], uv_dst, 0).rgb;
-}
-
 // catmull rom filtered sky panorama fetch, sky pixels magnify the 4k panorama ~2.5x at a
 // typical fov so plain bilinear smears cloud edges, the 5 tap cubic keeps them crisp, the
 // neighborhood clamp suppresses ringing from the negative lobes around hdr spikes like the sun
@@ -168,7 +108,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 light_specular      = 0.0f;
     float3 light_emissive      = 0.0f;
     float3 light_atmospheric   = 0.0f;
-    float3 light_gi            = 0.0f;
     float alpha                = 0.0f;
     float distance_from_camera = 0.0f;
 
@@ -196,22 +135,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
 
-        // restir_pt outputs diffuse only albedo demodulated gi, re-apply the full res albedo here
-        // ssao is not applied, the path tracer already accounts for indirect visibility
-        if (is_restir_pt_enabled())
-        {
-            float depth_dst_lin = linearize_depth(surface.depth);
-            light_gi            = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
-            light_gi           *= max(surface.albedo, 0.1f);
-        }
-
         // water and glass are shaded from reflection and transmission inside the refraction
         // composite, a lambert albedo layer on top double counts and washes the fresnel structure
         // to a flat albedo sheet, the analytic specular in light_specular is real and stays
         if (surface.is_water() || surface.is_transparent())
         {
             light_diffuse = 0.0f;
-            light_gi      = 0.0f;
         }
 
         // submerged geometry sits inside a glowing scattering medium but the refraction source is
@@ -305,11 +234,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             light_diffuse  *= transmittance;
             light_specular *= transmittance;
             light_emissive *= transmittance;
-            light_gi       *= transmittance;
             light_atmospheric = fog_factor * sky_color + fog_volumetric;
         }
     }
 
     // each pixel reaches this point once per frame so a straight write is safe
-    tex_uav[thread_id.xy] = validate_output(float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric + light_gi, alpha));
+    tex_uav[thread_id.xy] = validate_output(float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric, alpha));
 }

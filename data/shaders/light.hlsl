@@ -27,8 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "light_cluster.hlsl"
 //============================
 
-// samples the denoised ray traced shadow texture bound on tex4, the spatiotemporal denoiser has
-// already reconstructed a clean penumbra so a single bilinear fetch is all that is needed here
+// samples the denoised ray traced shadow texture without crossing geometry edges
 float sample_ray_traced_shadow(float2 uv)
 {
     if (!is_ray_traced_shadows_enabled())
@@ -36,7 +35,13 @@ float sample_ray_traced_shadow(float2 uv)
         return 1.0;
     }
 
-    return saturate(tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r);
+    return saturate(
+        tex4.SampleLevel(
+            GET_SAMPLER(sampler_point_clamp),
+            uv,
+            0
+        ).r
+    );
 }
 
 // inline ray traced shadow for any light type, deterministic hammersley disk
@@ -261,9 +266,6 @@ void evaluate_light(
     // raw light energy without n_dot_l, sss needs it since light.radiance bakes n_dot_l in
     float3 light_radiance_raw = light.color * light.intensity * light.attenuation;
 
-    // restir owns primary diffuse (direct and gi), keep analytic specular so local lights still form highlights
-    bool restir_owns_diffuse = is_restir_pt_enabled();
-
     float  L_shadow        = 1.0f;
     float3 L_specular_sum  = 0.0f;
     float3 L_diffuse_term  = 0.0f;
@@ -281,13 +283,9 @@ void evaluate_light(
 
     if (eval_surface && !surface.is_sky() && light_can_contribute && (has_brdf || has_sss))
     {
-        // restir skips the shadow atlas. inline rt shadows self-hit area light emitter meshes in the
-        // tlas and zero analytic specular (the showroom tubes). raster area lights never had a real
-        // atlas path either, compute_shadow falls through invalid cascades and stays lit, match that.
         float L_shadow_primary = 1.0f;
         float L_shadow_contact = 1.0f;
 
-        if (!restir_owns_diffuse)
         {
             const bool want_shadows          = light.has_shadows();
             const bool use_rt_shadow_texture = want_shadows && is_ray_traced_shadows_enabled() && light.is_directional();
@@ -367,7 +365,7 @@ void evaluate_light(
             }
         }
 
-        if (has_sss && !restir_owns_diffuse)
+        if (has_sss)
         {
             // sss uses raw radiance so it can fire on back faced surfaces
             Light light_sss    = light;
@@ -380,8 +378,7 @@ void evaluate_light(
         surface.roughness       = original_roughness;
         surface.roughness_alpha = original_roughness_alpha;
 
-        // diffuse_precomputed is zero for transparents, restir already carries diffuse direct
-        if (has_brdf && !is_transparent && !restir_owns_diffuse)
+        if (has_brdf && !is_transparent)
         {
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
@@ -434,7 +431,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                        out_diffuse, out_specular, out_volumetric);
     }
 
-    // clustered point, spot and area lights, under restir this still runs for specular and volumetric
+    // clustered point, spot and area lights
     if (!surface.is_sky() && total_lights > 1u)
     {
         // the cluster grid lives in the left eye view projection space, shared by both vr eyes

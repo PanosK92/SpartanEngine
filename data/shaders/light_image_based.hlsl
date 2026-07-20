@@ -23,6 +23,80 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
+float3 sample_restir_gi_bilateral(
+    float2 uv,
+    float depth_linear,
+    float3 normal)
+{
+    uint width;
+    uint height;
+    tex4.GetDimensions(width, height);
+
+    float2 size       = float2(width, height);
+    float2 size_inv   = 1.0f / size;
+    float2 position   = uv * size - 0.5f;
+    int2 base         = int2(floor(position));
+    float2 fraction   = frac(position);
+    int2 offsets[4]   =
+    {
+        int2(0, 0),
+        int2(1, 0),
+        int2(0, 1),
+        int2(1, 1)
+    };
+    float weights[4] =
+    {
+        (1.0f - fraction.x) * (1.0f - fraction.y),
+        fraction.x * (1.0f - fraction.y),
+        (1.0f - fraction.x) * fraction.y,
+        fraction.x * fraction.y
+    };
+
+    float3 result      = 0.0f;
+    float weight_total = 0.0f;
+    int2 pixel_max     = int2(width, height) - 1;
+
+    [unroll]
+    for (uint i = 0; i < 4; i++)
+    {
+        int2 pixel       = clamp(base + offsets[i], int2(0, 0), pixel_max);
+        float2 sample_uv = (float2(pixel) + 0.5f) * size_inv;
+        float depth      = tex_depth.SampleLevel(
+            samplers[sampler_point_clamp],
+            sample_uv,
+            0.0f
+        ).r;
+        if (depth <= 0.0f)
+        {
+            continue;
+        }
+
+        float depth_difference =
+            abs(linearize_depth(depth) - depth_linear) /
+            max(depth_linear, 1e-3f);
+        float depth_weight = exp(-depth_difference * 64.0f);
+        float normal_weight = pow(
+            saturate(dot(normal, get_normal(sample_uv))),
+            16.0f
+        );
+        float weight = weights[i] * depth_weight * normal_weight;
+
+        result       += tex4.Load(int3(pixel, 0)).rgb * weight;
+        weight_total += weight;
+    }
+
+    if (weight_total > 1e-5f)
+    {
+        return result / weight_total;
+    }
+
+    return tex4.SampleLevel(
+        samplers[sampler_point_clamp],
+        uv,
+        0.0f
+    ).rgb;
+}
+
 // approx of multi-bounce (inter-reflection) for ao
 float3 gtao_multi_bounce(float visibility, float3 albedo)
 {
@@ -120,11 +194,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         diffuse_ibl = 0.0f;
     }
 
-    // restir owns diffuse indirect, rt reflections owns specular when enabled
-    if (is_restir_pt_enabled())
+    // restir replaces diffuse ibl so its visibility controls both dark and lit regions
+    if (pass_get_f3_value().y > 0.5f &&
+        !surface.is_water() &&
+        !surface.is_transparent())
     {
-        diffuse_ibl *= 0.0f;
+        float3 restir_gi = sample_restir_gi_bilateral(
+            surface.uv,
+            linearize_depth(surface.depth),
+            surface.normal
+        );
+        diffuse_ibl =
+            restir_gi *
+            max(surface.albedo, 0.1f) *
+            pass_get_f3_value().z;
     }
+
+    // ray traced reflections replace specular ibl
     if (is_ray_traced_reflections_enabled())
     {
         specular_ibl *= 0.0f;

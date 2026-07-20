@@ -310,7 +310,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     if (any(isnan(gi)) || any(isinf(gi)))
+    {
         gi = float3(0, 0, 0);
+    }
+
+    if (all(gi <= 1e-6f))
+    {
+        gi = tex_uav[pixel].rgb;
+    }
 
     // real reconnection distance in w so reblur can size its kernels, sky gets the far band
     float hit_dist = 0.0f;

@@ -500,8 +500,27 @@ namespace spartan
 
     bool PhysicsWorld::RaycastStatic(const Vector3& origin, const Vector3& direction, float max_distance, Vector3& hit_position, Entity*& hit_entity)
     {
-        hit_entity = nullptr;
+        PhysicsRaycastHit hit;
+        const bool did_hit = RaycastStatic(
+            origin,
+            direction,
+            max_distance,
+            hit
+        );
+        hit_position = hit.position;
+        hit_entity = hit.entity;
+        return did_hit;
+    }
 
+    bool PhysicsWorld::RaycastStatic(
+        const Vector3& origin,
+        const Vector3& direction,
+        float max_distance,
+        PhysicsRaycastHit& hit_result,
+        Entity* ignored_entity
+    )
+    {
+        hit_result = PhysicsRaycastHit();
         if (!scene)
         {
             return false;
@@ -512,16 +531,89 @@ namespace spartan
         px_direction.normalize();
 
         PxRaycastBuffer hit;
-        PxQueryFilterData filter_data(PxQueryFlag::eSTATIC);
+        class QueryFilter : public PxQueryFilterCallback
+        {
+        public:
+            explicit QueryFilter(Entity* ignored_entity)
+                : m_ignored_entity(ignored_entity)
+            {
+            }
+
+            PxQueryHitType::Enum preFilter(
+                const PxFilterData&,
+                const PxShape*,
+                const PxRigidActor* actor,
+                PxHitFlags&
+            ) override
+            {
+                Entity* hit_entity =
+                    actor && actor->userData
+                    ? static_cast<Entity*>(actor->userData)
+                    : nullptr;
+                for (
+                    Entity* current = hit_entity;
+                    current != nullptr;
+                    current = current->GetParent()
+                )
+                {
+                    if (current == m_ignored_entity)
+                    {
+                        return PxQueryHitType::eNONE;
+                    }
+                }
+                return PxQueryHitType::eBLOCK;
+            }
+
+            PxQueryHitType::Enum postFilter(
+                const PxFilterData&,
+                const PxQueryHit&,
+                const PxShape*,
+                const PxRigidActor*
+            ) override
+            {
+                return PxQueryHitType::eBLOCK;
+            }
+
+        private:
+            Entity* m_ignored_entity = nullptr;
+        };
+
+        PxQueryFilterData filter_data(
+            PxQueryFlag::eSTATIC |
+            PxQueryFlag::ePREFILTER
+        );
+        QueryFilter filter(ignored_entity);
 
         lock_guard<recursive_mutex> lock(physx_mutex);
-        if (scene->raycast(px_origin, px_direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data) && hit.hasBlock)
+        if (
+            scene->raycast(
+                px_origin,
+                px_direction,
+                max_distance,
+                hit,
+                PxHitFlag::eDEFAULT,
+                filter_data,
+                &filter
+            ) &&
+            hit.hasBlock
+        )
         {
-            hit_position = Vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z);
+            hit_result.position = Vector3(
+                hit.block.position.x,
+                hit.block.position.y,
+                hit.block.position.z
+            );
+            hit_result.normal = Vector3(
+                hit.block.normal.x,
+                hit.block.normal.y,
+                hit.block.normal.z
+            ).Normalized();
+            hit_result.distance = hit.block.distance;
 
             if (hit.block.actor && hit.block.actor->userData)
             {
-                hit_entity = static_cast<Entity*>(hit.block.actor->userData);
+                hit_result.entity =
+                    static_cast<Entity*>(hit.block.actor->userData);
             }
 
             return true;

@@ -1,6 +1,12 @@
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import {
+  advanced_scene_tool_names,
+  audit_scene_quality,
+  infer_required_features,
+  scene_quality_prompt_lines,
+} from "./scene_quality.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,9 +70,35 @@ const engine_tool_names = new Set([
   "component_set",
   "execute_lua",
 ]);
+for (const tool_name of advanced_scene_tool_names)
+{
+  engine_tool_names.add(tool_name);
+}
+
+const scene_mutating_tool_names = [
+  "mesh_generate",
+  "mesh_generate_batch",
+  "render_set_mesh",
+  "compound_create",
+  "detail_pattern_create",
+  "material_apply_preset",
+  "material_semantic_create",
+  "material_palette_create",
+  "entity_snap",
+  "entity_create_empty",
+  "entity_create_light",
+  "entity_create_primitive",
+  "entity_create_primitive_batch",
+  "entity_update",
+  "entity_set_transform",
+  "entity_set_transform_batch",
+  "component_set",
+  "component_set_batch",
+];
 
 let cached_agent = null;
 let cached_agent_key = "";
+let agent_run_queue = Promise.resolve();
 
 export async function list_models(api_key) {
   if (!api_key) {
@@ -420,6 +452,19 @@ function is_tool_event(value) {
   });
 }
 
+function is_named_tool_event(value, tool_name) {
+  if (!is_tool_event(value))
+  {
+    return false;
+  }
+
+  return value_contains(value, (text) =>
+    text.toLowerCase().replaceAll("-", "_").includes(
+      tool_name,
+    ),
+  );
+}
+
 function build_prompt(prompt, snapshot, intent = null) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
@@ -453,6 +498,11 @@ function build_prompt(prompt, snapshot, intent = null) {
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
   ];
 
+  if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
+  {
+    lines.push(...scene_quality_prompt_lines(prompt, intent));
+  }
+
   if (intent?.target_name)
   {
     lines.push(`Resolved parent entity name from the request: ${intent.target_name}. Resolve it with entity_resolve, create it with entity_create_empty if missing, then parent all new blockout parts under that entity id.`);
@@ -467,7 +517,7 @@ function build_prompt(prompt, snapshot, intent = null) {
   }
   if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
   {
-    lines.push("This is a live scene construction request. Build readable blockout geometry with cubes, cylinders, and lights under the parent. Do not search source code and do not invent Lua APIs.");
+    lines.push("This is a live scene construction request. Build a finished, visually reviewed scene under the requested parent. Do not search source code and do not invent Lua APIs.");
   }
 
   lines.push(
@@ -480,7 +530,7 @@ function build_prompt(prompt, snapshot, intent = null) {
   return lines.join("\n");
 }
 
-export async function run_cursor_fallback({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
+async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
   if (!api_key) {
     return {
       ok: false,
@@ -494,8 +544,36 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
   let guard_timer = null;
   let idle_timer = null;
   let last_activity_at = Date.now();
+  let visual_review_seen = false;
+  let quality_audit_seen = false;
+  let mutation_after_visual_review = false;
   const observe = async (event) => {
     last_activity_at = Date.now();
+    const is_visual_review = is_named_tool_event(
+      event,
+      "scene_visual_review",
+    );
+    const is_quality_audit = is_named_tool_event(
+      event,
+      "scene_quality_audit",
+    );
+    const is_scene_mutation = scene_mutating_tool_names.some(
+      (tool_name) => is_named_tool_event(
+        event,
+        tool_name,
+      ),
+    );
+    if (
+      visual_review_seen &&
+      is_scene_mutation &&
+      !is_visual_review &&
+      !is_quality_audit
+    )
+    {
+      mutation_after_visual_review = true;
+    }
+    visual_review_seen ||= is_visual_review;
+    quality_audit_seen ||= is_quality_audit;
     if (!engine_tool_seen && is_engine_tool_event(event)) {
       engine_tool_seen = true;
       run.event("stage_note", { text: "engine tool interaction confirmed" });
@@ -510,6 +588,49 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
     if (activity) {
       run.event("stage_note", { text: activity });
     }
+  };
+  const execute_agent_prompt = async (agent, prompt_text) => {
+    last_activity_at = Date.now();
+    cursor_run = await agent.send(prompt_text, {
+      onStep: ({ step }) => {
+        void observe(step);
+      },
+    });
+    run.receipt("cursor run", { id: cursor_run.id });
+
+    const stream_task = cursor_run.stream ? (async () => {
+      for await (const event of cursor_run.stream())
+      {
+        await observe(event);
+      }
+    })().catch(() => {}) : Promise.resolve();
+
+    const result = await Promise.race([
+      cursor_run.wait(),
+      new Promise((_, reject) => {
+        idle_timer = setInterval(() => {
+          if (Date.now() - last_activity_at >= timeout_ms)
+          {
+            reject(
+              new Error(
+                `Cursor produced no activity within ${timeout_ms}ms.`,
+              ),
+            );
+          }
+        }, 1000);
+        idle_timer.unref?.();
+      }),
+    ]);
+    if (idle_timer)
+    {
+      clearInterval(idle_timer);
+      idle_timer = null;
+    }
+    await Promise.race([
+      stream_task,
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+    ]);
+    return result;
   };
 
   try {
@@ -534,33 +655,10 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
       }, 1000);
       guard_timer.unref?.();
 
-      cursor_run = await agent.send(build_prompt(prompt, snapshot, intent), {
-        onStep: ({ step }) => {
-          void observe(step);
-        },
-      });
-      run.receipt("cursor run", { id: cursor_run.id });
-
-      const stream_task = cursor_run.stream ? (async () => {
-        for await (const event of cursor_run.stream()) {
-          await observe(event);
-        }
-      })().catch(() => {}) : Promise.resolve();
-
-      // an active run is never killed, only one that stopped producing events for timeout_ms
-      const result = await Promise.race([
-        cursor_run.wait(),
-        new Promise((_, reject) => {
-          idle_timer = setInterval(() => {
-            if (Date.now() - last_activity_at >= timeout_ms) {
-              reject(new Error(`Cursor produced no activity within ${timeout_ms}ms.`));
-            }
-          }, 1000);
-          idle_timer.unref?.();
-        }),
-      ]);
-      await Promise.race([stream_task, new Promise((resolve) => setTimeout(resolve, 1000))]);
-      return result;
+      return execute_agent_prompt(
+        agent,
+        build_prompt(prompt, snapshot, intent),
+      );
     });
 
     if (cursor_result.status === "error") {
@@ -578,7 +676,139 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
       return { ok: false, text: cancel_message || "Cursor run was cancelled." };
     }
 
-    return { ok: true, text: cursor_result.result?.trim() || "Done." };
+    const is_scene_construction =
+      intent?.kind === "scene_rebuild" ||
+      intent?.live_scene_action;
+    if (!is_scene_construction || !intent?.target_name)
+    {
+      return {
+        ok: true,
+        text: cursor_result.result?.trim() || "Done.",
+      };
+    }
+
+    const found = await run.stage(
+      "Resolve Quality Root",
+      "finding the completed scene hierarchy",
+      () => run.tool(
+        "entity_find",
+        {
+          name: intent.target_name,
+          match: "exact",
+          limit: 1,
+        },
+      ),
+    );
+    const root_id = found.matches?.[0]?.id;
+    if (!found.ok || !root_id)
+    {
+      return {
+        ok: false,
+        text:
+          `Scene quality gate could not resolve root entity ${intent.target_name}.`,
+      };
+    }
+
+    const audit_args = {
+      id: root_id,
+      required_features: infer_required_features(prompt),
+    };
+    const send_command = (name, args) =>
+      run.tool(name, args);
+    let audit = await run.stage(
+      "Audit Scene Quality",
+      "checking geometry, materials, features, and lighting",
+      () => audit_scene_quality(
+        send_command,
+        audit_args,
+      ),
+    );
+    let final_result = cursor_result;
+
+    for (
+      let attempt = 1;
+      attempt <= 2 &&
+      (
+        !audit.pass ||
+        !visual_review_seen ||
+        !quality_audit_seen ||
+        !mutation_after_visual_review
+      );
+      attempt++
+    )
+    {
+      const correction_prompt = [
+        "Perform a mandatory quality correction pass on the live Spartan Engine scene.",
+        `Original request: ${prompt}`,
+        `Root entity: ${intent.target_name}, id ${root_id}.`,
+        `Deterministic audit: ${safe_json(audit, 5000)}`,
+        "Call scene_visual_review on the root and inspect the image.",
+        "Fix every failed audit check and the most visible weakness in the image.",
+        "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
+        "Preserve all good existing work and keep every addition under the root.",
+        "Call scene_quality_audit after corrections and do not report completion unless it passes.",
+      ].join("\n");
+
+      final_result = await run.stage(
+        `Quality Correction ${attempt}`,
+        "waiting for visual review and targeted corrections",
+        () => execute_agent_prompt(
+          agent,
+          correction_prompt,
+        ),
+      );
+      if (
+        final_result.status === "error" ||
+        final_result.status === "cancelled"
+      )
+      {
+        const failure_message = await run_failure_message(
+          cursor_run,
+          final_result,
+        );
+        return {
+          ok: false,
+          text: `Scene was edited, but quality correction failed: ${failure_message}`,
+        };
+      }
+
+      audit = await run.stage(
+        `Verify Quality ${attempt}`,
+        "rechecking the corrected scene",
+        () => audit_scene_quality(
+          send_command,
+          audit_args,
+        ),
+      );
+    }
+
+    if (
+      !audit.pass ||
+      !visual_review_seen ||
+      !quality_audit_seen ||
+      !mutation_after_visual_review
+    )
+    {
+      return {
+        ok: false,
+        text: [
+          "Scene was edited, but the quality gate remains incomplete.",
+          `Audit: ${safe_json(audit, 3000)}`,
+          `Visual review completed: ${visual_review_seen}.`,
+          `Post-review correction completed: ${mutation_after_visual_review}.`,
+        ].join("\n"),
+      };
+    }
+
+    return {
+      ok: true,
+      text: [
+        final_result.result?.trim() ||
+          cursor_result.result?.trim() ||
+          "Done.",
+        `Quality gate passed: ${audit.score}/100.`,
+      ].join("\n"),
+    };
   } catch (error) {
     if (cursor_run?.supports?.("cancel") && error.message?.includes("within")) {
       await cursor_run.cancel();
@@ -596,5 +826,23 @@ export async function run_cursor_fallback({ prompt, api_key, model_id, engine_ho
     if (idle_timer) {
       clearInterval(idle_timer);
     }
+  }
+}
+
+export async function run_cursor_fallback(args) {
+  const previous_run = agent_run_queue;
+  let release_run;
+  agent_run_queue = new Promise((resolve) => {
+    release_run = resolve;
+  });
+  await previous_run;
+
+  try
+  {
+    return await run_cursor_fallback_serial(args);
+  }
+  finally
+  {
+    release_run();
   }
 }

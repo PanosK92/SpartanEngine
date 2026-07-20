@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================
+#include <algorithm>
+#include <cmath>
+#include <initializer_list>
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
 //============================
@@ -384,6 +387,1118 @@ namespace spartan::geometry_generation
     static void generate_cone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, float height = 2.0f)
     {
         generate_cylinder(vertices, indices, 0.0f, radius, height, 32, 8);
+    }
+
+    static void generate_rounded_box(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const math::Vector3& size,
+        float radius,
+        uint32_t segments
+    )
+    {
+        using namespace math;
+
+        const Vector3 half_size = size * 0.5f;
+        radius = std::clamp(
+            radius,
+            0.0001f,
+            std::min({ half_size.x, half_size.y, half_size.z })
+        );
+        segments = std::max(segments, 1u);
+
+        const Vector3 inner(
+            half_size.x - radius,
+            half_size.y - radius,
+            half_size.z - radius
+        );
+
+        auto axis_coordinates = [segments](
+            float half_extent,
+            float inner_extent
+        )
+        {
+            std::vector<float> coordinates;
+            coordinates.reserve(segments * 2 + 2);
+
+            for (uint32_t i = 0; i <= segments; i++)
+            {
+                const float t = static_cast<float>(i) /
+                    static_cast<float>(segments);
+                coordinates.push_back(
+                    -half_extent + t * (half_extent - inner_extent)
+                );
+            }
+
+            for (uint32_t i = 0; i <= segments; i++)
+            {
+                const float t = static_cast<float>(i) /
+                    static_cast<float>(segments);
+                coordinates.push_back(
+                    inner_extent + t * (half_extent - inner_extent)
+                );
+            }
+
+            return coordinates;
+        };
+
+        auto append_face = [&](
+            const Vector3& face_normal,
+            const Vector3& axis_u,
+            const Vector3& axis_v,
+            float half_u,
+            float inner_u,
+            float half_v,
+            float inner_v
+        )
+        {
+            const std::vector<float> coordinates_u =
+                axis_coordinates(half_u, inner_u);
+            const std::vector<float> coordinates_v =
+                axis_coordinates(half_v, inner_v);
+            const uint32_t count_u =
+                static_cast<uint32_t>(coordinates_u.size());
+            const uint32_t count_v =
+                static_cast<uint32_t>(coordinates_v.size());
+            const uint32_t vertex_offset =
+                static_cast<uint32_t>(vertices->size());
+
+            const Vector3 face_point(
+                face_normal.x * half_size.x,
+                face_normal.y * half_size.y,
+                face_normal.z * half_size.z
+            );
+
+            for (uint32_t u = 0; u < count_u; u++)
+            {
+                for (uint32_t v = 0; v < count_v; v++)
+                {
+                    const Vector3 point =
+                        face_point +
+                        axis_u * coordinates_u[u] +
+                        axis_v * coordinates_v[v];
+                    const Vector3 closest(
+                        std::clamp(point.x, -inner.x, inner.x),
+                        std::clamp(point.y, -inner.y, inner.y),
+                        std::clamp(point.z, -inner.z, inner.z)
+                    );
+                    const Vector3 normal = (point - closest).Normalized();
+                    const Vector3 position = closest + normal * radius;
+                    const Vector3 tangent = (
+                        axis_u -
+                        normal * Vector3::Dot(axis_u, normal)
+                    ).Normalized();
+                    const Vector2 uv(
+                        static_cast<float>(u) /
+                            static_cast<float>(count_u - 1),
+                        1.0f - static_cast<float>(v) /
+                            static_cast<float>(count_v - 1)
+                    );
+
+                    vertices->emplace_back(
+                        position,
+                        uv,
+                        normal,
+                        tangent
+                    );
+                }
+            }
+
+            for (uint32_t u = 0; u < count_u - 1; u++)
+            {
+                for (uint32_t v = 0; v < count_v - 1; v++)
+                {
+                    const uint32_t a =
+                        vertex_offset + u * count_v + v;
+                    const uint32_t b = a + 1;
+                    const uint32_t c = a + count_v;
+                    const uint32_t d = c + 1;
+
+                    indices->push_back(a);
+                    indices->push_back(b);
+                    indices->push_back(c);
+                    indices->push_back(c);
+                    indices->push_back(b);
+                    indices->push_back(d);
+                }
+            }
+        };
+
+        append_face(
+            Vector3(1, 0, 0),
+            Vector3(0, 0, 1),
+            Vector3(0, 1, 0),
+            half_size.z,
+            inner.z,
+            half_size.y,
+            inner.y
+        );
+        append_face(
+            Vector3(-1, 0, 0),
+            Vector3(0, 0, -1),
+            Vector3(0, 1, 0),
+            half_size.z,
+            inner.z,
+            half_size.y,
+            inner.y
+        );
+        append_face(
+            Vector3(0, 1, 0),
+            Vector3(1, 0, 0),
+            Vector3(0, 0, 1),
+            half_size.x,
+            inner.x,
+            half_size.z,
+            inner.z
+        );
+        append_face(
+            Vector3(0, -1, 0),
+            Vector3(1, 0, 0),
+            Vector3(0, 0, -1),
+            half_size.x,
+            inner.x,
+            half_size.z,
+            inner.z
+        );
+        append_face(
+            Vector3(0, 0, 1),
+            Vector3(-1, 0, 0),
+            Vector3(0, 1, 0),
+            half_size.x,
+            inner.x,
+            half_size.y,
+            inner.y
+        );
+        append_face(
+            Vector3(0, 0, -1),
+            Vector3(1, 0, 0),
+            Vector3(0, 1, 0),
+            half_size.x,
+            inner.x,
+            half_size.y,
+            inner.y
+        );
+    }
+
+    static void generate_beveled_box(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const math::Vector3& size,
+        float bevel
+    )
+    {
+        generate_rounded_box(
+            vertices,
+            indices,
+            size,
+            bevel,
+            1
+        );
+    }
+
+    static void generate_wedge(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const math::Vector3& size
+    )
+    {
+        using namespace math;
+
+        const Vector3 half_size = size * 0.5f;
+        const Vector3 points[] =
+        {
+            Vector3(-half_size.x, -half_size.y, -half_size.z),
+            Vector3(half_size.x, -half_size.y, -half_size.z),
+            Vector3(-half_size.x, -half_size.y, half_size.z),
+            Vector3(half_size.x, -half_size.y, half_size.z),
+            Vector3(-half_size.x, half_size.y, half_size.z),
+            Vector3(half_size.x, half_size.y, half_size.z)
+        };
+
+        auto append_face = [&](
+            std::initializer_list<uint32_t> face
+        )
+        {
+            const uint32_t offset =
+                static_cast<uint32_t>(vertices->size());
+            const std::vector<uint32_t> face_indices(face);
+            const Vector3 edge_a =
+                points[face_indices[1]] - points[face_indices[0]];
+            const Vector3 edge_b =
+                points[face_indices[2]] - points[face_indices[0]];
+            const Vector3 normal =
+                Vector3::Cross(edge_a, edge_b).Normalized();
+            const Vector3 tangent = edge_a.Normalized();
+
+            for (uint32_t i = 0; i < face_indices.size(); i++)
+            {
+                const Vector2 uv(
+                    i == 1 || i == 2 ? 1.0f : 0.0f,
+                    i >= 2 ? 0.0f : 1.0f
+                );
+                vertices->emplace_back(
+                    points[face_indices[i]],
+                    uv,
+                    normal,
+                    tangent
+                );
+            }
+
+            for (uint32_t i = 1; i + 1 < face_indices.size(); i++)
+            {
+                indices->push_back(offset);
+                indices->push_back(offset + i);
+                indices->push_back(offset + i + 1);
+            }
+        };
+
+        append_face({ 0, 1, 3, 2 });
+        append_face({ 2, 3, 5, 4 });
+        append_face({ 0, 4, 5, 1 });
+        append_face({ 0, 2, 4 });
+        append_face({ 1, 5, 3 });
+    }
+
+    static void generate_extruded_profile(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const std::vector<math::Vector2>& profile,
+        float depth
+    )
+    {
+        using namespace math;
+
+        const uint32_t point_count =
+            static_cast<uint32_t>(profile.size());
+        const float half_depth = depth * 0.5f;
+
+        for (uint32_t side = 0; side < 2; side++)
+        {
+            const float z = side == 0 ? -half_depth : half_depth;
+            const Vector3 normal =
+                side == 0 ? Vector3(0, 0, -1) : Vector3(0, 0, 1);
+            const uint32_t offset =
+                static_cast<uint32_t>(vertices->size());
+
+            for (const Vector2& point : profile)
+            {
+                vertices->emplace_back(
+                    Vector3(point.x, point.y, z),
+                    point,
+                    normal,
+                    Vector3(1, 0, 0)
+                );
+            }
+
+            for (uint32_t i = 1; i + 1 < point_count; i++)
+            {
+                if (side == 0)
+                {
+                    indices->push_back(offset);
+                    indices->push_back(offset + i + 1);
+                    indices->push_back(offset + i);
+                }
+                else
+                {
+                    indices->push_back(offset);
+                    indices->push_back(offset + i);
+                    indices->push_back(offset + i + 1);
+                }
+            }
+        }
+
+        for (uint32_t i = 0; i < point_count; i++)
+        {
+            const uint32_t next = (i + 1) % point_count;
+            const Vector2 edge = profile[next] - profile[i];
+            const Vector3 normal =
+                Vector3(edge.y, -edge.x, 0).Normalized();
+            const Vector3 tangent =
+                Vector3(edge.x, edge.y, 0).Normalized();
+            const uint32_t offset =
+                static_cast<uint32_t>(vertices->size());
+
+            vertices->emplace_back(
+                Vector3(profile[i].x, profile[i].y, -half_depth),
+                Vector2(0, 1),
+                normal,
+                tangent
+            );
+            vertices->emplace_back(
+                Vector3(profile[i].x, profile[i].y, half_depth),
+                Vector2(1, 1),
+                normal,
+                tangent
+            );
+            vertices->emplace_back(
+                Vector3(profile[next].x, profile[next].y, -half_depth),
+                Vector2(0, 0),
+                normal,
+                tangent
+            );
+            vertices->emplace_back(
+                Vector3(profile[next].x, profile[next].y, half_depth),
+                Vector2(1, 0),
+                normal,
+                tangent
+            );
+
+            indices->push_back(offset);
+            indices->push_back(offset + 2);
+            indices->push_back(offset + 1);
+            indices->push_back(offset + 2);
+            indices->push_back(offset + 3);
+            indices->push_back(offset + 1);
+        }
+    }
+
+    static void generate_revolved_profile(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const std::vector<math::Vector2>& profile,
+        uint32_t segments
+    )
+    {
+        using namespace math;
+
+        const uint32_t point_count =
+            static_cast<uint32_t>(profile.size());
+        const uint32_t ring_count = segments + 1;
+
+        for (uint32_t segment = 0; segment < ring_count; segment++)
+        {
+            const float u = static_cast<float>(segment) /
+                static_cast<float>(segments);
+            const float angle = u * pi_2;
+            const float cosine = std::cos(angle);
+            const float sine = std::sin(angle);
+            const Vector3 tangent(-sine, 0, cosine);
+
+            for (uint32_t i = 0; i < point_count; i++)
+            {
+                const Vector2 previous =
+                    profile[i == 0 ? i : i - 1];
+                const Vector2 next =
+                    profile[i + 1 < point_count ? i + 1 : i];
+                const Vector2 profile_tangent =
+                    (next - previous).Normalized();
+                const Vector3 normal = Vector3(
+                    profile_tangent.y * cosine,
+                    -profile_tangent.x,
+                    profile_tangent.y * sine
+                ).Normalized();
+                const float v = static_cast<float>(i) /
+                    static_cast<float>(point_count - 1);
+
+                vertices->emplace_back(
+                    Vector3(
+                        profile[i].x * cosine,
+                        profile[i].y,
+                        profile[i].x * sine
+                    ),
+                    Vector2(u, 1.0f - v),
+                    normal,
+                    tangent
+                );
+            }
+        }
+
+        for (uint32_t segment = 0; segment < segments; segment++)
+        {
+            for (uint32_t i = 0; i < point_count - 1; i++)
+            {
+                const uint32_t a =
+                    segment * point_count + i;
+                const uint32_t b = a + point_count;
+                const uint32_t c = a + 1;
+                const uint32_t d = b + 1;
+
+                indices->push_back(a);
+                indices->push_back(c);
+                indices->push_back(b);
+                indices->push_back(c);
+                indices->push_back(d);
+                indices->push_back(b);
+            }
+        }
+    }
+
+    static void generate_torus(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        float major_radius,
+        float minor_radius,
+        uint32_t major_segments,
+        uint32_t minor_segments
+    )
+    {
+        using namespace math;
+
+        for (uint32_t major = 0; major <= major_segments; major++)
+        {
+            const float u = static_cast<float>(major) /
+                static_cast<float>(major_segments);
+            const float major_angle = u * pi_2;
+            const float major_cos = std::cos(major_angle);
+            const float major_sin = std::sin(major_angle);
+            const Vector3 tangent(
+                -major_sin,
+                0,
+                major_cos
+            );
+
+            for (uint32_t minor = 0; minor <= minor_segments; minor++)
+            {
+                const float v = static_cast<float>(minor) /
+                    static_cast<float>(minor_segments);
+                const float minor_angle = v * pi_2;
+                const float minor_cos = std::cos(minor_angle);
+                const float minor_sin = std::sin(minor_angle);
+                const float radial =
+                    major_radius + minor_radius * minor_cos;
+                const Vector3 normal(
+                    major_cos * minor_cos,
+                    minor_sin,
+                    major_sin * minor_cos
+                );
+
+                vertices->emplace_back(
+                    Vector3(
+                        radial * major_cos,
+                        minor_radius * minor_sin,
+                        radial * major_sin
+                    ),
+                    Vector2(u, v),
+                    normal,
+                    tangent
+                );
+            }
+        }
+
+        const uint32_t ring_size = minor_segments + 1;
+        for (uint32_t major = 0; major < major_segments; major++)
+        {
+            for (uint32_t minor = 0; minor < minor_segments; minor++)
+            {
+                const uint32_t a = major * ring_size + minor;
+                const uint32_t b = a + ring_size;
+                const uint32_t c = a + 1;
+                const uint32_t d = b + 1;
+
+                indices->push_back(a);
+                indices->push_back(c);
+                indices->push_back(b);
+                indices->push_back(c);
+                indices->push_back(d);
+                indices->push_back(b);
+            }
+        }
+    }
+
+    static void generate_capsule(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        float radius,
+        float height,
+        uint32_t segments
+    )
+    {
+        using namespace math;
+
+        const uint32_t slices = segments * 2;
+        const uint32_t stacks = segments;
+        const float cylinder_half =
+            std::max(0.0f, height * 0.5f - radius);
+
+        for (uint32_t stack = 0; stack <= stacks; stack++)
+        {
+            const float v = static_cast<float>(stack) /
+                static_cast<float>(stacks);
+            const float phi = v * pi;
+            const float ring_radius = radius * std::sin(phi);
+            const float sphere_y = radius * std::cos(phi);
+            const float center_y =
+                sphere_y >= 0.0f ? cylinder_half : -cylinder_half;
+
+            for (uint32_t slice = 0; slice <= slices; slice++)
+            {
+                const float u = static_cast<float>(slice) /
+                    static_cast<float>(slices);
+                const float theta = u * pi_2;
+                const float cosine = std::cos(theta);
+                const float sine = std::sin(theta);
+                const Vector3 normal(
+                    std::sin(phi) * cosine,
+                    std::cos(phi),
+                    std::sin(phi) * sine
+                );
+
+                vertices->emplace_back(
+                    Vector3(
+                        ring_radius * cosine,
+                        center_y + sphere_y,
+                        ring_radius * sine
+                    ),
+                    Vector2(u, v),
+                    normal,
+                    Vector3(-sine, 0, cosine)
+                );
+            }
+        }
+
+        const uint32_t ring_size = slices + 1;
+        for (uint32_t stack = 0; stack < stacks; stack++)
+        {
+            for (uint32_t slice = 0; slice < slices; slice++)
+            {
+                const uint32_t a = stack * ring_size + slice;
+                const uint32_t b = a + ring_size;
+                const uint32_t c = a + 1;
+                const uint32_t d = b + 1;
+
+                indices->push_back(a);
+                indices->push_back(c);
+                indices->push_back(b);
+                indices->push_back(c);
+                indices->push_back(d);
+                indices->push_back(b);
+            }
+        }
+    }
+
+    static void generate_rounded_cylinder(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        float radius,
+        float height,
+        float bevel,
+        uint32_t radial_segments,
+        uint32_t bevel_segments
+    )
+    {
+        using namespace math;
+
+        const float half_height = height * 0.5f;
+        const float side_radius = radius - bevel;
+        std::vector<Vector2> profile;
+        profile.emplace_back(0.0f, -half_height);
+        profile.emplace_back(side_radius, -half_height);
+
+        for (uint32_t i = 1; i <= bevel_segments; i++)
+        {
+            const float t = static_cast<float>(i) /
+                static_cast<float>(bevel_segments);
+            const float angle = -pi * 0.5f + t * pi * 0.5f;
+            profile.emplace_back(
+                side_radius + std::cos(angle) * bevel,
+                -half_height + bevel + std::sin(angle) * bevel
+            );
+        }
+
+        profile.emplace_back(radius, half_height - bevel);
+        for (uint32_t i = 1; i <= bevel_segments; i++)
+        {
+            const float t = static_cast<float>(i) /
+                static_cast<float>(bevel_segments);
+            const float angle = t * pi * 0.5f;
+            profile.emplace_back(
+                side_radius + std::cos(angle) * bevel,
+                half_height - bevel + std::sin(angle) * bevel
+            );
+        }
+        profile.emplace_back(0.0f, half_height);
+
+        generate_revolved_profile(
+            vertices,
+            indices,
+            profile,
+            radial_segments
+        );
+    }
+
+    static void generate_swept_profile(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const std::vector<math::Vector3>& path,
+        const std::vector<math::Vector2>& profile
+    )
+    {
+        using namespace math;
+
+        const uint32_t path_count =
+            static_cast<uint32_t>(path.size());
+        const uint32_t profile_count =
+            static_cast<uint32_t>(profile.size());
+
+        for (uint32_t i = 0; i < path_count; i++)
+        {
+            const Vector3 previous =
+                path[i == 0 ? i : i - 1];
+            const Vector3 next =
+                path[i + 1 < path_count ? i + 1 : i];
+            const Vector3 path_tangent =
+                (next - previous).Normalized();
+            const Vector3 reference =
+                std::abs(Vector3::Dot(path_tangent, Vector3::Up)) >
+                0.95f
+                ? Vector3::Right
+                : Vector3::Up;
+            const Vector3 axis_x =
+                Vector3::Cross(reference, path_tangent).Normalized();
+            const Vector3 axis_y =
+                Vector3::Cross(path_tangent, axis_x).Normalized();
+            const float u = static_cast<float>(i) /
+                static_cast<float>(path_count - 1);
+
+            for (uint32_t j = 0; j < profile_count; j++)
+            {
+                const Vector2 previous_profile =
+                    profile[j == 0 ? profile_count - 1 : j - 1];
+                const Vector2 next_profile =
+                    profile[(j + 1) % profile_count];
+                const Vector2 profile_tangent =
+                    (next_profile - previous_profile).Normalized();
+                const Vector2 profile_normal(
+                    profile_tangent.y,
+                    -profile_tangent.x
+                );
+                const Vector3 normal = (
+                    axis_x * profile_normal.x +
+                    axis_y * profile_normal.y
+                ).Normalized();
+
+                vertices->emplace_back(
+                    path[i] +
+                    axis_x * profile[j].x +
+                    axis_y * profile[j].y,
+                    Vector2(
+                        u,
+                        static_cast<float>(j) /
+                            static_cast<float>(profile_count)
+                    ),
+                    normal,
+                    path_tangent
+                );
+            }
+        }
+
+        for (uint32_t i = 0; i < path_count - 1; i++)
+        {
+            for (uint32_t j = 0; j < profile_count; j++)
+            {
+                const uint32_t next_j = (j + 1) % profile_count;
+                const uint32_t a = i * profile_count + j;
+                const uint32_t b = (i + 1) * profile_count + j;
+                const uint32_t c = i * profile_count + next_j;
+                const uint32_t d =
+                    (i + 1) * profile_count + next_j;
+
+                indices->push_back(a);
+                indices->push_back(c);
+                indices->push_back(b);
+                indices->push_back(c);
+                indices->push_back(d);
+                indices->push_back(b);
+            }
+        }
+    }
+
+    static void generate_pipe(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const std::vector<math::Vector3>& path,
+        float radius,
+        uint32_t sides
+    )
+    {
+        using namespace math;
+
+        std::vector<Vector2> profile;
+        profile.reserve(sides);
+        for (uint32_t i = 0; i < sides; i++)
+        {
+            const float angle =
+                static_cast<float>(i) /
+                static_cast<float>(sides) *
+                pi_2;
+            profile.emplace_back(
+                std::cos(angle) * radius,
+                std::sin(angle) * radius
+            );
+        }
+
+        generate_swept_profile(
+            vertices,
+            indices,
+            path,
+            profile
+        );
+    }
+
+    static void generate_arch(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        float width,
+        float height,
+        float depth,
+        float thickness,
+        uint32_t segments
+    )
+    {
+        using namespace math;
+
+        const float outer_radius = width * 0.5f;
+        const float inner_radius = outer_radius - thickness;
+        const float spring_y = height - outer_radius;
+        std::vector<Vector2> outer;
+        std::vector<Vector2> inner;
+
+        outer.emplace_back(-outer_radius, 0.0f);
+        inner.emplace_back(-inner_radius, 0.0f);
+        for (uint32_t i = 0; i <= segments; i++)
+        {
+            const float angle =
+                pi - static_cast<float>(i) /
+                static_cast<float>(segments) *
+                pi;
+            outer.emplace_back(
+                std::cos(angle) * outer_radius,
+                spring_y + std::sin(angle) * outer_radius
+            );
+            inner.emplace_back(
+                std::cos(angle) * inner_radius,
+                spring_y + std::sin(angle) * inner_radius
+            );
+        }
+        outer.emplace_back(outer_radius, 0.0f);
+        inner.emplace_back(inner_radius, 0.0f);
+
+        auto append_quad = [&](
+            const Vector3& a,
+            const Vector3& b,
+            const Vector3& c,
+            const Vector3& d
+        )
+        {
+            const uint32_t offset =
+                static_cast<uint32_t>(vertices->size());
+            const Vector3 normal =
+                Vector3::Cross(b - a, c - a).Normalized();
+            const Vector3 tangent = (b - a).Normalized();
+            vertices->emplace_back(
+                a,
+                Vector2(0, 1),
+                normal,
+                tangent
+            );
+            vertices->emplace_back(
+                b,
+                Vector2(1, 1),
+                normal,
+                tangent
+            );
+            vertices->emplace_back(
+                c,
+                Vector2(0, 0),
+                normal,
+                tangent
+            );
+            vertices->emplace_back(
+                d,
+                Vector2(1, 0),
+                normal,
+                tangent
+            );
+            indices->push_back(offset);
+            indices->push_back(offset + 1);
+            indices->push_back(offset + 2);
+            indices->push_back(offset + 2);
+            indices->push_back(offset + 1);
+            indices->push_back(offset + 3);
+        };
+
+        const float front = -depth * 0.5f;
+        const float back = depth * 0.5f;
+        for (uint32_t i = 0; i + 1 < outer.size(); i++)
+        {
+            const Vector3 outer_front_a(
+                outer[i].x,
+                outer[i].y,
+                front
+            );
+            const Vector3 outer_front_b(
+                outer[i + 1].x,
+                outer[i + 1].y,
+                front
+            );
+            const Vector3 inner_front_a(
+                inner[i].x,
+                inner[i].y,
+                front
+            );
+            const Vector3 inner_front_b(
+                inner[i + 1].x,
+                inner[i + 1].y,
+                front
+            );
+            const Vector3 outer_back_a(
+                outer[i].x,
+                outer[i].y,
+                back
+            );
+            const Vector3 outer_back_b(
+                outer[i + 1].x,
+                outer[i + 1].y,
+                back
+            );
+            const Vector3 inner_back_a(
+                inner[i].x,
+                inner[i].y,
+                back
+            );
+            const Vector3 inner_back_b(
+                inner[i + 1].x,
+                inner[i + 1].y,
+                back
+            );
+
+            append_quad(
+                outer_front_b,
+                inner_front_b,
+                outer_front_a,
+                inner_front_a
+            );
+            append_quad(
+                outer_back_a,
+                inner_back_a,
+                outer_back_b,
+                inner_back_b
+            );
+            append_quad(
+                outer_front_b,
+                outer_front_a,
+                outer_back_b,
+                outer_back_a
+            );
+            append_quad(
+                inner_front_a,
+                inner_front_b,
+                inner_back_a,
+                inner_back_b
+            );
+        }
+
+        append_quad(
+            Vector3(outer.front().x, outer.front().y, front),
+            Vector3(inner.front().x, inner.front().y, front),
+            Vector3(outer.front().x, outer.front().y, back),
+            Vector3(inner.front().x, inner.front().y, back)
+        );
+        append_quad(
+            Vector3(inner.back().x, inner.back().y, front),
+            Vector3(outer.back().x, outer.back().y, front),
+            Vector3(inner.back().x, inner.back().y, back),
+            Vector3(outer.back().x, outer.back().y, back)
+        );
+    }
+
+    static void generate_inset_panel(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const math::Vector3& size,
+        float border,
+        float inset,
+        float bevel
+    )
+    {
+        using namespace math;
+
+        generate_beveled_box(
+            vertices,
+            indices,
+            size,
+            bevel
+        );
+
+        auto append_rail = [&](
+            const Vector3& rail_size,
+            const Vector3& offset
+        )
+        {
+            std::vector<RHI_Vertex_PosTexNorTan> rail_vertices;
+            std::vector<uint32_t> rail_indices;
+            generate_beveled_box(
+                &rail_vertices,
+                &rail_indices,
+                rail_size,
+                std::min(
+                    bevel,
+                    std::min({
+                        rail_size.x,
+                        rail_size.y,
+                        rail_size.z
+                    }) * 0.24f
+                )
+            );
+            const uint32_t vertex_offset =
+                static_cast<uint32_t>(vertices->size());
+            for (RHI_Vertex_PosTexNorTan& vertex : rail_vertices)
+            {
+                vertex.pos[0] += offset.x;
+                vertex.pos[1] += offset.y;
+                vertex.pos[2] += offset.z;
+                vertices->push_back(vertex);
+            }
+            for (uint32_t index : rail_indices)
+            {
+                indices->push_back(vertex_offset + index);
+            }
+        };
+
+        const float rail_depth = inset;
+        const float front =
+            size.z * 0.5f + rail_depth * 0.5f;
+        append_rail(
+            Vector3(size.x, border, rail_depth),
+            Vector3(
+                0,
+                size.y * 0.5f - border * 0.5f,
+                front
+            )
+        );
+        append_rail(
+            Vector3(size.x, border, rail_depth),
+            Vector3(
+                0,
+                -size.y * 0.5f + border * 0.5f,
+                front
+            )
+        );
+        append_rail(
+            Vector3(border, size.y - border * 2, rail_depth),
+            Vector3(
+                -size.x * 0.5f + border * 0.5f,
+                0,
+                front
+            )
+        );
+        append_rail(
+            Vector3(border, size.y - border * 2, rail_depth),
+            Vector3(
+                size.x * 0.5f - border * 0.5f,
+                0,
+                front
+            )
+        );
+    }
+
+    static void generate_tapered_extrusion(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const std::vector<math::Vector2>& profile,
+        float depth,
+        float scale_start,
+        float scale_end
+    )
+    {
+        using namespace math;
+
+        const uint32_t point_count =
+            static_cast<uint32_t>(profile.size());
+        const float half_depth = depth * 0.5f;
+
+        for (uint32_t side = 0; side < 2; side++)
+        {
+            const float scale =
+                side == 0 ? scale_start : scale_end;
+            const float z = side == 0 ? -half_depth : half_depth;
+            const Vector3 normal =
+                side == 0 ? Vector3(0, 0, -1) : Vector3(0, 0, 1);
+            const uint32_t offset =
+                static_cast<uint32_t>(vertices->size());
+            for (const Vector2& point : profile)
+            {
+                vertices->emplace_back(
+                    Vector3(point.x * scale, point.y * scale, z),
+                    point,
+                    normal,
+                    Vector3(1, 0, 0)
+                );
+            }
+            for (uint32_t i = 1; i + 1 < point_count; i++)
+            {
+                indices->push_back(offset);
+                if (side == 0)
+                {
+                    indices->push_back(offset + i + 1);
+                    indices->push_back(offset + i);
+                }
+                else
+                {
+                    indices->push_back(offset + i);
+                    indices->push_back(offset + i + 1);
+                }
+            }
+        }
+
+        for (uint32_t i = 0; i < point_count; i++)
+        {
+            const uint32_t next = (i + 1) % point_count;
+            const Vector3 a(
+                profile[i].x * scale_start,
+                profile[i].y * scale_start,
+                -half_depth
+            );
+            const Vector3 b(
+                profile[next].x * scale_start,
+                profile[next].y * scale_start,
+                -half_depth
+            );
+            const Vector3 c(
+                profile[i].x * scale_end,
+                profile[i].y * scale_end,
+                half_depth
+            );
+            const Vector3 d(
+                profile[next].x * scale_end,
+                profile[next].y * scale_end,
+                half_depth
+            );
+            const Vector3 normal =
+                Vector3::Cross(b - a, c - a).Normalized();
+            const uint32_t offset =
+                static_cast<uint32_t>(vertices->size());
+            vertices->emplace_back(
+                a,
+                Vector2(0, 1),
+                normal,
+                (b - a).Normalized()
+            );
+            vertices->emplace_back(
+                c,
+                Vector2(1, 1),
+                normal,
+                (d - c).Normalized()
+            );
+            vertices->emplace_back(
+                b,
+                Vector2(0, 0),
+                normal,
+                (b - a).Normalized()
+            );
+            vertices->emplace_back(
+                d,
+                Vector2(1, 0),
+                normal,
+                (d - c).Normalized()
+            );
+            indices->push_back(offset);
+            indices->push_back(offset + 2);
+            indices->push_back(offset + 1);
+            indices->push_back(offset + 2);
+            indices->push_back(offset + 3);
+            indices->push_back(offset + 1);
+        }
     }
 
     static void generate_foliage_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count)

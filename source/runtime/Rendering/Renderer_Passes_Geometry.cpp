@@ -81,9 +81,9 @@ namespace spartan
             return;
         }
 
-        // shadow atlas is unused when restir or full rt shadows own visibility, analytic specular under restir traces inline instead
+        // shadow atlas is unused when full ray traced shadows own visibility
         const bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
-        if ((cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available) || cvar_restir_pt.GetValueAs<bool>())
+        if (cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available)
         {
             return;
         }

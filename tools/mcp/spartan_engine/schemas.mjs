@@ -109,6 +109,23 @@ export const output_schemas = {
     async: z.boolean().optional(),
     note: z.string().optional(),
   }),
+  scene_visual_review: with_error_fields({
+    context: any_object.optional(),
+    camera: any_object.optional(),
+    materials: any_object.optional(),
+    renderer_debug: any_object.optional(),
+    screenshot: any_object.optional(),
+  }),
+  scene_quality_audit: with_error_fields({
+    pass: z.boolean().optional(),
+    score: z.number().int().min(0).max(100).optional(),
+    root: any_object.optional(),
+    metrics: any_object.optional(),
+    feature_results: z.array(any_object).optional(),
+    checks: z.array(any_object).optional(),
+    failed_checks: z.array(any_object).optional(),
+    recommendations: z.array(z.string()).optional(),
+  }),
   world_summary: with_error_fields({
     name: z.string().optional(),
     path: z.string().optional(),
@@ -120,8 +137,17 @@ export const output_schemas = {
   world_raycast: with_error_fields({
     hit: z.boolean().optional(),
     position: vector3.optional(),
+    normal: vector3.optional(),
+    distance: z.number().optional(),
     entity_id: z.string().optional(),
     entity_name: z.string().optional(),
+  }),
+  entity_snap: with_error_fields({
+    mode: z.string().optional(),
+    position: vector3.optional(),
+    rotation: z.array(z.number()).length(4).optional(),
+    hit: any_object.optional(),
+    bounding_box: any_object.optional(),
   }),
   context_snapshot: with_error_fields({
     status: any_object.optional(),
@@ -175,6 +201,31 @@ export const output_schemas = {
     path: z.string().optional(),
     resource: any_object.optional(),
     removed: any_object.optional(),
+  }),
+  parametric_mesh: with_error_fields({
+    reused: z.boolean().optional(),
+    shape: z.string().optional(),
+    vertex_count: z.number().int().optional(),
+    index_count: z.number().int().optional(),
+    resource: any_object.optional(),
+  }),
+  parametric_mesh_batch: with_error_fields({
+    generated: z.array(any_object).optional(),
+    generated_count: z.number().int().optional(),
+    failed_index: z.number().int().optional(),
+    failure: any_object.optional(),
+  }),
+  render_set_mesh: with_error_fields({
+    entity: any_object.optional(),
+    mesh: any_object.optional(),
+    sub_mesh_index: z.number().int().optional(),
+  }),
+  compound_create: with_error_fields({
+    root: any_object.optional(),
+    completed_parts: z.array(any_object).optional(),
+    completed_count: z.number().int().optional(),
+    failed_index: z.number().int().optional(),
+    prefab: any_object.nullable().optional(),
   }),
   material: with_error_fields({
     material: any_object.optional(),

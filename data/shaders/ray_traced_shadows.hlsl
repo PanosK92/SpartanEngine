@@ -133,7 +133,7 @@ void ray_gen()
         
         if (!scene_has_transparents)
         {
-            // fully opaque scene, any hit blocks completely so first hit acceptance ends traversal early
+            // sigma needs the nearest blocker for the penumbra width
             RayDesc ray;
             ray.Origin    = ray_origin;
             ray.Direction = sample_dir;
@@ -144,7 +144,16 @@ void ray_gen()
             payload.hit_distance = -1.0f;
             payload.shadow_alpha = 0.0f;
             
-            TraceRay(tlas, RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 0, 1, 0, ray, payload);
+            TraceRay(
+                tlas,
+                RAY_FLAG_FORCE_OPAQUE,
+                0xFF,
+                0,
+                1,
+                0,
+                ray,
+                payload
+            );
             
             // read payload unconditionally so the compiler sees both fields accessed after trace
             float local_hit_distance = payload.hit_distance;

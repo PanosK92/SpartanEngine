@@ -43,8 +43,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     const float2 uv = (thread_id.xy + 0.5f) / float2(resolution);
-    float depth = get_depth(uv);
-    float view_z = abs(get_position_view_space(uv).z);
+    float depth = get_depth(thread_id.xy);
+    float view_z = abs(get_position_view_space(thread_id.xy).z);
     const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
     const float tan_light_angular_radius = pass_get_f3_value().x;
 
@@ -65,8 +65,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float visibility   = shadow.r;
     float blocker_dist = shadow.g;
 
-    // lit or no blocker, sigma wants a large distance
-    float distance_to_occluder = (visibility >= 0.99f || blocker_dist <= 0.0f) ? NRD_FP16_MAX : blocker_dist;
+    // misses are lit, back facing pixels use zero penumbra
+    float distance_to_occluder = visibility >= 0.99f
+        ? NRD_FP16_MAX
+        : max(blocker_dist, 0.0f);
     float penumbra = SIGMA_FrontEnd_PackPenumbra(distance_to_occluder, tan_light_angular_radius);
 
     tex_uav[thread_id.xy]  = float4(mv, 0.0f, 0.0f);

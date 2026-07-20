@@ -37,6 +37,14 @@ namespace spartan
 {
     class Entity;
 
+    struct PhysicsRaycastHit
+    {
+        math::Vector3 position = math::Vector3::Zero;
+        math::Vector3 normal = math::Vector3::Up;
+        Entity* entity = nullptr;
+        float distance = 0.0f;
+    };
+
     class PhysicsWorld
     {
     public:
@@ -66,6 +74,7 @@ namespace spartan
 
         // cast a ray against static geometry and return the closest hit position + the entity that was hit
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, math::Vector3& hit_position, Entity*& hit_entity);
+        static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, PhysicsRaycastHit& hit, Entity* ignored_entity = nullptr);
 
         static bool SphereCast(const math::Vector3& origin, const math::Vector3& direction, float radius, float max_distance, uint32_t ignored_collision_group, math::Vector3& hit_position, float& hit_distance, Entity*& hit_entity);
 

@@ -118,6 +118,7 @@ namespace spartan
         // get counts
         uint32_t GetVertexCount() const;
         uint32_t GetIndexCount() const;
+        uint32_t GetSubMeshCount() const { return static_cast<uint32_t>(m_sub_meshes.size()); }
 
         // gpu buffers
         void CreateGpuBuffers();

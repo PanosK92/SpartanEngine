@@ -8,10 +8,11 @@ import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
-import { component_schema_markdown, edit_rules, engine_overview, search_capability_catalog } from "./knowledge.mjs";
+import { component_schema_markdown, edit_rules, engine_overview, parametric_modeling_guide, search_capability_catalog } from "./knowledge.mjs";
 import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
 import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
 import { resolve_light_properties, calibrate_existing_light } from "./light_calibration.mjs";
+import { audit_scene_quality } from "./scene_quality.mjs";
 
 const project_root = get_project_root();
 await ensure_agent_memory();
@@ -253,6 +254,234 @@ const primitive_create_args = {
   physics_mass: z.number().optional(),
   physics_friction: z.number().optional(),
   physics_restitution: z.number().optional(),
+};
+const parametric_shape = z.enum([
+  "beveled_box",
+  "rounded_box",
+  "wedge",
+  "extruded_profile",
+  "revolved_profile",
+  "torus",
+  "capsule",
+  "rounded_cylinder",
+  "pipe",
+  "curved_profile",
+  "arch",
+  "inset_panel",
+  "tapered_extrusion",
+]);
+const profile2d = z.array(
+  z.array(z.number()).length(2),
+).min(3).max(32);
+const parametric_mesh_args = {
+  shape: parametric_shape,
+  path: z.string().describe("immutable mesh cache key, use a new path when geometry parameters change"),
+  size: vector3.optional().describe("full width, height, and depth in meters"),
+  radius: z.number().positive().optional(),
+  bevel: z.number().positive().optional(),
+  segments: z.number().int().min(1).max(64).optional().describe("rounded boxes allow 1 to 16, revolved profiles allow 3 to 64"),
+  profile: profile2d.optional().describe("convex counter clockwise x,y points for extrusion or radius,y points for revolution"),
+  depth: z.number().positive().optional(),
+  height: z.number().positive().optional(),
+  major_radius: z.number().positive().optional(),
+  minor_radius: z.number().positive().optional(),
+  minor_segments: z.number().int().min(3).max(48).optional(),
+  bevel_segments: z.number().int().min(1).max(16).optional(),
+  path_points: z.array(vector3).min(2).max(64).optional(),
+  thickness: z.number().positive().optional(),
+  border: z.number().positive().optional(),
+  inset: z.number().positive().optional(),
+  scale_start: z.number().positive().optional(),
+  scale_end: z.number().positive().optional(),
+  reuse_existing: z.boolean().optional().describe("load the existing path instead of validating new parameters"),
+};
+const compound_part_args = {
+  name: z.string(),
+  mesh: z.string().optional().describe("cached mesh name or mesh file path"),
+  shape: parametric_shape.optional(),
+  mesh_path: z.string().optional(),
+  size: vector3.optional(),
+  radius: z.number().positive().optional(),
+  bevel: z.number().positive().optional(),
+  segments: z.number().int().min(1).max(64).optional(),
+  profile: profile2d.optional(),
+  depth: z.number().positive().optional(),
+  height: z.number().positive().optional(),
+  major_radius: z.number().positive().optional(),
+  minor_radius: z.number().positive().optional(),
+  minor_segments: z.number().int().min(3).max(48).optional(),
+  bevel_segments: z.number().int().min(1).max(16).optional(),
+  path_points: z.array(vector3).min(2).max(64).optional(),
+  thickness: z.number().positive().optional(),
+  border: z.number().positive().optional(),
+  inset: z.number().positive().optional(),
+  scale_start: z.number().positive().optional(),
+  scale_end: z.number().positive().optional(),
+  reuse_existing: z.boolean().optional(),
+  position: vector3.optional(),
+  rotation_euler: vector3.optional(),
+  scale: vector3.optional(),
+  material: z.string().optional(),
+};
+
+function safe_asset_name(value) {
+  const safe = String(value ?? "part")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return safe || "part";
+}
+
+function short_hash(value) {
+  let hash = 2166136261;
+  const text = JSON.stringify(value);
+  for (let i = 0; i < text.length; i++)
+  {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function validate_parametric_mesh_args(args) {
+  if (
+    args.shape === "rounded_box" &&
+    args.segments !== undefined &&
+    args.segments > 16
+  )
+  {
+    throw new Error(
+      "rounded_box segments must be between 1 and 16",
+    );
+  }
+  if (
+    args.shape === "revolved_profile" &&
+    args.segments !== undefined &&
+    args.segments < 3
+  )
+  {
+    throw new Error(
+      "revolved_profile segments must be between 3 and 64",
+    );
+  }
+  if (
+    (
+      args.shape === "extruded_profile" ||
+      args.shape === "revolved_profile" ||
+      args.shape === "curved_profile" ||
+      args.shape === "tapered_extrusion"
+    ) &&
+    !args.profile
+  )
+  {
+    throw new Error(
+      `${args.shape} requires a profile`,
+    );
+  }
+  if (
+    (
+      args.shape === "pipe" ||
+      args.shape === "curved_profile"
+    ) &&
+    !args.path_points
+  )
+  {
+    throw new Error(
+      `${args.shape} requires path_points`,
+    );
+  }
+  if (
+    args.shape === "capsule" &&
+    args.segments !== undefined &&
+    (args.segments < 4 || args.segments > 48)
+  )
+  {
+    throw new Error(
+      "capsule segments must be between 4 and 48",
+    );
+  }
+  if (
+    (
+      args.shape === "pipe" ||
+      args.shape === "curved_profile"
+    ) &&
+    args.segments !== undefined &&
+    (args.segments < 3 || args.segments > 32)
+  )
+  {
+    throw new Error(
+      "sweep segments must be between 3 and 32",
+    );
+  }
+}
+
+function srgb_to_linear(color) {
+  return color.map((value, index) => {
+    if (index === 3)
+    {
+      return value;
+    }
+    return value <= 0.04045
+      ? value / 12.92
+      : ((value + 0.055) / 1.055) ** 2.4;
+  });
+}
+
+const semantic_material = z.enum([
+  "painted_wall",
+  "paint",
+  "wood",
+  "black_plastic",
+  "fabric",
+  "metal",
+  "chrome",
+  "glass",
+  "screen",
+  "screen_on",
+  "emissive",
+]);
+
+const palette_themes = {
+  cozy: {
+    painted_wall: [0.58, 0.68, 0.48, 1],
+    paint: [0.72, 0.48, 0.3, 1],
+    wood: [0.46, 0.24, 0.1, 1],
+    fabric: [0.72, 0.56, 0.42, 1],
+    metal: [0.58, 0.54, 0.48, 1],
+    screen: [0.015, 0.02, 0.028, 1],
+    screen_on: [0.16, 0.48, 0.92, 1],
+    emissive: [1, 0.72, 0.38, 1],
+  },
+  neutral: {
+    painted_wall: [0.72, 0.72, 0.68, 1],
+    paint: [0.5, 0.52, 0.55, 1],
+    wood: [0.38, 0.24, 0.14, 1],
+    fabric: [0.52, 0.54, 0.58, 1],
+    metal: [0.62, 0.64, 0.68, 1],
+    screen: [0.012, 0.016, 0.022, 1],
+    screen_on: [0.2, 0.55, 0.95, 1],
+    emissive: [0.9, 0.92, 1, 1],
+  },
+  cool: {
+    painted_wall: [0.42, 0.58, 0.72, 1],
+    paint: [0.24, 0.42, 0.72, 1],
+    wood: [0.32, 0.25, 0.2, 1],
+    fabric: [0.38, 0.5, 0.68, 1],
+    metal: [0.56, 0.64, 0.72, 1],
+    screen: [0.008, 0.014, 0.026, 1],
+    screen_on: [0.08, 0.62, 1, 1],
+    emissive: [0.55, 0.78, 1, 1],
+  },
+  vibrant: {
+    painted_wall: [0.38, 0.7, 0.48, 1],
+    paint: [0.9, 0.22, 0.16, 1],
+    wood: [0.5, 0.2, 0.06, 1],
+    fabric: [0.72, 0.28, 0.68, 1],
+    metal: [0.7, 0.72, 0.76, 1],
+    screen: [0.01, 0.012, 0.022, 1],
+    screen_on: [0.12, 0.8, 1, 1],
+    emissive: [1, 0.35, 0.08, 1],
+  },
 };
 
 const server = new McpServer({
@@ -1055,6 +1284,23 @@ register_local_tool("screenshot_take", {
   outputSchema: output_schemas.screenshot_take,
   annotations: read_only,
 }, async (args) => {
+  let previous_file = null;
+  if (args.path)
+  {
+    try
+    {
+      const stat = await fs.stat(args.path);
+      previous_file = {
+        modified_ms: stat.mtimeMs,
+        size: stat.size,
+      };
+    }
+    catch
+    {
+    }
+  }
+
+  const request_started_ms = Date.now();
   const result = await send_engine_command("screenshot_take", { path: args.path });
   if (!result.ok || !result.path)
   {
@@ -1068,13 +1314,23 @@ register_local_tool("screenshot_take", {
   {
     try
     {
-      image_buffer = await fs.readFile(result.path);
-      break;
+      const stat = await fs.stat(result.path);
+      const is_fresh = previous_file
+        ? (
+            stat.mtimeMs > previous_file.modified_ms ||
+            stat.size !== previous_file.size
+          )
+        : stat.mtimeMs >= request_started_ms - 5;
+      if (is_fresh)
+      {
+        image_buffer = await fs.readFile(result.path);
+        break;
+      }
     }
     catch
     {
-      await new Promise((resolve) => setTimeout(resolve, 100));
     }
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   const normalized = normalize_result({
@@ -1102,6 +1358,144 @@ register_local_tool("screenshot_take", {
     isError: false,
   };
 });
+
+register_local_tool(
+  "scene_visual_review",
+  {
+    title: "scene visual review",
+    description: "Frame an entity or scene, wait for the camera to settle, capture a PNG as MCP image content, and return context, material, camera, and renderer-debug evidence for an AI correction pass.",
+    inputSchema: {
+      id: z.string().optional(),
+      frame: z.boolean().optional(),
+      include_materials: z.boolean().optional(),
+      path: z.string().optional(),
+      settle_ms: z.number().int().min(0).max(6000).optional(),
+      wait_ms: z.number().int().min(0).max(10000).optional(),
+    },
+    outputSchema: output_schemas.scene_visual_review,
+    annotations: edit_tool,
+  },
+  async ({
+    id,
+    frame = true,
+    include_materials = true,
+    path,
+    settle_ms = 4200,
+    wait_ms = 5000,
+  }) => {
+    const context = await send_engine_command(
+      "context_snapshot",
+    );
+    let camera = null;
+    if (frame)
+    {
+      camera = await send_engine_command(
+        "viewport_frame",
+        { id },
+      );
+      if (!camera.ok)
+      {
+        return tool_result({
+          ...camera,
+          context,
+        });
+      }
+      if (settle_ms > 0)
+      {
+        await new Promise(
+          (resolve) => setTimeout(resolve, settle_ms),
+        );
+      }
+      camera = await send_engine_command(
+        "camera_snapshot",
+      );
+    }
+
+    let materials = null;
+    if (id && include_materials)
+    {
+      materials = await send_engine_command(
+        "entity_render_materials",
+        {
+          id,
+          include_descendants: true,
+        },
+      );
+    }
+    const renderer_debug = await send_engine_command(
+      "renderer_debug_get",
+    );
+    const screenshot_tool = tool_registry.get(
+      "screenshot_take",
+    );
+    const screenshot_result = await screenshot_tool.handler({
+      path,
+      wait_ms,
+    });
+    const screenshot =
+      screenshot_result.structuredContent ??
+      { ok: false, error: "missing screenshot result" };
+    const evidence_ok =
+      Boolean(context.ok) &&
+      (!frame || Boolean(camera?.ok)) &&
+      (!materials || Boolean(materials.ok)) &&
+      Boolean(renderer_debug.ok) &&
+      Boolean(screenshot.ok) &&
+      Boolean(screenshot.ready);
+    const structured = normalize_result({
+      ok: evidence_ok,
+      error: evidence_ok
+        ? undefined
+        : "visual review evidence is incomplete",
+      context,
+      camera,
+      materials,
+      renderer_debug,
+      screenshot,
+    });
+    const content = [
+      {
+        type: "text",
+        text: JSON.stringify(structured),
+      },
+      ...(screenshot_result.content ?? []).filter(
+        (entry) => entry.type === "image",
+      ),
+    ];
+
+    return {
+      structuredContent: structured,
+      content,
+      isError: !structured.ok,
+    };
+  },
+);
+
+register_local_tool(
+  "scene_quality_audit",
+  {
+    title: "scene quality audit",
+    description: "Deterministically audit a completed scene hierarchy for requested features, semantic material coverage, advanced geometry, detail density, and lighting. A false pass means the scene needs another correction pass.",
+    inputSchema: {
+      id: z.string(),
+      required_features: z.array(z.string()).max(20).optional(),
+      min_entities: z.number().int().min(1).max(5000).optional(),
+      max_default_material_ratio: z.number().min(0).max(1).optional(),
+      min_unique_materials: z.number().int().min(1).max(100).optional(),
+      min_advanced_mesh_ratio: z.number().min(0).max(1).optional(),
+      require_light: z.boolean().optional(),
+    },
+    outputSchema: output_schemas.scene_quality_audit,
+    annotations: read_only,
+  },
+  async (args) => {
+    const result = await audit_scene_quality(
+      send_engine_command,
+      args,
+    );
+    return tool_result(result);
+  },
+);
 
 register_tool(
   server,
@@ -1141,7 +1535,7 @@ register_tool(
 register_tool(
   server,
   "world_raycast",
-  "Cast a ray against static world physics and return the hit position and entity.",
+  "Cast a ray against static world physics and return the hit position, normal, distance, and entity.",
   {
     origin: vector3,
     direction: vector3,
@@ -1149,6 +1543,32 @@ register_tool(
   },
   "world_raycast",
   { annotations: read_only, outputSchema: output_schemas.world_raycast },
+);
+
+register_tool(
+  server,
+  "entity_snap",
+  "Snap an entity hierarchy against static floor, ceiling, wall, or arbitrary surface geometry using its rendered bounds. Surface and wall modes can align orientation to the hit normal.",
+  {
+    id: z.string(),
+    mode: z.enum([
+      "floor",
+      "ceiling",
+      "wall",
+      "surface",
+    ]),
+    target: vector3.optional(),
+    origin: vector3.optional(),
+    direction: vector3.optional(),
+    offset: z.number().optional(),
+    align_to_surface: z.boolean().optional(),
+    max_distance: z.number().positive().max(10000).optional(),
+  },
+  "entity_snap",
+  {
+    annotations: edit_tool,
+    outputSchema: output_schemas.entity_snap,
+  },
 );
 
 register_tool(
@@ -1508,6 +1928,105 @@ register_tool(
 );
 
 register_local_tool(
+  "mesh_generate",
+  {
+    title: "mesh generate",
+    description: "Generate, save, and cache one bounded parametric mesh. Supports hard-surface boxes and panels, soft capsules, rounded cylinders, torus forms, arches, profile extrusion and revolution, tapered extrusion, and swept pipes or profiles.",
+    inputSchema: parametric_mesh_args,
+    annotations: edit_tool,
+    outputSchema: output_schemas.parametric_mesh,
+  },
+  async (args) => {
+    try
+    {
+      validate_parametric_mesh_args(args);
+    }
+    catch (error)
+    {
+      return tool_result(
+        structured_error(
+          error.message,
+          { code: "invalid_arguments" },
+        ),
+      );
+    }
+
+    return tool_result(
+      await send_engine_command("mesh_generate", args),
+    );
+  },
+);
+
+register_local_tool(
+  "mesh_generate_batch",
+  {
+    title: "mesh generate batch",
+    description: "Generate, save, and cache up to 32 parametric meshes in one native engine request.",
+    inputSchema: {
+      items: z.array(
+        z.object(parametric_mesh_args),
+      ).min(1).max(32),
+    },
+    outputSchema: output_schemas.parametric_mesh_batch,
+    annotations: edit_tool,
+  },
+  async ({ items }) => {
+    try
+    {
+      for (const item of items)
+      {
+        validate_parametric_mesh_args(item);
+      }
+    }
+    catch (error)
+    {
+      return tool_result(
+        structured_error(
+          error.message,
+          { code: "invalid_arguments" },
+        ),
+      );
+    }
+
+    const args = { count: items.length };
+    const keys = Object.keys(parametric_mesh_args);
+    for (let i = 0; i < items.length; i++)
+    {
+      for (const key of keys)
+      {
+        if (items[i][key] !== undefined && items[i][key] !== null)
+        {
+          args[`item_${i}_${key}`] = items[i][key];
+        }
+      }
+    }
+
+    const result = await send_engine_command(
+      "mesh_generate_batch",
+      args,
+    );
+    return tool_result(result);
+  },
+);
+
+register_tool(
+  server,
+  "render_set_mesh",
+  "Assign a cached or file-backed mesh to an entity render component. The render component is created when absent. Supports generated meshes and imported meshes with a sub-mesh index.",
+  {
+    id: z.string(),
+    mesh: z.string(),
+    sub_mesh_index: z.number().int().min(0).optional(),
+    material: z.string().optional(),
+  },
+  "render_set_mesh",
+  {
+    annotations: edit_tool,
+    outputSchema: output_schemas.render_set_mesh,
+  },
+);
+
+register_local_tool(
   "entity_create_primitive_batch",
   {
     title: "entity create primitive batch",
@@ -1533,6 +2052,548 @@ register_local_tool(
     return tool_result({
       ...result,
       created_count: result.created_count ?? result.created?.length ?? 0,
+    });
+  },
+);
+
+register_local_tool(
+  "compound_create",
+  {
+    title: "compound create",
+    description: "Create an editable compound object from parametric or cached mesh parts, assign per-part materials and transforms, and optionally save the hierarchy as a prefab. Partial failures return the created root and completed parts.",
+    inputSchema: {
+      name: z.string(),
+      parent_id: z.string().optional(),
+      position: vector3.optional(),
+      rotation_euler: vector3.optional(),
+      scale: vector3.optional(),
+      asset_directory: z.string().optional().describe("generated mesh directory, defaults to project/generated/mcp"),
+      prefab_path: z.string().optional(),
+      parts: z.array(
+        z.object(compound_part_args),
+      ).min(1).max(64),
+    },
+    outputSchema: output_schemas.compound_create,
+    annotations: edit_tool,
+  },
+  async ({
+    name,
+    parent_id,
+    position,
+    rotation_euler,
+    scale,
+    asset_directory = "project/generated/mcp",
+    prefab_path,
+    parts,
+  }) => {
+    const root_result = await send_engine_command(
+      "entity_create_empty",
+      { name, parent_id },
+    );
+    if (!root_result.ok)
+    {
+      return tool_result(root_result);
+    }
+
+    const root = root_result.entity;
+    if (position || rotation_euler || scale)
+    {
+      const transform_result = await send_engine_command(
+        "entity_set_transform",
+        {
+          id: root.id,
+          position,
+          rotation_euler,
+          scale,
+        },
+      );
+      if (!transform_result.ok)
+      {
+        return tool_result({
+          ...transform_result,
+          root,
+          completed_parts: [],
+        });
+      }
+    }
+
+    const completed_parts = [];
+    const directory = asset_directory.replace(/[\\/]+$/g, "");
+    for (let i = 0; i < parts.length; i++)
+    {
+      const part = parts[i];
+      if (Boolean(part.mesh) === Boolean(part.shape))
+      {
+        return tool_result({
+          ok: false,
+          error: "each compound part requires exactly one of mesh or shape",
+          failed_index: i,
+          root,
+          completed_parts,
+        });
+      }
+
+      let mesh = part.mesh;
+      let generated = null;
+      if (part.shape)
+      {
+        const signature = {
+          shape: part.shape,
+          size: part.size,
+          radius: part.radius,
+          bevel: part.bevel,
+          segments: part.segments,
+          profile: part.profile,
+          depth: part.depth,
+          height: part.height,
+          major_radius: part.major_radius,
+          minor_radius: part.minor_radius,
+          minor_segments: part.minor_segments,
+          bevel_segments: part.bevel_segments,
+          path_points: part.path_points,
+          thickness: part.thickness,
+          border: part.border,
+          inset: part.inset,
+          scale_start: part.scale_start,
+          scale_end: part.scale_end,
+        };
+        try
+        {
+          validate_parametric_mesh_args(signature);
+        }
+        catch (error)
+        {
+          return tool_result({
+            ok: false,
+            error: error.message,
+            code: "invalid_arguments",
+            failed_index: i,
+            root,
+            completed_parts,
+          });
+        }
+
+        const uses_generated_path = !part.mesh_path;
+        const path = part.mesh_path ??
+          `${directory}/${safe_asset_name(name)}_${i}_${safe_asset_name(part.name)}_${short_hash(signature)}.mesh`;
+        generated = await send_engine_command(
+          "mesh_generate",
+          {
+            ...signature,
+            path,
+            reuse_existing: uses_generated_path ||
+              Boolean(part.reuse_existing),
+          },
+        );
+        if (!generated.ok)
+        {
+          return tool_result({
+            ...generated,
+            failed_index: i,
+            root,
+            completed_parts,
+          });
+        }
+        mesh = generated.resource?.path ?? path;
+      }
+
+      const child_result = await send_engine_command(
+        "entity_create_empty",
+        {
+          name: part.name,
+          parent_id: root.id,
+        },
+      );
+      if (!child_result.ok)
+      {
+        return tool_result({
+          ...child_result,
+          failed_index: i,
+          root,
+          completed_parts,
+        });
+      }
+
+      const child = child_result.entity;
+      if (
+        part.position ||
+        part.rotation_euler ||
+        part.scale
+      )
+      {
+        const transform_result = await send_engine_command(
+          "entity_set_transform",
+          {
+            id: child.id,
+            position: part.position,
+            rotation_euler: part.rotation_euler,
+            scale: part.scale,
+          },
+        );
+        if (!transform_result.ok)
+        {
+          return tool_result({
+            ...transform_result,
+            failed_index: i,
+            root,
+            completed_parts,
+          });
+        }
+      }
+
+      const render_result = await send_engine_command(
+        "render_set_mesh",
+        {
+          id: child.id,
+          mesh,
+          material: part.material,
+        },
+      );
+      if (!render_result.ok)
+      {
+        return tool_result({
+          ...render_result,
+          failed_index: i,
+          root,
+          completed_parts,
+        });
+      }
+
+      completed_parts.push({
+        entity: child,
+        mesh,
+        generated,
+      });
+    }
+
+    let prefab = null;
+    if (prefab_path)
+    {
+      prefab = await send_engine_command(
+        "prefab_save",
+        {
+          id: root.id,
+          path: prefab_path,
+        },
+      );
+      if (!prefab.ok)
+      {
+        return tool_result({
+          ...prefab,
+          root,
+          completed_parts,
+        });
+      }
+    }
+
+    return tool_result({
+      ok: true,
+      root,
+      completed_parts,
+      completed_count: completed_parts.length,
+      prefab,
+    });
+  },
+);
+
+register_local_tool(
+  "detail_pattern_create",
+  {
+    title: "detail pattern create",
+    description: "Create reusable high-frequency scene details as one editable compound object. Patterns include keyboard keys, drawers, slats, books, buttons, cables, cushions, and wall trim.",
+    inputSchema: {
+      pattern: z.enum([
+        "keyboard_keys",
+        "drawers",
+        "slats",
+        "books",
+        "buttons",
+        "cable",
+        "cushions",
+        "wall_trim",
+      ]),
+      name: z.string(),
+      parent_id: z.string().optional(),
+      position: vector3.optional(),
+      rotation_euler: vector3.optional(),
+      count: z.number().int().min(1).max(64).optional(),
+      rows: z.number().int().min(1).max(8).optional(),
+      columns: z.number().int().min(1).max(16).optional(),
+      spacing: z.number().positive().optional(),
+      size: vector3.optional(),
+      path_points: z.array(vector3).min(2).max(64).optional(),
+      material: z.string().optional(),
+      accent_material: z.string().optional(),
+      asset_directory: z.string().optional(),
+      prefab_path: z.string().optional(),
+    },
+    outputSchema: output_schemas.compound_create,
+    annotations: edit_tool,
+  },
+  async (args) => {
+    const parts = [];
+    const count = args.count ?? 6;
+    const rows = args.rows ?? 5;
+    const columns = args.columns ?? 12;
+    const spacing = args.spacing ?? 0.004;
+    const directory = (
+      args.asset_directory ??
+      "project/generated/mcp"
+    ).replace(/[\\/]+$/g, "");
+    const base_name = safe_asset_name(args.name);
+
+    if (args.pattern === "keyboard_keys")
+    {
+      const key_size = args.size ?? [0.018, 0.008, 0.018];
+      const total = Math.min(64, rows * columns);
+      const mesh_path =
+        `${directory}/${base_name}_key.mesh`;
+      for (let index = 0; index < total; index++)
+      {
+        const row = Math.floor(index / columns);
+        const column = index % columns;
+        const row_columns = Math.min(
+          columns,
+          total - row * columns,
+        );
+        parts.push({
+          name: `key_${row}_${column}`,
+          shape: "rounded_box",
+          mesh_path,
+          reuse_existing: true,
+          size: key_size,
+          radius: Math.min(...key_size) * 0.18,
+          segments: 2,
+          position: [
+            (
+              column -
+              (row_columns - 1) * 0.5 +
+              row * 0.18
+            ) * (key_size[0] + spacing),
+            0,
+            (
+              row -
+              (rows - 1) * 0.5
+            ) * (key_size[2] + spacing),
+          ],
+          material: args.material,
+        });
+      }
+    }
+    else if (args.pattern === "drawers")
+    {
+      const drawer_size = args.size ?? [0.5, 0.18, 0.025];
+      const mesh_path =
+        `${directory}/${base_name}_drawer.mesh`;
+      const knob_path =
+        `${directory}/${base_name}_knob.mesh`;
+      for (let i = 0; i < Math.min(count, 24); i++)
+      {
+        const y = i * (drawer_size[1] + spacing);
+        parts.push({
+          name: `drawer_${i}`,
+          shape: "inset_panel",
+          mesh_path,
+          reuse_existing: true,
+          size: drawer_size,
+          border: Math.min(
+            drawer_size[0],
+            drawer_size[1],
+          ) * 0.08,
+          inset: drawer_size[2] * 0.2,
+          position: [0, y, 0],
+          material: args.material,
+        });
+        parts.push({
+          name: `drawer_knob_${i}`,
+          shape: "rounded_cylinder",
+          mesh_path: knob_path,
+          reuse_existing: true,
+          size: [0.025, 0.03, 0.025],
+          radius: 0.0125,
+          height: 0.03,
+          bevel: 0.002,
+          segments: 12,
+          position: [0, y, drawer_size[2] * 0.8],
+          rotation_euler: [90, 0, 0],
+          material: args.accent_material ?? args.material,
+        });
+      }
+    }
+    else if (
+      args.pattern === "slats" ||
+      args.pattern === "wall_trim"
+    )
+    {
+      const part_size = args.size ?? (
+        args.pattern === "slats"
+          ? [0.04, 1.0, 0.025]
+          : [1.0, 0.08, 0.025]
+      );
+      const mesh_path =
+        `${directory}/${base_name}_${args.pattern}.mesh`;
+      for (let i = 0; i < count; i++)
+      {
+        parts.push({
+          name: `${args.pattern}_${i}`,
+          shape: "beveled_box",
+          mesh_path,
+          reuse_existing: true,
+          size: part_size,
+          bevel: Math.min(...part_size) * 0.12,
+          position: args.pattern === "slats"
+            ? [
+                (
+                  i -
+                  (count - 1) * 0.5
+                ) * (part_size[0] + spacing),
+                0,
+                0,
+              ]
+            : [
+                (
+                  i -
+                  (count - 1) * 0.5
+                ) * (part_size[0] + spacing),
+                0,
+                0,
+              ],
+          material: args.material,
+        });
+      }
+    }
+    else if (args.pattern === "books")
+    {
+      for (let i = 0; i < count; i++)
+      {
+        const height = 0.18 + (i % 4) * 0.015;
+        const width = 0.025 + (i % 3) * 0.006;
+        parts.push({
+          name: `book_${i}`,
+          shape: "beveled_box",
+          size: [width, height, 0.13],
+          bevel: 0.002,
+          position: [
+            (
+              i -
+              (count - 1) * 0.5
+            ) * (0.04 + spacing),
+            height * 0.5,
+            0,
+          ],
+          rotation_euler: [
+            0,
+            0,
+            (i % 5 === 0 ? -4 : 0),
+          ],
+          material: i % 2 === 0
+            ? args.material
+            : args.accent_material ?? args.material,
+        });
+      }
+    }
+    else if (args.pattern === "buttons")
+    {
+      const button_size = args.size ?? [0.018, 0.008, 0.018];
+      const total = Math.min(64, rows * columns);
+      const mesh_path =
+        `${directory}/${base_name}_button.mesh`;
+      for (let i = 0; i < total; i++)
+      {
+        const row = Math.floor(i / columns);
+        const column = i % columns;
+        parts.push({
+          name: `button_${row}_${column}`,
+          shape: "rounded_cylinder",
+          mesh_path,
+          reuse_existing: true,
+          size: button_size,
+          radius: button_size[0] * 0.5,
+          height: button_size[1],
+          bevel: button_size[1] * 0.18,
+          segments: 12,
+          position: [
+            (
+              column -
+              (columns - 1) * 0.5
+            ) * (button_size[0] + spacing),
+            0,
+            (
+              row -
+              (rows - 1) * 0.5
+            ) * (button_size[2] + spacing),
+          ],
+          material: args.material,
+        });
+      }
+    }
+    else if (args.pattern === "cable")
+    {
+      if (!args.path_points)
+      {
+        return tool_result(
+          structured_error(
+            "cable requires path_points",
+            { code: "invalid_arguments" },
+          ),
+        );
+      }
+      parts.push({
+        name: "cable",
+        shape: "pipe",
+        path_points: args.path_points,
+        radius: (args.size ?? [0.012, 0.012, 0.012])[0] * 0.5,
+        segments: 10,
+        material: args.material,
+      });
+    }
+    else if (args.pattern === "cushions")
+    {
+      const cushion_size = args.size ?? [0.45, 0.12, 0.45];
+      const mesh_path =
+        `${directory}/${base_name}_cushion.mesh`;
+      for (let i = 0; i < count; i++)
+      {
+        parts.push({
+          name: `cushion_${i}`,
+          shape: "rounded_box",
+          mesh_path,
+          reuse_existing: true,
+          size: cushion_size,
+          radius: Math.min(...cushion_size) * 0.42,
+          segments: 6,
+          position: [
+            (
+              i -
+              (count - 1) * 0.5
+            ) * (cushion_size[0] + spacing),
+            0,
+            0,
+          ],
+          material: args.material,
+        });
+      }
+    }
+
+    if (parts.length === 0 || parts.length > 64)
+    {
+      return tool_result(
+        structured_error(
+          "detail pattern produced an invalid part count",
+          { code: "invalid_arguments" },
+        ),
+      );
+    }
+
+    const compound_tool = tool_registry.get("compound_create");
+    return compound_tool.handler({
+      name: args.name,
+      parent_id: args.parent_id,
+      position: args.position,
+      rotation_euler: args.rotation_euler,
+      asset_directory: args.asset_directory,
+      prefab_path: args.prefab_path,
+      parts,
     });
   },
 );
@@ -1820,6 +2881,126 @@ register_tool(
   },
   "material_set_texture",
   { annotations: edit_tool, outputSchema: output_schemas.material },
+);
+
+register_tool(
+  server,
+  "material_apply_preset",
+  "Apply a complete engine paint or surface preset to a cached material. Paint presets accept a linear RGBA color.",
+  {
+    name: z.string().optional(),
+    path: z.string().optional(),
+    kind: z.enum(["paint", "surface"]),
+    preset: z.enum([
+      "gloss_solid",
+      "metallic",
+      "satin",
+      "matte",
+      "pearl",
+      "candy",
+      "chameleon",
+      "glass_clear",
+      "glass_tinted",
+      "headlight_lens",
+      "taillight_lens",
+      "rubber",
+      "carbon_fiber",
+      "chrome",
+      "polished_metal",
+      "brake_disc",
+      "leather",
+      "black_plastic",
+      "emissive_red",
+      "emissive_white",
+    ]),
+    color: vector4.optional(),
+  },
+  "material_apply_preset",
+  { annotations: edit_tool, outputSchema: output_schemas.material },
+);
+
+register_tool(
+  server,
+  "material_semantic_create",
+  "Create or update one reusable semantic material. Colors are linear RGBA. Prefer material_palette_create for a coordinated room palette.",
+  {
+    path: z.string(),
+    semantic: semantic_material,
+    color: vector4.optional(),
+  },
+  "material_semantic_create",
+  { annotations: edit_tool, outputSchema: output_schemas.material },
+);
+
+register_local_tool(
+  "material_palette_create",
+  {
+    title: "material palette create",
+    description: "Create a coordinated reusable material palette for a generated scene. Returns material names and paths ready for compound_create parts.",
+    inputSchema: {
+      theme: z.enum([
+        "cozy",
+        "neutral",
+        "cool",
+        "vibrant",
+      ]).optional(),
+      directory: z.string().optional(),
+      prefix: z.string().optional(),
+      semantics: z.array(semantic_material).min(1).max(11).optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async ({
+    theme = "cozy",
+    directory = "project/materials/mcp",
+    prefix = "palette",
+    semantics = [
+      "painted_wall",
+      "wood",
+      "black_plastic",
+      "fabric",
+      "metal",
+      "glass",
+      "screen",
+      "screen_on",
+      "emissive",
+    ],
+  }) => {
+    const palette = [];
+    const base_directory = directory.replace(/[\\/]+$/g, "");
+    for (const semantic of semantics)
+    {
+      const srgb = palette_themes[theme][semantic];
+      const result = await send_engine_command(
+        "material_semantic_create",
+        {
+          path: `${base_directory}/${safe_asset_name(prefix)}_${semantic}.xml`,
+          semantic,
+          color: srgb ? srgb_to_linear(srgb) : undefined,
+        },
+      );
+      if (!result.ok)
+      {
+        return tool_result({
+          ...result,
+          palette,
+          failed_semantic: semantic,
+        });
+      }
+      palette.push({
+        semantic,
+        material: result.material,
+      });
+    }
+
+    return tool_result({
+      ok: true,
+      theme,
+      palette,
+      count: palette.length,
+    });
+  },
 );
 
 register_tool(
@@ -2185,6 +3366,14 @@ register_text_resource(
 );
 
 register_text_resource(
+  "parametric_modeling",
+  "spartan://engine/parametric-modeling",
+  "Spartan Parametric Modeling",
+  "Shape selection, dimensions, budgets, and furniture recipes for procedural modeling.",
+  () => parametric_modeling_guide,
+);
+
+register_text_resource(
   "world_current",
   "spartan://world/current",
   "Current Spartan World",
@@ -2296,6 +3485,9 @@ async function read_resource(uri) {
   }
   if (uri === "spartan://engine/component-schemas") {
     return component_schema_markdown();
+  }
+  if (uri === "spartan://engine/parametric-modeling") {
+    return parametric_modeling_guide;
   }
   if (uri === "spartan://source") {
     return [

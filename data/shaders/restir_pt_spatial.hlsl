@@ -281,7 +281,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     if (any(isnan(gi)) || any(isinf(gi)))
+    {
         gi = float3(0, 0, 0);
+    }
+
+    if (all(gi <= 1e-6f))
+    {
+        gi = tex_uav[pixel].rgb;
+    }
 
     // real reconnection distance in w so reblur can size its kernels, sky gets the far band
     float hit_dist = 0.0f;
@@ -290,6 +297,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
     }
 
-    // direct lighting lives inside the reservoir via the initial ris nee samples, adding it here would double count
+    // emissive nee and indirect lighting are already carried by the reservoir
     tex_uav[pixel] = float4(gi, hit_dist);
 }
