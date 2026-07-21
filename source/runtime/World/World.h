@@ -52,6 +52,9 @@ namespace spartan
         // io
         static bool SaveToFile(std::string filePath);
         static bool LoadFromFile(const std::string& file_path);
+        static std::string GetResourceDirectory(
+            const std::string& world_file_path
+        );
 
         // entities
         static sol::state_view GetLuaState();

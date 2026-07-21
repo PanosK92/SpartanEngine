@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "pch.h"
 #include "McpCommands.h"
+#include "McpGeometryKernel.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "../Commands/CommandStack.h"
 #include "../Core/ProgressTracker.h"
@@ -283,6 +284,62 @@ namespace spartan
                 profile.emplace_back(values[i], values[i + 1]);
             }
 
+            return true;
+        }
+
+        bool parse_profile_set(
+            const std::string& value,
+            uint32_t profile_count,
+            uint32_t point_count,
+            std::vector<std::vector<math::Vector2>>& profiles
+        )
+        {
+            if (
+                profile_count < 2 ||
+                profile_count > 64 ||
+                point_count < 3 ||
+                point_count > 32
+            )
+            {
+                return false;
+            }
+            std::vector<float> values;
+            if (
+                !parse_float_list(
+                    value,
+                    values,
+                    profile_count * point_count * 2
+                )
+            )
+            {
+                return false;
+            }
+
+            profiles.clear();
+            profiles.reserve(profile_count);
+            size_t value_index = 0;
+            for (
+                uint32_t profile_index = 0;
+                profile_index < profile_count;
+                profile_index++
+            )
+            {
+                std::vector<math::Vector2> profile;
+                profile.reserve(point_count);
+                for (
+                    uint32_t point_index = 0;
+                    point_index < point_count;
+                    point_index++
+                )
+                {
+                    profile.emplace_back(
+                        values[value_index],
+                        values[value_index + 1]
+                    );
+                    value_index += 2;
+                }
+                profiles.push_back(std::move(profile));
+            }
             return true;
         }
 
@@ -752,6 +809,24 @@ namespace spartan
                 return BodyType::Cloth;
             }
 
+            return std::nullopt;
+        }
+
+        std::optional<mcp_geometry_kernel::axis>
+        geometry_axis_from_name(const std::string& name)
+        {
+            if (name == "x")
+            {
+                return mcp_geometry_kernel::axis::x;
+            }
+            if (name == "y")
+            {
+                return mcp_geometry_kernel::axis::y;
+            }
+            if (name == "z")
+            {
+                return mcp_geometry_kernel::axis::z;
+            }
             return std::nullopt;
         }
 
@@ -1883,7 +1958,12 @@ namespace spartan
                     json += ",";
                 }
                 first_property = false;
-                json += json_string(name) + ":" + std::to_string(material->GetProperty(property));
+                const float value =
+                    material->GetProperty(property);
+                json += json_string(name) + ":";
+                json += std::isfinite(value)
+                    ? std::to_string(value)
+                    : "null";
             }
             json += "}";
 
@@ -2828,6 +2908,10 @@ namespace spartan
             json += parent ? json_string(std::to_string(parent->GetObjectId())) : "null";
 
             json += ",\"components\":" + entity_components_json(entity);
+            if (!entity->GetTags().empty())
+            {
+                json += ",\"tags\":" + entity_tags_json(entity);
+            }
             json += "}";
             return json;
         }
@@ -3338,6 +3422,12 @@ namespace spartan
             {
                 return json_error("missing path");
             }
+            if (std::filesystem::path(path).is_relative())
+            {
+                path = std::filesystem::absolute(path)
+                    .lexically_normal()
+                    .string();
+            }
 
             if (!is_world_path_valid(path))
             {
@@ -3350,6 +3440,78 @@ namespace spartan
             }
 
             return "{\"ok\":true,\"path\":" + json_string(path) + "}";
+        }
+
+        std::string command_world_resources_clean()
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error(
+                    "world resource cleanup requires edit mode"
+                );
+            }
+
+            std::string path = World::GetFilePath();
+            if (path.empty())
+            {
+                return json_error("world has no file path");
+            }
+            if (std::filesystem::path(path).is_relative())
+            {
+                path = std::filesystem::absolute(path)
+                    .lexically_normal()
+                    .string();
+            }
+            if (!is_world_path_valid(path))
+            {
+                return json_error(
+                    "world path must be an absolute .world file"
+                );
+            }
+
+            const std::string directory =
+                World::GetResourceDirectory(path);
+            const std::vector<std::string> before =
+                FileSystem::GetFilesInDirectory(directory);
+            if (!World::SaveToFile(path))
+            {
+                return json_error(
+                    "failed to save world and clean resources"
+                );
+            }
+            const std::vector<std::string> after =
+                FileSystem::GetFilesInDirectory(directory);
+            std::set<std::string> retained(
+                after.begin(),
+                after.end()
+            );
+            std::string json = "{\"ok\":true";
+            json += ",\"path\":" + json_string(path);
+            json += ",\"directory\":" + json_string(directory);
+            json += ",\"removed\":[";
+            bool first = true;
+            for (const std::string& file : before)
+            {
+                if (retained.find(file) != retained.end())
+                {
+                    continue;
+                }
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(file);
+            }
+            json += "]";
+            json += ",\"retained_count\":" +
+                std::to_string(after.size());
+            json += "}";
+            return json;
         }
 
         std::string command_world_set_environment(const McpRequest& request)
@@ -3837,6 +3999,23 @@ namespace spartan
                 limit = static_cast<uint32_t>(parsed);
             }
 
+            uint32_t offset = 0;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "offset")
+            )
+            {
+                uint64_t parsed = 0;
+                if (
+                    !parse_uint64(*value, parsed) ||
+                    parsed > std::numeric_limits<uint32_t>::max()
+                )
+                {
+                    return json_error("invalid offset");
+                }
+                offset = static_cast<uint32_t>(parsed);
+            }
+
             std::vector<Entity*> entities;
             entities.emplace_back(root);
             if (include_descendants)
@@ -3852,9 +4031,19 @@ namespace spartan
             json += ",\"entities\":[";
             bool first = true;
             uint32_t emitted = 0;
+            uint32_t skipped = 0;
             for (Entity* entity : entities)
             {
-                if (entity == nullptr || emitted >= limit)
+                if (entity == nullptr)
+                {
+                    continue;
+                }
+                if (skipped < offset)
+                {
+                    skipped++;
+                    continue;
+                }
+                if (emitted >= limit)
                 {
                     continue;
                 }
@@ -4118,8 +4307,15 @@ namespace spartan
             }
             json += "],\"count\":" +
                 std::to_string(emitted);
+            json += ",\"offset\":" +
+                std::to_string(offset);
+            json += ",\"total\":" +
+                std::to_string(entities.size());
             json += ",\"truncated\":" +
-                json_bool(entities.size() > emitted);
+                json_bool(
+                    entities.size() >
+                    static_cast<size_t>(offset) + emitted
+                );
             json += "}";
             return json;
         }
@@ -5196,6 +5392,30 @@ namespace spartan
             {
                 color = Color(0.55f, 0.42f, 0.3f, 1.0f);
             }
+            else if (semantic == "concrete")
+            {
+                color = Color(0.42f, 0.44f, 0.43f, 1.0f);
+            }
+            else if (semantic == "asphalt")
+            {
+                color = Color(0.035f, 0.04f, 0.045f, 1.0f);
+            }
+            else if (semantic == "masonry")
+            {
+                color = Color(0.4f, 0.28f, 0.2f, 1.0f);
+            }
+            else if (semantic == "rubber")
+            {
+                color = Color(0.018f, 0.02f, 0.022f, 1.0f);
+            }
+            else if (semantic == "road_paint")
+            {
+                color = Color(0.78f, 0.76f, 0.62f, 1.0f);
+            }
+            else if (semantic == "painted_metal")
+            {
+                color = Color(0.32f, 0.38f, 0.44f, 1.0f);
+            }
             else if (semantic == "screen")
             {
                 color = Color(0.005f, 0.008f, 0.012f, 1.0f);
@@ -5239,6 +5459,55 @@ namespace spartan
                 material->SetProperty(
                     MaterialProperty::Sheen,
                     0.12f
+                );
+            }
+            else if (
+                semantic == "concrete" ||
+                semantic == "asphalt" ||
+                semantic == "masonry" ||
+                semantic == "road_paint"
+            )
+            {
+                material->ApplyPaintPreset(
+                    MaterialPaintPreset::Matte,
+                    color,
+                    false
+                );
+                const float roughness =
+                    semantic == "asphalt"
+                    ? 0.92f
+                    : semantic == "concrete"
+                        ? 0.86f
+                        : semantic == "masonry"
+                            ? 0.82f
+                            : 0.58f;
+                material->SetProperty(
+                    MaterialProperty::Roughness,
+                    roughness
+                );
+            }
+            else if (semantic == "rubber")
+            {
+                material->ApplySurfacePreset(
+                    MaterialSurfacePreset::RubberTire,
+                    false
+                );
+                material->SetColor(color);
+            }
+            else if (semantic == "painted_metal")
+            {
+                material->ApplyPaintPreset(
+                    MaterialPaintPreset::Satin,
+                    color,
+                    false
+                );
+                material->SetProperty(
+                    MaterialProperty::Metalness,
+                    0.62f
+                );
+                material->SetProperty(
+                    MaterialProperty::Roughness,
+                    0.38f
                 );
             }
             else if (semantic == "black_plastic")
@@ -5624,6 +5893,56 @@ namespace spartan
             return "{\"ok\":true,\"material\":" + material_to_json(material.get()) + "}";
         }
 
+        float fit_camera_distance_to_bounds(
+            const math::BoundingBox& bounds,
+            const math::Quaternion& rotation,
+            const float fov_horizontal,
+            const float fov_vertical,
+            const float near_plane,
+            const float padding
+        )
+        {
+            const math::Vector3 center = bounds.GetCenter();
+            const math::Vector3 forward =
+                rotation * math::Vector3::Forward;
+            const math::Vector3 right =
+                rotation * math::Vector3::Right;
+            const math::Vector3 up =
+                rotation * math::Vector3::Up;
+            const float tan_horizontal =
+                std::tan(fov_horizontal * 0.5f);
+            const float tan_vertical =
+                std::tan(fov_vertical * 0.5f);
+            float distance = near_plane * 2.0f;
+            std::array<math::Vector3, 8> corners;
+            bounds.GetCorners(&corners);
+            for (const math::Vector3& corner : corners)
+            {
+                const math::Vector3 offset = corner - center;
+                const float depth =
+                    math::Vector3::Dot(offset, forward);
+                const float horizontal =
+                    std::abs(math::Vector3::Dot(offset, right));
+                const float vertical =
+                    std::abs(math::Vector3::Dot(offset, up));
+                distance = std::max(
+                    distance,
+                    horizontal * padding /
+                    tan_horizontal - depth
+                );
+                distance = std::max(
+                    distance,
+                    vertical * padding /
+                    tan_vertical - depth
+                );
+                distance = std::max(
+                    distance,
+                    near_plane * 2.0f - depth
+                );
+            }
+            return distance;
+        }
+
         std::string command_viewport_frame(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -5699,14 +6018,6 @@ namespace spartan
             const math::Vector3 target = has_bounds
                 ? bounds.GetCenter()
                 : target_entity->GetPosition();
-            const math::Vector3 extents = has_bounds
-                ? bounds.GetExtents()
-                : math::Vector3::One;
-            const float radius = std::max(
-                extents.Length(),
-                0.5f
-            );
-
             float padding = 1.2f;
             if (
                 const std::optional<std::string> value =
@@ -5760,30 +6071,43 @@ namespace spartan
                 return json_error("unknown viewport frame view");
             }
 
-            const float field_of_view = std::min(
-                camera->GetFovHorizontalRad(),
-                camera->GetFovVerticalRad()
-            );
+            const float fov_horizontal =
+                camera->GetFovHorizontalRad();
+            const float fov_vertical =
+                camera->GetFovVerticalRad();
             if (
-                !std::isfinite(field_of_view) ||
-                field_of_view <= 0.01f
+                !std::isfinite(fov_horizontal) ||
+                !std::isfinite(fov_vertical) ||
+                fov_horizontal <= 0.01f ||
+                fov_vertical <= 0.01f
             )
             {
                 return json_error("camera field of view is invalid");
             }
+            const math::Quaternion rotation =
+                math::Quaternion::FromLookRotation(
+                    camera_direction * -1.0f
+                );
+            const math::BoundingBox frame_bounds = has_bounds
+                ? bounds
+                : math::BoundingBox(
+                    target - math::Vector3::One,
+                    target + math::Vector3::One
+                );
             const float distance =
-                radius /
-                std::sin(field_of_view * 0.5f) *
-                padding;
+                fit_camera_distance_to_bounds(
+                    frame_bounds,
+                    rotation,
+                    fov_horizontal,
+                    fov_vertical,
+                    camera->GetNearPlane(),
+                    padding
+                );
             Entity* camera_entity = camera->GetEntity();
             const math::Vector3 position =
                 target + camera_direction * distance;
             camera_entity->SetPosition(position);
-            camera_entity->SetRotation(
-                math::Quaternion::FromLookRotation(
-                    target - position
-                )
-            );
+            camera_entity->SetRotation(rotation);
 
             std::string json = command_camera_snapshot();
             if (!json.empty() && json.back() == '}')
@@ -7979,7 +8303,11 @@ namespace spartan
             {
                 segments = 12;
             }
-            else if (shape == "pipe" || shape == "curved_profile")
+            else if (
+                shape == "pipe" ||
+                shape == "curved_profile" ||
+                shape == "loft"
+            )
             {
                 segments = 8;
             }
@@ -8053,6 +8381,563 @@ namespace spartan
                     &vertices,
                     &indices,
                     size
+                );
+            }
+            else if (shape == "wall_opening")
+            {
+                math::Vector2 opening_size(
+                    size.x * 0.35f,
+                    size.y * 0.7f
+                );
+                math::Vector2 opening_center(
+                    0.0f,
+                    -size.y * 0.5f +
+                        opening_size.y * 0.5f
+                );
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "opening_size")
+                )
+                {
+                    if (!parse_vector2(*value, opening_size))
+                    {
+                        return json_error("invalid opening_size");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "opening_center")
+                )
+                {
+                    if (!parse_vector2(*value, opening_center))
+                    {
+                        return json_error(
+                            "invalid opening_center"
+                        );
+                    }
+                }
+                const float opening_min_x =
+                    opening_center.x - opening_size.x * 0.5f;
+                const float opening_max_x =
+                    opening_center.x + opening_size.x * 0.5f;
+                const float opening_min_y =
+                    opening_center.y - opening_size.y * 0.5f;
+                const float opening_max_y =
+                    opening_center.y + opening_size.y * 0.5f;
+                if (
+                    opening_size.x <= 0.0f ||
+                    opening_size.y <= 0.0f ||
+                    opening_min_x <= -size.x * 0.5f ||
+                    opening_max_x >= size.x * 0.5f ||
+                    opening_min_y < -size.y * 0.5f ||
+                    opening_max_y >= size.y * 0.5f
+                )
+                {
+                    return json_error(
+                        "opening must fit inside the wall"
+                    );
+                }
+
+                const auto append_box = [&](
+                    const math::Vector3& part_size,
+                    const math::Vector3& center
+                )
+                {
+                    std::vector<RHI_Vertex_PosTexNorTan>
+                        part_vertices;
+                    std::vector<uint32_t> part_indices;
+                    geometry_generation::generate_cube(
+                        &part_vertices,
+                        &part_indices
+                    );
+                    for (
+                        RHI_Vertex_PosTexNorTan& vertex :
+                        part_vertices
+                    )
+                    {
+                        const math::Vector3 position =
+                            vertex.get_position();
+                        vertex.set_position(
+                            math::Vector3(
+                                position.x * part_size.x,
+                                position.y * part_size.y,
+                                position.z * part_size.z
+                            ) + center
+                        );
+                    }
+                    return mcp_geometry_kernel::append_mesh(
+                        part_vertices,
+                        part_indices,
+                        vertices,
+                        indices
+                    );
+                };
+
+                const float left_width =
+                    opening_min_x + size.x * 0.5f;
+                const float right_width =
+                    size.x * 0.5f - opening_max_x;
+                const float bottom_height =
+                    opening_min_y + size.y * 0.5f;
+                const float top_height =
+                    size.y * 0.5f - opening_max_y;
+                const std::array<
+                    std::pair<
+                        math::Vector3,
+                        math::Vector3
+                    >,
+                    4
+                > parts =
+                {{
+                    {
+                        math::Vector3(
+                            left_width,
+                            size.y,
+                            size.z
+                        ),
+                        math::Vector3(
+                            -size.x * 0.5f +
+                                left_width * 0.5f,
+                            0.0f,
+                            0.0f
+                        )
+                    },
+                    {
+                        math::Vector3(
+                            right_width,
+                            size.y,
+                            size.z
+                        ),
+                        math::Vector3(
+                            size.x * 0.5f -
+                                right_width * 0.5f,
+                            0.0f,
+                            0.0f
+                        )
+                    },
+                    {
+                        math::Vector3(
+                            opening_size.x,
+                            bottom_height,
+                            size.z
+                        ),
+                        math::Vector3(
+                            opening_center.x,
+                            -size.y * 0.5f +
+                                bottom_height * 0.5f,
+                            0.0f
+                        )
+                    },
+                    {
+                        math::Vector3(
+                            opening_size.x,
+                            top_height,
+                            size.z
+                        ),
+                        math::Vector3(
+                            opening_center.x,
+                            size.y * 0.5f -
+                                top_height * 0.5f,
+                            0.0f
+                        )
+                    }
+                }};
+                for (const auto& [part_size, center] : parts)
+                {
+                    if (
+                        part_size.x <= 0.0001f ||
+                        part_size.y <= 0.0001f
+                    )
+                    {
+                        continue;
+                    }
+                    const auto result = append_box(
+                        part_size,
+                        center
+                    );
+                    if (!result.succeeded())
+                    {
+                        return json_error(
+                            "wall opening failed, " +
+                            result.message
+                        );
+                    }
+                }
+            }
+            else if (shape == "wall_openings")
+            {
+                uint32_t opening_count = 0;
+                const std::optional<std::string> count_arg =
+                    get_argument(request, "opening_count");
+                if (
+                    !count_arg ||
+                    !parse_uint32(*count_arg, opening_count) ||
+                    opening_count < 1 ||
+                    opening_count > 16
+                )
+                {
+                    return json_error("invalid opening_count");
+                }
+                std::vector<float> opening_sizes;
+                std::vector<float> opening_centers;
+                const std::optional<std::string> sizes_arg =
+                    get_argument(request, "opening_sizes");
+                const std::optional<std::string> centers_arg =
+                    get_argument(request, "opening_centers");
+                if (
+                    !sizes_arg ||
+                    !centers_arg ||
+                    !parse_float_list(
+                        *sizes_arg,
+                        opening_sizes,
+                        opening_count * 2
+                    ) ||
+                    !parse_float_list(
+                        *centers_arg,
+                        opening_centers,
+                        opening_count * 2
+                    )
+                )
+                {
+                    return json_error(
+                        "opening sizes and centers must match opening_count"
+                    );
+                }
+
+                struct wall_opening
+                {
+                    float min_x = 0.0f;
+                    float max_x = 0.0f;
+                    float min_y = 0.0f;
+                    float max_y = 0.0f;
+                };
+                std::vector<wall_opening> openings;
+                std::vector<float> x_boundaries = {
+                    -size.x * 0.5f,
+                    size.x * 0.5f
+                };
+                std::vector<float> y_boundaries = {
+                    -size.y * 0.5f,
+                    size.y * 0.5f
+                };
+                openings.reserve(opening_count);
+                for (uint32_t i = 0; i < opening_count; i++)
+                {
+                    const float width = opening_sizes[i * 2];
+                    const float height = opening_sizes[i * 2 + 1];
+                    const float center_x = opening_centers[i * 2];
+                    const float center_y =
+                        opening_centers[i * 2 + 1];
+                    wall_opening opening;
+                    opening.min_x = center_x - width * 0.5f;
+                    opening.max_x = center_x + width * 0.5f;
+                    opening.min_y = center_y - height * 0.5f;
+                    opening.max_y = center_y + height * 0.5f;
+                    if (
+                        width <= 0.0f ||
+                        height <= 0.0f ||
+                        opening.min_x <= -size.x * 0.5f ||
+                        opening.max_x >= size.x * 0.5f ||
+                        opening.min_y < -size.y * 0.5f ||
+                        opening.max_y >= size.y * 0.5f
+                    )
+                    {
+                        return json_error(
+                            "every opening must fit inside the wall"
+                        );
+                    }
+                    openings.push_back(opening);
+                    x_boundaries.push_back(opening.min_x);
+                    x_boundaries.push_back(opening.max_x);
+                    y_boundaries.push_back(opening.min_y);
+                    y_boundaries.push_back(opening.max_y);
+                }
+                const auto sort_unique = [](std::vector<float>& values)
+                {
+                    std::sort(values.begin(), values.end());
+                    values.erase(
+                        std::unique(
+                            values.begin(),
+                            values.end(),
+                            [](float a, float b)
+                            {
+                                return std::abs(a - b) <= 0.0001f;
+                            }
+                        ),
+                        values.end()
+                    );
+                };
+                sort_unique(x_boundaries);
+                sort_unique(y_boundaries);
+
+                const size_t x_cells = x_boundaries.size() - 1;
+                const size_t y_cells = y_boundaries.size() - 1;
+                std::vector<bool> occupied(
+                    x_cells * y_cells,
+                    true
+                );
+                const auto cell_index = [y_cells](
+                    size_t x,
+                    size_t y
+                )
+                {
+                    return x * y_cells + y;
+                };
+                for (size_t x = 0; x < x_cells; x++)
+                {
+                    for (size_t y = 0; y < y_cells; y++)
+                    {
+                        const float center_x =
+                            (
+                                x_boundaries[x] +
+                                x_boundaries[x + 1]
+                            ) * 0.5f;
+                        const float center_y =
+                            (
+                                y_boundaries[y] +
+                                y_boundaries[y + 1]
+                            ) * 0.5f;
+                        for (const wall_opening& opening : openings)
+                        {
+                            if (
+                                center_x > opening.min_x &&
+                                center_x < opening.max_x &&
+                                center_y > opening.min_y &&
+                                center_y < opening.max_y
+                            )
+                            {
+                                occupied[cell_index(x, y)] = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                const auto append_quad = [&](
+                    const math::Vector3& a,
+                    const math::Vector3& b,
+                    const math::Vector3& c,
+                    const math::Vector3& d
+                )
+                {
+                    const math::Vector3 normal =
+                        math::Vector3::Cross(
+                            b - a,
+                            c - a
+                        ).Normalized();
+                    const math::Vector3 tangent =
+                        (c - a).Normalized();
+                    const uint32_t offset =
+                        static_cast<uint32_t>(vertices.size());
+                    vertices.emplace_back(
+                        a,
+                        math::Vector2(0, 1),
+                        normal,
+                        tangent
+                    );
+                    vertices.emplace_back(
+                        b,
+                        math::Vector2(0, 0),
+                        normal,
+                        tangent
+                    );
+                    vertices.emplace_back(
+                        c,
+                        math::Vector2(1, 1),
+                        normal,
+                        tangent
+                    );
+                    vertices.emplace_back(
+                        d,
+                        math::Vector2(1, 0),
+                        normal,
+                        tangent
+                    );
+                    indices.push_back(offset);
+                    indices.push_back(offset + 1);
+                    indices.push_back(offset + 2);
+                    indices.push_back(offset + 2);
+                    indices.push_back(offset + 1);
+                    indices.push_back(offset + 3);
+                };
+                const float front = -size.z * 0.5f;
+                const float back = size.z * 0.5f;
+                for (size_t x = 0; x < x_cells; x++)
+                {
+                    for (size_t y = 0; y < y_cells; y++)
+                    {
+                        if (!occupied[cell_index(x, y)])
+                        {
+                            continue;
+                        }
+                        const float min_x = x_boundaries[x];
+                        const float max_x = x_boundaries[x + 1];
+                        const float min_y = y_boundaries[y];
+                        const float max_y = y_boundaries[y + 1];
+                        append_quad(
+                            math::Vector3(min_x, min_y, front),
+                            math::Vector3(min_x, max_y, front),
+                            math::Vector3(max_x, min_y, front),
+                            math::Vector3(max_x, max_y, front)
+                        );
+                        append_quad(
+                            math::Vector3(max_x, min_y, back),
+                            math::Vector3(max_x, max_y, back),
+                            math::Vector3(min_x, min_y, back),
+                            math::Vector3(min_x, max_y, back)
+                        );
+                        if (
+                            x == 0 ||
+                            !occupied[cell_index(x - 1, y)]
+                        )
+                        {
+                            append_quad(
+                                math::Vector3(min_x, min_y, back),
+                                math::Vector3(min_x, max_y, back),
+                                math::Vector3(min_x, min_y, front),
+                                math::Vector3(min_x, max_y, front)
+                            );
+                        }
+                        if (
+                            x + 1 == x_cells ||
+                            !occupied[cell_index(x + 1, y)]
+                        )
+                        {
+                            append_quad(
+                                math::Vector3(max_x, min_y, front),
+                                math::Vector3(max_x, max_y, front),
+                                math::Vector3(max_x, min_y, back),
+                                math::Vector3(max_x, max_y, back)
+                            );
+                        }
+                        if (
+                            y == 0 ||
+                            !occupied[cell_index(x, y - 1)]
+                        )
+                        {
+                            append_quad(
+                                math::Vector3(min_x, min_y, front),
+                                math::Vector3(max_x, min_y, front),
+                                math::Vector3(min_x, min_y, back),
+                                math::Vector3(max_x, min_y, back)
+                            );
+                        }
+                        if (
+                            y + 1 == y_cells ||
+                            !occupied[cell_index(x, y + 1)]
+                        )
+                        {
+                            append_quad(
+                                math::Vector3(min_x, max_y, back),
+                                math::Vector3(max_x, max_y, back),
+                                math::Vector3(min_x, max_y, front),
+                                math::Vector3(max_x, max_y, front)
+                            );
+                        }
+                    }
+                }
+            }
+            else if (shape == "grid")
+            {
+                uint32_t grid_points = 16;
+                float extent = size.x;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "grid_points")
+                )
+                {
+                    if (!parse_uint32(*value, grid_points))
+                    {
+                        return json_error("invalid grid_points");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "extent")
+                )
+                {
+                    if (!parse_float(*value, extent))
+                    {
+                        return json_error("invalid extent");
+                    }
+                }
+                if (
+                    grid_points < 2 ||
+                    grid_points > 256 ||
+                    extent <= 0.0f ||
+                    extent > 10000.0f
+                )
+                {
+                    return json_error(
+                        "invalid grid dimensions"
+                    );
+                }
+                geometry_generation::generate_grid(
+                    &vertices,
+                    &indices,
+                    grid_points,
+                    extent
+                );
+            }
+            else if (shape == "grass_blade")
+            {
+                if (segments < 2 || segments > 32)
+                {
+                    return json_error(
+                        "grass blade segments must be between 2 and 32"
+                    );
+                }
+                geometry_generation::generate_foliage_grass_blade(
+                    &vertices,
+                    &indices,
+                    segments
+                );
+            }
+            else if (shape == "flower")
+            {
+                uint32_t petal_count = 12;
+                uint32_t petal_segments = 6;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "petal_count")
+                )
+                {
+                    if (!parse_uint32(*value, petal_count))
+                    {
+                        return json_error("invalid petal_count");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "petal_segments")
+                )
+                {
+                    if (!parse_uint32(*value, petal_segments))
+                    {
+                        return json_error(
+                            "invalid petal_segments"
+                        );
+                    }
+                }
+                if (
+                    segments < 2 ||
+                    segments > 32 ||
+                    petal_count < 3 ||
+                    petal_count > 64 ||
+                    petal_segments < 2 ||
+                    petal_segments > 32
+                )
+                {
+                    return json_error(
+                        "invalid flower segment counts"
+                    );
+                }
+                geometry_generation::generate_foliage_flower(
+                    &vertices,
+                    &indices,
+                    segments,
+                    petal_count,
+                    petal_segments
                 );
             }
             else if (shape == "torus")
@@ -8224,7 +9109,11 @@ namespace spartan
                     bevel_segments
                 );
             }
-            else if (shape == "pipe" || shape == "curved_profile")
+            else if (
+                shape == "pipe" ||
+                shape == "curved_profile" ||
+                shape == "loft"
+            )
             {
                 const std::optional<std::string> path_points_arg =
                     get_argument(request, "path_points");
@@ -8243,6 +9132,72 @@ namespace spartan
                     return json_error(
                         "sweep segments must be between 3 and 32"
                     );
+                }
+
+                std::vector<float> sweep_scales;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "sweep_scales")
+                )
+                {
+                    if (
+                        !parse_float_list(
+                            *value,
+                            sweep_scales,
+                            static_cast<uint32_t>(
+                                path_points.size()
+                            )
+                        )
+                    )
+                    {
+                        return json_error(
+                            "sweep_scales must match path_points"
+                        );
+                    }
+                    for (const float scale : sweep_scales)
+                    {
+                        if (scale <= 0.0f || scale > 100.0f)
+                        {
+                            return json_error(
+                                "sweep scales must be between 0 and 100"
+                            );
+                        }
+                    }
+                }
+
+                std::vector<float> sweep_twists;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(
+                            request,
+                            "sweep_twists_degrees"
+                        )
+                )
+                {
+                    if (
+                        !parse_float_list(
+                            *value,
+                            sweep_twists,
+                            static_cast<uint32_t>(
+                                path_points.size()
+                            )
+                        )
+                    )
+                    {
+                        return json_error(
+                            "sweep_twists_degrees must match path_points"
+                        );
+                    }
+                    for (float& twist : sweep_twists)
+                    {
+                        if (std::abs(twist) > 3600.0f)
+                        {
+                            return json_error(
+                                "sweep twist exceeds 3600 degrees"
+                            );
+                        }
+                        twist *= math::deg_to_rad;
+                    }
                 }
 
                 if (shape == "pipe")
@@ -8267,10 +9222,12 @@ namespace spartan
                         &indices,
                         path_points,
                         radius,
-                        segments
+                        segments,
+                        sweep_scales,
+                        sweep_twists
                     );
                 }
-                else
+                else if (shape == "curved_profile")
                 {
                     const std::optional<std::string> profile_arg =
                         get_argument(request, "profile");
@@ -8289,7 +9246,86 @@ namespace spartan
                         &vertices,
                         &indices,
                         path_points,
-                        profile
+                        profile,
+                        sweep_scales,
+                        sweep_twists
+                    );
+                }
+                else
+                {
+                    uint32_t point_count = 0;
+                    const std::optional<std::string> count_arg =
+                        get_argument(
+                            request,
+                            "loft_profile_points"
+                        );
+                    if (
+                        !count_arg ||
+                        !parse_uint32(*count_arg, point_count)
+                    )
+                    {
+                        return json_error(
+                            "loft requires loft_profile_points"
+                        );
+                    }
+                    const std::optional<std::string> profiles_arg =
+                        get_argument(request, "loft_profiles");
+                    std::vector<
+                        std::vector<math::Vector2>
+                    > profiles;
+                    if (
+                        !profiles_arg ||
+                        !parse_profile_set(
+                            *profiles_arg,
+                            static_cast<uint32_t>(
+                                path_points.size()
+                            ),
+                            point_count,
+                            profiles
+                        )
+                    )
+                    {
+                        return json_error(
+                            "loft_profiles do not match the path"
+                        );
+                    }
+                    for (
+                        std::vector<math::Vector2>& profile :
+                        profiles
+                    )
+                    {
+                        if (
+                            !profile_has_distinct_neighbors(
+                                profile,
+                                true
+                            ) ||
+                            !profile_is_counter_clockwise(profile)
+                        )
+                        {
+                            return json_error(
+                                "loft profiles must be distinct and counter clockwise"
+                            );
+                        }
+                    }
+                    if (!sweep_scales.empty())
+                    {
+                        for (size_t i = 0; i < profiles.size(); i++)
+                        {
+                            for (
+                                math::Vector2& point :
+                                profiles[i]
+                            )
+                            {
+                                point *= sweep_scales[i];
+                            }
+                        }
+                    }
+                    geometry_generation::generate_loft(
+                        &vertices,
+                        &indices,
+                        path_points,
+                        profiles,
+                        sweep_twists
                     );
                 }
             }
@@ -8475,14 +9511,10 @@ namespace spartan
 
                 if (shape == "extruded_profile")
                 {
-                    if (
-                        !profile_is_convex_counter_clockwise(
-                            profile
-                        )
-                    )
+                    if (!profile_is_counter_clockwise(profile))
                     {
                         return json_error(
-                            "extruded profile must be convex and counter clockwise"
+                            "extruded profile must be simple and counter clockwise"
                         );
                     }
 
@@ -8558,6 +9590,427 @@ namespace spartan
                 return json_error("unsupported parametric shape");
             }
 
+            std::vector<std::string> applied_modifiers;
+            math::Vector3 modifier_pivot = math::Vector3::Zero;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "modifier_pivot")
+            )
+            {
+                if (!parse_vector3(*value, modifier_pivot))
+                {
+                    return json_error("invalid modifier_pivot");
+                }
+            }
+
+            if (
+                get_argument(request, "taper_start") ||
+                get_argument(request, "taper_end")
+            )
+            {
+                float taper_start = 1.0f;
+                float taper_end = 1.0f;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "taper_start")
+                )
+                {
+                    if (!parse_float(*value, taper_start))
+                    {
+                        return json_error("invalid taper_start");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "taper_end")
+                )
+                {
+                    if (!parse_float(*value, taper_end))
+                    {
+                        return json_error("invalid taper_end");
+                    }
+                }
+                const std::string axis_name =
+                    get_argument(request, "taper_axis").value_or("y");
+                const auto selected_axis =
+                    geometry_axis_from_name(to_lower_copy(axis_name));
+                if (!selected_axis)
+                {
+                    return json_error("invalid taper_axis");
+                }
+                const auto result = mcp_geometry_kernel::taper(
+                    vertices,
+                    indices,
+                    *selected_axis,
+                    taper_start,
+                    taper_end,
+                    modifier_pivot
+                );
+                if (!result.succeeded())
+                {
+                    return json_error(
+                        "taper modifier failed, " + result.message
+                    );
+                }
+                applied_modifiers.emplace_back("taper");
+            }
+
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "bend_degrees")
+            )
+            {
+                float bend_degrees = 0.0f;
+                if (!parse_float(*value, bend_degrees))
+                {
+                    return json_error("invalid bend_degrees");
+                }
+                const auto length_axis = geometry_axis_from_name(
+                    to_lower_copy(
+                        get_argument(
+                            request,
+                            "bend_axis"
+                        ).value_or("x")
+                    )
+                );
+                const auto radial_axis = geometry_axis_from_name(
+                    to_lower_copy(
+                        get_argument(
+                            request,
+                            "bend_radial_axis"
+                        ).value_or("z")
+                    )
+                );
+                if (!length_axis || !radial_axis)
+                {
+                    return json_error("invalid bend axis");
+                }
+                const auto result = mcp_geometry_kernel::bend(
+                    vertices,
+                    indices,
+                    *length_axis,
+                    *radial_axis,
+                    bend_degrees * math::deg_to_rad,
+                    modifier_pivot
+                );
+                if (!result.succeeded())
+                {
+                    return json_error(
+                        "bend modifier failed, " + result.message
+                    );
+                }
+                applied_modifiers.emplace_back("bend");
+            }
+
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "mirror_axis")
+            )
+            {
+                const auto selected_axis =
+                    geometry_axis_from_name(to_lower_copy(*value));
+                float mirror_plane = 0.0f;
+                if (
+                    const std::optional<std::string> plane =
+                        get_argument(request, "mirror_plane")
+                )
+                {
+                    if (!parse_float(*plane, mirror_plane))
+                    {
+                        return json_error("invalid mirror_plane");
+                    }
+                }
+                if (!selected_axis)
+                {
+                    return json_error("invalid mirror_axis");
+                }
+                const auto result = mcp_geometry_kernel::mirror(
+                    vertices,
+                    indices,
+                    *selected_axis,
+                    mirror_plane
+                );
+                if (!result.succeeded())
+                {
+                    return json_error(
+                        "mirror modifier failed, " + result.message
+                    );
+                }
+                applied_modifiers.emplace_back("mirror");
+            }
+
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "shell_thickness")
+            )
+            {
+                float thickness = 0.0f;
+                if (
+                    !parse_float(*value, thickness) ||
+                    thickness <= 0.0f
+                )
+                {
+                    return json_error("invalid shell_thickness");
+                }
+                const auto result = mcp_geometry_kernel::solidify(
+                    vertices,
+                    indices,
+                    thickness
+                );
+                if (!result.succeeded())
+                {
+                    return json_error(
+                        "shell modifier failed, " + result.message
+                    );
+                }
+                applied_modifiers.emplace_back("shell");
+            }
+
+            uint32_t linear_count = 1;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "linear_count")
+            )
+            {
+                if (
+                    !parse_uint32(*value, linear_count) ||
+                    linear_count < 1 ||
+                    linear_count > 128
+                )
+                {
+                    return json_error("invalid linear_count");
+                }
+            }
+            if (linear_count > 1)
+            {
+                math::Vector3 step = math::Vector3::Zero;
+                const std::optional<std::string> value =
+                    get_argument(request, "linear_step");
+                if (!value || !parse_vector3(*value, step))
+                {
+                    return json_error(
+                        "linear array requires linear_step"
+                    );
+                }
+                std::vector<RHI_Vertex_PosTexNorTan> output_vertices;
+                std::vector<uint32_t> output_indices;
+                const auto result =
+                    mcp_geometry_kernel::linear_array(
+                        vertices,
+                        indices,
+                        linear_count,
+                        step,
+                        output_vertices,
+                        output_indices
+                    );
+                if (!result.succeeded())
+                {
+                    return json_error(
+                        "linear array failed, " + result.message
+                    );
+                }
+                vertices = std::move(output_vertices);
+                indices = std::move(output_indices);
+                applied_modifiers.emplace_back("linear_array");
+            }
+
+            uint32_t radial_count = 1;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "radial_count")
+            )
+            {
+                if (
+                    !parse_uint32(*value, radial_count) ||
+                    radial_count < 1 ||
+                    radial_count > 128
+                )
+                {
+                    return json_error("invalid radial_count");
+                }
+            }
+            if (radial_count > 1)
+            {
+                float step_degrees =
+                    360.0f / static_cast<float>(radial_count);
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "radial_step_degrees")
+                )
+                {
+                    if (!parse_float(*value, step_degrees))
+                    {
+                        return json_error(
+                            "invalid radial_step_degrees"
+                        );
+                    }
+                }
+                const auto selected_axis =
+                    geometry_axis_from_name(
+                        to_lower_copy(
+                            get_argument(
+                                request,
+                                "radial_axis"
+                            ).value_or("y")
+                        )
+                    );
+                if (!selected_axis)
+                {
+                    return json_error("invalid radial_axis");
+                }
+                std::vector<RHI_Vertex_PosTexNorTan> output_vertices;
+                std::vector<uint32_t> output_indices;
+                const auto result =
+                    mcp_geometry_kernel::radial_array(
+                        vertices,
+                        indices,
+                        radial_count,
+                        *selected_axis,
+                        step_degrees * math::deg_to_rad,
+                        modifier_pivot,
+                        output_vertices,
+                        output_indices
+                    );
+                if (!result.succeeded())
+                {
+                    return json_error(
+                        "radial array failed, " + result.message
+                    );
+                }
+                vertices = std::move(output_vertices);
+                indices = std::move(output_indices);
+                applied_modifiers.emplace_back("radial_array");
+            }
+
+            if (
+                const std::optional<std::string> projection =
+                    get_argument(request, "uv_projection")
+            )
+            {
+                math::Vector2 uv_scale = math::Vector2::One;
+                math::Vector2 uv_offset = math::Vector2::Zero;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "uv_scale")
+                )
+                {
+                    if (!parse_vector2(*value, uv_scale))
+                    {
+                        return json_error("invalid uv_scale");
+                    }
+                }
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "uv_offset")
+                )
+                {
+                    if (!parse_vector2(*value, uv_offset))
+                    {
+                        return json_error("invalid uv_offset");
+                    }
+                }
+                const auto selected_axis =
+                    geometry_axis_from_name(
+                        to_lower_copy(
+                            get_argument(
+                                request,
+                                "uv_axis"
+                            ).value_or("y")
+                        )
+                    );
+                if (!selected_axis)
+                {
+                    return json_error("invalid uv_axis");
+                }
+                mcp_geometry_kernel::operation_result result;
+                const std::string projection_name =
+                    to_lower_copy(*projection);
+                if (projection_name == "planar")
+                {
+                    result =
+                        mcp_geometry_kernel::project_uv_planar(
+                            vertices,
+                            indices,
+                            *selected_axis,
+                            uv_scale,
+                            uv_offset
+                        );
+                }
+                else if (projection_name == "box")
+                {
+                    bool split_seams = false;
+                    if (
+                        const std::optional<std::string> value =
+                            get_argument(request, "uv_split_seams")
+                    )
+                    {
+                        if (!parse_bool(*value, split_seams))
+                        {
+                            return json_error(
+                                "invalid uv_split_seams"
+                            );
+                        }
+                    }
+                    if (split_seams)
+                    {
+                        result =
+                            mcp_geometry_kernel::project_uv_box_seamed(
+                                vertices,
+                                indices,
+                                uv_scale,
+                                uv_offset
+                            );
+                    }
+                    else
+                    {
+                        result =
+                            mcp_geometry_kernel::project_uv_box(
+                                vertices,
+                                indices,
+                                uv_scale,
+                                uv_offset
+                            );
+                    }
+                }
+                else if (projection_name == "cylindrical")
+                {
+                    result =
+                        mcp_geometry_kernel::project_uv_cylindrical(
+                            vertices,
+                            indices,
+                            *selected_axis,
+                            modifier_pivot,
+                            uv_scale,
+                            uv_offset
+                        );
+                }
+                else
+                {
+                    return json_error("invalid uv_projection");
+                }
+                if (!result.succeeded())
+                {
+                    return json_error(
+                        "uv projection failed, " + result.message
+                    );
+                }
+                applied_modifiers.emplace_back(
+                    "uv_" + projection_name
+                );
+            }
+
+            const auto validation = mcp_geometry_kernel::validate(
+                vertices,
+                indices
+            );
+            if (!validation.succeeded())
+            {
+                return json_error(
+                    "generated geometry is invalid, " +
+                    validation.message
+                );
+            }
+
             if (
                 vertices.empty() ||
                 indices.empty() ||
@@ -8609,6 +10062,20 @@ namespace spartan
                 std::to_string(vertices.size());
             json += ",\"index_count\":" +
                 std::to_string(indices.size());
+            json += ",\"modifiers\":[";
+            for (
+                size_t index = 0;
+                index < applied_modifiers.size();
+                index++
+            )
+            {
+                if (index != 0)
+                {
+                    json += ",";
+                }
+                json += json_string(applied_modifiers[index]);
+            }
+            json += "]";
             json += ",\"resource\":" +
                 resource_to_json(cached.get());
             json += "}";
@@ -8895,7 +10362,7 @@ namespace spartan
                 parsed_scale = parsed;
             }
 
-            bool with_physics = false;
+            bool with_physics = true;
             if (const std::optional<std::string> with_physics_arg = get_argument(request, "with_physics"))
             {
                 if (!parse_bool(*with_physics_arg, with_physics))
@@ -8928,8 +10395,7 @@ namespace spartan
             {
                 body_type = BodyType::Capsule;
             }
-
-            std::optional<bool> physics_static;
+            std::optional<bool> physics_static = true;
             if (const std::optional<std::string> value = get_argument(request, "physics_static"))
             {
                 bool parsed = false;
@@ -12847,6 +14313,10 @@ namespace spartan
         if (request.command == "world_save")
         {
             return command_world_save(request);
+        }
+        if (request.command == "world_resources_clean")
+        {
+            return command_world_resources_clean();
         }
         if (request.command == "world_set_environment")
         {

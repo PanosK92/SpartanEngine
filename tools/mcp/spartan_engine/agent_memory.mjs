@@ -23,6 +23,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - \`component_action\` invokes deterministic component methods that are not simple property writes.
 - \`resource_list\` and \`material_get\` expose cached resources and material scalar/texture state.
 - \`resource_load\`, \`resource_reload\`, \`resource_save\`, \`resource_remove\`, and \`material_create\` cover common resource lifecycle work.
+- \`world_save\` prunes unreferenced files from the current world resources directory, and \`world_resources_clean\` returns an explicit cleanup receipt.
 - \`undo_redo\` routes editor undo and redo through the command stack.
 - \`viewport_frame\` frames complete descendant bounds from perspective, front, back, left, right, or top views without keyboard focus. Use \`camera_set_view\` for custom poses.
 - \`screenshot_take\` queues a renderer screenshot and can return the saved PNG as image content for visual inspection.

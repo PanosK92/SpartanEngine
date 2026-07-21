@@ -31,6 +31,7 @@ const supported_relations = new Set([
   "aligned_with",
   "beside",
 ]);
+const scene_plan_directories = new Map();
 
 function normalized(value) {
   return String(value ?? "")
@@ -49,28 +50,48 @@ export function make_scene_plan_namespace({
   engine_port,
   world,
 }) {
+  const world_path =
+    world?.file_path ??
+    world?.path ??
+    "";
   const identity = JSON.stringify({
     project_root,
     engine_host,
     engine_port,
-    world_path:
-      world?.file_path ??
-      world?.path ??
-      "",
+    world_path,
     world_name: world?.name ?? "",
   });
   const hash = createHash("sha256")
     .update(identity)
     .digest("hex")
     .slice(0, 20);
-  return `${safe_namespace(path.basename(project_root))}_${hash}`;
+  const namespace =
+    `${safe_namespace(path.basename(project_root))}_${hash}`;
+  const storage_root = world_path
+    ? path.dirname(path.resolve(world_path))
+    : path.resolve(project_root);
+  scene_plan_directories.set(
+    namespace,
+    path.join(
+      storage_root,
+      ".spartan",
+      "scene_plans",
+      namespace,
+    ),
+  );
+  return namespace;
 }
 
 function plan_path(namespace, root_name) {
+  const persistent_directory =
+    scene_plan_directories.get(namespace);
   return path.join(
-    os.tmpdir(),
-    "spartan_engine_scene_plans",
-    safe_namespace(namespace),
+    persistent_directory ??
+      path.join(
+        os.tmpdir(),
+        "spartan_engine_scene_plans",
+        safe_namespace(namespace),
+      ),
     `${safe_namespace(root_name)}.json`,
   );
 }
@@ -374,6 +395,13 @@ export async function create_scene_plan(plan, namespace) {
       ...element,
       name: normalized(element.name),
       zone: normalized(element.zone),
+      semantic_tags: [
+        ...new Set(
+          (element.semantic_tags ?? [])
+            .map(normalized)
+            .filter(Boolean),
+        ),
+      ],
     })),
   };
 
@@ -383,6 +411,19 @@ export async function create_scene_plan(plan, namespace) {
   );
   if (error_count === 0)
   {
+    const now = new Date().toISOString();
+    let created_at = now;
+    try
+    {
+      const previous = JSON.parse(
+        await fs.readFile(target_path, "utf8"),
+      );
+      created_at = previous.created_at ?? now;
+    }
+    catch
+    {
+      created_at = now;
+    }
     await fs.mkdir(path.dirname(target_path), {
       recursive: true,
     });
@@ -390,8 +431,9 @@ export async function create_scene_plan(plan, namespace) {
       target_path,
       JSON.stringify(
         {
-          version: 1,
-          created_at: new Date().toISOString(),
+          version: 2,
+          created_at,
+          updated_at: now,
           plan: normalized_plan,
         },
         null,
@@ -1003,6 +1045,73 @@ async function audit_lighting(
   };
 }
 
+async function read_spatial_hierarchy(
+  send_command,
+  id,
+) {
+  const entities = [];
+  const seen_ids = new Set();
+  const page_size = 5000;
+  let offset = 0;
+  while (offset < 100000)
+  {
+    const page = await send_command(
+      "entity_spatial_snapshot",
+      {
+        id,
+        include_descendants: true,
+        limit: page_size,
+        offset,
+      },
+    );
+    if (!page.ok)
+    {
+      return page;
+    }
+    const page_entities = page.entities ?? [];
+    let added = 0;
+    for (const entity of page_entities)
+    {
+      const entity_id = String(entity.id);
+      if (seen_ids.has(entity_id))
+      {
+        continue;
+      }
+      seen_ids.add(entity_id);
+      entities.push(entity);
+      added++;
+    }
+    if (!page.truncated)
+    {
+      return {
+        ...page,
+        entities,
+        count: entities.length,
+        total: page.total ?? entities.length,
+        truncated: false,
+      };
+    }
+    if (page_entities.length === 0 || added === 0)
+    {
+      return {
+        ...page,
+        ok: false,
+        entities,
+        count: entities.length,
+        error: "spatial snapshot pagination made no progress",
+      };
+    }
+    offset += page_entities.length;
+  }
+  return {
+    ok: false,
+    entities,
+    count: entities.length,
+    truncated: true,
+    error: "scene hierarchy exceeds the 100000 entity audit budget",
+  };
+}
+
 export async function audit_scene_layout(
   send_command,
   {
@@ -1030,7 +1139,10 @@ export async function audit_scene_layout(
     }
     if (
       Number.isFinite(minimum_created_at_ms) &&
-      Date.parse(stored.created_at) <
+      Date.parse(
+        stored.updated_at ??
+        stored.created_at,
+      ) <
         minimum_created_at_ms
     )
     {
@@ -1043,13 +1155,9 @@ export async function audit_scene_layout(
     plan = stored.plan;
   }
 
-  const snapshot = await send_command(
-    "entity_spatial_snapshot",
-    {
-      id,
-      include_descendants: true,
-      limit: 2000,
-    },
+  const snapshot = await read_spatial_hierarchy(
+    send_command,
+    id,
   );
   if (!snapshot.ok)
   {
@@ -1393,6 +1501,30 @@ export async function audit_scene_layout(
       }
     }
 
+    const required_tags = element.semantic_tags ?? [];
+    const matched_tags = new Set(
+      matches.flatMap((match) =>
+        Array.isArray(match.tags)
+          ? match.tags.map(normalized)
+          : [],
+      ),
+    );
+    const tags_ok = required_tags.every((tag) =>
+      matched_tags.has(normalized(tag)),
+    );
+    if (!tags_ok)
+    {
+      add_issue(
+        issues,
+        "error",
+        "semantic_tags_failed",
+        `missing semantic tags ${required_tags.filter(
+          (tag) => !matched_tags.has(normalized(tag)),
+        ).join(",")}`,
+        element.name,
+      );
+    }
+
     element_evidence.push({
       name: element.name,
       role: element.role,
@@ -1402,6 +1534,8 @@ export async function audit_scene_layout(
       zone_ok,
       support_ok,
       material_ok,
+      tags_ok,
+      semantic_tags: [...matched_tags],
     });
   }
 
@@ -1528,6 +1662,10 @@ export async function audit_scene_layout(
   );
   const total_checks =
     (plan.elements?.length ?? 0) * 4 +
+    (plan.elements ?? []).filter(
+      (element) =>
+        (element.semantic_tags?.length ?? 0) > 0,
+    ).length +
     (plan.relationships?.length ?? 0) +
     3;
   const score = Math.max(

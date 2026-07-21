@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <cmath>
 #include <initializer_list>
+#include <numeric>
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
 //============================
@@ -671,6 +672,114 @@ namespace spartan::geometry_generation
         const uint32_t point_count =
             static_cast<uint32_t>(profile.size());
         const float half_depth = depth * 0.5f;
+        std::vector<uint32_t> remaining(point_count);
+        std::iota(
+            remaining.begin(),
+            remaining.end(),
+            0
+        );
+        std::vector<uint32_t> cap_triangles;
+        cap_triangles.reserve((point_count - 2) * 3);
+        const auto cross_2d = [](
+            const Vector2& a,
+            const Vector2& b,
+            const Vector2& c
+        )
+        {
+            return
+                (b.x - a.x) * (c.y - a.y) -
+                (b.y - a.y) * (c.x - a.x);
+        };
+        const auto point_in_triangle = [&](
+            const Vector2& point,
+            const Vector2& a,
+            const Vector2& b,
+            const Vector2& c
+        )
+        {
+            return
+                cross_2d(a, b, point) >= -0.000001f &&
+                cross_2d(b, c, point) >= -0.000001f &&
+                cross_2d(c, a, point) >= -0.000001f;
+        };
+        size_t guard = point_count * point_count;
+        while (remaining.size() > 3 && guard-- > 0)
+        {
+            bool clipped = false;
+            for (size_t i = 0; i < remaining.size(); i++)
+            {
+                const size_t previous_index =
+                    (i + remaining.size() - 1) %
+                    remaining.size();
+                const size_t next_index =
+                    (i + 1) % remaining.size();
+                const uint32_t previous =
+                    remaining[previous_index];
+                const uint32_t current = remaining[i];
+                const uint32_t next = remaining[next_index];
+                const float turn = cross_2d(
+                    profile[previous],
+                    profile[current],
+                    profile[next]
+                );
+                if (std::abs(turn) <= 0.000001f)
+                {
+                    remaining.erase(remaining.begin() + i);
+                    clipped = true;
+                    break;
+                }
+                if (turn < 0.0f)
+                {
+                    continue;
+                }
+
+                bool contains_point = false;
+                for (const uint32_t candidate : remaining)
+                {
+                    if (
+                        candidate == previous ||
+                        candidate == current ||
+                        candidate == next
+                    )
+                    {
+                        continue;
+                    }
+                    if (
+                        point_in_triangle(
+                            profile[candidate],
+                            profile[previous],
+                            profile[current],
+                            profile[next]
+                        )
+                    )
+                    {
+                        contains_point = true;
+                        break;
+                    }
+                }
+                if (contains_point)
+                {
+                    continue;
+                }
+
+                cap_triangles.push_back(previous);
+                cap_triangles.push_back(current);
+                cap_triangles.push_back(next);
+                remaining.erase(remaining.begin() + i);
+                clipped = true;
+                break;
+            }
+            if (!clipped)
+            {
+                break;
+            }
+        }
+        if (remaining.size() == 3)
+        {
+            cap_triangles.push_back(remaining[0]);
+            cap_triangles.push_back(remaining[1]);
+            cap_triangles.push_back(remaining[2]);
+        }
 
         for (uint32_t side = 0; side < 2; side++)
         {
@@ -690,19 +799,35 @@ namespace spartan::geometry_generation
                 );
             }
 
-            for (uint32_t i = 1; i + 1 < point_count; i++)
+            for (
+                size_t i = 0;
+                i + 2 < cap_triangles.size();
+                i += 3
+            )
             {
                 if (side == 0)
                 {
-                    indices->push_back(offset);
-                    indices->push_back(offset + i + 1);
-                    indices->push_back(offset + i);
+                    indices->push_back(
+                        offset + cap_triangles[i]
+                    );
+                    indices->push_back(
+                        offset + cap_triangles[i + 2]
+                    );
+                    indices->push_back(
+                        offset + cap_triangles[i + 1]
+                    );
                 }
                 else
                 {
-                    indices->push_back(offset);
-                    indices->push_back(offset + i);
-                    indices->push_back(offset + i + 1);
+                    indices->push_back(
+                        offset + cap_triangles[i]
+                    );
+                    indices->push_back(
+                        offset + cap_triangles[i + 1]
+                    );
+                    indices->push_back(
+                        offset + cap_triangles[i + 2]
+                    );
                 }
             }
         }
@@ -1016,11 +1141,12 @@ namespace spartan::geometry_generation
         );
     }
 
-    static void generate_swept_profile(
+    static void generate_loft(
         std::vector<RHI_Vertex_PosTexNorTan>* vertices,
         std::vector<uint32_t>* indices,
         const std::vector<math::Vector3>& path,
-        const std::vector<math::Vector2>& profile
+        const std::vector<std::vector<math::Vector2>>& profiles,
+        const std::vector<float>& twists = {}
     )
     {
         using namespace math;
@@ -1028,10 +1154,12 @@ namespace spartan::geometry_generation
         const uint32_t path_count =
             static_cast<uint32_t>(path.size());
         const uint32_t profile_count =
-            static_cast<uint32_t>(profile.size());
+            static_cast<uint32_t>(profiles.front().size());
+        Vector3 transported_axis_x = Vector3::Zero;
 
         for (uint32_t i = 0; i < path_count; i++)
         {
+            const std::vector<Vector2>& profile = profiles[i];
             const Vector3 previous =
                 path[i == 0 ? i : i - 1];
             const Vector3 next =
@@ -1043,41 +1171,100 @@ namespace spartan::geometry_generation
                 0.95f
                 ? Vector3::Right
                 : Vector3::Up;
-            const Vector3 axis_x =
+            Vector3 axis_x =
                 Vector3::Cross(reference, path_tangent).Normalized();
+            if (i > 0)
+            {
+                const Vector3 projected_axis =
+                    transported_axis_x -
+                    path_tangent * Vector3::Dot(
+                        transported_axis_x,
+                        path_tangent
+                    );
+                if (
+                    projected_axis.LengthSquared() >
+                    0.0000001f
+                )
+                {
+                    axis_x = projected_axis.Normalized();
+                }
+            }
             const Vector3 axis_y =
                 Vector3::Cross(path_tangent, axis_x).Normalized();
+            transported_axis_x = axis_x;
+            const float twist =
+                twists.empty() ? 0.0f : twists[i];
+            const float twist_cos = std::cos(twist);
+            const float twist_sin = std::sin(twist);
             const float u = static_cast<float>(i) /
                 static_cast<float>(path_count - 1);
 
             for (uint32_t j = 0; j < profile_count; j++)
             {
-                const Vector2 previous_profile =
-                    profile[j == 0 ? profile_count - 1 : j - 1];
-                const Vector2 next_profile =
-                    profile[(j + 1) % profile_count];
-                const Vector2 profile_tangent =
-                    (next_profile - previous_profile).Normalized();
-                const Vector2 profile_normal(
-                    profile_tangent.y,
-                    -profile_tangent.x
+                const Vector2 rotated_point(
+                    profile[j].x * twist_cos -
+                        profile[j].y * twist_sin,
+                    profile[j].x * twist_sin +
+                        profile[j].y * twist_cos
                 );
-                const Vector3 normal = (
-                    axis_x * profile_normal.x +
-                    axis_y * profile_normal.y
-                ).Normalized();
 
                 vertices->emplace_back(
                     path[i] +
-                    axis_x * profile[j].x +
-                    axis_y * profile[j].y,
+                    axis_x * rotated_point.x +
+                    axis_y * rotated_point.y,
                     Vector2(
                         u,
                         static_cast<float>(j) /
                             static_cast<float>(profile_count)
                     ),
-                    normal,
+                    Vector3::Up,
                     path_tangent
+                );
+            }
+        }
+
+        for (uint32_t i = 0; i < path_count; i++)
+        {
+            const uint32_t previous_i = i == 0 ? i : i - 1;
+            const uint32_t next_i =
+                i + 1 < path_count ? i + 1 : i;
+            for (uint32_t j = 0; j < profile_count; j++)
+            {
+                const uint32_t previous_j =
+                    j == 0 ? profile_count - 1 : j - 1;
+                const uint32_t next_j =
+                    (j + 1) % profile_count;
+                const uint32_t vertex_index =
+                    i * profile_count + j;
+                const Vector3 circumferential =
+                    (*vertices)[
+                        i * profile_count + next_j
+                    ].get_position() -
+                    (*vertices)[
+                        i * profile_count + previous_j
+                    ].get_position();
+                const Vector3 longitudinal =
+                    (*vertices)[
+                        next_i * profile_count + j
+                    ].get_position() -
+                    (*vertices)[
+                        previous_i * profile_count + j
+                    ].get_position();
+                const Vector3 normal = Vector3::Cross(
+                    circumferential,
+                    longitudinal
+                );
+                const Vector3 tangent =
+                    longitudinal.LengthSquared() > 0.0000001f
+                    ? longitudinal.Normalized()
+                    : (*vertices)[vertex_index].get_tangent();
+                (*vertices)[vertex_index].set_normal(
+                    normal.LengthSquared() > 0.0000001f
+                    ? normal.Normalized()
+                    : Vector3::Up
+                );
+                (*vertices)[vertex_index].set_tangent(
+                    tangent
                 );
             }
         }
@@ -1103,12 +1290,45 @@ namespace spartan::geometry_generation
         }
     }
 
+    static void generate_swept_profile(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        const std::vector<math::Vector3>& path,
+        const std::vector<math::Vector2>& profile,
+        const std::vector<float>& scales = {},
+        const std::vector<float>& twists = {}
+    )
+    {
+        std::vector<std::vector<math::Vector2>> profiles;
+        profiles.reserve(path.size());
+        for (size_t i = 0; i < path.size(); i++)
+        {
+            const float scale = scales.empty() ? 1.0f : scales[i];
+            std::vector<math::Vector2> scaled_profile;
+            scaled_profile.reserve(profile.size());
+            for (const math::Vector2& point : profile)
+            {
+                scaled_profile.push_back(point * scale);
+            }
+            profiles.push_back(std::move(scaled_profile));
+        }
+        generate_loft(
+            vertices,
+            indices,
+            path,
+            profiles,
+            twists
+        );
+    }
+
     static void generate_pipe(
         std::vector<RHI_Vertex_PosTexNorTan>* vertices,
         std::vector<uint32_t>* indices,
         const std::vector<math::Vector3>& path,
         float radius,
-        uint32_t sides
+        uint32_t sides,
+        const std::vector<float>& scales = {},
+        const std::vector<float>& twists = {}
     )
     {
         using namespace math;
@@ -1131,7 +1351,9 @@ namespace spartan::geometry_generation
             vertices,
             indices,
             path,
-            profile
+            profile,
+            scales,
+            twists
         );
     }
 

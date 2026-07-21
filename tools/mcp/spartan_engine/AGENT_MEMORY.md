@@ -15,6 +15,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - `component_action` invokes deterministic component methods that are not simple property writes.
 - `resource_list` and `material_get` expose cached resources and material scalar/texture state.
 - `resource_load`, `resource_reload`, `resource_save`, `resource_remove`, and `material_create` cover common resource lifecycle work.
+- `world_save` prunes unreferenced files from the current world resources directory, and `world_resources_clean` returns an explicit cleanup receipt.
 - `undo_redo` routes editor undo and redo through the command stack.
 - `camera_set_view`, `viewport_frame`, `renderer_debug_get`, `renderer_debug_set`, and `physics_state` cover common viewport/debug inspection.
 - Drivable cars in play mode: `vehicle_list`/`vehicle_get`, `vehicle_enter` (E + mcp pedal ownership), `vehicle_set_input`, `vehicle_shift`, `vehicle_set_view`, `vehicle_reset`, `vehicle_exit`, `vehicle_telemetry` (`car_telemetry.csv` in the working directory, not Excel).
@@ -75,6 +76,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - spline_junction snaps nearest endpoints only, not mid-spline points. For a mid-route T, split the arterial into two legs that both end at the junction, then join those ends with the spur.
 - spline_reroute is implemented in the engine and MCP server source, but Cursor may not expose it until the MCP server session is restarted. Workaround: call EngineClient.command('spline_reroute', ...) directly. set_spline_control_points_world replaces spline_point_* children and can drop non-captured children if keep/redistribute misses them.
 - spline_reroute reclaim can steal other roads: named road_light poles under arterials get reparented, and if the pole parent has Render the whole arterial is pulled under the target. After reclaim, restore foreign arterials to root and re-run spline_decorate replace on them. Prefer keep_children only for true children until reclaim filters exclude other spline roads.
+- `detail_pattern_create` with `pattern: slats` treats `size` as each slat mesh size, not the total array span; use a narrow per slat size and control total coverage with `count * spacing`, otherwise scene bounds can expand dramatically.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.

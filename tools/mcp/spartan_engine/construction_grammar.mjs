@@ -1141,6 +1141,295 @@ function build_facade(context, args) {
   }
 }
 
+function build_room_shell(context, args) {
+  const [width, height, depth] = args.size;
+  const thickness = clamp(
+    args.thickness ?? 0.12,
+    0.04,
+    Math.min(width, height, depth) * 0.2,
+  );
+  const surfaces = [
+    {
+      name: "floor",
+      size: [width, thickness, depth],
+      position: [0, -height * 0.5, 0],
+      material: args.secondary_material,
+    },
+    {
+      name: "ceiling",
+      size: [width, thickness, depth],
+      position: [0, height * 0.5, 0],
+      material: args.primary_material,
+    },
+    {
+      name: "back_wall",
+      size: [width, height, thickness],
+      position: [0, 0, -depth * 0.5],
+      material: args.primary_material,
+    },
+    {
+      name: "left_wall",
+      size: [thickness, height, depth],
+      position: [-width * 0.5, 0, 0],
+      material: args.primary_material,
+    },
+    {
+      name: "right_wall",
+      size: [thickness, height, depth],
+      position: [width * 0.5, 0, 0],
+      material: args.primary_material,
+    },
+  ];
+  for (const surface of surfaces)
+  {
+    add_box(context, {
+      key: surface.name,
+      ...surface,
+      bevel: Math.min(0.015, thickness * 0.08),
+    });
+  }
+}
+
+function build_storefront_bay(context, args) {
+  const [width, height, depth] = args.size;
+  const frame = clamp(
+    args.thickness ?? width * 0.035,
+    0.04,
+    width * 0.12,
+  );
+  const door_width = width * 0.24;
+  const door_height = height * 0.72;
+  const glass_depth = Math.max(0.012, depth * 0.12);
+  const side_width =
+    (width - door_width - frame * 4) * 0.5;
+  const glass_height = height * 0.58;
+  const glass_y = -height * 0.5 +
+    glass_height * 0.5 +
+    frame;
+  for (const side of [-1, 1])
+  {
+    add_box(context, {
+      key: "storefront_glass",
+      name: side < 0
+        ? "display_window_left"
+        : "display_window_right",
+      size: [side_width, glass_height, glass_depth],
+      position: [
+        side * (
+          door_width * 0.5 +
+          frame +
+          side_width * 0.5
+        ),
+        glass_y,
+        depth * 0.3,
+      ],
+      material: args.glass_material ??
+        args.secondary_material,
+    });
+  }
+  add_inset_panel(context, {
+    key: "storefront_door",
+    name: "entrance_door",
+    size: [door_width, door_height, depth * 0.35],
+    position: [
+      0,
+      -height * 0.5 + door_height * 0.5,
+      depth * 0.24,
+    ],
+    material: args.primary_material,
+  });
+  for (const x of [
+    -width * 0.5 + frame * 0.5,
+    -door_width * 0.5 - frame * 0.5,
+    door_width * 0.5 + frame * 0.5,
+    width * 0.5 - frame * 0.5,
+  ])
+  {
+    add_box(context, {
+      key: "storefront_frame",
+      name: `frame_${context.parts.length + 1}`,
+      size: [frame, height, depth],
+      position: [x, 0, 0],
+      material: args.accent_material ??
+        args.primary_material,
+    });
+  }
+  add_box(context, {
+    key: "storefront_header",
+    name: "sign_band",
+    size: [width, height * 0.22, depth * 0.8],
+    position: [
+      0,
+      height * 0.5 - height * 0.11,
+      0,
+    ],
+    material: args.accent_material ??
+      args.primary_material,
+  });
+  add_box(context, {
+    key: "storefront_canopy",
+    name: "entrance_canopy",
+    size: [width * 0.55, frame, depth * 2.5],
+    position: [0, height * 0.24, depth],
+    material: args.secondary_material,
+  });
+}
+
+function build_warehouse_bay(context, args) {
+  const [width, height, depth] = args.size;
+  const frame = clamp(
+    args.thickness ?? width * 0.025,
+    0.08,
+    width * 0.1,
+  );
+  const door_width = width * 0.62;
+  const door_height = height * 0.68;
+  for (const side of [-1, 1])
+  {
+    add_box(context, {
+      key: "warehouse_column",
+      name: side < 0
+        ? "column_left"
+        : "column_right",
+      size: [frame, height, depth],
+      position: [
+        side * (width * 0.5 - frame * 0.5),
+        0,
+        0,
+      ],
+      material: args.accent_material ??
+        args.primary_material,
+    });
+  }
+  add_box(context, {
+    key: "warehouse_beam",
+    name: "header_beam",
+    size: [width, frame, depth],
+    position: [0, height * 0.5 - frame * 0.5, 0],
+    material: args.accent_material ??
+      args.primary_material,
+  });
+  add_inset_panel(context, {
+    key: "warehouse_door",
+    name: "loading_door",
+    size: [door_width, door_height, depth * 0.45],
+    position: [
+      0,
+      -height * 0.5 + door_height * 0.5,
+      depth * 0.25,
+    ],
+    material: args.secondary_material,
+  });
+  const panel_width =
+    (width - door_width - frame * 3) * 0.5;
+  for (const side of [-1, 1])
+  {
+    add_inset_panel(context, {
+      key: "warehouse_wall_panel",
+      name: side < 0
+        ? "wall_panel_left"
+        : "wall_panel_right",
+      size: [panel_width, height - frame * 2, depth],
+      position: [
+        side * (
+          door_width * 0.5 +
+          frame +
+          panel_width * 0.5
+        ),
+        0,
+        0,
+      ],
+      material: args.primary_material,
+    });
+  }
+  const slat_count = clamp(args.rows ?? 6, 2, 12);
+  for (let index = 1; index < slat_count; index++)
+  {
+    add_box(context, {
+      key: "warehouse_door_slat",
+      name: `loading_door_slat_${index}`,
+      size: [door_width * 0.92, frame * 0.18, depth * 0.58],
+      position: [
+        0,
+        -height * 0.5 +
+          door_height * index / slat_count,
+        depth * 0.34,
+      ],
+      material: args.accent_material ??
+        args.primary_material,
+      bevel: frame * 0.04,
+    });
+  }
+}
+
+function build_boarding_gate(context, args) {
+  const [width, height, depth] = args.size;
+  const frame = clamp(
+    args.thickness ?? width * 0.035,
+    0.06,
+    width * 0.12,
+  );
+  add_box(context, {
+    key: "gate_bridge",
+    name: "jetbridge_body",
+    size: [width * 0.64, height * 0.42, depth],
+    position: [0, height * 0.08, 0],
+    material: args.primary_material,
+  });
+  add_box(context, {
+    key: "gate_portal",
+    name: "terminal_portal",
+    size: [width, height, depth * 0.18],
+    position: [0, 0, -depth * 0.41],
+    material: args.secondary_material,
+  });
+  for (const side of [-1, 1])
+  {
+    add_box(context, {
+      key: "gate_support",
+      name: side < 0
+        ? "support_left"
+        : "support_right",
+      size: [frame, height * 0.58, frame],
+      position: [
+        side * width * 0.22,
+        -height * 0.21,
+        depth * 0.2,
+      ],
+      material: args.accent_material ??
+        args.primary_material,
+    });
+  }
+  add_box(context, {
+    key: "gate_glass",
+    name: "observation_glazing",
+    size: [
+      width * 0.5,
+      height * 0.2,
+      Math.max(0.015, depth * 0.03),
+    ],
+    position: [0, height * 0.12, depth * 0.51],
+    material: args.glass_material ??
+      args.secondary_material,
+  });
+  add_inset_panel(context, {
+    key: "gate_sign",
+    name: "gate_sign",
+    size: [
+      width * 0.28,
+      height * 0.14,
+      Math.max(0.03, depth * 0.04),
+    ],
+    position: [
+      0,
+      height * 0.35,
+      depth * 0.52,
+    ],
+    material: args.emissive_material ??
+      args.accent_material,
+  });
+}
+
 const builders = {
   window_grid: build_window_grid,
   doorway: build_doorway,
@@ -1154,6 +1443,10 @@ const builders = {
   sign: build_sign,
   cable_run: build_cable_run,
   facade: build_facade,
+  room_shell: build_room_shell,
+  storefront_bay: build_storefront_bay,
+  warehouse_bay: build_warehouse_bay,
+  boarding_gate: build_boarding_gate,
 };
 
 export const construction_grammar_names =

@@ -11,6 +11,9 @@ import {
   audit_scene_layout,
   make_scene_plan_namespace,
 } from "./scene_planning.mjs";
+import {
+  infer_design_template,
+} from "./design_intelligence.mjs";
 import { get_project_root } from "./shared_codebase.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -80,48 +83,6 @@ for (const tool_name of advanced_scene_tool_names)
 {
   engine_tool_names.add(tool_name);
 }
-
-const scene_mutating_tool_names = [
-  "mesh_generate",
-  "mesh_generate_batch",
-  "render_set_mesh",
-  "compound_create",
-  "construction_grammar_create",
-  "detail_pattern_create",
-  "material_apply_preset",
-  "material_semantic_create",
-  "material_palette_create",
-  "material_set_property",
-  "material_set_texture",
-  "entity_snap",
-  "entity_create_empty",
-  "entity_create_light",
-  "entity_create_primitive",
-  "entity_create_primitive_batch",
-  "entity_update",
-  "entity_delete",
-  "entity_delete_children",
-  "entity_clone",
-  "entity_set_transform",
-  "entity_set_transform_batch",
-  "component_set",
-  "component_set_batch",
-  "component_action",
-  "entity_add_component",
-  "entity_remove_component",
-  "execute_lua",
-  "lights_calibrate",
-  "prefab_load",
-  "spline_create_road",
-  "spline_set_control_points",
-  "spline_connect",
-  "spline_reroute",
-  "spline_junction",
-  "spline_decorate",
-  "district_blockout",
-  "city_blockout",
-  "world_set_environment",
-];
 
 let cached_agent = null;
 let cached_agent_key = "";
@@ -547,6 +508,10 @@ function build_prompt(prompt, snapshot, intent = null) {
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
     "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
+    "Use mesh_geometry_capabilities before deciding that requested procedural geometry is unavailable.",
+    "Prefer concave extruded profiles, multi-opening walls, variable lofts or sweeps, shell thickness, and seam-split box UVs when they express the design better than stacked boxes.",
+    "For multiple materials, split semantic surfaces into compound parts because one render entity owns one material.",
+    "Every created renderable must have static collision. Use mesh_convex for generated or imported meshes and the matching box, sphere, capsule, or plane collider for standard primitives. Never leave collision coverage partial.",
     "Use entity_create_light for every light. Never hand-roll lights with entity_create_empty + entity_add_component light + component_set; that path leaves weak invisible lights.",
     "entity_create_light fully initializes the light: intensity is lux for directional and lumens otherwise. Visible blockout defaults are point/spot 8500, area 12000, directional 120000, plus range, angle, area size, shadows, and draw/shadow distances.",
     "Do not pass tiny intensities like 25-100 for blockout lights. If you omit intensity, the tool calibrates it. Only set calibrated false when you intentionally want a dim light.",
@@ -564,6 +529,7 @@ function build_prompt(prompt, snapshot, intent = null) {
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
     "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Renderable|Light|...), Renderable:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
     "When you learn a durable lesson, correction, recurring problem, or maintainer improvement idea, update agent memory concisely.",
+    "After finished scene construction, call world_resources_clean so the managed world resources directory contains only live mesh, material, and texture dependencies.",
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
   ];
 
@@ -615,33 +581,11 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
   let idle_timer = null;
   let last_activity_at = Date.now();
   let visual_review_seen = false;
-  let quality_audit_seen = false;
-  let scene_plan_seen = false;
-  let layout_audit_seen = false;
-  let mutation_after_visual_review = false;
   const observe = async (event) => {
     last_activity_at = Date.now();
     const is_visual_review = is_named_tool_event(
       event,
       "scene_visual_review",
-    );
-    const is_quality_audit = is_named_tool_event(
-      event,
-      "scene_quality_audit",
-    );
-    const is_scene_plan = is_named_tool_event(
-      event,
-      "scene_plan_create",
-    );
-    const is_layout_audit = is_named_tool_event(
-      event,
-      "scene_layout_audit",
-    );
-    const is_scene_mutation = scene_mutating_tool_names.some(
-      (tool_name) => is_named_tool_event(
-        event,
-        tool_name,
-      ),
     );
     const successful_visual_review =
       is_visual_review &&
@@ -655,46 +599,8 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           review?.screenshot?.ready === true,
         ),
       );
-    const successful_quality_audit =
-      is_quality_audit &&
-      object_contains(event, (value) =>
-        value.ok === true &&
-        value.pass === true,
-      );
-    const successful_scene_plan =
-      is_scene_plan &&
-      object_contains(event, (value) =>
-        value.ok === true &&
-        value.pass === true,
-      );
-    const successful_layout_audit =
-      is_layout_audit &&
-      object_contains(event, (value) =>
-        value.ok === true &&
-        value.pass === true,
-      );
-    const successful_scene_mutation =
-      is_scene_mutation &&
-      object_contains(event, (value) =>
-        value.ok === true,
-      );
-    if (
-      visual_review_seen &&
-      successful_scene_mutation &&
-      !is_visual_review &&
-      !is_quality_audit
-    )
-    {
-      mutation_after_visual_review = true;
-    }
     visual_review_seen ||=
       successful_visual_review;
-    quality_audit_seen ||=
-      successful_quality_audit;
-    scene_plan_seen ||=
-      successful_scene_plan;
-    layout_audit_seen ||=
-      successful_layout_audit;
     if (!engine_tool_seen && is_engine_tool_event(event)) {
       engine_tool_seen = true;
       run.event("stage_note", { text: "engine tool interaction confirmed" });
@@ -837,6 +743,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     const audit_args = {
       id: root_id,
       required_features: infer_required_features(prompt),
+      scene_type: infer_design_template(prompt),
     };
     const send_command = (name, args) =>
       run.tool(name, args);
@@ -884,11 +791,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       (
         !audit.pass ||
         !layout_audit.pass ||
-        !scene_plan_seen ||
-        !layout_audit_seen ||
-        !visual_review_seen ||
-        !quality_audit_seen ||
-        !mutation_after_visual_review
+        !visual_review_seen
       );
       attempt++
     )
@@ -901,7 +804,8 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         `Layout audit: ${safe_json(layout_audit, 5000)}`,
         "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
         "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
-        "Fix every failed scene_layout_audit and scene_quality_audit check plus the most visible weakness in the image.",
+        "Fix every failed scene_layout_audit and scene_quality_audit check, including every renderable listed by collision_coverage, plus the most visible weakness in the image.",
+        "When audit issues contain recipe_ids, modify only those scene recipe nodes unless a shared support or material must change.",
         "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
         "Preserve all good existing work and keep every addition under the root.",
         "Call scene_layout_audit and scene_quality_audit after corrections and do not report completion unless both pass.",
@@ -948,11 +852,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     if (
       !audit.pass ||
       !layout_audit.pass ||
-      !scene_plan_seen ||
-      !layout_audit_seen ||
-      !visual_review_seen ||
-      !quality_audit_seen ||
-      !mutation_after_visual_review
+      !visual_review_seen
     )
     {
       return {
@@ -961,14 +861,20 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           "Scene was edited, but the quality gate remains incomplete.",
           `Quality audit: ${safe_json(audit, 2500)}`,
           `Layout audit: ${safe_json(layout_audit, 3500)}`,
-          `Semantic plan completed: ${scene_plan_seen}.`,
-          `Layout audit completed: ${layout_audit_seen}.`,
           `Visual review completed: ${visual_review_seen}.`,
-          `Post-review correction completed: ${mutation_after_visual_review}.`,
+          "Final-state audits are authoritative for plan and correction completion.",
         ].join("\n"),
       };
     }
 
+    const resource_cleanup = await run.stage(
+      "Clean World Resources",
+      "removing unreferenced world assets",
+      () => run.tool(
+        "world_resources_clean",
+        {},
+      ),
+    );
     return {
       ok: true,
       text: [
@@ -976,6 +882,9 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           cursor_result.result?.trim() ||
           "Done.",
         `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
+        resource_cleanup.ok
+          ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed.`
+          : `World resource cleanup failed: ${resource_cleanup.error ?? "unknown error"}.`,
       ].join("\n"),
     };
   } catch (error) {

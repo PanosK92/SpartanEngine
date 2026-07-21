@@ -2,6 +2,7 @@
 
 import http from "node:http";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -23,6 +24,27 @@ import {
   build_construction_grammar,
   construction_grammar_names,
 } from "./construction_grammar.mjs";
+import {
+  apply_scene_recipe,
+  diff_scene_recipes,
+  normalize_scene_recipe,
+  preview_scene_recipe,
+  read_scene_recipe,
+  scene_recipe_schema,
+  scene_recipe_version,
+} from "./scene_recipe.mjs";
+import {
+  create_design_brief,
+  design_template_names,
+  semantic_role_catalog,
+  suggest_scene_plan,
+} from "./design_intelligence.mjs";
+import {
+  calculate_benchmark_metrics,
+  compare_benchmark_results,
+  get_benchmark,
+  list_benchmarks,
+} from "./scene_benchmarks.mjs";
 
 const project_root = get_project_root();
 await ensure_agent_memory();
@@ -104,6 +126,25 @@ async function current_scene_plan_namespace() {
   });
 }
 
+async function benchmark_baseline_path(benchmark_id) {
+  const world = await send_engine_command(
+    "world_summary",
+  );
+  const world_path =
+    world.file_path ??
+    world.path ??
+    "";
+  const storage_root = world_path
+    ? path.dirname(path.resolve(world_path))
+    : project_root;
+  return path.join(
+    storage_root,
+    ".spartan",
+    "scene_benchmarks",
+    `${safe_asset_name(benchmark_id)}.json`,
+  );
+}
+
 function send_engine_command(command, args = {}) {
   return engine.command(command, args, engine_timeout_ms);
 }
@@ -131,6 +172,40 @@ function register_local_tool(name, config, handler) {
   }
 
   const input_schema = config.inputSchema ?? {};
+  const validated_handler = async (args) => {
+    const parsed = parse_raw_shape(
+      input_schema,
+      args,
+    );
+    if (!parsed.ok)
+    {
+      return tool_result(parsed.error);
+    }
+    const result = await handler(parsed.value);
+    const output_schema = config.outputSchema;
+    if (
+      output_schema?.safeParse &&
+      result?.structuredContent
+    )
+    {
+      const output = output_schema.safeParse(
+        result.structuredContent,
+      );
+      if (!output.success)
+      {
+        return tool_result(
+          structured_error(
+            "tool output failed its declared schema",
+            {
+              code: "invalid_tool_output",
+              retryable: false,
+            },
+          ),
+        );
+      }
+    }
+    return result;
+  };
   const tool = {
     name,
     title: config.title ?? name.replaceAll("_", " "),
@@ -138,7 +213,7 @@ function register_local_tool(name, config, handler) {
     inputSchema: input_schema,
     outputSchema: config.outputSchema,
     annotations: config.annotations,
-    handler,
+    handler: validated_handler,
   };
 
   tool_registry.set(name, tool);
@@ -148,7 +223,7 @@ function register_local_tool(name, config, handler) {
     inputSchema: input_schema,
     outputSchema: tool.outputSchema,
     annotations: tool.annotations,
-  }, handler);
+  }, validated_handler);
 }
 
 function register_tool(server, name, description, schema, command, options = {}) {
@@ -231,8 +306,10 @@ async function run_async_task(task, tool, args) {
 }
 
 const vector3 = z.array(z.number()).length(3);
+const vector2 = z.array(z.number()).length(2);
 const quaternion = z.array(z.number()).length(4);
 const vector4 = z.array(z.number()).length(4);
+const geometry_axis = z.enum(["x", "y", "z"]);
 const positive_vector3 = z.array(
   z.number().positive(),
 ).length(3);
@@ -276,6 +353,9 @@ const scene_element = z.object({
   count: z.number().int().min(1).max(1000).optional(),
   clearance: z.number().min(0).max(1000).optional(),
   material_semantic: z.string().optional(),
+  semantic_tags: z.array(
+    z.string().min(1),
+  ).max(16).optional(),
 });
 const scene_relationship = z.object({
   subject: z.string().min(1),
@@ -350,7 +430,7 @@ const primitive_create_args = {
   rotation_euler: vector3.optional(),
   scale: vector3.optional(),
   material: z.string().optional().describe("cached material name, cached path, material file path, or default"),
-  with_physics: z.boolean().optional(),
+  with_physics: z.boolean().optional().describe("defaults to true, set false only for intentionally non-colliding visual geometry"),
   body_type: body_type.optional(),
   physics_static: z.boolean().optional(),
   physics_kinematic: z.boolean().optional(),
@@ -362,6 +442,8 @@ const parametric_shape = z.enum([
   "beveled_box",
   "rounded_box",
   "wedge",
+  "wall_opening",
+  "wall_openings",
   "extruded_profile",
   "revolved_profile",
   "torus",
@@ -369,9 +451,13 @@ const parametric_shape = z.enum([
   "rounded_cylinder",
   "pipe",
   "curved_profile",
+  "loft",
   "arch",
   "inset_panel",
   "tapered_extrusion",
+  "grid",
+  "grass_blade",
+  "flower",
 ]);
 const profile2d = z.array(
   z.array(z.number()).length(2),
@@ -380,10 +466,18 @@ const parametric_mesh_args = {
   shape: parametric_shape,
   path: z.string().describe("immutable mesh cache key, use a new path when geometry parameters change"),
   size: vector3.optional().describe("full width, height, and depth in meters"),
+  opening_size: vector2.optional().describe("wall opening width and height in meters"),
+  opening_center: vector2.optional().describe("wall opening center x and y in local meters"),
+  openings: z.array(
+    z.object({
+      size: vector2,
+      center: vector2,
+    }),
+  ).min(1).max(16).optional(),
   radius: z.number().positive().optional(),
   bevel: z.number().positive().optional(),
   segments: z.number().int().min(1).max(64).optional().describe("rounded boxes allow 1 to 16, revolved profiles allow 3 to 64"),
-  profile: profile2d.optional().describe("convex counter clockwise x,y points for extrusion or radius,y points for revolution"),
+  profile: profile2d.optional().describe("simple counter clockwise x,y points for extrusion and sweeps or radius,y points for revolution"),
   depth: z.number().positive().optional(),
   height: z.number().positive().optional(),
   major_radius: z.number().positive().optional(),
@@ -391,11 +485,46 @@ const parametric_mesh_args = {
   minor_segments: z.number().int().min(3).max(48).optional(),
   bevel_segments: z.number().int().min(1).max(16).optional(),
   path_points: z.array(vector3).min(2).max(64).optional(),
+  loft_profiles: z.array(profile2d).min(2).max(64).optional(),
+  sweep_scales: z.array(
+    z.number().positive().max(100),
+  ).min(2).max(64).optional(),
+  sweep_twists_degrees: z.array(
+    z.number().min(-3600).max(3600),
+  ).min(2).max(64).optional(),
   thickness: z.number().positive().optional(),
   border: z.number().positive().optional(),
   inset: z.number().positive().optional(),
   scale_start: z.number().positive().optional(),
   scale_end: z.number().positive().optional(),
+  grid_points: z.number().int().min(2).max(256).optional(),
+  extent: z.number().positive().max(10000).optional(),
+  petal_count: z.number().int().min(3).max(64).optional(),
+  petal_segments: z.number().int().min(2).max(32).optional(),
+  modifier_pivot: vector3.optional(),
+  taper_axis: geometry_axis.optional(),
+  taper_start: z.number().positive().max(100).optional(),
+  taper_end: z.number().positive().max(100).optional(),
+  bend_axis: geometry_axis.optional(),
+  bend_radial_axis: geometry_axis.optional(),
+  bend_degrees: z.number().min(-360).max(360).optional(),
+  mirror_axis: geometry_axis.optional(),
+  mirror_plane: z.number().optional(),
+  shell_thickness: z.number().positive().max(1000).optional(),
+  linear_count: z.number().int().min(1).max(128).optional(),
+  linear_step: vector3.optional(),
+  radial_count: z.number().int().min(1).max(128).optional(),
+  radial_axis: geometry_axis.optional(),
+  radial_step_degrees: z.number().min(-360).max(360).optional(),
+  uv_projection: z.enum([
+    "planar",
+    "box",
+    "cylindrical",
+  ]).optional(),
+  uv_axis: geometry_axis.optional(),
+  uv_scale: vector2.optional(),
+  uv_offset: vector2.optional(),
+  uv_split_seams: z.boolean().optional(),
   reuse_existing: z.boolean().optional().describe("load the existing path instead of validating new parameters"),
 };
 const compound_part_args = {
@@ -404,6 +533,14 @@ const compound_part_args = {
   shape: parametric_shape.optional(),
   mesh_path: z.string().optional(),
   size: vector3.optional(),
+  opening_size: vector2.optional(),
+  opening_center: vector2.optional(),
+  openings: z.array(
+    z.object({
+      size: vector2,
+      center: vector2,
+    }),
+  ).min(1).max(16).optional(),
   radius: z.number().positive().optional(),
   bevel: z.number().positive().optional(),
   segments: z.number().int().min(1).max(64).optional(),
@@ -415,16 +552,61 @@ const compound_part_args = {
   minor_segments: z.number().int().min(3).max(48).optional(),
   bevel_segments: z.number().int().min(1).max(16).optional(),
   path_points: z.array(vector3).min(2).max(64).optional(),
+  loft_profiles: z.array(profile2d).min(2).max(64).optional(),
+  sweep_scales: z.array(
+    z.number().positive().max(100),
+  ).min(2).max(64).optional(),
+  sweep_twists_degrees: z.array(
+    z.number().min(-3600).max(3600),
+  ).min(2).max(64).optional(),
   thickness: z.number().positive().optional(),
   border: z.number().positive().optional(),
   inset: z.number().positive().optional(),
   scale_start: z.number().positive().optional(),
   scale_end: z.number().positive().optional(),
+  grid_points: z.number().int().min(2).max(256).optional(),
+  extent: z.number().positive().max(10000).optional(),
+  petal_count: z.number().int().min(3).max(64).optional(),
+  petal_segments: z.number().int().min(2).max(32).optional(),
+  modifier_pivot: vector3.optional(),
+  taper_axis: geometry_axis.optional(),
+  taper_start: z.number().positive().max(100).optional(),
+  taper_end: z.number().positive().max(100).optional(),
+  bend_axis: geometry_axis.optional(),
+  bend_radial_axis: geometry_axis.optional(),
+  bend_degrees: z.number().min(-360).max(360).optional(),
+  mirror_axis: geometry_axis.optional(),
+  mirror_plane: z.number().optional(),
+  shell_thickness: z.number().positive().max(1000).optional(),
+  linear_count: z.number().int().min(1).max(128).optional(),
+  linear_step: vector3.optional(),
+  radial_count: z.number().int().min(1).max(128).optional(),
+  radial_axis: geometry_axis.optional(),
+  radial_step_degrees: z.number().min(-360).max(360).optional(),
+  uv_projection: z.enum([
+    "planar",
+    "box",
+    "cylindrical",
+  ]).optional(),
+  uv_axis: geometry_axis.optional(),
+  uv_scale: vector2.optional(),
+  uv_offset: vector2.optional(),
+  uv_split_seams: z.boolean().optional(),
   reuse_existing: z.boolean().optional(),
   position: vector3.optional(),
   rotation_euler: vector3.optional(),
   scale: vector3.optional(),
   material: z.string().optional(),
+  with_physics: z.boolean().optional(),
+  body_type: z.enum([
+    "mesh",
+    "mesh_convex",
+  ]).optional(),
+  physics_static: z.boolean().optional(),
+  physics_kinematic: z.boolean().optional(),
+  physics_mass: z.number().positive().optional(),
+  physics_friction: z.number().min(0).optional(),
+  physics_restitution: z.number().min(0).max(1).optional(),
 };
 
 function safe_asset_name(value) {
@@ -447,6 +629,66 @@ function short_hash(value) {
 }
 
 function validate_parametric_mesh_args(args) {
+  if (args.shape === "wall_openings")
+  {
+    if (!args.openings)
+    {
+      throw new Error(
+        "wall_openings requires at least one opening",
+      );
+    }
+    args.opening_count = args.openings.length;
+    args.opening_sizes = args.openings.flatMap(
+      (opening) => opening.size,
+    );
+    args.opening_centers = args.openings.flatMap(
+      (opening) => opening.center,
+    );
+  }
+  if (args.shape === "loft")
+  {
+    if (
+      !args.path_points ||
+      !args.loft_profiles ||
+      args.path_points.length !== args.loft_profiles.length
+    )
+    {
+      throw new Error(
+        "loft requires one profile for every path point",
+      );
+    }
+    const point_count = args.loft_profiles[0].length;
+    if (
+      args.loft_profiles.some((profile) =>
+        profile.length !== point_count,
+      )
+    )
+    {
+      throw new Error(
+        "all loft profiles must have the same point count",
+      );
+    }
+    args.loft_profile_points = point_count;
+  }
+  if (
+    args.sweep_scales &&
+    args.sweep_scales.length !== args.path_points?.length
+  )
+  {
+    throw new Error(
+      "sweep_scales must match path_points",
+    );
+  }
+  if (
+    args.sweep_twists_degrees &&
+    args.sweep_twists_degrees.length !==
+      args.path_points?.length
+  )
+  {
+    throw new Error(
+      "sweep_twists_degrees must match path_points",
+    );
+  }
   if (
     args.shape === "rounded_box" &&
     args.segments !== undefined &&
@@ -484,7 +726,8 @@ function validate_parametric_mesh_args(args) {
   if (
     (
       args.shape === "pipe" ||
-      args.shape === "curved_profile"
+      args.shape === "curved_profile" ||
+      args.shape === "loft"
     ) &&
     !args.path_points
   )
@@ -516,6 +759,36 @@ function validate_parametric_mesh_args(args) {
       "sweep segments must be between 3 and 32",
     );
   }
+  if (
+    (args.linear_count ?? 1) > 1 &&
+    !args.linear_step
+  )
+  {
+    throw new Error(
+      "linear_count greater than one requires linear_step",
+    );
+  }
+  if (
+    args.bend_degrees !== undefined &&
+    args.bend_axis &&
+    args.bend_radial_axis &&
+    args.bend_axis === args.bend_radial_axis
+  )
+  {
+    throw new Error(
+      "bend_axis and bend_radial_axis must differ",
+    );
+  }
+  if (
+    args.uv_scale?.some((value) =>
+      value === 0,
+    )
+  )
+  {
+    throw new Error(
+      "uv_scale components cannot be zero",
+    );
+  }
 }
 
 function srgb_to_linear(color) {
@@ -542,6 +815,12 @@ const semantic_material = z.enum([
   "screen",
   "screen_on",
   "emissive",
+  "concrete",
+  "asphalt",
+  "masonry",
+  "rubber",
+  "road_paint",
+  "painted_metal",
 ]);
 
 const palette_themes = {
@@ -584,6 +863,110 @@ const palette_themes = {
     screen: [0.01, 0.012, 0.022, 1],
     screen_on: [0.12, 0.8, 1, 1],
     emissive: [1, 0.35, 0.08, 1],
+  },
+  industrial: {
+    painted_wall: [0.48, 0.5, 0.48, 1],
+    paint: [0.82, 0.48, 0.08, 1],
+    wood: [0.28, 0.18, 0.1, 1],
+    fabric: [0.26, 0.3, 0.32, 1],
+    metal: [0.48, 0.52, 0.56, 1],
+    screen: [0.008, 0.012, 0.016, 1],
+    screen_on: [0.12, 0.68, 0.9, 1],
+    emissive: [1, 0.58, 0.18, 1],
+  },
+  retail: {
+    painted_wall: [0.78, 0.76, 0.7, 1],
+    paint: [0.12, 0.48, 0.72, 1],
+    wood: [0.52, 0.32, 0.16, 1],
+    fabric: [0.62, 0.56, 0.48, 1],
+    metal: [0.66, 0.68, 0.7, 1],
+    screen: [0.012, 0.016, 0.022, 1],
+    screen_on: [0.16, 0.72, 1, 1],
+    emissive: [0.96, 0.78, 0.42, 1],
+  },
+  aviation: {
+    painted_wall: [0.62, 0.66, 0.68, 1],
+    paint: [0.1, 0.32, 0.58, 1],
+    wood: [0.32, 0.24, 0.18, 1],
+    fabric: [0.28, 0.36, 0.44, 1],
+    metal: [0.58, 0.64, 0.7, 1],
+    screen: [0.006, 0.014, 0.022, 1],
+    screen_on: [0.08, 0.7, 1, 1],
+    emissive: [0.9, 0.76, 0.34, 1],
+  },
+};
+
+const semantic_finish_rules = {
+  painted_wall: {
+    roughness: 0.78,
+    metalness: 0,
+  },
+  paint: {
+    roughness: 0.42,
+    metalness: 0.05,
+    clearcoat: 0.18,
+  },
+  wood: {
+    roughness: 0.62,
+    metalness: 0,
+  },
+  black_plastic: {
+    roughness: 0.48,
+    metalness: 0,
+  },
+  fabric: {
+    roughness: 0.9,
+    metalness: 0,
+    sheen: 0.25,
+  },
+  metal: {
+    roughness: 0.34,
+    metalness: 0.9,
+  },
+  chrome: {
+    roughness: 0.12,
+    metalness: 1,
+  },
+  glass: {
+    roughness: 0.08,
+    metalness: 0,
+  },
+  screen: {
+    roughness: 0.2,
+    metalness: 0.05,
+  },
+  screen_on: {
+    roughness: 0.16,
+    metalness: 0.05,
+  },
+  emissive: {
+    roughness: 0.28,
+    metalness: 0,
+  },
+  concrete: {
+    roughness: 0.86,
+    metalness: 0,
+  },
+  asphalt: {
+    roughness: 0.92,
+    metalness: 0,
+  },
+  masonry: {
+    roughness: 0.82,
+    metalness: 0,
+  },
+  rubber: {
+    roughness: 0.76,
+    metalness: 0,
+  },
+  road_paint: {
+    roughness: 0.58,
+    metalness: 0,
+  },
+  painted_metal: {
+    roughness: 0.38,
+    metalness: 0.62,
+    clearcoat: 0.12,
   },
 };
 
@@ -1387,12 +1770,27 @@ register_local_tool("screenshot_take", {
   outputSchema: output_schemas.screenshot_take,
   annotations: edit_tool,
 }, async (args) => {
+  let requested_path = args.path?.replaceAll("\\", "/");
+  if (
+    requested_path &&
+    !requested_path.includes("/")
+  )
+  {
+    requested_path = `screenshots/${requested_path}`;
+  }
+  if (
+    requested_path &&
+    !requested_path.toLowerCase().endsWith(".png")
+  )
+  {
+    requested_path += ".png";
+  }
   let previous_file = null;
-  if (args.path)
+  if (requested_path)
   {
     try
     {
-      const stat = await fs.stat(args.path);
+      const stat = await fs.stat(requested_path);
       previous_file = {
         modified_ms: stat.mtimeMs,
         size: stat.size,
@@ -1404,7 +1802,10 @@ register_local_tool("screenshot_take", {
   }
 
   const request_started_ms = Date.now();
-  const result = await send_engine_command("screenshot_take", { path: args.path });
+  const result = await send_engine_command(
+    "screenshot_take",
+    { path: requested_path },
+  );
   if (!result.ok || !result.path)
   {
     return tool_result(result);
@@ -1466,7 +1867,7 @@ register_local_tool(
   "scene_visual_review",
   {
     title: "scene visual review",
-    description: "Frame a complete entity hierarchy from one or more deliberate perspectives, capture each PNG as MCP image content, and return context, material, camera, and renderer-debug evidence for an AI correction pass. This does not emulate the F key.",
+    description: "Frame a complete entity hierarchy from one or more deliberate perspectives, capture each PNG as MCP image content, then restore the user's camera and selection. Framing fits the hierarchy bounds to the camera FOV.",
     inputSchema: {
       id: z.string().optional(),
       frame: z.boolean().optional(),
@@ -1525,102 +1926,540 @@ register_local_tool(
       : ["current"];
     const review_views = [];
     const image_content = [];
-    for (const view of requested_views)
+    const original_camera = await send_engine_command(
+      "camera_snapshot",
+    );
+    try
     {
-      let camera = await send_engine_command(
-        "camera_snapshot",
-      );
-      if (frame)
+      for (const view of requested_views)
       {
-        camera = await send_engine_command(
-          "viewport_frame",
-          {
-            id,
+        let camera = await send_engine_command(
+          "camera_snapshot",
+        );
+        if (frame)
+        {
+          camera = await send_engine_command(
+            "viewport_frame",
+            {
+              id,
+              view,
+              padding,
+            },
+          );
+        }
+        if (!camera.ok)
+        {
+          return tool_result({
+            ...camera,
+            context,
             view,
-            padding,
+          });
+        }
+        if (settle_ms > 0)
+        {
+          await new Promise(
+            (resolve) => setTimeout(resolve, settle_ms),
+          );
+        }
+
+        let review_path = path;
+        if (path && requested_views.length > 1)
+        {
+          review_path = path.toLowerCase().endsWith(".png")
+            ? `${path.slice(0, -4)}_${view}.png`
+            : `${path}_${view}.png`;
+        }
+        const screenshot_result =
+          await screenshot_tool.handler({
+            path: review_path,
+            wait_ms,
+          });
+        const screenshot =
+          screenshot_result.structuredContent ??
+          {
+            ok: false,
+            error: "missing screenshot result",
+          };
+        review_views.push({
+          view,
+          camera,
+          screenshot,
+        });
+        image_content.push(
+          ...(screenshot_result.content ?? []).filter(
+            (entry) => entry.type === "image",
+          ),
+        );
+      }
+      const first_view = review_views[0] ?? {};
+      const evidence_ok =
+        Boolean(context.ok) &&
+        (!materials || Boolean(materials.ok)) &&
+        Boolean(renderer_debug.ok) &&
+        review_views.length === requested_views.length &&
+        review_views.every((review) =>
+          Boolean(review.camera?.ok) &&
+          Boolean(review.screenshot?.ok) &&
+          Boolean(review.screenshot?.ready),
+        );
+      const structured = normalize_result({
+        ok: evidence_ok,
+        error: evidence_ok
+          ? undefined
+          : "visual review evidence is incomplete",
+        context,
+        camera: first_view.camera,
+        materials,
+        renderer_debug,
+        screenshot: first_view.screenshot,
+        views: review_views,
+      });
+      const content = [
+        {
+          type: "text",
+          text: JSON.stringify(structured),
+        },
+        ...image_content,
+      ];
+
+      return {
+        structuredContent: structured,
+        content,
+        isError: !structured.ok,
+      };
+    }
+    finally
+    {
+      if (original_camera.ok)
+      {
+        const restore_target = original_camera.position.map(
+          (value, index) =>
+            value + original_camera.forward[index],
+        );
+        await send_engine_command(
+          "camera_set_view",
+          {
+            position: original_camera.position,
+            target: restore_target,
           },
         );
       }
-      if (!camera.ok)
+      const selected_ids =
+        context.selection?.selected_ids ?? [];
+      await send_engine_command(
+        "selection_update",
+        { action: "clear" },
+      );
+      for (const selected_id of selected_ids)
       {
-        return tool_result({
-          ...camera,
-          context,
-          view,
-        });
-      }
-      if (settle_ms > 0)
-      {
-        await new Promise(
-          (resolve) => setTimeout(resolve, settle_ms),
+        await send_engine_command(
+          "selection_update",
+          {
+            action: "add",
+            id: selected_id,
+          },
         );
       }
-
-      let review_path = path;
-      if (path && requested_views.length > 1)
-      {
-        review_path = path.toLowerCase().endsWith(".png")
-          ? `${path.slice(0, -4)}_${view}.png`
-          : `${path}_${view}.png`;
-      }
-      const screenshot_result =
-        await screenshot_tool.handler({
-          path: review_path,
-          wait_ms,
-        });
-      const screenshot =
-        screenshot_result.structuredContent ??
-        {
-          ok: false,
-          error: "missing screenshot result",
-        };
-      review_views.push({
-        view,
-        camera,
-        screenshot,
-      });
-      image_content.push(
-        ...(screenshot_result.content ?? []).filter(
-          (entry) => entry.type === "image",
-        ),
-      );
     }
-    const first_view = review_views[0] ?? {};
-    const evidence_ok =
-      Boolean(context.ok) &&
-      (!materials || Boolean(materials.ok)) &&
-      Boolean(renderer_debug.ok) &&
-      review_views.length === requested_views.length &&
-      review_views.every((review) =>
-        Boolean(review.camera?.ok) &&
-        Boolean(review.screenshot?.ok) &&
-        Boolean(review.screenshot?.ready),
-      );
-    const structured = normalize_result({
-      ok: evidence_ok,
-      error: evidence_ok
-        ? undefined
-        : "visual review evidence is incomplete",
-      context,
-      camera: first_view.camera,
-      materials,
-      renderer_debug,
-      screenshot: first_view.screenshot,
-      views: review_views,
-    });
-    const content = [
-      {
-        type: "text",
-        text: JSON.stringify(structured),
-      },
-      ...image_content,
-    ];
+  },
+);
 
+register_local_tool(
+  "design_brief_create",
+  {
+    title: "design brief create",
+    description: "Create a structured art-direction brief with metric rules, focal hierarchy, PBR palette guidance, lighting intent, and a detail budget before scene planning.",
+    inputSchema: {
+      prompt: z.string().min(1),
+      template_name:
+        z.enum(design_template_names).optional(),
+      overrides: z.record(
+        z.string(),
+        z.any(),
+      ).optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({
+    prompt,
+    template_name,
+    overrides = {},
+  }) => {
+    const brief = create_design_brief(
+      prompt,
+      {
+        ...overrides,
+        template_name,
+      },
+    );
+    return tool_result({
+      ok: brief.validation.valid,
+      brief,
+      templates: design_template_names,
+      semantic_roles: semantic_role_catalog,
+    });
+  },
+);
+
+register_local_tool(
+  "scene_plan_suggest",
+  {
+    title: "scene plan suggest",
+    description: "Suggest a complete metric semantic scene plan from a structured design brief template. Review and pass the returned plan to scene_plan_create.",
+    inputSchema: {
+      prompt: z.string().min(1),
+      template_name:
+        z.enum(design_template_names).optional(),
+      root_name: z.string().min(1).optional(),
+      overrides: z.record(
+        z.string(),
+        z.any(),
+      ).optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({
+    prompt,
+    template_name,
+    root_name,
+    overrides = {},
+  }) => {
+    const brief = create_design_brief(
+      prompt,
+      {
+        ...overrides,
+        template_name,
+        root_name,
+      },
+    );
+    const plan = suggest_scene_plan(brief);
+    return tool_result({
+      ok: plan.ok !== false,
+      brief,
+      plan,
+    });
+  },
+);
+
+register_local_tool(
+  "scene_recipe_preview",
+  {
+    title: "scene recipe preview",
+    description: "Validate and diff a versioned scene recipe without mutating the world. Reports creates, updates, deletes, ownership cleanup, and stable semantic ids.",
+    inputSchema: {
+      recipe: z.record(z.string(), z.any()),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({ recipe }) => {
+    const result = await preview_scene_recipe(
+      send_engine_command,
+      recipe,
+      { project_root },
+    );
+    return tool_result(result);
+  },
+);
+
+register_local_tool(
+  "scene_recipe_apply",
+  {
+    title: "scene recipe apply",
+    description: "Idempotently reconcile a versioned scene recipe with the live world. Stable semantic ids update owned entities and remove stale owned nodes.",
+    inputSchema: {
+      recipe: z.record(z.string(), z.any()),
+      dry_run: z.boolean().optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async ({ recipe, dry_run = false }) => {
+    const result = await apply_scene_recipe(
+      send_engine_command,
+      recipe,
+      {
+        project_root,
+        dry_run,
+      },
+    );
+    return tool_result(result);
+  },
+);
+
+register_local_tool(
+  "scene_recipe_get",
+  {
+    title: "scene recipe get",
+    description: "Read the latest persisted scene recipe for the current world and recipe id.",
+    inputSchema: {
+      recipe_id: z.string().min(1),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({ recipe_id }) => {
+    const world = await send_engine_command(
+      "world_summary",
+      {},
+    );
+    const result = await read_scene_recipe({
+      recipe_id,
+      project_root,
+      world_path:
+        world.file_path ??
+        world.path,
+    });
+    return tool_result({
+      ...result,
+      schema_version: scene_recipe_version,
+      schema: scene_recipe_schema,
+    });
+  },
+);
+
+register_local_tool(
+  "scene_recipe_diff",
+  {
+    title: "scene recipe diff",
+    description: "Compare two scene recipes by stable semantic id and report deterministic create, update, delete, and unchanged sets.",
+    inputSchema: {
+      previous: z.record(z.string(), z.any()),
+      next: z.record(z.string(), z.any()),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({ previous, next }) => {
+    const normalized_previous =
+      normalize_scene_recipe(previous);
+    const normalized_next =
+      normalize_scene_recipe(next);
+    const issues = [
+      ...normalized_previous.issues,
+      ...normalized_next.issues,
+    ];
+    return tool_result({
+      ok:
+        normalized_previous.ok &&
+        normalized_next.ok,
+      issues,
+      diff: diff_scene_recipes(
+        normalized_previous.recipe,
+        normalized_next.recipe,
+      ),
+    });
+  },
+);
+
+register_local_tool(
+  "scene_benchmark_list",
+  {
+    title: "scene benchmark list",
+    description: "List fixed scene-generation benchmark prompts, categories, camera views, and pass thresholds.",
+    inputSchema: {
+      category: z.string().optional(),
+      include_prompts: z.boolean().optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async (args) => tool_result(
+    list_benchmarks(args),
+  ),
+);
+
+register_local_tool(
+  "scene_benchmark_get",
+  {
+    title: "scene benchmark get",
+    description: "Read one benchmark prompt with fixed views, expected features, human rubric, and score weights.",
+    inputSchema: {
+      benchmark_id: z.string().min(1),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({ benchmark_id }) => tool_result(
+    get_benchmark(benchmark_id),
+  ),
+);
+
+register_local_tool(
+  "scene_benchmark_capture",
+  {
+    title: "scene benchmark capture",
+    description: "Capture the fixed camera views for one benchmark scene root and return PNG evidence ready for visual and human scoring.",
+    inputSchema: {
+      benchmark_id: z.string().min(1),
+      id: z.string(),
+      padding: z.number().min(1).max(4).optional(),
+    },
+    outputSchema: output_schemas.scene_visual_review,
+    annotations: edit_tool,
+  },
+  async ({
+    benchmark_id,
+    id,
+    padding = 1.2,
+  }) => {
+    const benchmark = get_benchmark(benchmark_id);
+    if (!benchmark.ok)
+    {
+      return tool_result(benchmark);
+    }
+    const views = [
+      ...new Set(
+        benchmark.camera_views.map(
+          (entry) => entry.view,
+        ),
+      ),
+    ].slice(0, 4);
+    const visual_tool = tool_registry.get(
+      "scene_visual_review",
+    );
+    const review = await visual_tool.handler({
+      id,
+      views,
+      padding,
+      include_materials: true,
+      path: `benchmarks/${safe_asset_name(
+        benchmark_id,
+      )}.png`,
+    });
     return {
-      structuredContent: structured,
-      content,
-      isError: !structured.ok,
+      ...review,
+      structuredContent: {
+        ...review.structuredContent,
+        benchmark_id,
+        expected_features:
+          benchmark.benchmark.expected_features,
+        human_rubric: benchmark.human_rubric,
+      },
     };
+  },
+);
+
+register_local_tool(
+  "scene_benchmark_score",
+  {
+    title: "scene benchmark score",
+    description: "Validate and score one benchmark result from plan fidelity, duplicates, material coverage, audits, corrections, visual metrics, and human ratings.",
+    inputSchema: {
+      result: z.record(z.string(), z.any()),
+      baseline: z.record(
+        z.string(),
+        z.any(),
+      ).optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({ result, baseline }) => {
+    const score = calculate_benchmark_metrics(result);
+    const comparison = baseline
+      ? compare_benchmark_results(
+        result,
+        baseline,
+      )
+      : undefined;
+    return tool_result({
+      ...score,
+      comparison,
+    });
+  },
+);
+
+register_local_tool(
+  "scene_benchmark_baseline_save",
+  {
+    title: "scene benchmark baseline save",
+    description: "Persist a validated benchmark result beside the current world as the comparison baseline.",
+    inputSchema: {
+      result: z.record(z.string(), z.any()),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async ({ result }) => {
+    const score = calculate_benchmark_metrics(result);
+    if (!score.ok)
+    {
+      return tool_result(score);
+    }
+    const file_path = await benchmark_baseline_path(
+      score.benchmark_id,
+    );
+    await fs.mkdir(
+      path.dirname(file_path),
+      { recursive: true },
+    );
+    const temporary_path =
+      `${file_path}.${process.pid}.tmp`;
+    await fs.writeFile(
+      temporary_path,
+      `${JSON.stringify(
+        {
+          version: 1,
+          saved_at: new Date().toISOString(),
+          result,
+          score,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await fs.rename(temporary_path, file_path);
+    return tool_result({
+      ok: true,
+      path: file_path,
+      benchmark_id: score.benchmark_id,
+      score,
+    });
+  },
+);
+
+register_local_tool(
+  "scene_benchmark_baseline_get",
+  {
+    title: "scene benchmark baseline get",
+    description: "Read the persisted comparison baseline for one benchmark in the current world.",
+    inputSchema: {
+      benchmark_id: z.string().min(1),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async ({ benchmark_id }) => {
+    const benchmark = get_benchmark(benchmark_id);
+    if (!benchmark.ok)
+    {
+      return tool_result(benchmark);
+    }
+    const file_path = await benchmark_baseline_path(
+      benchmark_id,
+    );
+    try
+    {
+      return tool_result({
+        ok: true,
+        path: file_path,
+        baseline: JSON.parse(
+          await fs.readFile(file_path, "utf8"),
+        ),
+      });
+    }
+    catch
+    {
+      return tool_result({
+        ok: false,
+        error: `benchmark baseline not found for ${benchmark_id}`,
+        path: file_path,
+      });
+    }
   },
 );
 
@@ -1691,7 +2530,7 @@ register_local_tool(
   "scene_quality_audit",
   {
     title: "scene quality audit",
-    description: "Deterministically audit a completed scene hierarchy for requested features, semantic material coverage, advanced geometry, detail density, and lighting. A false pass means the scene needs another correction pass.",
+    description: "Deterministically audit a completed scene hierarchy for requested features, materials, geometry, collision coverage, detail density, and lighting. A false pass means the scene needs another correction pass.",
     inputSchema: {
       id: z.string(),
       required_features: z.array(z.string()).max(20).optional(),
@@ -1700,6 +2539,23 @@ register_local_tool(
       min_unique_materials: z.number().int().min(1).max(100).optional(),
       min_advanced_mesh_ratio: z.number().min(0).max(1).optional(),
       require_light: z.boolean().optional(),
+      scene_type: z.enum([
+        "generic",
+        "room",
+        "storefront",
+        "gas_station",
+        "airport",
+        "warehouse",
+        "road",
+      ]).optional(),
+      planned_element_count:
+        z.number().int().min(1).max(1000).optional(),
+      required_roles: z.array(
+        z.string().min(1),
+      ).max(32).optional(),
+      max_duplicate_geometry:
+        z.number().int().min(0).max(1000).optional(),
+      min_collision_ratio: z.number().min(0).max(1).optional(),
     },
     outputSchema: output_schemas.scene_quality_audit,
     annotations: read_only,
@@ -1727,12 +2583,24 @@ register_tool(
 register_tool(
   server,
   "world_save",
-  "Save the current world, optionally to an absolute .world file path.",
+  "Save the current world and automatically prune files in its managed resources directory that are not referenced by live render components.",
   {
     path: z.string().optional(),
   },
   "world_save",
   { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "world_resources_clean",
+  "Save the current world, remove unreferenced files from its managed world resources directory, and return the removed paths.",
+  {},
+  "world_resources_clean",
+  {
+    annotations: destructive_tool,
+    outputSchema: output_schemas.generic,
+  },
 );
 
 register_tool(
@@ -1795,6 +2663,7 @@ register_tool(
     id: z.string(),
     include_descendants: z.boolean().optional(),
     limit: z.number().int().min(1).max(5000).optional(),
+    offset: z.number().int().min(0).max(100000).optional(),
   },
   "entity_spatial_snapshot",
   {
@@ -2153,17 +3022,85 @@ register_local_tool(
 register_tool(
   server,
   "entity_create_primitive",
-  "Create a primitive render entity in edit mode, optionally with transform, parent, and physics.",
+  "Create a primitive render entity in edit mode with static matching collision by default, plus optional transform, parent, material, and physics overrides.",
   primitive_create_args,
   "entity_create_primitive",
   { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
 
 register_local_tool(
+  "mesh_geometry_capabilities",
+  {
+    title: "mesh geometry capabilities",
+    description: "Report procedural geometry, modifier, UV, opening, material, collision, and boolean capabilities with honest availability status.",
+    inputSchema: {},
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async () => tool_result({
+    ok: true,
+    generators: parametric_shape.options,
+    modifiers: [
+      "taper",
+      "bend",
+      "mirror",
+      "shell",
+      "linear_array",
+      "radial_array",
+    ],
+    uv_projection: [
+      "planar",
+      "box",
+      "cylindrical",
+    ],
+    uv_seam_splitting: [
+      "box",
+    ],
+    openings: {
+      available: true,
+      generators: [
+        "wall_opening",
+        "wall_openings",
+      ],
+      watertight_parts: true,
+    },
+    profiles: {
+      concave_extrusion: true,
+      arbitrary_holes: false,
+      variable_loft: true,
+      variable_sweep_scale: true,
+      variable_sweep_twist: true,
+    },
+    material_assignment: {
+      per_compound_part: true,
+      generated_face_slots: false,
+    },
+    collision: {
+      generated_mesh: true,
+      generated_convex: true,
+      tool: "mesh_physics_bind",
+    },
+    booleans: {
+      union: {
+        available: false,
+        alternative: "compound_create",
+      },
+      subtract: {
+        available: false,
+        alternative: "wall_opening",
+      },
+      intersect: {
+        available: false,
+      },
+    },
+  }),
+);
+
+register_local_tool(
   "mesh_generate",
   {
     title: "mesh generate",
-    description: "Generate, save, and cache one bounded parametric mesh. Supports hard-surface boxes and panels, soft capsules, rounded cylinders, torus forms, arches, profile extrusion and revolution, tapered extrusion, and swept pipes or profiles.",
+    description: "Generate, modify, save, and cache one bounded procedural mesh. Supports multiple architectural openings, concave profiles, variable lofts and sweeps, shell, arrays, deformations, and UV projection.",
     inputSchema: parametric_mesh_args,
     annotations: edit_tool,
     outputSchema: output_schemas.parametric_mesh,
@@ -2221,7 +3158,13 @@ register_local_tool(
     }
 
     const args = { count: items.length };
-    const keys = Object.keys(parametric_mesh_args);
+    const keys = [
+      ...Object.keys(parametric_mesh_args),
+      "opening_count",
+      "opening_sizes",
+      "opening_centers",
+      "loft_profile_points",
+    ];
     for (let i = 0; i < items.length; i++)
     {
       for (const key of keys)
@@ -2258,11 +3201,106 @@ register_tool(
   },
 );
 
+async function bind_mesh_physics(args) {
+    const render = await send_engine_command(
+      "render_set_mesh",
+      {
+        id: args.id,
+        mesh: args.mesh,
+        material: args.material,
+      },
+    );
+    if (!render.ok)
+    {
+      return render;
+    }
+    const existing = await send_engine_command(
+      "component_get",
+      {
+        id: args.id,
+        type: "physics",
+      },
+    );
+    if (!existing.ok)
+    {
+      const added = await send_engine_command(
+        "entity_add_component",
+        {
+          id: args.id,
+          type: "physics",
+        },
+      );
+      if (!added.ok)
+      {
+        return added;
+      }
+    }
+    const properties = [
+      ["body_type", args.body_type ?? "mesh_convex"],
+      ["static", args.static ?? true],
+      ["kinematic", args.kinematic ?? false],
+      ["mass", args.mass ?? 1],
+      ["friction", args.friction ?? 0.5],
+      ["restitution", args.restitution ?? 0],
+    ];
+    const physics_args = {
+      id: args.id,
+      type: "physics",
+      count: properties.length,
+    };
+    for (
+      let index = 0;
+      index < properties.length;
+      index++
+    )
+    {
+      physics_args[`property_${index}`] =
+        properties[index][0];
+      physics_args[`value_${index}`] =
+        properties[index][1];
+    }
+    const physics = await send_engine_command(
+      "component_set_batch",
+      physics_args,
+    );
+    return {
+      ...physics,
+      render,
+    };
+}
+
+register_local_tool(
+  "mesh_physics_bind",
+  {
+    title: "mesh physics bind",
+    description: "Assign a generated or imported mesh and bind static convex collision by default in one edit operation.",
+    inputSchema: {
+      id: z.string(),
+      mesh: z.string(),
+      material: z.string().optional(),
+      body_type: z.enum([
+        "mesh",
+        "mesh_convex",
+      ]).optional(),
+      static: z.boolean().optional(),
+      kinematic: z.boolean().optional(),
+      mass: z.number().positive().optional(),
+      friction: z.number().min(0).optional(),
+      restitution: z.number().min(0).max(1).optional(),
+    },
+    annotations: edit_tool,
+    outputSchema: output_schemas.generic,
+  },
+  async (args) => tool_result(
+    await bind_mesh_physics(args),
+  ),
+);
+
 register_local_tool(
   "entity_create_primitive_batch",
   {
     title: "entity create primitive batch",
-    description: "Create many primitive render entities in one native engine batch. Preferred path for blockouts, docks, rooms, props, and any repeated geometry. Parent with parent_id, set mesh/position/scale/material/physics per item, keep count under 64.",
+    description: "Create many primitive render entities with static matching collision by default. Preferred for blockouts, rooms, props, and repeated geometry; keep count under 64.",
     inputSchema: {
       items: z.array(z.object(primitive_create_args)).min(1).max(64),
     },
@@ -2292,7 +3330,7 @@ register_local_tool(
   "compound_create",
   {
     title: "compound create",
-    description: "Create an editable compound object from parametric or cached mesh parts, assign per-part materials and transforms, and optionally save the hierarchy as a prefab. Partial failures return the created root and completed parts.",
+    description: "Create an editable compound object from parametric or cached mesh parts with per-part materials, transforms, and static convex collision by default. Optionally save the hierarchy as a prefab.",
     inputSchema: {
       name: z.string(),
       parent_id: z.string().optional(),
@@ -2372,6 +3410,12 @@ register_local_tool(
         const signature = {
           shape: part.shape,
           size: part.size,
+          opening_size: part.opening_size,
+          opening_center: part.opening_center,
+          openings: part.openings,
+          opening_count: part.opening_count,
+          opening_sizes: part.opening_sizes,
+          opening_centers: part.opening_centers,
           radius: part.radius,
           bevel: part.bevel,
           segments: part.segments,
@@ -2383,11 +3427,40 @@ register_local_tool(
           minor_segments: part.minor_segments,
           bevel_segments: part.bevel_segments,
           path_points: part.path_points,
+          loft_profiles: part.loft_profiles,
+          loft_profile_points: part.loft_profile_points,
+          sweep_scales: part.sweep_scales,
+          sweep_twists_degrees:
+            part.sweep_twists_degrees,
           thickness: part.thickness,
           border: part.border,
           inset: part.inset,
           scale_start: part.scale_start,
           scale_end: part.scale_end,
+          grid_points: part.grid_points,
+          extent: part.extent,
+          petal_count: part.petal_count,
+          petal_segments: part.petal_segments,
+          modifier_pivot: part.modifier_pivot,
+          taper_axis: part.taper_axis,
+          taper_start: part.taper_start,
+          taper_end: part.taper_end,
+          bend_axis: part.bend_axis,
+          bend_radial_axis: part.bend_radial_axis,
+          bend_degrees: part.bend_degrees,
+          mirror_axis: part.mirror_axis,
+          mirror_plane: part.mirror_plane,
+          shell_thickness: part.shell_thickness,
+          linear_count: part.linear_count,
+          linear_step: part.linear_step,
+          radial_count: part.radial_count,
+          radial_axis: part.radial_axis,
+          radial_step_degrees: part.radial_step_degrees,
+          uv_projection: part.uv_projection,
+          uv_axis: part.uv_axis,
+          uv_scale: part.uv_scale,
+          uv_offset: part.uv_offset,
+          uv_split_seams: part.uv_split_seams,
         };
         try
         {
@@ -2473,14 +3546,26 @@ register_local_tool(
         }
       }
 
-      const render_result = await send_engine_command(
-        "render_set_mesh",
-        {
+      const render_result = part.with_physics === false
+        ? await send_engine_command(
+          "render_set_mesh",
+          {
+            id: child.id,
+            mesh,
+            material: part.material,
+          },
+        )
+        : await bind_mesh_physics({
           id: child.id,
           mesh,
           material: part.material,
-        },
-      );
+          body_type: part.body_type ?? "mesh_convex",
+          static: part.physics_static ?? true,
+          kinematic: part.physics_kinematic ?? false,
+          mass: part.physics_mass ?? 1,
+          friction: part.physics_friction ?? 0.5,
+          restitution: part.physics_restitution ?? 0,
+        });
       if (!render_result.ok)
       {
         return tool_result({
@@ -2532,7 +3617,7 @@ register_local_tool(
   "construction_grammar_create",
   {
     title: "construction grammar create",
-    description: "Create an editable, reusable architectural or structural assembly from an environment-agnostic grammar. Supports window grids, doors, gable and flat roofs, stairs, railings, structural frames, panel walls, support arrays, signs, cable runs, and complete facades. Prefer this over hand-authoring repeated primitive parts.",
+    description: "Create an editable reusable assembly from a construction grammar, including openings, roofs, circulation, frames, facades, room shells, storefront bays, warehouse bays, and boarding gates.",
     inputSchema: {
       grammar: z.enum(construction_grammar_names),
       name: z.string().min(1),
@@ -2994,7 +4079,7 @@ register_tool(
 register_tool(
   server,
   "viewport_frame",
-  "Frame the complete renderable hierarchy of the current selection or a specific entity. Uses subtree bounds rather than keyboard focus and supports perspective, orthographic-style side, and top review angles.",
+  "Frame the complete renderable hierarchy of the current selection or a specific entity. Fits every subtree AABB corner to the horizontal and vertical camera FOV with explicit padding.",
   {
     id: z.string().optional(),
     view: z.enum([
@@ -3304,10 +4389,17 @@ register_local_tool(
         "neutral",
         "cool",
         "vibrant",
+        "industrial",
+        "retail",
+        "aviation",
       ]).optional(),
       directory: z.string().optional(),
       prefix: z.string().optional(),
-      semantics: z.array(semantic_material).min(1).max(11).optional(),
+      semantics: z.array(semantic_material).min(1).max(17).optional(),
+      accent_ratio: z.number().min(0.05).max(0.35).optional(),
+      texture_scale: z.number().min(0.1).max(100).optional(),
+      roughness_bias: z.number().min(-0.5).max(0.5).optional(),
+      wear: z.number().min(0).max(1).optional(),
     },
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
@@ -3316,6 +4408,10 @@ register_local_tool(
     theme = "cozy",
     directory = "project/materials/mcp",
     prefix = "palette",
+    accent_ratio = 0.12,
+    texture_scale = 1,
+    roughness_bias = 0,
+    wear = 0,
     semantics = [
       "painted_wall",
       "wood",
@@ -3326,6 +4422,8 @@ register_local_tool(
       "screen",
       "screen_on",
       "emissive",
+      "concrete",
+      "painted_metal",
     ],
   }) => {
     const palette = [];
@@ -3353,6 +4451,48 @@ register_local_tool(
         semantic,
         material: result.material,
       });
+      const finish = semantic_finish_rules[semantic] ?? {};
+      const properties = {
+        ...finish,
+        roughness: finish.roughness === undefined
+          ? undefined
+          : Math.max(
+            0,
+            Math.min(
+              1,
+              finish.roughness + roughness_bias,
+            ),
+          ),
+        texture_tiling_x: texture_scale,
+        texture_tiling_y: texture_scale,
+        color_variation_from_instance:
+          wear * 0.08,
+      };
+      for (const [property, value] of Object.entries(properties))
+      {
+        if (value === undefined)
+        {
+          continue;
+        }
+        const configured = await send_engine_command(
+          "material_set_property",
+          {
+            path:
+              `${base_directory}/${safe_asset_name(prefix)}_${semantic}.xml`,
+            property,
+            value,
+          },
+        );
+        if (!configured.ok)
+        {
+          return tool_result({
+            ...configured,
+            palette,
+            failed_semantic: semantic,
+            failed_property: property,
+          });
+        }
+      }
     }
 
     return tool_result({
@@ -3360,6 +4500,12 @@ register_local_tool(
       theme,
       palette,
       count: palette.length,
+      art_direction: {
+        accent_ratio,
+        texture_scale,
+        roughness_bias,
+        wear,
+      },
     });
   },
 );
@@ -3513,7 +4659,7 @@ register_tool(
   "renderer_debug_set",
   "Set a friendly renderer debug overlay or visualization option.",
   {
-    option: z.enum(["aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "lights", "cameras", "audio_sources", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"]),
+    option: z.enum(["aabb", "picking_ray", "grid", "transform_handle", "selection_outline", "entity_icons", "performance_metrics", "physics", "wireframe", "meshlet_visualize", "cluster_visualize"]),
     value: z.union([z.boolean(), z.number(), z.string()]),
   },
   "renderer_debug_set",

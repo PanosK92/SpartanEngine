@@ -128,8 +128,10 @@ export const output_schemas = {
     root: any_object.optional(),
     metrics: any_object.optional(),
     feature_results: z.array(any_object).optional(),
+    role_results: z.array(any_object).optional(),
     checks: z.array(any_object).optional(),
     failed_checks: z.array(any_object).optional(),
+    issues: z.array(any_object).optional(),
     recommendations: z.array(z.string()).optional(),
   }),
   scene_plan: with_error_fields({
@@ -180,6 +182,8 @@ export const output_schemas = {
     root_name: z.string().optional(),
     entities: z.array(any_object).optional(),
     count: z.number().int().optional(),
+    offset: z.number().int().optional(),
+    total: z.number().int().optional(),
     truncated: z.boolean().optional(),
   }),
   context_snapshot: with_error_fields({
@@ -240,6 +244,7 @@ export const output_schemas = {
     shape: z.string().optional(),
     vertex_count: z.number().int().optional(),
     index_count: z.number().int().optional(),
+    modifiers: z.array(z.string()).optional(),
     resource: any_object.optional(),
   }),
   parametric_mesh_batch: with_error_fields({

@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "Components/ParticleSystem.h"
+#include "Components/Terrain.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
@@ -1396,6 +1397,15 @@ namespace spartan
         }
     }
 
+    string World::GetResourceDirectory(
+        const string& world_file_path
+    )
+    {
+        return world_file_path_to_resource_directory(
+            world_file_path
+        );
+    }
+
     bool World::SaveToFile(string file_path)
     {
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
@@ -1412,6 +1422,93 @@ namespace spartan
             FileSystem::CreateDirectory_(directory);
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
+            set<IResource*> referenced_resources;
+            auto reference_material =
+                [&referenced_resources](Material* material)
+            {
+                if (material == nullptr)
+                {
+                    return;
+                }
+                referenced_resources.insert(material);
+                for (RHI_Texture* texture : material->GetTextures())
+                {
+                    if (texture != nullptr)
+                    {
+                        referenced_resources.insert(texture);
+                    }
+                }
+            };
+            for (Entity* entity : entities)
+            {
+                if (entity == nullptr)
+                {
+                    continue;
+                }
+                if (Render* renderable = entity->GetComponent<Render>())
+                {
+                    if (Mesh* mesh = renderable->GetMesh())
+                    {
+                        referenced_resources.insert(mesh);
+                    }
+                    if (!renderable->IsUsingDefaultMaterial())
+                    {
+                        reference_material(
+                            renderable->GetMaterial()
+                        );
+                    }
+                }
+                if (
+                    ParticleSystem* particles =
+                        entity->GetComponent<ParticleSystem>()
+                )
+                {
+                    if (RHI_Texture* texture = particles->GetTexture())
+                    {
+                        referenced_resources.insert(texture);
+                    }
+                }
+                if (
+                    Terrain* terrain =
+                        entity->GetComponent<Terrain>()
+                )
+                {
+                    if (
+                        RHI_Texture* height_map =
+                            terrain->GetHeightMapSeed()
+                    )
+                    {
+                        referenced_resources.insert(height_map);
+                    }
+                    reference_material(
+                        terrain->GetMaterial().get()
+                    );
+                }
+                if (
+                    Spline* spline =
+                        entity->GetComponent<Spline>()
+                )
+                {
+                    const string& mesh_path =
+                        spline->GetInstanceMeshPath();
+                    if (
+                        !mesh_path.empty()
+                    )
+                    {
+                        if (
+                            shared_ptr<Mesh> mesh =
+                                ResourceCache::GetByPath<Mesh>(
+                                    mesh_path
+                                )
+                        )
+                        {
+                            referenced_resources.insert(
+                                mesh.get()
+                            );
+                        }
+                    }
+                }
+            }
 
             // the windows file system is case insensitive so the uniqueness check has to be too
             auto to_file_key = [](const string& file_name)
@@ -1435,6 +1532,13 @@ namespace spartan
             set<string> used_file_names;
             for (shared_ptr<IResource>& resource : resources)
             {
+                if (
+                    referenced_resources.find(resource.get()) ==
+                    referenced_resources.end()
+                )
+                {
+                    continue;
+                }
                 // runtime generated resources are rebuilt by code on load, serializing them only accumulates orphans
                 if (!resource->IsPersistent())
                 {

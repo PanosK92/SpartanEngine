@@ -932,9 +932,13 @@ namespace spartan
                 Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
                 Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
                 Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
+                Vector3 current_forward    = current_rotation * Vector3::Forward;
                 Vector3 forward            = new_rotation * Vector3::Forward;
+                float current_pitch_angle  = asin(-current_forward.y) * rad_to_deg;
                 float pitch_angle          = asin(-forward.y) * rad_to_deg;
-                if (pitch_angle > 80.0f || pitch_angle < -80.0f)
+                bool exceeds_pitch_limit   = pitch_angle > 80.0f || pitch_angle < -80.0f;
+                bool recovers_pitch        = abs(pitch_angle) < abs(current_pitch_angle);
+                if (exceeds_pitch_limit && !recovers_pitch)
                 {
                     new_rotation = yaw_increment * current_rotation;
                 }
