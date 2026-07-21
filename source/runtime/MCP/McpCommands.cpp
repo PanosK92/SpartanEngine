@@ -856,6 +856,25 @@ namespace spartan
             return file_path.generic_string();
         }
 
+        bool is_screenshot_path_valid(const std::string& path)
+        {
+            const std::filesystem::path screenshot_root =
+                std::filesystem::absolute("screenshots").lexically_normal();
+            const std::filesystem::path file_path =
+                std::filesystem::path(path).lexically_normal();
+            const std::filesystem::path relative =
+                file_path.lexically_relative(screenshot_root);
+            if (relative.empty())
+            {
+                return false;
+            }
+            const auto first = relative.begin();
+            return (
+                first != relative.end() &&
+                (*first).generic_string() != ".."
+            );
+        }
+
         Entity* find_entity_by_name_unique(const std::string& name, bool exact, std::string& error)
         {
             const std::string query = to_lower_copy(name);
@@ -3031,6 +3050,12 @@ namespace spartan
             }
 
             const std::string path = normalize_screenshot_path(get_argument(request, "path"));
+            if (!is_screenshot_path_valid(path))
+            {
+                return json_error(
+                    "screenshot path must be inside the screenshots directory"
+                );
+            }
             std::string extension = std::filesystem::path(path).extension().generic_string();
             std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
             if (extension != ".png")
@@ -5616,20 +5641,166 @@ namespace spartan
                 return json_error("camera not found");
             }
 
+            Entity* target_entity = nullptr;
             if (get_argument(request, "id"))
             {
                 std::string error;
-                Entity* entity = get_entity_from_request(request, error);
-                if (entity == nullptr)
+                target_entity = get_entity_from_request(request, error);
+                if (target_entity == nullptr)
                 {
                     return json_error(error);
                 }
                 camera->ClearSelection();
-                camera->AddToSelection(entity);
+                camera->AddToSelection(target_entity);
+            }
+            else
+            {
+                target_entity = camera->GetSelectedEntity();
+            }
+            if (target_entity == nullptr)
+            {
+                return json_error("no entity selected to frame");
             }
 
-            camera->FocusOnSelectedEntity();
-            return command_camera_snapshot();
+            math::BoundingBox bounds;
+            bool has_bounds = false;
+            std::vector<Entity*> entities = { target_entity };
+            target_entity->GetDescendants(&entities);
+            for (Entity* entity : entities)
+            {
+                if (entity == nullptr)
+                {
+                    continue;
+                }
+                if (Render* renderable = entity->GetComponent<Render>())
+                {
+                    const math::BoundingBox& render_bounds =
+                        renderable->GetBoundingBox();
+                    if (
+                        !render_bounds.GetMin().IsFinite() ||
+                        !render_bounds.GetMax().IsFinite() ||
+                        render_bounds.GetSize().LengthSquared() <= 0.0f
+                    )
+                    {
+                        continue;
+                    }
+                    if (!has_bounds)
+                    {
+                        bounds = render_bounds;
+                        has_bounds = true;
+                    }
+                    else
+                    {
+                        bounds.Merge(render_bounds);
+                    }
+                }
+            }
+
+            const math::Vector3 target = has_bounds
+                ? bounds.GetCenter()
+                : target_entity->GetPosition();
+            const math::Vector3 extents = has_bounds
+                ? bounds.GetExtents()
+                : math::Vector3::One;
+            const float radius = std::max(
+                extents.Length(),
+                0.5f
+            );
+
+            float padding = 1.2f;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "padding")
+            )
+            {
+                if (
+                    !parse_float(*value, padding) ||
+                    padding < 1.0f ||
+                    padding > 4.0f
+                )
+                {
+                    return json_error(
+                        "padding must be between 1 and 4"
+                    );
+                }
+            }
+
+            const std::string view = to_lower_copy(
+                get_argument(request, "view").value_or("perspective")
+            );
+            math::Vector3 camera_direction;
+            if (view == "perspective")
+            {
+                camera_direction =
+                    math::Vector3(1.0f, 0.65f, -1.0f).Normalized();
+            }
+            else if (view == "front")
+            {
+                camera_direction = math::Vector3(0.0f, 0.0f, 1.0f);
+            }
+            else if (view == "back")
+            {
+                camera_direction = math::Vector3(0.0f, 0.0f, -1.0f);
+            }
+            else if (view == "left")
+            {
+                camera_direction = math::Vector3(-1.0f, 0.0f, 0.0f);
+            }
+            else if (view == "right")
+            {
+                camera_direction = math::Vector3(1.0f, 0.0f, 0.0f);
+            }
+            else if (view == "top")
+            {
+                camera_direction =
+                    math::Vector3(0.0f, 1.0f, 0.001f).Normalized();
+            }
+            else
+            {
+                return json_error("unknown viewport frame view");
+            }
+
+            const float field_of_view = std::min(
+                camera->GetFovHorizontalRad(),
+                camera->GetFovVerticalRad()
+            );
+            if (
+                !std::isfinite(field_of_view) ||
+                field_of_view <= 0.01f
+            )
+            {
+                return json_error("camera field of view is invalid");
+            }
+            const float distance =
+                radius /
+                std::sin(field_of_view * 0.5f) *
+                padding;
+            Entity* camera_entity = camera->GetEntity();
+            const math::Vector3 position =
+                target + camera_direction * distance;
+            camera_entity->SetPosition(position);
+            camera_entity->SetRotation(
+                math::Quaternion::FromLookRotation(
+                    target - position
+                )
+            );
+
+            std::string json = command_camera_snapshot();
+            if (!json.empty() && json.back() == '}')
+            {
+                json.pop_back();
+                json += ",\"view\":" + json_string(view);
+                json += ",\"target\":" + json_vector3(target);
+                json += ",\"distance\":" + std::to_string(distance);
+                json += ",\"padding\":" + std::to_string(padding);
+                if (has_bounds)
+                {
+                    json += ",\"bounding_box\":" +
+                        json_bounding_box(bounds);
+                }
+                json += "}";
+            }
+            return json;
         }
 
         std::string command_camera_set_view(const McpRequest& request)

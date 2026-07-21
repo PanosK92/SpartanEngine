@@ -24,7 +24,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - \`resource_list\` and \`material_get\` expose cached resources and material scalar/texture state.
 - \`resource_load\`, \`resource_reload\`, \`resource_save\`, \`resource_remove\`, and \`material_create\` cover common resource lifecycle work.
 - \`undo_redo\` routes editor undo and redo through the command stack.
-- \`camera_set_view\`, \`viewport_frame\`, \`renderer_debug_get\`, \`renderer_debug_set\`, and \`physics_state\` cover common viewport/debug inspection.
+- \`viewport_frame\` frames complete descendant bounds from perspective, front, back, left, right, or top views without keyboard focus. Use \`camera_set_view\` for custom poses.
 - \`screenshot_take\` queues a renderer screenshot and can return the saved PNG as image content for visual inspection.
 - The editor sequencer (camera cut timeline) is controlled with \`sequencer_get\`, \`sequencer_set\`, \`sequencer_playback\`, \`sequencer_event_add\`, \`sequencer_event_update\`, and \`sequencer_event_remove\`; \`camera\` accepts an entity id or name, events re-sort by time, and state auto-saves to \`sequencer.xml\` next to the loaded world.
 
@@ -42,9 +42,9 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use \`selection_update\`, \`entity_clone\`, \`entity_move_index\`, and prefab tools before using Lua for common editor hierarchy workflows.
 - Use \`material_set_property\` and \`material_set_texture\` for material edits instead of custom Lua.
 - Use resource lifecycle tools for asset cache load/reload/save/remove and new material creation.
-- Use \`viewport_frame\` and \`camera_set_view\` before manual camera transform scripts.
+- Use \`viewport_frame\` with an explicit review angle before \`camera_set_view\` or manual camera transform scripts.
 - Use \`renderer_debug_set\` and \`physics_state\` for visual debugging and vehicle/rigid body inspection.
-- Use \`screenshot_take\` when visual verification matters; it waits briefly for the async save and returns the image when ready.
+- Use \`scene_visual_review\` when visual verification matters; it captures perspective and top views by default and returns both images when ready.
 - Before deleting or rebuilding geometry that should preserve look, call \`entity_render_materials\` on the target and reuse material names.
 - Use \`entity_create_light\` for every light; it fully initializes intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.
 - Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible.

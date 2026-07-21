@@ -86,6 +86,7 @@ const scene_mutating_tool_names = [
   "mesh_generate_batch",
   "render_set_mesh",
   "compound_create",
+  "construction_grammar_create",
   "detail_pattern_create",
   "material_apply_preset",
   "material_semantic_create",
@@ -464,6 +465,48 @@ function value_contains(value, predicate, seen = new Set(), depth = 0) {
   return false;
 }
 
+function object_contains(
+  value,
+  predicate,
+  seen = new Set(),
+  depth = 0,
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    typeof value !== "object" ||
+    seen.has(value) ||
+    depth > 8
+  )
+  {
+    return false;
+  }
+  seen.add(value);
+  if (predicate(value))
+  {
+    return true;
+  }
+  if (Array.isArray(value))
+  {
+    return value.some((entry) =>
+      object_contains(
+        entry,
+        predicate,
+        seen,
+        depth + 1,
+      ),
+    );
+  }
+  return Object.values(value).some((entry) =>
+    object_contains(
+      entry,
+      predicate,
+      seen,
+      depth + 1,
+    ),
+  );
+}
+
 function is_engine_tool_event(value) {
   return value_contains(value, (text) => {
     const normalized = text.toLowerCase().replaceAll("-", "_");
@@ -600,19 +643,58 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         tool_name,
       ),
     );
+    const successful_visual_review =
+      is_visual_review &&
+      object_contains(event, (value) =>
+        value.ok === true &&
+        Array.isArray(value.views) &&
+        value.views.length >= 2 &&
+        value.views.every((review) =>
+          review?.camera?.ok === true &&
+          review?.screenshot?.ok === true &&
+          review?.screenshot?.ready === true,
+        ),
+      );
+    const successful_quality_audit =
+      is_quality_audit &&
+      object_contains(event, (value) =>
+        value.ok === true &&
+        value.pass === true,
+      );
+    const successful_scene_plan =
+      is_scene_plan &&
+      object_contains(event, (value) =>
+        value.ok === true &&
+        value.pass === true,
+      );
+    const successful_layout_audit =
+      is_layout_audit &&
+      object_contains(event, (value) =>
+        value.ok === true &&
+        value.pass === true,
+      );
+    const successful_scene_mutation =
+      is_scene_mutation &&
+      object_contains(event, (value) =>
+        value.ok === true,
+      );
     if (
       visual_review_seen &&
-      is_scene_mutation &&
+      successful_scene_mutation &&
       !is_visual_review &&
       !is_quality_audit
     )
     {
       mutation_after_visual_review = true;
     }
-    visual_review_seen ||= is_visual_review;
-    quality_audit_seen ||= is_quality_audit;
-    scene_plan_seen ||= is_scene_plan;
-    layout_audit_seen ||= is_layout_audit;
+    visual_review_seen ||=
+      successful_visual_review;
+    quality_audit_seen ||=
+      successful_quality_audit;
+    scene_plan_seen ||=
+      successful_scene_plan;
+    layout_audit_seen ||=
+      successful_layout_audit;
     if (!engine_tool_seen && is_engine_tool_event(event)) {
       engine_tool_seen = true;
       run.event("stage_note", { text: "engine tool interaction confirmed" });
@@ -818,7 +900,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         `Quality audit: ${safe_json(audit, 3500)}`,
         `Layout audit: ${safe_json(layout_audit, 5000)}`,
         "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
-        "Call scene_visual_review on the root and inspect the image.",
+        "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
         "Fix every failed scene_layout_audit and scene_quality_audit check plus the most visible weakness in the image.",
         "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
         "Preserve all good existing work and keep every addition under the root.",

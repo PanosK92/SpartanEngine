@@ -102,6 +102,11 @@ export const output_schemas = {
     forward: vector3.optional(),
     right: vector3.optional(),
     up: vector3.optional(),
+    view: z.string().optional(),
+    target: vector3.optional(),
+    distance: z.number().optional(),
+    padding: z.number().optional(),
+    bounding_box: any_object.optional(),
   }),
   screenshot_take: with_error_fields({
     path: z.string().optional(),
@@ -112,9 +117,10 @@ export const output_schemas = {
   scene_visual_review: with_error_fields({
     context: any_object.optional(),
     camera: any_object.optional(),
-    materials: any_object.optional(),
+    materials: any_object.nullable().optional(),
     renderer_debug: any_object.optional(),
     screenshot: any_object.optional(),
+    views: z.array(any_object).optional(),
   }),
   scene_quality_audit: with_error_fields({
     pass: z.boolean().optional(),
@@ -253,6 +259,15 @@ export const output_schemas = {
     completed_count: z.number().int().optional(),
     failed_index: z.number().int().optional(),
     prefab: any_object.nullable().optional(),
+  }),
+  construction_grammar: with_error_fields({
+    root: any_object.optional(),
+    completed_parts: z.array(any_object).optional(),
+    completed_count: z.number().int().optional(),
+    failed_index: z.number().int().optional(),
+    prefab: any_object.nullable().optional(),
+    grammar: any_object.optional(),
+    snap: any_object.nullable().optional(),
   }),
   material: with_error_fields({
     material: any_object.optional(),

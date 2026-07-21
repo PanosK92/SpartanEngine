@@ -8,7 +8,7 @@ import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
-import { component_schema_markdown, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
+import { component_schema_markdown, construction_grammar_guide, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
 import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
 import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
 import { resolve_light_properties, calibrate_existing_light } from "./light_calibration.mjs";
@@ -19,6 +19,10 @@ import {
   make_scene_plan_namespace,
   read_scene_plan,
 } from "./scene_planning.mjs";
+import {
+  build_construction_grammar,
+  construction_grammar_names,
+} from "./construction_grammar.mjs";
 
 const project_root = get_project_root();
 await ensure_agent_memory();
@@ -1377,11 +1381,11 @@ register_local_tool("screenshot_take", {
   title: "screenshot take",
   description: "Request a renderer screenshot and return the target PNG path. If the async save completes quickly, the PNG is also returned as image content.",
   inputSchema: {
-    path: z.string().optional(),
+    path: z.string().optional().describe("png path inside the engine screenshots directory"),
     wait_ms: z.number().int().min(0).max(10000).optional(),
   },
   outputSchema: output_schemas.screenshot_take,
-  annotations: read_only,
+  annotations: edit_tool,
 }, async (args) => {
   let previous_file = null;
   if (args.path)
@@ -1462,10 +1466,19 @@ register_local_tool(
   "scene_visual_review",
   {
     title: "scene visual review",
-    description: "Frame an entity or scene, wait for the camera to settle, capture a PNG as MCP image content, and return context, material, camera, and renderer-debug evidence for an AI correction pass.",
+    description: "Frame a complete entity hierarchy from one or more deliberate perspectives, capture each PNG as MCP image content, and return context, material, camera, and renderer-debug evidence for an AI correction pass. This does not emulate the F key.",
     inputSchema: {
       id: z.string().optional(),
       frame: z.boolean().optional(),
+      views: z.array(z.enum([
+        "perspective",
+        "front",
+        "back",
+        "left",
+        "right",
+        "top",
+      ])).min(1).max(4).optional(),
+      padding: z.number().min(1).max(4).optional(),
       include_materials: z.boolean().optional(),
       path: z.string().optional(),
       settle_ms: z.number().int().min(0).max(6000).optional(),
@@ -1477,39 +1490,19 @@ register_local_tool(
   async ({
     id,
     frame = true,
+    views = [
+      "perspective",
+      "top",
+    ],
+    padding = 1.2,
     include_materials = true,
     path,
-    settle_ms = 4200,
+    settle_ms = 350,
     wait_ms = 5000,
   }) => {
     const context = await send_engine_command(
       "context_snapshot",
     );
-    let camera = null;
-    if (frame)
-    {
-      camera = await send_engine_command(
-        "viewport_frame",
-        { id },
-      );
-      if (!camera.ok)
-      {
-        return tool_result({
-          ...camera,
-          context,
-        });
-      }
-      if (settle_ms > 0)
-      {
-        await new Promise(
-          (resolve) => setTimeout(resolve, settle_ms),
-        );
-      }
-      camera = await send_engine_command(
-        "camera_snapshot",
-      );
-    }
-
     let materials = null;
     if (id && include_materials)
     {
@@ -1527,39 +1520,100 @@ register_local_tool(
     const screenshot_tool = tool_registry.get(
       "screenshot_take",
     );
-    const screenshot_result = await screenshot_tool.handler({
-      path,
-      wait_ms,
-    });
-    const screenshot =
-      screenshot_result.structuredContent ??
-      { ok: false, error: "missing screenshot result" };
+    const requested_views = frame
+      ? views
+      : ["current"];
+    const review_views = [];
+    const image_content = [];
+    for (const view of requested_views)
+    {
+      let camera = await send_engine_command(
+        "camera_snapshot",
+      );
+      if (frame)
+      {
+        camera = await send_engine_command(
+          "viewport_frame",
+          {
+            id,
+            view,
+            padding,
+          },
+        );
+      }
+      if (!camera.ok)
+      {
+        return tool_result({
+          ...camera,
+          context,
+          view,
+        });
+      }
+      if (settle_ms > 0)
+      {
+        await new Promise(
+          (resolve) => setTimeout(resolve, settle_ms),
+        );
+      }
+
+      let review_path = path;
+      if (path && requested_views.length > 1)
+      {
+        review_path = path.toLowerCase().endsWith(".png")
+          ? `${path.slice(0, -4)}_${view}.png`
+          : `${path}_${view}.png`;
+      }
+      const screenshot_result =
+        await screenshot_tool.handler({
+          path: review_path,
+          wait_ms,
+        });
+      const screenshot =
+        screenshot_result.structuredContent ??
+        {
+          ok: false,
+          error: "missing screenshot result",
+        };
+      review_views.push({
+        view,
+        camera,
+        screenshot,
+      });
+      image_content.push(
+        ...(screenshot_result.content ?? []).filter(
+          (entry) => entry.type === "image",
+        ),
+      );
+    }
+    const first_view = review_views[0] ?? {};
     const evidence_ok =
       Boolean(context.ok) &&
-      (!frame || Boolean(camera?.ok)) &&
       (!materials || Boolean(materials.ok)) &&
       Boolean(renderer_debug.ok) &&
-      Boolean(screenshot.ok) &&
-      Boolean(screenshot.ready);
+      review_views.length === requested_views.length &&
+      review_views.every((review) =>
+        Boolean(review.camera?.ok) &&
+        Boolean(review.screenshot?.ok) &&
+        Boolean(review.screenshot?.ready),
+      );
     const structured = normalize_result({
       ok: evidence_ok,
       error: evidence_ok
         ? undefined
         : "visual review evidence is incomplete",
       context,
-      camera,
+      camera: first_view.camera,
       materials,
       renderer_debug,
-      screenshot,
+      screenshot: first_view.screenshot,
+      views: review_views,
     });
     const content = [
       {
         type: "text",
         text: JSON.stringify(structured),
       },
-      ...(screenshot_result.content ?? []).filter(
-        (entry) => entry.type === "image",
-      ),
+      ...image_content,
     ];
 
     return {
@@ -2475,6 +2529,126 @@ register_local_tool(
 );
 
 register_local_tool(
+  "construction_grammar_create",
+  {
+    title: "construction grammar create",
+    description: "Create an editable, reusable architectural or structural assembly from an environment-agnostic grammar. Supports window grids, doors, gable and flat roofs, stairs, railings, structural frames, panel walls, support arrays, signs, cable runs, and complete facades. Prefer this over hand-authoring repeated primitive parts.",
+    inputSchema: {
+      grammar: z.enum(construction_grammar_names),
+      name: z.string().min(1),
+      parent_id: z.string().optional(),
+      position: vector3.optional(),
+      rotation_euler: vector3.optional(),
+      scale: vector3.optional(),
+      size: positive_vector3.optional(),
+      rows: z.number().int().min(1).max(5).optional(),
+      columns: z.number().int().min(1).max(8).optional(),
+      count: z.number().int().min(1).max(32).optional(),
+      spacing: z.number().positive().optional(),
+      thickness: z.number().positive().optional(),
+      pitch_degrees: z.number().min(8).max(65).optional(),
+      step_count: z.number().int().min(2).max(32).optional(),
+      support_style: z.enum([
+        "square",
+        "round",
+      ]).optional(),
+      path_points: z.array(vector3).min(2).max(32).optional(),
+      snap_mode: z.enum([
+        "floor",
+        "wall",
+        "ceiling",
+        "surface",
+      ]).optional(),
+      snap_target: vector3.optional(),
+      snap_offset: z.number().optional(),
+      align_to_surface: z.boolean().optional(),
+      primary_material: z.string().optional(),
+      secondary_material: z.string().optional(),
+      accent_material: z.string().optional(),
+      glass_material: z.string().optional(),
+      emissive_material: z.string().optional(),
+      asset_directory: z.string().optional(),
+      prefab_path: z.string().optional(),
+    },
+    outputSchema: output_schemas.construction_grammar,
+    annotations: edit_tool,
+  },
+  async (args) => {
+    let grammar;
+    try
+    {
+      grammar = build_construction_grammar(args);
+    }
+    catch (error)
+    {
+      return tool_result(
+        structured_error(
+          error.message,
+          {
+            code: "invalid_arguments",
+          },
+        ),
+      );
+    }
+
+    const compound_tool = tool_registry.get(
+      "compound_create",
+    );
+    const compound_result = await compound_tool.handler({
+      name: args.name,
+      parent_id: args.parent_id,
+      position: args.position,
+      rotation_euler: args.rotation_euler,
+      scale: args.scale,
+      asset_directory: args.asset_directory,
+      prefab_path: args.prefab_path,
+      parts: grammar.parts,
+    });
+    const compound =
+      compound_result.structuredContent ?? {
+        ok: false,
+        error: "construction grammar compound result is missing",
+      };
+    let snap = null;
+    if (
+      compound.ok &&
+      compound.root?.id &&
+      args.snap_mode
+    )
+    {
+      snap = await send_engine_command(
+        "entity_snap",
+        {
+          id: compound.root.id,
+          mode: args.snap_mode,
+          target: args.snap_target,
+          offset: args.snap_offset,
+          align_to_surface:
+            args.align_to_surface,
+        },
+      );
+      if (!snap.ok)
+      {
+        return tool_result({
+          ...snap,
+          root: compound.root,
+          completed_parts:
+            compound.completed_parts,
+          completed_count:
+            compound.completed_count,
+          grammar: grammar.metadata,
+        });
+      }
+    }
+    return tool_result({
+      ...compound,
+      grammar: grammar.metadata,
+      snap,
+    });
+  },
+);
+
+register_local_tool(
   "detail_pattern_create",
   {
     title: "detail pattern create",
@@ -2820,9 +2994,18 @@ register_tool(
 register_tool(
   server,
   "viewport_frame",
-  "Frame the current selection or a specific entity in the editor camera.",
+  "Frame the complete renderable hierarchy of the current selection or a specific entity. Uses subtree bounds rather than keyboard focus and supports perspective, orthographic-style side, and top review angles.",
   {
     id: z.string().optional(),
+    view: z.enum([
+      "perspective",
+      "front",
+      "back",
+      "left",
+      "right",
+      "top",
+    ]).optional(),
+    padding: z.number().min(1).max(4).optional(),
   },
   "viewport_frame",
   { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
@@ -3281,7 +3464,7 @@ register_tool(
   "component_action",
   [
     "Invoke deterministic component methods that are not simple property writes.",
-    "Supported actions include terrain generate; spline generate_road_mesh, clear_road_mesh, spawn_instances, clear_instances; particle_system apply_preset and trigger_burst; physics apply_force and vehicle utility actions; audio_source play and stop; light fit_to_mesh; camera focus_selected.",
+    "Supported actions include terrain generate; spline generate_road_mesh, clear_road_mesh, spawn_instances, clear_instances; particle_system apply_preset and trigger_burst; physics apply_force and vehicle utility actions; audio_source play and stop; light fit_to_mesh; camera focus_selected. Camera focus_selected is for one renderable, not hierarchy visual review; use viewport_frame for scenes.",
   ].join(" "),
   {
     id: z.string(),
@@ -3560,6 +3743,14 @@ register_text_resource(
 );
 
 register_text_resource(
+  "construction_grammars",
+  "spartan://engine/construction-grammars",
+  "Spartan Construction Grammars",
+  "Generic medium-scale recipes for openings, roofs, circulation, structure, panels, supports, signs, cables, and facades.",
+  () => construction_grammar_guide,
+);
+
+register_text_resource(
   "world_current",
   "spartan://world/current",
   "Current Spartan World",
@@ -3677,6 +3868,9 @@ async function read_resource(uri) {
   }
   if (uri === "spartan://engine/scene-planning") {
     return scene_planning_guide;
+  }
+  if (uri === "spartan://engine/construction-grammars") {
+    return construction_grammar_guide;
   }
   if (uri === "spartan://source") {
     return [
