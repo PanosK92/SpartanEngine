@@ -308,6 +308,9 @@ namespace spartan
         PhysicsWorld::UnregisterVehicleStepCallback(this);
         if (m_vehicle_simulation && m_vehicle_simulation->get_body())
         {
+            PhysicsWorld::RemoveActor(
+                m_vehicle_simulation->get_body()
+            );
             m_vehicle_simulation->destroy();
             m_actors.clear();
             m_actors_active.clear();

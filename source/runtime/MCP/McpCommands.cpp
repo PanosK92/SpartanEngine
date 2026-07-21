@@ -3521,6 +3521,8 @@ namespace spartan
             }
             const std::vector<std::string> after =
                 FileSystem::GetFilesInDirectory(directory);
+            const std::vector<std::string>& failures =
+                World::GetLastResourceCleanupFailures();
             std::set<std::string> retained(
                 after.begin(),
                 after.end()

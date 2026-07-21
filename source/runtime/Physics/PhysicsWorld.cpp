@@ -430,6 +430,7 @@ namespace spartan
         {
             lock_guard<recursive_mutex> lock(physx_mutex);
             scene->removeActor(*actor);
+            scene->flushQueryUpdates();
         }
     }
 
@@ -639,14 +640,35 @@ namespace spartan
 
             virtual ~QueryFilter() = default;
 
-            PxQueryHitType::Enum preFilter(const PxFilterData&, const PxShape* shape, const PxRigidActor*, PxHitFlags&) override
+            PxQueryHitType::Enum preFilter(
+                const PxFilterData&,
+                const PxShape*,
+                const PxRigidActor* actor,
+                PxHitFlags&
+            ) override
             {
-                if (!shape)
+                if (!actor || !actor->userData)
                 {
-                    return PxQueryHitType::eNONE;
+                    return PxQueryHitType::eBLOCK;
                 }
-                const PxFilterData shape_data = shape->getSimulationFilterData();
-                if (shape_data.word2 == 2 || (m_ignored_group != 0 && shape_data.word3 == m_ignored_group))
+
+                Entity* entity =
+                    static_cast<Entity*>(actor->userData);
+                Physics* physics_component =
+                    entity->GetComponent<Physics>();
+                if (
+                    physics_component &&
+                    (
+                        physics_component->GetBodyType() ==
+                            BodyType::Vehicle ||
+                        (
+                            m_ignored_group != 0 &&
+                            physics_component
+                                ->GetVehicleCollisionGroup() ==
+                                m_ignored_group
+                        )
+                    )
+                )
                 {
                     return PxQueryHitType::eNONE;
                 }
@@ -672,6 +694,7 @@ namespace spartan
         QueryFilter filter(ignored_collision_group);
 
         lock_guard<recursive_mutex> lock(physx_mutex);
+        scene->flushQueryUpdates();
         if (!scene->sweep(geometry, pose, px_direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data, &filter) || !hit.hasBlock)
         {
             return false;
