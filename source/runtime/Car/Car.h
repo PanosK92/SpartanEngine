@@ -106,7 +106,7 @@ namespace spartan
 
         // vehicle interaction
         void Enter();
-        void Exit();
+        void Exit(bool position_player = true);
         bool IsOccupied() const { return m_is_occupied; }
         bool IsDrivable() const { return m_is_drivable; }
 

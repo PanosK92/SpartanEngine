@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Core/Timer.h"
+#include "Input/Input.h"
 #include "ImGui/ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl3.h"
@@ -146,6 +147,15 @@ void Editor::Tick()
             {
                 ImGui_ImplSDL3_NewFrame();
                 ImGui::NewFrame();
+
+                const ImGuiIO& io = ImGui::GetIO();
+                spartan::Input::SetBlockedByUi(
+                    io.WantTextInput
+                );
+            }
+            else
+            {
+                spartan::Input::SetBlockedByUi(false);
             }
 
             // engine

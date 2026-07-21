@@ -1309,7 +1309,7 @@ namespace spartan
         }
     }
 
-    void Car::Exit()
+    void Car::Exit(bool position_player)
     {
         if (!m_is_occupied)
         {
@@ -1365,7 +1365,7 @@ namespace spartan
         }
 
         // position player at the driver's door (left side of car) as if they were riding all along
-        if (default_camera)
+        if (default_camera && position_player)
         {
             // use vehicle entity for position, fall back to body entity
             Entity* car_ref = m_vehicle_entity ? m_vehicle_entity : m_body_entity;
@@ -1414,11 +1414,25 @@ namespace spartan
         }
 
         // play door sound
-        if (Entity* sound_door = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_door") : nullptr)
+        if (
+            position_player &&
+            m_vehicle_entity
+        )
         {
-            if (AudioSource* audio = sound_door->GetComponent<AudioSource>())
+            if (
+                Entity* sound_door =
+                    m_vehicle_entity->GetChildByName(
+                        "sound_door"
+                    )
+            )
             {
-                audio->PlayClip();
+                if (
+                    AudioSource* audio =
+                        sound_door->GetComponent<AudioSource>()
+                )
+                {
+                    audio->PlayClip();
+                }
             }
         }
 
@@ -2356,6 +2370,10 @@ namespace spartan
         // auto-enter car when play mode starts if camera_follows is enabled
         {
             bool is_playing = Engine::IsFlagSet(EngineMode::Playing);
+            if (!is_playing && m_is_occupied)
+            {
+                Exit(false);
+            }
             if (m_camera_follows && !m_is_occupied && is_playing && !m_was_playing)
             {
                 Enter();
@@ -2835,7 +2853,11 @@ namespace spartan
 
     void Car::TickEnterExit()
     {
-        if (!m_is_drivable || m_mcp_controlled)
+        if (
+            !Engine::IsFlagSet(EngineMode::Playing) ||
+            !m_is_drivable ||
+            m_mcp_controlled
+        )
         {
             return;
         }
