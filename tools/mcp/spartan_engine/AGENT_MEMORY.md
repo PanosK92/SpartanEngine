@@ -54,7 +54,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `world_raycast` for ground or surface-relative placement when possible.
 - Simple live scene edits should use deterministic tools; anything unmatched falls back to the Cursor agent with the engine MCP tools.
 - Scene construction prompts such as `build a level`, `make rooms`, `backrooms`, or `liminal space` are live scene edits, not source-code search requests.
-- Recurring gaps worth a dedicated fast path should be logged under Problem Reports.
+- Recurring gaps worth a dedicated fast path should be logged under Advice To Maintainers.
 - Simple entity deletes should resolve the target and call `entity_delete` directly, not fall through to Cursor fallback.
 - Do not route delete plus rebuild prompts to `entity_delete`; preserve materials first, then rebuild through a complex scene path.
 - Simple primitive creation, such as `create a physics cone`, should route directly to `entity_create_primitive`.
@@ -77,6 +77,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - spline_reroute is implemented in the engine and MCP server source, but Cursor may not expose it until the MCP server session is restarted. Workaround: call EngineClient.command('spline_reroute', ...) directly. set_spline_control_points_world replaces spline_point_* children and can drop non-captured children if keep/redistribute misses them.
 - spline_reroute reclaim can steal other roads: named road_light poles under arterials get reparented, and if the pole parent has Render the whole arterial is pulled under the target. After reclaim, restore foreign arterials to root and re-run spline_decorate replace on them. Prefer keep_children only for true children until reclaim filters exclude other spline roads.
 - `detail_pattern_create` with `pattern: slats` treats `size` as each slat mesh size, not the total array span; use a narrow per slat size and control total coverage with `count * spacing`, otherwise scene bounds can expand dramatically.
+- `scene_visual_review.path` must be under `screenshots/`; project or generated paths fail with incomplete evidence.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
@@ -105,10 +106,6 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Add native engine tools when agents repeatedly need the same multi-step command sequence.
 - Keep MCP schemas close to engine component metadata so tool descriptions do not drift.
 - Scene construction prompts should keep steering agents toward `entity_create_primitive_batch` rather than open-ended Lua discovery.
-
-## Problem Reports
-- Dockyard blockout (2026-07-08): intent resolved target as `parent under an`, Cursor fell back to exploratory `execute_lua` (`pairs` on entities, Light/Render probing), then the engine connection closed. Fix path is native batch primitives under a correctly resolved parent, not Lua discovery.
-- Dockyard lights (2026-07-08 retry): agent skipped `entity_create_light` and set intensity 25-55 lumens via `component_set`, so lights were invisible. Always use `entity_create_light` with calibrated photometric defaults.
-- Scene light calibration (2026-07-08): Cursor used Lua then batches; next time route to `lights_calibrate`. Car specialty lights (brake/exhaust) should stay intentionally dim.
-- City massing: `city_blockout` / `district_blockout` first. City roads: arterial + spurs, approach district edges, skirt runways/yards, then decorate. Use `spline_reroute` to fix roads that cut through geometry while keeping lights/cameras. Triangle graphs through landmark centers are wrong. Manual `spline_point_*` recipes are obsolete.
-- Capability gap: if MCP returns `unknown command` for a newly added tool, rebuild the engine binary and restart the assistant/MCP bridge before retrying.
+- Log unresolved capability gaps here with the failing tool, observed error, and required engine improvement.
+- Rebuild the engine and restart the assistant bridge when deploying new native MCP commands.
+- scene_quality_audit required_features returned no matches for recipe generated descendants even when scene_layout_audit resolved the same planned elements and render material evidence showed matching names, fix feature matching under hashed recipe roots

@@ -55,7 +55,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use \`world_raycast\` for ground or surface-relative placement when possible.
 - Simple live scene edits should use deterministic tools; anything unmatched falls back to the Cursor agent with the engine MCP tools.
 - Scene construction prompts such as \`build a level\`, \`make rooms\`, \`backrooms\`, or \`liminal space\` are live scene edits, not source-code search requests.
-- Recurring gaps worth a dedicated fast path should be logged under Problem Reports.
+- Recurring gaps worth a dedicated fast path should be logged under Advice To Maintainers.
 - Do not route delete plus rebuild prompts to \`entity_delete\`; preserve materials first, then rebuild through a complex scene path.
 - User convention, \`physics <primitive>\` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer \`entity_create_primitive_batch\` or one focused \`execute_lua\` script.
@@ -84,9 +84,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 ## Advice To Maintainers
 - Add native engine tools when agents repeatedly need the same multi-step command sequence.
 - Keep MCP schemas close to engine component metadata so tool descriptions do not drift.
-
-## Problem Reports
-- Add specific recurring friction here, with the file/tool involved and why it matters.
+- Add specific unresolved friction here, with the file or tool involved and why it matters.
 `;
 
 export async function ensure_agent_memory() {

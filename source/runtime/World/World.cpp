@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Terrain.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
+#include "../Rendering/Material.h"
 #include "../Rendering/Renderer.h"
 #include "Components/Physics.h"
 #include "../Physics/PhysicsWorld.h"
@@ -67,6 +68,8 @@ namespace spartan
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
+        vector<string> last_resource_cleanup;
+        vector<string> last_resource_cleanup_failures;
         vector<string> world_console_variables; // cvar names overridden by this world (preserved across save/load)
         mutex entity_access_mutex;
         // entities created by workers but not yet drained into the live entities vector, the main thread drains this every tick
@@ -1406,6 +1409,17 @@ namespace spartan
         );
     }
 
+    const vector<string>& World::GetLastResourceCleanup()
+    {
+        return last_resource_cleanup;
+    }
+
+    const vector<string>&
+        World::GetLastResourceCleanupFailures()
+    {
+        return last_resource_cleanup_failures;
+    }
+
     bool World::SaveToFile(string file_path)
     {
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
@@ -1599,11 +1613,24 @@ namespace spartan
 
             // prune files that no longer belong to this save, loading picks up every file in this directory
             // so stale duplicates from older saves would otherwise come back and shadow the right resources
+            last_resource_cleanup.clear();
+            last_resource_cleanup_failures.clear();
             for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
             {
                 if (used_file_names.find(to_file_key(FileSystem::GetFileNameFromFilePath(existing_file))) == used_file_names.end())
                 {
-                    FileSystem::Delete(existing_file);
+                    if (FileSystem::Delete(existing_file))
+                    {
+                        last_resource_cleanup.push_back(
+                            existing_file
+                        );
+                    }
+                    else
+                    {
+                        last_resource_cleanup_failures.push_back(
+                            existing_file
+                        );
+                    }
                 }
             }
         }

@@ -99,7 +99,7 @@ Use these first:
 - `entity_set_transform_batch` for repositioning many entities in one call.
 - `agent_memory_append` after a durable lesson, correction, recurring problem, or maintainer improvement idea.
 
-Live scene edits should route through deterministic tools when one matches. If no deterministic operation matches, the assistant falls back to the Cursor agent, which can perform the edit through the engine MCP tools. Recurring gaps worth a dedicated fast path should be appended to `AGENT_MEMORY.md` under `Problem Reports`.
+Live scene edits should route through deterministic tools when one matches. If no deterministic operation matches, the assistant falls back to the Cursor agent, which can perform the edit through the engine MCP tools. Recurring gaps worth a dedicated fast path should be appended to `AGENT_MEMORY.md` under `Advice To Maintainers`.
 
 ## Resources
 

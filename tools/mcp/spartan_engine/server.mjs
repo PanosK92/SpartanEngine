@@ -2583,7 +2583,7 @@ register_tool(
 register_tool(
   server,
   "world_save",
-  "Save the current world and automatically prune files in its managed resources directory that are not referenced by live render components.",
+  "Save the current world and automatically prune files in its managed resources directory that are not referenced by live world components.",
   {
     path: z.string().optional(),
   },
@@ -2594,7 +2594,7 @@ register_tool(
 register_tool(
   server,
   "world_resources_clean",
-  "Save the current world, remove unreferenced files from its managed world resources directory, and return the removed paths.",
+  "Save the current world, remove unreferenced files from its managed resources directory, include removals from the immediately preceding automatic save, and report any files that could not be deleted.",
   {},
   "world_resources_clean",
   {

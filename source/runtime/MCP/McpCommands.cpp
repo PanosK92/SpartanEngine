@@ -3234,6 +3234,20 @@ namespace spartan
                 json += ",\"value\":" + json_string(value.value_or(""));
                 json += "}";
             }
+            json += "],\"resource_cleanup_failures\":[";
+            first = true;
+            for (
+                const std::string& file :
+                World::GetLastResourceCleanupFailures()
+            )
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(file);
+            }
             json += "]}";
             return json;
         }
@@ -3258,7 +3272,10 @@ namespace spartan
                 return json_error("cvar value is unsupported");
             }
 
-            std::string json = "{\"ok\":true";
+            const std::vector<std::string>& failures =
+                World::GetLastResourceCleanupFailures();
+            std::string json = "{\"ok\":" +
+                json_bool(failures.empty());
             json += ",\"name\":" + json_string(*name);
             json += ",\"type\":" + json_string(cvar_type(*cvar->m_value_ptr));
             json += ",\"hint\":" + json_string(std::string(cvar->m_hint));
@@ -3439,7 +3456,24 @@ namespace spartan
                 return json_error("failed to save world");
             }
 
-            return "{\"ok\":true,\"path\":" + json_string(path) + "}";
+            std::string json = "{\"ok\":true,\"path\":" +
+                json_string(path);
+            json += ",\"resources_removed\":[";
+            bool first = true;
+            for (
+                const std::string& file :
+                World::GetLastResourceCleanup()
+            )
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(file);
+            }
+            json += "]}";
+            return json;
         }
 
         std::string command_world_resources_clean()
@@ -3475,6 +3509,8 @@ namespace spartan
 
             const std::string directory =
                 World::GetResourceDirectory(path);
+            const std::vector<std::string> previous_cleanup =
+                World::GetLastResourceCleanup();
             const std::vector<std::string> before =
                 FileSystem::GetFilesInDirectory(directory);
             if (!World::SaveToFile(path))
@@ -3489,17 +3525,28 @@ namespace spartan
                 after.begin(),
                 after.end()
             );
+            std::set<std::string> removed(
+                previous_cleanup.begin(),
+                previous_cleanup.end()
+            );
+            removed.insert(
+                World::GetLastResourceCleanup().begin(),
+                World::GetLastResourceCleanup().end()
+            );
+            for (const std::string& file : before)
+            {
+                if (retained.find(file) == retained.end())
+                {
+                    removed.insert(file);
+                }
+            }
             std::string json = "{\"ok\":true";
             json += ",\"path\":" + json_string(path);
             json += ",\"directory\":" + json_string(directory);
             json += ",\"removed\":[";
             bool first = true;
-            for (const std::string& file : before)
+            for (const std::string& file : removed)
             {
-                if (retained.find(file) != retained.end())
-                {
-                    continue;
-                }
                 if (!first)
                 {
                     json += ",";
@@ -3508,6 +3555,20 @@ namespace spartan
                 json += json_string(file);
             }
             json += "]";
+            json += ",\"failed\":[";
+            first = true;
+            for (const std::string& file : failures)
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(file);
+            }
+            json += "]";
+            json += ",\"orphan_count\":" +
+                std::to_string(failures.size());
             json += ",\"retained_count\":" +
                 std::to_string(after.size());
             json += "}";

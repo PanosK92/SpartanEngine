@@ -153,6 +153,15 @@ export function target_name_from_prompt(prompt) {
 
 function scene_root_name_from_prompt(prompt) {
   const value = normalized(prompt);
+  const explicit_target = target_name_from_prompt(prompt);
+  const continues_existing =
+    /\b(continue|finish|complete|audit|review|correct|polish|existing)\b/.test(
+      value,
+    );
+  if (continues_existing && explicit_target)
+  {
+    return explicit_target;
+  }
   const has_explicit_root =
     /\b(?:entity|parent|root)\s+(?:called|named)\b/.test(value) ||
     /\bparent(?:ed)?\s+under\s+(?:an?\s+)?(?:entity\s+)?(?:called|named)\b/.test(value) ||
@@ -192,14 +201,18 @@ function is_delete_entity_request(value) {
 }
 
 function is_rebuild_scene_request(value) {
-  const destructive = /\b(delete|remove|replace|rebuild|redo|remake|recreate)\b/.test(value);
-  const constructive = /\b(create|make|build|generate|rebuild|remake|recreate|bigger|larger|architecture|hallways?|corridors?|rooms?|open areas?|columns?)\b/.test(value);
+  const actionable_value = value.replace(
+    /\b(?:do not|don't|never)\s+(?:delete|remove|replace|rebuild|redo|remake|recreate)\b/g,
+    "",
+  );
+  const destructive = /\b(delete|remove|replace|rebuild|redo|remake|recreate)\b/.test(actionable_value);
+  const constructive = /\b(create|make|build|generate|rebuild|remake|recreate|bigger|larger|architecture|hallways?|corridors?|rooms?|open areas?|columns?)\b/.test(actionable_value);
   const scene_target = /\b(room|level|area|scene|geometry|construct|environment|blockout)\b/.test(value) || target_name_from_prompt(value) !== "";
   return destructive && constructive && scene_target && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
 }
 
 function is_scene_construction_request(value) {
-  const constructive = /\b(create|make|build|uild|generate|construct|blockout|layout|lay out|design|place)\b/.test(value);
+  const constructive = /\b(create|make|build|uild|generate|construct|blockout|layout|lay out|design|place|continue|finish|complete|audit|review|correct|polish)\b/.test(value);
   const scene_target = /\b(rooms?|levels?|areas?|scenes?|geometry|environments?|blockouts?|hallways?|corridors?|mazes?|maps?|interiors?|spaces?|backrooms|liminal|playgrounds?|parks?|factories|factory|warehouses?|stations?|streets?|plazas?|offices?|houses?|buildings?|landscapes?|arenas?|yards?|gardens?)\b/.test(value);
   const code_context = /\b(source|code|file|files|cpp|c\+\+|javascript|compile|compilation|build error|build failed|build system|git|diff|commit|function|class|implementation)\b/.test(value);
   return constructive && scene_target && !code_context;

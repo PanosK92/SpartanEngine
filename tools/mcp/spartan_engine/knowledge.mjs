@@ -100,7 +100,7 @@ export const engine_overview = [
   "Use async_task_start and async_task_get for long-running MCP tools that should be reported without blocking the main client request.",
   "Live scene edits should route through deterministic tools when one matches, and fall back to the Cursor agent with the engine MCP tools otherwise.",
   "Treat scene construction prompts such as build a level, make rooms, backrooms, and liminal space as live scene edits, not source-code search requests.",
-  "Missing deterministic capabilities should be recorded in agent memory under Problem Reports immediately.",
+  "Missing deterministic capabilities should be recorded in agent memory under Advice To Maintainers immediately.",
   "Splines are scriptable from Lua: entity:GetComponent(ComponentType.Spline) exposes GetPoint(t), GetTangent(t), GetLength(), GetTAtDistance(distance), GetControlPointCount(), GetClosedLoop(), and GetRoadWidth(); GetPoint returns world-space positions with t in [0, 1], ideal for placing entities along roads.",
   "Cameras are scriptable from Lua: entity:AddComponent(ComponentType.Camera) adds a camera and the returned component exposes GetFovHorizontalDeg and SetFovHorizontalDeg.",
   "The editor sequencer has two tracks: a camera cut track controlled through sequencer_get, sequencer_set, sequencer_playback, sequencer_event_add, sequencer_event_update, and sequencer_event_remove, and a spline follower track controlled through sequencer_spline_add, sequencer_spline_update, and sequencer_spline_remove; each camera event cuts to a camera at its time and stays active until the next event, and edits auto-save next to the loaded world.",

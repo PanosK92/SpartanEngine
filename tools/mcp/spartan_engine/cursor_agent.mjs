@@ -529,7 +529,7 @@ function build_prompt(prompt, snapshot, intent = null) {
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
     "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Renderable|Light|...), Renderable:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
     "When you learn a durable lesson, correction, recurring problem, or maintainer improvement idea, update agent memory concisely.",
-    "After finished scene construction, call world_resources_clean so the managed world resources directory contains only live mesh, material, and texture dependencies.",
+    "world_resources_clean is available for explicit cleanup receipts. Finished scene construction runs it automatically.",
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
   ];
 
@@ -563,6 +563,102 @@ function build_prompt(prompt, snapshot, intent = null) {
     prompt,
   );
   return lines.join("\n");
+}
+
+function quality_root_from_matches(matches)
+{
+  return (
+    matches.find((match) =>
+      !match.parent_id &&
+      Array.isArray(match.tags) &&
+      match.tags.some((tag) =>
+          String(tag).startsWith("semantic_id="),
+        ),
+    ) ??
+    matches.find((match) => !match.parent_id) ??
+    matches[0]
+  );
+}
+
+async function resolve_quality_root(run, target_name)
+{
+  let last_result = {
+    ok: false,
+    error: "quality root not found",
+  };
+  for (let attempt = 0; attempt < 10; attempt++)
+  {
+    const exact = await run.tool(
+      "entity_find",
+      {
+        name: target_name,
+        match: "exact",
+        limit: 100,
+      },
+    );
+    const exact_root = quality_root_from_matches(
+      exact.matches ?? [],
+    );
+    if (exact.ok && exact_root)
+    {
+      return {
+        ...exact,
+        root: exact_root,
+        resolution: "exact_name",
+      };
+    }
+    last_result = exact;
+
+    const tagged = await run.tool(
+      "entity_find",
+      {
+        tag: `scene_recipe=${target_name}`,
+        limit: 100,
+      },
+    );
+    const tagged_root = quality_root_from_matches(
+      tagged.matches ?? [],
+    );
+    if (tagged.ok && tagged_root)
+    {
+      return {
+        ...tagged,
+        root: tagged_root,
+        resolution: "scene_recipe_tag",
+      };
+    }
+    last_result = tagged;
+    if (attempt < 9)
+    {
+      await new Promise(
+        (resolve) => setTimeout(resolve, 500),
+      );
+    }
+  }
+
+  const partial = await run.tool(
+    "entity_find",
+    {
+      name: target_name,
+      match: "contains",
+      limit: 100,
+    },
+  );
+  const partial_root = quality_root_from_matches(
+    partial.matches ?? [],
+  );
+  if (partial.ok && partial_root)
+  {
+    return {
+      ...partial,
+      root: partial_root,
+      resolution: "partial_name",
+    };
+  }
+  return {
+    ...last_result,
+    root: null,
+  };
 }
 
 async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
@@ -717,20 +813,12 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     const found = await run.stage(
       "Resolve Quality Root",
       "finding the completed scene hierarchy",
-      () => run.tool(
-        "entity_find",
-        {
-          name: intent.target_name,
-          match: "exact",
-          limit: 100,
-        },
+      () => resolve_quality_root(
+        run,
+        intent.target_name,
       ),
     );
-    const matches = found.matches ?? [];
-    const root_match =
-      matches.find((match) => !match.parent_id) ??
-      matches[0];
-    const root_id = root_match?.id;
+    const root_id = found.root?.id;
     if (!found.ok || !root_id)
     {
       return {
@@ -849,6 +937,14 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       );
     }
 
+    const resource_cleanup = await run.stage(
+      "Clean World Resources",
+      "removing unreferenced world assets",
+      () => run.tool(
+        "world_resources_clean",
+        {},
+      ),
+    );
     if (
       !audit.pass ||
       !layout_audit.pass ||
@@ -862,19 +958,14 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           `Quality audit: ${safe_json(audit, 2500)}`,
           `Layout audit: ${safe_json(layout_audit, 3500)}`,
           `Visual review completed: ${visual_review_seen}.`,
+          resource_cleanup.ok
+            ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed, ${resource_cleanup.orphan_count ?? 0} undeleted orphans.`
+            : `World resource cleanup failed for ${(resource_cleanup.failed ?? []).length} files.`,
           "Final-state audits are authoritative for plan and correction completion.",
         ].join("\n"),
       };
     }
 
-    const resource_cleanup = await run.stage(
-      "Clean World Resources",
-      "removing unreferenced world assets",
-      () => run.tool(
-        "world_resources_clean",
-        {},
-      ),
-    );
     return {
       ok: true,
       text: [
@@ -883,8 +974,8 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           "Done.",
         `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
         resource_cleanup.ok
-          ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed.`
-          : `World resource cleanup failed: ${resource_cleanup.error ?? "unknown error"}.`,
+          ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed, ${resource_cleanup.orphan_count ?? 0} undeleted orphans.`
+          : `World resource cleanup failed for ${(resource_cleanup.failed ?? []).length} files.`,
       ].join("\n"),
     };
   } catch (error) {

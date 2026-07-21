@@ -269,9 +269,9 @@ class AssistantRun {
   async report_capability_gap(detail) {
     const note = capability_gap_note(this.prompt, detail);
     try {
-      await append_agent_memory("Problem Reports", note);
+      await append_agent_memory("Advice To Maintainers", note);
       this.receipt("capability gap logged", {
-        section: "Problem Reports",
+        section: "Advice To Maintainers",
         note,
       });
     } catch (error) {

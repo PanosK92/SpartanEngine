@@ -55,6 +55,10 @@ namespace spartan
         static std::string GetResourceDirectory(
             const std::string& world_file_path
         );
+        static const std::vector<std::string>&
+            GetLastResourceCleanup();
+        static const std::vector<std::string>&
+            GetLastResourceCleanupFailures();
 
         // entities
         static sol::state_view GetLuaState();
