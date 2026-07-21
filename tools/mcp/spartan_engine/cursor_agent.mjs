@@ -7,6 +7,11 @@ import {
   infer_required_features,
   scene_quality_prompt_lines,
 } from "./scene_quality.mjs";
+import {
+  audit_scene_layout,
+  make_scene_plan_namespace,
+} from "./scene_planning.mjs";
+import { get_project_root } from "./shared_codebase.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +64,7 @@ const engine_tool_names = new Set([
   "entity_update",
   "entity_delete",
   "entity_delete_children",
+  "entity_clone",
   "entity_select",
   "entity_set_transform",
   "entity_render_materials",
@@ -84,16 +90,36 @@ const scene_mutating_tool_names = [
   "material_apply_preset",
   "material_semantic_create",
   "material_palette_create",
+  "material_set_property",
+  "material_set_texture",
   "entity_snap",
   "entity_create_empty",
   "entity_create_light",
   "entity_create_primitive",
   "entity_create_primitive_batch",
   "entity_update",
+  "entity_delete",
+  "entity_delete_children",
+  "entity_clone",
   "entity_set_transform",
   "entity_set_transform_batch",
   "component_set",
   "component_set_batch",
+  "component_action",
+  "entity_add_component",
+  "entity_remove_component",
+  "execute_lua",
+  "lights_calibrate",
+  "prefab_load",
+  "spline_create_road",
+  "spline_set_control_points",
+  "spline_connect",
+  "spline_reroute",
+  "spline_junction",
+  "spline_decorate",
+  "district_blockout",
+  "city_blockout",
+  "world_set_environment",
 ];
 
 let cached_agent = null;
@@ -469,7 +495,7 @@ function build_prompt(prompt, snapshot, intent = null) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
     "Read agent_memory_read early when available, and treat it as project advice rather than absolute truth.",
-    "For engine-control requests, use Spartan MCP tools first and keep tool calls minimal.",
+    "For engine-control requests, use Spartan MCP tools first and group repetitive calls without sacrificing completeness or visual quality.",
     "For source-code questions, use search_codebase first, then read_source_file for focused line ranges.",
     "Use search_capabilities and get_capability_details when you are unsure which engine tool or resource to use.",
     "Use spartan_status when you need to know whether the MCP bridge, engine, or codebase index is ready.",
@@ -490,7 +516,7 @@ function build_prompt(prompt, snapshot, intent = null) {
     "Never drive through an airway/runway, dockyard footprint, or building mass. Approach district edges, not centers. Use via points when an arterial must go around a district.",
     "spline_decorate adds sidewalks, street lights, and roadside props. Never stop at bare undecorated lines.",
     "Never hand-build spline_point_* children. Do not search source code for city prompts. Do not invent Lua APIs.",
-    "Single-area custom blockouts still use entity_resolve or entity_create_empty, then entity_create_primitive_batch, then entity_create_light. Prefer district_blockout when a preset fits.",
+    "Use primitive-only single-area construction only when the user explicitly asks for a greybox. Normal environments require semantic planning, generated or compound geometry, materials, calibrated lighting, and correction audits.",
     "Do not use execute_lua for API discovery, pairs/next probing, method listing, or exploratory scripts. Those crash or hang the engine.",
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
     "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Renderable|Light|...), Renderable:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
@@ -505,7 +531,7 @@ function build_prompt(prompt, snapshot, intent = null) {
 
   if (intent?.target_name)
   {
-    lines.push(`Resolved parent entity name from the request: ${intent.target_name}. Resolve it with entity_resolve, create it with entity_create_empty if missing, then parent all new blockout parts under that entity id.`);
+    lines.push(`Resolved parent entity name from the request: ${intent.target_name}. Call entity_find with exact matching first. If several entities share the name, use the first root-level match by id and never call entity_resolve by ambiguous name. Create the root with entity_create_empty only when no exact match exists, then parent all planned environment content under that entity id.`);
   }
   if (intent?.kind === "city_develop")
   {
@@ -531,6 +557,7 @@ function build_prompt(prompt, snapshot, intent = null) {
 }
 
 async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
+  const request_started_at_ms = Date.now();
   if (!api_key) {
     return {
       ok: false,
@@ -546,6 +573,8 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
   let last_activity_at = Date.now();
   let visual_review_seen = false;
   let quality_audit_seen = false;
+  let scene_plan_seen = false;
+  let layout_audit_seen = false;
   let mutation_after_visual_review = false;
   const observe = async (event) => {
     last_activity_at = Date.now();
@@ -556,6 +585,14 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     const is_quality_audit = is_named_tool_event(
       event,
       "scene_quality_audit",
+    );
+    const is_scene_plan = is_named_tool_event(
+      event,
+      "scene_plan_create",
+    );
+    const is_layout_audit = is_named_tool_event(
+      event,
+      "scene_layout_audit",
     );
     const is_scene_mutation = scene_mutating_tool_names.some(
       (tool_name) => is_named_tool_event(
@@ -574,6 +611,8 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     }
     visual_review_seen ||= is_visual_review;
     quality_audit_seen ||= is_quality_audit;
+    scene_plan_seen ||= is_scene_plan;
+    layout_audit_seen ||= is_layout_audit;
     if (!engine_tool_seen && is_engine_tool_event(event)) {
       engine_tool_seen = true;
       run.event("stage_note", { text: "engine tool interaction confirmed" });
@@ -695,11 +734,15 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         {
           name: intent.target_name,
           match: "exact",
-          limit: 1,
+          limit: 100,
         },
       ),
     );
-    const root_id = found.matches?.[0]?.id;
+    const matches = found.matches ?? [];
+    const root_match =
+      matches.find((match) => !match.parent_id) ??
+      matches[0];
+    const root_id = root_match?.id;
     if (!found.ok || !root_id)
     {
       return {
@@ -723,6 +766,34 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         audit_args,
       ),
     );
+    const layout_audit_args = {
+      id: root_id,
+      root_name: intent.target_name,
+      minimum_created_at_ms: request_started_at_ms,
+    };
+    const audit_current_layout = async () => {
+      const current_world = await send_command(
+        "world_summary",
+        {},
+      );
+      return audit_scene_layout(
+        send_command,
+        {
+          ...layout_audit_args,
+          namespace: make_scene_plan_namespace({
+            project_root: get_project_root(),
+            engine_host,
+            engine_port,
+            world: current_world,
+          }),
+        },
+      );
+    };
+    let layout_audit = await run.stage(
+      "Audit Scene Layout",
+      "checking scale, support, relationships, and lighting",
+      audit_current_layout,
+    );
     let final_result = cursor_result;
 
     for (
@@ -730,6 +801,9 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       attempt <= 2 &&
       (
         !audit.pass ||
+        !layout_audit.pass ||
+        !scene_plan_seen ||
+        !layout_audit_seen ||
         !visual_review_seen ||
         !quality_audit_seen ||
         !mutation_after_visual_review
@@ -741,12 +815,14 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         "Perform a mandatory quality correction pass on the live Spartan Engine scene.",
         `Original request: ${prompt}`,
         `Root entity: ${intent.target_name}, id ${root_id}.`,
-        `Deterministic audit: ${safe_json(audit, 5000)}`,
+        `Quality audit: ${safe_json(audit, 3500)}`,
+        `Layout audit: ${safe_json(layout_audit, 5000)}`,
+        "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
         "Call scene_visual_review on the root and inspect the image.",
-        "Fix every failed audit check and the most visible weakness in the image.",
+        "Fix every failed scene_layout_audit and scene_quality_audit check plus the most visible weakness in the image.",
         "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
         "Preserve all good existing work and keep every addition under the root.",
-        "Call scene_quality_audit after corrections and do not report completion unless it passes.",
+        "Call scene_layout_audit and scene_quality_audit after corrections and do not report completion unless both pass.",
       ].join("\n");
 
       final_result = await run.stage(
@@ -780,10 +856,18 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           audit_args,
         ),
       );
+      layout_audit = await run.stage(
+        `Verify Layout ${attempt}`,
+        "rechecking scale, support, relationships, and lighting",
+        audit_current_layout,
+      );
     }
 
     if (
       !audit.pass ||
+      !layout_audit.pass ||
+      !scene_plan_seen ||
+      !layout_audit_seen ||
       !visual_review_seen ||
       !quality_audit_seen ||
       !mutation_after_visual_review
@@ -793,7 +877,10 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         ok: false,
         text: [
           "Scene was edited, but the quality gate remains incomplete.",
-          `Audit: ${safe_json(audit, 3000)}`,
+          `Quality audit: ${safe_json(audit, 2500)}`,
+          `Layout audit: ${safe_json(layout_audit, 3500)}`,
+          `Semantic plan completed: ${scene_plan_seen}.`,
+          `Layout audit completed: ${layout_audit_seen}.`,
           `Visual review completed: ${visual_review_seen}.`,
           `Post-review correction completed: ${mutation_after_visual_review}.`,
         ].join("\n"),
@@ -806,7 +893,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         final_result.result?.trim() ||
           cursor_result.result?.trim() ||
           "Done.",
-        `Quality gate passed: ${audit.score}/100.`,
+        `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
       ].join("\n"),
     };
   } catch (error) {

@@ -8,6 +8,10 @@ export const advanced_scene_tool_names = [
   "material_semantic_create",
   "material_palette_create",
   "entity_snap",
+  "entity_spatial_snapshot",
+  "scene_plan_create",
+  "scene_plan_get",
+  "scene_layout_audit",
   "scene_visual_review",
   "scene_quality_audit",
   "resource_list",
@@ -100,12 +104,17 @@ export function scene_quality_prompt_lines(prompt, intent) {
   const required = infer_required_features(prompt);
   const lines = [
     "This is a finished scene-construction task, not a minimal greybox task.",
+    "Before creating entities, call scene_plan_create with a generic semantic plan derived from the request: choose a credible scale reference, purposeful zones, descriptive elements with realistic expected dimensions, support modes, spatial relationships, and a lighting intent.",
+    "The planner is environment-agnostic. Infer suitable roles and dimensions for the current request; never force car, room, city, or other domain-specific structure onto unrelated scenes.",
+    "Build the scene to match the validated plan. Entity and compound names must match semantic element names so spatial evidence can resolve them.",
+    "For planned elements with count greater than one, name instance roots semantic_name_1, semantic_name_2, and so on. Put detail parts below each instance root.",
     "Optimize tool calls for completeness and visual quality, not for the smallest call count.",
     "Unless the user explicitly asks for an uncolored greybox, create a coordinated material_palette_create palette and assign non-default semantic materials to nearly every visible renderable.",
     "Use mesh_generate, compound_create, and detail_pattern_create when they produce more descriptive geometry than cubes and cylinders.",
     "Give requested features explicit descriptive entity names so scene_quality_audit can verify them.",
     "Use entity_snap for floor, wall, ceiling, or surface placement where applicable.",
-    "Add purposeful calibrated lighting with entity_create_light when the scene needs local illumination.",
+    "Create purposeful calibrated lighting under the scene root. Use the plan's lighting intent to choose type, placement, color, intensity, range, and shadows.",
+    "Call scene_layout_audit after construction and fix implausible scale, objects outside zones, floating or deeply intersecting supports, broken relationships, weak light coverage, and uncalibrated lights.",
     "Before reporting completion, call scene_quality_audit on the requested root and fix every failed requirement.",
     "Then call scene_visual_review, inspect the returned image, and perform at least one targeted correction pass for composition, scale, intersections, materials, lighting, or geometric repetition.",
     "Run scene_quality_audit again after corrections. Do not report completion while pass is false.",
@@ -248,7 +257,7 @@ export async function audit_scene_quality(
   const descendants = entities.filter(
     (entity) => String(entity.id) !== String(id),
   );
-  const names = entities.map((entity) =>
+  const names = descendants.map((entity) =>
     normalized(entity.name),
   );
   const materials = Array.isArray(material_snapshot.materials)

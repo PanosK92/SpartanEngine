@@ -3764,6 +3764,341 @@ namespace spartan
             return json;
         }
 
+        std::string command_entity_spatial_snapshot(
+            const McpRequest& request
+        )
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Entity* root = get_entity_from_request(request, error);
+            if (root == nullptr)
+            {
+                return json_error(error);
+            }
+
+            bool include_descendants = true;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "include_descendants")
+            )
+            {
+                if (!parse_bool(*value, include_descendants))
+                {
+                    return json_error("invalid include_descendants");
+                }
+            }
+
+            uint32_t limit = 1000;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "limit")
+            )
+            {
+                uint64_t parsed = 0;
+                if (
+                    !parse_uint64(*value, parsed) ||
+                    parsed == 0 ||
+                    parsed > 5000
+                )
+                {
+                    return json_error(
+                        "limit must be between 1 and 5000"
+                    );
+                }
+                limit = static_cast<uint32_t>(parsed);
+            }
+
+            std::vector<Entity*> entities;
+            entities.emplace_back(root);
+            if (include_descendants)
+            {
+                root->GetDescendants(&entities);
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"root_id\":" +
+                json_string(std::to_string(root->GetObjectId()));
+            json += ",\"root_name\":" +
+                json_string(root->GetObjectName());
+            json += ",\"entities\":[";
+            bool first = true;
+            uint32_t emitted = 0;
+            for (Entity* entity : entities)
+            {
+                if (entity == nullptr || emitted >= limit)
+                {
+                    continue;
+                }
+
+                math::BoundingBox own_bounds;
+                bool has_own_bounds = false;
+                if (Render* renderable =
+                    entity->GetComponent<Render>())
+                {
+                    own_bounds = renderable->GetBoundingBox();
+                    has_own_bounds =
+                        own_bounds.GetMin().IsFinite() &&
+                        own_bounds.GetMax().IsFinite() &&
+                        own_bounds.GetSize().LengthSquared() > 0.0f;
+                }
+
+                math::BoundingBox subtree_bounds;
+                bool has_subtree_bounds = false;
+                std::vector<Entity*> subtree;
+                subtree.emplace_back(entity);
+                entity->GetDescendants(&subtree);
+                for (Entity* current : subtree)
+                {
+                    if (current == nullptr)
+                    {
+                        continue;
+                    }
+                    if (Render* renderable =
+                        current->GetComponent<Render>())
+                    {
+                        const math::BoundingBox& bounds =
+                            renderable->GetBoundingBox();
+                        if (
+                            !bounds.GetMin().IsFinite() ||
+                            !bounds.GetMax().IsFinite() ||
+                            bounds.GetSize().LengthSquared() <= 0.0f
+                        )
+                        {
+                            continue;
+                        }
+                        if (!has_subtree_bounds)
+                        {
+                            subtree_bounds = bounds;
+                            has_subtree_bounds = true;
+                        }
+                        else
+                        {
+                            subtree_bounds.Merge(bounds);
+                        }
+                    }
+                }
+
+                PhysicsRaycastHit support_hit;
+                bool has_support_hit = false;
+                float support_gap = 0.0f;
+                PhysicsRaycastHit ceiling_hit;
+                bool has_ceiling_hit = false;
+                float ceiling_gap = 0.0f;
+                PhysicsRaycastHit wall_hit;
+                bool has_wall_hit = false;
+                float wall_gap =
+                    std::numeric_limits<float>::max();
+                if (has_own_bounds)
+                {
+                    const math::Vector3 size = own_bounds.GetSize();
+                    const float probe_offset = std::max(
+                        0.05f,
+                        std::min(0.25f, size.y * 0.1f)
+                    );
+                    math::Vector3 probe_origin =
+                        own_bounds.GetCenter();
+                    probe_origin.y =
+                        own_bounds.GetMin().y + probe_offset;
+                    has_support_hit = PhysicsWorld::RaycastStatic(
+                        probe_origin,
+                        math::Vector3::Down,
+                        1000.0f,
+                        support_hit,
+                        entity
+                    );
+                    if (has_support_hit)
+                    {
+                        support_gap =
+                            own_bounds.GetMin().y -
+                            support_hit.position.y;
+                    }
+
+                    math::Vector3 ceiling_origin =
+                        own_bounds.GetCenter();
+                    ceiling_origin.y =
+                        own_bounds.GetMax().y - probe_offset;
+                    has_ceiling_hit = PhysicsWorld::RaycastStatic(
+                        ceiling_origin,
+                        math::Vector3::Up,
+                        1000.0f,
+                        ceiling_hit,
+                        entity
+                    );
+                    if (has_ceiling_hit)
+                    {
+                        ceiling_gap =
+                            ceiling_hit.position.y -
+                            own_bounds.GetMax().y;
+                    }
+
+                    const std::array<math::Vector3, 4>
+                        wall_directions =
+                    {
+                        math::Vector3::Left,
+                        math::Vector3::Right,
+                        math::Vector3::Forward,
+                        math::Vector3::Backward
+                    };
+                    for (
+                        const math::Vector3& wall_direction :
+                        wall_directions
+                    )
+                    {
+                        PhysicsRaycastHit candidate;
+                        if (
+                            !PhysicsWorld::RaycastStatic(
+                                own_bounds.GetCenter(),
+                                wall_direction,
+                                1000.0f,
+                                candidate,
+                                entity
+                            )
+                        )
+                        {
+                            continue;
+                        }
+                        const float own_extent =
+                            std::abs(wall_direction.x) > 0.5f
+                            ? size.x * 0.5f
+                            : size.z * 0.5f;
+                        const float candidate_gap =
+                            candidate.distance - own_extent;
+                        if (
+                            !has_wall_hit ||
+                            candidate_gap < wall_gap
+                        )
+                        {
+                            has_wall_hit = true;
+                            wall_gap = candidate_gap;
+                            wall_hit = candidate;
+                        }
+                    }
+                }
+
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                emitted++;
+
+                json += "{";
+                json += "\"id\":" +
+                    json_string(std::to_string(entity->GetObjectId()));
+                json += ",\"name\":" +
+                    json_string(entity->GetObjectName());
+                Entity* parent = entity->GetParent();
+                json += ",\"parent_id\":";
+                json += parent
+                    ? json_string(
+                        std::to_string(parent->GetObjectId())
+                    )
+                    : "null";
+                json += ",\"active\":" +
+                    json_bool(entity->IsActive());
+                json += ",\"components\":" +
+                    entity_components_json(entity);
+                if (!entity->GetTags().empty())
+                {
+                    json += ",\"tags\":" +
+                        entity_tags_json(entity);
+                }
+                json += ",\"position\":" +
+                    json_vector3(entity->GetPosition());
+                json += ",\"rotation_euler\":" +
+                    json_vector3(
+                        entity->GetRotation().ToEulerAngles()
+                    );
+                json += ",\"forward\":" +
+                    json_vector3(entity->GetForward());
+                json += ",\"has_render_bounds\":" +
+                    json_bool(has_own_bounds);
+                if (has_own_bounds)
+                {
+                    json += ",\"bounding_box\":" +
+                        json_bounding_box(own_bounds);
+                }
+                if (has_subtree_bounds)
+                {
+                    json += ",\"subtree_bounding_box\":" +
+                        json_bounding_box(subtree_bounds);
+                }
+                json += ",\"support_hit\":" +
+                    json_bool(has_support_hit);
+                if (has_support_hit)
+                {
+                    json += ",\"support_gap\":" +
+                        std::to_string(support_gap);
+                    json += ",\"support\":{";
+                    json += "\"position\":" +
+                        json_vector3(support_hit.position);
+                    json += ",\"normal\":" +
+                        json_vector3(support_hit.normal);
+                    json += ",\"distance\":" +
+                        std::to_string(support_hit.distance);
+                    if (support_hit.entity)
+                    {
+                        json += ",\"entity_id\":" +
+                            json_string(
+                                std::to_string(
+                                    support_hit.entity->GetObjectId()
+                                )
+                            );
+                        json += ",\"entity_name\":" +
+                            json_string(
+                                support_hit.entity->GetObjectName()
+                            );
+                    }
+                    json += "}";
+                }
+                json += ",\"ceiling_hit\":" +
+                    json_bool(has_ceiling_hit);
+                if (has_ceiling_hit)
+                {
+                    json += ",\"ceiling_gap\":" +
+                        std::to_string(ceiling_gap);
+                    if (ceiling_hit.entity)
+                    {
+                        json += ",\"ceiling_entity_id\":" +
+                            json_string(
+                                std::to_string(
+                                    ceiling_hit.entity->GetObjectId()
+                                )
+                            );
+                    }
+                }
+                json += ",\"wall_hit\":" +
+                    json_bool(has_wall_hit);
+                if (has_wall_hit)
+                {
+                    json += ",\"wall_gap\":" +
+                        std::to_string(wall_gap);
+                    json += ",\"wall_normal\":" +
+                        json_vector3(wall_hit.normal);
+                    if (wall_hit.entity)
+                    {
+                        json += ",\"wall_entity_id\":" +
+                            json_string(
+                                std::to_string(
+                                    wall_hit.entity->GetObjectId()
+                                )
+                            );
+                    }
+                }
+                json += "}";
+            }
+            json += "],\"count\":" +
+                std::to_string(emitted);
+            json += ",\"truncated\":" +
+                json_bool(entities.size() > emitted);
+            json += "}";
+            return json;
+        }
+
         std::string command_entity_list(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -12353,6 +12688,10 @@ namespace spartan
         if (request.command == "entity_snap")
         {
             return command_entity_snap(request);
+        }
+        if (request.command == "entity_spatial_snapshot")
+        {
+            return command_entity_spatial_snapshot(request);
         }
         if (request.command == "entity_list")
         {

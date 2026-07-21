@@ -8,11 +8,17 @@ import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
-import { component_schema_markdown, edit_rules, engine_overview, parametric_modeling_guide, search_capability_catalog } from "./knowledge.mjs";
+import { component_schema_markdown, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
 import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
 import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
 import { resolve_light_properties, calibrate_existing_light } from "./light_calibration.mjs";
 import { audit_scene_quality } from "./scene_quality.mjs";
+import {
+  audit_scene_layout,
+  create_scene_plan,
+  make_scene_plan_namespace,
+  read_scene_plan,
+} from "./scene_planning.mjs";
 
 const project_root = get_project_root();
 await ensure_agent_memory();
@@ -81,6 +87,18 @@ void append_debug_log({
 });
 
 const codebase = get_shared_codebase();
+
+async function current_scene_plan_namespace() {
+  const world = await send_engine_command(
+    "world_summary",
+  );
+  return make_scene_plan_namespace({
+    project_root,
+    engine_host,
+    engine_port,
+    world,
+  });
+}
 
 function send_engine_command(command, args = {}) {
   return engine.command(command, args, engine_timeout_ms);
@@ -211,6 +229,87 @@ async function run_async_task(task, tool, args) {
 const vector3 = z.array(z.number()).length(3);
 const quaternion = z.array(z.number()).length(4);
 const vector4 = z.array(z.number()).length(4);
+const positive_vector3 = z.array(
+  z.number().positive(),
+).length(3);
+const scene_zone = z.object({
+  name: z.string().min(1),
+  purpose: z.string().min(1),
+  center: vector3,
+  size: positive_vector3,
+});
+const scene_element = z.object({
+  name: z.string().min(1),
+  role: z.enum([
+    "surface",
+    "structure",
+    "route",
+    "functional",
+    "furnishing",
+    "prop",
+    "detail",
+    "light",
+  ]),
+  zone: z.string().optional(),
+  expected_size: positive_vector3.optional(),
+  size_mode: z.enum([
+    "individual",
+    "aggregate",
+  ]).optional(),
+  allow_axis_permutation: z.boolean().optional(),
+  size_tolerance: z.number().min(0.05).max(2).optional(),
+  support: z.enum([
+    "ground",
+    "surface",
+    "wall",
+    "ceiling",
+    "suspended",
+    "none",
+  ]),
+  max_support_gap: z.number().min(0).max(10).optional(),
+  max_intersection_depth: z.number().min(0).max(10).optional(),
+  zone_tolerance: z.number().min(0).max(100).optional(),
+  count: z.number().int().min(1).max(1000).optional(),
+  clearance: z.number().min(0).max(1000).optional(),
+  material_semantic: z.string().optional(),
+});
+const scene_relationship = z.object({
+  subject: z.string().min(1),
+  relation: z.enum([
+    "on",
+    "inside",
+    "connected_to",
+    "separated_from",
+    "aligned_with",
+    "beside",
+  ]),
+  object: z.string().min(1),
+  axis: z.enum(["x", "y", "z"]).optional(),
+  tolerance: z.number().min(0).max(1000).optional(),
+  min_distance: z.number().min(0).max(10000).optional(),
+  max_distance: z.number().min(0).max(10000).optional(),
+});
+const scene_plan_input = {
+  root_name: z.string().min(1),
+  purpose: z.string().min(1),
+  scale_reference: z.object({
+    name: z.string().min(1),
+    size: positive_vector3,
+    rationale: z.string().min(1),
+  }),
+  zones: z.array(scene_zone).min(1).max(32),
+  elements: z.array(scene_element).min(5).max(256),
+  relationships: z.array(
+    scene_relationship,
+  ).max(512).optional(),
+  lighting: z.object({
+    intent: z.string().min(1),
+    min_lights: z.number().int().min(1).max(64),
+    max_lights: z.number().int().min(1).max(128).optional(),
+    require_shadows: z.boolean().optional(),
+  }),
+  quality_goals: z.array(z.string()).max(32).optional(),
+};
 const numeric_array = z.array(z.number()).min(2).max(16);
 const mesh_type = z.enum(["cube", "quad", "plane", "sphere", "cylinder", "cone"]);
 const body_type = z.enum(["box", "sphere", "plane", "capsule", "mesh", "mesh_convex", "controller", "vehicle", "cloth"]);
@@ -1472,6 +1571,69 @@ register_local_tool(
 );
 
 register_local_tool(
+  "scene_plan_create",
+  {
+    title: "scene plan create",
+    description: "Create and validate a generic semantic environment plan before geometry is built. Plans define scale reference, purposeful zones, element roles and expected dimensions, support modes, spatial relationships, and lighting intent without baking in a specific environment type.",
+    inputSchema: scene_plan_input,
+    outputSchema: output_schemas.scene_plan,
+    annotations: edit_tool,
+  },
+  async (args) => {
+    const result = await create_scene_plan(
+      args,
+      await current_scene_plan_namespace(),
+    );
+    return tool_result(result);
+  },
+);
+
+register_local_tool(
+  "scene_plan_get",
+  {
+    title: "scene plan get",
+    description: "Read the latest validated generic scene plan for a root name.",
+    inputSchema: {
+      root_name: z.string().min(1),
+    },
+    outputSchema: output_schemas.scene_plan,
+    annotations: read_only,
+  },
+  async ({ root_name }) => {
+    const result = await read_scene_plan(
+      await current_scene_plan_namespace(),
+      root_name,
+    );
+    return tool_result(result);
+  },
+);
+
+register_local_tool(
+  "scene_layout_audit",
+  {
+    title: "scene layout audit",
+    description: "Audit a built environment against its generic semantic plan. Checks expected real-world scale, zone containment, ground or surface support, declared spatial relationships, active calibrated lights, shadowing, and light coverage.",
+    inputSchema: {
+      id: z.string(),
+      root_name: z.string().min(1),
+    },
+    outputSchema: output_schemas.scene_layout_audit,
+    annotations: read_only,
+  },
+  async (args) => {
+    const result = await audit_scene_layout(
+      send_engine_command,
+      {
+        ...args,
+        namespace:
+          await current_scene_plan_namespace(),
+      },
+    );
+    return tool_result(result);
+  },
+);
+
+register_local_tool(
   "scene_quality_audit",
   {
     title: "scene quality audit",
@@ -1568,6 +1730,22 @@ register_tool(
   {
     annotations: edit_tool,
     outputSchema: output_schemas.entity_snap,
+  },
+);
+
+register_tool(
+  server,
+  "entity_spatial_snapshot",
+  "Return generic spatial evidence for an entity hierarchy: world render bounds, subtree bounds, components, tags, and downward support gaps. Use this to validate scale, grounding, relationships, and layout without domain-specific assumptions.",
+  {
+    id: z.string(),
+    include_descendants: z.boolean().optional(),
+    limit: z.number().int().min(1).max(5000).optional(),
+  },
+  "entity_spatial_snapshot",
+  {
+    annotations: read_only,
+    outputSchema: output_schemas.entity_spatial_snapshot,
   },
 );
 
@@ -3374,6 +3552,14 @@ register_text_resource(
 );
 
 register_text_resource(
+  "scene_planning",
+  "spartan://engine/scene-planning",
+  "Spartan Generic Scene Planning",
+  "Environment-agnostic semantic planning, scale, placement, lighting, and correction workflow.",
+  () => scene_planning_guide,
+);
+
+register_text_resource(
   "world_current",
   "spartan://world/current",
   "Current Spartan World",
@@ -3488,6 +3674,9 @@ async function read_resource(uri) {
   }
   if (uri === "spartan://engine/parametric-modeling") {
     return parametric_modeling_guide;
+  }
+  if (uri === "spartan://engine/scene-planning") {
+    return scene_planning_guide;
   }
   if (uri === "spartan://source") {
     return [
