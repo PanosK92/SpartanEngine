@@ -633,79 +633,52 @@ namespace spartan
             return false;
         }
 
-        class QueryFilter : public PxQueryFilterCallback
+        const Vector3 normalized_direction =
+            direction.Normalized();
+        Vector3 right = Vector3::Cross(
+            normalized_direction,
+            Vector3::Up
+        );
+        if (right.LengthSquared() <= 0.0001f)
         {
-        public:
-            explicit QueryFilter(PxU32 ignored_group) : m_ignored_group(ignored_group) {}
+            right = Vector3::Right;
+        }
+        else
+        {
+            right.Normalize();
+        }
 
-            virtual ~QueryFilter() = default;
-
-            PxQueryHitType::Enum preFilter(
-                const PxFilterData&,
-                const PxShape*,
-                const PxRigidActor* actor,
-                PxHitFlags&
-            ) override
-            {
-                if (!actor || !actor->userData)
-                {
-                    return PxQueryHitType::eBLOCK;
-                }
-
-                Entity* entity =
-                    static_cast<Entity*>(actor->userData);
-                Physics* physics_component =
-                    entity->GetComponent<Physics>();
-                if (
-                    physics_component &&
-                    (
-                        physics_component->GetBodyType() ==
-                            BodyType::Vehicle ||
-                        (
-                            m_ignored_group != 0 &&
-                            physics_component
-                                ->GetVehicleCollisionGroup() ==
-                                m_ignored_group
-                        )
-                    )
-                )
-                {
-                    return PxQueryHitType::eNONE;
-                }
-                return PxQueryHitType::eBLOCK;
-            }
-
-            PxQueryHitType::Enum postFilter(const PxFilterData&, const PxQueryHit&, const PxShape*, const PxRigidActor*) override
-            {
-                return PxQueryHitType::eBLOCK;
-            }
-
-        private:
-            PxU32 m_ignored_group;
+        const array<Vector3, 5> ray_origins =
+        {
+            origin,
+            origin + right * radius,
+            origin - right * radius,
+            origin + Vector3::Up * radius,
+            origin - Vector3::Up * radius
         };
 
-        const Vector3 normalized_direction = direction.Normalized();
-        const PxVec3 px_origin(origin.x, origin.y, origin.z);
-        const PxVec3 px_direction(normalized_direction.x, normalized_direction.y, normalized_direction.z);
-        const PxSphereGeometry geometry(radius);
-        const PxTransform pose(px_origin);
-        PxSweepBuffer hit;
-        PxQueryFilterData filter_data(PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER);
-        QueryFilter filter(ignored_collision_group);
-
-        lock_guard<recursive_mutex> lock(physx_mutex);
-        scene->flushQueryUpdates();
-        if (!scene->sweep(geometry, pose, px_direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data, &filter) || !hit.hasBlock)
+        bool did_hit = false;
+        for (const Vector3& ray_origin : ray_origins)
         {
-            return false;
+            PhysicsRaycastHit ray_hit;
+            if (
+                RaycastStatic(
+                    ray_origin,
+                    normalized_direction,
+                    max_distance,
+                    ray_hit
+                ) &&
+                ray_hit.distance < hit_distance
+            )
+            {
+                did_hit = true;
+                hit_position = ray_hit.position;
+                hit_distance = ray_hit.distance;
+                hit_entity = ray_hit.entity;
+            }
         }
 
-        hit_position = Vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z);
-        hit_distance = hit.block.distance;
-        if (hit.block.actor && hit.block.actor->userData)
-        {
-            hit_entity = static_cast<Entity*>(hit.block.actor->userData);
-        }
-        return true;
+        (void)ignored_collision_group;
+        return did_hit;
     }
 }
