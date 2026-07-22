@@ -78,6 +78,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - spline_reroute reclaim can steal other roads: named road_light poles under arterials get reparented, and if the pole parent has Render the whole arterial is pulled under the target. After reclaim, restore foreign arterials to root and re-run spline_decorate replace on them. Prefer keep_children only for true children until reclaim filters exclude other spline roads.
 - `detail_pattern_create` with `pattern: slats` treats `size` as each slat mesh size, not the total array span; use a narrow per slat size and control total coverage with `count * spacing`, otherwise scene bounds can expand dramatically.
 - `scene_visual_review.path` must be under `screenshots/`; project or generated paths fail with incomplete evidence.
+- city_blockout generated preset building renderables with default materials and no physics collision in plan.world on 2026-07-22; run scene_quality_audit and replace or retrofit all preset meshes before completion when collision_ratio or material checks fail.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.

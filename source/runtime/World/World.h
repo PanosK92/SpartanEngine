@@ -50,8 +50,10 @@ namespace spartan
         static void Tick();
 
         // io
-        static bool SaveToFile(std::string filePath);
+        static bool SaveToFile(std::string file_path);
+        static bool SaveToFileAsync(std::string file_path);
         static bool LoadFromFile(const std::string& file_path);
+        static bool IsSaving();
         static std::string GetResourceDirectory(
             const std::string& world_file_path
         );
@@ -111,6 +113,7 @@ namespace spartan
         static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);
 
     private:
+        static bool SaveToFileInternal(std::string file_path);
         static void ProcessPendingRemovals();
         static void ProcessPendingAdditions();
     };

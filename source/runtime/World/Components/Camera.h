@@ -257,6 +257,7 @@ namespace spartan
         float m_gait_speed                           = 0.0f;
         float m_breath_phase                         = 0.0f;
         float m_fall_speed                           = 0.0f;
+        float m_strafe_speed                         = 0.0f;
         bool m_was_grounded                          = true;
         math::Vector3 m_anim_spring_offset           = math::Vector3::Zero;
         math::Vector3 m_anim_spring_velocity         = math::Vector3::Zero;

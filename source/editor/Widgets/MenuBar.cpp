@@ -104,7 +104,7 @@ namespace
                 return;
             }
 
-            spartan::World::SaveToFile(world_file_path);
+            spartan::World::SaveToFileAsync(world_file_path);
         }
 
         void ShowWorldLoadDialog()
@@ -176,7 +176,9 @@ namespace
                 {
                     if (file_dialog->GetFilter() == FileDialog_Filter_World)
                     {
-                        spartan::World::SaveToFile(file_dialog_selection_path);
+                        spartan::World::SaveToFileAsync(
+                            file_dialog_selection_path
+                        );
                         show_file_dialog = false;
                     }
                 }
@@ -189,9 +191,17 @@ namespace
         void file()
         {
             bool open_new_world_confirmation = false;
+            const bool world_saving = spartan::World::IsSaving();
             if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("New World"))
+                if (
+                    ImGui::MenuItem(
+                        "New World",
+                        nullptr,
+                        false,
+                        !world_saving
+                    )
+                )
                 {
                     if (spartan::World::GetEntities().empty())
                     {
@@ -205,26 +215,54 @@ namespace
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("Open World...", "Ctrl+O"))
+                if (
+                    ImGui::MenuItem(
+                        "Open World...",
+                        "Ctrl+O",
+                        false,
+                        !world_saving
+                    )
+                )
                 {
                     windows::ShowWorldLoadDialog();
                 }
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("Save", "Ctrl+S"))
+                if (
+                    ImGui::MenuItem(
+                        "Save",
+                        "Ctrl+S",
+                        false,
+                        !world_saving
+                    )
+                )
                 {
                     windows::SaveWorld();
                 }
 
-                if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
+                if (
+                    ImGui::MenuItem(
+                        "Save As...",
+                        "Ctrl+Shift+S",
+                        false,
+                        !world_saving
+                    )
+                )
                 {
                     windows::ShowWorldSaveDialog();
                 }
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("Export Package..."))
+                if (
+                    ImGui::MenuItem(
+                        "Export Package...",
+                        nullptr,
+                        false,
+                        !world_saving
+                    )
+                )
                 {
                     windows::ExportWorld();
                 }

@@ -863,6 +863,7 @@ namespace spartan
             m_gait_phase             = 0.0f;
             m_gait_speed             = 0.0f;
             m_fall_speed             = 0.0f;
+            m_strafe_speed           = 0.0f;
         }
         m_was_playing = is_playing;
 
@@ -1079,7 +1080,14 @@ namespace spartan
             GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + offset_delta);
 
             // subtle roll from weight shift and strafe lean, subtle pitch nod from vertical motion, applied as a delta like the position
-            float roll               = -m_anim_spring_offset.x * 1.2f - Vector3::Dot(velocity, right) * 0.01f;
+            float strafe_speed_target = Vector3::Dot(velocity, right);
+            m_strafe_speed            = math::lerp(
+                m_strafe_speed,
+                strafe_speed_target,
+                1.0f - exp(-10.0f * delta_time)
+            );
+
+            float roll               = -m_anim_spring_offset.x * 1.2f - m_strafe_speed * 0.01f;
             float pitch              = -m_anim_spring_velocity.y * 0.03f;
             Quaternion anim_rotation = Quaternion::FromAxisAngle(Vector3::Forward, roll) * Quaternion::FromAxisAngle(Vector3::Right, pitch);
             GetEntity()->SetRotationLocal((GetEntity()->GetRotationLocal() * m_anim_rotation_previous.Inverse() * anim_rotation).Normalized());

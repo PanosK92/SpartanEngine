@@ -87,11 +87,28 @@ namespace spartan
         // tracks observed loading transition so the WorldLoaded event fires exactly once per load
         bool was_loading            = false;
         // rejects re-entrant loads, a second load would run Shutdown on the main thread while the first load's workers are still building the world
-        atomic<bool> load_in_progress = false;
+        enum class WorldIoState : uint8_t
+        {
+            Idle,
+            Saving,
+            Loading
+        };
+        atomic<WorldIoState> world_io_state = WorldIoState::Idle;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* camera_override     = nullptr; // set by the sequencer or gameplay, takes precedence over the default camera
         Entity* light               = nullptr;
+
+        struct SaveStateReset
+        {
+            ~SaveStateReset()
+            {
+                world_io_state.store(
+                    WorldIoState::Idle,
+                    memory_order_release
+                );
+            }
+        };
 
         // prefer the player flycam (camera under a controller body) over cinematic sequence cameras
         Entity* pick_default_camera(Entity* current, Entity* candidate)
@@ -1422,6 +1439,56 @@ namespace spartan
 
     bool World::SaveToFile(string file_path)
     {
+        WorldIoState expected = WorldIoState::Idle;
+        if (
+            !world_io_state.compare_exchange_strong(
+                expected,
+                WorldIoState::Saving
+            )
+        )
+        {
+            SP_LOG_WARNING("A world save is already in progress");
+            return false;
+        }
+
+        SaveStateReset reset;
+        return SaveToFileInternal(move(file_path));
+    }
+
+    bool World::SaveToFileAsync(string file_path)
+    {
+        WorldIoState expected = WorldIoState::Idle;
+        if (
+            !world_io_state.compare_exchange_strong(
+                expected,
+                WorldIoState::Saving
+            )
+        )
+        {
+            SP_LOG_WARNING("A world save is already in progress");
+            return false;
+        }
+
+        ThreadPool::AddTask(
+            [file_path = move(file_path)]()
+            {
+                SaveStateReset reset;
+                SaveToFileInternal(file_path);
+            }
+        );
+
+        return true;
+    }
+
+    bool World::IsSaving()
+    {
+        return
+            world_io_state.load(memory_order_acquire) ==
+            WorldIoState::Saving;
+    }
+
+    bool World::SaveToFileInternal(string file_path)
+    {
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
         {
             file_path += string(EXTENSION_WORLD);
@@ -1705,8 +1772,13 @@ namespace spartan
     bool World::LoadFromFile(const string& file_path_)
     {
         // reject re-entrant loads, the second Shutdown below would tear down the world while the first load's workers are still building it
-        bool expected = false;
-        if (!load_in_progress.compare_exchange_strong(expected, true))
+        WorldIoState expected = WorldIoState::Idle;
+        if (
+            !world_io_state.compare_exchange_strong(
+                expected,
+                WorldIoState::Loading
+            )
+        )
         {
             return false;
         }
@@ -1730,7 +1802,10 @@ namespace spartan
             auto finish = []()
             {
                 ProgressTracker::SetGlobalLoadingState(false);
-                load_in_progress.store(false, memory_order_release);
+                world_io_state.store(
+                    WorldIoState::Idle,
+                    memory_order_release
+                );
             };
 
             file_path  = path_copy;
