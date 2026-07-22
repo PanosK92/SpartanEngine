@@ -1198,7 +1198,8 @@ public:
             if (wheels[i].grounded && wheels[i].tire_load > 0.0f)
             {
                 PxVec3 rr_force = local_fwd * rr_direction * spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load;
-                safe_add_force_at_pos(body, rr_force, wheels[i].contact_point);
+                PxRigidDynamic* rr_body = multibody.corners[i].wheel_body ? multibody.corners[i].wheel_body : body;
+                safe_add_force_at_pos(rr_body, rr_force, wheels[i].contact_point);
                 if (const PxRigidDynamic* ground_actor = wheels[i].contact_actor ? wheels[i].contact_actor->is<PxRigidDynamic>() : nullptr)
                 {
                     safe_add_force_at_pos(const_cast<PxRigidDynamic*>(ground_actor), -rr_force, wheels[i].contact_point);
@@ -2404,17 +2405,18 @@ public:
             return;
         }
 
-        float previous_ratio = current_gear == 1 ? 0.0f : spec.gear_ratios[current_gear] * spec.final_drive;
         float next_ratio = gear == 1 ? 0.0f : spec.gear_ratios[gear] * spec.final_drive;
+        // always kill stored twist, ratio sign flips (e.g. into reverse) were detonating the shaft
+        driveshaft_twist = 0.0f;
+        driveshaft_torque = 0.0f;
         if (fabsf(next_ratio) > 0.001f)
         {
-            float gearbox_output_angular_velocity = fabsf(previous_ratio) > 0.001f ? gearbox_input_angular_velocity / previous_ratio : get_average_driven_angular_velocity(false);
-            gearbox_input_angular_velocity = gearbox_output_angular_velocity * next_ratio;
+            // resync from the wheels, remapping through the old ratio keeps spin-state errors
+            gearbox_input_angular_velocity = get_average_driven_angular_velocity(false) * next_ratio;
         }
         else
         {
-            driveshaft_twist = 0.0f;
-            driveshaft_torque = 0.0f;
+            gearbox_input_angular_velocity = 0.0f;
         }
         current_gear = gear;
     }
@@ -2448,9 +2450,10 @@ public:
         }
 
         float speed_kmh = fabsf(forward_speed) * 3.6f;
+        float body_speed_ms = body ? body->getLinearVelocity().magnitude() : fabsf(forward_speed);
 
-        // reverse
-        if (forward_speed < -1.0f && input.brake > 0.1f && throttle < 0.1f && current_gear != 0)
+        // reverse only when actually rolling backward slowly, not while yaw-sliding with near-zero forward
+        if (forward_speed < -0.5f && body_speed_ms < 2.0f && input.brake > 0.1f && throttle < 0.1f && current_gear != 0)
         {
             set_active_gear(0);
             is_shifting = true;
@@ -2512,7 +2515,9 @@ public:
                 downshift_threshold -= 10.0f;
             }
 
-            if (can_shift && speed_kmh < downshift_threshold && current_gear > 2)
+            // hold gear on pure lift, coast downshifts only when braking for engine brake
+            bool brake_requested = input.brake > spec.input_deadzone;
+            if (can_shift && brake_requested && speed_kmh < downshift_threshold && current_gear > 2)
             {
                 set_active_gear(current_gear - 1);
                 is_shifting = true;
@@ -2522,8 +2527,8 @@ public:
                 return;
             }
 
-            // lugging protection avoids target gears near the upshift threshold
-            if (can_shift && current_gear > 2 && engine_rpm < spec.shift_down_rpm)
+            // lugging protection only under throttle, never on a closed pedal coast
+            if (can_shift && throttle > 0.1f && current_gear > 2 && engine_rpm < spec.shift_down_rpm)
             {
                 float ratio          = fabsf(spec.gear_ratios[current_gear - 1]) * spec.final_drive;
                 float potential_rpm  = angular_velocity_to_rpm(fabsf(forward_speed) / get_driven_wheel_radius()) * ratio;
@@ -2676,6 +2681,8 @@ public:
         float drive_input = is_in_reverse() ? input.brake * spec.reverse_power_ratio : input.throttle;
         float blip = downshift_blip_timer > 0.0f ? spec.downshift_blip_amount * downshift_blip_timer / PxMax(spec.downshift_blip_duration, 0.001f) : 0.0f;
         float effective_throttle = PxMax(drive_input, blip);
+        // pedal closed means coast, blip may still raise revs for a matched downshift
+        bool coasting = drive_input <= spec.input_deadzone;
         float boosted_torque = get_engine_torque(engine_rpm) * (1.0f + boost_pressure * spec.boost_torque_mult);
         float combustion_torque = rev_limiter_active ? 0.0f : boosted_torque * effective_throttle * assisted_actuators.engine_torque_scale;
         float idle_angular_velocity = spec.engine_idle_rpm * PxPi * 2.0f / 60.0f;
@@ -2684,7 +2691,15 @@ public:
         float clutch_damping = clutch_capacity / 12.0f;
         float electric_target = is_in_forward_gear() ? get_electric_motor_torque(engine_rpm, input.throttle) * assisted_actuators.engine_torque_scale : 0.0f;
         float electric_rate = spec.electric_torque_response > 0.0f ? spec.electric_torque_response : 50.0f;
-        motor_torque = lerp(motor_torque, electric_target, exp_decay(electric_rate, dt));
+        // snap motor off on lift, lerp decay was still shoving the axle after throttle closed
+        if (coasting)
+        {
+            motor_torque = 0.0f;
+        }
+        else
+        {
+            motor_torque = lerp(motor_torque, electric_target, exp_decay(electric_rate, dt));
+        }
         engine_output_torque = combustion_torque + idle_torque;
         axle_drive_torque = 0.0f;
         engine_brake_torque = 0.0f;
@@ -2699,18 +2714,69 @@ public:
             float clutch_torque = PxClamp(clutch_slip * clutch_damping, -clutch_capacity * clutch, clutch_capacity * clutch);
             float shaft_torque = 0.0f;
             float shaft_speed_difference = 0.0f;
-            if (fabsf(ratio) > 0.001f)
-            {
-                shaft_speed_difference = gearbox_input_angular_velocity / ratio - wheel_angular_velocity;
-                shaft_torque = stiffness > 0.0f ? driveshaft_twist * stiffness + shaft_speed_difference * shaft_damping : clutch_torque * ratio * spec.drivetrain_efficiency;
-                driveshaft_twist += shaft_speed_difference * substep;
-            }
-            else
+            // open driveline during shifts, shaft must not keep shoving the axle
+            bool driveline_open = is_shifting || fabsf(ratio) <= 0.001f;
+            if (driveline_open)
             {
                 driveshaft_twist = 0.0f;
+                clutch_torque = 0.0f;
+                shaft_torque = 0.0f;
+                if (fabsf(ratio) > 0.001f)
+                {
+                    gearbox_input_angular_velocity = wheel_angular_velocity * ratio;
+                }
+            }
+            else if (fabsf(ratio) > 0.001f)
+            {
+                // clutch capacity caps shaft windup so a locked spinning wheel cannot store fake energy
+                float max_shaft_torque = clutch_capacity * fabsf(ratio) * 1.25f;
+                shaft_speed_difference = gearbox_input_angular_velocity / ratio - wheel_angular_velocity;
+                driveshaft_twist += shaft_speed_difference * substep;
+                if (stiffness > 0.0f)
+                {
+                    float max_twist = max_shaft_torque / stiffness;
+                    driveshaft_twist = PxClamp(driveshaft_twist, -max_twist, max_twist);
+                    shaft_torque = driveshaft_twist * stiffness + shaft_speed_difference * shaft_damping;
+                }
+                else
+                {
+                    driveshaft_twist = 0.0f;
+                    shaft_torque = clutch_torque * ratio * spec.drivetrain_efficiency;
+                }
+                shaft_torque = PxClamp(shaft_torque, -max_shaft_torque, max_shaft_torque);
+                // closed pedal cannot propel in the selected gear direction
+                if (coasting)
+                {
+                    if (ratio >= 0.0f)
+                    {
+                        if (driveshaft_twist > 0.0f)
+                        {
+                            driveshaft_twist = 0.0f;
+                        }
+                        if (shaft_torque > 0.0f)
+                        {
+                            shaft_torque = 0.0f;
+                        }
+                    }
+                    else
+                    {
+                        if (driveshaft_twist < 0.0f)
+                        {
+                            driveshaft_twist = 0.0f;
+                        }
+                        if (shaft_torque < 0.0f)
+                        {
+                            shaft_torque = 0.0f;
+                        }
+                    }
+                }
             }
 
-            float friction_torque = spec.engine_friction * engine_angular_velocity;
+            // closed throttle pumping losses, weak viscous friction alone leaves flywheel dump for seconds
+            float coast_factor = 1.0f - PxClamp(effective_throttle, 0.0f, 1.0f);
+            float rpm_above_idle = PxMax(engine_angular_velocity - idle_angular_velocity, 0.0f);
+            float pumping_torque = coast_factor * rpm_above_idle * spec.engine_peak_torque * 0.0004f;
+            float friction_torque = spec.engine_friction * engine_angular_velocity + pumping_torque;
             float engine_acceleration = (combustion_torque + idle_torque - friction_torque - clutch_torque) / engine_inertia;
             float previous_engine_angular_velocity = engine_angular_velocity;
             engine_angular_velocity = PxClamp(engine_angular_velocity + engine_acceleration * substep, 0.0f, spec.engine_max_rpm * PxPi * 4.0f / 60.0f);
@@ -2721,8 +2787,12 @@ public:
             float efficiency_factor = shaft_torque * gearbox_output_angular_velocity >= 0.0f ? 1.0f / efficiency : efficiency;
             float shaft_reaction = fabsf(ratio) > 0.001f ? shaft_torque * efficiency_factor / ratio : 0.0f;
             float driveline_drag = gearbox_input_angular_velocity * spec.bearing_friction * driveline_inertia;
-            float gearbox_acceleration = (clutch_torque - shaft_reaction - driveline_drag) / driveline_inertia;
-            gearbox_input_angular_velocity += gearbox_acceleration * substep;
+            float gearbox_acceleration = 0.0f;
+            if (!driveline_open)
+            {
+                gearbox_acceleration = (clutch_torque - shaft_reaction - driveline_drag) / driveline_inertia;
+                gearbox_input_angular_velocity += gearbox_acceleration * substep;
+            }
             accumulated_axle_torque += shaft_torque;
             accumulated_powertrain_reaction -= engine_inertia * engine_acceleration + driveline_inertia * gearbox_acceleration;
         }
@@ -2784,7 +2854,15 @@ public:
             return;
         }
 
-        bool reverse_requested = !spec.manual_transmission && fabsf(forward_speed_ms) < 0.5f && input.brake > 0.8f && input.throttle < spec.input_deadzone && is_in_forward_gear() && !is_shifting;
+        // require true near-stop, forward-only gate was engaging reverse mid-spin
+        float body_speed_ms = body ? body->getLinearVelocity().magnitude() : fabsf(forward_speed_ms);
+        bool reverse_requested = !spec.manual_transmission
+            && body_speed_ms < 1.0f
+            && fabsf(forward_speed_ms) < 0.5f
+            && input.brake > 0.8f
+            && input.throttle < spec.input_deadzone
+            && is_in_forward_gear()
+            && !is_shifting;
         if (reverse_requested)
         {
             clear_abs_state();
@@ -3008,9 +3086,13 @@ public:
                 }
                 if (wheel_actor)
                 {
-                    PxVec3 hub_torque = wheel_axis * w.net_torque;
-                    safe_add_torque(wheel_actor, hub_torque);
-                    safe_add_torque(multibody.corners[i].upright, -hub_torque);
+                    // irs: only the brake caliper reacts on the upright, drive is internal to the chassis
+                    float brake_signed = brake_torque_sign(i) * w.brake_torque;
+                    safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
+                    if (multibody.corners[i].upright)
+                    {
+                        safe_add_torque(multibody.corners[i].upright, wheel_axis * (-brake_signed));
+                    }
                 }
 
                 // airborne cooling: all zones cool at 3x rate
@@ -3135,6 +3217,18 @@ public:
             lat_f  = static_lat_f  * (1.0f - pacejka_weight) + dynamic_force.lateral * pacejka_weight;
             long_f = static_long_f * (1.0f - pacejka_weight) + dynamic_force.longitudinal * pacejka_weight;
 
+            // reclamp after blend, static and pacejka peaks can otherwise stack past mu n
+            {
+                float ellipse_x = long_f / PxMax(peak_force_long, 1.0f);
+                float ellipse_y = lat_f / PxMax(peak_force_lat, 1.0f);
+                float ellipse = sqrtf(ellipse_x * ellipse_x + ellipse_y * ellipse_y);
+                if (ellipse > 1.0f)
+                {
+                    long_f /= ellipse;
+                    lat_f /= ellipse;
+                }
+            }
+
             if (log_pacejka)
             {
                 SP_LOG_INFO("[%s] blend=%.2f, lat_f=%.1f, long_f=%.1f", wheel_name, pacejka_weight, lat_f, long_f);
@@ -3198,7 +3292,10 @@ public:
 
             PxVec3 fpos = w.grounded ? w.contact_point : world_pos;
             PxVec3 tire_force = wheel_lat * lat_f + wheel_fwd * long_f;
-            safe_add_force_at_pos(wheel_actor ? wheel_actor : body, tire_force, fpos);
+            // same body as the normal force (wheel), so the suspension carries the wrench
+            // chassis-at-patch skipped anti-squat and invented wheelie pitch / yaw couples
+            PxRigidDynamic* force_body = wheel_actor ? wheel_actor : body;
+            safe_add_force_at_pos(force_body, tire_force, fpos);
             if (w.contact_actor)
             {
                 if (const PxRigidDynamic* ground_actor = w.contact_actor->is<PxRigidDynamic>())
@@ -3211,9 +3308,14 @@ public:
 
             if (wheel_actor)
             {
-                PxVec3 hub_torque = wheel_axis * w.net_torque;
-                safe_add_torque(wheel_actor, hub_torque);
-                safe_add_torque(multibody.corners[i].upright, -hub_torque);
+                float brake_signed = brake_torque_sign(i) * w.brake_torque;
+                // wheel: drive, brake, bearing, and pacejka reaction
+                safe_add_torque(wheel_actor, wheel_axis * (w.net_torque - long_f * wr_eff));
+                if (multibody.corners[i].upright)
+                {
+                    // caliper on upright only, irs drive reaction must not pitch the knuckle
+                    safe_add_torque(multibody.corners[i].upright, wheel_axis * (-brake_signed));
+                }
             }
 
             w.rotation += w.angular_velocity * dt;

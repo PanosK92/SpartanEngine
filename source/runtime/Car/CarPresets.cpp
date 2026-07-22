@@ -6,6 +6,7 @@
 #include <sstream>
 #include <utility>
 #include <mutex>
+#include <unordered_set>
 
 using namespace std;
 
@@ -16,6 +17,8 @@ namespace car
         // world loading creates car prefabs from multiple threads, definitions and
         // preset_registry are shared globals so their mutation must be serialized
         mutex load_mutex;
+        mutex directory_mutex;
+        unordered_set<string> loaded_directories;
 
         void read_float(pugi::xml_node node, const char* name, float& value)
         {
@@ -561,17 +564,25 @@ namespace car
 
     void load_car_directory(const string& directory)
     {
-        if (!spartan::FileSystem::IsDirectory(directory))
+        const string path = normalize_path(directory);
+        if (!spartan::FileSystem::IsDirectory(path))
         {
             return;
         }
 
-        for (const string& file : spartan::FileSystem::GetFilesInDirectory(directory))
+        lock_guard<mutex> lock(directory_mutex);
+        if (loaded_directories.find(path) != loaded_directories.end())
+        {
+            return;
+        }
+
+        for (const string& file : spartan::FileSystem::GetFilesInDirectory(path))
         {
             if (spartan::FileSystem::GetExtensionFromFilePath(file) == ".car")
             {
                 load_car_file(file);
             }
         }
+        loaded_directories.insert(path);
     }
 }

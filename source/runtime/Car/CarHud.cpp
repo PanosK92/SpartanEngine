@@ -53,11 +53,6 @@ namespace spartan::car_hud
         const ImU32 text_label     = IM_COL32(120, 130, 142, 255);
         const ImU32 track_dim      = IM_COL32(38, 44, 52, 255);
 
-        // dashboard layout constants for telemetry overview tab
-        constexpr float arc_start  = pi * 0.75f;
-        constexpr float arc_end    = pi * 2.25f;
-        constexpr float arc_range  = arc_end - arc_start;
-
         // helper: draw the unified panel background with a subtle drop shadow and inner hairline
         void draw_panel_background(ImDrawList* dl, ImVec2 tl, ImVec2 br, float rounding = 8.0f)
         {
@@ -144,194 +139,6 @@ namespace spartan::car_hud
                 return accent_info;
             }
             return accent_ok;
-        }
-
-        // helper: a sweep arc gauge (used for tach, speedo, boost). drawn entirely with the draw list
-        // so it can be sized for both the compact driver hud and the full overview panel
-        struct gauge_spec
-        {
-            float       radius           = 64.0f;
-            float       value            = 0.0f;
-            float       value_max        = 1.0f;
-            const char* label            = "";
-            const char* value_text       = nullptr;
-            int         tick_count       = 8;
-            int         major_every      = 1;
-            bool        draw_ticks       = true;
-            bool        draw_labels      = true;
-            bool        labels_as_int    = true;
-            float       label_divider    = 1.0f;  // tick label = (i * value_max / tick_count) / label_divider
-            float       redline_fraction = 1.1f;  // > 1 disables the redline band
-            ImU32       needle_color     = IM_COL32(255, 80, 80, 255);
-            ImU32       value_color      = IM_COL32(255, 255, 255, 255);
-        };
-
-        // colour ramp for the sweep arc depending on the gauge type
-        ImU32 arc_color_for_speed(float fraction)
-        {
-            if (fraction < 0.45f)
-            {
-                return IM_COL32(60, 140, 90, 255);
-            }
-            if (fraction < 0.75f)
-            {
-                return IM_COL32(160, 140, 60, 255);
-            }
-            return IM_COL32(190, 70, 70, 255);
-        }
-        ImU32 arc_color_for_rpm(float fraction, float redline_fraction)
-        {
-            if (fraction >= redline_fraction)
-            {
-                return IM_COL32(220, 70, 70, 255);
-            }
-            if (fraction < 0.65f)
-            {
-                return IM_COL32(70, 160, 100, 255);
-            }
-            return IM_COL32(190, 160, 60, 255);
-        }
-        ImU32 arc_color_for_boost(float fraction)
-        {
-            if (fraction < 0.30f)
-            {
-                return IM_COL32(80, 100, 130, 255);
-            }
-            if (fraction < 0.60f)
-            {
-                return IM_COL32(50, 130, 160, 255);
-            }
-            if (fraction < 0.85f)
-            {
-                return IM_COL32(60, 170, 100, 255);
-            }
-            return IM_COL32(210, 80, 60, 255);
-        }
-
-        enum class gauge_kind { speed, rpm, boost };
-
-        void draw_gauge(ImDrawList* dl, ImVec2 center, gauge_kind kind, const gauge_spec& s)
-        {
-            float r = s.radius;
-            float fraction = (s.value_max > 0.0f) ? (s.value / s.value_max) : 0.0f;
-            fraction = std::clamp(fraction, 0.0f, 1.0f);
-
-            // outer ring + face
-            dl->AddCircleFilled(center, r, IM_COL32(20, 24, 30, 255), 64);
-            dl->AddCircle(center, r, IM_COL32(60, 70, 82, 255), 64, 1.5f);
-
-            // dim track behind the arc for context
-            const int track_segments = 64;
-            for (int i = 0; i < track_segments; ++i)
-            {
-                float a1 = arc_start + (arc_range * i / track_segments);
-                float a2 = arc_start + (arc_range * (i + 1) / track_segments);
-                ImVec2 p1(center.x + cosf(a1) * (r - 10), center.y + sinf(a1) * (r - 10));
-                ImVec2 p2(center.x + cosf(a1) * (r - 4),  center.y + sinf(a1) * (r - 4));
-                ImVec2 p3(center.x + cosf(a2) * (r - 4),  center.y + sinf(a2) * (r - 4));
-                ImVec2 p4(center.x + cosf(a2) * (r - 10), center.y + sinf(a2) * (r - 10));
-                dl->AddQuadFilled(p1, p2, p3, p4, IM_COL32(40, 46, 54, 220));
-            }
-
-            // active sweep, coloured by gauge kind
-            const int sweep_segments = std::max(8, (int)(track_segments * fraction));
-            for (int i = 0; i < sweep_segments; ++i)
-            {
-                float seg_frac_0 = (float)i       / track_segments;
-                float seg_frac_1 = (float)(i + 1) / track_segments;
-                if (seg_frac_0 >= fraction)
-                {
-                    break;
-                }
-                float a1 = arc_start + arc_range * seg_frac_0;
-                float a2 = arc_start + arc_range * std::min(seg_frac_1, fraction);
-
-                ImU32 c = IM_COL32_WHITE;
-                if      (kind == gauge_kind::speed)
-                {
-                    c = arc_color_for_speed(seg_frac_0);
-                }
-                else if (kind == gauge_kind::rpm)
-                {
-                    c = arc_color_for_rpm(seg_frac_0, s.redline_fraction);
-                }
-                else
-                {
-                    c = arc_color_for_boost(seg_frac_0);
-                }
-
-                ImVec2 p1(center.x + cosf(a1) * (r - 10), center.y + sinf(a1) * (r - 10));
-                ImVec2 p2(center.x + cosf(a1) * (r - 4),  center.y + sinf(a1) * (r - 4));
-                ImVec2 p3(center.x + cosf(a2) * (r - 4),  center.y + sinf(a2) * (r - 4));
-                ImVec2 p4(center.x + cosf(a2) * (r - 10), center.y + sinf(a2) * (r - 10));
-                dl->AddQuadFilled(p1, p2, p3, p4, c);
-            }
-
-            // ticks
-            if (s.draw_ticks)
-            {
-                for (int i = 0; i <= s.tick_count; ++i)
-                {
-                    float t = (float)i / (float)s.tick_count;
-                    float a = arc_start + arc_range * t;
-                    bool major = (i % s.major_every == 0);
-                    float inner = major ? (r - 18) : (r - 14);
-                    float outer = r - 4;
-                    bool in_redline = (kind == gauge_kind::rpm) && (t >= s.redline_fraction);
-                    ImU32 tc = in_redline ? IM_COL32(255, 100, 100, 255) : (major ? text_primary : text_label);
-                    ImVec2 ip(center.x + cosf(a) * inner, center.y + sinf(a) * inner);
-                    ImVec2 op(center.x + cosf(a) * outer, center.y + sinf(a) * outer);
-                    dl->AddLine(ip, op, tc, major ? 1.6f : 1.0f);
-
-                    if (major && s.draw_labels && r > 50.0f)
-                    {
-                        char buf[8];
-                        if (s.labels_as_int)
-                        {
-                            snprintf(buf, sizeof(buf), "%d", (int)((s.value_max * t) / s.label_divider));
-                        }
-                        else
-                        {
-                            snprintf(buf, sizeof(buf), "%.1f", (s.value_max * t) / s.label_divider);
-                        }
-                        float lr = r - 28;
-                        ImVec2 size = ImGui::CalcTextSize(buf);
-                        ImVec2 lp(center.x + cosf(a) * lr - size.x * 0.5f, center.y + sinf(a) * lr - size.y * 0.5f);
-                        dl->AddText(lp, in_redline ? IM_COL32(255, 120, 120, 255) : text_dim, buf);
-                    }
-                }
-            }
-
-            // needle
-            float needle_angle  = arc_start + fraction * arc_range;
-            float needle_length = r - 18;
-            ImVec2 tip (center.x + cosf(needle_angle) * needle_length, center.y + sinf(needle_angle) * needle_length);
-            ImVec2 bl  (center.x + cosf(needle_angle + 1.57f) * 3.0f,  center.y + sinf(needle_angle + 1.57f) * 3.0f);
-            ImVec2 br_ (center.x + cosf(needle_angle - 1.57f) * 3.0f,  center.y + sinf(needle_angle - 1.57f) * 3.0f);
-            ImVec2 back(center.x + cosf(needle_angle + pi) * 10.0f,    center.y + sinf(needle_angle + pi) * 10.0f);
-            dl->AddTriangleFilled(tip, bl, br_, s.needle_color);
-            dl->AddTriangleFilled(bl, br_, back, IM_COL32(140, 60, 60, 255));
-
-            // hub
-            dl->AddCircleFilled(center, 7.0f, IM_COL32(50, 56, 64, 255), 18);
-            dl->AddCircle(center, 7.0f, IM_COL32(120, 130, 142, 255), 18, 1.5f);
-
-            // big value text below center, then unit/label on its own line. spacing is derived from
-            // the actual text height so they never visually touch even at small radii
-            float text_h     = ImGui::GetTextLineHeight();
-            float value_y    = center.y + 8.0f;
-            float label_y    = value_y + text_h + 4.0f;
-            if (s.value_text && s.value_text[0])
-            {
-                ImVec2 size = ImGui::CalcTextSize(s.value_text);
-                dl->AddText(ImVec2(center.x - size.x * 0.5f, value_y), s.value_color, s.value_text);
-            }
-
-            if (s.label && s.label[0])
-            {
-                ImVec2 size = ImGui::CalcTextSize(s.label);
-                dl->AddText(ImVec2(center.x - size.x * 0.5f, label_y), text_label, s.label);
-            }
         }
 
         // status pill, only drawn when state >= 'idle'. cross fades alpha based on a static per-tag timer
@@ -529,272 +336,622 @@ namespace spartan::car_hud
             return;
         }
 
-        math::Vector3 velocity = physics->GetLinearVelocity();
-        float speed_kmh        = velocity.Length() * 3.6f;
-        float engine_rpm       = physics->GetEngineRPM();
-        float redline_rpm      = physics->GetRedlineRPM();
-        bool  turbo_enabled    = physics->GetTurboEnabled();
-        float boost_bar        = physics->GetBoostPressure();
-        bool  is_shifting      = physics->IsShifting();
-        const char* gear_str   = physics->GetCurrentGearString();
-        float throttle         = physics->GetVehicleThrottle();
-        float brake            = physics->GetVehicleBrake();
-        float steer            = physics->GetVehicleSteering();
-        float handbrake        = physics->GetVehicleHandbrake();
-
-        // anchor a full width strip to the bottom of the viewport so it spans left to right like a real
-        // game hud, fall back to the whole display if the viewport rect is not published yet
-        const float panel_h     = 178.0f;
-        const float side_margin = 12.0f;
+        const math::Vector3 velocity = physics->GetLinearVelocity();
+        const float speed_kmh        = velocity.Length() * 3.6f;
+        const float engine_rpm       = physics->GetEngineRPM();
+        const float redline_rpm      = std::max(
+            physics->GetRedlineRPM(),
+            1.0f
+        );
+        const bool turbo_enabled     = physics->GetTurboEnabled();
+        const float boost_bar        = physics->GetBoostPressure();
+        const bool is_shifting       = physics->IsShifting();
+        const char* gear_str         = physics->GetCurrentGearString();
+        const float throttle         = physics->GetVehicleThrottle();
+        const float brake            = physics->GetVehicleBrake();
+        const float steer            = physics->GetVehicleSteering();
+        const float handbrake        = physics->GetVehicleHandbrake();
 
         const math::Vector2& vp_pos  = Viewport::GetScreenPosition();
         const math::Vector2& vp_size = Viewport::GetScreenSize();
-        float region_left   = 0.0f;
-        float region_width  = io.DisplaySize.x;
-        float anchor_bottom = io.DisplaySize.y;
+        float region_left            = 0.0f;
+        float region_width           = io.DisplaySize.x;
+        float anchor_bottom          = io.DisplaySize.y;
         if (vp_size.x > 100.0f && vp_size.y > 100.0f)
         {
             region_left   = vp_pos.x;
             region_width  = vp_size.x;
             anchor_bottom = vp_pos.y + vp_size.y;
         }
-        const float panel_w = region_width - side_margin * 2.0f;
-        ImVec2 panel_pos(region_left + side_margin, anchor_bottom - panel_h - 18.0f);
 
-        ImGui::SetNextWindowPos(panel_pos, ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(panel_w, panel_h), ImGuiCond_Always);
+        const float scale = std::clamp(
+            region_width / 1600.0f,
+            0.90f,
+            1.15f
+        );
+        const float margin   = 24.0f * scale;
+        const float panel_h  = 150.0f * scale;
+        const float panel_w  = std::min(
+            560.0f * scale,
+            region_width * 0.58f
+        );
+        const float window_h = panel_h + 54.0f * scale;
+        const ImVec2 window_pos(
+            region_left,
+            anchor_bottom - window_h - margin
+        );
+
+        ImGui::SetNextWindowPos(
+            window_pos,
+            ImGuiCond_Always
+        );
+        ImGui::SetNextWindowSize(
+            ImVec2(region_width, window_h),
+            ImGuiCond_Always
+        );
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
 
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
-                               | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings
-                               | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav
-                               | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoInputs
-                               | ImGuiWindowFlags_NoDocking;
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_NoFocusOnAppearing |
+            ImGuiWindowFlags_NoInputs |
+            ImGuiWindowFlags_NoDocking;
 
         if (ImGui::Begin("##car_driver_hud", nullptr, flags))
         {
-            // draw on the foreground list so the strip always sits on top of the viewport image instead
-            // of being hidden behind it, the transparent window is only used as a layout scaffold
             ImDrawList* dl = ImGui::GetForegroundDrawList();
-            ImVec2 tl     = ImGui::GetCursorScreenPos();
+            ImVec2 origin = ImGui::GetCursorScreenPos();
+            ImVec2 panel_tl(
+                origin.x + (region_width - panel_w) * 0.5f,
+                origin.y + 48.0f * scale
+            );
+            ImVec2 panel_br(
+                panel_tl.x + panel_w,
+                panel_tl.y + panel_h
+            );
 
-            // full width cockpit strip, elements are spread across the bar instead of clustered in the
-            // middle, the input bars sit on the left, the dials spread across the centre and the assist
-            // tell tales form a column on the right
-            const float mid_y     = tl.y + panel_h * 0.5f;
-            const float pad       = 30.0f;
-            const float content_l = tl.x + pad;
-            const float content_r = tl.x + panel_w - pad;
-
-            // ---- left, throttle / brake / steering bars ----
-            const float in_label_w = 48.0f;
-            const float in_bar_w   = 168.0f;
-            const float in_val_w   = 52.0f;
-            const float in_block_w = in_label_w + in_bar_w + in_val_w;
+            dl->AddRectFilled(
+                ImVec2(
+                    panel_tl.x + 2.0f * scale,
+                    panel_tl.y + 5.0f * scale
+                ),
+                ImVec2(
+                    panel_br.x + 2.0f * scale,
+                    panel_br.y + 5.0f * scale
+                ),
+                IM_COL32(0, 0, 0, 110),
+                7.0f * scale
+            );
+            dl->AddRectFilled(
+                panel_tl,
+                panel_br,
+                IM_COL32(10, 14, 19, 205),
+                7.0f * scale
+            );
+            const float gradient_h = panel_h / 6.0f;
+            for (int i = 0; i < 6; ++i)
             {
-                const float bar_h_l = 12.0f;
-                const float row_gap = 36.0f;
-                float row_y         = mid_y - row_gap;
+                const int alpha = 26 - i * 3;
+                dl->AddRectFilled(
+                    ImVec2(
+                        panel_tl.x + 1.0f * scale,
+                        panel_tl.y +
+                        gradient_h * static_cast<float>(i)
+                    ),
+                    ImVec2(
+                        panel_br.x - 1.0f * scale,
+                        panel_tl.y +
+                        gradient_h *
+                        static_cast<float>(i + 1)
+                    ),
+                    IM_COL32(78, 105, 122, alpha),
+                    i == 0 ? 7.0f * scale : 0.0f
+                );
+            }
+            dl->AddRect(
+                panel_tl,
+                panel_br,
+                IM_COL32(110, 135, 150, 100),
+                7.0f * scale,
+                1.0f * scale
+            );
+            dl->AddRect(
+                ImVec2(
+                    panel_tl.x + 2.0f * scale,
+                    panel_tl.y + 2.0f * scale
+                ),
+                ImVec2(
+                    panel_br.x - 2.0f * scale,
+                    panel_br.y - 2.0f * scale
+                ),
+                IM_COL32(220, 240, 250, 24),
+                6.0f * scale,
+                1.0f
+            );
 
-                auto input_bar = [&](const char* label, float value, ImU32 color, bool signed_pct, float y)
-                {
-                    dl->AddText(ImVec2(content_l, y - 7.0f), text_label, label);
-                    float bx = content_l + in_label_w;
-                    ImVec2 b_tl(bx, y - bar_h_l * 0.5f);
-                    ImVec2 b_br(bx + in_bar_w, y + bar_h_l * 0.5f);
-                    dl->AddRectFilled(b_tl, b_br, track_dim, 3.0f);
-                    if (signed_pct)
-                    {
-                        float cx = b_tl.x + in_bar_w * 0.5f;
-                        dl->AddLine(ImVec2(cx, b_tl.y), ImVec2(cx, b_br.y), IM_COL32(110, 120, 134, 200), 1.0f);
-                        float ix = cx + std::clamp(value, -1.0f, 1.0f) * in_bar_w * 0.5f;
-                        dl->AddRectFilled(ImVec2(ix - 3.0f, b_tl.y - 1.0f), ImVec2(ix + 3.0f, b_br.y + 1.0f), color, 2.0f);
-                    }
-                    else
-                    {
-                        dl->AddRectFilled(b_tl, ImVec2(b_tl.x + in_bar_w * std::clamp(value, 0.0f, 1.0f), b_br.y), color, 3.0f);
-                    }
-                    dl->AddRect(b_tl, b_br, IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
-                    char buf[8];
-                    if (signed_pct)
-                    {
-                        snprintf(buf, sizeof(buf), "%+.0f%%", value * 100.0f);
-                    }
-                    else
-                    {
-                        snprintf(buf, sizeof(buf), "%.0f%%", value * 100.0f);
-                    }
-                    dl->AddText(ImVec2(b_br.x + 8.0f, y - 7.0f), text_dim, buf);
-                };
+            const ImU32 cyan       = IM_COL32(104, 218, 255, 255);
+            const ImU32 red        = IM_COL32(255, 72, 78, 255);
+            const ImU32 white      = IM_COL32(245, 248, 250, 255);
+            const ImU32 line_color = IM_COL32(112, 126, 140, 70);
+            ImFont* font           = ImGui::GetFont();
 
-                input_bar("THR",   throttle, accent_ok,     false, row_y);
-                input_bar("BRK",   brake,    accent_danger, false, row_y + row_gap);
-                input_bar("STEER", steer,    accent_warn,   true,  row_y + row_gap * 2.0f);
+            auto draw_text = [&](
+                const char* text,
+                float size,
+                ImVec2 position,
+                ImU32 color
+            )
+            {
+                dl->AddText(
+                    font,
+                    size * scale,
+                    position,
+                    color,
+                    text
+                );
+            };
+
+            static pill_anim abs_anim;
+            static pill_anim tcs_anim;
+            static pill_anim drs_anim;
+            static pill_anim hbrk_anim;
+            static pill_anim turbo_anim;
+
+            const bool abs_on     = physics->GetAbsEnabled();
+            const bool abs_active = physics->IsAbsActiveAny();
+            const bool abs_grab   =
+                abs_active &&
+                physics->GetAbsPhase() >= 0.5f;
+            const bool tcs_on     = physics->GetTcEnabled();
+            const bool tcs_active = physics->IsTcActive();
+            const bool drs_on     = physics->GetDrsEnabled();
+            const bool drs_active = physics->GetDrsActive();
+            const bool hbrk_active = handbrake > 0.1f;
+            const bool turbo_active =
+                turbo_enabled &&
+                boost_bar > 0.5f;
+
+            const pill_state abs_state =
+                abs_active
+                ? (abs_grab ? pill_state::active : pill_state::idle)
+                : (abs_on ? pill_state::idle : pill_state::off);
+            const pill_state tcs_state =
+                tcs_active
+                ? pill_state::active
+                : (tcs_on ? pill_state::idle : pill_state::off);
+            const pill_state drs_state =
+                drs_active
+                ? pill_state::active
+                : (drs_on ? pill_state::idle : pill_state::off);
+            const pill_state turbo_state =
+                turbo_active
+                ? pill_state::active
+                : (turbo_enabled ? pill_state::idle : pill_state::off);
+            const pill_state hbrk_state =
+                hbrk_active
+                ? pill_state::active
+                : pill_state::idle;
+
+            const float pill_w   = 54.0f * scale;
+            const float pill_gap = 6.0f * scale;
+            const float pill_y =
+                panel_br.y -
+                24.0f * scale;
+            float pill_x =
+                origin.x +
+                region_width -
+                margin -
+                pill_w;
+
+            auto add_pill = [&](
+                const char* text,
+                pill_state state,
+                pill_anim& animation,
+                ImU32 color,
+                bool instant
+            )
+            {
+                draw_status_pill(
+                    dl,
+                    ImVec2(pill_x, pill_y),
+                    text,
+                    state,
+                    animation,
+                    io.DeltaTime,
+                    color,
+                    pill_w,
+                    instant
+                );
+                pill_x -= pill_w + pill_gap;
+            };
+
+            add_pill(
+                "HBRK",
+                hbrk_state,
+                hbrk_anim,
+                accent_danger,
+                false
+            );
+            add_pill(
+                "DRS",
+                drs_state,
+                drs_anim,
+                accent_ok,
+                false
+            );
+            add_pill(
+                "TCS",
+                tcs_state,
+                tcs_anim,
+                IM_COL32(255, 218, 72, 255),
+                false
+            );
+            add_pill(
+                "ABS",
+                abs_state,
+                abs_anim,
+                accent_warn,
+                abs_active
+            );
+            if (turbo_enabled)
+            {
+                add_pill(
+                    "BOOST",
+                    turbo_state,
+                    turbo_anim,
+                    cyan,
+                    false
+                );
             }
 
-            // ---- right, assist tell tales as a fixed width column, always visible, dim when off ----
-            float assists_l;
+            const float tach_x = panel_tl.x + 18.0f * scale;
+            const float tach_y = panel_tl.y + 14.0f * scale;
+            const float tach_w = panel_w - 36.0f * scale;
+            const float tach_h = 12.0f * scale;
+            const int segment_count = 32;
+            const float segment_gap = 2.0f * scale;
+            const float segment_w =
+                (tach_w - segment_gap * (segment_count - 1)) /
+                segment_count;
+            const float rpm_max = std::max(
+                10000.0f,
+                redline_rpm * 1.08f
+            );
+            const float rpm_fraction = std::clamp(
+                engine_rpm / rpm_max,
+                0.0f,
+                1.0f
+            );
+            const float redline_fraction = std::clamp(
+                redline_rpm / rpm_max,
+                0.0f,
+                1.0f
+            );
+
+            for (int i = 0; i < segment_count; ++i)
             {
-                static pill_anim a_abs, a_tcs, a_drs, a_hbrk, a_turbo;
-                bool abs_on    = physics->GetAbsEnabled();
-                bool abs_act   = physics->IsAbsActiveAny();
-                bool tcs_on    = physics->GetTcEnabled();
-                bool tcs_act   = physics->IsTcActive();
-                bool drs_on    = physics->GetDrsEnabled();
-                bool drs_act   = physics->GetDrsActive();
-                bool hbrk_act  = handbrake > 0.1f;
-                bool turbo_act = turbo_enabled && boost_bar > 0.5f;
+                const float fraction =
+                    static_cast<float>(i + 1) /
+                    static_cast<float>(segment_count);
+                const float x =
+                    tach_x +
+                    i * (segment_w + segment_gap);
+                const bool active = fraction <= rpm_fraction;
+                const bool redline = fraction >= redline_fraction;
+                ImU32 color = IM_COL32(58, 67, 76, 150);
 
-                // abs grabs and releases the disc at the modulation frequency, drive the tell tale straight
-                // from that phase so it visibly flickers in sync instead of sitting solidly lit
-                bool abs_grab = abs_act && physics->GetAbsPhase() >= 0.5f;
-
-                pill_state s_abs   = abs_act ? (abs_grab ? pill_state::active : pill_state::idle) : (abs_on ? pill_state::idle : pill_state::off);
-                pill_state s_tcs   = tcs_act ? pill_state::active : (tcs_on ? pill_state::idle : pill_state::off);
-                pill_state s_drs   = drs_act ? pill_state::active : (drs_on ? pill_state::idle : pill_state::off);
-                pill_state s_turbo = turbo_act ? pill_state::active : (turbo_enabled ? pill_state::idle : pill_state::off);
-                pill_state s_hbrk  = hbrk_act ? pill_state::active : pill_state::idle;
-
-                const float pill_w   = 66.0f;
-                const float pill_h   = ImGui::CalcTextSize("A").y + 6.0f;
-                const float pill_gap = 6.0f;
-                float total_h        = pill_h * 5.0f + pill_gap * 4.0f;
-                float py             = mid_y - total_h * 0.5f;
-                float px             = content_r - pill_w;
-                assists_l            = px;
-
-                // each tell tale lights with a colour that matches the real car, abs amber, tcs yellow,
-                // turbo cyan, drs green, handbrake red, so an engaged system is obvious at a glance
-                auto stack_pill = [&](const char* text, pill_state st, pill_anim& anim, ImU32 accent, bool instant)
+                if (active)
                 {
-                    draw_status_pill(dl, ImVec2(px, py), text, st, anim, io.DeltaTime, accent, pill_w, instant);
-                    py += pill_h + pill_gap;
-                };
-                stack_pill("ABS",   s_abs,   a_abs,   accent_warn,              abs_act);
-                stack_pill("TCS",   s_tcs,   a_tcs,   IM_COL32(255, 225, 60, 255), false);
-                stack_pill("TURBO", s_turbo, a_turbo, accent_info,              false);
-                stack_pill("DRS",   s_drs,   a_drs,   accent_ok,                false);
-                stack_pill("HBRK",  s_hbrk,  a_hbrk,  accent_danger,            false);
+                    color = redline ? red : cyan;
+                }
+                else if (redline)
+                {
+                    color = IM_COL32(100, 40, 44, 170);
+                }
+
+                dl->AddRectFilled(
+                    ImVec2(x, tach_y),
+                    ImVec2(x + segment_w, tach_y + tach_h),
+                    color,
+                    1.5f * scale
+                );
             }
 
-            // ---- centre, dials spread evenly across the free space between inputs and tell tales ----
+            if (engine_rpm >= redline_rpm || is_shifting)
             {
-                int   slots      = turbo_enabled ? 4 : 3;
-                float zone_l     = content_l + in_block_w + 26.0f;
-                float zone_r     = assists_l - 26.0f;
-                float zone_w     = zone_r - zone_l;
-
-                float gauge_r    = 56.0f;
-                float gear_box_w = 88.0f;
-                float g_gap      = 24.0f;
-                float cluster_w  = gauge_r * 2.0f * (turbo_enabled ? 3.0f : 2.0f) + gear_box_w + g_gap * (float)(slots - 1);
-
-                // shrink to fit narrow viewports so the dials never overlap each other or the side blocks
-                if (cluster_w > zone_w && cluster_w > 0.0f)
-                {
-                    float s     = zone_w / cluster_w;
-                    gauge_r    *= s;
-                    gear_box_w *= s;
-                    g_gap      *= s;
-                    cluster_w   = zone_w;
-                }
-
-                float gauge_d  = gauge_r * 2.0f;
-                float gauge_cy = tl.y + 16.0f + gauge_r;
-                float x        = zone_l + (zone_w - cluster_w) * 0.5f;
-
-                float tach_cx  = x + gauge_r;                       x += gauge_d + g_gap;
-                float gear_cx  = x + gear_box_w * 0.5f;             x += gear_box_w + g_gap;
-                float speed_cx = x + gauge_r;                       x += gauge_d + g_gap;
-                float boost_cx = x + gauge_r;
-
-                // tach
-                {
-                    gauge_spec spec;
-                    spec.radius           = gauge_r;
-                    spec.value            = engine_rpm;
-                    spec.value_max        = 10000.0f;
-                    spec.tick_count       = 10;
-                    spec.major_every      = 1;
-                    spec.draw_labels      = false;
-                    spec.label_divider    = 1000.0f;
-                    spec.redline_fraction = redline_rpm / 10000.0f;
-                    spec.needle_color     = (engine_rpm > redline_rpm) ? IM_COL32(255, 120, 120, 255) : IM_COL32(220, 80, 80, 255);
-                    char rpm_text[16]; snprintf(rpm_text, sizeof(rpm_text), "%.1fk", engine_rpm / 1000.0f);
-                    spec.value_text       = rpm_text;
-                    spec.label            = "RPM";
-                    spec.value_color      = spec.needle_color;
-                    draw_gauge(dl, ImVec2(tach_cx, gauge_cy), gauge_kind::rpm, spec);
-                }
-
-                // gear box
-                {
-                    static float gear_pulse = 0.0f;
-                    static bool  prev_shift = false;
-                    if (is_shifting && !prev_shift)
-                    {
-                        gear_pulse = 1.0f;
-                    }
-                    prev_shift = is_shifting;
-                    gear_pulse = std::max(0.0f, gear_pulse - io.DeltaTime * 5.0f);
-                    float scale = 1.0f + gear_pulse * 0.18f;
-                    float fsize = gauge_d * 0.58f * scale;
-                    ImU32 gc    = is_shifting ? accent_warn : (engine_rpm > redline_rpm ? accent_danger : text_primary);
-
-                    float box_h = gauge_d - 6.0f;
-                    ImVec2 box_tl(gear_cx - gear_box_w * 0.5f, gauge_cy - box_h * 0.5f);
-                    ImVec2 box_br(box_tl.x + gear_box_w, box_tl.y + box_h);
-                    dl->AddRectFilled(box_tl, box_br, IM_COL32(8, 10, 14, 230), 8.0f);
-                    dl->AddRect(box_tl, box_br, IM_COL32(80, 95, 110, 140), 8.0f, 1.0f);
-
-                    ImFont* font = ImGui::GetFont();
-                    ImVec2 gts   = font->CalcTextSizeA(fsize, FLT_MAX, 0.0f, gear_str);
-                    dl->AddText(font, fsize, ImVec2(box_tl.x + (gear_box_w - gts.x) * 0.5f, box_tl.y + (box_h - gts.y) * 0.5f), gc, gear_str);
-                    ImVec2 ls = ImGui::CalcTextSize("GEAR");
-                    dl->AddText(ImVec2(box_tl.x + (gear_box_w - ls.x) * 0.5f, box_br.y + 4.0f), text_label, "GEAR");
-                }
-
-                // speed
-                {
-                    gauge_spec spec;
-                    spec.radius           = gauge_r;
-                    spec.value            = std::min(speed_kmh, 350.0f);
-                    spec.value_max        = 350.0f;
-                    spec.tick_count       = 7;
-                    spec.major_every      = 1;
-                    spec.draw_labels      = false;
-                    spec.label_divider    = 1.0f;
-                    spec.needle_color     = IM_COL32(220, 80, 80, 255);
-                    char sp[16]; snprintf(sp, sizeof(sp), "%.0f", speed_kmh);
-                    spec.value_text       = sp;
-                    spec.label            = "km/h";
-                    draw_gauge(dl, ImVec2(speed_cx, gauge_cy), gauge_kind::speed, spec);
-                }
-
-                // boost
-                if (turbo_enabled)
-                {
-                    gauge_spec spec;
-                    spec.radius           = gauge_r;
-                    spec.value            = std::min(boost_bar, 2.5f);
-                    spec.value_max        = 2.5f;
-                    spec.tick_count       = 5;
-                    spec.major_every      = 1;
-                    spec.draw_labels      = false;
-                    spec.label_divider    = 1.0f;
-                    spec.needle_color     = (boost_bar > 2.0f) ? accent_danger : accent_info;
-                    char bp[16]; snprintf(bp, sizeof(bp), "%.1f", boost_bar);
-                    spec.value_text       = bp;
-                    spec.label            = "bar";
-                    spec.value_color      = spec.needle_color;
-                    draw_gauge(dl, ImVec2(boost_cx, gauge_cy), gauge_kind::boost, spec);
-                }
+                const float pulse =
+                    0.55f +
+                    sinf(
+                        static_cast<float>(ImGui::GetTime()) *
+                        18.0f
+                    ) *
+                    0.35f;
+                dl->AddRect(
+                    ImVec2(tach_x - 2.0f, tach_y - 2.0f),
+                    ImVec2(
+                        tach_x + tach_w + 2.0f,
+                        tach_y + tach_h + 2.0f
+                    ),
+                    IM_COL32(
+                        255,
+                        72,
+                        78,
+                        static_cast<int>(pulse * 255.0f)
+                    ),
+                    3.0f * scale,
+                    2.0f * scale,
+                    ImDrawFlags_None
+                );
             }
 
-            // f3 hint, tucked into the top left of the strip
-            dl->AddText(ImVec2(tl.x + 14.0f, tl.y + 6.0f), text_label, "F3 telemetry");
+            const float content_top = panel_tl.y + 40.0f * scale;
+            const float content_bottom = panel_br.y - 12.0f * scale;
+            const float speed_w = panel_w * 0.62f;
+            const float gear_w = panel_w - speed_w;
+            const float divider_1 = panel_tl.x + speed_w;
+            const float divider_2 = divider_1 + gear_w;
+
+            dl->AddRectFilled(
+                ImVec2(
+                    panel_tl.x + 10.0f * scale,
+                    content_top - 3.0f * scale
+                ),
+                ImVec2(
+                    divider_2 - 10.0f * scale,
+                    content_bottom
+                ),
+                IM_COL32(2, 5, 8, 82),
+                5.0f * scale
+            );
+
+            dl->AddLine(
+                ImVec2(divider_1, content_top),
+                ImVec2(divider_1, content_bottom),
+                line_color,
+                1.0f
+            );
+            static float gear_pulse = 0.0f;
+            static bool was_shifting = false;
+            if (is_shifting && !was_shifting)
+            {
+                gear_pulse = 1.0f;
+            }
+            was_shifting = is_shifting;
+            gear_pulse = std::max(
+                0.0f,
+                gear_pulse - io.DeltaTime * 5.0f
+            );
+
+            if (gear_pulse > 0.0f)
+            {
+                dl->AddRectFilled(
+                    ImVec2(
+                        divider_1 + 5.0f * scale,
+                        content_top - 3.0f * scale
+                    ),
+                    ImVec2(
+                        divider_2 - 5.0f * scale,
+                        content_bottom
+                    ),
+                    IM_COL32(
+                        255,
+                        184,
+                        70,
+                        static_cast<int>(gear_pulse * 48.0f)
+                    ),
+                    5.0f * scale
+                );
+            }
+
+            const float gear_size =
+                (70.0f + gear_pulse * 8.0f) * scale;
+            const ImVec2 gear_text_size = font->CalcTextSizeA(
+                gear_size,
+                FLT_MAX,
+                0.0f,
+                gear_str
+            );
+            const float gear_center_x =
+                divider_1 + gear_w * 0.5f;
+            draw_text(
+                "GEAR",
+                12.0f,
+                ImVec2(
+                    gear_center_x - 18.0f * scale,
+                    content_top + 3.0f * scale
+                ),
+                text_label
+            );
+            dl->AddText(
+                font,
+                gear_size,
+                ImVec2(
+                    gear_center_x - gear_text_size.x * 0.5f,
+                    content_top + 18.0f * scale
+                ),
+                is_shifting ? accent_warn : white,
+                gear_str
+            );
+
+            char speed_text[16];
+            snprintf(
+                speed_text,
+                sizeof(speed_text),
+                "%.0f",
+                speed_kmh
+            );
+            const float speed_size = 62.0f * scale;
+            const ImVec2 speed_text_size = font->CalcTextSizeA(
+                speed_size,
+                FLT_MAX,
+                0.0f,
+                speed_text
+            );
+            const float speed_center_x =
+                panel_tl.x + speed_w * 0.5f;
+            dl->AddText(
+                font,
+                speed_size,
+                ImVec2(
+                    speed_center_x - speed_text_size.x * 0.5f,
+                    content_top + 10.0f * scale
+                ),
+                white,
+                speed_text
+            );
+            draw_text(
+                "KM/H",
+                12.0f,
+                ImVec2(
+                    speed_center_x - 18.0f * scale,
+                    content_bottom - 19.0f * scale
+                ),
+                text_label
+            );
+
+            if (turbo_enabled)
+            {
+                char boost_text[24];
+                snprintf(
+                    boost_text,
+                    sizeof(boost_text),
+                    "BOOST  %.1f BAR",
+                    boost_bar
+                );
+                const ImVec2 boost_size = font->CalcTextSizeA(
+                    11.0f * scale,
+                    FLT_MAX,
+                    0.0f,
+                    boost_text
+                );
+                draw_text(
+                    boost_text,
+                    11.0f,
+                    ImVec2(
+                        gear_center_x - boost_size.x * 0.5f,
+                        panel_tl.y + 27.0f * scale
+                    ),
+                    boost_bar > 2.0f ? red : cyan
+                );
+            }
+
+            const float input_w = 180.0f * scale;
+            const float input_x = origin.x + margin;
+            const float input_y = panel_tl.y + 29.0f * scale;
+
+            auto input_bar = [&](
+                const char* label,
+                float value,
+                ImU32 color,
+                float y
+            )
+            {
+                const float label_w = 40.0f * scale;
+                const float bar_w = input_w - label_w;
+                const float bar_h = 5.0f * scale;
+                const ImVec2 bar_tl(
+                    input_x + label_w,
+                    y + 5.0f * scale
+                );
+                const ImVec2 bar_br(
+                    bar_tl.x + bar_w,
+                    bar_tl.y + bar_h
+                );
+
+                draw_text(
+                    label,
+                    11.0f,
+                    ImVec2(input_x, y),
+                    text_label
+                );
+                dl->AddRectFilled(
+                    bar_tl,
+                    bar_br,
+                    IM_COL32(48, 57, 66, 190),
+                    2.0f * scale
+                );
+                dl->AddRectFilled(
+                    bar_tl,
+                    ImVec2(
+                        bar_tl.x +
+                        bar_w *
+                        std::clamp(value, 0.0f, 1.0f),
+                        bar_br.y
+                    ),
+                    color,
+                    2.0f * scale
+                );
+            };
+
+            input_bar(
+                "THR",
+                throttle,
+                cyan,
+                input_y
+            );
+            input_bar(
+                "BRK",
+                brake,
+                red,
+                input_y + 24.0f * scale
+            );
+
+            const float steer_y = input_y + 52.0f * scale;
+            const float steer_label_w = 40.0f * scale;
+            const float steer_bar_w = input_w - steer_label_w;
+            const float steer_x = input_x + steer_label_w;
+            const float steer_center =
+                steer_x + steer_bar_w * 0.5f;
+            draw_text(
+                "STR",
+                11.0f,
+                ImVec2(input_x, steer_y),
+                text_label
+            );
+            dl->AddLine(
+                ImVec2(
+                    steer_x,
+                    steer_y + 7.0f * scale
+                ),
+                ImVec2(
+                    steer_x + steer_bar_w,
+                    steer_y + 7.0f * scale
+                ),
+                IM_COL32(70, 80, 90, 210),
+                3.0f * scale
+            );
+            dl->AddLine(
+                ImVec2(
+                    steer_center,
+                    steer_y + 2.0f * scale
+                ),
+                ImVec2(
+                    steer_center,
+                    steer_y + 12.0f * scale
+                ),
+                text_label,
+                1.0f
+            );
+            const float steer_position =
+                steer_center +
+                std::clamp(steer, -1.0f, 1.0f) *
+                steer_bar_w * 0.5f;
+            dl->AddCircleFilled(
+                ImVec2(
+                    steer_position,
+                    steer_y + 7.0f * scale
+                ),
+                4.0f * scale,
+                cyan
+            );
         }
         ImGui::End();
 

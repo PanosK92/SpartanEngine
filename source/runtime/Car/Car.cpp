@@ -55,6 +55,7 @@ namespace spartan
     {
         // car prefabs are created from multiple world loading threads, s_cars is shared
         std::mutex car_list_mutex;
+        std::once_flag audio_synthesizers_once;
         constexpr float car_spawn_margin = 1.0f;
 
         float get_car_lower_extent(const car::car_preset& preset)
@@ -2258,9 +2259,11 @@ namespace spartan
 
     void Car::CreateAudioSources(Entity* parent_entity)
     {
-        // initialize sound synthesizers
-        engine_sound::initialize(48000);
-        tire_squeal_sound::initialize(48000);
+        std::call_once(audio_synthesizers_once, []()
+        {
+            engine_sound::initialize(48000);
+            tire_squeal_sound::initialize(48000);
+        });
 
         // engine start (still uses a sample for the starter motor sound)
         {

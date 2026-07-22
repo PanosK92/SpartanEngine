@@ -25,9 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Car/Car.h"
 #include "../../Car/CarPresets.h"
 #include "../../Core/Engine.h"
+#include "../../Core/ThreadPool.h"
 #include "../../Core/Timer.h"
 #include "../../FileSystem/FileSystem.h"
+#include "../../Geometry/Mesh.h"
 #include "../../Physics/PhysicsWorld.h"
+#include "../../Resource/ResourceCache.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../IO/pugixml.hpp"
@@ -108,11 +111,19 @@ namespace spartan
     void Traffic::Start()
     {
         Stop();
-        Spawn();
+        BeginSpawn();
     }
 
     void Traffic::Stop()
     {
+        if (m_preload_state)
+        {
+            m_preload_state->cancelled.store(true, std::memory_order_release);
+            m_preload_state.reset();
+        }
+        m_next_spawn_index = 0;
+        m_car_path.clear();
+
         const vector<Car*> cars = Car::GetAll();
         for (Driver& driver : m_drivers)
         {
@@ -132,7 +143,13 @@ namespace spartan
 
     void Traffic::Tick()
     {
-        if (m_drivers.empty() || !Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+        if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
+        {
+            return;
+        }
+
+        SpawnNext();
+        if (m_drivers.empty())
         {
             return;
         }
@@ -200,79 +217,150 @@ namespace spartan
         }
     }
 
-    void Traffic::Spawn()
+    void Traffic::BeginSpawn()
     {
         m_random_state = 0x6d2b79f5;
+        m_next_spawn_index = 0;
         m_drivers.reserve(m_car_count);
 
-        string car_path = m_car_file;
+        m_car_path = m_car_file;
         if (!World::GetFilePath().empty())
         {
             const string relative_path = FileSystem::GetDirectoryFromFilePath(World::GetFilePath()) + m_car_file;
             if (FileSystem::Exists(relative_path))
             {
-                car_path = relative_path;
+                m_car_path = relative_path;
             }
         }
 
-        for (uint32_t i = 0; i < m_car_count; i++)
+        if (m_car_count == 0)
         {
-            Vector3 position;
-            Quaternion rotation;
-            if (!FindSpawnPosition(i, position, rotation))
-            {
-                SP_LOG_WARNING("Traffic could not find a safe spawn for car %u", i);
-                continue;
-            }
-
-            const float hue = static_cast<float>((i * 7) % 20) / 20.0f;
-            Car::Config config;
-            config.position = position;
-            config.car_file = car_path;
-            config.drivable = true;
-            config.customize_materials = false;
-            config.high_quality_physics = true;
-            config.paint_preset = MaterialPaintPreset::Metallic;
-            config.paint_color = Color(0.15f + hue * 0.65f, 0.2f + fmodf(hue + 0.37f, 1.0f) * 0.55f, 0.2f + fmodf(hue + 0.71f, 1.0f) * 0.55f, 1.0f);
-
-            Car* car = Car::Create(config);
-            if (!car)
-            {
-                continue;
-            }
-
-            Entity* entity = car->GetRootEntity();
-            Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr;
-            if (!entity || !physics)
-            {
-                car->Destroy();
-                continue;
-            }
-
-            entity->SetObjectName("traffic_car_" + to_string(i + 1));
-            entity->SetTransient(true);
-            physics->SetBodyTransform(position, rotation);
-            physics->SetVehicleSimulationFrequency(m_simulation_frequency);
-            physics->SetManualTransmission(false);
-            car->SetMcpControlled(true);
-
-            Driver driver;
-            driver.car = car;
-            driver.entity = entity;
-            driver.physics = physics;
-            driver.collision_group = physics->GetVehicleCollisionGroup();
-            driver.cruise_speed = 15.0f + static_cast<float>((i * 17) % 9) * 1.25f;
-            driver.caution = 0.85f + static_cast<float>((i * 13) % 7) * 0.05f;
-            driver.persistence = 0.7f + static_cast<float>((i * 11) % 8) * 0.08f;
-            driver.exploration = 0.8f + static_cast<float>((i * 19) % 9) * 0.08f;
-            driver.decision_time = decision_interval * static_cast<float>(i % 20) / 20.0f;
-            driver.last_position = position;
-            driver.spline_speed = driver.cruise_speed;
-            InitializeLimits(driver);
-            const Vector3 initial_velocity = horizontal(entity->GetForward()) * std::min(driver.cruise_speed, 10.0f);
-            physics->SetLinearVelocity(initial_velocity);
-            m_drivers.push_back(std::move(driver));
+            return;
         }
+
+        m_preload_state = std::make_shared<PreloadState>();
+        const std::shared_ptr<PreloadState> state = m_preload_state;
+        const string car_path = m_car_path;
+        ThreadPool::AddTask([state, car_path]()
+        {
+            bool succeeded = false;
+            if (!state->cancelled.load(std::memory_order_acquire))
+            {
+                const car::car_definition* definition = car::load_car_file(car_path);
+                if (definition)
+                {
+                    car::load_car_directory(FileSystem::GetDirectoryFromFilePath(car_path));
+
+                    uint32_t mesh_flags = Mesh::GetDefaultFlags();
+                    mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
+                    mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
+
+                    const bool body_loaded =
+                        definition->body_model.empty() ||
+                        ResourceCache::Load<Mesh>(definition->body_model, mesh_flags) != nullptr;
+                    const bool wheel_loaded =
+                        definition->wheel_model.empty() ||
+                        ResourceCache::Load<Mesh>(definition->wheel_model, mesh_flags) != nullptr;
+                    succeeded = body_loaded && wheel_loaded;
+                }
+            }
+
+            state->succeeded.store(succeeded, std::memory_order_release);
+            state->completed.store(true, std::memory_order_release);
+        });
+    }
+
+    void Traffic::SpawnNext()
+    {
+        if (!m_preload_state || !m_preload_state->completed.load(std::memory_order_acquire))
+        {
+            return;
+        }
+
+        if (!m_preload_state->succeeded.load(std::memory_order_acquire))
+        {
+            SP_LOG_ERROR("Traffic failed to preload car: %s", m_car_path.c_str());
+            m_preload_state.reset();
+            return;
+        }
+
+        if (m_next_spawn_index < m_car_count)
+        {
+            SpawnCar(m_next_spawn_index);
+            m_next_spawn_index++;
+        }
+
+        if (m_next_spawn_index >= m_car_count)
+        {
+            m_preload_state.reset();
+        }
+    }
+
+    bool Traffic::SpawnCar(uint32_t index)
+    {
+        Vector3 position;
+        Quaternion rotation;
+        if (!FindSpawnPosition(index, position, rotation))
+        {
+            SP_LOG_WARNING("Traffic could not find a safe spawn for car %u", index);
+            return false;
+        }
+
+        const float hue = static_cast<float>((index * 7) % 20) / 20.0f;
+        Car::Config config;
+        config.position = position;
+        config.car_file = m_car_path;
+        config.drivable = true;
+        config.customize_materials = false;
+        config.high_quality_physics = true;
+        config.paint_preset = MaterialPaintPreset::Metallic;
+        config.paint_color = Color(
+            0.15f + hue * 0.65f,
+            0.2f + fmodf(hue + 0.37f, 1.0f) * 0.55f,
+            0.2f + fmodf(hue + 0.71f, 1.0f) * 0.55f,
+            1.0f
+        );
+
+        Car* car = Car::Create(config);
+        if (!car)
+        {
+            return false;
+        }
+
+        Entity* entity = car->GetRootEntity();
+        Physics* physics = entity ? entity->GetComponent<Physics>() : nullptr;
+        if (!entity || !physics)
+        {
+            car->Destroy();
+            return false;
+        }
+
+        entity->SetObjectName("traffic_car_" + to_string(index + 1));
+        entity->SetTransient(true);
+        physics->SetBodyTransform(position, rotation);
+        physics->SetVehicleSimulationFrequency(m_simulation_frequency);
+        physics->SetManualTransmission(false);
+        car->SetMcpControlled(true);
+
+        Driver driver;
+        driver.car = car;
+        driver.entity = entity;
+        driver.physics = physics;
+        driver.collision_group = physics->GetVehicleCollisionGroup();
+        driver.cruise_speed = 15.0f + static_cast<float>((index * 17) % 9) * 1.25f;
+        driver.caution = 0.85f + static_cast<float>((index * 13) % 7) * 0.05f;
+        driver.persistence = 0.7f + static_cast<float>((index * 11) % 8) * 0.08f;
+        driver.exploration = 0.8f + static_cast<float>((index * 19) % 9) * 0.08f;
+        driver.decision_time = decision_interval * static_cast<float>(index % 20) / 20.0f;
+        driver.last_position = position;
+        driver.spline_speed = driver.cruise_speed;
+        InitializeLimits(driver);
+        const Vector3 initial_velocity =
+            horizontal(entity->GetForward()) *
+            std::min(driver.cruise_speed, 10.0f);
+        physics->SetLinearVelocity(initial_velocity);
+        m_drivers.push_back(std::move(driver));
+        return true;
     }
 
     void Traffic::InitializeLimits(Driver& driver)
