@@ -338,11 +338,6 @@ namespace engine_sound
                         static_cast<std::size_t>(i)
                     ] = pop_ready_sample();
                 }
-                m_output_demand = std::min(
-                    ready_capacity_frames,
-                    m_output_demand +
-                    num_samples
-                );
             }
             m_worker_condition.notify_one();
 
@@ -529,6 +524,7 @@ namespace engine_sound
             }
 
             m_stop_worker = false;
+            m_worker_active = true;
             m_worker = std::thread(
                 &implementation::worker_loop,
                 this
@@ -555,7 +551,7 @@ namespace engine_sound
                     m_worker_mutex
                 );
                 m_stop_worker = false;
-                m_output_demand = 0;
+                m_worker_active = false;
             }
         }
 
@@ -575,7 +571,7 @@ namespace engine_sound
                             return
                                 m_stop_worker ||
                                 (
-                                    m_output_demand > 0 &&
+                                    m_worker_active &&
                                     m_ready_count <=
                                         ready_capacity_frames -
                                         output_chunk_frames
@@ -614,8 +610,6 @@ namespace engine_sound
                             ]
                         );
                     }
-                    m_output_demand -=
-                        output_chunk_frames;
                 }
             }
         }
@@ -689,7 +683,6 @@ namespace engine_sound
             m_ready_read = 0;
             m_ready_write = 0;
             m_ready_count = 0;
-            m_output_demand = 0;
         }
 
         float pop_ready_sample()
@@ -1025,7 +1018,7 @@ namespace engine_sound
         std::thread m_worker;
         runtime_params m_runtime_params;
         bool m_stop_worker = false;
-        int m_output_demand = 0;
+        bool m_worker_active = false;
         std::vector<float> m_ready_samples;
         int m_ready_read = 0;
         int m_ready_write = 0;
