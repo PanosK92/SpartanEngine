@@ -12,6 +12,7 @@ import {
   read_debug_log,
 } from "./debug_log.mjs";
 import {
+  build_construction_grammar,
   suggest_construction_grammars,
 } from "./construction_grammar.mjs";
 import {
@@ -22,9 +23,6 @@ import {
 } from "./scene_quality.mjs";
 import {
   audit_scene_layout,
-  create_scene_plan,
-  make_scene_plan_namespace,
-  read_scene_plan,
 } from "./scene_planning.mjs";
 import {
   create_design_brief,
@@ -512,52 +510,6 @@ async function review_scene(run, args) {
   };
 }
 
-async function assistant_scene_namespace(context) {
-  const world = await context.run.tool(
-    "world_summary",
-    {},
-  );
-  return make_scene_plan_namespace({
-    project_root: get_project_root(),
-    engine_host: context.engine_host,
-    engine_port: context.engine_port,
-    world,
-  });
-}
-
-async function remove_legacy_builder_state(world)
-{
-  const roots = new Set([
-    get_project_root(),
-  ]);
-  const world_path =
-    world?.file_path ??
-    world?.path;
-  if (world_path)
-  {
-    roots.add(
-      path.dirname(
-        path.resolve(world_path),
-      ),
-    );
-  }
-  for (const root of roots)
-  {
-    await fs.rm(
-      path.join(
-        root,
-        ".spartan",
-        "generated",
-        "scene_recipes",
-      ),
-      {
-        recursive: true,
-        force: true,
-      },
-    );
-  }
-}
-
 function generated_asset_name(value) {
   return String(value ?? "generated_mesh")
     .trim()
@@ -748,7 +700,7 @@ function normalized_mesh_arguments(args) {
     args.name ??
     shape,
   );
-  return {
+  const normalized = {
     ...nested,
     ...args,
     shape,
@@ -761,6 +713,26 @@ function normalized_mesh_arguments(args) {
       args.mesh_path ??
       `meshes/${name}.mesh`,
   };
+  if (
+    shape === "rounded_box" &&
+    Array.isArray(normalized.size) &&
+    normalized.size.length === 3
+  )
+  {
+    const radius_limit =
+      Math.min(...normalized.size) * 0.49;
+    if (
+      Number.isFinite(normalized.radius) &&
+      radius_limit > 0
+    )
+    {
+      normalized.radius = Math.min(
+        Math.max(normalized.radius, 0.0005),
+        radius_limit,
+      );
+    }
+  }
+  return normalized;
 }
 
 async function generate_mesh(run, args) {
@@ -866,6 +838,59 @@ async function generate_mesh(run, args) {
     ...bound,
     generated,
     entity: created.entity,
+  };
+}
+
+async function generate_mesh_batch(run, args)
+{
+  const items = Array.isArray(args.items)
+    ? args.items
+    : [];
+  if (items.length === 0)
+  {
+    return {
+      ok: true,
+      introspection: true,
+      required: ["items"],
+      note: "items must contain one to 32 mesh descriptions",
+    };
+  }
+  if (items.length > 32)
+  {
+    return {
+      ok: false,
+      error: "mesh batch cannot exceed 32 items",
+    };
+  }
+
+  const generated = [];
+  for (let index = 0; index < items.length; index++)
+  {
+    const result = await generate_mesh(
+      run,
+      {
+        parent_id: args.parent_id,
+        ...items[index],
+      },
+    );
+    generated.push(result);
+    if (!result.ok)
+    {
+      return {
+        ok: false,
+        generated,
+        generated_count: index,
+        failed_index: index,
+        error:
+          result.error ??
+          "mesh batch item failed",
+      };
+    }
+  }
+  return {
+    ok: true,
+    generated,
+    generated_count: generated.length,
   };
 }
 
@@ -994,6 +1019,117 @@ async function create_compound(run, args) {
     root: root.entity,
     completed_parts,
     completed_count: completed_parts.length,
+  };
+}
+
+async function create_construction_grammar(run, args)
+{
+  const materials =
+    (
+      args.materials &&
+      typeof args.materials === "object"
+    )
+      ? args.materials
+      : {};
+  const grammar_args = {
+    ...args,
+    primary_material:
+      args.primary_material ??
+      materials.structure ??
+      materials.frame ??
+      materials.wall ??
+      materials.floor,
+    secondary_material:
+      args.secondary_material ??
+      materials.wall ??
+      materials.floor ??
+      materials.roof,
+    accent_material:
+      args.accent_material ??
+      materials.accent,
+    glass_material:
+      args.glass_material ??
+      materials.glass,
+    emissive_material:
+      args.emissive_material ??
+      materials.emissive,
+  };
+  let grammar;
+  try
+  {
+    grammar = build_construction_grammar(
+      grammar_args,
+    );
+  }
+  catch (error)
+  {
+    return {
+      ok: false,
+      code: "invalid_arguments",
+      error: error.message,
+    };
+  }
+
+  const compound = await create_compound(
+    run,
+    {
+      ...grammar_args,
+      parts: grammar.parts,
+    },
+  );
+  if (!compound.ok)
+  {
+    return {
+      ...compound,
+      grammar: grammar.metadata,
+    };
+  }
+  if (
+    compound.root?.id &&
+    Array.isArray(args.tags) &&
+    args.tags.length > 0
+  )
+  {
+    await run.tool(
+      "entity_update",
+      {
+        id: compound.root.id,
+        tags: args.tags,
+        tags_mode: "merge",
+      },
+    );
+  }
+  let snap = null;
+  if (compound.root?.id && args.snap_mode)
+  {
+    snap = await run.tool(
+      "entity_snap",
+      {
+        id: compound.root.id,
+        mode: args.snap_mode,
+        target: args.snap_target,
+        offset: args.snap_offset,
+        align_to_surface:
+          args.align_to_surface,
+      },
+    );
+    if (!snap.ok)
+    {
+      return {
+        ...snap,
+        root: compound.root,
+        completed_parts:
+          compound.completed_parts,
+        completed_count:
+          compound.completed_count,
+        grammar: grammar.metadata,
+      };
+    }
+  }
+  return {
+    ...compound,
+    grammar: grammar.metadata,
+    snap,
   };
 }
 
@@ -1183,23 +1319,6 @@ async function dispatch_assistant_command(
       },
     };
   }
-  if (
-    command === "scene_plan_read" ||
-    command === "scene_plan_get"
-  )
-  {
-    return read_scene_plan(
-      await assistant_scene_namespace(context),
-      args.root_name,
-    );
-  }
-  if (command === "scene_plan_create")
-  {
-    return create_scene_plan(
-      args.plan ?? args,
-      await assistant_scene_namespace(context),
-    );
-  }
   if (command === "scene_plan_suggest")
   {
     const brief = create_design_brief(
@@ -1225,6 +1344,13 @@ async function dispatch_assistant_command(
         args.limit ?? 5,
       ),
     };
+  }
+  if (command === "construction_grammar_create")
+  {
+    return create_construction_grammar(
+      run,
+      args,
+    );
   }
   if (command === "material_palette_create")
   {
@@ -1395,6 +1521,19 @@ async function dispatch_assistant_command(
       60000,
     );
   }
+  if (command === "entity_select")
+  {
+    return run.tool(
+      command,
+      {
+        ...args,
+        id:
+          args.id ??
+          args.entity_id,
+      },
+      60000,
+    );
+  }
   if (command === "entity_create_primitive")
   {
     return run.tool(
@@ -1418,6 +1557,10 @@ async function dispatch_assistant_command(
   if (command === "mesh_generate")
   {
     return generate_mesh(run, args);
+  }
+  if (command === "mesh_generate_batch")
+  {
+    return generate_mesh_batch(run, args);
   }
   if (command === "mesh_physics_bind")
   {
@@ -1467,21 +1610,16 @@ async function dispatch_assistant_command(
       args.root_name ??
       context.intent?.target_name ??
       "";
-    const namespace =
-      await assistant_scene_namespace(context);
-    const stored_plan = root_name
-      ? await read_scene_plan(namespace, root_name)
-      : { ok: false };
     return audit_scene_layout(
       (name, value) => run.tool(name, value),
       {
         ...args,
         id: args.id ?? args.root_id,
         root_name,
-        namespace,
-        plan: stored_plan.ok
-          ? stored_plan.plan
-          : null,
+        plan:
+          args.plan ??
+          context.prepared_plan ??
+          null,
       },
     );
   }
@@ -1517,10 +1655,27 @@ async function dispatch_assistant_command(
       driver_level: "perspective",
       interior: "perspective",
     };
+    const target_id =
+      args.id ??
+      args.entity_id;
+    if (target_id)
+    {
+      const selected = await run.tool(
+        "entity_select",
+        { id: target_id },
+        60000,
+      );
+      if (!selected.ok)
+      {
+        return selected;
+      }
+    }
     return run.tool(
       command,
       {
         ...args,
+        id: undefined,
+        entity_id: undefined,
         view:
           view_aliases[args.view] ??
           args.view,
@@ -2047,6 +2202,7 @@ function build_prompt(
     "Use spartan_status when you need to know whether the MCP bridge, engine, or codebase index is ready.",
     "Use debug_log_read when diagnosing what commands the assistant sent to the engine and what came back.",
     "Use context_snapshot and entity_resolve instead of multiple separate read calls.",
+    "For every new build, design directly from the current request and prepared context. Do not search for stored build definitions or prior generated instructions.",
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
     "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
@@ -2292,10 +2448,7 @@ function recover_new_build_intent(prompt, intent, run)
 
 async function prepare_scene_build_plan({
   prompt,
-  snapshot,
   intent,
-  engine_host,
-  engine_port,
   run,
 })
 {
@@ -2307,12 +2460,6 @@ async function prepare_scene_build_plan({
     return null;
   }
 
-  const namespace = make_scene_plan_namespace({
-    project_root: get_project_root(),
-    engine_host,
-    engine_port,
-    world: snapshot.world,
-  });
   const brief = create_design_brief(
     prompt,
     {
@@ -2329,26 +2476,17 @@ async function prepare_scene_build_plan({
     return null;
   }
 
-  const created = await create_scene_plan(
-    suggested,
-    namespace,
-  );
-  if (!created.pass)
-  {
-    run.receipt("scene design warning", {
-      root_name: intent.target_name,
-      issues: created.issues ?? [],
-    });
-    return null;
-  }
-
   run.receipt("scene design ready", {
     root_name: intent.target_name,
     source: "generated",
-    zone_count: created.plan?.zones?.length ?? 0,
-    element_count: created.plan?.elements?.length ?? 0,
+    zone_count: suggested.zones?.length ?? 0,
+    element_count: suggested.elements?.length ?? 0,
   });
-  return created;
+  return {
+    ok: true,
+    pass: true,
+    plan: suggested,
+  };
 }
 
 async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
@@ -2555,9 +2693,6 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
   try {
     const agent = await run.stage("Prepare Cursor", "starting or reusing the Cursor agent", () => get_agent({ api_key, model_id, engine_host, engine_port, run }));
     const snapshot = await run.stage("Read Context", "reading engine state for Cursor", () => run.tool("context_snapshot"));
-    await remove_legacy_builder_state(
-      snapshot.world,
-    );
     intent = recover_new_build_intent(
       prompt,
       intent,
@@ -2569,13 +2704,13 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       "inferring scale, layout, circulation, and functional requirements",
       () => prepare_scene_build_plan({
         prompt,
-        snapshot,
         intent,
-        engine_host,
-        engine_port,
         run,
       }),
     );
+    active_assistant_context.prepared_plan =
+      prepared_plan?.plan ??
+      null;
     const should_focus_build =
       intent?.kind === "scene_rebuild" ||
       intent?.live_scene_action;
@@ -2759,19 +2894,9 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
 
     const send_command = (name, args) =>
       run.tool(name, args);
-    const plan_namespace = make_scene_plan_namespace({
-      project_root: get_project_root(),
-      engine_host,
-      engine_port,
-      world: snapshot.world,
-    });
-    const stored_plan = await read_scene_plan(
-      plan_namespace,
-      root_name,
-    );
-    const plan = stored_plan.ok
-      ? stored_plan.plan
-      : null;
+    const plan =
+      prepared_plan?.plan ??
+      null;
     const planned_elements = plan?.elements ?? [];
     const audit_args = {
       id: root_id,
@@ -2804,20 +2929,10 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       root_name,
     };
     const audit_current_layout = async () => {
-      const current_world = await send_command(
-        "world_summary",
-        {},
-      );
       return audit_scene_layout(
         send_command,
         {
           ...layout_audit_args,
-          namespace: make_scene_plan_namespace({
-            project_root: get_project_root(),
-            engine_host,
-            engine_port,
-            world: current_world,
-          }),
           plan,
         },
       );
