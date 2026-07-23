@@ -135,6 +135,80 @@ namespace spartan
         }
     }
 
+    void GeometryBuffer::UpdateIndices(
+        const uint32_t* data,
+        const uint32_t offset,
+        const uint32_t count
+    )
+    {
+        lock_guard<mutex> lock(m_mutex);
+
+        SP_ASSERT(
+            offset + count <=
+            static_cast<uint32_t>(m_indices.size())
+        );
+        memcpy(
+            m_indices.data() + offset,
+            data,
+            count * sizeof(uint32_t)
+        );
+
+        if (
+            m_index_buffer &&
+            offset + count <= m_index_count_committed
+        )
+        {
+            const uint64_t byte_offset =
+                static_cast<uint64_t>(offset) *
+                sizeof(uint32_t);
+            const uint64_t byte_size =
+                static_cast<uint64_t>(count) *
+                sizeof(uint32_t);
+            m_index_buffer->UploadSubRegion(
+                data,
+                byte_offset,
+                byte_size
+            );
+        }
+    }
+
+    void GeometryBuffer::UpdateMeshletBounds(
+        const Sb_MeshletBounds* data,
+        const uint32_t offset,
+        const uint32_t count
+    )
+    {
+        lock_guard<mutex> lock(m_mutex);
+
+        SP_ASSERT(
+            offset + count <=
+            static_cast<uint32_t>(m_meshlet_bounds.size())
+        );
+        memcpy(
+            m_meshlet_bounds.data() + offset,
+            data,
+            count * sizeof(Sb_MeshletBounds)
+        );
+
+        if (
+            m_meshlet_bounds_buffer &&
+            offset + count <= m_meshlet_bounds_count_committed
+        )
+        {
+            const uint64_t byte_offset =
+                static_cast<uint64_t>(offset) *
+                sizeof(Sb_MeshletBounds);
+            const uint64_t byte_size =
+                static_cast<uint64_t>(count) *
+                sizeof(Sb_MeshletBounds);
+            m_meshlet_bounds_buffer->UploadSubRegion(
+                data,
+                byte_offset,
+                byte_size
+            );
+        }
+    }
+
     void GeometryBuffer::BuildIfDirty()
     {
         lock_guard<mutex> lock(m_mutex);

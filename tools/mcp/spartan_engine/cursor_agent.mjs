@@ -9,11 +9,14 @@ import {
 } from "./scene_quality.mjs";
 import {
   audit_scene_layout,
+  create_scene_plan,
   make_scene_plan_namespace,
   read_scene_plan,
 } from "./scene_planning.mjs";
 import {
+  create_design_brief,
   infer_design_template,
+  suggest_scene_plan,
 } from "./design_intelligence.mjs";
 import { get_project_root } from "./shared_codebase.mjs";
 
@@ -53,6 +56,7 @@ const engine_tool_names = new Set([
   "selection_get",
   "entity_create_empty",
   "entity_create_light",
+  "entity_create_light_batch",
   "lights_calibrate",
   "world_landmarks",
   "spline_create_road",
@@ -496,7 +500,12 @@ function is_named_tool_event(value, tool_name) {
   );
 }
 
-function build_prompt(prompt, snapshot, intent = null) {
+function build_prompt(
+  prompt,
+  snapshot,
+  intent = null,
+  prepared_plan = null,
+) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
     "Read agent_memory_read early when available, and treat it as project advice rather than absolute truth.",
@@ -537,6 +546,23 @@ function build_prompt(prompt, snapshot, intent = null) {
   if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
   {
     lines.push(...scene_quality_prompt_lines(prompt, intent));
+    lines.push(
+      "Work through these internal stages in order and finish each stage before moving on:",
+      "1 layout, establish zones, circulation, entrances, service access, and primary spatial hierarchy",
+      "2 structure, create supported architectural massing and functional boundaries at credible metric scale",
+      "3 function, add the objects and clearances that explain how the requested place is actually used",
+      "4 finish, replace primitive-looking silhouettes where useful, apply coordinated materials, details, wear, and calibrated lighting",
+      "5 verify, run layout and quality audits, inspect deliberate views, make targeted corrections, and recheck",
+      "Do not create decorative clutter until circulation, structure, and functional placement are coherent.",
+      "Do not use identical geometry for every repeated object. Reuse meshes where appropriate, but vary transforms, grouped details, or material accents without breaking function.",
+    );
+    if (prepared_plan?.plan)
+    {
+      lines.push(
+        "A validated internal baseline plan has already been prepared. Before geometry, expand or revise it with request-specific functions, zones, relationships, and details that the baseline template missed, then keep the resulting plan as the spatial contract.",
+        `Prepared plan: ${safe_json(prepared_plan.plan, 7000)}`,
+      );
+    }
   }
 
   if (intent?.target_name)
@@ -729,6 +755,81 @@ function scene_plan_root_name(root, fallback)
     .replace(/__sr_[a-f0-9]+_[a-f0-9]+$/i, "");
 }
 
+async function prepare_scene_build_plan({
+  prompt,
+  snapshot,
+  intent,
+  engine_host,
+  engine_port,
+  run,
+})
+{
+  const is_scene_construction =
+    intent?.kind === "scene_rebuild" ||
+    intent?.kind === "city_develop";
+  if (!is_scene_construction || !intent?.target_name)
+  {
+    return null;
+  }
+
+  const namespace = make_scene_plan_namespace({
+    project_root: get_project_root(),
+    engine_host,
+    engine_port,
+    world: snapshot.world,
+  });
+  const existing = await read_scene_plan(
+    namespace,
+    intent.target_name,
+  );
+  if (existing.ok)
+  {
+    run.receipt("scene design ready", {
+      root_name: intent.target_name,
+      source: "existing",
+      element_count: existing.plan?.elements?.length ?? 0,
+    });
+    return existing;
+  }
+
+  const brief = create_design_brief(
+    prompt,
+    {
+      root_name: intent.target_name,
+    },
+  );
+  const suggested = suggest_scene_plan(brief);
+  if (suggested.ok === false)
+  {
+    run.receipt("scene design warning", {
+      root_name: intent.target_name,
+      errors: suggested.errors ?? [],
+    });
+    return null;
+  }
+
+  const created = await create_scene_plan(
+    suggested,
+    namespace,
+  );
+  if (!created.pass)
+  {
+    run.receipt("scene design warning", {
+      root_name: intent.target_name,
+      issues: created.issues ?? [],
+    });
+    return null;
+  }
+
+  run.receipt("scene design ready", {
+    root_name: intent.target_name,
+    source: "generated",
+    zone_count: created.plan?.zones?.length ?? 0,
+    element_count: created.plan?.elements?.length ?? 0,
+  });
+  return created;
+}
+
 async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
   if (!api_key) {
     return {
@@ -826,6 +927,18 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
   try {
     const agent = await run.stage("Prepare Cursor", "starting or reusing the Cursor agent", () => get_agent({ api_key, model_id, engine_host, engine_port, run }));
     const snapshot = await run.stage("Read Context", "reading engine state for Cursor", () => run.tool("context_snapshot"));
+    const prepared_plan = await run.stage(
+      "Design Scene",
+      "inferring scale, layout, circulation, and functional requirements",
+      () => prepare_scene_build_plan({
+        prompt,
+        snapshot,
+        intent,
+        engine_host,
+        engine_port,
+        run,
+      }),
+    );
     const should_focus_build =
       intent?.kind === "scene_rebuild" ||
       intent?.live_scene_action;
@@ -880,7 +993,12 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
 
       return execute_agent_prompt(
         agent,
-        build_prompt(prompt, snapshot, intent),
+        build_prompt(
+          prompt,
+          snapshot,
+          intent,
+          prepared_plan,
+        ),
       );
     });
 

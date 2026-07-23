@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Spline.h"
 #include "../World/Components/SplineFollower.h"
 #include "../World/Components/Terrain.h"
+#include "../World/Components/Text3D.h"
 #include "../World/Prefab.h"
 #include "../Car/Car.h"
 #include "../Car/CarSimulation.h"
@@ -908,6 +909,83 @@ namespace spartan
             return !Engine::IsFlagSet(EngineMode::Playing);
         }
 
+        void add_entity_tags(
+            Entity* entity,
+            const std::string& comma_separated
+        )
+        {
+            size_t start = 0;
+            while (start <= comma_separated.size())
+            {
+                const size_t end =
+                    comma_separated.find(',', start);
+                std::string tag = comma_separated.substr(
+                    start,
+                    end == std::string::npos
+                        ? std::string::npos
+                        : end - start
+                );
+                const size_t first = tag.find_first_not_of(
+                    " \t\r\n"
+                );
+                const size_t last = tag.find_last_not_of(
+                    " \t\r\n"
+                );
+                tag = first == std::string::npos
+                    ? ""
+                    : tag.substr(first, last - first + 1);
+                if (!tag.empty())
+                {
+                    entity->AddTag(tag);
+                }
+                if (end == std::string::npos)
+                {
+                    break;
+                }
+                start = end + 1;
+            }
+        }
+
+        void apply_entity_identity(
+            Entity* entity,
+            const McpRequest& request
+        )
+        {
+            if (
+                const std::optional<std::string> tags =
+                    get_argument(request, "tags")
+            )
+            {
+                add_entity_tags(entity, *tags);
+            }
+
+            const std::array<std::string, 3> keys =
+            {
+                "scene_recipe",
+                "semantic_id",
+                "plan_element"
+            };
+            for (const std::string& key : keys)
+            {
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, key);
+                    value && !value->empty()
+                )
+                {
+                    entity->AddTag(key + "=" + *value);
+                }
+            }
+
+            if (
+                const std::optional<std::string> semantic_tags =
+                    get_argument(request, "semantic_tags")
+            )
+            {
+                add_entity_tags(entity, *semantic_tags);
+            }
+        }
+
         bool is_world_path_valid(const std::string& path)
         {
             std::filesystem::path file_path(path);
@@ -1290,6 +1368,43 @@ namespace spartan
             if (name == "right_outer" || name == "5")
             {
                 return SplineAttachMode::RightOuter;
+            }
+
+            return std::nullopt;
+        }
+
+        std::string text_3d_alignment_to_name(
+            const Text3DAlignment alignment
+        )
+        {
+            switch (alignment)
+            {
+            case Text3DAlignment::Left:
+                return "left";
+            case Text3DAlignment::Center:
+                return "center";
+            case Text3DAlignment::Right:
+                return "right";
+            default:
+                return "unknown";
+            }
+        }
+
+        std::optional<Text3DAlignment>
+        text_3d_alignment_from_name(const std::string& name)
+        {
+            const std::string normalized = to_lower_copy(name);
+            if (normalized == "left" || normalized == "0")
+            {
+                return Text3DAlignment::Left;
+            }
+            if (normalized == "center" || normalized == "1")
+            {
+                return Text3DAlignment::Center;
+            }
+            if (normalized == "right" || normalized == "2")
+            {
+                return Text3DAlignment::Right;
             }
 
             return std::nullopt;
@@ -2152,6 +2267,15 @@ namespace spartan
             return enum_values_json({ { "clamp", "0" }, { "loop", "1" }, { "ping_pong", "2" } });
         }
 
+        std::string text_3d_alignment_enum_values_json()
+        {
+            return enum_values_json({
+                { "left", json_string("left") },
+                { "center", json_string("center") },
+                { "right", json_string("right") }
+            });
+        }
+
         std::string particle_preset_enum_values_json()
         {
             return enum_values_json({
@@ -2266,6 +2390,14 @@ namespace spartan
             {
                 return json_string(spline_follow_mode_to_name(std::any_cast<SplineFollowMode>(value)));
             }
+            if (type == typeid(Text3DAlignment))
+            {
+                return json_string(
+                    text_3d_alignment_to_name(
+                        std::any_cast<Text3DAlignment>(value)
+                    )
+                );
+            }
             if (type == typeid(ParticlePreset))
             {
                 return std::to_string(static_cast<uint32_t>(std::any_cast<ParticlePreset>(value)));
@@ -2319,6 +2451,7 @@ namespace spartan
                 type == typeid(SplineProfile) ||
                 type == typeid(SplineAttachMode) ||
                 type == typeid(SplineFollowMode) ||
+                type == typeid(Text3DAlignment) ||
                 type == typeid(ParticlePreset) ||
                 type == typeid(ParticleBlendMode) ||
                 type == typeid(ParticleLightingMode);
@@ -2531,6 +2664,18 @@ namespace spartan
                 parsed = *result;
                 return true;
             }
+            if (type == typeid(Text3DAlignment))
+            {
+                const std::optional<Text3DAlignment> result =
+                    text_3d_alignment_from_name(value);
+                if (!result)
+                {
+                    error = "invalid text_3d_alignment";
+                    return false;
+                }
+                parsed = *result;
+                return true;
+            }
             if (type == typeid(ParticlePreset))
             {
                 uint32_t result = 0;
@@ -2651,6 +2796,15 @@ namespace spartan
                 metadata.type = "enum";
                 metadata.enum_values = spline_follow_mode_enum_values_json();
                 metadata.side_effects.emplace_back("changes what happens when the follower reaches the end of the spline");
+            }
+            else if (property == "alignment")
+            {
+                metadata.type = "enum";
+                metadata.enum_values =
+                    text_3d_alignment_enum_values_json();
+                metadata.side_effects.emplace_back(
+                    "regenerates 3d text geometry"
+                );
             }
             else if (property == "preset")
             {
@@ -4617,7 +4771,25 @@ namespace spartan
 
             if (const std::optional<std::string> tags = get_argument(request, "tags"))
             {
-                entity->SetTagsString(*tags);
+                const std::string mode = to_lower_copy(
+                    get_argument(request, "tags_mode").value_or(
+                        "replace"
+                    )
+                );
+                if (mode == "replace")
+                {
+                    entity->SetTagsString(*tags);
+                }
+                else if (mode == "merge")
+                {
+                    add_entity_tags(entity, *tags);
+                }
+                else
+                {
+                    return json_error(
+                        "tags_mode must be replace or merge"
+                    );
+                }
                 changed = true;
             }
 
@@ -4896,6 +5068,33 @@ namespace spartan
                 Script* script = static_cast<Script*>(component);
                 json += "\"file_path\":" + json_string(script->file_path);
             }
+            else if (type == ComponentType::Text3D)
+            {
+                Text3D* text_3d = static_cast<Text3D*>(component);
+                json += "\"text\":" + json_string(text_3d->GetText());
+                json += ",\"font_path\":" +
+                    json_string(text_3d->GetFontPath());
+                json += ",\"size\":" +
+                    json_number(text_3d->GetSize());
+                json += ",\"depth\":" +
+                    json_number(text_3d->GetDepth());
+                json += ",\"weight\":" +
+                    json_number(text_3d->GetWeight());
+                json += ",\"letter_spacing\":" +
+                    json_number(text_3d->GetLetterSpacing());
+                json += ",\"line_spacing\":" +
+                    json_number(text_3d->GetLineSpacing());
+                json += ",\"resolution\":" +
+                    std::to_string(text_3d->GetResolution());
+                json += ",\"alignment\":" +
+                    json_string(
+                        text_3d_alignment_to_name(
+                            text_3d->GetAlignment()
+                        )
+                    );
+                json += ",\"has_mesh\":" +
+                    json_bool(text_3d->HasMesh());
+            }
             else
             {
                 return component_member_properties_to_json(component);
@@ -4930,6 +5129,50 @@ namespace spartan
             if (type == ComponentType::Script)
             {
                 return "[\"file_path\"]";
+            }
+            if (type == ComponentType::Text3D)
+            {
+                return "[\"text\",\"font_path\",\"size\",\"depth\",\"weight\",\"letter_spacing\",\"line_spacing\",\"resolution\",\"alignment\"]";
+            }
+
+            return "[]";
+        }
+
+        std::string component_actions_json(
+            const ComponentType type
+        )
+        {
+            if (type == ComponentType::Terrain)
+            {
+                return "[\"generate\"]";
+            }
+            if (type == ComponentType::Spline)
+            {
+                return "[\"generate_road_mesh\",\"clear_road_mesh\",\"spawn_instances\",\"clear_instances\"]";
+            }
+            if (type == ComponentType::ParticleSystem)
+            {
+                return "[\"apply_preset\",\"trigger_burst\"]";
+            }
+            if (type == ComponentType::Physics)
+            {
+                return "[\"apply_force\",\"sync_wheel_offsets\",\"reset_tire_wear\",\"shift_up\",\"shift_down\",\"shift_to_neutral\"]";
+            }
+            if (type == ComponentType::AudioSource)
+            {
+                return "[\"play\",\"stop\"]";
+            }
+            if (type == ComponentType::Light)
+            {
+                return "[\"fit_to_mesh\"]";
+            }
+            if (type == ComponentType::Camera)
+            {
+                return "[\"focus_selected\"]";
+            }
+            if (type == ComponentType::Text3D)
+            {
+                return "[\"generate_mesh\",\"clear_mesh\"]";
             }
 
             return "[]";
@@ -5012,6 +5255,134 @@ namespace spartan
             {
                 add({ "file_path", "", "string", true, "path", "", "", { "changes script file loaded by the component" }, "", json_string("") });
             }
+            else if (type == ComponentType::Text3D)
+            {
+                const std::vector<std::string> regeneration =
+                {
+                    "marks generated mesh dirty",
+                    "regenerates geometry after a short debounce"
+                };
+                add({
+                    "text",
+                    "",
+                    "string",
+                    true,
+                    "utf 8",
+                    "",
+                    "",
+                    regeneration,
+                    "",
+                    json_string("Text")
+                });
+                add({
+                    "font_path",
+                    "",
+                    "string",
+                    true,
+                    "font resource path",
+                    "",
+                    "",
+                    regeneration,
+                    "",
+                    json_string("OpenSans/OpenSans-Medium.ttf")
+                });
+                add({
+                    "size",
+                    "",
+                    "float",
+                    true,
+                    "meters",
+                    range_json(0.01f, 1000.0f),
+                    "",
+                    regeneration,
+                    "",
+                    "1"
+                });
+                add({
+                    "depth",
+                    "",
+                    "float",
+                    true,
+                    "meters",
+                    range_json(0.001f, 1000.0f),
+                    "",
+                    regeneration,
+                    "",
+                    "0.1"
+                });
+                add({
+                    "weight",
+                    "",
+                    "float",
+                    true,
+                    "meters",
+                    range_json(0.0f, 1.0f),
+                    "",
+                    regeneration,
+                    "",
+                    "0"
+                });
+                add({
+                    "letter_spacing",
+                    "",
+                    "float",
+                    true,
+                    "meters",
+                    range_json(-10.0f, 100.0f),
+                    "",
+                    regeneration,
+                    "",
+                    "0"
+                });
+                add({
+                    "line_spacing",
+                    "",
+                    "float",
+                    true,
+                    "multiplier",
+                    range_json(0.1f, 10.0f),
+                    "",
+                    regeneration,
+                    "",
+                    "1.2"
+                });
+                add({
+                    "resolution",
+                    "",
+                    "uint32",
+                    true,
+                    "pixels per em",
+                    range_json(32.0f, 512.0f),
+                    "",
+                    regeneration,
+                    "",
+                    "128"
+                });
+                add({
+                    "alignment",
+                    "",
+                    "enum",
+                    true,
+                    "",
+                    "",
+                    text_3d_alignment_enum_values_json(),
+                    regeneration,
+                    "",
+                    json_string("left")
+                });
+                add({
+                    "has_mesh",
+                    "",
+                    "bool",
+                    false,
+                    "",
+                    "",
+                    "",
+                    {},
+                    "derived generated mesh state",
+                    "false"
+                });
+            }
 
             std::string json = "[";
             for (size_t i = 0; i < entries.size(); i++)
@@ -5062,6 +5433,7 @@ namespace spartan
             json += "\"type\":" + json_string(*type_name);
             json += ",\"editable_properties\":" + editable_properties_json(*type);
             json += ",\"editable_members\":" + component_member_names_json(component);
+            json += ",\"actions\":" + component_actions_json(*type);
             json += ",\"property_metadata\":" + component_property_metadata_json(*type);
             json += ",\"member_metadata\":" + component_member_metadata_json(component);
             json += ",\"properties\":" + component_properties_to_json(component);
@@ -7657,6 +8029,117 @@ namespace spartan
             return false;
         }
 
+        bool set_text_3d_property(
+            Text3D* text_3d,
+            const std::string& property,
+            const std::string& value,
+            std::string& error
+        )
+        {
+            if (property == "text")
+            {
+                text_3d->SetText(value);
+                return true;
+            }
+
+            if (property == "font_path")
+            {
+                if (!FileSystem::IsSupportedFontFile(value))
+                {
+                    error = "unsupported font file";
+                    return false;
+                }
+
+                std::string resolved_path = value;
+                if (!FileSystem::IsFile(resolved_path))
+                {
+                    resolved_path =
+                        ResourceCache::GetResourceDirectory(
+                            ResourceDirectory::Fonts
+                        ) +
+                        "/" +
+                        value;
+                }
+                if (!FileSystem::IsFile(resolved_path))
+                {
+                    error = "font file not found";
+                    return false;
+                }
+
+                text_3d->SetFontPath(resolved_path);
+                return true;
+            }
+
+            if (property == "alignment")
+            {
+                const std::optional<Text3DAlignment> alignment =
+                    text_3d_alignment_from_name(value);
+                if (!alignment)
+                {
+                    error = "invalid text_3d alignment";
+                    return false;
+                }
+
+                text_3d->SetAlignment(*alignment);
+                return true;
+            }
+
+            if (property == "resolution")
+            {
+                uint32_t resolution = 0;
+                if (!parse_uint32(value, resolution))
+                {
+                    error = "invalid text_3d resolution";
+                    return false;
+                }
+
+                text_3d->SetResolution(resolution);
+                return true;
+            }
+
+            if (
+                property == "size" ||
+                property == "depth" ||
+                property == "weight" ||
+                property == "letter_spacing" ||
+                property == "line_spacing"
+            )
+            {
+                float parsed = 0.0f;
+                if (!parse_float(value, parsed))
+                {
+                    error = "invalid text_3d float";
+                    return false;
+                }
+
+                if (property == "size")
+                {
+                    text_3d->SetSize(parsed);
+                }
+                else if (property == "depth")
+                {
+                    text_3d->SetDepth(parsed);
+                }
+                else if (property == "weight")
+                {
+                    text_3d->SetWeight(parsed);
+                }
+                else if (property == "letter_spacing")
+                {
+                    text_3d->SetLetterSpacing(parsed);
+                }
+                else
+                {
+                    text_3d->SetLineSpacing(parsed);
+                }
+
+                return true;
+            }
+
+            error = "unsupported text_3d property";
+            return false;
+        }
+
         bool set_component_property(ComponentType type, Component* component, const std::string& property, const std::string& value, std::string& error)
         {
             bool changed = false;
@@ -7679,6 +8162,19 @@ namespace spartan
             else if (type == ComponentType::AudioSource)
             {
                 changed = set_audio_source_property(static_cast<AudioSource*>(component), property, value, error);
+            }
+            else if (type == ComponentType::Text3D)
+            {
+                const std::string text_property =
+                    property.rfind("m_", 0) == 0
+                    ? property.substr(2)
+                    : property;
+                changed = set_text_3d_property(
+                    static_cast<Text3D*>(component),
+                    text_property,
+                    value,
+                    error
+                );
             }
             else if (type == ComponentType::Script && property == "file_path")
             {
@@ -7973,6 +8469,32 @@ namespace spartan
             {
                 static_cast<Spline*>(component)->ClearInstances();
             }
+            else if (
+                *type == ComponentType::Text3D &&
+                action == "generate_mesh"
+            )
+            {
+                Text3D* text_3d = static_cast<Text3D*>(component);
+                if (!text_3d->GenerateMesh())
+                {
+                    return json_error(
+                        "failed to generate 3d text mesh"
+                    );
+                }
+                result_json =
+                    "{\"has_mesh\":" +
+                    json_bool(text_3d->HasMesh()) +
+                    "}";
+            }
+            else if (
+                *type == ComponentType::Text3D &&
+                action == "clear_mesh"
+            )
+            {
+                Text3D* text_3d = static_cast<Text3D*>(component);
+                text_3d->ClearMesh();
+                result_json = "{\"has_mesh\":false}";
+            }
             else if (*type == ComponentType::ParticleSystem && action == "apply_preset")
             {
                 const std::optional<std::string> preset_arg = get_argument(request, "preset");
@@ -8242,6 +8764,7 @@ namespace spartan
                 entity->SetParent(parent);
             }
 
+            apply_entity_identity(entity, request);
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
         }
 
@@ -10637,6 +11160,7 @@ namespace spartan
                 }
             }
 
+            apply_entity_identity(entity, request);
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
         }
 
@@ -10673,7 +11197,12 @@ namespace spartan
                 "physics_kinematic",
                 "physics_mass",
                 "physics_friction",
-                "physics_restitution"
+                "physics_restitution",
+                "tags",
+                "scene_recipe",
+                "semantic_id",
+                "plan_element",
+                "semantic_tags"
             };
 
             std::string created_json = "[";
@@ -10715,6 +11244,429 @@ namespace spartan
 
             std::string json = "{\"ok\":true,\"created\":" + created_json + "]";
             json += ",\"created_count\":" + std::to_string(created_count);
+            json += "}";
+            return json;
+        }
+
+        std::vector<std::pair<std::string, std::string>>
+        calibrated_light_create_properties(
+            const LightType type
+        )
+        {
+            if (type == LightType::Directional)
+            {
+                return {
+                    { "temperature", "5500" },
+                    { "color", "1,0.96,0.9,1" },
+                    { "intensity", "120000" },
+                    { "shadows", "true" },
+                    { "volumetric", "false" }
+                };
+            }
+            if (type == LightType::Area)
+            {
+                return {
+                    { "temperature", "3200" },
+                    { "color", "1,0.93,0.82,1" },
+                    { "intensity", "12000" },
+                    { "range", "40" },
+                    { "area_width", "6" },
+                    { "area_height", "3" },
+                    { "shadows", "true" },
+                    { "volumetric", "false" },
+                    { "draw_distance", "80" },
+                    { "shadow_distance", "60" }
+                };
+            }
+            if (type == LightType::Spot)
+            {
+                return {
+                    { "temperature", "3500" },
+                    { "color", "1,0.94,0.84,1" },
+                    { "intensity", "8500" },
+                    { "range", "35" },
+                    { "angle_degrees", "45" },
+                    { "shadows", "true" },
+                    { "volumetric", "false" },
+                    { "draw_distance", "70" },
+                    { "shadow_distance", "50" }
+                };
+            }
+            return {
+                { "temperature", "3200" },
+                { "color", "1,0.92,0.78,1" },
+                { "intensity", "8500" },
+                { "range", "30" },
+                { "shadows", "true" },
+                { "volumetric", "false" },
+                { "draw_distance", "60" },
+                { "shadow_distance", "45" }
+            };
+        }
+
+        float calibrated_light_intensity_floor(
+            const LightType type
+        )
+        {
+            if (type == LightType::Directional)
+            {
+                return 1000.0f;
+            }
+            if (type == LightType::Area)
+            {
+                return 1600.0f;
+            }
+            return 800.0f;
+        }
+
+        std::string command_entity_create_light(
+            const McpRequest& request
+        )
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("light creation requires edit mode");
+            }
+
+            LightType light_type = LightType::Point;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "light_type")
+            )
+            {
+                const std::optional<LightType> parsed =
+                    light_type_from_name(to_lower_copy(*value));
+                if (!parsed)
+                {
+                    return json_error("invalid light_type");
+                }
+                light_type = *parsed;
+            }
+
+            bool calibrated = true;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "calibrated")
+            )
+            {
+                if (!parse_bool(*value, calibrated))
+                {
+                    return json_error("invalid calibrated");
+                }
+            }
+
+            Entity* parent = nullptr;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "parent_id")
+            )
+            {
+                uint64_t parent_id = 0;
+                if (!parse_uint64(*value, parent_id))
+                {
+                    return json_error("invalid parent_id");
+                }
+                parent = World::GetEntityById(parent_id);
+                if (parent == nullptr)
+                {
+                    return json_error("parent entity not found");
+                }
+            }
+
+            std::optional<math::Vector3> position;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "position")
+            )
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*value, parsed))
+                {
+                    return json_error("invalid position");
+                }
+                position = parsed;
+            }
+
+            std::optional<math::Vector3> rotation_euler;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "rotation_euler")
+            )
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*value, parsed))
+                {
+                    return json_error("invalid rotation_euler");
+                }
+                rotation_euler = parsed;
+            }
+
+            std::optional<math::Vector3> scale;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "scale")
+            )
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*value, parsed))
+                {
+                    return json_error("invalid scale");
+                }
+                scale = parsed;
+            }
+
+            Entity* entity = World::CreateEntity();
+            if (entity == nullptr)
+            {
+                return json_error("failed to create entity");
+            }
+            entity->SetObjectName(
+                get_argument(request, "name").value_or("light")
+            );
+            if (parent != nullptr)
+            {
+                entity->SetParent(parent);
+            }
+            if (position)
+            {
+                entity->SetPositionLocal(*position);
+            }
+            if (rotation_euler)
+            {
+                entity->SetRotationLocal(
+                    math::Quaternion::FromEulerAngles(
+                        *rotation_euler
+                    )
+                );
+            }
+            if (scale)
+            {
+                entity->SetScaleLocal(*scale);
+            }
+            apply_entity_identity(entity, request);
+
+            Light* light = entity->AddComponent<Light>();
+            if (light == nullptr)
+            {
+                return json_error("failed to add light component");
+            }
+
+            std::string error;
+            if (
+                !set_light_property(
+                    light,
+                    "light_type",
+                    light_type_to_name(light_type),
+                    error
+                )
+            )
+            {
+                return json_error(error);
+            }
+
+            if (calibrated)
+            {
+                for (
+                    const auto& [property, value] :
+                    calibrated_light_create_properties(light_type)
+                )
+                {
+                    if (
+                        !set_light_property(
+                            light,
+                            property,
+                            value,
+                            error
+                        )
+                    )
+                    {
+                        return json_error(error);
+                    }
+                }
+            }
+
+            const std::array<std::string, 11> property_order =
+            {
+                "temperature",
+                "color",
+                "intensity",
+                "range",
+                "angle_degrees",
+                "area_width",
+                "area_height",
+                "shadows",
+                "volumetric",
+                "draw_distance",
+                "shadow_distance"
+            };
+            for (const std::string& property : property_order)
+            {
+                const std::optional<std::string> value =
+                    get_argument(request, property);
+                if (!value)
+                {
+                    continue;
+                }
+                if (
+                    calibrated &&
+                    property == "intensity"
+                )
+                {
+                    float intensity = 0.0f;
+                    if (!parse_float(*value, intensity))
+                    {
+                        return json_error("invalid intensity");
+                    }
+                    if (
+                        intensity <
+                        calibrated_light_intensity_floor(light_type)
+                    )
+                    {
+                        continue;
+                    }
+                }
+                if (
+                    !set_light_property(
+                        light,
+                        property,
+                        *value,
+                        error
+                    )
+                )
+                {
+                    return json_error(error);
+                }
+            }
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "volumetric_distance")
+            )
+            {
+                if (
+                    !set_light_property(
+                        light,
+                        "volumetric_distance",
+                        *value,
+                        error
+                    )
+                )
+                {
+                    return json_error(error);
+                }
+            }
+
+            return
+                "{\"ok\":true,\"entity\":" +
+                entity_to_json_compact(entity) +
+                "}";
+        }
+
+        std::string command_entity_create_light_batch(
+            const McpRequest& request
+        )
+        {
+            const std::optional<std::string> count_arg =
+                get_argument(request, "count");
+            uint64_t count = 0;
+            if (
+                !count_arg ||
+                !parse_uint64(*count_arg, count) ||
+                count == 0 ||
+                count > 64
+            )
+            {
+                return json_error(
+                    "count must be between 1 and 64"
+                );
+            }
+
+            const std::vector<std::string> keys =
+            {
+                "name",
+                "parent_id",
+                "position",
+                "rotation_euler",
+                "scale",
+                "light_type",
+                "color",
+                "temperature",
+                "intensity",
+                "range",
+                "angle_degrees",
+                "area_width",
+                "area_height",
+                "shadows",
+                "volumetric",
+                "draw_distance",
+                "shadow_distance",
+                "volumetric_distance",
+                "calibrated",
+                "tags",
+                "scene_recipe",
+                "semantic_id",
+                "plan_element",
+                "semantic_tags"
+            };
+
+            std::string created_json = "[";
+            uint32_t created_count = 0;
+            for (uint64_t i = 0; i < count; i++)
+            {
+                McpRequest item_request;
+                item_request.command = "entity_create_light";
+                for (const std::string& key : keys)
+                {
+                    const std::string batch_key =
+                        "item_" +
+                        std::to_string(i) +
+                        "_" +
+                        key;
+                    const auto it =
+                        request.arguments.find(batch_key);
+                    if (it != request.arguments.end())
+                    {
+                        item_request.arguments[key] = it->second;
+                    }
+                }
+
+                const std::string item_result =
+                    command_entity_create_light(item_request);
+                if (
+                    item_result.find("\"ok\":true") ==
+                    std::string::npos
+                )
+                {
+                    created_json += "]";
+                    std::string json =
+                        "{\"ok\":false,\"error\":\"failed to create light batch item\"";
+                    json += ",\"created\":" + created_json;
+                    json += ",\"created_count\":" +
+                        std::to_string(created_count);
+                    json += ",\"failed_index\":" +
+                        std::to_string(i);
+                    json += ",\"failure\":" + item_result;
+                    json += "}";
+                    return json;
+                }
+
+                if (created_count > 0)
+                {
+                    created_json += ",";
+                }
+                created_json += item_result;
+                created_count++;
+            }
+
+            std::string json =
+                "{\"ok\":true,\"created\":" +
+                created_json +
+                "]";
+            json += ",\"created_count\":" +
+                std::to_string(created_count);
             json += "}";
             return json;
         }
@@ -14475,6 +15427,14 @@ namespace spartan
         if (request.command == "entity_create_primitive_batch")
         {
             return command_entity_create_primitive_batch(request);
+        }
+        if (request.command == "entity_create_light")
+        {
+            return command_entity_create_light(request);
+        }
+        if (request.command == "entity_create_light_batch")
+        {
+            return command_entity_create_light_batch(request);
         }
         if (request.command == "entity_update")
         {

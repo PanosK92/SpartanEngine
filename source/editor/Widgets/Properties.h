@@ -44,6 +44,7 @@ namespace spartan
     class Water;
     class SpawnPoint;
     class CarReset;
+    class Text3D;
 }
 
 class Properties : public Widget
@@ -76,6 +77,7 @@ private:
     void ShowWater(spartan::Water* water) const;
     void ShowSpawnPoint(spartan::SpawnPoint* spawn_point) const;
     void ShowCarReset(spartan::CarReset* car_reset) const;
+    void ShowText3D(spartan::Text3D* text_3d) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

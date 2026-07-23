@@ -1438,6 +1438,16 @@ async function create_node(
     recipe_id,
     semantic_id: node.semantic_id,
   };
+  const identity_tags = ownership_tags(
+    recipe_id,
+    node.semantic_id,
+    [
+      ...node.tags,
+      ...(node.plan_element
+        ? [`plan_element=${node.plan_element}`]
+        : []),
+    ],
+  );
   let created;
   if (node.kind === "primitive")
   {
@@ -1452,6 +1462,7 @@ async function create_node(
         ...(node.material
           ? { material: node.material }
           : {}),
+        tags: identity_tags,
       },
       operation,
       results,
@@ -1465,6 +1476,7 @@ async function create_node(
       {
         name: owned_name(recipe_id, node),
         ...(parent_id ? { parent_id } : {}),
+        tags: identity_tags,
       },
       operation,
       results,
@@ -1503,16 +1515,7 @@ async function create_node(
     "entity_update",
     {
       id: entity_id,
-      tags: ownership_tags(
-        recipe_id,
-        node.semantic_id,
-        [
-          ...node.tags,
-          ...(node.plan_element
-            ? [`plan_element=${node.plan_element}`]
-            : []),
-        ],
-      ),
+      tags: identity_tags,
     },
     operation,
     results,

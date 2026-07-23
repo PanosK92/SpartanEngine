@@ -685,12 +685,19 @@ function matching_entities(
     normalized(entry.name),
   );
   return entities.filter((entity) => {
-    const tags = Array.isArray(entity.tags)
-      ? entity.tags.map(normalized)
+    const raw_tags = Array.isArray(entity.tags)
+      ? entity.tags.map((tag) =>
+          String(tag).trim().toLowerCase(),
+        )
       : String(entity.tags ?? "")
         .split(/[;,]/)
-        .map(normalized);
-    if (tags.includes(`plan_element_${name}`))
+        .map((tag) => tag.trim().toLowerCase());
+    const tags = raw_tags.map(normalized);
+    if (
+      raw_tags.includes(`plan_element=${name}`) ||
+      raw_tags.includes(`plan_element_${name}`) ||
+      tags.includes(`plan_element_${name}`)
+    )
     {
       return true;
     }

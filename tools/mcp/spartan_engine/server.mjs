@@ -12,7 +12,7 @@ import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_schema_markdown, construction_grammar_guide, edit_rules, engine_overview, parametric_modeling_guide, scene_planning_guide, search_capability_catalog } from "./knowledge.mjs";
 import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
 import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
-import { resolve_light_properties, calibrate_existing_light } from "./light_calibration.mjs";
+import { calibrate_existing_light } from "./light_calibration.mjs";
 import { audit_scene_quality } from "./scene_quality.mjs";
 import {
   audit_scene_layout,
@@ -23,6 +23,7 @@ import {
 import {
   build_construction_grammar,
   construction_grammar_names,
+  suggest_construction_grammars,
 } from "./construction_grammar.mjs";
 import {
   apply_scene_recipe,
@@ -452,9 +453,23 @@ const component_type = z.enum([
   "script",
   "particle_system",
   "skid_marks",
+  "water",
+  "traffic",
+  "spawn_point",
+  "car_reset",
+  "text_3d",
 ]);
 const component_value = z.union([z.string(), z.number(), z.boolean(), numeric_array]);
 const light_type = z.enum(["directional", "point", "spot", "area"]);
+const entity_identity_args = {
+  tags: z.array(z.string().min(1)).max(32).optional(),
+  scene_recipe: z.string().min(1).optional(),
+  semantic_id: z.string().min(1).optional(),
+  plan_element: z.string().min(1).optional(),
+  semantic_tags: z.array(
+    z.string().min(1),
+  ).max(16).optional(),
+};
 const transform_set_args = {
   id: z.string(),
   position: vector3.optional(),
@@ -477,6 +492,29 @@ const primitive_create_args = {
   physics_mass: z.number().optional(),
   physics_friction: z.number().optional(),
   physics_restitution: z.number().optional(),
+  ...entity_identity_args,
+};
+const light_create_args = {
+  name: z.string().optional(),
+  parent_id: z.string().optional(),
+  position: vector3.optional(),
+  rotation_euler: vector3.optional(),
+  scale: vector3.optional(),
+  light_type: light_type.optional().describe("point, spot, area, or directional"),
+  color: vector4.optional(),
+  temperature: z.number().optional().describe("kelvin"),
+  intensity: z.number().optional().describe("lux for directional, lumens otherwise; weak values are replaced by calibrated defaults"),
+  range: z.number().optional().describe("meters, point/spot/area"),
+  angle_degrees: z.number().optional().describe("spot cone degrees"),
+  area_width: z.number().optional().describe("area light width in meters"),
+  area_height: z.number().optional().describe("area light height in meters"),
+  shadows: z.boolean().optional(),
+  volumetric: z.boolean().optional(),
+  draw_distance: z.number().optional(),
+  shadow_distance: z.number().optional(),
+  volumetric_distance: z.number().optional(),
+  calibrated: z.boolean().optional().describe("default true; set false only for intentionally weak lights"),
+  ...entity_identity_args,
 };
 const parametric_shape = z.enum([
   "beveled_box",
@@ -2941,6 +2979,7 @@ register_tool(
   {
     name: z.string().optional(),
     parent_id: z.string().optional(),
+    ...entity_identity_args,
   },
   "entity_create_empty",
   { annotations: edit_tool, outputSchema: output_schemas.entity },
@@ -2956,91 +2995,53 @@ register_local_tool(
       "Values below the per-type floor are replaced with calibrated defaults unless calibrated is false.",
       "Also initializes color, temperature, range, angle_degrees, area size, shadows, and draw/shadow distances for the light type.",
     ].join(" "),
-    inputSchema: {
-      name: z.string().optional(),
-      parent_id: z.string().optional(),
-      position: vector3.optional(),
-      rotation_euler: vector3.optional(),
-      scale: vector3.optional(),
-      light_type: light_type.optional().describe("point, spot, area, or directional"),
-      color: vector4.optional(),
-      temperature: z.number().optional().describe("kelvin"),
-      intensity: z.number().optional().describe("lux for directional, lumens otherwise; weak values are replaced by calibrated defaults"),
-      range: z.number().optional().describe("meters, point/spot/area"),
-      angle_degrees: z.number().optional().describe("spot cone degrees"),
-      area_width: z.number().optional().describe("area light width in meters"),
-      area_height: z.number().optional().describe("area light height in meters"),
-      shadows: z.boolean().optional(),
-      volumetric: z.boolean().optional(),
-      draw_distance: z.number().optional(),
-      shadow_distance: z.number().optional(),
-      volumetric_distance: z.number().optional(),
-      calibrated: z.boolean().optional().describe("default true; set false only to keep raw engine defaults or intentionally weak lights"),
-    },
+    inputSchema: light_create_args,
     outputSchema: output_schemas.entity,
     annotations: edit_tool,
   },
-  async (args) => {
-    const create_args = {
-      name: args.name ?? "light",
+  async (args) => tool_result(
+    await send_engine_command("entity_create_light", args),
+  ),
+);
+
+register_local_tool(
+  "entity_create_light_batch",
+  {
+    title: "entity create light batch",
+    description: "Create up to 64 calibrated lights in one native engine request. Returns completed lights and a failed index if an item fails.",
+    inputSchema: {
+      items: z.array(
+        z.object(light_create_args),
+      ).min(1).max(64),
+    },
+    outputSchema: output_schemas.batch_receipt,
+    annotations: edit_tool,
+  },
+  async ({ items }) => {
+    const args = {
+      count: items.length,
     };
-    if (args.parent_id)
+    const keys = Object.keys(light_create_args);
+    for (let index = 0; index < items.length; index++)
     {
-      create_args.parent_id = args.parent_id;
-    }
-
-    const created = await send_engine_command("entity_create_empty", create_args);
-    if (!created.ok)
-    {
-      return tool_result(created);
-    }
-
-    const id = created.entity?.id;
-    if (!id)
-    {
-      return tool_result(structured_error("entity_create_empty returned no entity id", { code: "engine_invalid_response" }));
-    }
-
-    const transform_args = { id };
-    for (const key of ["position", "rotation_euler", "scale"])
-    {
-      if (args[key] !== undefined)
+      for (const key of keys)
       {
-        transform_args[key] = args[key];
+        if (
+          items[index][key] !== undefined &&
+          items[index][key] !== null
+        )
+        {
+          args[`item_${index}_${key}`] =
+            items[index][key];
+        }
       }
     }
-    if (Object.keys(transform_args).length > 1)
-    {
-      const transformed = await send_engine_command("entity_set_transform", transform_args);
-      if (!transformed.ok)
-      {
-        return tool_result(transformed);
-      }
-    }
-
-    const added = await send_engine_command("entity_add_component", { id, type: "light" });
-    if (!added.ok)
-    {
-      return tool_result(added);
-    }
-
-    const properties = resolve_light_properties(args);
-    for (const [property, value] of Object.entries(properties))
-    {
-      if (value === undefined || value === null)
-      {
-        continue;
-      }
-
-      const configured = await send_engine_command("component_set", { id, type: "light", property, value });
-      if (!configured.ok)
-      {
-        return tool_result(configured);
-      }
-    }
-
-    const final_entity = await send_engine_command("entity_get", { id });
-    return tool_result(final_entity.ok ? final_entity : created);
+    return tool_result(
+      await send_engine_command(
+        "entity_create_light_batch",
+        args,
+      ),
+    );
   },
 );
 
@@ -3754,6 +3755,26 @@ register_local_tool(
 );
 
 register_local_tool(
+  "construction_grammar_suggest",
+  {
+    title: "construction grammar suggest",
+    description: "Rank reusable construction assemblies for a semantic purpose before creating geometry.",
+    inputSchema: {
+      purpose: z.string().min(1),
+      limit: z.number().int().min(1).max(8).optional(),
+    },
+    annotations: read_only,
+  },
+  async ({ purpose, limit }) => tool_result({
+    ok: true,
+    suggestions: suggest_construction_grammars(
+      purpose,
+      limit ?? 5,
+    ),
+  }),
+);
+
+register_local_tool(
   "construction_grammar_create",
   {
     title: "construction grammar create",
@@ -4178,13 +4199,17 @@ register_local_tool(
 register_tool(
   server,
   "entity_update",
-  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags is a comma separated list that replaces all tags.",
+  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags_mode defaults to replace; use merge to preserve recipe identity.",
   {
     id: z.string(),
     name: z.string().optional(),
     active: z.boolean().optional(),
     parent_id: z.string().optional(),
     tags: z.string().optional(),
+    tags_mode: z.enum([
+      "replace",
+      "merge",
+    ]).optional(),
   },
   "entity_update",
   { annotations: edit_tool, outputSchema: output_schemas.entity },

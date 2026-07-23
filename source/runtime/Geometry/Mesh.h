@@ -108,6 +108,10 @@ namespace spartan
         // when ParseMesh runs in parallel, the auto-allocating overload above races on m_sub_meshes.size() and silently swaps which
         // sub-mesh index ends up on which entity, breaking material assignment for any caller that keys off GetSubMeshIndex()
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in);
+        bool UpdateGeometry(
+            std::vector<RHI_Vertex_PosTexNorTan>& vertices,
+            std::vector<uint32_t>& indices
+        );
         // pre-allocate sub-mesh slots so concurrent AddGeometry calls with explicit indices target stable positions
         void ReserveSubMeshes(const uint32_t count);
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()    { return m_vertices; }
@@ -138,6 +142,7 @@ namespace spartan
         // mesh type
         MeshType GetType() const          { return m_type; }
         void SetType(const MeshType type) { m_type = type; }
+        void SetDynamic(const bool dynamic) { m_dynamic = dynamic; }
 
         // flags
         uint32_t GetFlags() const { return m_flags; }
@@ -175,6 +180,9 @@ namespace spartan
         uint32_t m_global_vertex_offset  = 0;
         uint32_t m_global_index_offset   = 0;
         uint32_t m_global_meshlet_offset = 0;
+        uint32_t m_global_vertex_capacity  = 0;
+        uint32_t m_global_index_capacity   = 0;
+        uint32_t m_global_meshlet_capacity = 0;
 
         // acceleration structures
         std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh
@@ -187,6 +195,7 @@ namespace spartan
         std::mutex m_mutex;
         Entity* m_root_entity = nullptr;
         MeshType m_type       = MeshType::Max;
+        bool m_dynamic        = false;
         std::shared_ptr<Skeleton> m_skeleton;
         std::unique_ptr<SkeletalMeshBinding> m_skeletal_mesh_binding;
         std::vector<AnimationClip> m_animation_clips;

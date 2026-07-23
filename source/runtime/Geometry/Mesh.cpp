@@ -463,6 +463,85 @@ namespace spartan
         }
     }
 
+    bool Mesh::UpdateGeometry(
+        vector<RHI_Vertex_PosTexNorTan>& vertices,
+        vector<uint32_t>& indices
+    )
+    {
+        vector<Sb_MeshletBounds> meshlets;
+        BoundingBox aabb;
+        geometry_processing::build_meshlets(
+            vertices,
+            indices,
+            meshlets,
+            aabb
+        );
+
+        if (
+            vertices.size() > m_global_vertex_capacity ||
+            indices.size() > m_global_index_capacity ||
+            meshlets.size() > m_global_meshlet_capacity
+        )
+        {
+            return false;
+        }
+
+        {
+            lock_guard lock(m_mutex);
+            if (
+                m_sub_meshes.size() != 1 ||
+                m_sub_meshes[0].lods.size() != 1
+            )
+            {
+                return false;
+            }
+        }
+
+        GeometryBuffer::UpdateVertices(
+            vertices.data(),
+            m_global_vertex_offset,
+            static_cast<uint32_t>(vertices.size())
+        );
+        GeometryBuffer::UpdateIndices(
+            indices.data(),
+            m_global_index_offset,
+            static_cast<uint32_t>(indices.size())
+        );
+        GeometryBuffer::UpdateMeshletBounds(
+            meshlets.data(),
+            m_global_meshlet_offset,
+            static_cast<uint32_t>(meshlets.size())
+        );
+
+        {
+            lock_guard lock(m_mutex);
+            m_vertices = vertices;
+            m_indices  = indices;
+            m_meshlets = meshlets;
+
+            MeshLod& lod      = m_sub_meshes[0].lods[0];
+            lod.vertex_offset = 0;
+            lod.vertex_count  =
+                static_cast<uint32_t>(m_vertices.size());
+            lod.index_offset = 0;
+            lod.index_count  =
+                static_cast<uint32_t>(m_indices.size());
+            lod.meshlet_offset = 0;
+            lod.meshlet_count  =
+                static_cast<uint32_t>(m_meshlets.size());
+            lod.aabb = aabb;
+
+            m_object_size =
+                m_vertices.size() *
+                sizeof(RHI_Vertex_PosTexNorTan) +
+                m_indices.size() *
+                sizeof(uint32_t);
+        }
+
+        InvalidateAllBlas();
+        return true;
+    }
+
     uint32_t Mesh::GetVertexCount() const
     {
         return static_cast<uint32_t>(m_vertices.size());
@@ -485,10 +564,74 @@ namespace spartan
 
     void Mesh::CreateGpuBuffers()
     {
-        // append this mesh's geometry into the global vertex/index/meshlet buffers
-        m_global_vertex_offset  = GeometryBuffer::AppendVertices(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
-        m_global_index_offset   = GeometryBuffer::AppendIndices(m_indices.data(), static_cast<uint32_t>(m_indices.size()));
-        m_global_meshlet_offset = GeometryBuffer::AppendMeshletBounds(m_meshlets.data(), static_cast<uint32_t>(m_meshlets.size()));
+        auto get_dynamic_capacity = [](const size_t count)
+        {
+            if (count == 0)
+            {
+                return 0u;
+            }
+
+            uint32_t capacity = 1;
+            while (capacity < count)
+            {
+                capacity *= 2;
+            }
+
+            return capacity;
+        };
+
+        m_global_vertex_capacity =
+            m_dynamic
+            ? get_dynamic_capacity(m_vertices.size())
+            : static_cast<uint32_t>(m_vertices.size());
+        m_global_index_capacity =
+            m_dynamic
+            ? get_dynamic_capacity(m_indices.size())
+            : static_cast<uint32_t>(m_indices.size());
+        m_global_meshlet_capacity =
+            m_dynamic
+            ? get_dynamic_capacity(m_meshlets.size())
+            : static_cast<uint32_t>(m_meshlets.size());
+
+        if (m_dynamic)
+        {
+            vector<RHI_Vertex_PosTexNorTan> vertices = m_vertices;
+            vector<uint32_t> indices                 = m_indices;
+            vector<Sb_MeshletBounds> meshlets        = m_meshlets;
+            vertices.resize(m_global_vertex_capacity);
+            indices.resize(m_global_index_capacity);
+            meshlets.resize(m_global_meshlet_capacity);
+
+            m_global_vertex_offset = GeometryBuffer::AppendVertices(
+                vertices.data(),
+                m_global_vertex_capacity
+            );
+            m_global_index_offset = GeometryBuffer::AppendIndices(
+                indices.data(),
+                m_global_index_capacity
+            );
+            m_global_meshlet_offset =
+                GeometryBuffer::AppendMeshletBounds(
+                    meshlets.data(),
+                    m_global_meshlet_capacity
+                );
+        }
+        else
+        {
+            m_global_vertex_offset = GeometryBuffer::AppendVertices(
+                m_vertices.data(),
+                m_global_vertex_capacity
+            );
+            m_global_index_offset = GeometryBuffer::AppendIndices(
+                m_indices.data(),
+                m_global_index_capacity
+            );
+            m_global_meshlet_offset =
+                GeometryBuffer::AppendMeshletBounds(
+                    m_meshlets.data(),
+                    m_global_meshlet_capacity
+                );
+        }
 
         // normalize scale
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))

@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioSource.h"
 #include "Components/ParticleSystem.h"
 #include "Components/Terrain.h"
+#include "Components/Text3D.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Material.h"
@@ -371,6 +372,7 @@ namespace spartan
             Light           ::RegisterForScripting(state_view);
             ParticleSystem  ::RegisterForScripting(state_view);
             Spline          ::RegisterForScripting(state_view);
+            Text3D          ::RegisterForScripting(state_view);
             Camera          ::RegisterForScripting(state_view);
             WorldHelpers    ::RegisterForScripting(state_view);
 
@@ -384,7 +386,8 @@ namespace spartan
                 "Volume",                   ComponentType::Volume,
                 "Script",                   ComponentType::Script,
                 "ParticleSystem",           ComponentType::ParticleSystem,
-                "Spline",                   ComponentType::Spline
+                "Spline",                   ComponentType::Spline,
+                "Text3D",                   ComponentType::Text3D
             );
 
             lua_state.new_enum("Intersection",

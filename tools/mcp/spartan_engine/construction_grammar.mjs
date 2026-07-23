@@ -1449,8 +1449,153 @@ const builders = {
   boarding_gate: build_boarding_gate,
 };
 
+const grammar_capabilities = {
+  window_grid: [
+    "window",
+    "glazing",
+    "facade",
+    "daylight",
+  ],
+  doorway: [
+    "door",
+    "entry",
+    "entrance",
+    "threshold",
+  ],
+  gable_roof: [
+    "gable",
+    "pitched roof",
+    "house",
+    "shelter",
+  ],
+  flat_roof: [
+    "flat roof",
+    "canopy",
+    "modern roof",
+  ],
+  stairs: [
+    "stairs",
+    "steps",
+    "vertical circulation",
+  ],
+  railing: [
+    "railing",
+    "guard",
+    "balustrade",
+    "edge protection",
+  ],
+  structural_frame: [
+    "structure",
+    "frame",
+    "columns",
+    "beams",
+    "support",
+  ],
+  panel_wall: [
+    "wall",
+    "panels",
+    "partition",
+    "enclosure",
+  ],
+  support_array: [
+    "supports",
+    "posts",
+    "columns",
+    "repeated structure",
+  ],
+  sign: [
+    "sign",
+    "branding",
+    "wayfinding",
+    "label",
+  ],
+  cable_run: [
+    "cable",
+    "pipe",
+    "conduit",
+    "utility",
+  ],
+  facade: [
+    "facade",
+    "frontage",
+    "exterior wall",
+  ],
+  room_shell: [
+    "room",
+    "interior",
+    "enclosure",
+    "occupied space",
+  ],
+  storefront_bay: [
+    "storefront",
+    "retail",
+    "shop",
+    "display",
+  ],
+  warehouse_bay: [
+    "warehouse",
+    "loading",
+    "industrial",
+    "service bay",
+  ],
+  boarding_gate: [
+    "boarding",
+    "airport",
+    "terminal",
+    "gate",
+  ],
+};
+
 export const construction_grammar_names =
   Object.freeze(Object.keys(builders));
+
+export function suggest_construction_grammars(
+  purpose,
+  limit = 5,
+) {
+  const value = String(purpose ?? "")
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+  const ranked = Object.entries(grammar_capabilities)
+    .map(([grammar, capabilities]) => {
+      const matches = capabilities.filter((capability) =>
+        value.includes(capability),
+      );
+      return {
+        grammar,
+        score: matches.reduce(
+          (total, match) =>
+            total + match.split(" ").length,
+          0,
+        ),
+        matches,
+      };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) =>
+      right.score - left.score ||
+      left.grammar.localeCompare(right.grammar),
+    );
+
+  if (ranked.length === 0)
+  {
+    return [
+      "structural_frame",
+      "room_shell",
+      "facade",
+      "panel_wall",
+      "sign",
+    ].slice(0, limit).map((grammar) => ({
+      grammar,
+      score: 0,
+      matches: [],
+    }));
+  }
+  return ranked.slice(
+    0,
+    Math.max(1, Math.min(8, limit)),
+  );
+}
 
 export function build_construction_grammar(args) {
   const builder = builders[args.grammar];

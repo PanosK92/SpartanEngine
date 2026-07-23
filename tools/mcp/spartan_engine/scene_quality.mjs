@@ -5,6 +5,7 @@ export const advanced_scene_tool_names = [
   "mesh_physics_bind",
   "render_set_mesh",
   "compound_create",
+  "construction_grammar_suggest",
   "construction_grammar_create",
   "detail_pattern_create",
   "material_apply_preset",
@@ -40,6 +41,7 @@ export const advanced_scene_tool_names = [
   "prefab_load",
   "component_set_batch",
   "entity_set_transform_batch",
+  "entity_create_light_batch",
   "entity_find_by_component",
   "viewport_frame",
   "screenshot_take",
@@ -251,6 +253,8 @@ function resolved_quality_options(options) {
     require_light: true,
     max_duplicate_geometry: 0,
     min_collision_ratio: 1,
+    max_repetition_ratio: 0.4,
+    max_dominant_geometry_ratio: 0.8,
     ...profile,
     ...options,
     min_entities:
@@ -368,7 +372,8 @@ export function scene_quality_prompt_lines(prompt, intent) {
     "Treat the user's request as a creative brief. Infer the ordinary supporting architecture, materials, props, environmental context, circulation, and detail needed for the requested place to feel complete; the user does not need to enumerate standard quality requirements.",
     "Scale the work into bounded internal passes by zone or discipline, preserving good existing work during refinement. Finish each pass coherently instead of scattering shallow edits across the whole scene.",
     "Use context-sensitive design judgment rather than a fixed prop checklist. Details must explain how the place is built, used, accessed, maintained, and lit.",
-    "Before creating entities, call scene_plan_suggest to obtain a metric design brief and editable semantic plan, then review it and call scene_plan_create.",
+    "Before creating entities, read the prepared scene plan when one exists. Otherwise call scene_plan_suggest. Expand the baseline with request-specific functions and relationships, then validate it with scene_plan_create.",
+    "Complete layout and circulation before structure, complete structure before functional objects, and complete functional objects before decoration. Do not hide an incoherent layout under detail.",
     "As soon as the quality root exists or is resolved, call viewport_frame on its id with the perspective view so the editor camera follows the build location. Frame it again after major layout changes.",
     "When scene_recipe_apply adds content beneath an existing quality root, pass that root id as root_parent_id. Reapply recipes instead of manually recreating owned nodes.",
     "Keep recipe nodes aligned with the scene plan: use plan element names for groups or plan_element, copy required semantic_tags, and use instances for repeated planned elements.",
@@ -379,9 +384,10 @@ export function scene_quality_prompt_lines(prompt, intent) {
     "For planned elements with count greater than one, name instance roots semantic_name_1, semantic_name_2, and so on. Put detail parts below each instance root.",
     "Optimize tool calls for completeness and visual quality, not for the smallest call count.",
     "Unless the user explicitly asks for an uncolored greybox, create a coordinated material_palette_create palette and assign non-default semantic materials to nearly every visible renderable.",
-    "Use construction_grammar_create for windows, doors, roofs, stairs, railings, structural frames, panel walls, supports, signs, cable runs, and facades. Prefer these layered assemblies over hand-authored primitive repetition.",
+    "Call construction_grammar_suggest for each major architectural purpose, then use construction_grammar_create where a ranked assembly fits. Prefer layered assemblies over hand-authored primitive repetition.",
     "Read spartan://engine/construction-grammars when choosing grammar dimensions, material roles, or combinations.",
     "Use mesh_generate, compound_create, and detail_pattern_create for custom silhouettes and smaller details that construction grammars do not cover.",
+    "Repeated objects may share a mesh, but vary their grouping, orientation, state, or restrained material accents where repetition would otherwise look stamped.",
     "Give requested features explicit descriptive entity names so scene_quality_audit can verify them.",
     "Use entity_snap for floor, wall, ceiling, or surface placement where applicable.",
     "Create purposeful calibrated lighting under the scene root. Use the plan's lighting intent to choose type, placement, color, intensity, range, and shadows.",
@@ -493,6 +499,8 @@ export async function audit_scene_quality(
     require_light,
     max_duplicate_geometry,
     min_collision_ratio,
+    max_repetition_ratio,
+    max_dominant_geometry_ratio,
   } = resolved_quality_options(options);
   const hierarchy = await send_command("entity_get", { id });
   if (!hierarchy.ok || !hierarchy.entity)
@@ -714,6 +722,26 @@ export async function audit_scene_quality(
       actual: duplicates.length,
       required_max: max_duplicate_geometry,
     },
+    {
+      name: "repetition_ratio",
+      pass:
+        materials.length < 8 ||
+        repetition.repetition_ratio <=
+          max_repetition_ratio,
+      actual: repetition.repetition_ratio,
+      required_max: max_repetition_ratio,
+      largest_group:
+        repetition.largest_repeated_group,
+    },
+    {
+      name: "dominant_geometry_ratio",
+      pass:
+        scene_volume > 0 &&
+        dominant_geometry_ratio <=
+          max_dominant_geometry_ratio,
+      actual: dominant_geometry_ratio,
+      required_max: max_dominant_geometry_ratio,
+    },
     ...feature_results.map((entry) => ({
       name: `feature_${entry.feature}`,
       pass: entry.pass,
@@ -850,6 +878,14 @@ export async function audit_scene_quality(
       if (check.name === "duplicate_geometry")
       {
         return "remove duplicate shells and overlapping generated siblings";
+      }
+      if (check.name === "repetition_ratio")
+      {
+        return "vary repeated silhouettes, grouped details, orientation, or restrained material accents";
+      }
+      if (check.name === "dominant_geometry_ratio")
+      {
+        return "break the scene into purposeful structural and functional forms instead of one dominant shell";
       }
       if (check.name === "collision_coverage")
       {

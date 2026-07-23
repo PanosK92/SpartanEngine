@@ -213,9 +213,19 @@ function is_rebuild_scene_request(value) {
 
 function is_scene_construction_request(value) {
   const constructive = /\b(create|make|build|uild|generate|construct|blockout|layout|lay out|design|place|continue|finish|complete|audit|review|correct|polish|improve|refine|enhance|upgrade|detail|beautify|dress)\b/.test(value);
-  const scene_target = /\b(rooms?|levels?|areas?|scenes?|geometry|environments?|blockouts?|hallways?|corridors?|mazes?|maps?|interiors?|spaces?|backrooms|liminal|playgrounds?|parks?|factories|factory|warehouses?|stations?|streets?|plazas?|offices?|houses?|buildings?|landscapes?|arenas?|yards?|gardens?|cities|city|districts?|downtown|neighborhoods?|garages?|workshops?|lounges?|bars?|airports?)\b/.test(value);
+  const scene_target = /\b(rooms?|levels?|areas?|scenes?|geometry|environments?|blockouts?|hallways?|corridors?|mazes?|maps?|interiors?|spaces?|backrooms|liminal|playgrounds?|parks?|factories|factory|warehouses?|stations?|gas stations?|streets?|plazas?|offices?|houses?|buildings?|landscapes?|arenas?|yards?|gardens?|cities|city|districts?|downtown|neighborhoods?|garages?|workshops?|lounges?|bars?|airports?|shops?|stores?|cafes?|coffee shops?|restaurants?|hotels?|schools?|hospitals?|museums?|facilities|venues?|places?)\b/.test(value);
+  const generic_verb =
+    /\b(build|construct|design|generate)\b/.test(value) ||
+    /\b(create|make)\s+(?:me\s+)?(?:an?\s+|the\s+)[a-z]/.test(value);
+  const generic_build =
+    generic_verb &&
+    !/\b(cube|sphere|quad|plane|cylinder|cone|material|texture|shader|script|file|light|camera|entity|component|mesh|primitive)\b/.test(value);
   const code_context = /\b(source|code|file|files|cpp|c\+\+|javascript|compile|compilation|build error|build failed|build system|git|diff|commit|function|class|implementation)\b/.test(value);
-  return constructive && scene_target && !code_context;
+  return (
+    constructive &&
+    (scene_target || generic_build) &&
+    !code_context
+  );
 }
 
 function is_scene_refinement_request(value) {

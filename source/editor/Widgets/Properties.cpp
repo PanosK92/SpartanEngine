@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Water.h"
 #include "World/Components/SpawnPoint.h"
 #include "World/Components/CarReset.h"
+#include "World/Components/Text3D.h"
 #include "World/Prefab.h"
 //==========================================
 
@@ -111,6 +112,7 @@ namespace
         inline ImVec4 accent_script()          { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
         inline ImVec4 accent_particles() { return ImVec4(0.90f, 0.55f, 0.30f, 1.0f); }
         inline ImVec4 accent_water()     { return ImVec4(0.30f, 0.60f, 0.80f, 1.0f); }
+        inline ImVec4 accent_text_3d()   { return ImVec4(0.75f, 0.55f, 0.85f, 1.0f); }
 
         // helper to get dimmed version for backgrounds
         inline ImVec4 dimmed(const ImVec4& color, float factor = 0.15f)
@@ -660,6 +662,7 @@ void Properties::OnTickVisible()
             ShowSpline(entity->GetComponent<Spline>());
             ShowSplineFollower(entity->GetComponent<SplineFollower>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
+            ShowText3D(entity->GetComponent<Text3D>());
 
             // re-fetch after ShowSpline since clearing a road mesh removes the render
             Render* render = entity->GetComponent<Render>();
@@ -2365,6 +2368,193 @@ void Properties::ShowWater(spartan::Water* water) const
     component_end();
 }
 
+void Properties::ShowText3D(spartan::Text3D* text_3d) const
+{
+    if (!text_3d)
+    {
+        return;
+    }
+
+    if (component_begin("3D Text", design::accent_text_3d(), text_3d))
+    {
+        string text          = text_3d->GetText();
+        string font_path     = text_3d->GetFontPath();
+        float size           = text_3d->GetSize();
+        float depth          = text_3d->GetDepth();
+        float weight         = text_3d->GetWeight();
+        float letter_spacing = text_3d->GetLetterSpacing();
+        float line_spacing   = text_3d->GetLineSpacing();
+        float resolution     =
+            static_cast<float>(text_3d->GetResolution());
+        uint32_t alignment   =
+            static_cast<uint32_t>(text_3d->GetAlignment());
+
+        layout::section_header("Content");
+
+        property_input_text(
+            "Text",
+            &text,
+            false,
+            "utf 8 text rendered as geometry"
+        );
+        if (text != text_3d->GetText())
+        {
+            text_3d->SetText(text);
+        }
+
+        const uint64_t entity_id =
+            text_3d->GetEntity()->GetObjectId();
+        const uint64_t component_id = text_3d->GetObjectId();
+
+        property_resource(
+            "Font",
+            &font_path,
+            "truetype or opentype font",
+            [entity_id, component_id](const string& path)
+            {
+                Entity* entity = World::GetEntityById(entity_id);
+                Text3D* component =
+                    entity
+                    ? entity->GetComponent<Text3D>()
+                    : nullptr;
+
+                if (
+                    component &&
+                    component->GetObjectId() == component_id &&
+                    FileSystem::IsSupportedFontFile(path)
+                )
+                {
+                    component->SetFontPath(path);
+                }
+            }
+        );
+
+        layout::separator();
+        layout::section_header("Geometry");
+
+        if (
+            property_float(
+                "Size",
+                &size,
+                0.01f,
+                0.01f,
+                1000.0f,
+                "text height in meters",
+                "%.2f m"
+            )
+        )
+        {
+            text_3d->SetSize(size);
+        }
+
+        if (
+            property_float(
+                "Depth",
+                &depth,
+                0.01f,
+                0.001f,
+                1000.0f,
+                "extrusion depth",
+                "%.3f m"
+            )
+        )
+        {
+            text_3d->SetDepth(depth);
+        }
+
+        if (
+            property_float(
+                "Weight",
+                &weight,
+                0.001f,
+                0.0f,
+                1.0f,
+                "extra glyph thickness in meters",
+                "%.3f m"
+            )
+        )
+        {
+            text_3d->SetWeight(weight);
+        }
+
+        if (
+            property_float(
+                "Resolution",
+                &resolution,
+                1.0f,
+                32.0f,
+                512.0f,
+                "surface detail per character",
+                "%.0f"
+            )
+        )
+        {
+            text_3d->SetResolution(
+                static_cast<uint32_t>(resolution)
+            );
+        }
+
+        layout::separator();
+        layout::section_header("Layout");
+
+        static vector<string> alignment_names =
+        {
+            "Left",
+            "Center",
+            "Right"
+        };
+        if (
+            property_combo(
+                "Alignment",
+                alignment_names,
+                &alignment,
+                "horizontal origin for each line"
+            )
+        )
+        {
+            text_3d->SetAlignment(
+                static_cast<Text3DAlignment>(alignment)
+            );
+        }
+
+        if (
+            property_float(
+                "Letter Spacing",
+                &letter_spacing,
+                0.01f,
+                -10.0f,
+                100.0f,
+                "additional spacing between glyphs",
+                "%.3f m"
+            )
+        )
+        {
+            text_3d->SetLetterSpacing(letter_spacing);
+        }
+
+        if (
+            property_float(
+                "Line Spacing",
+                &line_spacing,
+                0.01f,
+                0.1f,
+                10.0f,
+                "line height multiplier",
+                "%.2f"
+            )
+        )
+        {
+            text_3d->SetLineSpacing(line_spacing);
+        }
+
+        property_text(
+            "Mesh",
+            text_3d->HasMesh() ? "generated" : "pending"
+        );
+    }
+    component_end();
+}
+
 void Properties::ShowSpline(spartan::Spline* spline) const
 {
     if (!spline)
@@ -3698,6 +3888,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Render"))
             {
                 entity->AddComponent<Render>();
+            }
+
+            if (ImGui::MenuItem("3D Text"))
+            {
+                entity->AddComponent<Text3D>();
             }
 
             if (ImGui::MenuItem("Terrain"))

@@ -30,6 +30,7 @@ const mutating_tools = new Set([
   "world_set_environment",
   "entity_create_empty",
   "entity_create_light",
+  "entity_create_light_batch",
   "lights_calibrate",
   "spline_create_road",
   "spline_set_control_points",

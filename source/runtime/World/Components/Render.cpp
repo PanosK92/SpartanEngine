@@ -388,6 +388,7 @@ namespace spartan
         if (!vertices.empty())
         {
             m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            m_bounding_box_dirty = true;
         }
 
         Tick(); // update bounding boxes, frustum and distance culling
@@ -396,6 +397,15 @@ namespace spartan
     void Render::SetMesh(const MeshType type)
     {
         SetMesh(Renderer::GetStandardMesh(type).get());
+    }
+
+    void Render::ClearMesh()
+    {
+        m_mesh              = nullptr;
+        m_sub_mesh_index    = 0;
+        m_bounding_box_mesh = BoundingBox::Unit;
+        m_bounding_box_dirty = true;
+        m_lod_index          = 0;
     }
 
     void Render::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const

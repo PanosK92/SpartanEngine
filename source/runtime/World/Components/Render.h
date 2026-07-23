@@ -79,6 +79,7 @@ namespace spartan
         // mesh
         void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
         void SetMesh(const MeshType type);
+        void ClearMesh();
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
         uint32_t GetLodCount() const;
         uint32_t GetLodIndex() const { return m_lod_index; }

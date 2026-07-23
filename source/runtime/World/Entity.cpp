@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Traffic.h"
 #include "Components/SpawnPoint.h"
 #include "Components/CarReset.h"
+#include "Components/Text3D.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -805,6 +806,9 @@ namespace spartan
             break;
         case ComponentType::CarReset:
             component = std::make_shared<CarReset>(this);
+            break;
+        case ComponentType::Text3D:
+            component = std::make_shared<Text3D>(this);
             break;
         case ComponentType::Max:
             break;

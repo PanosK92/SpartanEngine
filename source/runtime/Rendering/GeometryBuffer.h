@@ -56,6 +56,16 @@ namespace spartan
 
         // update existing vertices in-place (cpu + gpu), used by deformable meshes like cloth
         static void UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count);
+        static void UpdateIndices(
+            const uint32_t* data,
+            uint32_t offset,
+            uint32_t count
+        );
+        static void UpdateMeshletBounds(
+            const Sb_MeshletBounds* data,
+            uint32_t offset,
+            uint32_t count
+        );
 
         // synchronize gpu buffers with cpu data:
         //  - if no gpu buffer exists, create one with headroom and upload everything

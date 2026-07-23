@@ -1553,6 +1553,69 @@ function material_semantic_for(value)
   return "paint";
 }
 
+function geometry_strategy_for(element)
+{
+  if (element.role === "light")
+  {
+    return {
+      primary: "native_light_batch",
+      alternatives: [],
+      variation: "vary placement and photometric role",
+    };
+  }
+  if (
+    element.role === "structure" ||
+    element.support === "wall" ||
+    element.support === "ceiling"
+  )
+  {
+    return {
+      primary: "construction_grammar",
+      alternatives: [
+        "compound",
+        "generated_mesh",
+      ],
+      variation: "vary silhouette and structural rhythm",
+    };
+  }
+  if (
+    element.role === "surface" ||
+    element.role === "route"
+  )
+  {
+    return {
+      primary: "generated_mesh",
+      alternatives: [
+        "compound",
+        "construction_grammar",
+      ],
+      variation: "preserve clearances and readable edges",
+    };
+  }
+  if (
+    element.role === "detail" ||
+    (element.count ?? 1) > 1
+  )
+  {
+    return {
+      primary: "detail_pattern",
+      alternatives: [
+        "compound",
+        "generated_mesh",
+      ],
+      variation: "vary grouped details without random displacement",
+    };
+  }
+  return {
+    primary: "compound",
+    alternatives: [
+      "generated_mesh",
+      "construction_grammar",
+    ],
+    variation: "use a distinctive functional silhouette",
+  };
+}
+
 export function suggest_scene_plan(brief)
 {
   const validation = validate_design_brief(brief);
@@ -1583,6 +1646,7 @@ export function suggest_scene_plan(brief)
           index % material_vocabulary.length
         ],
       ),
+      geometry_strategy: geometry_strategy_for(entry),
       semantic_tags: semantic_tags_for(
         entry,
         brief,
