@@ -98,31 +98,6 @@ function solution_configuration()
             buildoptions { "-mavx2" }
 end
 
-function configure_internal_engine_sources(
-    source_directory,
-    object_prefix
-)
-    for _, source_file in ipairs(
-        os.matchfiles(source_directory .. "/*.cpp")
-    )
-    do
-        filter { "files:" .. source_file }
-            flags { "NoPCH" }
-            warnings "Off"
-
-        filter {
-            "files:" .. source_file,
-            "system:windows"
-        }
-            buildoptions {
-                '/Fo"$(IntDir)' ..
-                object_prefix ..
-                path.getbasename(source_file) ..
-                '.obj"'
-            }
-    end
-end
-
 function spartan_project_configuration()
     project(SOLUTION_NAME)
         location "../"
@@ -250,18 +225,6 @@ function spartan_project_configuration()
         filter { "configurations:debug", "system:linux" }
             links { "assimp", "FreeImageLib", "freetype", "SDL3" }
 
-        configure_internal_engine_sources(
-            SOURCE_DIR ..
-            "/runtime/Audio/Engine/Core",
-            "engine_core_"
-        )
-        configure_internal_engine_sources(
-            SOURCE_DIR ..
-            "/runtime/Audio/Engine/Solver",
-            "engine_solver_"
-        )
-
-        filter {}
 end
 
 if generation_actions[_ACTION] then

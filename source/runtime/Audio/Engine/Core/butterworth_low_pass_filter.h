@@ -58,14 +58,45 @@ public:
         const T_Real f_2 = f * f;
         const T_Real f_3 = f_2 * f;
         const T_Real f_4 = f_2 * f_2;
-        const T_Real m = -2.0 * std::cos(5.0 * constants::pi / 8.0);
-        const T_Real n = -2.0 * std::cos(7.0 * constants::pi / 8.0);
+        const T_Real m = static_cast<T_Real>(
+            -2.0 * std::cos(5.0 * constants::pi / 8.0)
+        );
+        const T_Real n = static_cast<T_Real>(
+            -2.0 * std::cos(7.0 * constants::pi / 8.0)
+        );
 
-        m_a[0] = 1.0 + (m + n) * f + (2.0 + n * m) * f_2 + (m + n) * f_3 + f_4;
-        m_a[1] = (-4.0 - 2.0 * (n + m) * f + 2.0 * (m + n) * f_3 + 4.0 * f_4) / m_a[0];
-        m_a[2] = (6.0 - 2.0 * (2.0 + m * n) * f_2 + 6.0 * f_4) / m_a[0];
-        m_a[3] = (-4.0 + 2.0 * (m + n) * f - 2.0 * (m + n) * f_3 + 4.0 * f_4) / m_a[0];
-        m_a[4] = (1.0 - (n + m) * f + (2.0 + m * n) * f_2 - (m + n) * f_3 + f_4) / m_a[0];
+        m_a[0] = static_cast<T_Real>(
+            1.0 + (m + n) * f +
+            (2.0 + n * m) * f_2 +
+            (m + n) * f_3 + f_4
+        );
+        m_a[1] = static_cast<T_Real>(
+            (
+                -4.0 - 2.0 * (n + m) * f +
+                2.0 * (m + n) * f_3 +
+                4.0 * f_4
+            ) / m_a[0]
+        );
+        m_a[2] = static_cast<T_Real>(
+            (
+                6.0 - 2.0 * (2.0 + m * n) * f_2 +
+                6.0 * f_4
+            ) / m_a[0]
+        );
+        m_a[3] = static_cast<T_Real>(
+            (
+                -4.0 + 2.0 * (m + n) * f -
+                2.0 * (m + n) * f_3 +
+                4.0 * f_4
+            ) / m_a[0]
+        );
+        m_a[4] = static_cast<T_Real>(
+            (
+                1.0 - (n + m) * f +
+                (2.0 + m * n) * f_2 -
+                (m + n) * f_3 + f_4
+            ) / m_a[0]
+        );
 
         m_f_4 = f_4;
     }
