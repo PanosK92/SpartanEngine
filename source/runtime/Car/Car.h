@@ -74,7 +74,6 @@ namespace spartan
             bool          show_telemetry = false;  // shows vehicle telemetry hud
             bool          camera_follows = false;  // attach camera to follow the car
             bool          customize_materials = true;
-            bool          high_quality_physics = true;
             MaterialPaintPreset paint_preset = MaterialPaintPreset::Metallic;
             Color               paint_color  = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         };

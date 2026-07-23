@@ -177,7 +177,6 @@ namespace spartan
         void SetVehicleHandbrake(float value);  // 0 to 1 (locks rear wheels for drifting)
         void SetVehicleSimulationActive(bool active);
         bool IsVehicleSimulationActive() const { return m_vehicle_simulation_active; }
-        void SetVehicleHighQuality(bool high_quality) { m_vehicle_high_quality = high_quality; }
 
         // vehicle wheel entities (visual meshes that rotate with physics)
         void SetWheelEntity(WheelIndex wheel, Entity* entity);
@@ -354,7 +353,6 @@ namespace spartan
         const void* m_wheel_ground_actors[static_cast<int>(WheelIndex::Count)] = {};
         uint8_t m_wheel_ground_surfaces[static_cast<int>(WheelIndex::Count)] = {};
         bool m_vehicle_simulation_active = true;
-        bool m_vehicle_high_quality = true;
 
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;

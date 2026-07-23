@@ -586,7 +586,6 @@ namespace spartan
             physics->SetMass(definition->performance.mass > 0.0f ? definition->performance.mass : 1500.0f);
             physics->SetVehiclePreset(definition->performance);
             physics->GetVehicleSimulation()->set_log_to_file(config.show_telemetry);
-            physics->SetVehicleHighQuality(config.high_quality_physics);
             physics->SetBodyType(BodyType::Vehicle);
             physics->SetCar(car);  // car ticks automatically through entity system
 

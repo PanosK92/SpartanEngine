@@ -58,7 +58,6 @@ PxVec3           debug_suspension_top[wheel_count];
 PxVec3           debug_suspension_bottom[wheel_count];
 SelfFilterCallback self_filter;
 multibody_state multibody;
-bool multibody_enabled = true;
 bool simulation_enabled = true;
 
     shape_2d shape_data;
@@ -1868,10 +1867,6 @@ public:
 
     inline bool rebuild_multibody(bool preserve_motion = true)
     {
-        if (!multibody_enabled)
-        {
-            return true;
-        }
         PxPhysics* physics = multibody.physics;
         PxScene* scene = multibody.scene;
         multibody_motion_state motion = preserve_motion ? capture_multibody_motion() : multibody_motion_state();
@@ -3566,7 +3561,6 @@ public:
         }
 
         cfg = params.car_config;
-        multibody_enabled = params.multibody_enabled;
         simulation_enabled = true;
         // preset geometry must be applied before deriving body suspension and wheel constants
         apply_car_spec(spec, true);
@@ -3633,7 +3627,7 @@ public:
         PxVec3 com(spec.center_of_mass_x, spec.center_of_mass_y, spec.center_of_mass_z);
         PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
         body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
-        body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, multibody_enabled);
+        body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
         body->setLinearDamping(spec.linear_damping);
         body->setAngularDamping(spec.angular_damping);
 
@@ -3644,13 +3638,13 @@ public:
             compute_aero_from_shape(params.vertices);
         }
 
-        if (multibody_enabled && !rebuild_wheel_sweep_mesh())
+        if (!rebuild_wheel_sweep_mesh())
         {
             SP_LOG_ERROR("failed to create wheel contact geometry");
             destroy();
             return false;
         }
-        if (multibody_enabled && !create_multibody(params.physics, params.scene))
+        if (!create_multibody(params.physics, params.scene))
         {
             SP_LOG_ERROR("failed to create car suspension assembly");
             destroy();
@@ -4075,65 +4069,10 @@ public:
     }
 
 
-    inline void tick_low_quality(float dt)
-    {
-        update_input(dt);
-        PxTransform pose = body->getGlobalPose();
-        PxVec3 forward = pose.q.rotate(PxVec3(0.0f, 0.0f, 1.0f));
-        PxVec3 right = pose.q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-        PxVec3 up = pose.q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
-        PxVec3 velocity = body->getLinearVelocity();
-        float mass = body->getMass();
-        float forward_speed = velocity.dot(forward);
-        float lateral_speed = velocity.dot(right);
-        float drive_acceleration = input.throttle * 6.0f;
-        float brake = PxMax(input.brake, input.handbrake);
-        if (brake > 0.0f)
-        {
-            drive_acceleration -= fabsf(forward_speed) > 0.1f ? copysignf(brake * 10.0f, forward_speed) : drive_acceleration;
-        }
-        if (fabsf(forward_speed) > 28.0f && drive_acceleration * forward_speed > 0.0f)
-        {
-            drive_acceleration = 0.0f;
-        }
-
-        body->addForce(forward * (drive_acceleration * mass), PxForceMode::eFORCE);
-        body->addForce(-right * (lateral_speed * mass * 4.0f), PxForceMode::eFORCE);
-        body->addForce(-velocity * (mass * 0.08f), PxForceMode::eFORCE);
-
-        PxVec3 angular_velocity = body->getAngularVelocity();
-        float steering_speed = PxMin(fabsf(forward_speed) * 0.12f, 1.4f);
-        float steering_direction = forward_speed >= 0.0f ? 1.0f : -1.0f;
-        float target_yaw_speed = input.steering * steering_speed * steering_direction;
-        float yaw_speed = angular_velocity.dot(up);
-        body->addTorque(up * ((target_yaw_speed - yaw_speed) * mass * 3.0f), PxForceMode::eFORCE);
-
-        PxVec3 upright_axis = up.cross(PxVec3(0.0f, 1.0f, 0.0f));
-        body->addTorque(upright_axis * (mass * 18.0f), PxForceMode::eFORCE);
-        body->addTorque(-(angular_velocity - up * yaw_speed) * (mass * 2.0f), PxForceMode::eFORCE);
-
-        if (input.throttle > spec.input_deadzone || input.brake > spec.input_deadzone || fabsf(input.steering) > spec.input_deadzone)
-        {
-            body->wakeUp();
-        }
-        for (int i = 0; i < wheel_count; i++)
-        {
-            float radius = PxMax(cfg.wheel_radius_for(i), 0.05f);
-            wheels[i].angular_velocity = forward_speed / radius;
-            wheels[i].rotation = fmodf(wheels[i].rotation + wheels[i].angular_velocity * dt, PxPi * 2.0f);
-        }
-    }
-
-
     inline void tick(float dt)
     {
         if (!body)
         {
-            return;
-        }
-        if (!multibody_enabled)
-        {
-            tick_low_quality(dt);
             return;
         }
 

@@ -47,6 +47,7 @@ namespace spartan
         constexpr float visit_cell_size = 18.0f;
         constexpr float spawn_separation = 12.0f;
         constexpr float decision_interval = 0.1f;
+        constexpr uint32_t max_physics_cars = 4;
         constexpr float steering_samples[] = { -1.0f, -0.72f, -0.48f, -0.3f, -0.18f, -0.08f, 0.0f, 0.08f, 0.18f, 0.3f, 0.48f, 0.72f, 1.0f };
 
         Physics* find_physics(Entity* entity)
@@ -159,6 +160,9 @@ namespace spartan
         Vector3 player_position;
         Vector3 player_velocity;
         const bool has_player = GetPlayerState(player_position, player_velocity);
+
+        vector<pair<float, Driver*>> physics_candidates;
+        physics_candidates.reserve(m_drivers.size());
         for (Driver& driver : m_drivers)
         {
             if (!driver.car || find(cars.begin(), cars.end(), driver.car) == cars.end())
@@ -182,12 +186,46 @@ namespace spartan
                 Vector3 offset = driver.entity->GetPosition() - player_position;
                 offset.y = 0.0f;
                 const float radius = driver.physics_active ? m_physics_exit_radius : m_physics_radius;
-                SetPhysicsActive(driver, offset.LengthSquared() <= radius * radius);
+                const float distance_squared = offset.LengthSquared();
+                if (distance_squared <= radius * radius)
+                {
+                    physics_candidates.emplace_back(
+                        distance_squared,
+                        &driver
+                    );
+                }
             }
-            else
+        }
+
+        sort(
+            physics_candidates.begin(),
+            physics_candidates.end(),
+            [](const auto& a, const auto& b)
             {
-                SetPhysicsActive(driver, false);
+                return a.first < b.first;
             }
+        );
+        if (physics_candidates.size() > max_physics_cars)
+        {
+            physics_candidates.resize(max_physics_cars);
+        }
+
+        for (Driver& driver : m_drivers)
+        {
+            if (!driver.car || !driver.entity || !driver.physics)
+            {
+                continue;
+            }
+
+            const bool physics_selected = any_of(
+                physics_candidates.begin(),
+                physics_candidates.end(),
+                [&driver](const auto& candidate)
+                {
+                    return candidate.second == &driver;
+                }
+            );
+            SetPhysicsActive(driver, physics_selected);
 
             if (!driver.physics_active)
             {
@@ -312,7 +350,6 @@ namespace spartan
         config.car_file = m_car_path;
         config.drivable = true;
         config.customize_materials = false;
-        config.high_quality_physics = true;
         config.paint_preset = MaterialPaintPreset::Metallic;
         config.paint_color = Color(
             0.15f + hue * 0.65f,

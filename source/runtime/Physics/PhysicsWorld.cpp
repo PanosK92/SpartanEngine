@@ -354,7 +354,14 @@ namespace spartan
                     }
                     for (const VehicleStepCallback& entry : callbacks)
                     {
-                        const bool registered = any_of(vehicle_step_callbacks.begin(), vehicle_step_callbacks.end(), [&entry](const VehicleStepCallback& current) { return current.owner == entry.owner; });
+                        const bool registered = any_of(
+                            vehicle_step_callbacks.begin(),
+                            vehicle_step_callbacks.end(),
+                            [&entry](const VehicleStepCallback& current)
+                            {
+                                return current.owner == entry.owner;
+                            }
+                        );
                         if (registered)
                         {
                             entry.callback(fixed_time_step);

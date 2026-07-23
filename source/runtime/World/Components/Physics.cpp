@@ -1803,10 +1803,7 @@ namespace spartan
             SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f), excluding %zu entities",
                 entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z, entities_to_exclude.size());
 
-            if (m_vehicle_high_quality)
-            {
-                BuildChassisConvexShapes(entity, entities_to_exclude);
-            }
+            BuildChassisConvexShapes(entity, entities_to_exclude);
 
             // re-tag after shape replacement
             if (PxRigidDynamic* body = m_vehicle_simulation->get_body())
@@ -2995,7 +2992,6 @@ namespace spartan
             car::setup_params params;
             params.physics = physics;
             params.scene   = scene;
-            params.multibody_enabled = m_vehicle_high_quality;
 
             if (m_vehicle_simulation->setup(params))
             {
@@ -3011,7 +3007,7 @@ namespace spartan
                 {
                     SP_LOG_ERROR("failed to place car suspension assembly");
                 }
-                if (m_vehicle_high_quality && m_chassis_entity)
+                if (m_chassis_entity)
                 {
                     BuildChassisConvexShapes(m_chassis_entity, m_chassis_entities_to_exclude);
                 }
