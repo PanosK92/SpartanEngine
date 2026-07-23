@@ -38,6 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/SkidMarks.h"
 #include "Components/Water.h"
 #include "Components/Traffic.h"
+#include "Components/SpawnPoint.h"
+#include "Components/CarReset.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -797,6 +799,12 @@ namespace spartan
             break;
         case ComponentType::Traffic:
             component = std::make_shared<Traffic>(this);
+            break;
+        case ComponentType::SpawnPoint:
+            component = std::make_shared<SpawnPoint>(this);
+            break;
+        case ComponentType::CarReset:
+            component = std::make_shared<CarReset>(this);
             break;
         case ComponentType::Max:
             break;

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "CarHud.h"
 #include "Car.h"
+#include "CarBench.h"
 #include "CarState.h"
 #include "CarSimulation.h"
 #include "CarPresets.h"
@@ -1059,11 +1060,11 @@ namespace spartan::car_hud
             }
             hud_tooltip("removes all upgrades, restores base preset");
             ImGui::SameLine();
-            if (ImGui::SmallButton("Run validation"))
+            if (ImGui::SmallButton("Bench"))
             {
-                simulation->request_validation();
+                car_bench::open_window();
             }
-            hud_tooltip("runs deterministic settle acceleration braking coastdown handling and bump scenarios");
+            hud_tooltip("opens car bench, fast scripted stress of the current car");
 
             bool abs_enabled  = physics->GetAbsEnabled();
             bool tc_enabled   = physics->GetTcEnabled();
@@ -1508,37 +1509,29 @@ namespace spartan::car_hud
             float mot_kw = simulation->get_motor_power_kw();
             ImGui::Text("ICE %.0f Nm  |  Motor %.0f Nm (%.0f kW)  |  Total %.0f Nm", ice_tq, mot_tq, mot_kw, ice_tq + mot_tq);
 
-            if (dbg.ir_taps > 0)
-            {
-                ImGui::TextColored(imvec4_from_u32(text_dim), "Exhaust IR: %d taps @ %.0f Hz", dbg.ir_taps, (float)engine_sound::tuning::sample_rate);
-            }
-            else
-            {
-                ImGui::TextColored(imvec4_from_u32(accent_danger), "Exhaust IR: not loaded (check binaries/project/music/exhaust_ir.wav)");
-            }
+            ImGui::TextColored(
+                imvec4_from_u32(text_dim),
+                "Ferrari 412 T2 upstream simulation and exhaust synthesis"
+            );
 
-            ImGui::TextColored(imvec4_from_u32(text_label), "Layers");
+            ImGui::TextColored(imvec4_from_u32(text_label), "Engine-sim exhaust");
             if (ImGui::BeginTable("##eng_layers", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoBordersInBody))
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                draw_level_bar("Combustion", dbg.combustion_level, IM_COL32(255, 100, 100, 255));
-                draw_level_bar("Exhaust",    dbg.exhaust_level,    IM_COL32(255, 180, 100, 255));
-                draw_level_bar("Induction",  dbg.induction_level,  IM_COL32(100, 200, 255, 255));
+                draw_level_bar("Exhaust", dbg.exhaust_level, IM_COL32(255, 180, 100, 255));
                 ImGui::TableNextColumn();
-                draw_level_bar("Mechanical", dbg.mechanical_level, IM_COL32(200, 200, 100, 255));
-                draw_level_bar("Turbo",      dbg.turbo_level,      IM_COL32(100, 255, 200, 255));
-                draw_level_bar("Gain",       dbg.leveler_gain * 0.2f, IM_COL32(220, 130, 255, 255));
-                draw_level_bar("Envelope",   dbg.leveler_envelope,    IM_COL32(180, 100, 220, 255));
+                draw_level_bar("Gain", dbg.leveler_gain * 0.2f, IM_COL32(220, 130, 255, 255));
+                draw_level_bar("Peak", dbg.output_peak, IM_COL32(180, 100, 220, 255));
                 ImGui::EndTable();
             }
 
-            if (ImGui::BeginTable("##eng_scopes", 2, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV))
             {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
                 ImGui::TextColored(imvec4_from_u32(text_label), "Waveform");
-                ImGui::TextColored(imvec4_from_u32(text_dim), "g=out r=cyl o=vin c=exh");
+                ImGui::TextColored(
+                    imvec4_from_u32(text_dim),
+                    "upstream mono output"
+                );
                 {
                     ImVec2 pos = ImGui::GetCursorScreenPos();
                     float w = std::max(180.0f, ImGui::GetContentRegionAvail().x - 4.0f);
@@ -1568,48 +1561,10 @@ namespace spartan::car_hud
                             dl->AddLine(p0, p1, c, 1.4f);
                         }
                     };
-                    trace(dbg.waveform_cyl, IM_COL32(255, 100, 100, 200));
-                    trace(dbg.waveform_vin, IM_COL32(255, 180, 100, 200));
-                    trace(dbg.waveform_exh, IM_COL32(100, 220, 255, 200));
                     trace(dbg.waveform,     IM_COL32(100, 255, 100, 255));
                     dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 1.0f);
                     ImGui::Dummy(ImVec2(w, h));
                 }
-
-                ImGui::TableNextColumn();
-                ImGui::TextColored(imvec4_from_u32(text_label), "Spectrum");
-                ImGui::TextColored(imvec4_from_u32(text_dim), "0..%.0f Hz", (float)engine_sound::tuning::sample_rate * 0.5f);
-                {
-                    ImVec2 pos = ImGui::GetCursorScreenPos();
-                    float w = std::max(180.0f, ImGui::GetContentRegionAvail().x - 4.0f);
-                    float h = 80.0f;
-                    int bins = engine_sound::debug_data::spectrum_bins;
-                    ImDrawList* dl = ImGui::GetWindowDrawList();
-                    dl->AddRectFilled(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(20, 24, 30, 255), 4.0f);
-                    for (int g = 1; g < 4; ++g)
-                    {
-                        float gy = pos.y + h * ((float)g / 4.0f);
-                        dl->AddLine(ImVec2(pos.x, gy), ImVec2(pos.x + w, gy), IM_COL32(50, 56, 64, 255));
-                    }
-                    float nyq = (float)engine_sound::tuning::sample_rate * 0.5f;
-                    float xs = w / (float)bins;
-                    for (int i = 0; i < bins - 1; ++i)
-                    {
-                        float d0 = std::clamp(dbg.spectrum[i],     -80.0f, 0.0f);
-                        float d1 = std::clamp(dbg.spectrum[i + 1], -80.0f, 0.0f);
-                        float y0 = pos.y + h * (1.0f - (d0 + 80.0f) / 80.0f);
-                        float y1 = pos.y + h * (1.0f - (d1 + 80.0f) / 80.0f);
-                        dl->AddLine(ImVec2(pos.x + i * xs, y0), ImVec2(pos.x + (i + 1) * xs, y1), IM_COL32(180, 220, 255, 220), 1.0f);
-                    }
-                    float fx = pos.x + w * (dbg.firing_freq / nyq);
-                    if (fx >= pos.x && fx <= pos.x + w)
-                    {
-                        dl->AddLine(ImVec2(fx, pos.y), ImVec2(fx, pos.y + h), IM_COL32(255, 200, 80, 220), 1.0f);
-                    }
-                    dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 1.0f);
-                    ImGui::Dummy(ImVec2(w, h));
-                }
-                ImGui::EndTable();
             }
 
             const tire_squeal_sound::debug_data& tire_dbg = tire_squeal_sound::get_debug();
@@ -1636,17 +1591,15 @@ namespace spartan::car_hud
 
             if (ImGui::CollapsingHeader("Sound tuning"))
             {
-                ImGui::TextColored(imvec4_from_u32(text_dim), "Tweak the synth in real time. Reset restores tuning::* defaults.");
+                ImGui::TextColored(
+                    imvec4_from_u32(text_dim),
+                    "Controls map directly to the upstream synthesizer."
+                );
                 engine_sound::synthesizer& s = engine_sound::get_synthesizer();
-                ImGui::SliderFloat("df_f_mix",         &s.params.df_f_mix,         0.0f, 1.0f, "%.4f");
-                ImGui::SliderFloat("air_noise",        &s.params.air_noise,        0.0f, 1.0f, "%.3f");
                 ImGui::SliderFloat("convolution_wet", &s.params.convolution_wet,  0.0f, 1.0f, "%.3f");
-                ImGui::SliderFloat("combustion_level", &s.params.combustion_level, 0.0f, 1.0f, "%.3f");
-                ImGui::SliderFloat("exhaust_level",    &s.params.exhaust_level,    0.0f, 4.0f, "%.3f");
-                ImGui::SliderFloat("drive_extra",      &s.params.drive_extra,     -2.0f, 4.0f, "%.2f");
+                ImGui::SliderFloat("df_f_mix",         &s.params.df_f_mix,         0.0f, 0.1f, "%.3f");
+                ImGui::SliderFloat("air_noise",        &s.params.air_noise,        0.0f, 1.0f, "%.3f");
                 ImGui::SliderFloat("leveler_target",   &s.params.leveler_target,   0.05f, 1.5f, "%.3f");
-                ImGui::SliderFloat("master_offset",    &s.params.master_offset,   -0.7f, 1.0f, "%.2f");
-                ImGui::SliderFloat("notch_depth",      &s.params.notch_depth,      0.0f, 1.0f, "%.2f");
                 if (ImGui::Button("Reset to defaults"))
                 {
                     s.params = engine_sound::runtime_params();
@@ -1705,6 +1658,11 @@ namespace spartan::car_hud
             }
         }
     } // anonymous namespace
+
+    void draw_car_bench_window(Car* car_instance, Physics* physics)
+    {
+        car_bench::draw_window(car_instance, physics);
+    }
 
     void draw_telemetry_window(Car* car_instance, Physics* physics, bool* p_open)
     {

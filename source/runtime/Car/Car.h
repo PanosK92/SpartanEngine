@@ -202,7 +202,6 @@ namespace spartan
         Entity*           m_vehicle_entity  = nullptr;  // root entity for drivable cars
         Entity*           m_body_entity     = nullptr;  // car body mesh entity
         Entity*           m_window_entity   = nullptr;  // car window entity (for hiding when inside)
-        math::Vector3     m_spawn_position  = math::Vector3::Zero;
         bool              m_is_occupied     = false;
         bool              m_show_telemetry  = false;
         bool              m_is_drivable     = false;
@@ -214,6 +213,7 @@ namespace spartan
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         bool              m_customize_materials = true;
+        bool              m_spawn_error_logged = false;
         ChaseCameraState  m_chase_camera;
 
         struct BodyRenderState

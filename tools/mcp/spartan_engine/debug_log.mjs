@@ -40,6 +40,11 @@ function sanitize_value(value, depth = 0) {
         result[key] = "<redacted>";
       } else if (key === "code" && typeof item === "string") {
         result[key] = `<${item.length} chars>`;
+      } else if (
+        key === "property_metadata" ||
+        key === "member_metadata"
+      ) {
+        result[key] = `<omitted ${item?.length ?? 0} items>`;
       } else {
         result[key] = sanitize_value(item, depth + 1);
       }
@@ -56,7 +61,9 @@ async function rotate_if_needed() {
       return;
     }
 
-    await fs.rename(debug_log_path, `${debug_log_path}.1`);
+    const rotated_path = `${debug_log_path}.1`;
+    await fs.rm(rotated_path, { force: true });
+    await fs.rename(debug_log_path, rotated_path);
   } catch {
   }
 }

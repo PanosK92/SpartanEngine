@@ -39,6 +39,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Physics.h"
 #include "../World/Components/Render.h"
+#include "../World/Components/CarReset.h"
+#include "../World/Components/SpawnPoint.h"
 #include "../World/Prefab.h"
 #include "../IO/pugixml.hpp"
 #include <mutex>
@@ -565,7 +567,6 @@ namespace spartan
 
         Car* car = new Car();
         car->m_definition     = definition;
-        car->m_spawn_position = config.position;
         car->m_show_telemetry = config.show_telemetry;
         car->m_is_drivable    = config.drivable;
         car->m_paint_preset   = config.paint_preset;
@@ -1501,13 +1502,31 @@ namespace spartan
         {
             return;
         }
-        if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+
+        Entity* owner = m_vehicle_entity->GetParent();
+        CarReset* car_reset =
+            owner ? owner->GetComponent<CarReset>() : nullptr;
+        SpawnPoint* spawn_point =
+            car_reset ? car_reset->GetSpawnPoint() : nullptr;
+
+        if (!spawn_point)
         {
-            const car::car_preset preset = m_definition ? m_definition->performance : car::car_preset();
-            math::Vector3 reset_position = m_spawn_position + math::Vector3(0.0f, get_car_lower_extent(preset) + car_spawn_margin, 0.0f);
-            physics->SetBodyTransform(reset_position, math::Quaternion::Identity);
-            m_chase_camera.initialized = false;
+            if (!m_spawn_error_logged)
+            {
+                SP_LOG_ERROR(
+                    "car '%s' requires a valid spawn point",
+                    owner ?
+                        owner->GetObjectName().c_str() :
+                        m_vehicle_entity->GetObjectName().c_str()
+                );
+                m_spawn_error_logged = true;
+            }
+            return;
         }
+
+        spawn_point->Place(m_vehicle_entity);
+        m_spawn_error_logged = false;
+        m_chase_camera.initialized = false;
     }
 
     void Car::CycleView()
@@ -2377,7 +2396,24 @@ namespace spartan
             {
                 Exit(false);
             }
-            if (m_camera_follows && !m_is_occupied && is_playing && !m_was_playing)
+
+            const bool play_started = is_playing && !m_was_playing;
+            Entity* owner =
+                m_vehicle_entity ? m_vehicle_entity->GetParent() : nullptr;
+            if (
+                play_started &&
+                owner &&
+                owner->GetComponent<CarReset>()
+            )
+            {
+                ResetToSpawn();
+            }
+
+            if (
+                m_camera_follows &&
+                !m_is_occupied &&
+                play_started
+            )
             {
                 Enter();
             }
@@ -2399,6 +2435,7 @@ namespace spartan
             {
                 car_hud::draw_telemetry_window(this, hud_physics, &m_show_telemetry);
             }
+            car_hud::draw_car_bench_window(this, hud_physics);
         }
 
         // osd controls cheat sheet, top left as tidy rows, each row reads action then keyboard or mouse then gamepad
@@ -2638,13 +2675,54 @@ namespace spartan
             float idle_rpm    = physics->GetIdleRPM();
             float redline_rpm = physics->GetRedlineRPM();
             float rpm_normalized = std::clamp((engine_rpm - idle_rpm) / (redline_rpm - idle_rpm), 0.0f, 1.0f);
+            car::Simulation* simulation = physics->GetVehicleSimulation();
 
-            if (!audio_engine->IsSynthesisMode())
+            if (
+                !audio_engine->IsSynthesisMode() ||
+                !audio_engine->IsPlaying()
+            )
             {
-                audio_engine->SetSynthesisMode(true, [](float* buffer, int num_samples)
+                const car::car_preset& preset = simulation->get_spec();
+                engine_sound::engine_config config;
+                config.cylinder_count = preset.engine_sound_cylinders;
+                config.bank_count = preset.engine_sound_banks;
+                config.idle_rpm = preset.engine_idle_rpm;
+                config.redline_rpm = preset.engine_redline_rpm;
+                config.max_rpm = preset.engine_max_rpm;
+                config.displacement_l = preset.engine_displacement_l;
+                config.bore_mm = preset.engine_bore_mm;
+                config.stroke_mm = preset.engine_stroke_mm;
+                config.compression_ratio = preset.engine_compression_ratio;
+                config.primary_length_m = preset.exhaust_primary_length_m;
+                config.collector_length_m = preset.exhaust_collector_length_m;
+                for (int i = 0; i < car::max_engine_cylinders; i++)
                 {
-                    engine_sound::generate(buffer, num_samples, true);
-                });
+                    config.firing_order[i] = static_cast<int>(
+                        preset.engine_firing_order[i]
+                    );
+                    config.cylinder_bank[i] = static_cast<int>(
+                        preset.engine_cylinder_bank[i]
+                    );
+                }
+                engine_sound::configure(config);
+
+                if (!audio_engine->IsSynthesisMode())
+                {
+                    audio_engine->SetSynthesisMode(
+                        true,
+                        [](
+                            float* buffer,
+                            int num_samples
+                        )
+                        {
+                            engine_sound::generate(
+                                buffer,
+                                num_samples,
+                                true
+                            );
+                        }
+                    );
+                }
             }
 
             if (!audio_engine->IsPlaying())
@@ -2652,10 +2730,29 @@ namespace spartan
                 audio_engine->StartSynthesis();
             }
 
-            float load = throttle * (0.5f + rpm_normalized * 0.5f);
-            engine_sound::set_parameters(engine_rpm, throttle, load, boost);
+            const car::car_preset& preset = simulation->get_spec();
+            float torque_normalized = std::clamp(
+                simulation->get_engine_output_torque() /
+                std::max(preset.engine_peak_torque, 1.0f),
+                0.0f,
+                1.5f
+            );
+            float load = std::clamp(
+                std::max(throttle * 0.15f, torque_normalized),
+                0.0f,
+                1.0f
+            );
+            engine_sound::set_parameters(
+                engine_rpm,
+                throttle,
+                load,
+                boost,
+                simulation->get_engine_rotation(),
+                torque_normalized,
+                simulation->get_rev_limiter_active()
+            );
 
-            const float engine_volume_scale = 0.18f;
+            const float engine_volume_scale = 0.30f;
             float volume = (0.6f + rpm_normalized * 0.3f + throttle * 0.1f) * engine_volume_scale;
             audio_engine->SetVolume(volume);
         }

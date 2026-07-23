@@ -685,6 +685,15 @@ function matching_entities(
     normalized(entry.name),
   );
   return entities.filter((entity) => {
+    const tags = Array.isArray(entity.tags)
+      ? entity.tags.map(normalized)
+      : String(entity.tags ?? "")
+        .split(/[;,]/)
+        .map(normalized);
+    if (tags.includes(`plan_element_${name}`))
+    {
+      return true;
+    }
     const entity_name = normalized(entity.name);
     const candidates = semantic_names
       .filter((semantic_name) =>

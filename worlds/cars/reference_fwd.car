@@ -12,6 +12,11 @@
     <engine engine_idle_rpm="800" engine_redline_rpm="6500" engine_max_rpm="6800"
         engine_peak_torque="280" engine_peak_torque_rpm="3000"
         engine_inertia="0.28" engine_friction="0.025" engine_rpm_smoothing="5" engine_crank_axis_x="1" engine_crank_axis_y="0" engine_crank_axis_z="0"
+        engine_sound_cylinders="4" engine_sound_banks="1"
+        engine_displacement_l="2.0" engine_bore_mm="86" engine_stroke_mm="86" engine_compression_ratio="9.5"
+        exhaust_primary_length_m="0.5" exhaust_collector_length_m="2.3"
+        engine_firing_order="0,2,3,1"
+        engine_cylinder_bank="0,0,0,0"
         turbo_enabled="true" boost_max_pressure="1.0" boost_spool_rate="3" boost_wastegate_rpm="5800" boost_torque_mult="0.2" boost_min_rpm="2500" />
 
     <transmission gear_ratios="-3.4,0,3.1,1.95,1.32,1.03,0.84,0,0,0,0" gear_count="7" final_drive="4.1"

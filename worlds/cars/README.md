@@ -30,6 +30,18 @@ These values describe components that are rarely published and may require estim
 
 Physical model inputs must remain inside the ranges enforced by `validate_preset`.
 
+## Engine acoustics
+
+Each engine section defines its synthesized exhaust geometry:
+
+- `engine_sound_cylinders` and `engine_sound_banks`
+- displacement bore stroke and compression ratio
+- zero based `engine_firing_order`
+- per cylinder `engine_cylinder_bank`
+- primary and collector pipe lengths in meters
+
+The audio model uses these values with live crank phase torque boost and limiter state.
+
 ## Accessibility settings
 
 The `<assists>` section modifies driver commands or controller intervention. It must not change mass geometry tire grip or other physical limits.

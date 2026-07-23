@@ -365,7 +365,13 @@ export function scene_quality_prompt_lines(prompt, intent) {
   const required = infer_required_features(prompt);
   const lines = [
     "This is a finished scene-construction task, not a minimal greybox task.",
+    "Treat the user's request as a creative brief. Infer the ordinary supporting architecture, materials, props, environmental context, circulation, and detail needed for the requested place to feel complete; the user does not need to enumerate standard quality requirements.",
+    "Scale the work into bounded internal passes by zone or discipline, preserving good existing work during refinement. Finish each pass coherently instead of scattering shallow edits across the whole scene.",
+    "Use context-sensitive design judgment rather than a fixed prop checklist. Details must explain how the place is built, used, accessed, maintained, and lit.",
     "Before creating entities, call scene_plan_suggest to obtain a metric design brief and editable semantic plan, then review it and call scene_plan_create.",
+    "As soon as the quality root exists or is resolved, call viewport_frame on its id with the perspective view so the editor camera follows the build location. Frame it again after major layout changes.",
+    "When scene_recipe_apply adds content beneath an existing quality root, pass that root id as root_parent_id. Reapply recipes instead of manually recreating owned nodes.",
+    "Keep recipe nodes aligned with the scene plan: use plan element names for groups or plan_element, copy required semantic_tags, and use instances for repeated planned elements.",
     "The planner is environment-agnostic. Infer suitable roles and dimensions for the current request; never force car, room, city, or other domain-specific structure onto unrelated scenes.",
     "Build the scene to match the validated plan. Entity and compound names must match semantic element names so spatial evidence can resolve them.",
     "Represent generated content as a versioned scene recipe with stable semantic ids. Call scene_recipe_preview before scene_recipe_apply, and refine the same recipe instead of appending replacement siblings.",
@@ -396,6 +402,12 @@ export function scene_quality_prompt_lines(prompt, intent) {
   {
     lines.push(
       `The quality audit root is ${intent.target_name}. Keep all created content under that root.`,
+    );
+  }
+  else if (intent?.use_selected)
+  {
+    lines.push(
+      "Treat the selected entity as the quality root. Preserve its good existing content and keep refinements inside that hierarchy.",
     );
   }
   return lines;
@@ -530,11 +542,11 @@ export async function audit_scene_quality(
   const descendants = entities.filter(
     (entity) => String(entity.id) !== String(id),
   );
-  const names = descendants.map((entity) =>
+  const names = entities.map((entity) =>
     normalized(entity.name),
   );
   const tags = new Set(
-    descendants.flatMap((entity) =>
+    entities.flatMap((entity) =>
       Array.isArray(entity.tags)
         ? entity.tags.map(normalized)
         : [],
@@ -543,6 +555,11 @@ export async function audit_scene_quality(
   const materials = Array.isArray(material_snapshot.materials)
     ? material_snapshot.materials
     : [];
+  names.push(
+    ...materials.map((entry) =>
+      normalized(entry.name),
+    ),
+  );
   const default_material_count = materials.filter(
     (entry) => entry.default_material,
   ).length;

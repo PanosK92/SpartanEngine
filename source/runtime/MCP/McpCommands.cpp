@@ -146,33 +146,40 @@ namespace spartan
             return "{\"ok\":false,\"error\":" + json_string(error) + "}";
         }
 
+        std::string json_number(double value)
+        {
+            return std::isfinite(value)
+                ? std::to_string(value)
+                : "null";
+        }
+
         std::string json_vector3(const math::Vector3& value)
         {
-            return "[" + std::to_string(value.x) + "," + std::to_string(value.y) + "," + std::to_string(value.z) + "]";
+            return "[" + json_number(value.x) + "," + json_number(value.y) + "," + json_number(value.z) + "]";
         }
 
         std::string json_vector2(const math::Vector2& value)
         {
-            return "[" + std::to_string(value.x) + "," + std::to_string(value.y) + "]";
+            return "[" + json_number(value.x) + "," + json_number(value.y) + "]";
         }
 
         std::string json_quaternion(const math::Quaternion& value)
         {
-            return "[" + std::to_string(value.x) + "," + std::to_string(value.y) + "," + std::to_string(value.z) + "," + std::to_string(value.w) + "]";
+            return "[" + json_number(value.x) + "," + json_number(value.y) + "," + json_number(value.z) + "," + json_number(value.w) + "]";
         }
 
         std::string json_color(const Color& value)
         {
-            return "[" + std::to_string(value.r) + "," + std::to_string(value.g) + "," + std::to_string(value.b) + "," + std::to_string(value.a) + "]";
+            return "[" + json_number(value.r) + "," + json_number(value.g) + "," + json_number(value.b) + "," + json_number(value.a) + "]";
         }
 
         std::string json_matrix(const math::Matrix& value)
         {
             return "["
-                + std::to_string(value.m00) + "," + std::to_string(value.m01) + "," + std::to_string(value.m02) + "," + std::to_string(value.m03) + ","
-                + std::to_string(value.m10) + "," + std::to_string(value.m11) + "," + std::to_string(value.m12) + "," + std::to_string(value.m13) + ","
-                + std::to_string(value.m20) + "," + std::to_string(value.m21) + "," + std::to_string(value.m22) + "," + std::to_string(value.m23) + ","
-                + std::to_string(value.m30) + "," + std::to_string(value.m31) + "," + std::to_string(value.m32) + "," + std::to_string(value.m33) + "]";
+                + json_number(value.m00) + "," + json_number(value.m01) + "," + json_number(value.m02) + "," + json_number(value.m03) + ","
+                + json_number(value.m10) + "," + json_number(value.m11) + "," + json_number(value.m12) + "," + json_number(value.m13) + ","
+                + json_number(value.m20) + "," + json_number(value.m21) + "," + json_number(value.m22) + "," + json_number(value.m23) + ","
+                + json_number(value.m30) + "," + json_number(value.m31) + "," + json_number(value.m32) + "," + json_number(value.m33) + "]";
         }
 
         std::string json_bounding_box(const math::BoundingBox& value)
@@ -2188,11 +2195,11 @@ namespace spartan
             }
             if (type == typeid(float))
             {
-                return std::to_string(std::any_cast<float>(value));
+                return json_number(std::any_cast<float>(value));
             }
             if (type == typeid(double))
             {
-                return std::to_string(std::any_cast<double>(value));
+                return json_number(std::any_cast<double>(value));
             }
             if (type == typeid(int32_t))
             {
@@ -4846,17 +4853,17 @@ namespace spartan
                 Light* light = static_cast<Light*>(component);
                 json += "\"light_type\":" + json_string(light_type_to_name(light->GetLightType()));
                 json += ",\"color\":" + json_color(light->GetColor());
-                json += ",\"temperature\":" + std::to_string(light->GetTemperature());
-                json += ",\"intensity\":" + std::to_string(light->GetIntensityPhotometric());
-                json += ",\"range\":" + std::to_string(light->GetRange());
-                json += ",\"angle_degrees\":" + std::to_string(light->GetAngle() / math::deg_to_rad);
-                json += ",\"area_width\":" + std::to_string(light->GetAreaWidth());
-                json += ",\"area_height\":" + std::to_string(light->GetAreaHeight());
+                json += ",\"temperature\":" + json_number(light->GetTemperature());
+                json += ",\"intensity\":" + json_number(light->GetIntensityPhotometric());
+                json += ",\"range\":" + json_number(light->GetRange());
+                json += ",\"angle_degrees\":" + json_number(light->GetAngle() / math::deg_to_rad);
+                json += ",\"area_width\":" + json_number(light->GetAreaWidth());
+                json += ",\"area_height\":" + json_number(light->GetAreaHeight());
                 json += ",\"shadows\":" + json_bool(light->GetFlag(LightFlags::Shadows));
                 json += ",\"volumetric\":" + json_bool(light->GetFlag(LightFlags::Volumetric));
-                json += ",\"draw_distance\":" + std::to_string(light->GetDrawDistance());
-                json += ",\"shadow_distance\":" + std::to_string(light->GetShadowDistance());
-                json += ",\"volumetric_distance\":" + std::to_string(light->GetVolumetricDistance());
+                json += ",\"draw_distance\":" + json_number(light->GetDrawDistance());
+                json += ",\"shadow_distance\":" + json_number(light->GetShadowDistance());
+                json += ",\"volumetric_distance\":" + json_number(light->GetVolumetricDistance());
             }
             else if (type == ComponentType::Camera)
             {

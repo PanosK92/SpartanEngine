@@ -172,6 +172,22 @@ namespace car
             require(preset.diff_type >= 0 && preset.diff_type <= 2, "diff_type");
             require(finite_range(preset.engine_idle_rpm, 300.0f, 2000.0f) && finite_range(preset.engine_redline_rpm, preset.engine_idle_rpm + 500.0f, 20000.0f) && finite_range(preset.engine_max_rpm, preset.engine_redline_rpm, 22000.0f), "engine_speed_range");
             require(finite_range(preset.engine_peak_torque, 10.0f, 5000.0f) && finite_range(preset.engine_inertia, 0.01f, 10.0f) && finite_range(preset.engine_friction, 0.0f, 10.0f) && finite_range(preset.engine_rpm_smoothing, 0.1f, 100.0f), "engine_response");
+            require(preset.engine_sound_cylinders >= 1 && preset.engine_sound_cylinders <= max_engine_cylinders, "engine_sound_cylinders");
+            require(preset.engine_sound_banks >= 1 && preset.engine_sound_banks <= 2, "engine_sound_banks");
+            require(finite_range(preset.engine_displacement_l, 0.1f, 20.0f) && finite_range(preset.engine_bore_mm, 30.0f, 200.0f) && finite_range(preset.engine_stroke_mm, 30.0f, 200.0f) && finite_range(preset.engine_compression_ratio, 5.0f, 25.0f), "engine_sound_geometry");
+            require(finite_range(preset.exhaust_primary_length_m, 0.05f, 3.0f) && finite_range(preset.exhaust_collector_length_m, 0.1f, 10.0f), "engine_sound_exhaust");
+            bool firing_order_used[max_engine_cylinders] = {};
+            for (int i = 0; i < preset.engine_sound_cylinders; i++)
+            {
+                int cylinder = static_cast<int>(preset.engine_firing_order[i]);
+                int bank = static_cast<int>(preset.engine_cylinder_bank[i]);
+                require(cylinder >= 0 && cylinder < preset.engine_sound_cylinders && !firing_order_used[cylinder], "engine_firing_order");
+                require(bank >= 0 && bank < preset.engine_sound_banks, "engine_cylinder_bank");
+                if (cylinder >= 0 && cylinder < max_engine_cylinders)
+                {
+                    firing_order_used[cylinder] = true;
+                }
+            }
             float crank_axis_length = sqrtf(preset.engine_crank_axis_x * preset.engine_crank_axis_x + preset.engine_crank_axis_y * preset.engine_crank_axis_y + preset.engine_crank_axis_z * preset.engine_crank_axis_z);
             require(finite_range(crank_axis_length, 0.99f, 1.01f), "engine_crank_axis");
             require(finite_range(preset.final_drive, 0.1f, 10.0f) && finite_range(preset.clutch_engagement_rate, 0.1f, 100.0f) && finite_range(preset.clutch_max_torque, 10.0f, 10000.0f) && finite_range(preset.driveline_inertia, 0.001f, 10.0f) && finite_range(preset.drivetrain_efficiency, 0.1f, 1.0f) && finite_range(preset.driveshaft_stiffness, 1.0f, 1000000.0f) && finite_range(preset.driveshaft_damping, 0.0f, 10000.0f), "drivetrain");
@@ -228,6 +244,7 @@ namespace car
             #define READ_INT(member) read_int(node, #member, preset.member)
             #define READ_BOOL(member) read_bool(node, #member, preset.member)
             #define READ_FLOAT_ARRAY(member) read_float_array(node, #member, preset.member, max_gears)
+            #define READ_ENGINE_ARRAY(member) read_float_array(node, #member, preset.member, max_engine_cylinders)
 
             READ_FLOAT(mass);
             READ_FLOAT(length);
@@ -260,6 +277,16 @@ namespace car
             READ_FLOAT(engine_crank_axis_z);
             READ_FLOAT(downshift_blip_amount);
             READ_FLOAT(downshift_blip_duration);
+            READ_INT(engine_sound_cylinders);
+            READ_INT(engine_sound_banks);
+            READ_FLOAT(engine_displacement_l);
+            READ_FLOAT(engine_bore_mm);
+            READ_FLOAT(engine_stroke_mm);
+            READ_FLOAT(engine_compression_ratio);
+            READ_FLOAT(exhaust_primary_length_m);
+            READ_FLOAT(exhaust_collector_length_m);
+            READ_ENGINE_ARRAY(engine_firing_order);
+            READ_ENGINE_ARRAY(engine_cylinder_bank);
 
             READ_FLOAT_ARRAY(gear_ratios);
             READ_INT(gear_count);
@@ -444,6 +471,7 @@ namespace car
             #undef READ_INT
             #undef READ_BOOL
             #undef READ_FLOAT_ARRAY
+            #undef READ_ENGINE_ARRAY
         }
     }
 

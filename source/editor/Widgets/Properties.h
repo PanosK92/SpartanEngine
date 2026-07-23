@@ -42,6 +42,8 @@ namespace spartan
     class Component;
     class ParticleSystem;
     class Water;
+    class SpawnPoint;
+    class CarReset;
 }
 
 class Properties : public Widget
@@ -72,6 +74,8 @@ private:
     void ShowVolume(spartan::Volume* volume) const;
     void ShowParticleSystem(spartan::ParticleSystem* particle_system) const;
     void ShowWater(spartan::Water* water) const;
+    void ShowSpawnPoint(spartan::SpawnPoint* spawn_point) const;
+    void ShowCarReset(spartan::CarReset* car_reset) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

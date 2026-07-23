@@ -43,6 +43,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Script.h"
 #include "World/Components/ParticleSystem.h"
 #include "World/Components/Water.h"
+#include "World/Components/SpawnPoint.h"
+#include "World/Components/CarReset.h"
 #include "World/Prefab.h"
 //==========================================
 
@@ -668,6 +670,8 @@ void Properties::OnTickVisible()
             ShowVolume(entity->GetComponent<Volume>());
             ShowParticleSystem(entity->GetComponent<ParticleSystem>());
             ShowWater(entity->GetComponent<Water>());
+            ShowSpawnPoint(entity->GetComponent<SpawnPoint>());
+            ShowCarReset(entity->GetComponent<CarReset>());
 
             ShowAddComponentButton();
 
@@ -2866,6 +2870,85 @@ void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
     component_end();
 }
 
+void Properties::ShowSpawnPoint(spartan::SpawnPoint* spawn_point) const
+{
+    if (!spawn_point)
+    {
+        return;
+    }
+
+    if (
+        component_begin(
+            "Spawn Point",
+            design::accent_entity(),
+            spawn_point
+        )
+    )
+    {
+        ImGui::TextWrapped(
+            "The entity transform defines the exact spawn pose."
+        );
+    }
+    component_end();
+}
+
+void Properties::ShowCarReset(spartan::CarReset* car_reset) const
+{
+    if (!car_reset)
+    {
+        return;
+    }
+
+    if (
+        component_begin(
+            "Car Reset",
+            design::accent_entity(),
+            car_reset
+        )
+    )
+    {
+        const uint64_t spawn_point_id =
+            car_reset->GetSpawnPointEntityId();
+        const vector<Entity*>& entities = World::GetEntities();
+        vector<string> names = { "(none)" };
+        vector<uint64_t> ids = { 0 };
+        uint32_t selected_index = 0;
+
+        for (Entity* entity : entities)
+        {
+            if (
+                !entity ||
+                !entity->GetComponent<SpawnPoint>()
+            )
+            {
+                continue;
+            }
+
+            ids.push_back(entity->GetObjectId());
+            names.push_back(entity->GetObjectName());
+
+            if (entity->GetObjectId() == spawn_point_id)
+            {
+                selected_index =
+                    static_cast<uint32_t>(names.size() - 1);
+            }
+        }
+
+        if (
+            property_combo(
+                "Spawn Point",
+                names,
+                &selected_index,
+                "spawn point used when play starts and the car resets"
+            )
+        )
+        {
+            car_reset->SetSpawnPointEntityId(ids[selected_index]);
+        }
+    }
+    component_end();
+}
+
 void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 {
     if (!audio_source)
@@ -3577,6 +3660,26 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Script"))
             {
                 entity->AddComponent<Script>();
+            }
+
+            ImGui::Dummy(ImVec2(0, design::spacing_sm));
+
+            ImGui::PushStyleColor(
+                ImGuiCol_Text,
+                ImVec4(0.6f, 0.6f, 0.6f, 1.0f)
+            );
+            ImGui::TextUnformatted("GAMEPLAY");
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Spawn Point"))
+            {
+                entity->AddComponent<SpawnPoint>();
+            }
+
+            if (ImGui::MenuItem("Car Reset"))
+            {
+                entity->AddComponent<CarReset>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

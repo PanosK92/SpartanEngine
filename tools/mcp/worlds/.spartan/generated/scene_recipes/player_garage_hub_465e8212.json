@@ -1,0 +1,676 @@
+{
+  "version": 1,
+  "recipe_id": "player_garage_hub",
+  "metadata": {
+    "design": "polished cozy private racing garage home hub",
+    "footprint": [
+      45,
+      35
+    ],
+    "origin": [
+      -104,
+      0,
+      -260
+    ],
+    "plan": "validated",
+    "revision": 1,
+    "root_name": "player_garage_hub"
+  },
+  "nodes": [
+    {
+      "semantic_id": "hub.arcade",
+      "name": "arcade_machine",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          -2.6,
+          0,
+          4.1
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "arcade_machine"
+    },
+    {
+      "semantic_id": "hub.architecture",
+      "name": "architecture",
+      "kind": "empty",
+      "parent_semantic_id": "hub.root",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "semantic_id": "hub.auto_equipment",
+      "name": "automotive_equipment",
+      "kind": "empty",
+      "parent_semantic_id": "hub.workshop",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          1.5
+        ]
+      },
+      "components": [],
+      "tags": [
+        "service_route"
+      ],
+      "plan_element": "automotive_equipment"
+    },
+    {
+      "semantic_id": "hub.awards",
+      "name": "awards_and_helmets",
+      "kind": "empty",
+      "parent_semantic_id": "hub.trophy_wall",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "awards_and_helmets"
+    },
+    {
+      "semantic_id": "hub.bar",
+      "name": "bar_counter",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -4.7
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "bar_counter"
+    },
+    {
+      "semantic_id": "hub.camera1",
+      "name": "menu_camera_views_1",
+      "kind": "empty",
+      "parent_semantic_id": "hub.cameras",
+      "transform": {
+        "position": [
+          -14,
+          5,
+          17
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point"
+      ],
+      "plan_element": "menu_camera_views"
+    },
+    {
+      "semantic_id": "hub.camera2",
+      "name": "menu_camera_views_2",
+      "kind": "empty",
+      "parent_semantic_id": "hub.cameras",
+      "transform": {
+        "position": [
+          0,
+          2.2,
+          8.5
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point"
+      ],
+      "plan_element": "menu_camera_views"
+    },
+    {
+      "semantic_id": "hub.camera3",
+      "name": "menu_camera_views_3",
+      "kind": "empty",
+      "parent_semantic_id": "hub.cameras",
+      "transform": {
+        "position": [
+          10,
+          1.8,
+          3.5
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point"
+      ],
+      "plan_element": "menu_camera_views"
+    },
+    {
+      "semantic_id": "hub.cameras",
+      "name": "menu_camera_views",
+      "kind": "empty",
+      "parent_semantic_id": "hub.root",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point"
+      ],
+      "plan_element": "menu_camera_views"
+    },
+    {
+      "semantic_id": "hub.car_display",
+      "name": "player_car_display",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_shell",
+      "transform": {
+        "position": [
+          0,
+          0.2,
+          1
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point"
+      ],
+      "plan_element": "player_car_display"
+    },
+    {
+      "semantic_id": "hub.drainage",
+      "name": "drainage_channel",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_floor",
+      "transform": {
+        "position": [
+          0,
+          0,
+          4.7
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "drainage_channel"
+    },
+    {
+      "semantic_id": "hub.driveway",
+      "name": "driveway_surface",
+      "kind": "empty",
+      "parent_semantic_id": "hub.exterior",
+      "transform": {
+        "position": [
+          0,
+          0,
+          10
+        ]
+      },
+      "components": [],
+      "tags": [
+        "entrance",
+        "vehicle_route",
+        "walkable"
+      ],
+      "plan_element": "driveway_surface"
+    },
+    {
+      "semantic_id": "hub.exterior",
+      "name": "exterior_layout",
+      "kind": "empty",
+      "parent_semantic_id": "hub.root",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": []
+    },
+    {
+      "semantic_id": "hub.fence",
+      "name": "fence_and_gate",
+      "kind": "empty",
+      "parent_semantic_id": "hub.exterior",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [
+        "entrance",
+        "support"
+      ],
+      "plan_element": "fence_and_gate"
+    },
+    {
+      "semantic_id": "hub.frame",
+      "name": "structural_frame",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_shell",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [
+        "support"
+      ],
+      "plan_element": "structural_frame"
+    },
+    {
+      "semantic_id": "hub.garage_floor",
+      "name": "garage_floor",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_shell",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [
+        "walkable"
+      ],
+      "plan_element": "garage_floor"
+    },
+    {
+      "semantic_id": "hub.garage_shell",
+      "name": "garage_shell",
+      "kind": "empty",
+      "parent_semantic_id": "hub.architecture",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -3
+        ]
+      },
+      "components": [],
+      "tags": [
+        "support"
+      ],
+      "plan_element": "garage_shell"
+    },
+    {
+      "semantic_id": "hub.garden",
+      "name": "garden_lawn",
+      "kind": "empty",
+      "parent_semantic_id": "hub.exterior",
+      "transform": {
+        "position": [
+          12,
+          0,
+          11
+        ]
+      },
+      "components": [],
+      "tags": [
+        "walkable"
+      ],
+      "plan_element": "garden_lawn"
+    },
+    {
+      "semantic_id": "hub.garden_furniture",
+      "name": "garden_furniture",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garden",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "garden_furniture"
+    },
+    {
+      "semantic_id": "hub.jukebox",
+      "name": "jukebox",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          2.5,
+          0,
+          3.8
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point"
+      ],
+      "plan_element": "jukebox"
+    },
+    {
+      "semantic_id": "hub.lighting",
+      "name": "practical_lighting",
+      "kind": "empty",
+      "parent_semantic_id": "hub.root",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "practical_lighting"
+    },
+    {
+      "semantic_id": "hub.lounge",
+      "name": "lounge_shell",
+      "kind": "empty",
+      "parent_semantic_id": "hub.architecture",
+      "transform": {
+        "position": [
+          11,
+          0,
+          -3
+        ]
+      },
+      "components": [],
+      "tags": [
+        "support"
+      ],
+      "plan_element": "lounge_shell"
+    },
+    {
+      "semantic_id": "hub.opening",
+      "name": "garage_opening",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_shell",
+      "transform": {
+        "position": [
+          0,
+          0,
+          7
+        ]
+      },
+      "components": [],
+      "tags": [
+        "entrance",
+        "vehicle_route",
+        "walkable"
+      ],
+      "plan_element": "garage_opening"
+    },
+    {
+      "semantic_id": "hub.planting",
+      "name": "garden_planting",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garden",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "garden_planting"
+    },
+    {
+      "semantic_id": "hub.root",
+      "name": "player_garage_hub",
+      "kind": "empty",
+      "transform": {
+        "position": [
+          -104,
+          0,
+          -260
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point",
+        "landmark",
+        "scene_recipe_player_garage_hub"
+      ]
+    },
+    {
+      "semantic_id": "hub.seating",
+      "name": "sofa_and_table",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          -1.2,
+          0,
+          1.2
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "sofa_and_table"
+    },
+    {
+      "semantic_id": "hub.service",
+      "name": "exterior_service_props",
+      "kind": "empty",
+      "parent_semantic_id": "hub.exterior",
+      "transform": {
+        "position": [
+          -17,
+          0,
+          7
+        ]
+      },
+      "components": [],
+      "tags": [
+        "service_route"
+      ],
+      "plan_element": "exterior_service_props"
+    },
+    {
+      "semantic_id": "hub.shelves",
+      "name": "lounge_shelves",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          0,
+          1.3,
+          -5.55
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "lounge_shelves"
+    },
+    {
+      "semantic_id": "hub.stool1",
+      "name": "bar_stools_1",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          -1.2,
+          0,
+          -3.55
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "bar_stools"
+    },
+    {
+      "semantic_id": "hub.stool2",
+      "name": "bar_stools_2",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -3.55
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "bar_stools"
+    },
+    {
+      "semantic_id": "hub.stool3",
+      "name": "bar_stools_3",
+      "kind": "empty",
+      "parent_semantic_id": "hub.lounge",
+      "transform": {
+        "position": [
+          1.2,
+          0,
+          -3.55
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "bar_stools"
+    },
+    {
+      "semantic_id": "hub.tire_marks",
+      "name": "tire_marks",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_floor",
+      "transform": {
+        "position": [
+          0,
+          0,
+          2
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "tire_marks"
+    },
+    {
+      "semantic_id": "hub.tires",
+      "name": "spare_wheels_and_tires",
+      "kind": "empty",
+      "parent_semantic_id": "hub.workshop",
+      "transform": {
+        "position": [
+          -2.7,
+          0,
+          2
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "spare_wheels_and_tires"
+    },
+    {
+      "semantic_id": "hub.tool_storage",
+      "name": "tool_storage",
+      "kind": "empty",
+      "parent_semantic_id": "hub.workshop",
+      "transform": {
+        "position": [
+          -2.7,
+          0,
+          -2.4
+        ]
+      },
+      "components": [],
+      "tags": [],
+      "plan_element": "tool_storage"
+    },
+    {
+      "semantic_id": "hub.trophy_wall",
+      "name": "trophy_memorabilia_wall",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_shell",
+      "transform": {
+        "position": [
+          0,
+          1.6,
+          -6.65
+        ]
+      },
+      "components": [],
+      "tags": [
+        "focal_point"
+      ],
+      "plan_element": "trophy_memorabilia_wall"
+    },
+    {
+      "semantic_id": "hub.utilities",
+      "name": "exposed_utilities",
+      "kind": "empty",
+      "parent_semantic_id": "hub.garage_shell",
+      "transform": {
+        "position": [
+          0,
+          2.8,
+          -6.5
+        ]
+      },
+      "components": [],
+      "tags": [
+        "service_route"
+      ],
+      "plan_element": "exposed_utilities"
+    },
+    {
+      "semantic_id": "hub.workbench",
+      "name": "workbench",
+      "kind": "empty",
+      "parent_semantic_id": "hub.workshop",
+      "transform": {
+        "position": [
+          0,
+          0,
+          -4.8
+        ]
+      },
+      "components": [],
+      "tags": [
+        "service_route"
+      ],
+      "plan_element": "workbench"
+    },
+    {
+      "semantic_id": "hub.workshop",
+      "name": "workshop_shell",
+      "kind": "empty",
+      "parent_semantic_id": "hub.architecture",
+      "transform": {
+        "position": [
+          -11,
+          0,
+          -3
+        ]
+      },
+      "components": [],
+      "tags": [
+        "support"
+      ],
+      "plan_element": "workshop_shell"
+    }
+  ]
+}

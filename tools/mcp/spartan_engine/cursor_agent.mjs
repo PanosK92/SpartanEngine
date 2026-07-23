@@ -10,6 +10,7 @@ import {
 import {
   audit_scene_layout,
   make_scene_plan_namespace,
+  read_scene_plan,
 } from "./scene_planning.mjs";
 import {
   infer_design_template,
@@ -567,15 +568,23 @@ function build_prompt(prompt, snapshot, intent = null) {
 
 function quality_root_from_matches(matches)
 {
+  const match_ids = new Set(
+    matches.map((match) => String(match.id)),
+  );
+  const hierarchy_roots = matches.filter(
+    (match) =>
+      !match.parent_id ||
+      String(match.parent_id) === "0" ||
+      !match_ids.has(String(match.parent_id)),
+  );
   return (
-    matches.find((match) =>
-      !match.parent_id &&
+    hierarchy_roots.find((match) =>
       Array.isArray(match.tags) &&
       match.tags.some((tag) =>
           String(tag).startsWith("semantic_id="),
         ),
     ) ??
-    matches.find((match) => !match.parent_id) ??
+    hierarchy_roots[0] ??
     matches[0]
   );
 }
@@ -599,14 +608,6 @@ async function resolve_quality_root(run, target_name)
     const exact_root = quality_root_from_matches(
       exact.matches ?? [],
     );
-    if (exact.ok && exact_root)
-    {
-      return {
-        ...exact,
-        root: exact_root,
-        resolution: "exact_name",
-      };
-    }
     last_result = exact;
 
     const tagged = await run.tool(
@@ -619,6 +620,32 @@ async function resolve_quality_root(run, target_name)
     const tagged_root = quality_root_from_matches(
       tagged.matches ?? [],
     );
+    if (exact.ok && exact_root)
+    {
+      const tagged_ids = new Set(
+        (tagged.matches ?? []).map(
+          (match) => String(match.id),
+        ),
+      );
+      const exact_is_recipe_leaf = tagged_ids.has(
+        String(exact_root.id),
+      );
+      const recipe_is_below_exact =
+        String(tagged_root?.parent_id ?? "") ===
+        String(exact_root.id);
+      if (
+        !tagged_root ||
+        recipe_is_below_exact ||
+        !exact_is_recipe_leaf
+      )
+      {
+        return {
+          ...exact,
+          root: exact_root,
+          resolution: "exact_name",
+        };
+      }
+    }
     if (tagged.ok && tagged_root)
     {
       return {
@@ -661,8 +688,48 @@ async function resolve_quality_root(run, target_name)
   };
 }
 
+async function resolve_selected_quality_root(run)
+{
+  const selection = await run.tool(
+    "selection_get",
+    {},
+  );
+  const selected_id = selection.selected_ids?.[0];
+  if (!selection.ok || !selected_id)
+  {
+    return {
+      ok: false,
+      root: null,
+      error: "quality root selection is empty",
+    };
+  }
+
+  const entity = await run.tool(
+    "entity_get",
+    { id: selected_id },
+  );
+  if (!entity.ok || !entity.entity)
+  {
+    return {
+      ...entity,
+      root: null,
+    };
+  }
+
+  return {
+    ...entity,
+    root: entity.entity,
+    resolution: "selection",
+  };
+}
+
+function scene_plan_root_name(root, fallback)
+{
+  return String(root?.name ?? fallback ?? "selected_scene")
+    .replace(/__sr_[a-f0-9]+_[a-f0-9]+$/i, "");
+}
+
 async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
-  const request_started_at_ms = Date.now();
   if (!api_key) {
     return {
       ok: false,
@@ -759,6 +826,39 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
   try {
     const agent = await run.stage("Prepare Cursor", "starting or reusing the Cursor agent", () => get_agent({ api_key, model_id, engine_host, engine_port, run }));
     const snapshot = await run.stage("Read Context", "reading engine state for Cursor", () => run.tool("context_snapshot"));
+    const should_focus_build =
+      intent?.kind === "scene_rebuild" ||
+      intent?.live_scene_action;
+    if (
+      should_focus_build &&
+      (
+        intent?.target_name ||
+        intent?.use_selected
+      )
+    )
+    {
+      const initial_root = intent.target_name
+        ? await resolve_quality_root(
+          run,
+          intent.target_name,
+        )
+        : await resolve_selected_quality_root(run);
+      if (initial_root.ok && initial_root.root?.id)
+      {
+        await run.stage(
+          "Focus Build Location",
+          "moving the editor camera to the build",
+          () => run.tool(
+            "viewport_frame",
+            {
+              id: initial_root.root.id,
+              view: "perspective",
+              padding: 1.35,
+            },
+          ),
+        );
+      }
+    }
     const cursor_result = await run.stage("Plan And Act", "waiting for Cursor to use Spartan tools", async () => {
       // thinking and streaming count as activity, only a fully silent run that never touched an engine tool gets cancelled
       guard_timer = setInterval(() => {
@@ -802,7 +902,13 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     const is_scene_construction =
       intent?.kind === "scene_rebuild" ||
       intent?.live_scene_action;
-    if (!is_scene_construction || !intent?.target_name)
+    if (
+      !is_scene_construction ||
+      (
+        !intent?.target_name &&
+        !intent?.use_selected
+      )
+    )
     {
       return {
         ok: true,
@@ -813,28 +919,74 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     const found = await run.stage(
       "Resolve Quality Root",
       "finding the completed scene hierarchy",
-      () => resolve_quality_root(
-        run,
-        intent.target_name,
-      ),
+      () => intent.target_name
+        ? resolve_quality_root(
+          run,
+          intent.target_name,
+        )
+        : resolve_selected_quality_root(run),
     );
-    const root_id = found.root?.id;
+    let root_id = found.root?.id;
+    let root_name = scene_plan_root_name(
+      found.root,
+      intent.target_name,
+    );
     if (!found.ok || !root_id)
     {
       return {
         ok: false,
         text:
-          `Scene quality gate could not resolve root entity ${intent.target_name}.`,
+          `Scene quality gate could not resolve root entity ${root_name}.`,
       };
     }
 
+    await run.stage(
+      "Focus Completed Build",
+      "framing the constructed scene",
+      () => run.tool(
+        "viewport_frame",
+        {
+          id: root_id,
+          view: "perspective",
+          padding: 1.35,
+        },
+      ),
+    );
+
+    const send_command = (name, args) =>
+      run.tool(name, args);
+    const plan_namespace = make_scene_plan_namespace({
+      project_root: get_project_root(),
+      engine_host,
+      engine_port,
+      world: snapshot.world,
+    });
+    const stored_plan = await read_scene_plan(
+      plan_namespace,
+      root_name,
+    );
+    const plan = stored_plan.ok
+      ? stored_plan.plan
+      : null;
+    const planned_elements = plan?.elements ?? [];
     const audit_args = {
       id: root_id,
       required_features: infer_required_features(prompt),
       scene_type: infer_design_template(prompt),
+      planned_element_count: planned_elements.reduce(
+        (total, element) =>
+          total + (element.count ?? 1),
+        0,
+      ),
+      required_roles: [
+        ...new Set(
+          planned_elements.flatMap(
+            (element) =>
+              element.semantic_tags ?? [],
+          ),
+        ),
+      ],
     };
-    const send_command = (name, args) =>
-      run.tool(name, args);
     let audit = await run.stage(
       "Audit Scene Quality",
       "checking geometry, materials, features, and lighting",
@@ -845,8 +997,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     );
     const layout_audit_args = {
       id: root_id,
-      root_name: intent.target_name,
-      minimum_created_at_ms: request_started_at_ms,
+      root_name,
     };
     const audit_current_layout = async () => {
       const current_world = await send_command(
@@ -863,6 +1014,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
             engine_port,
             world: current_world,
           }),
+          plan,
         },
       );
     };
@@ -887,14 +1039,17 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       const correction_prompt = [
         "Perform a mandatory quality correction pass on the live Spartan Engine scene.",
         `Original request: ${prompt}`,
-        `Root entity: ${intent.target_name}, id ${root_id}.`,
+        `Root entity: ${root_name}, id ${root_id}.`,
         `Quality audit: ${safe_json(audit, 3500)}`,
         `Layout audit: ${safe_json(layout_audit, 5000)}`,
         "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
         "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
         "Fix every failed scene_layout_audit and scene_quality_audit check, including every renderable listed by collision_coverage, plus the most visible weakness in the image.",
         "When audit issues contain recipe_ids, modify only those scene recipe nodes unless a shared support or material must change.",
+        "Keep recipe nodes aligned with plan element names, plan_element values, semantic_tags, and repeated instances so the layout audit can verify the authored result.",
         "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
+        "Use entity_create_light for lights and mesh_physics_bind or compound_create for collidable generated geometry. Do not expand these atomic tools into probe and component-setting sequences.",
+        "Resolve every correction parent from the current scene and use the returned id. Never retry a missing parent with another guessed id.",
         "Preserve all good existing work and keep every addition under the root.",
         "Call scene_layout_audit and scene_quality_audit after corrections and do not report completion unless both pass.",
       ].join("\n");
@@ -920,6 +1075,27 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           ok: false,
           text: `Scene was edited, but quality correction failed: ${failure_message}`,
         };
+      }
+
+      const corrected_root = intent?.use_selected
+        ? await resolve_selected_quality_root(run)
+        : await resolve_quality_root(
+          run,
+          intent.target_name ?? root_name,
+        );
+      if (
+        corrected_root.ok &&
+        corrected_root.root?.id
+      )
+      {
+        root_id = corrected_root.root.id;
+        root_name = scene_plan_root_name(
+          corrected_root.root,
+          root_name,
+        );
+        audit_args.id = root_id;
+        layout_audit_args.id = root_id;
+        layout_audit_args.root_name = root_name;
       }
 
       audit = await run.stage(

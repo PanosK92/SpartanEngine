@@ -20,6 +20,11 @@
         engine_idle_rpm="1000" engine_redline_rpm="9250" engine_max_rpm="9500"
         engine_peak_torque="700" engine_peak_torque_rpm="6750"
         engine_inertia="0.25" engine_friction="0.02" engine_rpm_smoothing="6" engine_crank_axis_x="0" engine_crank_axis_y="0" engine_crank_axis_z="1"
+        engine_sound_cylinders="12" engine_sound_banks="2"
+        engine_displacement_l="6.262" engine_bore_mm="94" engine_stroke_mm="75.2" engine_compression_ratio="13.5"
+        exhaust_primary_length_m="0.72" exhaust_collector_length_m="2.35"
+        engine_firing_order="0,11,4,7,2,9,5,6,1,10,3,8"
+        engine_cylinder_bank="0,0,0,0,0,0,1,1,1,1,1,1"
         turbo_enabled="false" boost_max_pressure="0" boost_spool_rate="0" boost_wastegate_rpm="0" boost_torque_mult="0" boost_min_rpm="0"
         electric_enabled="true" electric_motor_torque="220" electric_motor_power_kw="120" electric_motor_max_rpm="9500" electric_torque_response="60" />
 

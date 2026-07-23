@@ -109,4 +109,4 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Scene construction prompts should keep steering agents toward `entity_create_primitive_batch` rather than open-ended Lua discovery.
 - Log unresolved capability gaps here with the failing tool, observed error, and required engine improvement.
 - Rebuild the engine and restart the assistant bridge when deploying new native MCP commands.
-- scene_quality_audit required_features returned no matches for recipe generated descendants even when scene_layout_audit resolved the same planned elements and render material evidence showed matching names, fix feature matching under hashed recipe roots
+- `scene_quality_audit` feature evidence includes the quality root, descendants, and render-material entity names so hashed recipe hierarchies remain auditable.

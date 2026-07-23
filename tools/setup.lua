@@ -26,6 +26,12 @@ local LIBRARIES_DIR    = path.join(PROJECT_ROOT, "third_party", "libraries")
 local TOOLS_DIR        = path.join(PROJECT_ROOT, "tools")
 local SEVEN_ZIP        = path.join(TOOLS_DIR, "7z.exe")
 local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
+local ENGINE_AUDIO_LICENSES = {
+    {
+        "engine_sim_LICENSE.txt",
+        "engine_audio_engine_sim_LICENSE.txt"
+    }
+}
 
 local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/1ikk55avwntblfhf3at3z/libraries.7z?rlkey=iexhlu58ouo603bv6i7kwkxxi&dl=1"
 local LIBRARY_HASH     = "3b3586bd80a6dbe170351f3b28e5dabef2a55eec63b39662fbce128600b24105"
@@ -261,6 +267,24 @@ function setup.run()
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
     copy_file(path.join(TOOLS_DIR, "7z.exe"), path.join(BINARIES_DIR, "7z.exe"))
     copy_file(path.join(TOOLS_DIR, "7z.dll"), path.join(BINARIES_DIR, "7z.dll"))
+    for _, license in ipairs(ENGINE_AUDIO_LICENSES) do
+        copy_file(
+            path.join(
+                PROJECT_ROOT,
+                "source",
+                "runtime",
+                "Audio",
+                "Engine",
+                license[1]
+            ),
+            path.join(
+                BINARIES_DIR,
+                "project",
+                "licenses",
+                license[2]
+            )
+        )
+    end
 
     print("\n[2/5] ensuring libraries archive is present...")
     ensure_archive()

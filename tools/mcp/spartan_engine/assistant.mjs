@@ -325,6 +325,7 @@ async function execute_prompt(socket, payload) {
   const run = new AssistantRun(socket, payload.prompt);
   active_runs.set(run.id, run);
 
+  const started_at = Date.now();
   let phase = "starting";
   const stop_heartbeat = start_heartbeat(run, () => phase);
   const intent = route_intent(payload.prompt);
@@ -382,14 +383,43 @@ async function execute_prompt(socket, payload) {
     }
 
     run.finish(summary || "Done.");
+    await append_debug_log({
+      type: "assistant_result",
+      source: "assistant",
+      run_id: run.id,
+      ok: true,
+      intent,
+      duration_ms: Date.now() - started_at,
+      text: summary || "Done.",
+    });
     return { ok: true, text: summary || "Done." };
   } catch (error) {
     const text = error.message || "Assistant failed.";
     if (run.cancelled) {
+      await append_debug_log({
+        type: "assistant_result",
+        source: "assistant",
+        run_id: run.id,
+        ok: false,
+        cancelled: true,
+        intent,
+        duration_ms: Date.now() - started_at,
+        text,
+      });
       return { ok: false, text: text === "Run cancelled." ? "Run cancelled." : text };
     }
 
     run.fail(text);
+    await append_debug_log({
+      type: "assistant_result",
+      source: "assistant",
+      run_id: run.id,
+      ok: false,
+      cancelled: false,
+      intent,
+      duration_ms: Date.now() - started_at,
+      text,
+    });
     return { ok: false, text };
   } finally {
     stop_heartbeat();

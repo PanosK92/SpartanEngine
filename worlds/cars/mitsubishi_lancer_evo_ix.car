@@ -17,6 +17,11 @@
         engine_idle_rpm="800" engine_redline_rpm="7000" engine_max_rpm="7200"
         engine_peak_torque="392" engine_peak_torque_rpm="3000"
         engine_inertia="0.3" engine_friction="0.025" engine_rpm_smoothing="5" engine_crank_axis_x="1" engine_crank_axis_y="0" engine_crank_axis_z="0"
+        engine_sound_cylinders="4" engine_sound_banks="1"
+        engine_displacement_l="1.997" engine_bore_mm="85" engine_stroke_mm="88" engine_compression_ratio="8.8"
+        exhaust_primary_length_m="0.52" exhaust_collector_length_m="2.55"
+        engine_firing_order="0,2,3,1"
+        engine_cylinder_bank="0,0,0,0"
         turbo_enabled="true" boost_max_pressure="1.35" boost_spool_rate="3.5" boost_wastegate_rpm="6000" boost_torque_mult="0.25" boost_min_rpm="2800" />
 
     <!-- 5 speed manual plus reverse, index 0 is reverse, index 1 is neutral -->

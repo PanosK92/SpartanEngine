@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SkidMarks.h"
 #include "Water.h"
 #include "Traffic.h"
+#include "SpawnPoint.h"
+#include "CarReset.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 SP_WARNINGS_ON

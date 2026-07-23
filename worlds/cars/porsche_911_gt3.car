@@ -17,6 +17,11 @@
         engine_idle_rpm="800" engine_redline_rpm="9000" engine_max_rpm="9200"
         engine_peak_torque="470" engine_peak_torque_rpm="6100"
         engine_inertia="0.2" engine_friction="0.02" engine_rpm_smoothing="6" engine_crank_axis_x="0" engine_crank_axis_y="0" engine_crank_axis_z="1"
+        engine_sound_cylinders="6" engine_sound_banks="2"
+        engine_displacement_l="3.996" engine_bore_mm="102" engine_stroke_mm="81.5" engine_compression_ratio="13.3"
+        exhaust_primary_length_m="0.68" exhaust_collector_length_m="2.45"
+        engine_firing_order="0,5,1,3,2,4"
+        engine_cylinder_bank="0,0,0,1,1,1"
         turbo_enabled="false" boost_max_pressure="0" boost_spool_rate="0" boost_wastegate_rpm="0" boost_torque_mult="0" boost_min_rpm="0" />
 
     <!-- 7 speed pdk plus reverse, index 0 is reverse, index 1 is neutral -->

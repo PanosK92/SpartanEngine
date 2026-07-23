@@ -10,7 +10,6 @@ Copyright(c) 2015-2026 Panos Karabelas
 #include "CarSuspension.h"
 #include "CarDrivetrain.h"
 #include "CarTires.h"
-#include "CarValidation.h"
 
 namespace car
 {

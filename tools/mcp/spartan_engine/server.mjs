@@ -173,38 +173,77 @@ function register_local_tool(name, config, handler) {
 
   const input_schema = config.inputSchema ?? {};
   const validated_handler = async (args) => {
-    const parsed = parse_raw_shape(
-      input_schema,
-      args,
-    );
-    if (!parsed.ok)
+    const started_at = Date.now();
+    let result;
+    try
     {
-      return tool_result(parsed.error);
-    }
-    const result = await handler(parsed.value);
-    const output_schema = config.outputSchema;
-    if (
-      output_schema?.safeParse &&
-      result?.structuredContent
-    )
-    {
-      const output = output_schema.safeParse(
-        result.structuredContent,
+      const parsed = parse_raw_shape(
+        input_schema,
+        args,
       );
-      if (!output.success)
+      if (!parsed.ok)
       {
-        return tool_result(
-          structured_error(
-            "tool output failed its declared schema",
-            {
-              code: "invalid_tool_output",
-              retryable: false,
-            },
-          ),
-        );
+        result = tool_result(parsed.error);
       }
+      else
+      {
+        result = await handler(parsed.value);
+        const output_schema = config.outputSchema;
+        if (
+          output_schema?.safeParse &&
+          result?.structuredContent
+        )
+        {
+          const output = output_schema.safeParse(
+            result.structuredContent,
+          );
+          if (!output.success)
+          {
+            result = tool_result(
+              structured_error(
+                "tool output failed its declared schema",
+                {
+                  code: "invalid_tool_output",
+                  retryable: false,
+                },
+              ),
+            );
+          }
+        }
+      }
+      if (
+        config.traceLocal !== false &&
+        name !== "debug_log_read"
+      )
+      {
+        await append_debug_log({
+          type: "local_tool",
+          source: "server",
+          tool: name,
+          args,
+          duration_ms: Date.now() - started_at,
+          ok: !result?.isError,
+          result: result?.structuredContent,
+        });
+      }
+      return result;
     }
-    return result;
+    catch (error)
+    {
+      if (config.traceLocal !== false)
+      {
+        await append_debug_log({
+          type: "local_tool",
+          source: "server",
+          tool: name,
+          args,
+          duration_ms: Date.now() - started_at,
+          ok: false,
+          error: error.message,
+        });
+      }
+      throw error;
+    }
   };
   const tool = {
     name,
@@ -233,6 +272,7 @@ function register_tool(server, name, description, schema, command, options = {})
     inputSchema: schema,
     outputSchema: options.outputSchema ?? output_schemas.generic,
     annotations: options.annotations,
+    traceLocal: false,
   }, async (args) => {
     let mapped_args = args;
     try {
@@ -628,7 +668,105 @@ function short_hash(value) {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+function is_convex_counter_clockwise(profile) {
+  if (!Array.isArray(profile) || profile.length < 3)
+  {
+    return false;
+  }
+  let winding = 0;
+  for (let index = 0; index < profile.length; index++)
+  {
+    const first = profile[index];
+    const second = profile[
+      (index + 1) % profile.length
+    ];
+    const third = profile[
+      (index + 2) % profile.length
+    ];
+    const cross =
+      (second[0] - first[0]) *
+        (third[1] - second[1]) -
+      (second[1] - first[1]) *
+        (third[0] - second[0]);
+    if (Math.abs(cross) <= 1e-7)
+    {
+      continue;
+    }
+    if (cross < 0)
+    {
+      return false;
+    }
+    winding++;
+  }
+  return winding > 0;
+}
+
 function validate_parametric_mesh_args(args) {
+  const size = args.size ?? [1, 1, 1];
+  if (
+    args.shape === "rounded_box" ||
+    args.shape === "beveled_box"
+  )
+  {
+    const radius = args.shape === "rounded_box"
+      ? args.radius
+      : args.bevel;
+    const maximum_radius = Math.min(...size) * 0.5;
+    if (
+      radius !== undefined &&
+      radius >= maximum_radius
+    )
+    {
+      throw new Error(
+        "radius must be smaller than half the smallest size component",
+      );
+    }
+  }
+  if (args.shape === "rounded_cylinder")
+  {
+    const radius =
+      args.radius ?? Math.min(size[0], size[2]) * 0.5;
+    const height = args.height ?? size[1];
+    const bevel =
+      args.bevel ??
+      Math.min(radius, height * 0.5) * 0.15;
+    const segments = args.segments ?? 24;
+    if (
+      bevel >= radius ||
+      bevel * 2 >= height ||
+      segments < 3
+    )
+    {
+      throw new Error(
+        "rounded_cylinder requires bevel below radius and half height, with at least 3 segments",
+      );
+    }
+  }
+  if (args.shape === "inset_panel")
+  {
+    const border =
+      args.border ?? Math.min(size[0], size[1]) * 0.1;
+    const bevel =
+      args.bevel ?? Math.min(...size) * 0.08;
+    if (
+      border * 2 >= Math.min(size[0], size[1]) ||
+      bevel >= Math.min(...size) * 0.5
+    )
+    {
+      throw new Error(
+        "inset_panel border must fit the face and bevel must be below half the smallest size component",
+      );
+    }
+  }
+  if (
+    args.shape === "tapered_extrusion" &&
+    !is_convex_counter_clockwise(args.profile)
+  )
+  {
+    throw new Error(
+      "tapered_extrusion requires a convex counter clockwise profile",
+    );
+  }
   if (args.shape === "wall_openings")
   {
     if (!args.openings)
@@ -2168,21 +2306,27 @@ register_local_tool(
   "scene_recipe_apply",
   {
     title: "scene recipe apply",
-    description: "Idempotently reconcile a versioned scene recipe with the live world. Stable semantic ids update owned entities and remove stale owned nodes.",
+    description: "Idempotently reconcile a versioned scene recipe with the live world. Stable semantic ids update owned entities and remove stale owned nodes. Pass root_parent_id when adding recipe content beneath an existing quality root.",
     inputSchema: {
       recipe: z.record(z.string(), z.any()),
       dry_run: z.boolean().optional(),
+      root_parent_id: entity_id_schema.optional(),
     },
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
   },
-  async ({ recipe, dry_run = false }) => {
+  async ({
+    recipe,
+    dry_run = false,
+    root_parent_id,
+  }) => {
     const result = await apply_scene_recipe(
       send_engine_command,
       recipe,
       {
         project_root,
         dry_run,
+        root_parent_id,
       },
     );
     return tool_result(result);
@@ -3214,14 +3358,10 @@ async function bind_mesh_physics(args) {
     {
       return render;
     }
-    const existing = await send_engine_command(
-      "component_get",
-      {
-        id: args.id,
-        type: "physics",
-      },
-    );
-    if (!existing.ok)
+    const has_physics =
+      render.entity?.components?.includes("physics") ??
+      false;
+    if (!has_physics)
     {
       const added = await send_engine_command(
         "entity_add_component",

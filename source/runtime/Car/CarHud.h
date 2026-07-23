@@ -33,5 +33,8 @@ namespace spartan
 
         // single scrollable telemetry funnel, p_open is bound to the toggle state
         void draw_telemetry_window(Car* car, Physics* physics, bool* p_open);
+
+        // car bench window opened from the telemetry bench button
+        void draw_car_bench_window(Car* car, Physics* physics);
     }
 }

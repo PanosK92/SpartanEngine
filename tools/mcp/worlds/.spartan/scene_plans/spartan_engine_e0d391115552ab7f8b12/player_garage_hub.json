@@ -1,0 +1,787 @@
+{
+  "version": 2,
+  "created_at": "2026-07-22T22:31:33.061Z",
+  "updated_at": "2026-07-22T22:31:33.061Z",
+  "plan": {
+    "root_name": "player_garage_hub",
+    "purpose": "Polished compact private garage home hub centered at world position minus 104, zero, minus 260, with a car display, attached workshop and nostalgic lounge, driveway, fenced garden and clear menu compositions.",
+    "scale_reference": {
+      "name": "player_car",
+      "size": [
+        2,
+        1.5,
+        4.6
+      ],
+      "rationale": "The player car anchors garage clearances and menu composition."
+    },
+    "zones": [
+      {
+        "name": "garage_bay",
+        "purpose": "central open front car display",
+        "center": [
+          -104,
+          2.9,
+          -263
+        ],
+        "size": [
+          16,
+          5.8,
+          15
+        ]
+      },
+      {
+        "name": "workshop",
+        "purpose": "automotive repair and storage",
+        "center": [
+          -115,
+          3.1,
+          -263
+        ],
+        "size": [
+          8.5,
+          8.8,
+          13
+        ]
+      },
+      {
+        "name": "lounge",
+        "purpose": "warm nostalgic bar and seating",
+        "center": [
+          -93,
+          3,
+          -263
+        ],
+        "size": [
+          8,
+          8.6,
+          13
+        ]
+      },
+      {
+        "name": "driveway",
+        "purpose": "short vehicle approach",
+        "center": [
+          -104,
+          0.12,
+          -250
+        ],
+        "size": [
+          13,
+          0.3,
+          12.5
+        ]
+      },
+      {
+        "name": "garden",
+        "purpose": "fenced planted outdoor room",
+        "center": [
+          -92,
+          2.2,
+          -249
+        ],
+        "size": [
+          16.5,
+          4.5,
+          12.5
+        ]
+      },
+      {
+        "name": "service_edge",
+        "purpose": "mailbox bins and utilities",
+        "center": [
+          -121,
+          1.1,
+          -252
+        ],
+        "size": [
+          2,
+          2.2,
+          8
+        ]
+      },
+      {
+        "name": "camera_space",
+        "purpose": "clear menu framing foreground",
+        "center": [
+          -112,
+          3,
+          -246
+        ],
+        "size": [
+          18,
+          6,
+          10
+        ]
+      }
+    ],
+    "elements": [
+      {
+        "size_tolerance": 0.25,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garage_shell",
+        "role": "structure",
+        "zone": "garage_bay",
+        "expected_size": [
+          15.6,
+          5.85,
+          14.6
+        ],
+        "support": "ground",
+        "semantic_tags": [
+          "support"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garage_floor",
+        "role": "surface",
+        "zone": "garage_bay",
+        "expected_size": [
+          15,
+          0.25,
+          14
+        ],
+        "support": "ground",
+        "material_semantic": "concrete",
+        "semantic_tags": [
+          "walkable"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "player_car_display",
+        "role": "functional",
+        "zone": "garage_bay",
+        "expected_size": [
+          2.8,
+          0.12,
+          5.4
+        ],
+        "support": "surface",
+        "material_semantic": "painted_metal",
+        "semantic_tags": [
+          "focal_point"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "structural_frame",
+        "role": "structure",
+        "zone": "garage_bay",
+        "expected_size": [
+          14.4,
+          5,
+          13.2
+        ],
+        "support": "ground",
+        "material_semantic": "painted_metal",
+        "semantic_tags": [
+          "support"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garage_opening",
+        "role": "route",
+        "zone": "garage_bay",
+        "expected_size": [
+          5.4,
+          0.75,
+          0.22
+        ],
+        "support": "none",
+        "material_semantic": "painted_metal",
+        "semantic_tags": [
+          "entrance",
+          "vehicle_route",
+          "walkable"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "workshop_shell",
+        "role": "structure",
+        "zone": "workshop",
+        "expected_size": [
+          8.3,
+          7.4,
+          12.6
+        ],
+        "support": "none",
+        "material_semantic": "painted_wall",
+        "semantic_tags": [
+          "support"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "workbench",
+        "role": "furnishing",
+        "zone": "workshop",
+        "expected_size": [
+          3.8,
+          2.24,
+          0.9
+        ],
+        "support": "surface",
+        "material_semantic": "wood",
+        "semantic_tags": [
+          "service_route"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "tool_storage",
+        "role": "furnishing",
+        "zone": "workshop",
+        "expected_size": [
+          2.65,
+          2.06,
+          0.66
+        ],
+        "support": "none",
+        "material_semantic": "painted_metal",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "automotive_equipment",
+        "role": "prop",
+        "zone": "workshop",
+        "expected_size": [
+          3.15,
+          1.22,
+          1.5
+        ],
+        "support": "surface",
+        "material_semantic": "metal",
+        "semantic_tags": [
+          "service_route"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "spare_wheels_and_tires",
+        "role": "prop",
+        "zone": "workshop",
+        "expected_size": [
+          0.92,
+          0.92,
+          0.22
+        ],
+        "support": "none",
+        "material_semantic": "rubber",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "trophy_memorabilia_wall",
+        "role": "functional",
+        "zone": "garage_bay",
+        "expected_size": [
+          6.5,
+          2.8,
+          0.7
+        ],
+        "support": "wall",
+        "material_semantic": "wood",
+        "semantic_tags": [
+          "focal_point"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "lounge_shell",
+        "role": "structure",
+        "zone": "lounge",
+        "expected_size": [
+          7.7,
+          7.2,
+          12.6
+        ],
+        "support": "none",
+        "material_semantic": "painted_wall",
+        "semantic_tags": [
+          "support"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "bar_counter",
+        "role": "furnishing",
+        "zone": "lounge",
+        "expected_size": [
+          4,
+          1.2,
+          1
+        ],
+        "support": "surface",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "individual",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 3,
+        "clearance": 0,
+        "name": "bar_stools",
+        "role": "furnishing",
+        "zone": "lounge",
+        "expected_size": [
+          0.5,
+          0.9,
+          0.57
+        ],
+        "support": "surface",
+        "material_semantic": "fabric",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "jukebox",
+        "role": "functional",
+        "zone": "lounge",
+        "expected_size": [
+          0.9,
+          1.65,
+          0.87
+        ],
+        "support": "none",
+        "semantic_tags": [
+          "focal_point"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "sofa_and_table",
+        "role": "furnishing",
+        "zone": "lounge",
+        "expected_size": [
+          2.6,
+          1.25,
+          2.2
+        ],
+        "support": "surface",
+        "material_semantic": "fabric",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "arcade_machine",
+        "role": "functional",
+        "zone": "lounge",
+        "expected_size": [
+          0.75,
+          1.8,
+          1.1
+        ],
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "driveway_surface",
+        "role": "route",
+        "zone": "driveway",
+        "expected_size": [
+          12.7,
+          0.22,
+          12
+        ],
+        "support": "ground",
+        "material_semantic": "asphalt",
+        "semantic_tags": [
+          "vehicle_route",
+          "walkable",
+          "entrance"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garden_lawn",
+        "role": "surface",
+        "zone": "garden",
+        "expected_size": [
+          16.1,
+          4.4,
+          12.1
+        ],
+        "support": "ground",
+        "material_semantic": "grass",
+        "semantic_tags": [
+          "walkable"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "fence_and_gate",
+        "role": "structure",
+        "zone": "garden",
+        "expected_size": [
+          16.1,
+          1.2,
+          12.2
+        ],
+        "support": "ground",
+        "material_semantic": "painted_metal",
+        "semantic_tags": [
+          "entrance",
+          "support"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garden_planting",
+        "role": "prop",
+        "zone": "garden",
+        "expected_size": [
+          12.4,
+          4.4,
+          9
+        ],
+        "support": "ground",
+        "material_semantic": "foliage",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garden_furniture",
+        "role": "furnishing",
+        "zone": "garden",
+        "expected_size": [
+          2.5,
+          1.4,
+          1.5
+        ],
+        "support": "none",
+        "material_semantic": "wood",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "exterior_service_props",
+        "role": "prop",
+        "zone": "service_edge",
+        "expected_size": [
+          1.6,
+          2.2,
+          7.8
+        ],
+        "support": "ground",
+        "material_semantic": "painted_metal",
+        "semantic_tags": [
+          "service_route"
+        ]
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garage_car_key_area",
+        "role": "light",
+        "zone": "garage_bay",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garage_left_ceiling_practical",
+        "role": "light",
+        "zone": "garage_bay",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garage_right_ceiling_practical",
+        "role": "light",
+        "zone": "garage_bay",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "workshop_neutral_area",
+        "role": "light",
+        "zone": "workshop",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "lounge_amber_main",
+        "role": "light",
+        "zone": "lounge",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "jukebox_amber_accent",
+        "role": "light",
+        "zone": "lounge",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garden_path_light_1",
+        "role": "light",
+        "zone": "garden",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "garden_path_light_2",
+        "role": "light",
+        "zone": "garden",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "driveway_entry_light",
+        "role": "light",
+        "zone": "driveway",
+        "support": "none",
+        "semantic_tags": []
+      },
+      {
+        "size_tolerance": 0.4,
+        "size_mode": "aggregate",
+        "allow_axis_permutation": false,
+        "max_support_gap": 0.08,
+        "max_intersection_depth": 0.05,
+        "count": 1,
+        "clearance": 0,
+        "name": "lounge_warm_fill",
+        "role": "light",
+        "zone": "lounge",
+        "support": "none",
+        "semantic_tags": []
+      }
+    ],
+    "relationships": [
+      {
+        "subject": "player_car_display",
+        "relation": "on",
+        "object": "garage_floor"
+      },
+      {
+        "subject": "workbench",
+        "relation": "inside",
+        "object": "workshop_shell"
+      },
+      {
+        "subject": "bar_counter",
+        "relation": "inside",
+        "object": "lounge_shell"
+      },
+      {
+        "subject": "trophy_memorabilia_wall",
+        "relation": "inside",
+        "object": "garage_shell"
+      }
+    ],
+    "lighting": {
+      "intent": "Warm car focused garage lighting, neutral workshop practicals, amber lounge glow and subtle exterior path lights.",
+      "min_lights": 8,
+      "max_lights": 16,
+      "require_shadows": true
+    },
+    "quality_goals": [
+      "Keep the car approach and walking paths clear.",
+      "Keep architecture and fences grounded.",
+      "Use coordinated non default materials and static collision on created renderables.",
+      "Preserve exterior and garage negative space for menu ui.",
+      "Keep vegetation outside the driveway.",
+      "Maintain distinct exterior garage and lounge compositions."
+    ]
+  }
+}

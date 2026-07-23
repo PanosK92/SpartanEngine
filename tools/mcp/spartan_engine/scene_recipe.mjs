@@ -66,6 +66,15 @@ export const scene_recipe_node_schema = {
       type: "array",
       items: { type: "string" },
     },
+    semantic_tags: {
+      type: "array",
+      items: { type: "string" },
+    },
+    instances: {
+      type: "array",
+      minItems: 1,
+      items: { type: "object" },
+    },
     components: {
       type: "array",
       items: {
@@ -388,6 +397,71 @@ function flatten_nodes(
       );
       continue;
     }
+    if (raw.instances !== undefined)
+    {
+      if (
+        !Array.isArray(raw.instances) ||
+        raw.instances.length === 0
+      )
+      {
+        issues.push(
+          issue(
+            "error",
+            "invalid_instances",
+            "instances must be a non empty array",
+            raw.name,
+          ),
+        );
+        continue;
+      }
+      if ((raw.children?.length ?? 0) > 0)
+      {
+        issues.push(
+          issue(
+            "error",
+            "instance_children_unsupported",
+            "instanced nodes cannot contain children",
+            raw.name,
+          ),
+        );
+        continue;
+      }
+      const base_semantic_id = make_semantic_id(
+        raw,
+        parent_semantic_id,
+      );
+      raw.instances.forEach((instance, index) => {
+        const instance_number = index + 1;
+        flatten_nodes(
+          [
+            {
+              ...raw,
+              semantic_id: safe_id(
+                instance?.semantic_id,
+                `${base_semantic_id}_instance_${instance_number}`,
+              ),
+              name: safe_name(
+                instance?.name,
+                `${safe_name(
+                  raw.name,
+                  base_semantic_id,
+                )}_instance_${instance_number}`,
+              ),
+              transform: {
+                ...(raw.transform ?? {}),
+                ...(instance?.transform ?? instance ?? {}),
+              },
+              instances: undefined,
+              children: [],
+            },
+          ],
+          parent_semantic_id,
+          output,
+          issues,
+        );
+      });
+      continue;
+    }
     const semantic_id = make_semantic_id(
       raw,
       parent_semantic_id,
@@ -417,7 +491,14 @@ function flatten_nodes(
       ),
       tags: [
         ...new Set(
-          (Array.isArray(raw.tags) ? raw.tags : [])
+          [
+            ...(Array.isArray(raw.tags)
+              ? raw.tags
+              : []),
+            ...(Array.isArray(raw.semantic_tags)
+              ? raw.semantic_tags
+              : []),
+          ]
             .map((tag) => safe_id(tag))
             .filter(Boolean),
         ),
@@ -1425,7 +1506,12 @@ async function create_node(
       tags: ownership_tags(
         recipe_id,
         node.semantic_id,
-        node.tags,
+        [
+          ...node.tags,
+          ...(node.plan_element
+            ? [`plan_element=${node.plan_element}`]
+            : []),
+        ],
       ),
     },
     operation,
@@ -1468,7 +1554,12 @@ async function update_node(
     tags: ownership_tags(
       recipe_id,
       node.semantic_id,
-      node.tags,
+      [
+        ...node.tags,
+        ...(node.plan_element
+          ? [`plan_element=${node.plan_element}`]
+          : []),
+      ],
     ),
   };
   await run_command(
@@ -1860,7 +1951,10 @@ export async function apply_scene_recipe(
         ? entity_by_semantic_id.get(
           node.parent_semantic_id,
         )?.id
-        : undefined;
+        : (
+          options.root_parent_id ??
+          entity?.parent_id
+        );
       if (node.parent_semantic_id && !parent_id)
       {
         throw new Error(

@@ -9,7 +9,7 @@ export function should_use_selected_entity(prompt) {
 const target_name_stopwords = new Set([
   "this", "selected", "current", "the", "an", "a", "entity", "entities", "children", "child", "contents",
   "parent", "under", "called", "named", "existing", "new", "area", "scene", "world", "level", "blockout",
-  "there", "is", "are", "its", "it's", "their", "our", "your", "my", "some", "any", "all",
+  "there", "is", "are", "it", "its", "it's", "their", "our", "your", "my", "some", "any", "all",
 ]);
 
 function clean_target_name(raw) {
@@ -155,7 +155,7 @@ function scene_root_name_from_prompt(prompt) {
   const value = normalized(prompt);
   const explicit_target = target_name_from_prompt(prompt);
   const continues_existing =
-    /\b(continue|finish|complete|audit|review|correct|polish|existing)\b/.test(
+    /\b(continue|finish|complete|audit|review|correct|polish|improve|refine|enhance|upgrade|detail|beautify|existing)\b/.test(
       value,
     );
   if (continues_existing && explicit_target)
@@ -176,7 +176,7 @@ function scene_root_name_from_prompt(prompt) {
   }
 
   const match = value.match(
-    /\b(?:create|make|build|generate|construct|design)\s+(?:me\s+)?(?:an?\s+|the\s+)?([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s+(?:with|that|which|containing|under|inside|for)\b|[,.;]|$)/,
+    /\b(?:create|make|build|generate|construct|design|continue|finish|complete|polish|improve|refine|enhance|upgrade|detail|beautify)\s+(?:me\s+)?(?:an?\s+|the\s+)?([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s+(?:with|that|which|containing|under|inside|for)\b|[,.;]|$)/,
   );
   if (!match?.[1])
   {
@@ -212,10 +212,21 @@ function is_rebuild_scene_request(value) {
 }
 
 function is_scene_construction_request(value) {
-  const constructive = /\b(create|make|build|uild|generate|construct|blockout|layout|lay out|design|place|continue|finish|complete|audit|review|correct|polish)\b/.test(value);
-  const scene_target = /\b(rooms?|levels?|areas?|scenes?|geometry|environments?|blockouts?|hallways?|corridors?|mazes?|maps?|interiors?|spaces?|backrooms|liminal|playgrounds?|parks?|factories|factory|warehouses?|stations?|streets?|plazas?|offices?|houses?|buildings?|landscapes?|arenas?|yards?|gardens?)\b/.test(value);
+  const constructive = /\b(create|make|build|uild|generate|construct|blockout|layout|lay out|design|place|continue|finish|complete|audit|review|correct|polish|improve|refine|enhance|upgrade|detail|beautify|dress)\b/.test(value);
+  const scene_target = /\b(rooms?|levels?|areas?|scenes?|geometry|environments?|blockouts?|hallways?|corridors?|mazes?|maps?|interiors?|spaces?|backrooms|liminal|playgrounds?|parks?|factories|factory|warehouses?|stations?|streets?|plazas?|offices?|houses?|buildings?|landscapes?|arenas?|yards?|gardens?|cities|city|districts?|downtown|neighborhoods?|garages?|workshops?|lounges?|bars?|airports?)\b/.test(value);
   const code_context = /\b(source|code|file|files|cpp|c\+\+|javascript|compile|compilation|build error|build failed|build system|git|diff|commit|function|class|implementation)\b/.test(value);
   return constructive && scene_target && !code_context;
+}
+
+function is_scene_refinement_request(value) {
+  const refines =
+    /\b(improve|refine|polish|enhance|upgrade|detail|beautify|finish|complete|correct)\b/.test(value);
+  const references_live_scene =
+    /\b(it|this|current|existing|scene|selection|selected|environment|area|level|map)\b/.test(value) ||
+    target_name_from_prompt(value) !== "";
+  const code_context =
+    /\b(source|code|file|files|cpp|c\+\+|javascript|compile|build error|git|diff)\b/.test(value);
+  return refines && references_live_scene && !code_context;
 }
 
 function primitive_from_prompt(value) {
@@ -373,18 +384,26 @@ function is_calibrate_lights_request(value) {
 }
 
 function is_city_develop_request(value) {
-  const standalone_environment =
-    /\b(airport|playground|factory|warehouse|station|office|house|arena|yard|garden)\b/.test(value) &&
-    !/\b(city|district|downtown|residential|industrial|urban)\b/.test(value);
-  if (standalone_environment)
+  const positive_value = value.replace(
+    /\bnot\b[^.!?]{0,80}\b(?:city|district|downtown|urban)\b/g,
+    "",
+  );
+  const standalone_environment_but_not_city =
+    /\b(airport|playground|factory|warehouse|station|office|house|arena|yard|garden|garage|workshop|lounge|bar)\b/.test(
+      positive_value,
+    ) &&
+    !/\b(city|district|downtown|residential|industrial|urban)\b/.test(
+      positive_value,
+    );
+  if (standalone_environment_but_not_city)
   {
     return false;
   }
 
-  const wants_city = /\b(road|roads|spline|highway|street|connect|link|network|district|landmark|city|blockout|market|downtown|skyscraper|park|industrial|residential|plaza|parking)\b/.test(value);
-  const constructive = /\b(create|make|build|connect|link|lay|add|generate|scan|decorate|develop|block\s*out|plan)\b/.test(value);
-  const has_targets = /\b(gas_station|dockyard|airway|airport|playground|landmark|between|from|to|map|world|areas?|districts?|city|around)\b/.test(value) || /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/.test(value);
-  return wants_city && constructive && has_targets && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
+  const wants_city = /\b(road|roads|spline|highway|street|connect|link|network|district|landmark|city|blockout|market|downtown|skyscraper|park|industrial|residential|plaza|parking)\b/.test(positive_value);
+  const constructive = /\b(create|make|build|connect|link|lay|add|generate|scan|decorate|develop|block\s*out|plan|continue|finish|polish|improve|refine|enhance|upgrade|detail|beautify)\b/.test(positive_value);
+  const has_targets = /\b(gas_station|dockyard|airway|airport|playground|landmark|between|from|to|map|world|areas?|districts?|city|around)\b/.test(positive_value) || /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/.test(positive_value);
+  return wants_city && constructive && has_targets && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(positive_value);
 }
 
 function landmarks_from_prompt(prompt) {
@@ -477,12 +496,31 @@ export function route_intent(prompt) {
 
   if (is_city_develop_request(value))
   {
+    const use_selected =
+      should_use_selected_entity(prompt);
     return {
       kind: "city_develop",
       confidence: 0.92,
       live_scene_action: true,
       allow_cursor_fallback: true,
+      target_name: use_selected
+        ? ""
+        : scene_root_name_from_prompt(prompt),
+      use_selected,
       landmarks: landmarks_from_prompt(prompt),
+    };
+  }
+
+  if (is_scene_refinement_request(value))
+  {
+    const target_name = target_name_from_prompt(prompt);
+    return {
+      kind: "scene_rebuild",
+      confidence: 0.9,
+      live_scene_action: true,
+      allow_cursor_fallback: true,
+      target_name,
+      use_selected: target_name === "",
     };
   }
 

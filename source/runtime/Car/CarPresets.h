@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace car
 {
     static constexpr int max_gears = 11;
+    static constexpr int max_engine_cylinders = 16;
 
     enum class suspension_mechanism : int
     {
@@ -97,6 +98,19 @@ namespace car
             driveline_inertia = 0.08f;
             driveshaft_damping = 60.0f;
             engine_crank_axis_x = 1.0f;
+            engine_sound_cylinders = 4;
+            engine_sound_banks = 1;
+            engine_displacement_l = 2.0f;
+            engine_bore_mm = 86.0f;
+            engine_stroke_mm = 86.0f;
+            engine_compression_ratio = 10.0f;
+            exhaust_primary_length_m = 0.45f;
+            exhaust_collector_length_m = 2.0f;
+            for (int i = 0; i < max_engine_cylinders; i++)
+            {
+                engine_firing_order[i] = static_cast<float>(i);
+                engine_cylinder_bank[i] = static_cast<float>(i & 1);
+            }
             combined_long_B = 7.0f;
             combined_long_C = 1.0f;
             combined_lat_B = 6.0f;
@@ -144,6 +158,16 @@ namespace car
         float engine_crank_axis_z;
         float downshift_blip_amount;
         float downshift_blip_duration;
+        int   engine_sound_cylinders;
+        int   engine_sound_banks;
+        float engine_displacement_l;
+        float engine_bore_mm;
+        float engine_stroke_mm;
+        float engine_compression_ratio;
+        float exhaust_primary_length_m;
+        float exhaust_collector_length_m;
+        float engine_firing_order[max_engine_cylinders];
+        float engine_cylinder_bank[max_engine_cylinders];
 
         // gear indices are zero reverse one neutral and two onward forward
         float gear_ratios[max_gears];
