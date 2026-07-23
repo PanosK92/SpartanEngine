@@ -17,10 +17,6 @@ export const advanced_scene_tool_names = [
   "scene_plan_get",
   "scene_plan_suggest",
   "design_brief_create",
-  "scene_recipe_preview",
-  "scene_recipe_apply",
-  "scene_recipe_get",
-  "scene_recipe_diff",
   "scene_layout_audit",
   "scene_visual_review",
   "scene_quality_audit",
@@ -375,12 +371,9 @@ export function scene_quality_prompt_lines(prompt, intent) {
     "Before creating entities, read the prepared scene plan when one exists. Otherwise call scene_plan_suggest. Expand the baseline with request-specific functions and relationships, then validate it with scene_plan_create.",
     "Complete layout and circulation before structure, complete structure before functional objects, and complete functional objects before decoration. Do not hide an incoherent layout under detail.",
     "As soon as the quality root exists or is resolved, call viewport_frame on its id with the perspective view so the editor camera follows the build location. Frame it again after major layout changes.",
-    "When scene_recipe_apply adds content beneath an existing quality root, pass that root id as root_parent_id. Reapply recipes instead of manually recreating owned nodes.",
-    "Keep recipe nodes aligned with the scene plan: use plan element names for groups or plan_element, copy required semantic_tags, and use instances for repeated planned elements.",
     "The planner is environment-agnostic. Infer suitable roles and dimensions for the current request; never force car, room, city, or other domain-specific structure onto unrelated scenes.",
     "Build the scene to match the validated plan. Entity and compound names must match semantic element names so spatial evidence can resolve them.",
-    "Represent generated content as a versioned scene recipe with stable semantic ids. Call scene_recipe_preview before scene_recipe_apply, and refine the same recipe instead of appending replacement siblings.",
-    "Attach semantic tags such as entrance, support, walkable, focal_point, and service_route to recipe nodes where the role applies.",
+    "Attach semantic tags such as entrance, support, walkable, focal_point, and service_route to entities where the role applies.",
     "For planned elements with count greater than one, name instance roots semantic_name_1, semantic_name_2, and so on. Put detail parts below each instance root.",
     "Optimize tool calls for completeness and visual quality, not for the smallest call count.",
     "Unless the user explicitly asks for an uncolored greybox, create a coordinated material_palette_create palette and assign non-default semantic materials to nearly every visible renderable.",
@@ -755,7 +748,7 @@ export async function audit_scene_quality(
     })),
   ];
   const failed_checks = checks.filter((check) => !check.pass);
-  const default_material_recipe_ids = materials
+  const default_material_semantic_ids = materials
     .filter((entry) => entry.default_material)
     .map((entry) =>
       tag_value(
@@ -764,7 +757,7 @@ export async function audit_scene_quality(
       ),
     )
     .filter(Boolean);
-  const collision_recipe_ids = collision_missing
+  const collision_semantic_ids = collision_missing
     .map((entry) =>
       tag_value(
         spatial_by_id.get(String(entry.id)),
@@ -782,7 +775,7 @@ export async function audit_scene_quality(
         severity: "error",
         code: "duplicate_geometry",
         message: "near identical generated geometry overlaps",
-        recipe_ids: [
+        semantic_ids: [
           tag_value(
             spatial_by_id.get(
               String(duplicate.entity.id),
@@ -803,11 +796,11 @@ export async function audit_scene_quality(
       severity: "error",
       code: check.name,
       message: `quality check ${check.name} failed`,
-      recipe_ids:
+      semantic_ids:
         check.name === "default_material_ratio"
-          ? default_material_recipe_ids
+          ? default_material_semantic_ids
           : check.name === "collision_coverage"
-            ? collision_recipe_ids
+            ? collision_semantic_ids
             : [],
       evidence: check,
     }];

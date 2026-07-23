@@ -202,11 +202,11 @@ namespace spartan
             vertices.emplace_back(d, uv_d, normal, tangent);
 
             indices.push_back(start);
-            indices.push_back(start + 2);
             indices.push_back(start + 1);
-            indices.push_back(start);
-            indices.push_back(start + 3);
             indices.push_back(start + 2);
+            indices.push_back(start);
+            indices.push_back(start + 2);
+            indices.push_back(start + 3);
         }
 
         float get_alignment_offset(

@@ -74,11 +74,10 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Prompt phrases like `parent under an entity called dockyard` must resolve to `dockyard`, not filler text such as `parent under an`.
 - Do not call `pairs()` or `next()` on raw C++ entity containers from Lua; use the table wrappers or `ForEachChild`.
 - spline_junction snaps nearest endpoints only, not mid-spline points. For a mid-route T, split the arterial into two legs that both end at the junction, then join those ends with the spur.
-- spline_reroute is implemented in the engine and MCP server source, but Cursor may not expose it until the MCP server session is restarted. Workaround: call EngineClient.command('spline_reroute', ...) directly. set_spline_control_points_world replaces spline_point_* children and can drop non-captured children if keep/redistribute misses them.
-- spline_reroute reclaim can steal other roads: named road_light poles under arterials get reparented, and if the pole parent has Render the whole arterial is pulled under the target. After reclaim, restore foreign arterials to root and re-run spline_decorate replace on them. Prefer keep_children only for true children until reclaim filters exclude other spline roads.
+- `spline_reroute` preserves and redistributes its own furniture while excluding descendants of foreign spline roads from reclaim.
 - `detail_pattern_create` with `pattern: slats` treats `size` as each slat mesh size, not the total array span; use a narrow per slat size and control total coverage with `count * spacing`, otherwise scene bounds can expand dramatically.
-- `scene_visual_review.path` must be under `screenshots/`; project or generated paths fail with incomplete evidence.
-- city_blockout generated preset building renderables with default materials and no physics collision in plan.world on 2026-07-22; run scene_quality_audit and replace or retrofit all preset meshes before completion when collision_ratio or material checks fail.
+- Visual-review and screenshot paths outside `screenshots/` are normalized to a safe filename under that directory.
+- Native district and city blockouts create static collision and coordinated surface, structure, and accent materials for every renderable.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
@@ -88,7 +87,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Gas-station style blockouts succeed with `entity_resolve` then one `entity_create_primitive_batch`; dockyard failed when the agent fell into Lua API probing instead.
 - Dockyard lights were hand-rolled at 25-55 lumens and looked invisible; always use `entity_create_light`, which calibrates photometric intensity and related properties.
 - Dockyard blockout (2026-07-08 retry): succeeded with entity_create_empty at ground via world_raycast, then entity_create_primitive_batch for pad/warehouse/containers/crane/fences and entity_create_light for pole/area/spot lights. No Lua.
-- Bulk light calibration: use one execute_lua over World.GetEntitiesLights with SetIntensity/SetRange/SetTemperature/SetAngle by name and LightType. Color is not Lua-bound, so RGB-specific lights (brake, exhaust) need component_set_batch. Light:SetAngle takes half-angle radians, so degrees * pi/180 with no extra 0.5. Role defaults used on plan.world: directional 120000 lux 2400K; highway Spot 18000 lm range 42 2700K 30deg; yard points 8500/35/3200K; warehouse/gs canopy area 12000; car headlights 3200 lm range 45 5000K 24deg; brakes 180 lm red range 3.5; exhaust 90 lm orange range 0.6.
+- Use `lights_calibrate` for bulk light correction; it applies role-aware photometric defaults without Lua.
 
 ## Corrections
 - Add corrections here when a previous note turns out to be wrong or incomplete.
@@ -96,6 +95,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Target name extraction used to steal phrases ending in `entity` such as `parent under an`; it now prefers `called`/`named` names and filters stopwords.
 - `city_blockout`, `district_blockout`, and `spline_reroute` are native MCP tools after rebuild. If you see `unknown command`, rebuild the engine and restart the MCP assistant.
 - Use `spline_reroute` to fix an existing arterial that cuts through buildings/roads; it preserves and redistributes lights/cameras.
+- Invalid scene-plan replacements preserve the previous valid plan and return `ok: false`.
 
 ## Advice To Future Agents
 - Treat this file as advice, not absolute truth.
@@ -109,4 +109,5 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Scene construction prompts should keep steering agents toward `entity_create_primitive_batch` rather than open-ended Lua discovery.
 - Log unresolved capability gaps here with the failing tool, observed error, and required engine improvement.
 - Rebuild the engine and restart the assistant bridge when deploying new native MCP commands.
-- `scene_quality_audit` feature evidence includes the quality root, descendants, and render-material entity names so hashed recipe hierarchies remain auditable.
+- `scene_quality_audit` feature evidence includes the quality root, descendants, and render-material entity names so semantic hierarchies remain auditable.
+- Capability gap: Native MCP command or tool `resource_read` is missing from the engine bridge or Node registry. Prompt: "Build a cozy, fully drivable Japanese tuning shop inspired by Gran Turismo 4 and Sega GT 2002, designed as a physical open-world location like Test Drive Unlimited 2. Create a p..."

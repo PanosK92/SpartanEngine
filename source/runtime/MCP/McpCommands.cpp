@@ -959,9 +959,8 @@ namespace spartan
                 add_entity_tags(entity, *tags);
             }
 
-            const std::array<std::string, 3> keys =
+            const std::array<std::string, 2> keys =
             {
-                "scene_recipe",
                 "semantic_id",
                 "plan_element"
             };
@@ -11199,7 +11198,6 @@ namespace spartan
                 "physics_friction",
                 "physics_restitution",
                 "tags",
-                "scene_recipe",
                 "semantic_id",
                 "plan_element",
                 "semantic_tags"
@@ -11606,7 +11604,6 @@ namespace spartan
                 "volumetric_distance",
                 "calibrated",
                 "tags",
-                "scene_recipe",
                 "semantic_id",
                 "plan_element",
                 "semantic_tags"
@@ -13380,6 +13377,13 @@ namespace spartan
                 {
                     root = root->GetParent();
                 }
+                if (
+                    root != entity &&
+                    root->GetComponent<Spline>() != nullptr
+                )
+                {
+                    continue;
+                }
                 if (root != candidate && root != entity)
                 {
                     const std::string root_name = to_lower_copy(root->GetObjectName());
@@ -14334,6 +14338,9 @@ namespace spartan
         {
             Entity* parent = nullptr;
             DistrictRng* rng = nullptr;
+            std::shared_ptr<Material> surface_material;
+            std::shared_ptr<Material> structure_material;
+            std::shared_ptr<Material> accent_material;
             float width = 40.0f;
             float depth = 40.0f;
             float density = 1.0f;
@@ -14341,6 +14348,88 @@ namespace spartan
             uint32_t part_count = 0;
             uint32_t light_count = 0;
         };
+
+        std::shared_ptr<Material> district_blockout_material(
+            const DistrictPreset preset,
+            const std::string& role
+        )
+        {
+            const std::string preset_name =
+                district_preset_to_name(preset);
+            const std::string path =
+                "project/generated/mcp/district_" +
+                preset_name +
+                "_" +
+                role +
+                ".material";
+            if (
+                std::shared_ptr<Material> existing =
+                    ResourceCache::GetByPath<Material>(path)
+            )
+            {
+                return existing;
+            }
+            if (FileSystem::IsFile(path))
+            {
+                if (
+                    std::shared_ptr<Material> loaded =
+                        ResourceCache::Load<Material>(path)
+                )
+                {
+                    return loaded;
+                }
+            }
+
+            Color color(0.38f, 0.4f, 0.42f, 1.0f);
+            if (role == "surface")
+            {
+                color = preset == DistrictPreset::Park
+                    ? Color(0.11f, 0.24f, 0.1f, 1.0f)
+                    : Color(0.18f, 0.19f, 0.2f, 1.0f);
+            }
+            else if (role == "accent")
+            {
+                color = preset == DistrictPreset::Industrial
+                    ? Color(0.48f, 0.2f, 0.06f, 1.0f)
+                    : Color(0.16f, 0.3f, 0.52f, 1.0f);
+            }
+            else if (preset == DistrictPreset::Residential)
+            {
+                color = Color(0.5f, 0.38f, 0.27f, 1.0f);
+            }
+            else if (preset == DistrictPreset::Market)
+            {
+                color = Color(0.52f, 0.4f, 0.22f, 1.0f);
+            }
+
+            const std::filesystem::path file_path(path);
+            if (file_path.has_parent_path())
+            {
+                std::filesystem::create_directories(
+                    file_path.parent_path()
+                );
+            }
+            std::shared_ptr<Material> material =
+                std::make_shared<Material>();
+            material->SetResourceFilePath(path);
+            material->SetObjectName(
+                "district_" +
+                preset_name +
+                "_" +
+                role
+            );
+            material->ApplyPaintPreset(
+                MaterialPaintPreset::Matte,
+                color,
+                false
+            );
+            material->SetProperty(
+                MaterialProperty::Roughness,
+                role == "accent" ? 0.55f : 0.82f
+            );
+            material->SaveToFile(path);
+            return ResourceCache::Cache(material);
+        }
 
         void clear_entity_children(Entity* entity)
         {
@@ -14392,7 +14481,52 @@ namespace spartan
             if (Render* renderable = entity->AddComponent<Render>())
             {
                 renderable->SetMesh(mesh);
-                renderable->SetDefaultMaterial();
+                const std::string lower_name =
+                    to_lower_copy(name);
+                const bool is_surface =
+                    lower_name.find("pad") != std::string::npos ||
+                    lower_name.find("path") != std::string::npos ||
+                    lower_name.find("parking") != std::string::npos ||
+                    lower_name.find("courtyard") != std::string::npos ||
+                    lower_name.find("road") != std::string::npos;
+                const bool is_accent =
+                    lower_name.find("canopy") != std::string::npos ||
+                    lower_name.find("container") != std::string::npos ||
+                    lower_name.find("sign") != std::string::npos ||
+                    lower_name.find("bench") != std::string::npos;
+                const std::shared_ptr<Material> material =
+                    is_surface
+                        ? ctx.surface_material
+                        : (
+                            is_accent
+                                ? ctx.accent_material
+                                : ctx.structure_material
+                        );
+                if (material)
+                {
+                    renderable->SetMaterial(material);
+                }
+                else
+                {
+                    renderable->SetDefaultMaterial();
+                }
+            }
+            if (Physics* physics = entity->AddComponent<Physics>())
+            {
+                const BodyType body_type =
+                    mesh == MeshType::Sphere
+                        ? BodyType::Sphere
+                        : (
+                            mesh == MeshType::Cylinder
+                                ? BodyType::Capsule
+                                : (
+                                    mesh == MeshType::Quad
+                                        ? BodyType::Plane
+                                        : BodyType::Box
+                                )
+                        );
+                physics->SetBodyType(body_type);
+                physics->SetStatic(true);
             }
             ctx.part_count++;
             return entity;
@@ -14755,6 +14889,21 @@ namespace spartan
             DistrictBuildContext ctx;
             ctx.parent = parent;
             ctx.rng = &rng;
+            ctx.surface_material =
+                district_blockout_material(
+                    preset,
+                    "surface"
+                );
+            ctx.structure_material =
+                district_blockout_material(
+                    preset,
+                    "structure"
+                );
+            ctx.accent_material =
+                district_blockout_material(
+                    preset,
+                    "accent"
+                );
             ctx.width = width;
             ctx.depth = depth;
             ctx.density = density;

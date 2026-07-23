@@ -442,15 +442,8 @@ export async function create_scene_plan(plan, namespace) {
       "utf8",
     );
   }
-  else
-  {
-    await fs.rm(target_path, {
-      force: true,
-    });
-  }
-
   return {
-    ok: true,
+    ok: error_count === 0,
     pass: error_count === 0,
     error_count,
     issues,

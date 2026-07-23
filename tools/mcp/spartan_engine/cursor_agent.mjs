@@ -1,6 +1,19 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import {
+  append_agent_memory,
+  read_agent_memory,
+  write_agent_memory,
+} from "./agent_memory.mjs";
+import {
+  append_debug_log,
+  read_debug_log,
+} from "./debug_log.mjs";
+import {
+  suggest_construction_grammars,
+} from "./construction_grammar.mjs";
 import {
   advanced_scene_tool_names,
   audit_scene_quality,
@@ -18,6 +31,9 @@ import {
   infer_design_template,
   suggest_scene_plan,
 } from "./design_intelligence.mjs";
+import {
+  scene_root_name_from_prompt,
+} from "./intent_router.mjs";
 import { get_project_root } from "./shared_codebase.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -84,6 +100,46 @@ const engine_tool_names = new Set([
   "component_set",
   "execute_lua",
 ]);
+const scene_mutating_tool_names = new Set([
+  "entity_create_empty",
+  "entity_create_light",
+  "entity_create_light_batch",
+  "entity_create_primitive",
+  "entity_create_primitive_batch",
+  "entity_update",
+  "entity_delete",
+  "entity_delete_children",
+  "entity_clone",
+  "entity_set_transform",
+  "entity_set_transform_batch",
+  "entity_add_component",
+  "entity_remove_component",
+  "component_set",
+  "component_set_batch",
+  "mesh_generate",
+  "mesh_generate_batch",
+  "render_set_mesh",
+  "mesh_physics_bind",
+  "compound_create",
+  "construction_grammar_create",
+  "detail_pattern_create",
+  "material_create",
+  "material_semantic_create",
+  "material_palette_create",
+  "material_apply_preset",
+  "entity_snap",
+  "spline_create_road",
+  "spline_set_control_points",
+  "spline_connect",
+  "spline_reroute",
+  "spline_junction",
+  "spline_decorate",
+  "district_blockout",
+  "city_blockout",
+  "prefab_load",
+  "world_set_environment",
+  "execute_lua",
+]);
 for (const tool_name of advanced_scene_tool_names)
 {
   engine_tool_names.add(tool_name);
@@ -92,6 +148,1464 @@ for (const tool_name of advanced_scene_tool_names)
 let cached_agent = null;
 let cached_agent_key = "";
 let agent_run_queue = Promise.resolve();
+let active_assistant_context = null;
+let assistant_command_queue = Promise.resolve();
+
+function native_material_properties(properties = {}) {
+  const values = {
+    ...properties,
+  };
+  const base_color =
+    properties.base_color ??
+    properties.color;
+  if (Array.isArray(base_color))
+  {
+    values.color_r = base_color[0];
+    values.color_g = base_color[1];
+    values.color_b = base_color[2];
+    values.color_a = base_color[3] ?? 1;
+  }
+  if (properties.metallic !== undefined)
+  {
+    values.metalness = properties.metallic;
+  }
+  delete values.base_color;
+  delete values.color;
+  delete values.metallic;
+  delete values.emissive;
+  delete values.emissive_intensity;
+  return Object.entries(values).filter(
+    ([, value]) => Number.isFinite(value),
+  );
+}
+
+async function set_material_properties(
+  run,
+  path_value,
+  properties,
+) {
+  const updated = [];
+  for (
+    const [property, value] of
+      native_material_properties(properties)
+  )
+  {
+    const result = await run.tool(
+      "material_set_property",
+      {
+        path: path_value,
+        property,
+        value,
+      },
+    );
+    if (!result.ok)
+    {
+      return {
+        ...result,
+        updated,
+      };
+    }
+    updated.push(property);
+  }
+  return {
+    ok: true,
+    path: path_value,
+    updated,
+  };
+}
+
+async function create_material_palette(run, args) {
+  const materials = Array.isArray(args.materials)
+    ? args.materials
+    : [];
+  if (materials.length === 0)
+  {
+    return {
+      ok: false,
+      error: "materials must contain at least one material",
+    };
+  }
+
+  const created = [];
+  for (const material of materials)
+  {
+    const name = String(material.name ?? "").trim();
+    if (!name)
+    {
+      return {
+        ok: false,
+        error: "every material requires a name",
+        created,
+      };
+    }
+    const material_path =
+      material.path ??
+      `materials/${name}.material`;
+    const result = await run.tool(
+      "material_create",
+      {
+        path: material_path,
+        name,
+      },
+    );
+    if (!result.ok)
+    {
+      return {
+        ...result,
+        created,
+        failed_material: name,
+      };
+    }
+    const configured = await set_material_properties(
+      run,
+      material_path,
+      material,
+    );
+    if (!configured.ok)
+    {
+      return {
+        ...configured,
+        created,
+        failed_material: name,
+      };
+    }
+    created.push({
+      name,
+      path: material_path,
+    });
+  }
+  return {
+    ok: true,
+    created,
+    created_count: created.length,
+  };
+}
+
+async function delete_entity_batch(run, args) {
+  const ids = Array.isArray(args.ids)
+    ? args.ids
+    : [];
+  const deleted = [];
+  for (const id of ids)
+  {
+    const result = await run.tool(
+      "entity_delete",
+      { id },
+    );
+    if (!result.ok)
+    {
+      return {
+        ...result,
+        deleted,
+        failed_id: id,
+      };
+    }
+    deleted.push(String(id));
+  }
+  return {
+    ok: true,
+    deleted,
+    deleted_count: deleted.length,
+  };
+}
+
+async function calibrate_lights(run, args) {
+  const found = await run.tool(
+    "entity_find_by_component",
+    {
+      type: "light",
+      limit: args.limit ?? 1000,
+    },
+  );
+  if (!found.ok)
+  {
+    return found;
+  }
+
+  const updated = [];
+  const parent_id =
+    args.parent_id ??
+    args.root_id;
+  for (const entity of found.entities ?? [])
+  {
+    if (
+      parent_id &&
+      String(entity.id) !== String(parent_id)
+    )
+    {
+      let ancestor_id = entity.parent_id;
+      let belongs_to_parent = false;
+      for (
+        let depth = 0;
+        ancestor_id && depth < 64;
+        depth++
+      )
+      {
+        if (String(ancestor_id) === String(parent_id))
+        {
+          belongs_to_parent = true;
+          break;
+        }
+        const ancestor = await run.tool(
+          "entity_get",
+          { id: ancestor_id },
+        );
+        if (!ancestor.ok)
+        {
+          break;
+        }
+        ancestor_id =
+          ancestor.entity?.parent_id;
+      }
+      if (!belongs_to_parent)
+      {
+        continue;
+      }
+    }
+    const component = await run.tool(
+      "component_get",
+      {
+        id: entity.id,
+        type: "light",
+      },
+    );
+    if (!component.ok)
+    {
+      continue;
+    }
+    const type =
+      component.component?.properties?.light_type ??
+      "point";
+    const directional = type === "directional";
+    const area = type === "area";
+    const intensity = directional
+      ? 120000
+      : area
+        ? 12000
+        : 8500;
+    const range = directional
+      ? undefined
+      : area
+        ? 40
+        : 35;
+    const items = [
+      ["intensity", intensity],
+      ["shadows", true],
+      ["draw_distance", directional ? 200 : 80],
+      ["shadow_distance", directional ? 150 : 60],
+    ];
+    if (range !== undefined)
+    {
+      items.push(["range", range]);
+    }
+    const mapped = {
+      id: entity.id,
+      type: "light",
+      count: items.length,
+    };
+    for (let index = 0; index < items.length; index++)
+    {
+      mapped[`property_${index}`] = items[index][0];
+      mapped[`value_${index}`] = items[index][1];
+    }
+    const result = await run.tool(
+      "component_set_batch",
+      mapped,
+    );
+    if (result.ok)
+    {
+      updated.push(entity.id);
+    }
+  }
+  return {
+    ok: true,
+    updated_count: updated.length,
+    updated,
+  };
+}
+
+async function wait_for_screenshot(file_path, wait_ms = 5000) {
+  const deadline = Date.now() + wait_ms;
+  while (Date.now() < deadline)
+  {
+    try
+    {
+      const stats = await fs.stat(file_path);
+      if (stats.size > 0)
+      {
+        return true;
+      }
+    }
+    catch
+    {
+    }
+    await new Promise(
+      (resolve) => setTimeout(resolve, 100),
+    );
+  }
+  return false;
+}
+
+async function review_scene(run, args) {
+  const id = args.id ?? args.root_id;
+  const requested_views = Array.isArray(args.views)
+    ? args.views
+    : ["perspective", "top"];
+  const view_aliases = {
+    side: "right",
+    driver_level: "perspective",
+    interior: "perspective",
+  };
+  const views = [];
+  for (const requested_view of requested_views.slice(0, 4))
+  {
+    const view =
+      view_aliases[requested_view] ??
+      requested_view;
+    const camera = await run.tool(
+      "viewport_frame",
+      {
+        id,
+        view,
+        padding: args.padding ?? 1.2,
+      },
+    );
+    if (!camera.ok)
+    {
+      return {
+        ...camera,
+        views,
+      };
+    }
+    await new Promise(
+      (resolve) => setTimeout(resolve, 350),
+    );
+    const screenshot = await run.tool(
+      "screenshot_take",
+      {
+        name:
+          `scene_review_${requested_view}_${Date.now()}`,
+        include_ui: false,
+      },
+    );
+    if (screenshot.ok && screenshot.path)
+    {
+      screenshot.ready = await wait_for_screenshot(
+        screenshot.path,
+        args.wait_ms ?? 5000,
+      );
+    }
+    views.push({
+      view: requested_view,
+      camera,
+      screenshot,
+    });
+  }
+  return {
+    ok: views.every(
+      (entry) =>
+        entry.camera.ok &&
+        entry.screenshot.ok &&
+        entry.screenshot.ready,
+    ),
+    views,
+  };
+}
+
+async function assistant_scene_namespace(context) {
+  const world = await context.run.tool(
+    "world_summary",
+    {},
+  );
+  return make_scene_plan_namespace({
+    project_root: get_project_root(),
+    engine_host: context.engine_host,
+    engine_port: context.engine_port,
+    world,
+  });
+}
+
+async function remove_legacy_builder_state(world)
+{
+  const roots = new Set([
+    get_project_root(),
+  ]);
+  const world_path =
+    world?.file_path ??
+    world?.path;
+  if (world_path)
+  {
+    roots.add(
+      path.dirname(
+        path.resolve(world_path),
+      ),
+    );
+  }
+  for (const root of roots)
+  {
+    await fs.rm(
+      path.join(
+        root,
+        ".spartan",
+        "generated",
+        "scene_recipes",
+      ),
+      {
+        recursive: true,
+        force: true,
+      },
+    );
+  }
+}
+
+function generated_asset_name(value) {
+  return String(value ?? "generated_mesh")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "") ||
+    "generated_mesh";
+}
+
+function map_batch_items(
+  items,
+  defaults = {},
+  type_key = "primitive_type",
+) {
+  const mapped = {
+    count: items.length,
+  };
+  for (let index = 0; index < items.length; index++)
+  {
+    const item = {
+      ...defaults,
+      ...items[index],
+    };
+    if (item.type && !item[type_key])
+    {
+      item[type_key] = item.type;
+    }
+    if (item.collision !== undefined)
+    {
+      item.with_physics = item.collision !== false;
+    }
+    delete item.type;
+    delete item.collision;
+    for (const [key, value] of Object.entries(item))
+    {
+      if (value !== undefined && value !== null)
+      {
+        mapped[`item_${index}_${key}`] = value;
+      }
+    }
+  }
+  return mapped;
+}
+
+async function bind_generated_mesh(run, args) {
+  let mesh = args.mesh;
+  if (!mesh)
+  {
+    const render = await run.tool(
+      "component_get",
+      {
+        id: args.id,
+        type: "render",
+      },
+    );
+    mesh = render.component?.properties?.mesh;
+  }
+  if (!mesh)
+  {
+    return {
+      ok: false,
+      error: "mesh is required when the entity has no render mesh",
+    };
+  }
+
+  const render = await run.tool(
+    "render_set_mesh",
+    {
+      id: args.id,
+      mesh,
+      material: args.material,
+    },
+  );
+  if (!render.ok)
+  {
+    return render;
+  }
+  if (!render.entity?.components?.includes("physics"))
+  {
+    const added = await run.tool(
+      "entity_add_component",
+      {
+        id: args.id,
+        type: "physics",
+      },
+    );
+    if (!added.ok)
+    {
+      return added;
+    }
+  }
+  const body_type =
+    args.body_type ??
+    (
+      args.mode === "mesh" ?
+        "mesh" :
+        "mesh_convex"
+    );
+  const properties = [
+    ["body_type", body_type],
+    ["static", args.static ?? true],
+    ["kinematic", args.kinematic ?? false],
+    ["mass", args.mass ?? 1],
+    ["friction", args.friction ?? 0.5],
+    ["restitution", args.restitution ?? 0],
+  ];
+  const mapped = {
+    id: args.id,
+    type: "physics",
+    count: properties.length,
+  };
+  for (let index = 0; index < properties.length; index++)
+  {
+    mapped[`property_${index}`] =
+      properties[index][0];
+    mapped[`value_${index}`] =
+      properties[index][1];
+  }
+  const physics = await run.tool(
+    "component_set_batch",
+    mapped,
+  );
+  return {
+    ...physics,
+    render,
+  };
+}
+
+function normalized_mesh_arguments(args) {
+  const known_shapes = new Set([
+    "beveled_box",
+    "rounded_box",
+    "wedge",
+    "wall_opening",
+    "wall_openings",
+    "extruded_profile",
+    "revolved_profile",
+    "torus",
+    "capsule",
+    "rounded_cylinder",
+    "pipe",
+    "curved_profile",
+    "loft",
+    "arch",
+    "inset_panel",
+    "tapered_extrusion",
+    "grid",
+    "grass_blade",
+    "flower",
+  ]);
+  const nested =
+    (
+      typeof args.shape === "object" ?
+        args.shape :
+        null
+    ) ??
+    (
+      typeof args.generator === "object" ?
+        args.generator :
+        null
+    ) ??
+    args.geometry ??
+    (
+      typeof args.mesh === "object" ?
+        args.mesh :
+        null
+    ) ??
+    {};
+  const shape =
+    (
+      typeof args.shape === "string" ?
+        args.shape :
+        null
+    ) ??
+    (
+      typeof args.generator === "string" ?
+        args.generator :
+        null
+    ) ??
+    nested.shape ??
+    nested.type ??
+    (
+      known_shapes.has(args.path) ?
+        args.path :
+        null
+    );
+  const name = generated_asset_name(
+    args.name ??
+    shape,
+  );
+  return {
+    ...nested,
+    ...args,
+    shape,
+    path:
+      (
+        known_shapes.has(args.path) ?
+          null :
+          args.path
+      ) ??
+      args.mesh_path ??
+      `meshes/${name}.mesh`,
+  };
+}
+
+async function generate_mesh(run, args) {
+  const normalized =
+    normalized_mesh_arguments(args);
+  if (!normalized.shape)
+  {
+    return {
+      ok: true,
+      introspection: true,
+      required: ["shape"],
+      optional: [
+        "path",
+        "name",
+        "parent_id",
+        "position",
+        "size",
+        "material",
+      ],
+      example: {
+        shape: "beveled_box",
+        path: "meshes/generated_part.mesh",
+        size: [1, 1, 1],
+        bevel: 0.1,
+      },
+    };
+  }
+  const generated = await run.tool(
+    "mesh_generate",
+    normalized,
+  );
+  if (!generated.ok)
+  {
+    return generated;
+  }
+
+  const should_create_entity =
+    Boolean(args.name) &&
+    (
+      Boolean(args.parent_id) ||
+      Boolean(args.position) ||
+      Boolean(args.material)
+    );
+  if (!should_create_entity)
+  {
+    return generated;
+  }
+  const created = await run.tool(
+    "entity_create_empty",
+    {
+      name: args.name,
+      parent_id: args.parent_id,
+    },
+  );
+  if (!created.ok)
+  {
+    return {
+      ...created,
+      generated,
+    };
+  }
+  if (
+    args.position ||
+    args.rotation_euler ||
+    args.scale
+  )
+  {
+    const transformed = await run.tool(
+      "entity_set_transform",
+      {
+        id: created.entity.id,
+        position: args.position,
+        rotation_euler: args.rotation_euler,
+        scale: args.scale,
+      },
+    );
+    if (!transformed.ok)
+    {
+      return {
+        ...transformed,
+        generated,
+        entity: created.entity,
+      };
+    }
+  }
+  const bound = await bind_generated_mesh(
+    run,
+    {
+      id: created.entity.id,
+      mesh:
+        generated.resource?.path ??
+        normalized.path,
+      material: args.material,
+      body_type: args.body_type,
+      static: args.static,
+      kinematic: args.kinematic,
+      mass: args.mass,
+      friction: args.friction,
+      restitution: args.restitution,
+    },
+  );
+  return {
+    ...bound,
+    generated,
+    entity: created.entity,
+  };
+}
+
+async function create_compound(run, args) {
+  const parts = Array.isArray(args.parts)
+    ? args.parts
+    : [];
+  if (!args.name || parts.length === 0)
+  {
+    return {
+      ok: true,
+      introspection: true,
+      required: [
+        "name",
+        "parts",
+      ],
+      note:
+        "each part requires exactly one of mesh or shape",
+    };
+  }
+  const root = await run.tool(
+    "entity_create_empty",
+    {
+      name: args.name,
+      parent_id: args.parent_id,
+    },
+  );
+  if (!root.ok)
+  {
+    return root;
+  }
+  if (
+    args.position ||
+    args.rotation_euler ||
+    args.scale
+  )
+  {
+    const transformed = await run.tool(
+      "entity_set_transform",
+      {
+        id: root.entity.id,
+        position: args.position,
+        rotation_euler: args.rotation_euler,
+        scale: args.scale,
+      },
+    );
+    if (!transformed.ok)
+    {
+      return transformed;
+    }
+  }
+
+  const completed_parts = [];
+  for (let index = 0; index < parts.length; index++)
+  {
+    const part = parts[index];
+    let result;
+    if (part.shape)
+    {
+      result = await generate_mesh(
+        run,
+        {
+          ...part,
+          name:
+            part.name ??
+            `${args.name}_${index}`,
+          parent_id: root.entity.id,
+          path:
+            part.mesh_path ??
+            `${args.asset_directory ?? "meshes"}/${generated_asset_name(args.name)}_${index}.mesh`,
+        },
+      );
+    }
+    else
+    {
+      const child = await run.tool(
+        "entity_create_empty",
+        {
+          name:
+            part.name ??
+            `${args.name}_${index}`,
+          parent_id: root.entity.id,
+        },
+      );
+      if (!child.ok)
+      {
+        return child;
+      }
+      if (
+        part.position ||
+        part.rotation_euler ||
+        part.scale
+      )
+      {
+        await run.tool(
+          "entity_set_transform",
+          {
+            id: child.entity.id,
+            position: part.position,
+            rotation_euler: part.rotation_euler,
+            scale: part.scale,
+          },
+        );
+      }
+      result = await bind_generated_mesh(
+        run,
+        {
+          ...part,
+          id: child.entity.id,
+        },
+      );
+    }
+    if (!result.ok)
+    {
+      return {
+        ...result,
+        root: root.entity,
+        completed_parts,
+        failed_index: index,
+      };
+    }
+    completed_parts.push(result);
+  }
+  return {
+    ok: true,
+    root: root.entity,
+    completed_parts,
+    completed_count: completed_parts.length,
+  };
+}
+
+async function dispatch_assistant_command(
+  context,
+  command,
+  args,
+) {
+  const run = context.run;
+  if (
+    args.arguments &&
+    typeof args.arguments === "object" &&
+    !Array.isArray(args.arguments)
+  )
+  {
+    args = {
+      ...args,
+      ...args.arguments,
+    };
+    delete args.arguments;
+  }
+  if (command === "agent_memory_read")
+  {
+    return {
+      ok: true,
+      text: await read_agent_memory(),
+    };
+  }
+  if (command === "agent_memory_append")
+  {
+    return {
+      ok: true,
+      memory: await append_agent_memory(
+        args.section,
+        args.note ?? args.text,
+      ),
+    };
+  }
+  if (command === "agent_memory_replace")
+  {
+    return {
+      ok: true,
+      memory: await write_agent_memory(
+        args.memory ?? args.text,
+      ),
+    };
+  }
+  if (command === "spartan_status")
+  {
+    const ping = await run.tool(
+      "ping",
+      {},
+    );
+    const engine = ping.ok
+      ? await run.tool(
+        "engine_status",
+        {},
+      )
+      : null;
+    return {
+      ok: ping.ok && Boolean(engine?.ok),
+      ping,
+      engine,
+    };
+  }
+  if (command === "search_capabilities")
+  {
+    const terms = String(args.query ?? "")
+      .toLowerCase()
+      .split(/[^a-z0-9_]+/g)
+      .filter(Boolean);
+    const tools = [...engine_tool_names]
+      .filter((name) =>
+        terms.length === 0 ||
+        terms.some((term) => name.includes(term)),
+      )
+      .slice(0, args.limit ?? 25);
+    return {
+      ok: true,
+      tools,
+    };
+  }
+  if (command === "get_capability_details")
+  {
+    const tool =
+      args.tool ??
+      args.name;
+    const details = {
+      scene_plan_create: {
+        required: ["plan"],
+        note: "plan requires root_name, purpose, scale_reference, zones, elements, relationships, lighting, and quality_goals",
+      },
+      material_palette_create: {
+        required: ["materials"],
+        note: "each material requires name and can include base_color, roughness, and metallic",
+      },
+      construction_grammar_suggest: {
+        required: ["purpose"],
+        optional: ["limit"],
+      },
+      entity_create_primitive_batch: {
+        required: ["items"],
+        note: "each item uses primitive_type or type, name, transform, material, and parent_id",
+      },
+      mesh_generate: {
+        required: ["shape", "path"],
+        note: "name and placement fields also create and bind an entity",
+      },
+      compound_create: {
+        required: ["name", "parts"],
+      },
+    };
+    return {
+      ok: Boolean(details[tool]),
+      tool,
+      details:
+        details[tool] ??
+        {
+          note:
+            "pass the documented native command arguments directly",
+        },
+    };
+  }
+  if (command === "mesh_geometry_capabilities")
+  {
+    return {
+      ok: true,
+      generators: [
+        "beveled_box",
+        "rounded_box",
+        "wedge",
+        "wall_opening",
+        "wall_openings",
+        "extruded_profile",
+        "revolved_profile",
+        "torus",
+        "capsule",
+        "rounded_cylinder",
+        "pipe",
+        "curved_profile",
+        "loft",
+        "arch",
+        "inset_panel",
+        "tapered_extrusion",
+        "grid",
+        "grass_blade",
+        "flower",
+      ],
+      modifiers: [
+        "taper",
+        "bend",
+        "mirror",
+        "shell",
+        "linear_array",
+        "radial_array",
+      ],
+      openings: {
+        available: true,
+        generators: [
+          "wall_opening",
+          "wall_openings",
+        ],
+      },
+      profiles: {
+        concave_extrusion: true,
+        variable_loft: true,
+        variable_sweep_scale: true,
+        variable_sweep_twist: true,
+      },
+      collision: {
+        generated_mesh: true,
+        generated_convex: true,
+        tool: "mesh_physics_bind",
+      },
+      booleans: {
+        union: {
+          available: false,
+          alternative: "compound_create",
+        },
+        subtract: {
+          available: false,
+          alternative: "wall_opening",
+        },
+        intersect: {
+          available: false,
+        },
+      },
+    };
+  }
+  if (
+    command === "scene_plan_read" ||
+    command === "scene_plan_get"
+  )
+  {
+    return read_scene_plan(
+      await assistant_scene_namespace(context),
+      args.root_name,
+    );
+  }
+  if (command === "scene_plan_create")
+  {
+    return create_scene_plan(
+      args.plan ?? args,
+      await assistant_scene_namespace(context),
+    );
+  }
+  if (command === "scene_plan_suggest")
+  {
+    const brief = create_design_brief(
+      args.request ?? args.prompt ?? "",
+      {
+        ...args,
+        root_name: args.root_name,
+      },
+    );
+    const plan = suggest_scene_plan(brief);
+    return {
+      ok: plan.ok !== false,
+      brief,
+      plan,
+    };
+  }
+  if (command === "construction_grammar_suggest")
+  {
+    return {
+      ok: true,
+      suggestions: suggest_construction_grammars(
+        args.purpose,
+        args.limit ?? 5,
+      ),
+    };
+  }
+  if (command === "material_palette_create")
+  {
+    return create_material_palette(run, args);
+  }
+  if (
+    command === "material_set" ||
+    command === "material_update" ||
+    command === "material_configure" ||
+    command === "material_set_properties"
+  )
+  {
+    return set_material_properties(
+      run,
+      args.path ?? args.name,
+      args.properties ?? args,
+    );
+  }
+  if (command === "entity_delete_batch")
+  {
+    return delete_entity_batch(run, args);
+  }
+  if (
+    command === "entity_tag_add" ||
+    command === "entity_add_tag"
+  )
+  {
+    return run.tool(
+      "entity_update",
+      {
+        id: args.id,
+        tags: [args.tag],
+        tags_mode: "merge",
+      },
+    );
+  }
+  if (
+    command === "entity_tags_set" ||
+    command === "entity_set_tags" ||
+    command === "semantic_tag_set"
+  )
+  {
+    return run.tool(
+      "entity_update",
+      {
+        id: args.id,
+        tags: args.tags ?? [],
+        tags_mode: "replace",
+      },
+    );
+  }
+  if (command === "entity_create_primitive_batch")
+  {
+    const items = Array.isArray(args.items)
+      ? args.items
+      : [];
+    if (items.length === 0)
+    {
+      return {
+        ok: true,
+        introspection: true,
+        required: ["items"],
+        note:
+          "items must contain one to 64 primitive descriptions",
+      };
+    }
+    return run.tool(
+      command,
+      map_batch_items(
+        items,
+        {
+          parent_id: args.parent_id,
+        },
+      ),
+      60000,
+    );
+  }
+  if (command === "entity_create_light_batch")
+  {
+    const items = Array.isArray(args.items)
+      ? args.items
+      : [];
+    if (items.length === 0)
+    {
+      return {
+        ok: true,
+        introspection: true,
+        required: ["items"],
+        note:
+          "items must contain one to 64 light descriptions",
+      };
+    }
+    return run.tool(
+      command,
+      map_batch_items(
+        items,
+        {
+          parent_id: args.parent_id,
+        },
+        "light_type",
+      ),
+      60000,
+    );
+  }
+  if (
+    command === "entity_create_primitive" &&
+    (
+      args.primitive_type === "mesh" ||
+      args.type === "mesh"
+    ) &&
+    args.mesh
+  )
+  {
+    const created = await run.tool(
+      "entity_create_empty",
+      {
+        name: args.name,
+        parent_id: args.parent_id,
+      },
+    );
+    if (!created.ok)
+    {
+      return created;
+    }
+    if (
+      args.position ||
+      args.rotation_euler ||
+      args.scale
+    )
+    {
+      await run.tool(
+        "entity_set_transform",
+        {
+          id: created.entity.id,
+          position: args.position,
+          rotation_euler: args.rotation_euler,
+          scale: args.scale,
+        },
+      );
+    }
+    return bind_generated_mesh(
+      run,
+      {
+        ...args,
+        id: created.entity.id,
+      },
+    );
+  }
+  if (command === "entity_set_transform")
+  {
+    return run.tool(
+      command,
+      {
+        ...args,
+        id:
+          args.id ??
+          args.entity_id,
+        position:
+          args.position ??
+          args.position_local,
+        rotation_euler:
+          args.rotation_euler ??
+          args.rotation_local,
+        scale:
+          args.scale ??
+          args.scale_local,
+      },
+      60000,
+    );
+  }
+  if (command === "entity_create_primitive")
+  {
+    return run.tool(
+      command,
+      {
+        ...args,
+        primitive_type:
+          args.primitive_type ??
+          args.type,
+        with_physics:
+          args.with_physics ??
+          (
+            args.collision === undefined ?
+              undefined :
+              args.collision !== false
+          ),
+      },
+      60000,
+    );
+  }
+  if (command === "mesh_generate")
+  {
+    return generate_mesh(run, args);
+  }
+  if (command === "mesh_physics_bind")
+  {
+    return bind_generated_mesh(run, args);
+  }
+  if (command === "compound_create")
+  {
+    return create_compound(run, args);
+  }
+  if (command === "debug_log_read")
+  {
+    const text = await read_debug_log(
+      args.limit ?? 80,
+    );
+    const filter = String(
+      args.filter ?? "",
+    ).toLowerCase();
+    return {
+      ok: true,
+      text: filter
+        ? text
+          .split(/\r?\n/)
+          .filter((line) =>
+            line.toLowerCase().includes(filter),
+          )
+          .join("\n")
+        : text,
+    };
+  }
+  if (command === "lights_calibrate")
+  {
+    return calibrate_lights(run, args);
+  }
+  if (command === "scene_quality_audit")
+  {
+    return audit_scene_quality(
+      (name, value) => run.tool(name, value),
+      {
+        ...args,
+        id: args.id ?? args.root_id,
+      },
+    );
+  }
+  if (command === "scene_layout_audit")
+  {
+    const root_name =
+      args.root_name ??
+      context.intent?.target_name ??
+      "";
+    const namespace =
+      await assistant_scene_namespace(context);
+    const stored_plan = root_name
+      ? await read_scene_plan(namespace, root_name)
+      : { ok: false };
+    return audit_scene_layout(
+      (name, value) => run.tool(name, value),
+      {
+        ...args,
+        id: args.id ?? args.root_id,
+        root_name,
+        namespace,
+        plan: stored_plan.ok
+          ? stored_plan.plan
+          : null,
+      },
+    );
+  }
+  if (command === "scene_visual_review")
+  {
+    return review_scene(run, args);
+  }
+  if (command === "screenshot_take" && args.path)
+  {
+    const requested_path =
+      String(args.path).replaceAll("\\", "/");
+    const file_name =
+      path.posix.basename(requested_path);
+    return run.tool(
+      command,
+      {
+        ...args,
+        path:
+          requested_path
+            .toLowerCase()
+            .startsWith("screenshots/")
+            ? requested_path
+            : `screenshots/${file_name}`,
+      },
+      60000,
+    );
+  }
+  if (command === "viewport_frame")
+  {
+    const view_aliases = {
+      side: "right",
+      driver_height: "perspective",
+      driver_level: "perspective",
+      interior: "perspective",
+    };
+    return run.tool(
+      command,
+      {
+        ...args,
+        view:
+          view_aliases[args.view] ??
+          args.view,
+      },
+      60000,
+    );
+  }
+  return run.tool(
+    command,
+    args,
+    60000,
+  );
+}
+
+const spartan_engine_command_tool = {
+  description: [
+    "Execute one Spartan Engine command against the live editor.",
+    "This bridge supports native commands and composite helpers.",
+    "Use this as the primary tool for all scene reads and edits.",
+    "Input command examples include context_snapshot, entity_find, entity_create_empty, entity_create_primitive_batch, entity_create_light_batch, mesh_generate, material_create, component_set_batch, screenshot_take, and viewport_frame.",
+  ].join(" "),
+  inputSchema: {
+    type: "object",
+    properties: {
+      command: {
+        type: "string",
+      },
+      arguments: {
+        type: "object",
+        additionalProperties: true,
+      },
+    },
+    required: [
+      "command",
+    ],
+    additionalProperties: false,
+  },
+  execute: async (args) => {
+    if (!active_assistant_context)
+    {
+      return {
+        ok: false,
+        error: "no active Spartan assistant run",
+      };
+    }
+    const command = String(args.command ?? "").trim();
+    if (!command)
+    {
+      return {
+        ok: false,
+        error: "command is required",
+      };
+    }
+    const command_arguments =
+      args.arguments &&
+      typeof args.arguments === "object" &&
+      !Array.isArray(args.arguments)
+        ? args.arguments
+        : {};
+    const assistant_context =
+      active_assistant_context;
+    const previous_command =
+      assistant_command_queue;
+    let release_command;
+    assistant_command_queue = new Promise(
+      (resolve) =>
+      {
+        release_command = resolve;
+      },
+    );
+    await previous_command;
+    try
+    {
+      return await dispatch_assistant_command(
+        assistant_context,
+        command,
+        command_arguments,
+      );
+    }
+    finally
+    {
+      release_command();
+    }
+  },
+};
 
 export async function list_models(api_key) {
   if (!api_key) {
@@ -144,13 +1658,13 @@ async function get_agent({ api_key, model_id, engine_host, engine_port, run }) {
   cached_agent = await Agent.create({
     apiKey: api_key,
     model: { id: model_id },
-    local: { cwd: __dirname, settingSources: [] },
-    mcpServers: {
-      spartan_engine: {
-        type: "stdio",
-        command: "node",
-        args: [path.join(__dirname, "server.mjs"), `--host=${engine_host}`, `--port=${engine_port}`],
-        cwd: __dirname,
+    mode: "agent",
+    local: {
+      cwd: __dirname,
+      settingSources: [],
+      customTools: {
+        spartan_engine_command:
+          spartan_engine_command_tool,
       },
     },
   });
@@ -500,6 +2014,22 @@ function is_named_tool_event(value, tool_name) {
   );
 }
 
+function is_scene_mutation_event(value)
+{
+  if (!is_tool_event(value))
+  {
+    return false;
+  }
+  return value_contains(value, (text) => {
+    const normalized = text
+      .toLowerCase()
+      .replaceAll("-", "_");
+    return [...scene_mutating_tool_names].some(
+      (tool_name) => normalized.includes(tool_name),
+    );
+  });
+}
+
 function build_prompt(
   prompt,
   snapshot,
@@ -508,6 +2038,8 @@ function build_prompt(
 ) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
+    "Use the spartan_engine_command custom tool as the primary live-engine bridge. Pass the native tool name in command and its arguments object in arguments.",
+    "The spartan_engine_command tool handles both native and composite scene commands. Do not use shell commands or source-code tools for live scene work.",
     "Read agent_memory_read early when available, and treat it as project advice rather than absolute truth.",
     "For engine-control requests, use Spartan MCP tools first and group repetitive calls without sacrificing completeness or visual quality.",
     "For source-code questions, use search_codebase first, then read_source_file for focused line ranges.",
@@ -635,52 +2167,14 @@ async function resolve_quality_root(run, target_name)
       exact.matches ?? [],
     );
     last_result = exact;
-
-    const tagged = await run.tool(
-      "entity_find",
-      {
-        tag: `scene_recipe=${target_name}`,
-        limit: 100,
-      },
-    );
-    const tagged_root = quality_root_from_matches(
-      tagged.matches ?? [],
-    );
     if (exact.ok && exact_root)
     {
-      const tagged_ids = new Set(
-        (tagged.matches ?? []).map(
-          (match) => String(match.id),
-        ),
-      );
-      const exact_is_recipe_leaf = tagged_ids.has(
-        String(exact_root.id),
-      );
-      const recipe_is_below_exact =
-        String(tagged_root?.parent_id ?? "") ===
-        String(exact_root.id);
-      if (
-        !tagged_root ||
-        recipe_is_below_exact ||
-        !exact_is_recipe_leaf
-      )
-      {
-        return {
-          ...exact,
-          root: exact_root,
-          resolution: "exact_name",
-        };
-      }
-    }
-    if (tagged.ok && tagged_root)
-    {
       return {
-        ...tagged,
-        root: tagged_root,
-        resolution: "scene_recipe_tag",
+        ...exact,
+        root: exact_root,
+        resolution: "exact_name",
       };
     }
-    last_result = tagged;
     if (attempt < 9)
     {
       await new Promise(
@@ -751,8 +2245,49 @@ async function resolve_selected_quality_root(run)
 
 function scene_plan_root_name(root, fallback)
 {
-  return String(root?.name ?? fallback ?? "selected_scene")
-    .replace(/__sr_[a-f0-9]+_[a-f0-9]+$/i, "");
+  return String(
+    root?.name ??
+    fallback ??
+    "selected_scene",
+  );
+}
+
+function recover_new_build_intent(prompt, intent, run)
+{
+  const value = String(prompt ?? "")
+    .toLowerCase()
+    .trim();
+  const starts_new_build =
+    /^(?:create|make|build|generate|construct|blockout|design)\b/.test(
+      value,
+    );
+  const explicitly_existing =
+    /\b(?:existing|selected|current|this)\s+(?:scene|environment|entity|area|level|map)\b/.test(
+      value,
+    );
+  if (
+    intent?.kind !== "scene_rebuild" ||
+    !starts_new_build ||
+    explicitly_existing ||
+    (intent.target_name && !intent.use_selected)
+  )
+  {
+    return intent;
+  }
+
+  const target_name =
+    scene_root_name_from_prompt(prompt);
+  const recovered = {
+    ...intent,
+    target_name,
+    use_selected: false,
+  };
+  run.receipt("build target corrected", {
+    previous_target_name: intent.target_name ?? "",
+    previous_use_selected: Boolean(intent.use_selected),
+    target_name,
+  });
+  return recovered;
 }
 
 async function prepare_scene_build_plan({
@@ -778,20 +2313,6 @@ async function prepare_scene_build_plan({
     engine_port,
     world: snapshot.world,
   });
-  const existing = await read_scene_plan(
-    namespace,
-    intent.target_name,
-  );
-  if (existing.ok)
-  {
-    run.receipt("scene design ready", {
-      root_name: intent.target_name,
-      source: "existing",
-      element_count: existing.plan?.elements?.length ?? 0,
-    });
-    return existing;
-  }
-
   const brief = create_design_brief(
     prompt,
     {
@@ -838,13 +2359,115 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     };
   }
 
+  active_assistant_context = {
+    run,
+    engine_host,
+    engine_port,
+    intent,
+  };
   let cursor_run = null;
   let engine_tool_seen = false;
+  let scene_mutation_seen = false;
   let cancel_message = "";
   let guard_timer = null;
   let idle_timer = null;
+  let activity_flush_timer = null;
   let last_activity_at = Date.now();
   let visual_review_seen = false;
+  let activity_buffer = "";
+  let activity_prefix = "";
+  let last_emitted_activity = "";
+  const emit_activity = (text) => {
+    const value = compact_line(text);
+    if (!value || value === last_emitted_activity)
+    {
+      return;
+    }
+    last_emitted_activity = value;
+    run.event("stage_note", { text: value });
+  };
+  const flush_activity = () => {
+    if (activity_flush_timer)
+    {
+      clearTimeout(activity_flush_timer);
+      activity_flush_timer = null;
+    }
+    const text = activity_buffer.trim();
+    if (text)
+    {
+      emit_activity(`${activity_prefix}${text}`);
+    }
+    activity_buffer = "";
+    activity_prefix = "";
+  };
+  const queue_activity = (activity) => {
+    const match = activity.match(
+      /^(Cursor: |Thinking: )(.*)$/,
+    );
+    if (!match)
+    {
+      flush_activity();
+      emit_activity(activity);
+      return;
+    }
+
+    const prefix = match[1];
+    const chunk = match[2].trim();
+    if (!chunk)
+    {
+      return;
+    }
+    if (activity_prefix && activity_prefix !== prefix)
+    {
+      flush_activity();
+    }
+    activity_prefix = prefix;
+
+    if (!activity_buffer)
+    {
+      activity_buffer = chunk;
+    }
+    else if (chunk.startsWith(activity_buffer))
+    {
+      activity_buffer = chunk;
+    }
+    else if (!activity_buffer.endsWith(chunk))
+    {
+      const joins_without_space =
+        /^[,.;:!?)}\]'’]/.test(chunk) ||
+        /[(\[{]$/.test(activity_buffer);
+      activity_buffer += joins_without_space
+        ? chunk
+        : ` ${chunk}`;
+    }
+
+    while (true)
+    {
+      const sentence = activity_buffer.match(
+        /^(.+?[.!?])(?:\s+|$)/,
+      );
+      if (!sentence)
+      {
+        break;
+      }
+      emit_activity(
+        `${activity_prefix}${sentence[1].trim()}`,
+      );
+      activity_buffer = activity_buffer
+        .slice(sentence[0].length)
+        .trim();
+    }
+
+    if (activity_flush_timer)
+    {
+      clearTimeout(activity_flush_timer);
+    }
+    activity_flush_timer = setTimeout(
+      flush_activity,
+      1600,
+    );
+    activity_flush_timer.unref?.();
+  };
   const observe = async (event) => {
     last_activity_at = Date.now();
     const is_visual_review = is_named_tool_event(
@@ -865,19 +2488,16 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       );
     visual_review_seen ||=
       successful_visual_review;
+    scene_mutation_seen ||=
+      is_scene_mutation_event(event);
     if (!engine_tool_seen && is_engine_tool_event(event)) {
       engine_tool_seen = true;
       run.event("stage_note", { text: "engine tool interaction confirmed" });
-    } else if (!engine_tool_seen && is_tool_event(event)) {
-      cancel_message = "cancelled, first tool activity was not a Spartan engine tool";
-      if (cursor_run?.supports?.("cancel")) {
-        await cursor_run.cancel();
-      }
     }
 
     const activity = activity_from_event(event);
     if (activity) {
-      run.event("stage_note", { text: activity });
+      queue_activity(activity);
     }
   };
   const execute_agent_prompt = async (agent, prompt_text) => {
@@ -921,12 +2541,29 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       stream_task,
       new Promise((resolve) => setTimeout(resolve, 1000)),
     ]);
+    await append_debug_log({
+      type: "cursor_run_result",
+      source: "cursor_agent",
+      cursor_run_id: cursor_run.id,
+      status: result.status,
+      result: result.result ?? "",
+    });
+    flush_activity();
     return result;
   };
 
   try {
     const agent = await run.stage("Prepare Cursor", "starting or reusing the Cursor agent", () => get_agent({ api_key, model_id, engine_host, engine_port, run }));
     const snapshot = await run.stage("Read Context", "reading engine state for Cursor", () => run.tool("context_snapshot"));
+    await remove_legacy_builder_state(
+      snapshot.world,
+    );
+    intent = recover_new_build_intent(
+      prompt,
+      intent,
+      run,
+    );
+    active_assistant_context.intent = intent;
     const prepared_plan = await run.stage(
       "Design Scene",
       "inferring scale, layout, circulation, and functional requirements",
@@ -972,18 +2609,20 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         );
       }
     }
-    const cursor_result = await run.stage("Plan And Act", "waiting for Cursor to use Spartan tools", async () => {
-      // thinking and streaming count as activity, only a fully silent run that never touched an engine tool gets cancelled
+    let cursor_result = await run.stage("Plan And Act", "waiting for Cursor to use Spartan tools", async () => {
+      const engine_tool_deadline_at =
+        Date.now() + engine_first_timeout_ms;
       guard_timer = setInterval(() => {
         if (engine_tool_seen || cancel_message) {
           clearInterval(guard_timer);
           return;
         }
-        if (Date.now() - last_activity_at < engine_first_timeout_ms) {
+        if (Date.now() < engine_tool_deadline_at) {
           return;
         }
 
-        cancel_message = `cancelled, no Spartan engine tool was used and the run was silent for ${engine_first_timeout_ms}ms`;
+        cancel_message =
+          `cancelled, no Spartan engine tool was used within ${engine_first_timeout_ms}ms`;
         run.event("stage_note", { text: cancel_message });
         if (cursor_run?.supports?.("cancel")) {
           void cursor_run.cancel();
@@ -1002,6 +2641,39 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       );
     });
 
+    if (
+      cursor_result.status !== "error" &&
+      cursor_result.status !== "cancelled" &&
+      !scene_mutation_seen &&
+      (
+        intent?.kind === "scene_rebuild" ||
+        intent?.live_scene_action
+      )
+    )
+    {
+      run.receipt("engine build retry", {
+        reason:
+          "Cursor completed without using a Spartan engine tool",
+        target_name: intent.target_name ?? "",
+      });
+      cursor_result = await run.stage(
+        "Retry Engine Build",
+        "requiring direct Spartan scene construction",
+        () => execute_agent_prompt(
+          agent,
+          [
+            "Continue the original live scene construction now.",
+            "Your previous response completed without changing Spartan Engine.",
+            "Your first action must call the spartan_engine_command custom tool with command context_snapshot and arguments {}.",
+            "Continue using spartan_engine_command for native scene reads and edits.",
+            `Required root entity: ${intent.target_name}.`,
+            "Do not answer with a plan or explanation. Perform the complete build, audits, visual review, and corrections.",
+            `Original request: ${prompt}`,
+          ].join("\n"),
+        ),
+      );
+    }
+
     if (cursor_result.status === "error") {
       const failure_message = await run_failure_message(cursor_run, cursor_result);
       run.receipt("cursor failure", {
@@ -1015,6 +2687,20 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
 
     if (cursor_result.status === "cancelled" || cancel_message) {
       return { ok: false, text: cancel_message || "Cursor run was cancelled." };
+    }
+    if (
+      !scene_mutation_seen &&
+      (
+        intent?.kind === "scene_rebuild" ||
+        intent?.live_scene_action
+      )
+    )
+    {
+      return {
+        ok: false,
+        text:
+          "Cursor completed twice without using a Spartan engine tool. No scene changes were made.",
+      };
     }
 
     const is_scene_construction =
@@ -1163,8 +2849,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
         "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
         "Fix every failed scene_layout_audit and scene_quality_audit check, including every renderable listed by collision_coverage, plus the most visible weakness in the image.",
-        "When audit issues contain recipe_ids, modify only those scene recipe nodes unless a shared support or material must change.",
-        "Keep recipe nodes aligned with plan element names, plan_element values, semantic_tags, and repeated instances so the layout audit can verify the authored result.",
+        "Keep entities aligned with plan element names, plan_element values, semantic_tags, and repeated instances so the layout audit can verify the authored result.",
         "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
         "Use entity_create_light for lights and mesh_physics_bind or compound_create for collidable generated geometry. Do not expand these atomic tools into probe and component-setting sequences.",
         "Resolve every correction parent from the current scene and use the returned id. Never retry a missing parent with another guessed id.",
@@ -1283,11 +2968,19 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
 
     return { ok: false, text: `Assistant failed: ${error.message}` };
   } finally {
+    if (active_assistant_context?.run === run)
+    {
+      active_assistant_context = null;
+    }
     if (guard_timer) {
       clearTimeout(guard_timer);
     }
     if (idle_timer) {
       clearInterval(idle_timer);
+    }
+    if (activity_flush_timer)
+    {
+      clearTimeout(activity_flush_timer);
     }
   }
 }

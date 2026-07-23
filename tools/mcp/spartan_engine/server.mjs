@@ -26,15 +26,6 @@ import {
   suggest_construction_grammars,
 } from "./construction_grammar.mjs";
 import {
-  apply_scene_recipe,
-  diff_scene_recipes,
-  normalize_scene_recipe,
-  preview_scene_recipe,
-  read_scene_recipe,
-  scene_recipe_schema,
-  scene_recipe_version,
-} from "./scene_recipe.mjs";
-import {
   create_design_brief,
   design_template_names,
   semantic_role_catalog,
@@ -463,7 +454,6 @@ const component_value = z.union([z.string(), z.number(), z.boolean(), numeric_ar
 const light_type = z.enum(["directional", "point", "spot", "area"]);
 const entity_identity_args = {
   tags: z.array(z.string().min(1)).max(32).optional(),
-  scene_recipe: z.string().min(1).optional(),
   semantic_id: z.string().min(1).optional(),
   plan_element: z.string().min(1).optional(),
   semantic_tags: z.array(
@@ -1949,10 +1939,11 @@ register_local_tool("screenshot_take", {
   let requested_path = args.path?.replaceAll("\\", "/");
   if (
     requested_path &&
-    !requested_path.includes("/")
+    !requested_path.toLowerCase().startsWith("screenshots/")
   )
   {
-    requested_path = `screenshots/${requested_path}`;
+    requested_path =
+      `screenshots/${path.posix.basename(requested_path)}`;
   }
   if (
     requested_path &&
@@ -2315,123 +2306,6 @@ register_local_tool(
       ok: plan.ok !== false,
       brief,
       plan,
-    });
-  },
-);
-
-register_local_tool(
-  "scene_recipe_preview",
-  {
-    title: "scene recipe preview",
-    description: "Validate and diff a versioned scene recipe without mutating the world. Reports creates, updates, deletes, ownership cleanup, and stable semantic ids.",
-    inputSchema: {
-      recipe: z.record(z.string(), z.any()),
-    },
-    outputSchema: output_schemas.generic,
-    annotations: read_only,
-  },
-  async ({ recipe }) => {
-    const result = await preview_scene_recipe(
-      send_engine_command,
-      recipe,
-      { project_root },
-    );
-    return tool_result(result);
-  },
-);
-
-register_local_tool(
-  "scene_recipe_apply",
-  {
-    title: "scene recipe apply",
-    description: "Idempotently reconcile a versioned scene recipe with the live world. Stable semantic ids update owned entities and remove stale owned nodes. Pass root_parent_id when adding recipe content beneath an existing quality root.",
-    inputSchema: {
-      recipe: z.record(z.string(), z.any()),
-      dry_run: z.boolean().optional(),
-      root_parent_id: entity_id_schema.optional(),
-    },
-    outputSchema: output_schemas.generic,
-    annotations: edit_tool,
-  },
-  async ({
-    recipe,
-    dry_run = false,
-    root_parent_id,
-  }) => {
-    const result = await apply_scene_recipe(
-      send_engine_command,
-      recipe,
-      {
-        project_root,
-        dry_run,
-        root_parent_id,
-      },
-    );
-    return tool_result(result);
-  },
-);
-
-register_local_tool(
-  "scene_recipe_get",
-  {
-    title: "scene recipe get",
-    description: "Read the latest persisted scene recipe for the current world and recipe id.",
-    inputSchema: {
-      recipe_id: z.string().min(1),
-    },
-    outputSchema: output_schemas.generic,
-    annotations: read_only,
-  },
-  async ({ recipe_id }) => {
-    const world = await send_engine_command(
-      "world_summary",
-      {},
-    );
-    const result = await read_scene_recipe({
-      recipe_id,
-      project_root,
-      world_path:
-        world.file_path ??
-        world.path,
-    });
-    return tool_result({
-      ...result,
-      schema_version: scene_recipe_version,
-      schema: scene_recipe_schema,
-    });
-  },
-);
-
-register_local_tool(
-  "scene_recipe_diff",
-  {
-    title: "scene recipe diff",
-    description: "Compare two scene recipes by stable semantic id and report deterministic create, update, delete, and unchanged sets.",
-    inputSchema: {
-      previous: z.record(z.string(), z.any()),
-      next: z.record(z.string(), z.any()),
-    },
-    outputSchema: output_schemas.generic,
-    annotations: read_only,
-  },
-  async ({ previous, next }) => {
-    const normalized_previous =
-      normalize_scene_recipe(previous);
-    const normalized_next =
-      normalize_scene_recipe(next);
-    const issues = [
-      ...normalized_previous.issues,
-      ...normalized_next.issues,
-    ];
-    return tool_result({
-      ok:
-        normalized_previous.ok &&
-        normalized_next.ok,
-      issues,
-      diff: diff_scene_recipes(
-        normalized_previous.recipe,
-        normalized_next.recipe,
-      ),
     });
   },
 );
@@ -4199,7 +4073,7 @@ register_local_tool(
 register_tool(
   server,
   "entity_update",
-  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags_mode defaults to replace; use merge to preserve recipe identity.",
+  "Rename, activate, deactivate, reparent, or retag an entity in edit mode. Use parent_id root to detach. tags_mode defaults to replace; use merge to preserve semantic identity.",
   {
     id: z.string(),
     name: z.string().optional(),
@@ -5041,7 +4915,7 @@ register_text_resource(
   "parametric_modeling",
   "spartan://engine/parametric-modeling",
   "Spartan Parametric Modeling",
-  "Shape selection, dimensions, budgets, and furniture recipes for procedural modeling.",
+  "Shape selection, dimensions, budgets, and furniture patterns for procedural modeling.",
   () => parametric_modeling_guide,
 );
 
@@ -5057,7 +4931,7 @@ register_text_resource(
   "construction_grammars",
   "spartan://engine/construction-grammars",
   "Spartan Construction Grammars",
-  "Generic medium-scale recipes for openings, roofs, circulation, structure, panels, supports, signs, cables, and facades.",
+  "Generic medium-scale assemblies for openings, roofs, circulation, structure, panels, supports, signs, cables, and facades.",
   () => construction_grammar_guide,
 );
 

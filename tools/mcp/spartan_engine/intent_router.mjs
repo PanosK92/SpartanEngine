@@ -151,7 +151,7 @@ export function target_name_from_prompt(prompt) {
   return "";
 }
 
-function scene_root_name_from_prompt(prompt) {
+export function scene_root_name_from_prompt(prompt) {
   const value = normalized(prompt);
   const explicit_target = target_name_from_prompt(prompt);
   const continues_existing =
@@ -172,6 +172,22 @@ function scene_root_name_from_prompt(prompt) {
     if (explicit)
     {
       return explicit;
+    }
+  }
+
+  const place_match =
+    value.match(
+      /\b([a-z0-9-]+\s+(?:shop|store|station|factory|warehouse|office|house|building|garage|workshop|lounge|bar|airport|hotel|school|hospital|museum|arena|garden|park|plaza))\b/,
+    ) ??
+    value.match(
+      /\b(factory|warehouse|office|house|building|garage|workshop|lounge|bar|airport|hotel|school|hospital|museum|arena|garden|park|plaza)\b/,
+    );
+  if (place_match?.[1])
+  {
+    const place_name = clean_target_name(place_match[1]);
+    if (place_name)
+    {
+      return place_name;
     }
   }
 
@@ -229,6 +245,18 @@ function is_scene_construction_request(value) {
 }
 
 function is_scene_refinement_request(value) {
+  const starts_new_build =
+    /^(?:create|make|build|generate|construct|blockout|design)\b/.test(
+      value,
+    ) &&
+    !/\b(?:existing|selected|current|this)\s+(?:scene|environment|entity|area|level|map)\b/.test(
+      value,
+    );
+  if (starts_new_build)
+  {
+    return false;
+  }
+
   const refines =
     /\b(improve|refine|polish|enhance|upgrade|detail|beautify|finish|complete|correct)\b/.test(value);
   const references_live_scene =

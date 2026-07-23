@@ -75,6 +75,7 @@ namespace
     std::string assistant_models;
     std::string assistant_activity;
     bool assistant_busy = false;
+    bool assistant_scroll_requested = false;
 
     struct AssistantRunState
     {
@@ -214,6 +215,8 @@ namespace
     #endif
     }
 
+    bool is_assistant_ready();
+
     bool terminate_tracked_assistant_process()
     {
     #ifdef _WIN32
@@ -257,13 +260,29 @@ namespace
     bool kill_assistant_process()
     {
     #ifdef _WIN32
-        if (terminate_tracked_assistant_process())
+        bool killed =
+            terminate_tracked_assistant_process();
+        assistant_spawned_this_session = false;
+        if (is_assistant_ready())
         {
-            return true;
+            killed =
+                terminate_any_assistant_process() ||
+                killed;
         }
 
-        return terminate_any_assistant_process();
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            if (!is_assistant_ready())
+            {
+                break;
+            }
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(100)
+            );
+        }
+        return killed;
     #else
+        assistant_spawned_this_session = false;
         return terminate_tracked_assistant_process();
     #endif
     }
@@ -280,6 +299,15 @@ namespace
         std::string response = assistant_response;
         assistant_response.clear();
         return response;
+    }
+
+    bool take_assistant_scroll_request()
+    {
+        std::lock_guard<std::mutex> lock(assistant_mutex);
+        const bool requested =
+            assistant_scroll_requested;
+        assistant_scroll_requested = false;
+        return requested;
     }
 
     void set_models(const std::string& models)
@@ -552,6 +580,7 @@ namespace
 
         assistant_run.status = status;
         assistant_activity = status;
+        assistant_scroll_requested = true;
     }
 
     AssistantRunState get_run_snapshot()
@@ -1615,6 +1644,10 @@ void McpAssistant::OnTickVisible()
     }
 
     const bool is_running = spartan::McpServer::IsRunning();
+    if (take_assistant_scroll_request())
+    {
+        m_scroll_to_bottom = true;
+    }
     bool is_assistant_busy = false;
     {
         std::lock_guard<std::mutex> lock(assistant_mutex);
@@ -2233,75 +2266,102 @@ std::string McpAssistant::GetSelectedModelId() const
 void McpAssistant::DrawAssistantRun()
 {
     const AssistantRunState run = get_run_snapshot();
+    const int message_index_base = static_cast<int>(m_messages.size());
     if (!run.has_run)
     {
-        DrawChatMessage({ false, "working on request" }, static_cast<int>(m_messages.size()));
+        DrawChatMessage({ false, "working on request" }, message_index_base);
         return;
     }
 
     const float scale = ui_scale();
-    const ImVec4 state_color =
-        run.cancelled ? ImGui::Style::color_warning :
-        run.failed ? ImGui::Style::color_error :
-        run.active ? ImGui::Style::color_info :
-        ImGui::Style::color_ok;
-
-    ImGui::PushID("assistant_run");
-    if (begin_card("##assistant_run_card"))
+    int message_index = message_index_base;
+    const std::string current_status =
+        run.status.empty() ?
+        "working on request" :
+        run.status;
+    std::vector<std::string> visible_lines =
+        run.event_lines;
+    if (
+        run.event_lines.empty() ||
+        run.event_lines.back() != current_status
+    )
     {
-        const bool bold_font = push_bold_font();
-        ImGui::TextColored(state_color, "Spartan AI");
-        pop_bold_font(bold_font);
-        ImGui::SameLine();
-        draw_status_pill(run.active ? "working" : (run.failed ? "failed" : (run.cancelled ? "cancelled" : "done")), state_color);
+        visible_lines.emplace_back(current_status);
+    }
 
-        if (run.active)
+    std::string activity_lines;
+    const auto flush_activity_lines = [&]()
+    {
+        if (activity_lines.empty())
         {
-            ImGui::SameLine();
-            const float cancel_x = std::max(ImGui::GetCursorPosX(), ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 88.0f * scale);
-            ImGui::SetCursorPosX(cancel_x);
-            if (ImGuiSp::button("Cancel", ImVec2(82.0f * scale, 0.0f)))
-            {
-                CancelRun();
-            }
+            return;
         }
-
-        ImGui::Spacing();
-        const float line_height    = ImGui::GetTextLineHeightWithSpacing();
-        const float history_height = std::min(static_cast<float>(run.event_lines.size() + 2), 12.0f) * line_height;
-        if (ImGui::BeginChild("##assistant_run_history", ImVec2(0.0f, history_height)))
+        DrawChatMessage(
+            { false, activity_lines },
+            message_index++
+        );
+        activity_lines.clear();
+    };
+    for (const std::string& line : visible_lines)
+    {
+        if (line.empty())
         {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
-            for (const std::string& line : run.event_lines)
-            {
-                ImGui::TextWrapped("%s", line.c_str());
-            }
-            ImGui::PopStyleColor();
-            ImGui::TextWrapped("%s", run.status.empty() ? "working on request" : run.status.c_str());
-
-            // stick to the latest status unless the user scrolled up to read history
-            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - line_height)
-            {
-                ImGui::SetScrollHereY(1.0f);
-            }
+            continue;
         }
-        ImGui::EndChild();
+        std::string prefix =
+            line.substr(
+                0,
+                std::min<size_t>(line.size(), 9)
+            );
+        std::transform(
+            prefix.begin(),
+            prefix.end(),
+            prefix.begin(),
+            [](unsigned char character)
+            {
+                return static_cast<char>(
+                    std::tolower(character)
+                );
+            }
+        );
+        if (prefix == "thinking:")
+        {
+            flush_activity_lines();
+            DrawChatMessage(
+                { false, line },
+                message_index++
+            );
+            continue;
+        }
+        if (!activity_lines.empty())
+        {
+            activity_lines += "\n";
+        }
+        activity_lines += line;
+    }
+    flush_activity_lines();
 
+    if (run.active)
+    {
+        ImGui::PushID("assistant_run_controls");
+        if (
+            ImGuiSp::button(
+                "Cancel",
+                ImVec2(82.0f * scale, 0.0f)
+            )
+        )
+        {
+            CancelRun();
+        }
         int elapsed_ms = run.elapsed_ms;
-        if (run.active && run.started_at.time_since_epoch().count() != 0)
+        if (run.started_at.time_since_epoch().count() != 0)
         {
             elapsed_ms = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - run.started_at).count());
         }
+        ImGui::SameLine();
         ImGui::TextDisabled("%0.1fs", static_cast<float>(elapsed_ms) / 1000.0f);
-
-        if (!run.summary.empty() && !run.active)
-        {
-            ImGui::Spacing();
-            ImGui::TextWrapped("%s", run.summary.c_str());
-        }
+        ImGui::PopID();
     }
-    end_card();
-    ImGui::PopID();
     ImGui::Spacing();
 }
 
@@ -2329,29 +2389,28 @@ void McpAssistant::DrawChatMessage(const ChatMessage& message, int index)
     ImGui::PushStyleColor(ImGuiCol_ChildBg, message.is_user ? user_bg : assistant_bg);
     ImGui::PushStyleColor(ImGuiCol_Border, border);
 
-    if (ImGui::BeginChild("##mcp_message", ImVec2(bubble_width_clamped, 0.0f), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding))
+    if (
+        ImGui::BeginChild(
+            "##mcp_message",
+            ImVec2(bubble_width_clamped, 0.0f),
+            ImGuiChildFlags_AutoResizeY |
+            ImGuiChildFlags_Borders |
+            ImGuiChildFlags_AlwaysUseWindowPadding,
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse
+        )
+    )
     {
         const bool bold_font = push_bold_font();
         ImGui::TextColored(role_color, "%s", message.is_user ? "You" : "Spartan AI");
         pop_bold_font(bold_font);
 
-        std::vector<char> selectable_text(message.text.begin(), message.text.end());
-        selectable_text.push_back('\0');
-        const float text_width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
-        const float text_height = ImGui::CalcTextSize(message.text.c_str(), nullptr, false, text_width).y + ImGui::GetStyle().FramePadding.y * 2.0f;
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::InputTextMultiline(
-            "##mcp_message_text",
-            selectable_text.data(),
-            selectable_text.size(),
-            ImVec2(-FLT_MIN, text_height),
-            ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_NoUndoRedo | ImGuiInputTextFlags_WordWrap
+        ImGui::PushTextWrapPos(
+            ImGui::GetCursorPosX() +
+            ImGui::GetContentRegionAvail().x
         );
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(3);
+        ImGui::TextUnformatted(message.text.c_str());
+        ImGui::PopTextWrapPos();
     }
     ImGui::EndChild();
 
