@@ -37,6 +37,11 @@ import {
   get_benchmark,
   list_benchmarks,
 } from "./scene_benchmarks.mjs";
+import {
+  constrain_generated_resources,
+  generated_resource_command,
+  world_resource_directory,
+} from "./world_resources.mjs";
 
 const project_root = get_project_root();
 await ensure_agent_memory();
@@ -137,8 +142,60 @@ async function benchmark_baseline_path(benchmark_id) {
   );
 }
 
-function send_engine_command(command, args = {}) {
-  return engine.command(command, args, engine_timeout_ms);
+let active_resource_directory = null;
+
+async function send_engine_command(command, args = {}) {
+  if (
+    generated_resource_command(command) &&
+    !active_resource_directory
+  )
+  {
+    const world = await engine.command(
+      "world_summary",
+      {},
+      engine_timeout_ms,
+    );
+    if (world.ok)
+    {
+      active_resource_directory =
+        world_resource_directory(world);
+    }
+  }
+  if (generated_resource_command(command))
+  {
+    args = constrain_generated_resources(
+      command,
+      args,
+      active_resource_directory ??
+        world_resource_directory(),
+    );
+  }
+  const result = await engine.command(
+    command,
+    args,
+    engine_timeout_ms,
+  );
+  if (command === "world_summary" && result.ok)
+  {
+    active_resource_directory =
+      world_resource_directory(result);
+  }
+  else if (
+    command === "context_snapshot" &&
+    result.world
+  )
+  {
+    active_resource_directory =
+      world_resource_directory(result.world);
+  }
+  else if (
+    command === "world_load" ||
+    command === "world_new"
+  )
+  {
+    active_resource_directory = null;
+  }
+  return result;
 }
 
 function tool_result(result) {
@@ -3352,7 +3409,7 @@ register_local_tool(
       position: vector3.optional(),
       rotation_euler: vector3.optional(),
       scale: vector3.optional(),
-      asset_directory: z.string().optional().describe("generated mesh directory, defaults to project/generated/mcp"),
+      asset_directory: z.string().optional().describe("generated mesh directory, always constrained to the active world resource directory"),
       prefab_path: z.string().optional(),
       parts: z.array(
         z.object(compound_part_args),
@@ -3367,7 +3424,7 @@ register_local_tool(
     position,
     rotation_euler,
     scale,
-    asset_directory = "project/generated/mcp",
+    asset_directory = "project/world_resources",
     prefab_path,
     parts,
   }) => {
@@ -3810,7 +3867,7 @@ register_local_tool(
     const spacing = args.spacing ?? 0.004;
     const directory = (
       args.asset_directory ??
-      "project/generated/mcp"
+      "project/world_resources"
     ).replace(/[\\/]+$/g, "");
     const base_name = safe_asset_name(args.name);
 
@@ -4445,7 +4502,7 @@ register_local_tool(
   },
   async ({
     theme = "cozy",
-    directory = "project/materials/mcp",
+    directory = "project/world_resources",
     prefix = "palette",
     accent_ratio = 0.12,
     texture_scale = 1,

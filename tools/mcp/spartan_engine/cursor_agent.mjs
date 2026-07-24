@@ -33,6 +33,10 @@ import {
   scene_root_name_from_prompt,
 } from "./intent_router.mjs";
 import { get_project_root } from "./shared_codebase.mjs";
+import {
+  constrain_generated_resources,
+  world_resource_directory,
+} from "./world_resources.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -754,7 +758,6 @@ async function generate_mesh(run, args) {
       ],
       example: {
         shape: "beveled_box",
-        path: "meshes/generated_part.mesh",
         size: [1, 1, 1],
         bevel: 0.1,
       },
@@ -1151,6 +1154,12 @@ async function dispatch_assistant_command(
     };
     delete args.arguments;
   }
+  args = constrain_generated_resources(
+    command,
+    args,
+    context.resource_directory ??
+      world_resource_directory(),
+  );
   if (command === "agent_memory_read")
   {
     return {
@@ -2693,6 +2702,8 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
   try {
     const agent = await run.stage("Prepare Cursor", "starting or reusing the Cursor agent", () => get_agent({ api_key, model_id, engine_host, engine_port, run }));
     const snapshot = await run.stage("Read Context", "reading engine state for Cursor", () => run.tool("context_snapshot"));
+    active_assistant_context.resource_directory =
+      world_resource_directory(snapshot.world);
     intent = recover_new_build_intent(
       prompt,
       intent,

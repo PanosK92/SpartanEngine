@@ -1619,7 +1619,7 @@ export function build_construction_grammar(args) {
     parts: [],
     directory: String(
       args.asset_directory ??
-      "project/generated/mcp/grammar",
+      "project/world_resources",
     ).replace(/[\\/]+$/g, ""),
     base_name: safe_name(args.name),
   };

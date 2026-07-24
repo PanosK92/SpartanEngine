@@ -14439,6 +14439,42 @@ namespace spartan
             uint32_t light_count = 0;
         };
 
+        std::string active_world_resource_directory()
+        {
+            std::string world_name =
+                std::filesystem::path(
+                    World::GetFilePath()
+                ).stem().string();
+            if (world_name.empty())
+            {
+                world_name = std::filesystem::path(
+                    World::GetName()
+                ).stem().string();
+            }
+            world_name = to_lower_copy(world_name);
+            for (char& character : world_name)
+            {
+                if (
+                    !std::isalnum(
+                        static_cast<unsigned char>(character)
+                    ) &&
+                    character != '_' &&
+                    character != '-'
+                )
+                {
+                    character = '_';
+                }
+            }
+            if (world_name.empty())
+            {
+                world_name = "world";
+            }
+            return
+                "project/" +
+                world_name +
+                "_resources/";
+        }
+
         std::shared_ptr<Material> district_blockout_material(
             const DistrictPreset preset,
             const std::string& role
@@ -14447,7 +14483,8 @@ namespace spartan
             const std::string preset_name =
                 district_preset_to_name(preset);
             const std::string path =
-                "project/generated/mcp/district_" +
+                active_world_resource_directory() +
+                "district_" +
                 preset_name +
                 "_" +
                 role +
