@@ -564,6 +564,11 @@ namespace spartan
 
     void Mesh::CreateGpuBuffers()
     {
+        if (m_ready_for_blas.load(memory_order_acquire))
+        {
+            return;
+        }
+
         auto get_dynamic_capacity = [](const size_t count)
         {
             if (count == 0)

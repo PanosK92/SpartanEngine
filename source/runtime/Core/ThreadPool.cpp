@@ -47,8 +47,27 @@ namespace spartan
         vector<thread> threads;
         deque<Task> tasks;
 
-        // track if current thread is a worker thread to detect nested ParallelLoop calls
         thread_local bool is_worker_thread = false;
+
+        bool execute_queued_task()
+        {
+            Task task;
+            {
+                lock_guard<mutex> lock(task_mutex);
+                if (tasks.empty())
+                {
+                    return false;
+                }
+
+                task = std::move(tasks.front());
+                tasks.pop_front();
+            }
+
+            task();
+            pending_count.fetch_sub(1, memory_order_relaxed);
+            idle_cv.notify_all();
+            return true;
+        }
     }
 
     static void thread_loop()
@@ -166,24 +185,7 @@ namespace spartan
             return;
         }
 
-        // when called from a worker thread, check if we have idle workers available
-        // this allows nested parallelism when possible while preventing deadlock
-        uint32_t available_workers = thread_count;
-        if (is_worker_thread)
-        {
-            uint32_t currently_working = working_count.load(memory_order_relaxed);
-            if (currently_working >= thread_count)
-            {
-                // all workers busy - run sequentially to prevent deadlock
-                function(0, work_total);
-                return;
-            }
-            // use only idle workers to avoid deadlock
-            available_workers = thread_count - currently_working;
-        }
-
-        // limit workers to available count and work count
-        uint32_t workers   = min(available_workers, work_total);
+        uint32_t workers   = min(thread_count, work_total);
         uint32_t base_work = work_total / workers;
         uint32_t remainder = work_total % workers;
 
@@ -203,6 +205,21 @@ namespace spartan
 
         for (future<void>& f : futures)
         {
+            while (
+                is_worker_thread &&
+                f.wait_for(chrono::seconds(0)) != future_status::ready
+            )
+            {
+                if (!execute_queued_task())
+                {
+                    unique_lock<mutex> lock(task_mutex);
+                    idle_cv.wait_for(
+                        lock,
+                        chrono::microseconds(100),
+                        [] { return !tasks.empty(); }
+                    );
+                }
+            }
             f.get();
         }
     }

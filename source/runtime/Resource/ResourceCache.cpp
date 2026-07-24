@@ -35,8 +35,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
+#include <cctype>
+#include <filesystem>
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
+#include <SDL3/SDL_platform.h>
 SP_WARNINGS_ON
 //=============================
 
@@ -52,10 +55,60 @@ namespace spartan
         array<string, 6> m_standard_resource_directories;
         char m_project_directory[256] = {};
         vector<shared_ptr<IResource>> m_resources;
+        unordered_map<string, shared_ptr<IResource>> m_resources_by_path;
+        atomic<bool> m_resource_path_index_dirty = false;
         recursive_mutex m_mutex;
         bool use_root_shader_directory = false;
         bool root_shader_directory_resolved = false;
         string root_shader_directory;
+
+        string resource_path_key(const string& path)
+        {
+            string key =
+                filesystem::path(path).lexically_normal().generic_string();
+            static const bool is_windows =
+                strcmp(SDL_GetPlatform(), "Windows") == 0;
+            if (is_windows)
+            {
+                transform(
+                    key.begin(),
+                    key.end(),
+                    key.begin(),
+                    [](const unsigned char character)
+                    {
+                        return static_cast<char>(tolower(character));
+                    }
+                );
+            }
+            return key;
+        }
+
+        void rebuild_resource_path_index()
+        {
+            if (!m_resource_path_index_dirty.load(memory_order_acquire))
+            {
+                return;
+            }
+
+            m_resources_by_path.clear();
+            m_resources_by_path.reserve(m_resources.size());
+            for (const shared_ptr<IResource>& resource : m_resources)
+            {
+                if (resource)
+                {
+                    m_resources_by_path.emplace(
+                        resource_path_key(
+                            resource->GetResourceFilePath()
+                        ),
+                        resource
+                    );
+                }
+            }
+            m_resource_path_index_dirty.store(
+                false,
+                memory_order_release
+            );
+        }
         unordered_map<string, unique_ptr<mutex>> m_in_flight_mutexes;
         mutex m_in_flight_map_mutex;
 
@@ -105,6 +158,11 @@ namespace spartan
 
         uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
         m_resources.clear();
+        m_resources_by_path.clear();
+        m_resource_path_index_dirty.store(
+            false,
+            memory_order_release
+        );
         if (resource_count != 0)
         {
             SP_LOG_INFO("%d resources have been cleared", resource_count);
@@ -226,16 +284,86 @@ namespace spartan
 
     const char* ResourceCache::GetDataDirectory()
     {
-        #ifdef _WIN32
-        return "Data";
-        #else
+        if (FileSystem::IsDirectory("data"))
+        {
+            return "data";
+        }
+        if (FileSystem::IsDirectory("Data"))
+        {
+            return "Data";
+        }
         return "data";
-        #endif
     }
 
     vector<shared_ptr<IResource>>& ResourceCache::GetResources()
     {
+        m_resource_path_index_dirty.store(
+            true,
+            memory_order_release
+        );
         return m_resources;
+    }
+
+    shared_ptr<IResource> ResourceCache::GetByPathInternal(
+        const string& path
+    )
+    {
+        lock_guard<recursive_mutex> guard(m_mutex);
+        rebuild_resource_path_index();
+
+        const auto it = m_resources_by_path.find(
+            resource_path_key(path)
+        );
+        return
+            it != m_resources_by_path.end() ?
+            it->second :
+            nullptr;
+    }
+
+    shared_ptr<IResource> ResourceCache::CacheInternal(
+        const shared_ptr<IResource>& resource
+    )
+    {
+        lock_guard<recursive_mutex> guard(m_mutex);
+        rebuild_resource_path_index();
+
+        const string path = resource_path_key(
+            resource->GetResourceFilePath()
+        );
+        const auto it = m_resources_by_path.find(path);
+        if (it != m_resources_by_path.end())
+        {
+            return it->second;
+        }
+
+        m_resources.push_back(resource);
+        m_resources_by_path.emplace(path, resource);
+        return resource;
+    }
+
+    void ResourceCache::RemoveInternal(IResource* resource)
+    {
+        lock_guard<recursive_mutex> guard(m_mutex);
+        if (!resource)
+        {
+            return;
+        }
+
+        m_resources.erase(
+            remove_if(
+                m_resources.begin(),
+                m_resources.end(),
+                [resource](const shared_ptr<IResource>& existing)
+                {
+                    return existing.get() == resource;
+                }
+            ),
+            m_resources.end()
+        );
+        m_resource_path_index_dirty.store(
+            true,
+            memory_order_release
+        );
     }
 
     recursive_mutex& ResourceCache::GetMutex()
@@ -246,10 +374,14 @@ namespace spartan
     mutex& ResourceCache::GetInFlightMutex(const string& path)
     {
         lock_guard<mutex> lock(m_in_flight_map_mutex);
-        auto it = m_in_flight_mutexes.find(path);
+        const string key = resource_path_key(path);
+        auto it = m_in_flight_mutexes.find(key);
         if (it == m_in_flight_mutexes.end())
         {
-            it = m_in_flight_mutexes.emplace(path, make_unique<mutex>()).first;
+            it = m_in_flight_mutexes.emplace(
+                key,
+                make_unique<mutex>()
+            ).first;
         }
         return *it->second;
     }

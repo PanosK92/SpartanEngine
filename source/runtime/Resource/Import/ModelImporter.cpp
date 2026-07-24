@@ -295,8 +295,10 @@ namespace spartan
 
             // load the texture and set it to the material
             {
-                const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(resolved_path);
-                shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
+                shared_ptr<RHI_Texture> texture =
+                    ResourceCache::GetByPath<RHI_Texture>(
+                        resolved_path
+                    );
 
                 if (texture)
                 {

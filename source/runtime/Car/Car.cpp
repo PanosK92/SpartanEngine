@@ -283,7 +283,18 @@ namespace spartan
             return CarMaterialSlot::Unknown;
         }
 
-        std::shared_ptr<Material> clone_car_material(Entity* car_entity, Entity* entity, Render* renderable, const char* slot_name)
+        using CarMaterialClones =
+            std::map<
+                std::pair<Material*, std::string>,
+                std::shared_ptr<Material>
+            >;
+
+        std::shared_ptr<Material> clone_car_material(
+            Entity* car_entity,
+            Render* renderable,
+            const char* slot_name,
+            CarMaterialClones& clones
+        )
         {
             Material* source = renderable ? renderable->GetMaterial() : nullptr;
             if (!source)
@@ -291,11 +302,29 @@ namespace spartan
                 return nullptr;
             }
 
-            const std::string resource_name = "car_" + std::to_string(car_entity->GetObjectId()) + "_" + std::to_string(entity->GetObjectId()) + "_" + slot_name + std::string(EXTENSION_MATERIAL);
+            const auto key = std::make_pair(
+                source,
+                std::string(slot_name)
+            );
+            const auto existing = clones.find(key);
+            if (existing != clones.end())
+            {
+                renderable->SetMaterial(existing->second);
+                return existing->second;
+            }
+
+            const std::string resource_name =
+                "car_" +
+                std::to_string(car_entity->GetObjectId()) +
+                "_" +
+                std::to_string(source->GetObjectId()) +
+                "_" +
+                slot_name +
+                std::string(EXTENSION_MATERIAL);
             std::shared_ptr<Material> material = source->Clone(resource_name);
-            // the prefab rebuilds these clones with fresh entity ids on every load, saving them only litters the world resources with orphans
             material->SetPersistent(false);
             renderable->SetMaterial(material);
+            clones.emplace(key, material);
             return material;
         }
 
@@ -1780,6 +1809,17 @@ namespace spartan
         {
             std::vector<Entity*> descendants;
             car_entity->GetDescendants(&descendants);
+            CarMaterialClones material_clones;
+            auto clone_material =
+                [&](Render* renderable, const char* slot_name)
+                {
+                    return clone_car_material(
+                        car_entity,
+                        renderable,
+                        slot_name,
+                        material_clones
+                    );
+                };
             for (Entity* descendant : descendants)
             {
                 Render* renderable = descendant->GetComponent<Render>();
@@ -1803,7 +1843,8 @@ namespace spartan
                 {
                     case CarMaterialSlot::BodyPaint:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "body_paint"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "body_paint"))
                         {
                             material->ApplyPaintPreset(m_paint_preset, m_paint_color, false);
                         }
@@ -1811,7 +1852,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::CarbonTrim:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "carbon_trim"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "carbon_trim"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::CarbonFiber, false);
                         }
@@ -1819,7 +1861,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::TireRubber:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "tire_rubber"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "tire_rubber"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::RubberTire, false);
                         }
@@ -1827,7 +1870,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::RimMetal:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "rim_metal"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "rim_metal"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::Chrome, false);
                         }
@@ -1835,7 +1879,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::HeadlightLens:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "headlight_lens"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "headlight_lens"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::HeadlightLens, false);
                         }
@@ -1843,7 +1888,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::TaillightLens:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "taillight_lens"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "taillight_lens"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::TaillightLens, false);
                         }
@@ -1851,7 +1897,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::MainGlass:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "main_glass"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "main_glass"))
                         {
                             // smoked engine covers use tinted glass, windshields and side glass stay clear
                             const MaterialSurfacePreset glass_preset = contains(context, "engine")
@@ -1868,7 +1915,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::MirrorGlass:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "mirror_glass"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "mirror_glass"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::Chrome, false);
                         }
@@ -1876,7 +1924,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::EngineMetal:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "engine_metal"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "engine_metal"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::PolishedMetal, false);
                         }
@@ -1884,7 +1933,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::BrakeDisc:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "brake_disc"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "brake_disc"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::BrakeDisc, false);
                         }
@@ -1892,7 +1942,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::InteriorLeather:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "interior_leather"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "interior_leather"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::Leather, false);
                         }
@@ -1900,7 +1951,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::BlackTrim:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "black_trim"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "black_trim"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::BlackPlastic, false);
                         }
@@ -1908,7 +1960,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::EmissiveRedLight:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "emissive_red_light"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "emissive_red_light"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveRedLight, false);
                         }
@@ -1916,7 +1969,8 @@ namespace spartan
                     }
                     case CarMaterialSlot::EmissiveWhiteLight:
                     {
-                        if (std::shared_ptr<Material> material = clone_car_material(car_entity, descendant, renderable, "emissive_white_light"))
+                        if (std::shared_ptr<Material> material =
+                            clone_material(renderable, "emissive_white_light"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveWhiteLight, false);
                         }

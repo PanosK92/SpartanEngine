@@ -536,6 +536,9 @@ namespace spartan
                             tex_name.c_str()
                         );
                         texture_packed->SetResourceName(packed_name);
+                        texture_packed->SetPersistent(
+                            material->IsPersistent()
+                        );
                         texture_packed->SetCompressionFormat(RHI_Format::BC3_Unorm);
                         
                         // set resource file path so the texture can be cached and properly referenced by materials
@@ -906,7 +909,11 @@ namespace spartan
         clone->m_textures      = m_textures;
         clone->m_properties    = m_properties;
         clone->m_flags         = m_flags;
-        clone->m_needs_repack  = true;
+        clone->m_needs_repack  = false;
+        clone->m_resource_state.store(
+            ResourceState::PreparedForGpu,
+            memory_order_release
+        );
         clone->m_object_size   = sizeof(*clone);
 
         return clone;

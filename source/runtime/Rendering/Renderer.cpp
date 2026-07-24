@@ -457,8 +457,11 @@ namespace spartan
         {
             TickUpdateHiZSuppressionState();
 
-            // rebuild geometry buffer when meshes arrive, growth routes old buffers through the deletion queue
-            GeometryBuffer::BuildIfDirty();
+            // batch world geometry into one gpu upload after loading
+            if (!ProgressTracker::IsLoading())
+            {
+                GeometryBuffer::BuildIfDirty();
+            }
 
             // geometry buffer rebuild invalidates blas device addresses, free old gpu memory before rebuilding to avoid a peak
             if (GeometryBuffer::WasRebuilt())
@@ -2445,6 +2448,11 @@ namespace spartan
             return;
         }
 
+        if (ProgressTracker::IsLoading())
+        {
+            return;
+        }
+
         // blas
         // built incrementally with a per-frame cap so big scenes (forest has 2148 unique meshes)
         // don't hit driver tdr or peak gpu memory by recording all builds onto one command list
@@ -2517,10 +2525,7 @@ namespace spartan
         }
 
         // skip tlas build until all blas are ready so we don't keep rebuilding it with an incomplete set
-        // also skip while the world is still loading, async loading adds new renderables every frame
-        // which would force the instance, staging, scratch buffers and the as itself to reallocate
-        // each rebuild, defer to a single build once loading completes
-        if (!blas_burst_done || ProgressTracker::IsLoading())
+        if (!blas_burst_done)
         {
             return;
         }
@@ -2634,6 +2639,7 @@ namespace spartan
     void Renderer::DestroyAccelerationStructures()
     {
         RHI_Device::QueueWaitAll();
+        RHI_AccelerationStructure::FreeSharedBlasScratch();
 
         m_tlas = nullptr;
 

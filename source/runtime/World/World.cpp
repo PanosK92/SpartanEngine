@@ -1113,73 +1113,10 @@ namespace spartan
 
     void World::Tick()
     {
-        // loading can happen in the background, but the renderer still wants to see whatever entities the loader has already published
-        // do a load-time tick, drain published entities, run normal component ticks, rebuild caches; skip simulated world time
         if (ProgressTracker::IsLoading())
         {
             SP_PROFILE_CPU();
-
             was_loading = true;
-            ProcessPendingRemovals();
-            ProcessPendingAdditions();
-
-            // entities created by workers are auto-drained each frame, components may still be partially configured but PreTick and Tick tolerate that via null checks
-            for (Entity* entity : entities)
-            {
-                if (entity->GetActive())
-                {
-                    entity->PreTick();
-                }
-            }
-            for (Entity* entity : entities)
-            {
-                if (entity->GetActive())
-                {
-                    entity->Tick();
-                }
-            }
-
-            // force the renderable, lights, camera caches to rebuild every loading frame so newly drained entities show up immediately
-            resolve = true;
-            {
-                camera             = nullptr;
-                light              = nullptr;
-                audio_source_count = 0;
-                entities_lights.clear();
-                entities_renderables.clear();
-                for (Entity* entity : entities)
-                {
-                    if (entity->GetActive())
-                    {
-                        camera = pick_default_camera(camera, entity);
-
-                        if (Light* light_comp = entity->GetComponent<Light>())
-                        {
-                            if (!light && light_comp->GetLightType() == LightType::Directional)
-                            {
-                                light = entity;
-                            }
-                            entities_lights.push_back(entity);
-                        }
-
-                        if (entity->GetComponent<Render>())
-                        {
-                            entities_renderables.push_back(entity);
-                        }
-
-                        if (entity->GetComponent<AudioSource>())
-                        {
-                            audio_source_count++;
-                        }
-                    }
-                }
-            }
-
-            compute_bounding_box();
-            resolve = false;
-            // do not clear entity_states here, worker threads are still writing to it via mark_entity_changed under the lock, racing with an unlocked clear crashes the unordered_map
-            // it gets drained safely in the regular non-loading Tick path once loading completes
-
             return;
         }
 
@@ -1844,6 +1781,19 @@ namespace spartan
 
                     for (const string& path : files)
                     {
+                        const string file_name =
+                            FileSystem::GetFileNameFromFilePath(path);
+                        if (
+                            file_name.rfind("car_", 0) == 0 &&
+                            file_name.find("_packed_slot") != string::npos
+                        )
+                        {
+                            ProgressTracker::GetProgress(
+                                ProgressType::World
+                            ).JobDone();
+                            continue;
+                        }
+
                         if (FileSystem::IsEngineTextureFile(path))
                         {
                             texture_paths.push_back(path);
@@ -2042,6 +1992,9 @@ namespace spartan
                         }
                     }
                 }
+
+                // publish the complete serialized world once so deferred scripts can query it
+                ProcessPendingAdditions();
 
                 // every entity now exists, run the queued script initialization sequentially on this thread
                 // builder scripts get the full thread pool for their own parallel work and lua stays single threaded

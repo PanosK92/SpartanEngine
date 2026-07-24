@@ -125,13 +125,9 @@ namespace spartan
         template <class T>
         static std::shared_ptr<T> GetByPath(const std::string& path)
         {
-            std::lock_guard<std::recursive_mutex> guard(GetMutex());
-            for (std::shared_ptr<IResource>& resource : GetResources())
-            {
-                if (path == resource->GetResourceFilePath())
-                    return std::static_pointer_cast<T>(resource);
-            }
-            return nullptr;
+            return std::static_pointer_cast<T>(
+                GetByPathInternal(path)
+            );
         }
 
         // caches resource, or replaces with existing cached resource
@@ -147,17 +143,9 @@ namespace spartan
                 return nullptr;
             }
 
-            std::lock_guard<std::recursive_mutex> guard(GetMutex());
-
-            // return cached resource if it already exists
-            for (std::shared_ptr<IResource>& existing : GetResources())
-            {
-                if (resource->GetResourceFilePath() == existing->GetResourceFilePath())
-                    return std::static_pointer_cast<T>(existing);
-            }
-
-            // if not, cache it and return the cached resource
-            return std::static_pointer_cast<T>(GetResources().emplace_back(resource));
+            return std::static_pointer_cast<T>(
+                CacheInternal(resource)
+            );
         }
 
         // loads a resource and adds it to the resource cache
@@ -196,17 +184,11 @@ namespace spartan
         static void Remove(std::shared_ptr<T>& resource)
         {
             if (!resource)
+            {
                 return;
-            GetResources().erase
-            (
-                std::remove_if
-                (
-                    GetResources().begin(),
-                    GetResources().end(),
-                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.get())->GetObjectId() == resource->GetObjectId(); }
-                ),
-                GetResources().end()
-            );
+            }
+
+            RemoveInternal(resource.get());
         }
 
         // memory
@@ -228,5 +210,14 @@ namespace spartan
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
         static const Icon& GetIcon(IconType type);
+
+    private:
+        static std::shared_ptr<IResource> GetByPathInternal(
+            const std::string& path
+        );
+        static std::shared_ptr<IResource> CacheInternal(
+            const std::shared_ptr<IResource>& resource
+        );
+        static void RemoveInternal(IResource* resource);
     };
 }
