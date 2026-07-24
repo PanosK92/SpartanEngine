@@ -476,6 +476,12 @@ namespace spartan
             float    cloud_coverage             = -1.0f;
             double   cloud_time                 = 0.0;
 
+            // exposure history
+            Camera*      exposure_camera          = nullptr;
+            RHI_Texture* exposure_history_texture = nullptr;
+            bool         exposure_history_reset   = false;
+            bool         exposure_was_automatic   = false;
+
             // vrs
             RHI_Texture* vrs_last_cleared_texture = nullptr;
 

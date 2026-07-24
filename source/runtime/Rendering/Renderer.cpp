@@ -983,10 +983,21 @@ namespace spartan
         {
             m_cb_frame_cpu.hdr_enabled = (m_swapchain->GetFormat() == RHI_Format::R16G16B16A16_Float) ? 2.0f : 1.0f;
         }
-        m_cb_frame_cpu.hdr_max_nits      = Display::GetLuminanceMax();
+        m_cb_frame_cpu.hdr_max_nits       = Display::GetLuminanceMax();
         m_cb_frame_cpu.hdr_sdr_white_nits = Display::GetSdrWhiteNits();
-        m_cb_frame_cpu.gamma                 = cvar_gamma.GetValue();
-        m_cb_frame_cpu.camera_exposure       = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+        m_cb_frame_cpu.gamma              = cvar_gamma.GetValue();
+        Camera* camera                    = World::GetCamera();
+        m_cb_frame_cpu.camera_exposure    =
+            camera ?
+            camera->GetExposure() :
+            1.0f;
+        bool camera_uses_auto_exposure =
+            camera &&
+            camera->GetExposureMode() == CameraExposureMode::automatic;
+        m_cb_frame_cpu.camera_exposure_mode =
+            camera_uses_auto_exposure ?
+            1.0f :
+            0.0f;
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind                  = World::GetWind();
         m_cb_frame_cpu.cloud_coverage        = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetCloudCoverage() : 0.0f;
@@ -2938,6 +2949,12 @@ namespace spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
         cmd_list->SetTexture(Renderer_BindingsSrv::tex_perlin, GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
 
+        RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
+        if (tex_exposure)
+        {
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex_effective_exposure, tex_exposure);
+        }
+
         bool is_graphics_queue = cmd_list->GetQueue() && cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics;
         RHI_Texture* tex_wind  = GetRenderTarget(Renderer_RenderTarget::wind_field);
         if (is_graphics_queue && tex_wind)
@@ -3202,6 +3219,26 @@ namespace spartan
             m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;
             m_cross_queue_sync.pending_compute_timeline_value = compute_b_value;
 
+            RHI_Texture* tex_exposure_previous =
+                GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
+            const bool auto_exposure_enabled =
+                camera->GetExposureMode() == CameraExposureMode::automatic;
+            m_pass_state.exposure_history_reset =
+                auto_exposure_enabled &&
+                (
+                    camera != m_pass_state.exposure_camera ||
+                    tex_exposure_previous !=
+                    m_pass_state.exposure_history_texture ||
+                    !m_pass_state.exposure_was_automatic
+                );
+            if (m_pass_state.exposure_history_reset)
+            {
+                cmd_list_graphics_present->ClearTexture(
+                    tex_exposure_previous,
+                    Color::standard_black
+                );
+            }
+
             const bool xr_stereo     = Xr::IsSessionRunning() && Xr::GetStereoMode();
             const uint32_t eye_count = xr_stereo ? Xr::eye_count : 1;
             for (uint32_t eye = 0; eye < eye_count; eye++)
@@ -3211,6 +3248,16 @@ namespace spartan
                 m_pcb_pass_cpu.eye_index = xr_stereo ? eye : 0;
                 ProduceFrame_PerEye(cmd_list_graphics_present, eye, eye_layer);
             }
+
+            if (auto_exposure_enabled)
+            {
+                cmd_list_graphics_present->Blit(
+                    GetRenderTarget(Renderer_RenderTarget::auto_exposure),
+                    tex_exposure_previous,
+                    false
+                );
+            }
+
             // reset eye index for non per eye passes that follow
             m_pcb_pass_cpu.eye_index = 0;
         }

@@ -54,6 +54,21 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_aperture, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shutter_speed, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_iso, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_exposure_mode,
+            SetExposureMode,
+            CameraExposureMode
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_auto_exposure_adaptation_speed,
+            SetAutoExposureAdaptationSpeed,
+            float
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_auto_exposure_compensation,
+            SetAutoExposureCompensation,
+            float
+        );
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_fov_horizontal_rad, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_near_plane, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_plane, float);
@@ -77,11 +92,22 @@ namespace spartan
 
     void Camera::RegisterForScripting(sol::state_view state)
     {
+        state.new_enum("CameraExposureMode",
+            "manual",    CameraExposureMode::manual,
+            "automatic", CameraExposureMode::automatic
+        );
+
         state.new_usertype<Camera>("Camera",
-            "GetFovHorizontalDeg", &Camera::GetFovHorizontalDeg,
-            "SetFovHorizontalDeg", &Camera::SetFovHorizontalDeg,
-            "GetNearPlane",        &Camera::GetNearPlane,
-            "GetFarPlane",         &Camera::GetFarPlane
+            "GetFovHorizontalDeg",             &Camera::GetFovHorizontalDeg,
+            "SetFovHorizontalDeg",             &Camera::SetFovHorizontalDeg,
+            "GetNearPlane",                    &Camera::GetNearPlane,
+            "GetFarPlane",                     &Camera::GetFarPlane,
+            "GetExposureMode",                 &Camera::GetExposureMode,
+            "SetExposureMode",                 &Camera::SetExposureMode,
+            "GetAutoExposureAdaptationSpeed",  &Camera::GetAutoExposureAdaptationSpeed,
+            "SetAutoExposureAdaptationSpeed",  &Camera::SetAutoExposureAdaptationSpeed,
+            "GetAutoExposureCompensation",     &Camera::GetAutoExposureCompensation,
+            "SetAutoExposureCompensation",     &Camera::SetAutoExposureCompensation
         );
     }
 
@@ -122,15 +148,22 @@ namespace spartan
 
     void Camera::Save(pugi::xml_node& node)
     {
-        node.append_attribute("aperture")       = m_aperture;
-        node.append_attribute("shutter_speed")  = m_shutter_speed;
-        node.append_attribute("iso")            = m_iso;
+        node.append_attribute("aperture")      = m_aperture;
+        node.append_attribute("shutter_speed") = m_shutter_speed;
+        node.append_attribute("iso")           = m_iso;
+        node.append_attribute("exposure_mode") =
+            static_cast<int>(m_exposure_mode);
+        node.append_attribute("auto_exposure_adaptation_speed") =
+            m_auto_exposure_adaptation_speed;
+        node.append_attribute("auto_exposure_compensation") =
+            m_auto_exposure_compensation;
         node.append_attribute("fov_horizontal") = m_fov_horizontal_rad;
         node.append_attribute("near_plane")     = m_near_plane;
         node.append_attribute("far_plane")      = m_far_plane;
-        node.append_attribute("projection")     = static_cast<int>(m_projection_type);
-        node.append_attribute("preset")         = static_cast<int>(m_preset);
-        node.append_attribute("flags")          = m_flags;
+        node.append_attribute("projection") =
+            static_cast<int>(m_projection_type);
+        node.append_attribute("preset") = static_cast<int>(m_preset);
+        node.append_attribute("flags")  = m_flags;
     }
     
     void Camera::Load(pugi::xml_node& node)
@@ -138,6 +171,19 @@ namespace spartan
         m_aperture           = node.attribute("aperture").as_float(5.6f);
         m_shutter_speed      = node.attribute("shutter_speed").as_float(1.0f / 125.0f);
         m_iso                = node.attribute("iso").as_float(200.0f);
+        int exposure_mode = node.attribute("exposure_mode").as_int(
+            static_cast<int>(CameraExposureMode::manual)
+        );
+        m_exposure_mode =
+            exposure_mode == static_cast<int>(CameraExposureMode::automatic) ?
+            CameraExposureMode::automatic :
+            CameraExposureMode::manual;
+        SetAutoExposureAdaptationSpeed(
+            node.attribute("auto_exposure_adaptation_speed").as_float(1.0f)
+        );
+        SetAutoExposureCompensation(
+            node.attribute("auto_exposure_compensation").as_float(0.0f)
+        );
         m_fov_horizontal_rad = node.attribute("fov_horizontal").as_float(90.0f * math::deg_to_rad);
         m_near_plane         = node.attribute("near_plane").as_float(0.1f);
         m_far_plane          = node.attribute("far_plane").as_float(10'000.0f);

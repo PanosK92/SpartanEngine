@@ -67,6 +67,22 @@ float3 photometric_to_radiometric(float3 value)
     return value / LUMINOUS_EFFICACY_MAX;
 }
 
+float get_effective_exposure()
+{
+    if (buffer_frame.camera_exposure_mode < 0.5f)
+    {
+        return buffer_frame.camera_exposure;
+    }
+
+    float exposure = tex_effective_exposure.Load(int3(0, 0, 0)).r;
+    if (isnan(exposure) || exposure <= 0.0f)
+    {
+        return buffer_frame.camera_exposure;
+    }
+
+    return exposure;
+}
+
 /*------------------------------------------------------------------------------
     SUN RADIANCE
 ------------------------------------------------------------------------------*/

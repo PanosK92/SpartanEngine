@@ -169,6 +169,9 @@ namespace spartan
         reservoir_prev4    = 26,
         reservoir_prev5    = 27,
 
+        // camera exposure history
+        tex_effective_exposure = 28,
+
         // baked wind field, sampled by all wind-driven geometry
         tex_wind_field     = 29,
 

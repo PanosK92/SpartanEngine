@@ -2145,12 +2145,25 @@ void Properties::ShowCamera(Camera* camera) const
     {
         //= REFLECT ======================================================================
         static vector<string> projection_types = { "Perspective", "Orthographic" };
-        static vector<string> camera_presets   = { "Custom", "Daylight", "Overcast", "Golden Hour", "Interior", "Night", "Cinematic" };
+        static vector<string> camera_presets =
+        {
+            "Custom",
+            "Daylight",
+            "Overcast",
+            "Golden Hour",
+            "Interior",
+            "Night",
+            "Cinematic"
+        };
+        static vector<string> exposure_modes   = { "Manual", "Automatic" };
         float aperture                         = camera->GetAperture();
         float shutter_speed                    = camera->GetShutterSpeed();
         float iso                              = camera->GetIso();
+        float adaptation_speed                 = camera->GetAutoExposureAdaptationSpeed();
+        float exposure_compensation            = camera->GetAutoExposureCompensation();
         float fov                              = camera->GetFovHorizontalDeg();
         uint32_t preset_index                  = static_cast<uint32_t>(camera->GetPreset());
+        uint32_t exposure_mode_index            = static_cast<uint32_t>(camera->GetExposureMode());
         bool first_person_control_enabled      = camera->GetFlag(CameraFlags::CanBeControlled);
         //================================================================================
 
@@ -2169,25 +2182,97 @@ void Properties::ShowCamera(Camera* camera) const
         layout::separator();
         layout::section_header("Exposure");
 
-        property_float("Aperture", &aperture, 0.1f, 0.01f, 150.0f, "f-stop. lower values admit more light and reduce depth of field", "f/%.1f");
-        property_float("Shutter Speed", &shutter_speed, 0.0001f, 0.0001f, 1.0f, "exposure time in seconds. longer exposures admit more light and increase motion blur", "%.4f s");
-        property_float("ISO", &iso, 10.0f, 1.0f, 2000.0f, "sensor sensitivity. higher values brighten the image without changing scene luminance", "%.0f");
+        property_combo(
+            "Mode",
+            exposure_modes,
+            &exposure_mode_index,
+            "manual uses the physical camera, automatic meters scene luminance"
+        );
+
+        bool manual_exposure =
+            exposure_mode_index !=
+            static_cast<uint32_t>(CameraExposureMode::automatic);
+        ImGui::BeginDisabled(manual_exposure);
+        property_float(
+            "Adaptation Speed",
+            &adaptation_speed,
+            0.1f,
+            0.0f,
+            10.0f,
+            "how quickly automatic exposure responds, zero adapts immediately",
+            "%.2f"
+        );
+        property_float(
+            "Compensation",
+            &exposure_compensation,
+            0.1f,
+            -10.0f,
+            10.0f,
+            "automatic exposure bias in ev stops, positive brightens",
+            "%.1f EV"
+        );
+        ImGui::EndDisabled();
+
+        property_float(
+            "Aperture",
+            &aperture,
+            0.1f,
+            0.01f,
+            150.0f,
+            "controls manual exposure, depth of field and chromatic aberration",
+            "f/%.1f"
+        );
+        property_float(
+            "Shutter Speed",
+            &shutter_speed,
+            0.0001f,
+            0.0001f,
+            1.0f,
+            "controls manual exposure and motion blur",
+            "%.4f s"
+        );
+        property_float(
+            "ISO",
+            &iso,
+            10.0f,
+            1.0f,
+            2000.0f,
+            "controls manual exposure and film grain",
+            "%.0f"
+        );
 
         float aperture_clamped  = std::max(aperture, 0.01f);
         float shutter_clamped   = std::max(shutter_speed, 0.0001f);
         float iso_clamped       = std::max(iso, 1.0f);
-        float ev100             = std::log2((aperture_clamped * aperture_clamped) / shutter_clamped * (100.0f / iso_clamped));
+        float ev100 = std::log2(
+            (aperture_clamped * aperture_clamped) /
+            shutter_clamped *
+            (100.0f / iso_clamped)
+        );
         float exposure_scale    = 1.0f / (1.2f * std::exp2(ev100));
 
         char exposure_value_text[32];
         snprintf(exposure_value_text, sizeof(exposure_value_text), "%.2f", ev100);
-        property_text("EV100", exposure_value_text, "derived from aperture, shutter speed, and iso");
+        property_text(
+            "Manual EV100",
+            exposure_value_text,
+            "derived from aperture, shutter speed, and iso"
+        );
 
         char exposure_scale_text[32];
         snprintf(exposure_scale_text, sizeof(exposure_scale_text), "%.6f", exposure_scale);
-        property_text("Exposure Scale", exposure_scale_text, "scene-linear exposure multiplier derived from the physical camera");
+        property_text(
+            "Manual Exposure Scale",
+            exposure_scale_text,
+            "physical camera multiplier used in manual mode"
+        );
 
-        if (property_combo("Preset", camera_presets, &preset_index, "applies aperture, shutter speed and iso"))
+        if (property_combo(
+            "Physical Preset",
+            camera_presets,
+            &preset_index,
+            "applies aperture, shutter speed and iso"
+        ))
         {
             camera->SetPreset(static_cast<CameraPreset>(preset_index));
             // refresh locals so the map-back below does not revert the preset to custom
@@ -2213,6 +2298,18 @@ void Properties::ShowCamera(Camera* camera) const
         if (iso != camera->GetIso())
         {
             camera->SetIso(iso);
+        }
+        if (exposure_mode_index != static_cast<uint32_t>(camera->GetExposureMode()))
+        {
+            camera->SetExposureMode(static_cast<CameraExposureMode>(exposure_mode_index));
+        }
+        if (adaptation_speed != camera->GetAutoExposureAdaptationSpeed())
+        {
+            camera->SetAutoExposureAdaptationSpeed(adaptation_speed);
+        }
+        if (exposure_compensation != camera->GetAutoExposureCompensation())
+        {
+            camera->SetAutoExposureCompensation(exposure_compensation);
         }
         if (fov != camera->GetFovHorizontalDeg())
         {

@@ -7,7 +7,7 @@
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 2 -10" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.8" restitution="0.1" is_static="false" is_kinematic="false" body_type="6" />
    <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
-    <camera aperture="5.6" shutter_speed="0.008" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
+    <camera exposure_mode="1" aperture="5.6" shutter_speed="0.008" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
    </Entity>
   </Entity>
   <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">

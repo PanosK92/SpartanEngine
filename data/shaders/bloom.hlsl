@@ -84,8 +84,10 @@ float3 threshold(float3 color)
     const float THRESHOLD = 1.0f;
     const float KNEE      = THRESHOLD * 0.5f;
 
-    // manual camera exposure is used as the reference, matching the light contribution cull
-    float brightness = get_luminance(radiometric_to_photometric(color)) * buffer_frame.camera_exposure;
+    // use the active camera exposure, matching the light contribution cull
+    float brightness =
+        get_luminance(radiometric_to_photometric(color)) *
+        get_effective_exposure();
 
     // soft knee curve
     float soft = brightness - THRESHOLD + KNEE;

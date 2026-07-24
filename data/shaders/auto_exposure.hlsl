@@ -131,7 +131,10 @@ void main_cs(uint group_index : SV_GroupIndex)
     // adapt in ev space, the eye adjusts to bright scenes faster than to dark ones
     float adaptation_speed = pass_get_f3_value().x;
     float speed            = target_exposure < prev_exposure ? adaptation_speed * 6.0f : adaptation_speed * 2.0f;
-    float alpha            = 1.0f - exp(-speed * buffer_frame.delta_time);
+    float alpha            =
+        adaptation_speed <= 0.0f ?
+        1.0f :
+        1.0f - exp(-speed * buffer_frame.delta_time);
     float exposure         = exp2(lerp(log2(prev_exposure), log2(target_exposure), alpha));
 
     tex_uav[uint2(0, 0)] = float4(exposure, exposure, exposure, 1.0f);

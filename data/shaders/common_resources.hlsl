@@ -64,6 +64,9 @@ Texture2D<float4> tex_reservoir_prev3 : register(t25);
 Texture2D<float4> tex_reservoir_prev4 : register(t26);
 Texture2D<float4> tex_reservoir_prev5 : register(t27);
 
+// exposure resolved by the camera on the previous frame
+Texture2D<float> tex_effective_exposure : register(t28);
+
 // wind field, baked once per frame, sampled by all wind-driven geometry
 // rg = flow vector (signed, [-1,1]), b = gust pressure (0..1), a = micro turbulence (0..1)
 Texture2D<float4> tex_wind_field : register(t29);

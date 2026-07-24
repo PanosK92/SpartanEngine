@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Component.h"
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 #include "../../RHI/RHI_Viewport.h"
@@ -56,6 +57,12 @@ namespace spartan
         interior,
         night,
         cinematic
+    };
+
+    enum class CameraExposureMode
+    {
+        manual,
+        automatic
     };
 
     enum CameraFlags : uint32_t
@@ -156,6 +163,40 @@ namespace spartan
         void SetPreset(const CameraPreset preset);
         CameraPreset GetPreset() const { return m_preset; }
 
+        // exposure
+        CameraExposureMode GetExposureMode() const { return m_exposure_mode; }
+        void SetExposureMode(const CameraExposureMode mode)
+        {
+            m_exposure_mode =
+                mode == CameraExposureMode::automatic ?
+                CameraExposureMode::automatic :
+                CameraExposureMode::manual;
+        }
+        float GetAutoExposureAdaptationSpeed() const
+        {
+            return m_auto_exposure_adaptation_speed;
+        }
+        void SetAutoExposureAdaptationSpeed(const float speed)
+        {
+            if (std::isfinite(speed))
+            {
+                m_auto_exposure_adaptation_speed =
+                    std::clamp(speed, 0.0f, 10.0f);
+            }
+        }
+        float GetAutoExposureCompensation() const
+        {
+            return m_auto_exposure_compensation;
+        }
+        void SetAutoExposureCompensation(const float compensation)
+        {
+            if (std::isfinite(compensation))
+            {
+                m_auto_exposure_compensation =
+                    std::clamp(compensation, -10.0f, 10.0f);
+            }
+        }
+
         float GetExposure() const
         {
             const float aperture = std::max(m_aperture, 0.01f);
@@ -220,6 +261,9 @@ namespace spartan
 
         uint32_t m_flags                             = 0;
         CameraPreset m_preset                        = CameraPreset::custom;
+        CameraExposureMode m_exposure_mode           = CameraExposureMode::automatic;
+        float m_auto_exposure_adaptation_speed       = 1.0f;
+        float m_auto_exposure_compensation           = 0.0f;
         float m_aperture                             = 5.6f;          // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
         float m_shutter_speed                        = 1.0f / 125.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
         float m_iso                                  = 200.0f;        // sensitivity to light

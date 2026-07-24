@@ -397,7 +397,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // get input data
     float3 f3_value        = pass_get_f3_value();
     uint tone_mapping      = (uint)f3_value.x;
-    bool is_auto_exposure  = f3_value.y > 0.0f;
     bool force_sdr         = f3_value.z > 0.0f;
     float4 color           = tex[thread_id.xy];
 
@@ -405,9 +404,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // convert once here so exposure and tone mapping operate in photometric display space.
     color.rgb = radiometric_to_photometric(color.rgb);
 
-    // apply exposure, auto exposure meters the scene, manual mode uses the physical camera
-    float exposure = is_auto_exposure ? tex2.Load(int3(0, 0, 0)).r : buffer_frame.camera_exposure;
-    color.rgb     *= exposure;
+    // apply the camera exposure once before tone mapping
+    color.rgb *= get_effective_exposure();
     
     // check hdr state, 1 = hdr10 pq, 2 = scrgb linear (1.0 = 80 nits)
     bool is_hdr    = buffer_frame.hdr_enabled != 0.0f && !force_sdr;

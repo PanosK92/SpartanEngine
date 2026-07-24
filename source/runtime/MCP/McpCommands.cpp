@@ -2213,6 +2213,16 @@ namespace spartan
             return enum_values_json({ { "perspective", json_string("perspective") }, { "orthographic", json_string("orthographic") } });
         }
 
+        std::string camera_exposure_mode_enum_values_json()
+        {
+            return enum_values_json(
+                {
+                    { "manual", json_string("manual") },
+                    { "automatic", json_string("automatic") }
+                }
+            );
+        }
+
         std::string body_type_enum_values_json()
         {
             return enum_values_json({
@@ -5043,6 +5053,15 @@ namespace spartan
                 json += ",\"aperture\":" + std::to_string(camera->GetAperture());
                 json += ",\"shutter_speed\":" + std::to_string(camera->GetShutterSpeed());
                 json += ",\"iso\":" + std::to_string(camera->GetIso());
+                json += ",\"exposure_mode\":" + json_string(
+                    camera->GetExposureMode() == CameraExposureMode::automatic ?
+                    "automatic" :
+                    "manual"
+                );
+                json += ",\"auto_exposure_adaptation_speed\":" +
+                    std::to_string(camera->GetAutoExposureAdaptationSpeed());
+                json += ",\"auto_exposure_compensation\":" +
+                    std::to_string(camera->GetAutoExposureCompensation());
                 json += ",\"projection\":" + json_string(camera->GetProjectionType() == Projection_Perspective ? "perspective" : "orthographic");
                 json += ",\"controllable\":" + json_bool(camera->GetFlag(CameraFlags::CanBeControlled));
                 json += ",\"flashlight\":" + json_bool(camera->GetFlag(CameraFlags::Flashlight));
@@ -5119,7 +5138,11 @@ namespace spartan
             }
             if (type == ComponentType::Camera)
             {
-                return "[\"fov_degrees\",\"aperture\",\"shutter_speed\",\"iso\",\"projection\",\"controllable\",\"flashlight\"]";
+                return
+                    "[\"fov_degrees\",\"aperture\",\"shutter_speed\",\"iso\","
+                    "\"exposure_mode\",\"auto_exposure_adaptation_speed\","
+                    "\"auto_exposure_compensation\",\"projection\","
+                    "\"controllable\",\"flashlight\"]";
             }
             if (type == ComponentType::AudioSource)
             {
@@ -5229,9 +5252,45 @@ namespace spartan
             else if (type == ComponentType::Camera)
             {
                 add({ "fov_degrees", "", "float", true, "degrees", range_json(1.0f, 179.0f), "", { "updates camera projection" }, "", "90" });
-                add({ "aperture", "", "float", true, "f stop", range_json(0.01f, std::nullopt), "", { "changes exposure and depth of field behavior" }, "", "5.6" });
-                add({ "shutter_speed", "", "float", true, "seconds", range_json(0.0001f, std::nullopt), "", { "changes exposure and motion blur behavior" }, "", "0.008" });
-                add({ "iso", "", "float", true, "iso", range_json(1.0f, std::nullopt), "", { "changes exposure" }, "", "200" });
+                add({ "aperture", "", "float", true, "f stop", range_json(0.01f, std::nullopt), "", { "changes manual exposure and depth of field behavior" }, "", "5.6" });
+                add({ "shutter_speed", "", "float", true, "seconds", range_json(0.0001f, std::nullopt), "", { "changes manual exposure and motion blur behavior" }, "", "0.008" });
+                add({ "iso", "", "float", true, "iso", range_json(1.0f, std::nullopt), "", { "changes manual exposure and film grain" }, "", "200" });
+                add({
+                    "exposure_mode",
+                    "",
+                    "enum",
+                    true,
+                    "",
+                    "",
+                    camera_exposure_mode_enum_values_json(),
+                    { "selects physical or scene metered exposure" },
+                    "",
+                    json_string("automatic")
+                });
+                add({
+                    "auto_exposure_adaptation_speed",
+                    "",
+                    "float",
+                    true,
+                    "",
+                    range_json(0.0f, 10.0f),
+                    "",
+                    { "zero adapts immediately" },
+                    "",
+                    "1"
+                });
+                add({
+                    "auto_exposure_compensation",
+                    "",
+                    "float",
+                    true,
+                    "ev stops",
+                    range_json(-10.0f, 10.0f),
+                    "",
+                    { "positive values brighten automatic exposure" },
+                    "",
+                    "0"
+                });
                 add({ "projection", "", "enum", true, "", "", projection_enum_values_json(), { "updates camera projection" }, "", json_string("perspective") });
                 add({ "controllable", "", "bool", true, "", "", "", { "enables editor fps camera controls" }, "", "true" });
                 add({ "flashlight", "", "bool", true, "", "", "", { "creates or toggles transient camera flashlight entity" }, "", "false" });
@@ -7914,6 +7973,22 @@ namespace spartan
                 error = "invalid projection";
                 return false;
             }
+            if (property == "exposure_mode")
+            {
+                if (value == "manual")
+                {
+                    camera->SetExposureMode(CameraExposureMode::manual);
+                    return true;
+                }
+                if (value == "automatic")
+                {
+                    camera->SetExposureMode(CameraExposureMode::automatic);
+                    return true;
+                }
+
+                error = "invalid camera exposure mode";
+                return false;
+            }
             if (property == "controllable" || property == "flashlight")
             {
                 bool parsed = false;
@@ -7925,7 +8000,14 @@ namespace spartan
                 camera->SetFlag(property == "controllable" ? CameraFlags::CanBeControlled : CameraFlags::Flashlight, parsed);
                 return true;
             }
-            if (property == "fov_degrees" || property == "aperture" || property == "shutter_speed" || property == "iso")
+            if (
+                property == "fov_degrees" ||
+                property == "aperture" ||
+                property == "shutter_speed" ||
+                property == "iso" ||
+                property == "auto_exposure_adaptation_speed" ||
+                property == "auto_exposure_compensation"
+            )
             {
                 float parsed = 0.0f;
                 if (!parse_float(value, parsed))
@@ -7945,9 +8027,17 @@ namespace spartan
                 {
                     camera->SetShutterSpeed(parsed);
                 }
-                else
+                else if (property == "iso")
                 {
                     camera->SetIso(parsed);
+                }
+                else if (property == "auto_exposure_adaptation_speed")
+                {
+                    camera->SetAutoExposureAdaptationSpeed(parsed);
+                }
+                else
+                {
+                    camera->SetAutoExposureCompensation(parsed);
                 }
                 return true;
             }

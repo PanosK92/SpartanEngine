@@ -7,7 +7,7 @@
   <Entity name="physics_body_camera" id="1003000000000000001" active="true" position="20.331 3.4409 0.328715" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <Entity name="component_camera" id="1003000000000000002" active="true" position="2.57383e-07 0.764235 3.44295e-06" rotation="-0.00605848 -0.719314 -0.00627537 0.69463" scale="1 1 1">
-    <camera aperture="11" shutter_speed="0.00400000019" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="1" flags="17" />
+    <camera exposure_mode="1" aperture="11" shutter_speed="0.00400000019" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="1" flags="17" />
    </Entity>
   </Entity>
   <Entity name="sponza_curtains" id="11780221944012395100" active="true" position="0 1.5 0" rotation="0 0 0 1" scale="1.5 1.5 1.5">

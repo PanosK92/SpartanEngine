@@ -141,8 +141,20 @@ namespace spartan
             });
         }
 
-        const bool auto_exposure_enabled = cvar_auto_exposure_adaptation_speed.GetValue() > 0.0f;
-        if (auto_exposure_enabled)
+        Camera* camera = World::GetCamera();
+        const bool auto_exposure_enabled =
+            camera &&
+            camera->GetExposureMode() == CameraExposureMode::automatic;
+        const bool meter_auto_exposure =
+            auto_exposure_enabled &&
+            (
+                eye_layer == rhi_all_mips ||
+                eye_layer == 0
+            );
+        RHI_Texture* tex_exposure_previous =
+            GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
+
+        if (meter_auto_exposure)
         {
             RHI_Texture* tex_exposure = tex_in;
             if (!tex_exposure->HasPerMipViews())
@@ -155,7 +167,11 @@ namespace spartan
             }
             Pass_Downscale(cmd_list, tex_exposure, Renderer_DownsampleFilter::Average);
             Pass_AutoExposure(cmd_list, tex_exposure);
+            m_pass_state.exposure_history_reset = false;
         }
+        m_pass_state.exposure_camera          = camera;
+        m_pass_state.exposure_history_texture = tex_exposure_previous;
+        m_pass_state.exposure_was_automatic   = auto_exposure_enabled;
 
         if (cvar_bloom.GetValueAs<bool>())
         {
@@ -169,11 +185,6 @@ namespace spartan
         swap(tex_in, tex_out);
 
         Pass_Screenshot(cmd_list, tex_pre_tonemap);
-
-        if (auto_exposure_enabled)
-        {
-            cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::auto_exposure), GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous), false);
-        }
 
         Pass_PostProcess_DisplayEffects(cmd_list, tex_in, tex_out);
 
@@ -380,13 +391,15 @@ namespace spartan
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
-        const bool auto_exposure_enabled = cvar_auto_exposure_adaptation_speed.GetValue() > 0.0f;
-        m_pcb_pass_cpu.set_f3_value(cvar_tonemapping.GetValue(), auto_exposure_enabled ? 1.0f : 0.0f, force_sdr ? 1.0f : 0.0f);
+        m_pcb_pass_cpu.set_f3_value(
+            cvar_tonemapping.GetValue(),
+            0.0f,
+            force_sdr ? 1.0f : 0.0f
+        );
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous));
         cmd_list->Dispatch(tex_out);
 
         cmd_list->EndTimeblock();
@@ -469,7 +482,12 @@ namespace spartan
         {
             cmd_list->SetPipelineState(pso);
 
-            m_pcb_pass_cpu.set_f3_value(cvar_auto_exposure_adaptation_speed.GetValue(), cvar_auto_exposure_compensation.GetValue());
+            Camera* camera = World::GetCamera();
+            m_pcb_pass_cpu.set_f3_value(
+                camera->GetAutoExposureAdaptationSpeed(),
+                camera->GetAutoExposureCompensation(),
+                0.0f
+            );
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
