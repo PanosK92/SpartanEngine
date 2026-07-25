@@ -95,6 +95,17 @@ namespace spartan
         m_jobs_done++;
     }
 
+    void Progress::Complete()
+    {
+        lock_guard lock(mutex_jobs);
+
+        // a single missed JobDone leaves the tracker just below one and Start accumulates onto it,
+        // which wedges the loading screen for this load and every load after it
+        m_jobs_done       = m_job_count.load();
+        m_continuous_mode = false;
+        m_fraction        = 1.0f;
+    }
+
 	const string& Progress::GetText()
     {
         return m_text;

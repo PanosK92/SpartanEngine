@@ -1693,6 +1693,9 @@ namespace spartan
                 root->Save(entity_node);
                 ProgressTracker::GetProgress(ProgressType::World).JobDone();
             }
+
+            // an empty world starts the tracker in continuous mode where it can never reach one on its own
+            ProgressTracker::GetProgress(ProgressType::World).Complete();
         }
 
         // save to file
@@ -1741,6 +1744,9 @@ namespace spartan
             // clears the loading state and releases the guard, must run on every exit path
             auto finish = []()
             {
+                // the tracker never resets while it is below one, so an early return or a miscount
+                // would keep the loading screen up for this load and poison every load after it
+                ProgressTracker::GetProgress(ProgressType::World).Complete();
                 ProgressTracker::SetGlobalLoadingState(false);
                 world_io_state.store(
                     WorldIoState::Idle,
@@ -1763,13 +1769,6 @@ namespace spartan
                 {
                     vector<string> files = FileSystem::GetFilesInDirectory(directory);
 
-                    // progress for resource loading
-                    uint32_t resource_count = static_cast<uint32_t>(files.size());
-                    if (resource_count > 0)
-                    {
-                        ProgressTracker::GetProgress(ProgressType::World).Start(resource_count, "Loading resources...");
-                    }
-
                     // bucket files by type so we can fan each bucket out across the thread pool
                     // sequential loads here used to dominate world load time on texture heavy scenes
                     vector<string> texture_paths;
@@ -1788,9 +1787,6 @@ namespace spartan
                             file_name.find("_packed_slot") != string::npos
                         )
                         {
-                            ProgressTracker::GetProgress(
-                                ProgressType::World
-                            ).JobDone();
                             continue;
                         }
 
@@ -1806,6 +1802,16 @@ namespace spartan
                         {
                             material_paths.push_back(path);
                         }
+                    }
+
+                    // progress counts only what is actually loaded below, counting every file on disk
+                    // left the unclassified ones permanently outstanding and pinned the bar under 100 percent
+                    uint32_t resource_count = static_cast<uint32_t>(
+                        texture_paths.size() + mesh_paths.size() + material_paths.size()
+                    );
+                    if (resource_count > 0)
+                    {
+                        ProgressTracker::GetProgress(ProgressType::World).Start(resource_count, "Loading resources...");
                     }
 
                     // pass 1, textures and meshes are independent, fan them out together

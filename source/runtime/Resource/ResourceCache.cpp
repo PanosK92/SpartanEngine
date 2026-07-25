@@ -181,16 +181,23 @@ namespace spartan
         IconAtlas::Shutdown();
     }
 
-    shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
+    shared_ptr<IResource> ResourceCache::GetByName(const string& name, const ResourceType type)
     {
         lock_guard<recursive_mutex> guard(m_mutex);
-        for (shared_ptr<IResource>& resource : m_resources)
+        for (const shared_ptr<IResource>& resource : m_resources)
         {
+            if (!resource)
+            {
+                continue;
+            }
+
             if (name == resource->GetObjectName() && (type == ResourceType::Max || resource->GetResourceType() == type))
+            {
                 return resource;
+            }
         }
-        static shared_ptr<IResource> empty;
-        return empty;
+
+        return nullptr;
     }
 
     vector<shared_ptr<IResource>> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)

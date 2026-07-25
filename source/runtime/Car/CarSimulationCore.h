@@ -797,7 +797,7 @@ public:
         {
             return 0.0f;
         }
-        return load * powf(load / spec.load_reference, spec.load_sensitivity - 1.0f);
+        return load * powf(load / PxMax(spec.load_reference, 1.0f), spec.load_sensitivity - 1.0f);
     }
 
 
@@ -808,7 +808,8 @@ public:
         float dev = fabsf(temperature - opt);
         float norm = PxClamp(dev / range, 0.0f, 1.0f);
         float penalty = norm * norm * spec.tire_grip_temp_factor;
-        return 1.0f - penalty;
+        // a preset factor above one would otherwise drive grip to zero or negative
+        return PxClamp(1.0f - penalty, 0.1f, 1.0f);
     }
 
 
@@ -1625,7 +1626,9 @@ public:
         float arm_span = PxMax(geometry.arm_span, 0.05f);
         float camber = is_front(wheel_index) ? spec.front_camber : spec.rear_camber;
         float toe = is_front(wheel_index) ? spec.front_toe : spec.rear_toe;
-        PxQuat alignment = PxQuat(side * toe, PxVec3(0.0f, 1.0f, 0.0f)) * PxQuat(side * camber, PxVec3(0.0f, 0.0f, 1.0f));
+        // negative camber must lean the wheel top inboard and positive toe must point the leading
+        // edge inboard, the unnegated rotation produced the mirror of both on each side
+        PxQuat alignment = PxQuat(-side * toe, PxVec3(0.0f, 1.0f, 0.0f)) * PxQuat(-side * camber, PxVec3(0.0f, 0.0f, 1.0f));
         PxTransform wheel_pose(wheel_world, chassis_pose.q * alignment);
 
         corner.upright = create_mechanism_actor(wheel_pose, PxBoxGeometry(0.04f, 0.18f, 0.06f), spec.upright_mass);
@@ -2183,19 +2186,18 @@ public:
                 normal.normalize();
             }
 
-            float penetration = PxClamp(query_lift - hit.block.distance, 0.0f, PxMin(wheel_radius * 0.25f, 0.05f));
             // overlap sweep positions are unbounded so contact is reconstructed on the wheel support
             PxVec3 wheel_axis = query_rotation.rotate(PxVec3(1.0f, 0.0f, 0.0f));
             float axial_alignment = wheel_axis.dot(normal);
+            // the swept cylinder touches down on its rim edge while a tire carries load across the
+            // tread, so the hit is corrected back to the wheel plane before deflection is measured
+            float edge_drop = wheel_width * 0.5f * fabsf(axial_alignment);
+            float penetration = PxClamp(query_lift - hit.block.distance - edge_drop, 0.0f, PxMin(wheel_radius * 0.25f, 0.05f));
             PxVec3 radial_normal = normal - wheel_axis * axial_alignment;
             PxVec3 contact_offset = PxVec3(0.0f);
             if (radial_normal.normalize() > 1e-4f)
             {
                 contact_offset -= radial_normal * wheel_radius;
-            }
-            if (fabsf(axial_alignment) > 1e-4f)
-            {
-                contact_offset -= wheel_axis * copysignf(wheel_width * 0.5f, axial_alignment);
             }
             PxVec3 contact_point = wheel_center + contact_offset;
             if (!is_finite_vec(contact_point))
@@ -2211,8 +2213,14 @@ public:
                 contact_velocity -= ground_actor->getLinearVelocity() + ground_actor->getAngularVelocity().cross(contact_point - ground_actor->getGlobalPose().p);
             }
             float vertical_velocity = contact_velocity.dot(normal);
-            float tire_damping = 2.0f * 0.7f * sqrtf(PxMax(spec.tire_vertical_stiffness, 1.0f) * PxMax(cfg.wheel_mass, 1.0f));
-            float normal_force = PxClamp(penetration * spec.tire_vertical_stiffness - vertical_velocity * tire_damping, 0.0f, spec.max_susp_force);
+            // damping only exists while the tread is actually squashed, applying it on a grazing
+            // hit invents a force before the tire has touched anything
+            float normal_force = 0.0f;
+            if (penetration > 0.0f)
+            {
+                float tire_damping = 2.0f * 0.7f * sqrtf(PxMax(spec.tire_vertical_stiffness, 1.0f) * PxMax(cfg.wheel_mass, 1.0f));
+                normal_force = PxClamp(penetration * spec.tire_vertical_stiffness - vertical_velocity * tire_damping, 0.0f, spec.max_susp_force);
+            }
 
             w.grounded = normal_force > 0.0f;
             w.contact_point = contact_point;
@@ -2311,6 +2319,10 @@ public:
         float peak    = spec.engine_peak_torque_rpm;
         float redline = spec.engine_redline_rpm;
         float max_rpm = spec.engine_max_rpm;
+        if (redline <= peak)
+        {
+            redline = peak + 1.0f;
+        }
 
         // split idle-to-peak into three progressive ramp zones
         float ramp_range = peak - idle;
@@ -2691,10 +2703,7 @@ public:
         float effective_throttle = PxMax(drive_input, blip);
         // pedal closed means coast, blip may still raise revs for a matched downshift
         bool coasting = drive_input <= spec.input_deadzone;
-        float boosted_torque = get_engine_torque(engine_rpm) * (1.0f + boost_pressure * spec.boost_torque_mult);
-        float combustion_torque = rev_limiter_active ? 0.0f : boosted_torque * effective_throttle * assisted_actuators.engine_torque_scale;
         float idle_angular_velocity = spec.engine_idle_rpm * PxPi * 2.0f / 60.0f;
-        float idle_torque = PxClamp((idle_angular_velocity - engine_angular_velocity) * engine_inertia * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f);
         float clutch_capacity = PxMax(spec.clutch_max_torque, 10.0f);
         float clutch_damping = clutch_capacity / 12.0f;
         float electric_target = is_in_forward_gear() ? get_electric_motor_torque(engine_rpm, input.throttle) * assisted_actuators.engine_torque_scale : 0.0f;
@@ -2708,7 +2717,6 @@ public:
         {
             motor_torque = lerp(motor_torque, electric_target, exp_decay(electric_rate, dt));
         }
-        engine_output_torque = combustion_torque + idle_torque;
         axle_drive_torque = 0.0f;
         engine_brake_torque = 0.0f;
 
@@ -2716,8 +2724,16 @@ public:
         float substep = dt / static_cast<float>(substep_count);
         float accumulated_axle_torque = 0.0f;
         float accumulated_powertrain_reaction = 0.0f;
+        float accumulated_engine_torque = 0.0f;
         for (int step = 0; step < substep_count; step++)
         {
+            // torque follows rpm inside the loop, a value frozen for the whole step overshoots
+            // idle control and the torque curve whenever the engine accelerates hard
+            float substep_rpm = engine_angular_velocity * 60.0f / (PxPi * 2.0f);
+            float boosted_torque = get_engine_torque(substep_rpm) * (1.0f + boost_pressure * spec.boost_torque_mult);
+            float combustion_torque = rev_limiter_active ? 0.0f : boosted_torque * effective_throttle * assisted_actuators.engine_torque_scale;
+            float idle_torque = PxClamp((idle_angular_velocity - engine_angular_velocity) * engine_inertia * spec.engine_rpm_smoothing, 0.0f, spec.engine_peak_torque * 0.35f);
+            accumulated_engine_torque += combustion_torque + idle_torque;
             float clutch_slip = engine_angular_velocity - gearbox_input_angular_velocity;
             float clutch_torque = PxClamp(clutch_slip * clutch_damping, -clutch_capacity * clutch, clutch_capacity * clutch);
             float shaft_torque = 0.0f;
@@ -2805,6 +2821,7 @@ public:
             accumulated_powertrain_reaction -= engine_inertia * engine_acceleration + driveline_inertia * gearbox_acceleration;
         }
 
+        engine_output_torque = accumulated_engine_torque / static_cast<float>(substep_count);
         float mechanical_axle_torque = accumulated_axle_torque / static_cast<float>(substep_count);
         float electric_axle_torque = motor_torque * spec.final_drive * spec.drivetrain_efficiency;
         driveshaft_torque = mechanical_axle_torque;
@@ -2819,6 +2836,13 @@ public:
         if (input.throttle <= spec.input_deadzone && mechanical_axle_torque * wheel_angular_velocity < 0.0f)
         {
             engine_brake_torque = fabsf(mechanical_axle_torque);
+        }
+        // the final drive housing is bolted to the chassis so the axle torque reacts into the body,
+        // without it angular momentum is created from nothing and squat and lift are under predicted
+        if (fabsf(axle_drive_torque) > 0.0f)
+        {
+            PxVec3 axle_axis = body->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+            safe_add_torque(body, axle_axis * -axle_drive_torque);
         }
         apply_drive_torque(axle_drive_torque, dt);
         engine_rpm = engine_angular_velocity * 60.0f / (PxPi * 2.0f);
@@ -3069,7 +3093,7 @@ public:
             {
                 PxVec3 chassis_up = pose.q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
                 float measured_camber = asinf(PxClamp(wheel_axis.dot(chassis_up), -1.0f, 1.0f));
-                dyn_camb = i == front_left || i == rear_left ? -measured_camber : measured_camber;
+                dyn_camb = i == front_left || i == rear_left ? measured_camber : -measured_camber;
                 PxVec3 alignment_forward = wheel_axis.cross(chassis_up);
                 if (alignment_forward.normalize() > 1e-4f)
                 {
@@ -3253,7 +3277,7 @@ public:
             float rolling_heat = fabsf(wheel_speed) * spec.tire_heat_from_rolling * pressure_heat_mult;
             float cooling_air = spec.tire_cooling_rate + ground_speed * spec.tire_cooling_airflow;
             float force_magnitude = sqrtf(long_f * long_f + lat_f * lat_f);
-            float normalized_force = force_magnitude / spec.load_reference;
+            float normalized_force = force_magnitude / PxMax(spec.load_reference, 1.0f);
             float slip_ratio_eff = PxClamp(slip_v / PxMax(ground_speed, 0.5f), 0.0f, 2.0f);
             float speed_heat_scale = PxClamp(ground_speed / 2.0f, 0.0f, 1.0f);
             float friction_work = normalized_force * slip_ratio_eff * pacejka_weight * speed_heat_scale;
@@ -3291,7 +3315,7 @@ public:
             float total_wear = 0.0f;
             for (int z = 0; z < 3; z++)
             {
-                float zone_excess = PxMax(w.thermal.surface[z] - spec.tire_optimal_temp, 0.0f) / spec.tire_temp_range;
+                float zone_excess = PxMax(w.thermal.surface[z] - spec.tire_optimal_temp, 0.0f) / PxMax(spec.tire_temp_range, 1.0f);
                 float zone_wear = spec.tire_wear_rate * (1.0f + zone_excess * spec.tire_wear_heat_mult);
                 total_wear += zone_wear;
             }
@@ -3321,8 +3345,9 @@ public:
             if (wheel_actor)
             {
                 float brake_signed = brake_torque_sign(i) * w.brake_torque;
-                // wheel: drive, brake, bearing, and pacejka reaction
-                safe_add_torque(wheel_actor, wheel_axis * (w.net_torque - long_f * wr_eff));
+                // drive, brake and bearing only, the patch force already spins the wheel down
+                // through its contact offset so adding long_f times radius here counted it twice
+                safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
                 if (multibody.corners[i].upright)
                 {
                     // caliper on upright only, irs drive reaction must not pitch the knuckle
@@ -3338,10 +3363,10 @@ public:
             }
         }
         float front_steering_angle = (wheels[front_left].dynamic_toe + wheels[front_right].dynamic_toe) * 0.5f;
-        wheels[front_left].bump_steer = wheels[front_left].dynamic_toe - front_steering_angle + spec.front_toe;
-        wheels[front_right].bump_steer = wheels[front_right].dynamic_toe - front_steering_angle - spec.front_toe;
-        wheels[rear_left].bump_steer = wheels[rear_left].dynamic_toe + spec.rear_toe;
-        wheels[rear_right].bump_steer = wheels[rear_right].dynamic_toe - spec.rear_toe;
+        wheels[front_left].bump_steer = wheels[front_left].dynamic_toe - front_steering_angle - spec.front_toe;
+        wheels[front_right].bump_steer = wheels[front_right].dynamic_toe - front_steering_angle + spec.front_toe;
+        wheels[rear_left].bump_steer = wheels[rear_left].dynamic_toe - spec.rear_toe;
+        wheels[rear_right].bump_steer = wheels[rear_right].dynamic_toe + spec.rear_toe;
         if (log_pacejka)
         {
             SP_LOG_INFO("=== pacejka tick end ===\n");
@@ -4164,7 +4189,7 @@ public:
             {
                 float h = spec.brake_cooling_base + airspeed * spec.brake_cooling_airflow;
                 float cooling_power = h * temp_above_ambient;
-                float temp_drop = (cooling_power / spec.brake_thermal_mass) * dt;
+                float temp_drop = (cooling_power / PxMax(spec.brake_thermal_mass, 0.1f)) * dt;
                 wheels[i].brake_temp -= temp_drop;
                 wheels[i].brake_temp = PxMax(wheels[i].brake_temp, spec.brake_ambient_temp);
             }

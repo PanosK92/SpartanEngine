@@ -44,6 +44,7 @@ namespace spartan
         float GetFraction() const;
         void SetFraction(float fraction); // for continuous progress (0.0 to 1.0)
         void JobDone();
+        void Complete(); // forces the tracker to 100 percent, used on load exit paths
 
         const std::string& GetText();
         void SetText(const std::string& text);

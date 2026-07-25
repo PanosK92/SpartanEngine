@@ -63,7 +63,10 @@ namespace spartan
                 tasks.pop_front();
             }
 
+            // stolen work counts as in flight, otherwise flush returns while this task is still running
+            working_count.fetch_add(1, memory_order_relaxed);
             task();
+            working_count.fetch_sub(1, memory_order_relaxed);
             pending_count.fetch_sub(1, memory_order_relaxed);
             idle_cv.notify_all();
             return true;
