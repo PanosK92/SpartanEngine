@@ -44,6 +44,10 @@ namespace spartan
         Transmission* get_transmission() const;
         PistonEngineSimulator* get_simulator() const;
 
+        // rebuilds the convolution from the cached response trimmed to this many milliseconds,
+        // the tail is what smears the firing pulses while the head carries the exhaust colour
+        void set_impulse_response_window(float window_ms);
+
     private:
         class implementation;
         std::unique_ptr<implementation> m_implementation;

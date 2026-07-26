@@ -169,6 +169,25 @@ namespace car
         PxVec3       hub_position         = PxVec3(0.0f);
         PxVec3       hub_linear_velocity  = PxVec3(0.0f);
         PxVec3       hub_angular_velocity = PxVec3(0.0f);
+        // measured load per tread row, this is what decides where the tire cooks rather than a
+        // guess made from camber alone
+        float        row_load[max_tire_probe_rows] = {};
+        int          row_count            = 0;
+        float        contact_patch_length = 0.0f;
+        // fraction of the available friction the patch is using, one means fully sliding
+        float        tire_saturation      = 0.0f;
+    };
+
+    // one row is a slice of tread across the width, its columns straddle the contact arc so the
+    // row rides an averaged ground plane instead of a single sample
+    struct tire_probe_row
+    {
+        PxVec3        point       = PxVec3(0.0f);
+        PxVec3        normal      = PxVec3(0.0f, 1.0f, 0.0f);
+        PxRigidActor* actor       = nullptr;
+        float         penetration = 0.0f;
+        float         load        = 0.0f;
+        bool          hit         = false;
     };
 
     struct input_state
@@ -198,12 +217,17 @@ namespace car
     // cooldown prevents automatic shift hunting
     inline constexpr float shift_cooldown_time     = 0.5f;
 
-    // telemetry writes fixed step body wheel and component state to csv
-struct debug_sweep_data
+    // what the contact model found this step, kept purely so the debug skeleton can draw it
+    struct debug_sweep_data
     {
         PxVec3 origin;
         PxVec3 hit_point;
         bool   hit;
+        // every tread row that found ground, so the drawn patch is the one the solver was given
+        PxVec3 row_point[max_tire_probe_rows];
+        PxVec3 row_normal[max_tire_probe_rows];
+        float  row_load[max_tire_probe_rows];
+        int    row_count;
     };
 
     // suspension queries skip the chassis while mechanism shapes remain query disabled

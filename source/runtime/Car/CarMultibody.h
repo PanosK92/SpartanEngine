@@ -13,6 +13,10 @@ namespace car
         PxRigidDynamic* actor = nullptr;
         PxVec3 local_start    = PxVec3(0.0f);
         PxVec3 local_end      = PxVec3(0.0f);
+        // the joint at local_start, kept so the debug view can show a rubber bush deflecting rather
+        // than drawing every pivot as the same rigid ball joint
+        PxJoint* pivot_joint  = nullptr;
+        bool pivot_is_bushing = false;
     };
 
     struct suspension_corner
@@ -21,6 +25,9 @@ namespace car
         PxRigidDynamic* wheel_body = nullptr;
         PxRevoluteJoint* wheel_joint = nullptr;
         PxDistanceJoint* travel_joint = nullptr;
+        // upright twist about the chassis vertical, its limit is the steering lock, zero on a rear corner
+        PxD6Joint* steering_stop = nullptr;
+        float steering_limit = 0.0f;
         suspension_member members[max_suspension_members];
         int member_count = 0;
         PxVec3 chassis_shock_anchor = PxVec3(0.0f);

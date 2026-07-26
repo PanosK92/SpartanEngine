@@ -97,6 +97,9 @@ namespace car
 
             geometry.mechanism = parse_suspension_mechanism(node.attribute("mechanism").as_string("double_wishbone"));
             read_float(node, "chassis_inset", geometry.chassis_inset);
+            read_float(node, "upper_chassis_inset", geometry.upper_chassis_inset);
+            read_float(node, "lower_upright_inset", geometry.lower_upright_inset);
+            read_float(node, "upper_upright_inset", geometry.upper_upright_inset);
             read_float(node, "upper_inner_y", geometry.upper_inner_y);
             read_float(node, "lower_inner_y", geometry.lower_inner_y);
             read_float(node, "upper_upright_y", geometry.upper_upright_y);
@@ -210,6 +213,42 @@ namespace car
             require(finite_range(preset.long_B, 0.1f, 50.0f) && finite_range(preset.long_C, 0.1f, 5.0f) && finite_range(preset.long_D, 0.1f, 3.0f), "longitudinal_tire_coefficients");
             require(finite_range(preset.combined_long_B, 0.1f, 50.0f) && finite_range(preset.combined_long_C, 0.1f, 5.0f) && finite_range(preset.combined_long_E, -2.0f, 2.0f), "combined_longitudinal_tire_coefficients");
             require(finite_range(preset.combined_lat_B, 0.1f, 50.0f) && finite_range(preset.combined_lat_C, 0.1f, 5.0f) && finite_range(preset.combined_lat_E, -2.0f, 2.0f), "combined_lateral_tire_coefficients");
+            require(preset.tire_model_type >= 0 && preset.tire_model_type <= 1, "tire_model_type");
+            require(finite_range(preset.tread_stiffness_long, 1.0e6f, 2.0e8f) && finite_range(preset.tread_stiffness_lat, 1.0e6f, 2.0e8f), "tread_stiffness");
+            require(finite_range(preset.tire_slide_friction_ratio, 0.2f, 1.0f), "tire_slide_friction_ratio");
+            require(preset.tire_probe_rows >= 1 && preset.tire_probe_rows <= max_tire_probe_rows, "tire_probe_rows");
+            require(preset.tire_probe_columns >= 1 && preset.tire_probe_columns <= max_tire_probe_columns, "tire_probe_columns");
+            require(finite_range(preset.tire_probe_arc, 0.0f, 0.7f), "tire_probe_arc");
+            require(finite_range(preset.tire_crown_drop, 0.0f, 0.03f), "tire_crown_drop");
+            require(preset.tire_substeps >= 1 && preset.tire_substeps <= 8, "tire_substeps");
+            require(finite_range(preset.bushing_stiffness_radial, 1.0e5f, 1.0e10f), "bushing_stiffness_radial");
+            require(finite_range(preset.bushing_stiffness_axial, 1.0e5f, 1.0e10f), "bushing_stiffness_axial");
+            require(preset.bushing_stiffness_axial <= preset.bushing_stiffness_radial, "bushing_stiffness_order");
+            require(finite_range(preset.bushing_damping, 0.0f, 200000.0f), "bushing_damping");
+            require(finite_range(preset.bushing_max_deflection, 0.0002f, 0.02f), "bushing_max_deflection");
+
+            // the brush model derives cornering stiffness from tread stiffness and patch geometry, so
+            // the authored numbers can be checked against what a tire of this size actually measures
+            if (preset.tire_model_type == static_cast<int>(tire_model::brush))
+            {
+                const float radius     = std::max((preset.front_wheel_radius + preset.rear_wheel_radius) * 0.5f, 0.05f);
+                const float width      = std::max((preset.front_wheel_width + preset.rear_wheel_width) * 0.5f, 0.05f);
+                const float deflection = preset.load_reference / std::max(preset.tire_vertical_stiffness, 1.0f);
+                const float patch_half = sqrtf(std::max(radius * deflection, 1e-6f));
+                const float stiffness  = preset.tread_stiffness_lat * patch_half * patch_half * width * 2.0f;
+                const float per_degree = stiffness / 57.29578f;
+                if (per_degree < 350.0f || per_degree > 2600.0f)
+                {
+                    SP_LOG_WARNING(
+                        "car preset %s brush tire makes %.0f N per degree of cornering stiffness at %.0f N of load over a %.0f mm patch, a tire this size measures 350 to 2600, adjust tread_stiffness_lat",
+                        name.c_str(),
+                        per_degree,
+                        preset.load_reference,
+                        patch_half * 2000.0f
+                    );
+                }
+            }
+
             require(finite_range(preset.max_susp_force, 1000.0f, 500000.0f) && finite_range(preset.max_damper_velocity, 0.1f, 50.0f), "suspension_force_limits");
             require(finite_range(preset.bump_stop_stiffness, 1000.0f, 5000000.0f) && finite_range(preset.bump_stop_threshold, 0.5f, 1.2f), "bump_stop");
             require(finite_range(preset.bump_stop_progression, 0.0f, 20.0f), "bump_stop_progression");
@@ -219,13 +258,84 @@ namespace car
             require(finite_range(preset.center_of_mass_x, -preset.width * 0.5f, preset.width * 0.5f), "center_of_mass_x");
             require(finite_range(preset.center_of_mass_y, -preset.height, preset.height), "center_of_mass_y");
             require(finite_range(preset.center_of_mass_z, -preset.length * 0.5f, preset.length * 0.5f), "center_of_mass_z");
-            auto validate_geometry = [&](const suspension_geometry& geometry, const char* field)
+
+            // rollover margin, the chassis origin sits suspension_height plus a wheel radius above the road
+            // so a center_of_mass_y near zero puts the mass halfway up the body and the car tips before it slides
             {
-                bool geometry_valid = finite_range(geometry.chassis_inset, 0.1f, 0.9f) && finite_range(geometry.arm_span, 0.05f, 0.6f) && finite_range(geometry.strut_top_y, 0.1f, 1.2f) && finite_range(geometry.strut_top_inset, 0.05f, 0.8f) && geometry.upper_upright_y > geometry.lower_upright_y && geometry.upper_inner_y > geometry.lower_inner_y;
+                const float wheel_radius_avg = (preset.front_wheel_radius + preset.rear_wheel_radius) * 0.5f;
+                const float track_avg        = (preset.track_front + preset.track_rear) * 0.5f;
+                const float cg_height        = preset.suspension_height + wheel_radius_avg + preset.center_of_mass_y;
+                const float stability_factor = track_avg / std::max(cg_height * 2.0f, 0.01f);
+                // measured against the declared skidpad rather than the pacejka peak, the margin covers
+                // kerbs and transients which push well past the steady state number
+                const float cornering_limit = preset.validation.skidpad_g_max;
+                if (cg_height > 0.05f && std::isfinite(cornering_limit) && stability_factor < cornering_limit * 1.3f)
+                {
+                    SP_LOG_WARNING(
+                        "car preset %s tips before it slides, cg is %.2f m up for a %.2f m track which rolls at %.2f g against a %.2f g skidpad, lower center_of_mass_y",
+                        name.c_str(),
+                        cg_height,
+                        track_avg,
+                        stability_factor,
+                        cornering_limit
+                    );
+                }
+            }
+            auto validate_geometry = [&](const suspension_geometry& geometry, float track, const char* field)
+            {
+                bool geometry_valid = finite_range(geometry.chassis_inset, 0.1f, 0.9f) && finite_range(geometry.upper_chassis_inset, 0.1f, 0.95f) && finite_range(geometry.lower_upright_inset, 0.0f, 0.3f) && finite_range(geometry.upper_upright_inset, 0.0f, 0.4f) && finite_range(geometry.arm_span, 0.05f, 0.6f) && finite_range(geometry.strut_top_y, 0.1f, 1.2f) && finite_range(geometry.strut_top_inset, 0.05f, 0.8f) && geometry.upper_upright_y > geometry.lower_upright_y && geometry.upper_inner_y > geometry.lower_inner_y;
                 require(geometry_valid, field);
+                if (!geometry_valid || geometry.mechanism == suspension_mechanism::macpherson)
+                {
+                    return;
+                }
+
+                // the two arm lines meet at the instant centre, the horizontal reach from the contact
+                // patch out to it is the swing arm length and its inverse is the camber gain in bump
+                const float half_track      = track * 0.5f;
+                const float lower_inner_x   = half_track * geometry.chassis_inset;
+                const float upper_inner_x   = half_track * geometry.upper_chassis_inset;
+                const float lower_outer_x   = half_track - geometry.lower_upright_inset;
+                const float upper_outer_x   = half_track - geometry.upper_upright_inset;
+                const float lower_run       = lower_outer_x - lower_inner_x;
+                const float upper_run       = upper_outer_x - upper_inner_x;
+                if (lower_run < 0.05f || upper_run < 0.05f)
+                {
+                    require(false, field);
+                    return;
+                }
+
+                // a multi link hangs its outer joints off the link spread, the wishbone off the upright
+                const bool  is_multi_link = geometry.mechanism == suspension_mechanism::multi_link;
+                const float upper_outer_y = is_multi_link ?  geometry.link_spread_y : geometry.upper_upright_y;
+                const float lower_outer_y = is_multi_link ? -geometry.link_spread_y : geometry.lower_upright_y;
+                const float lower_slope   = (lower_outer_y - geometry.lower_inner_y) / lower_run;
+                const float upper_slope   = (upper_outer_y - geometry.upper_inner_y) / upper_run;
+                const float convergence = lower_slope - upper_slope;
+                if (fabsf(convergence) < 1e-4f)
+                {
+                    SP_LOG_WARNING("car preset %s %s has parallel arms so the wheel gains no camber in bump", name.c_str(), field);
+                    return;
+                }
+
+                const float lower_at_zero  = geometry.lower_inner_y - lower_slope * lower_inner_x;
+                const float upper_at_zero  = geometry.upper_inner_y - upper_slope * upper_inner_x;
+                const float instant_centre = (upper_at_zero - lower_at_zero) / convergence;
+                const float swing_arm      = half_track - instant_centre;
+                const float camber_gain    = swing_arm > 0.1f ? 57.29578f / (swing_arm * 100.0f) : 0.0f;
+                if (camber_gain < 0.18f)
+                {
+                    SP_LOG_WARNING(
+                        "car preset %s %s gains only %.2f deg of camber per cm of bump over a %.1f m swing arm, shorten the upper arm",
+                        name.c_str(),
+                        field,
+                        camber_gain,
+                        swing_arm
+                    );
+                }
             };
-            validate_geometry(preset.front_geometry, "front_suspension_geometry");
-            validate_geometry(preset.rear_geometry, "rear_suspension_geometry");
+            validate_geometry(preset.front_geometry, preset.track_front, "front_suspension_geometry");
+            validate_geometry(preset.rear_geometry, preset.track_rear, "rear_suspension_geometry");
 
             require(finite_range(preset.assists.steering_speed_reduction, 0.0f, 0.9f), "steering_speed_reduction");
             require(finite_range(preset.assists.steering_speed_reference, 5.0f, 100.0f), "steering_speed_reference");
@@ -318,6 +428,11 @@ namespace car
             READ_FLOAT(throttle_smoothing);
             READ_FLOAT(brake_smoothing);
 
+            READ_INT(tire_model_type);
+            READ_FLOAT(tread_stiffness_long);
+            READ_FLOAT(tread_stiffness_lat);
+            READ_FLOAT(tire_slide_friction_ratio);
+
             READ_FLOAT(lat_B);
             READ_FLOAT(lat_C);
             READ_FLOAT(lat_D);
@@ -364,6 +479,12 @@ namespace car
             READ_FLOAT(tire_core_transfer_rate);
             READ_FLOAT(tire_surface_response);
 
+            READ_INT(tire_probe_rows);
+            READ_INT(tire_probe_columns);
+            READ_FLOAT(tire_probe_arc);
+            READ_FLOAT(tire_crown_drop);
+            READ_INT(tire_substeps);
+
             READ_FLOAT(front_spring_freq);
             READ_FLOAT(rear_spring_freq);
             READ_FLOAT(front_damping_ratio);
@@ -382,6 +503,11 @@ namespace car
             READ_FLOAT(bump_stop_progression);
             READ_FLOAT(packer_threshold);
             READ_FLOAT(packer_stiffness);
+
+            READ_FLOAT(bushing_stiffness_radial);
+            READ_FLOAT(bushing_stiffness_axial);
+            READ_FLOAT(bushing_damping);
+            READ_FLOAT(bushing_max_deflection);
 
             READ_FLOAT(rolling_resistance);
             READ_FLOAT(drag_coeff);

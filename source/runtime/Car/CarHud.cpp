@@ -1526,6 +1526,24 @@ namespace spartan::car_hud
                 ImGui::EndTable();
             }
 
+            // silence the worker had to insert because it missed real time, this is what
+            // crackling sounds like, if it climbs the gas dynamics rate is too high
+            {
+                const double underrun_ratio =
+                    dbg.samples_generated > 0
+                        ? static_cast<double>(dbg.underrun_samples) /
+                            static_cast<double>(dbg.samples_generated)
+                        : 0.0;
+                ImGui::TextColored(
+                    imvec4_from_u32(
+                        dbg.underrun_samples > 0 ? accent_danger : text_dim
+                    ),
+                    "Underruns %llu (%.3f%% of samples silent)",
+                    static_cast<unsigned long long>(dbg.underrun_calls),
+                    underrun_ratio * 100.0
+                );
+            }
+
             {
                 ImGui::TextColored(imvec4_from_u32(text_label), "Waveform");
                 ImGui::TextColored(
@@ -1600,6 +1618,11 @@ namespace spartan::car_hud
                 ImGui::SliderFloat("df_f_mix",         &s.params.df_f_mix,         0.0f, 0.1f, "%.3f");
                 ImGui::SliderFloat("air_noise",        &s.params.air_noise,        0.0f, 1.0f, "%.3f");
                 ImGui::SliderFloat("leveler_target",   &s.params.leveler_target,   0.05f, 1.5f, "%.3f");
+                ImGui::SliderFloat("exhaust_tail_ms",  &s.params.impulse_window_ms, 2.0f, 250.0f, "%.1f ms");
+                ImGui::TextColored(
+                    imvec4_from_u32(text_dim),
+                    "tail: short is dry and pulsed, long is resonant and boxy"
+                );
                 if (ImGui::Button("Reset to defaults"))
                 {
                     s.params = engine_sound::runtime_params();

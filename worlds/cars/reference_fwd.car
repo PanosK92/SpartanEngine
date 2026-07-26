@@ -7,7 +7,7 @@
 
     <chassis mass="1320" length="4.35" width="1.78" height="1.45"
         wheelbase="2.64" track_front="1.53" track_rear="1.52"
-        center_of_mass_x="0" center_of_mass_y="-0.06" center_of_mass_z="0.18" />
+        center_of_mass_x="0" center_of_mass_y="-0.135" center_of_mass_z="0.18" />
 
     <engine engine_idle_rpm="800" engine_redline_rpm="6500" engine_max_rpm="6800"
         engine_peak_torque="280" engine_peak_torque_rpm="3000"
@@ -43,20 +43,27 @@
         front_arb_stiffness="13500" rear_arb_stiffness="9000"
         max_susp_force="30000" max_damper_velocity="5" bump_stop_stiffness="80000" bump_stop_threshold="0.88" bump_stop_progression="3"
         packer_threshold="1.05" packer_stiffness="600000"
+        bushing_stiffness_radial="10000000" bushing_stiffness_axial="2500000" bushing_damping="8000" bushing_max_deflection="0.002"
         front_camber="-0.020944" rear_camber="-0.013963" front_toe="0" rear_toe="0.002618" />
 
+    <!-- strut front, sla rear on a 2.7 m swing arm, roll centre 110 mm, soft road car numbers -->
     <front_suspension mechanism="macpherson"
-        chassis_inset="0.52" upper_inner_y="0.2" lower_inner_y="-0.18" upper_upright_y="0.2" lower_upright_y="-0.19"
+        chassis_inset="0.3" upper_chassis_inset="0.5" lower_upright_inset="0.05" upper_upright_inset="0.12"
+        upper_inner_y="0.2" lower_inner_y="-0.18" upper_upright_y="0.2" lower_upright_y="-0.19"
         arm_span="0.24" strut_top_y="0.54" strut_top_inset="0.23" tie_rod_y="0.02" tie_rod_z="-0.14" link_spread_y="0.17" link_spread_z="0.23" />
 
     <rear_suspension mechanism="multi_link"
-        chassis_inset="0.5" upper_inner_y="0.18" lower_inner_y="-0.17" upper_upright_y="0.19" lower_upright_y="-0.19"
+        chassis_inset="0.316" upper_chassis_inset="0.461" lower_upright_inset="0.05" upper_upright_inset="0.12"
+        upper_inner_y="0.168" lower_inner_y="-0.135" upper_upright_y="0.19" lower_upright_y="-0.19"
         arm_span="0.21" strut_top_y="0.47" strut_top_inset="0.26" tie_rod_y="0.01" tie_rod_z="0.14" link_spread_y="0.18" link_spread_z="0.24" />
 
     <steering max_steer_angle="0.55" steering_rate="1.5"
         self_align_gain="1" steering_linearity="1.2" steering_deadzone="0.001" />
 
-    <tires lat_B="10.5" lat_C="1.5" lat_D="1" lat_E="-0.2" long_B="16" long_C="1.55" long_D="1" long_E="-0.2" combined_long_B="8" combined_long_C="1" combined_long_E="0" combined_lat_B="6" combined_lat_C="1" combined_lat_E="0"
+    <!-- brush model, touring radial, about 910 N per degree at the 3.8 kN reference load -->
+    <tires tire_model_type="1" tread_stiffness_long="22000000" tread_stiffness_lat="16000000" tire_slide_friction_ratio="0.87"
+        tire_probe_rows="5" tire_probe_columns="3" tire_probe_arc="0.32" tire_crown_drop="0.005" tire_substeps="4"
+        lat_B="10.5" lat_C="1.5" lat_D="1" lat_E="-0.2" long_B="16" long_C="1.55" long_D="1" long_E="-0.2" combined_long_B="8" combined_long_C="1" combined_long_E="0" combined_lat_B="6" combined_lat_C="1" combined_lat_E="0"
         load_B_scale_min="0.5" pneumatic_trail_max="0.04" pneumatic_trail_peak="0.14"
         tire_friction="1.25" min_slip_speed="0.5" load_sensitivity="0.9" load_reference="3800" rear_grip_ratio="1"
         slip_angle_deadband="0.01" camber_thrust_coeff="0.012" max_slip_angle="1.2"

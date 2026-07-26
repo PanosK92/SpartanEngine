@@ -243,6 +243,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.weight_sum = max(weight_cur, 0.0f);
     combined.M          = current.M;
 
+    bool picked_temporal = false;
     if (have_temporal)
     {
         combined.weight_sum += max(weight_tmp, 0.0f);
@@ -252,6 +253,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         {
             combined.sample     = temporal.sample;
             combined.target_pdf = target_temp;
+            picked_temporal     = true;
         }
     }
 
@@ -259,8 +261,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     // lin 2022 6.4 sample validation, every n frames a subset of pixels re-traces rc visibility
     // and resets the reservoir if rc is no longer reachable, cost amortized to ~1/n pixels per frame
+    // liveness is weight_sum, W is only computed by the finalize further down and is still zero here
     uint validation_period = get_restir_validation_period();
-    if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
+    if (validation_period > 0u && combined.M > 0.0f && combined.weight_sum > 0.0f)
     {
         uint hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
         uint slot = (buffer_frame.frame + hash) % validation_period;
@@ -269,12 +272,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             bool reachable = trace_shift_visibility(combined.sample, pos_ws, normal_ws);
             if (!reachable)
             {
+                // history is stale, drop it, but keep this frame's freshly traced canonical
+                // whose rc was found by an actual ray, emptying the reservoir outright blacks
+                // out 1/period of the pixels every frame and restarts accumulation there
                 combined            = create_empty_reservoir();
                 combined.sample     = current.sample;
                 combined.target_pdf = target_cur;
-                combined.weight_sum = 0.0f;
-                combined.M          = 0.0f;
-                combined.W          = 0.0f;
+                bool keep_canonical = picked_temporal && target_cur > 0.0f;
+                combined.weight_sum = keep_canonical ? (target_cur * current.W) : 0.0f;
+                combined.M          = keep_canonical ? current.M                : 0.0f;
                 have_temporal       = false;
             }
         }
@@ -314,16 +320,21 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         gi = float3(0, 0, 0);
     }
 
-    if (all(gi <= 1e-6f))
-    {
-        gi = tex_uav[pixel].rgb;
-    }
-
-    // real reconnection distance in w so reblur can size its kernels, sky gets the far band
+    // real reconnection distance in w so reblur can size its kernels, sky gets the far band,
+    // keyed on m not w so a clamped or zero weight sample still reports where it landed
     float hit_dist = 0.0f;
-    if (combined.W > 0.0f)
+    if (combined.M > 0.0f)
     {
         hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
+    }
+
+    // fall back to the trace pass estimate and carry its hit distance too, radiance paired with
+    // a zero hit distance reads as a contact hit to reblur which then refuses to blur the pixel
+    float4 trace_stage = tex_uav[pixel];
+    if (all(gi <= 1e-6f))
+    {
+        gi       = trace_stage.rgb;
+        hit_dist = trace_stage.a;
     }
 
     tex_uav[pixel] = float4(gi, hit_dist);

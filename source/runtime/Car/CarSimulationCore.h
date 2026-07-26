@@ -9,7 +9,6 @@ std::string telemetry_path = "car_telemetry.csv";
 
 PxRigidDynamic* body = nullptr;
 PxMaterial*     material         = nullptr;
-PxConvexMesh*   wheel_sweep_mesh = nullptr;
 config          cfg;
 car_preset      base_spec;
 active_upgrades upgrades;
@@ -1387,7 +1386,63 @@ public:
     }
 
 
-    inline PxRigidDynamic* create_link(const PxVec3& world_start, const PxVec3& world_end, float mass, PxRigidDynamic* start_actor = nullptr)
+    // an inboard pickup is rubber, not a pin joint, stiff along the member because that is the load path
+    // and softer across it, which is where compliance steer and fore aft absorption live
+    inline PxJoint* create_bushing_joint(PxRigidActor* actor_a, PxRigidActor* actor_b, const PxVec3& world_anchor, const PxVec3& load_direction)
+    {
+        float radial = spec.bushing_stiffness_radial;
+        float axial  = spec.bushing_stiffness_axial;
+        float travel = spec.bushing_max_deflection;
+        PxVec3 along = load_direction;
+        if (!(radial > 0.0f) || !(axial > 0.0f) || !(travel > 0.0f) || !actor_a || !actor_b || along.normalize() < 1e-4f)
+        {
+            return create_spherical_joint(actor_a, actor_b, world_anchor);
+        }
+        travel = PxClamp(travel, 0.0002f, 0.02f);
+
+        // x runs down the load path so the two rates land on the axes they belong to
+        PxVec3 helper = fabsf(along.y) < 0.9f ? PxVec3(0.0f, 1.0f, 0.0f) : PxVec3(1.0f, 0.0f, 0.0f);
+        PxVec3 side = along.cross(helper);
+        if (side.normalize() < 1e-4f)
+        {
+            return create_spherical_joint(actor_a, actor_b, world_anchor);
+        }
+        PxVec3 up = side.cross(along);
+        PxQuat world_rotation = PxQuat(PxMat33(along, up, side)).getNormalized();
+        PxTransform pose_a = actor_a->getGlobalPose();
+        PxTransform pose_b = actor_b->getGlobalPose();
+        PxTransform frame_a(pose_a.transformInv(world_anchor), (pose_a.q.getConjugate() * world_rotation).getNormalized());
+        PxTransform frame_b(pose_b.transformInv(world_anchor), (pose_b.q.getConjugate() * world_rotation).getNormalized());
+
+        PxD6Joint* joint = PxD6JointCreate(*multibody.physics, actor_a, frame_a, actor_b, frame_b);
+        if (!joint)
+        {
+            return create_spherical_joint(actor_a, actor_b, world_anchor);
+        }
+
+        float damping = PxMax(spec.bushing_damping, 0.0f);
+        joint->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
+        joint->setMotion(PxD6Axis::eY, PxD6Motion::eLIMITED);
+        joint->setMotion(PxD6Axis::eZ, PxD6Motion::eLIMITED);
+        joint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+        joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
+        joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
+        PxJointLinearLimitPair stop(multibody.physics->getTolerancesScale(), -travel, travel);
+        joint->setLinearLimit(PxD6Axis::eX, stop);
+        joint->setLinearLimit(PxD6Axis::eY, stop);
+        joint->setLinearLimit(PxD6Axis::eZ, stop);
+        joint->setDrive(PxD6Drive::eX, PxD6JointDrive(radial, damping, PX_MAX_F32, false));
+        joint->setDrive(PxD6Drive::eY, PxD6JointDrive(axial, damping, PX_MAX_F32, false));
+        joint->setDrive(PxD6Drive::eZ, PxD6JointDrive(axial, damping, PX_MAX_F32, false));
+        joint->setDrivePosition(PxTransform(PxIdentity));
+        joint->setDriveVelocity(PxVec3(0.0f), PxVec3(0.0f));
+        joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+        register_multibody_joint(joint);
+        return joint;
+    }
+
+
+    inline PxRigidDynamic* create_link(const PxVec3& world_start, const PxVec3& world_end, float mass, PxRigidDynamic* start_actor = nullptr, PxJoint** out_anchor_joint = nullptr, bool* out_anchor_is_bushing = nullptr)
     {
         PxVec3 delta = world_end - world_start;
         float length = delta.magnitude();
@@ -1406,11 +1461,25 @@ public:
         if (actor)
         {
             PxRigidActor* anchor_actor = start_actor ? static_cast<PxRigidActor*>(start_actor) : static_cast<PxRigidActor*>(body);
-            if (!create_spherical_joint(anchor_actor, actor, world_start))
+            // only the chassis end is a bush, a rod end onto the rack or another member is a bearing
+            bool inboard = anchor_actor == static_cast<PxRigidActor*>(body);
+            PxJoint* anchor_joint = inboard
+                ? create_bushing_joint(anchor_actor, actor, world_start, direction)
+                : static_cast<PxJoint*>(create_spherical_joint(anchor_actor, actor, world_start));
+            if (!anchor_joint)
             {
                 multibody.actors[--multibody.actor_count] = nullptr;
                 actor->release();
                 return nullptr;
+            }
+            if (out_anchor_joint)
+            {
+                *out_anchor_joint = anchor_joint;
+            }
+            if (out_anchor_is_bushing)
+            {
+                // the fallback path hands back a spherical joint, so ask the joint and not the intent
+                *out_anchor_is_bushing = inboard && anchor_joint->is<PxD6Joint>() != nullptr;
             }
         }
         return actor;
@@ -1434,7 +1503,9 @@ public:
             return false;
         }
 
-        PxRigidDynamic* link = create_link(world_start, world_end, mass, start_actor);
+        PxJoint* anchor_joint = nullptr;
+        bool anchor_is_bushing = false;
+        PxRigidDynamic* link = create_link(world_start, world_end, mass, start_actor, &anchor_joint, &anchor_is_bushing);
         if (!link)
         {
             return false;
@@ -1448,6 +1519,8 @@ public:
         member.actor = link;
         member.local_start = link->getGlobalPose().transformInv(world_start);
         member.local_end = link->getGlobalPose().transformInv(world_end);
+        member.pivot_joint = anchor_joint;
+        member.pivot_is_bushing = anchor_is_bushing;
         return true;
     }
 
@@ -1467,7 +1540,11 @@ public:
             return false;
         }
 
-        if (!create_spherical_joint(body, arm, inner_front) || !create_spherical_joint(body, arm, inner_rear) || !create_spherical_joint(arm, corner.upright, outer))
+        // both inner pivots are bushed and the load path through each is the line out to the ball
+        // joint, the outer joint itself stays a bearing because that is what it is
+        PxJoint* front_bush = create_bushing_joint(body, arm, inner_front, outer - inner_front);
+        PxJoint* rear_bush = create_bushing_joint(body, arm, inner_rear, outer - inner_rear);
+        if (!front_bush || !rear_bush || !create_spherical_joint(arm, corner.upright, outer))
         {
             return false;
         }
@@ -1475,10 +1552,14 @@ public:
         front_member.actor = arm;
         front_member.local_start = arm->getGlobalPose().transformInv(inner_front);
         front_member.local_end = arm->getGlobalPose().transformInv(outer);
+        front_member.pivot_joint = front_bush;
+        front_member.pivot_is_bushing = front_bush->is<PxD6Joint>() != nullptr;
         suspension_member& rear_member = corner.members[corner.member_count++];
         rear_member.actor = arm;
         rear_member.local_start = arm->getGlobalPose().transformInv(inner_rear);
         rear_member.local_end = arm->getGlobalPose().transformInv(outer);
+        rear_member.pivot_joint = rear_bush;
+        rear_member.pivot_is_bushing = rear_bush->is<PxD6Joint>() != nullptr;
         return true;
     }
 
@@ -1490,7 +1571,9 @@ public:
             return false;
         }
 
-        PxRigidDynamic* strut = create_link(top, bottom, mass);
+        PxJoint* anchor_joint = nullptr;
+        bool anchor_is_bushing = false;
+        PxRigidDynamic* strut = create_link(top, bottom, mass, nullptr, &anchor_joint, &anchor_is_bushing);
         if (!strut)
         {
             return false;
@@ -1519,11 +1602,13 @@ public:
         member.actor = strut;
         member.local_start = strut_pose.transformInv(top);
         member.local_end = strut_pose.transformInv(bottom);
+        member.pivot_joint = anchor_joint;
+        member.pivot_is_bushing = anchor_is_bushing;
         return true;
     }
 
 
-    inline bool add_steering_stop(PxRigidDynamic* upright, const PxTransform& chassis_pose, const PxVec3& wheel_world, float angle_limit)
+    inline bool add_steering_stop(suspension_corner& corner, PxRigidDynamic* upright, const PxTransform& chassis_pose, const PxVec3& wheel_world, float angle_limit)
     {
         PxQuat axis_frame(PxPi * 0.5f, PxVec3(0.0f, 0.0f, 1.0f));
         PxQuat world_frame_rotation = chassis_pose.q * axis_frame;
@@ -1551,6 +1636,8 @@ public:
             stop->setMotion(PxD6Axis::eTWIST, PxD6Motion::eLOCKED);
         }
         register_multibody_joint(stop);
+        corner.steering_stop = stop;
+        corner.steering_limit = PxMax(angle_limit, 0.0f);
         return true;
     }
 
@@ -1631,7 +1718,11 @@ public:
         PxQuat alignment = PxQuat(-side * toe, PxVec3(0.0f, 1.0f, 0.0f)) * PxQuat(-side * camber, PxVec3(0.0f, 0.0f, 1.0f));
         PxTransform wheel_pose(wheel_world, chassis_pose.q * alignment);
 
-        corner.upright = create_mechanism_actor(wheel_pose, PxBoxGeometry(0.04f, 0.18f, 0.06f), spec.upright_mass);
+        // the upright spans its two ball joints, a token box gave it far less inertia than the casting
+        // it stands in for and left the solver fighting long levers on a body that barely resisted them
+        float upright_half_x = PxMax(PxMax(geometry.upper_upright_inset, geometry.lower_upright_inset) * 0.5f, 0.04f);
+        float upright_half_y = PxMax((geometry.upper_upright_y - geometry.lower_upright_y) * 0.5f, 0.10f);
+        corner.upright = create_mechanism_actor(wheel_pose, PxBoxGeometry(upright_half_x, upright_half_y, 0.06f), spec.upright_mass);
         corner.wheel_body = create_mechanism_actor(wheel_pose, PxSphereGeometry(cfg.wheel_radius_for(wheel_index) * wheel_inertia_shape_radius_scale), cfg.wheel_mass);
         if (!corner.upright || !corner.wheel_body)
         {
@@ -1652,15 +1743,21 @@ public:
         corner.wheel_joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
         register_multibody_joint(corner.wheel_joint);
         float steering_limit = is_front(wheel_index) ? PxClamp(fabsf(spec.max_steer_angle), 0.1f, 1.2f) : 0.0f;
-        if (!add_steering_stop(corner.upright, chassis_pose, wheel_world, steering_limit))
+        if (!add_steering_stop(corner, corner.upright, chassis_pose, wheel_world, steering_limit))
         {
             return false;
         }
 
-        PxVec3 upper_outer_local = wheel_local + PxVec3(-side * 0.015f, geometry.upper_upright_y, 0.0f);
-        PxVec3 lower_outer_local = wheel_local + PxVec3(-side * 0.015f, geometry.lower_upright_y, 0.0f);
-        PxVec3 upper_inner_front_local(inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z + arm_span);
-        PxVec3 upper_inner_rear_local(inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z - arm_span);
+        // short upper arm, long lower arm, the length difference is what pulls the top of the upright
+        // inboard as the wheel rises and recovers the camber the body loses in roll
+        float upper_inner_x = wheel_local.x * geometry.upper_chassis_inset;
+        float upper_outer_x = wheel_local.x - side * PxMax(geometry.upper_upright_inset, 0.0f);
+        float lower_outer_x = wheel_local.x - side * PxMax(geometry.lower_upright_inset, 0.0f);
+
+        PxVec3 upper_outer_local(upper_outer_x, wheel_local.y + geometry.upper_upright_y, wheel_local.z);
+        PxVec3 lower_outer_local(lower_outer_x, wheel_local.y + geometry.lower_upright_y, wheel_local.z);
+        PxVec3 upper_inner_front_local(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z + arm_span);
+        PxVec3 upper_inner_rear_local(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z - arm_span);
         PxVec3 lower_inner_front_local(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z + arm_span);
         PxVec3 lower_inner_rear_local(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z - arm_span);
 
@@ -1668,19 +1765,20 @@ public:
         {
             float spread_y = PxMax(geometry.link_spread_y, 0.05f);
             float spread_z = PxMax(geometry.link_spread_z, 0.05f);
+            // the upper pair is the short one, same reason as the wishbone case
             const PxVec3 inner_points[4] =
             {
-                PxVec3(inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z + spread_z),
-                PxVec3(inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z - spread_z),
+                PxVec3(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z + spread_z),
+                PxVec3(upper_inner_x, wheel_local.y + geometry.upper_inner_y, wheel_local.z - spread_z),
                 PxVec3(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z + spread_z),
                 PxVec3(inner_x, wheel_local.y + geometry.lower_inner_y, wheel_local.z - spread_z)
             };
             const PxVec3 outer_points[4] =
             {
-                wheel_local + PxVec3(0.0f, spread_y, spread_z * 0.45f),
-                wheel_local + PxVec3(0.0f, spread_y, -spread_z * 0.45f),
-                wheel_local + PxVec3(0.0f, -spread_y, spread_z * 0.45f),
-                wheel_local + PxVec3(0.0f, -spread_y, -spread_z * 0.45f)
+                PxVec3(upper_outer_x, wheel_local.y + spread_y, wheel_local.z + spread_z * 0.45f),
+                PxVec3(upper_outer_x, wheel_local.y + spread_y, wheel_local.z - spread_z * 0.45f),
+                PxVec3(lower_outer_x, wheel_local.y - spread_y, wheel_local.z + spread_z * 0.45f),
+                PxVec3(lower_outer_x, wheel_local.y - spread_y, wheel_local.z - spread_z * 0.45f)
             };
             for (int i = 0; i < 4; i++)
             {
@@ -2088,8 +2186,10 @@ public:
         {
             suspension_corner& left_corner = multibody.corners[left];
             suspension_corner& right_corner = multibody.corners[right];
-            float left_compression = PxClamp(left_corner.shock_rest_length - left_corner.shock_length, 0.0f, cfg.suspension_travel);
-            float right_compression = PxClamp(right_corner.shock_rest_length - right_corner.shock_length, 0.0f, cfg.suspension_travel);
+            // a torsion bar twists on the difference in wheel position whichever way each end moves,
+            // clamping the droop side at zero switched the bar off exactly when the inside wheel unloads
+            float left_compression = PxClamp(left_corner.shock_rest_length - left_corner.shock_length, -cfg.suspension_travel, cfg.suspension_travel);
+            float right_compression = PxClamp(right_corner.shock_rest_length - right_corner.shock_length, -cfg.suspension_travel, cfg.suspension_travel);
             float force_magnitude = PxClamp((left_compression - right_compression) * stiffness, -spec.max_susp_force, spec.max_susp_force);
             PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
             PxVec3 left_bottom = left_corner.upright->getGlobalPose().transform(left_corner.upright_shock_anchor);
@@ -2108,6 +2208,102 @@ public:
     }
 
 
+    // one tread row, its columns straddle the contact arc and every hit is projected back to the
+    // perpendicular height, so the row rides an averaged plane and spans a pothole instead of dropping in
+    inline tire_probe_row probe_tread_row(PxScene* scene, const PxVec3& row_center, const PxVec3& plane_down, const PxVec3& wheel_axis, const PxVec3& local_up, float row_radius, float ray_length, float max_penetration, int column_count, float arc, const PxQueryFilterData& filter)
+    {
+        tire_probe_row row;
+        float height_sum = 0.0f;
+        float weight_sum = 0.0f;
+        float best_weight = 0.0f;
+        PxVec3 normal_sum = PxVec3(0.0f);
+        PxVec3 point_sum = PxVec3(0.0f);
+
+        for (int c = 0; c < column_count; c++)
+        {
+            float theta = column_count > 1 ? (static_cast<float>(c) / static_cast<float>(column_count - 1) - 0.5f) * 2.0f * arc : 0.0f;
+            PxVec3 direction = PxQuat(theta, wheel_axis).rotate(plane_down);
+            if (direction.normalize() < 1e-4f)
+            {
+                continue;
+            }
+
+            PxRaycastBuffer probe;
+            if (!scene->raycast(row_center, direction, ray_length, probe, PxHitFlag::eNORMAL | PxHitFlag::ePOSITION, filter, &self_filter) || !probe.block.actor)
+            {
+                continue;
+            }
+            if (!std::isfinite(probe.block.distance) || probe.block.distance < 0.0f)
+            {
+                continue;
+            }
+
+            PxVec3 probe_normal = probe.block.normal;
+            if (!is_finite_vec(probe_normal) || probe_normal.magnitudeSquared() < 1e-6f)
+            {
+                continue;
+            }
+            probe_normal.normalize();
+            // a wall or a ceiling cannot hold the car up
+            if (probe_normal.dot(local_up) < 0.5f)
+            {
+                continue;
+            }
+
+            PxVec3 probe_point = row_center + direction * probe.block.distance;
+            if (!is_finite_vec(probe_point))
+            {
+                continue;
+            }
+            // perpendicular distance to the surface the probe found, this is the number the tire
+            // deflects against and it stays honest on a banked road where a vertical drop does not
+            float height = (row_center - probe_point).dot(probe_normal);
+            if (!std::isfinite(height))
+            {
+                continue;
+            }
+
+            float weight = PxMax(cosf(theta), 0.05f);
+            height_sum += height * weight;
+            weight_sum += weight;
+            normal_sum += probe_normal * weight;
+            point_sum += probe_point * weight;
+            if (weight > best_weight)
+            {
+                best_weight = weight;
+                row.actor = probe.block.actor;
+            }
+        }
+
+        if (weight_sum < 1e-4f)
+        {
+            return row;
+        }
+
+        float penetration = PxClamp(row_radius - height_sum / weight_sum, 0.0f, max_penetration);
+        if (penetration <= 0.0f)
+        {
+            return row;
+        }
+        PxVec3 normal = normal_sum / weight_sum;
+        if (normal.normalize() < 1e-4f)
+        {
+            return row;
+        }
+        PxVec3 point = point_sum / weight_sum;
+        if (!is_finite_vec(point))
+        {
+            return row;
+        }
+
+        row.hit = true;
+        row.penetration = penetration;
+        row.normal = normal;
+        row.point = point;
+        return row;
+    }
+
+
     inline void update_suspension(PxScene* scene, float dt)
     {
         PxTransform pose = body->getGlobalPose();
@@ -2119,6 +2315,11 @@ public:
         // only the chassis needs filtering because mechanism shapes are not scene queries
         self_filter.ignore = body;
 
+        const int row_count = PxClamp(spec.tire_probe_rows, 1, max_tire_probe_rows);
+        const int column_count = PxClamp(spec.tire_probe_columns, 1, max_tire_probe_columns);
+        const float arc = PxClamp(spec.tire_probe_arc, 0.0f, 0.7f);
+        const float rows_inverse = 1.0f / static_cast<float>(row_count);
+
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
@@ -2129,111 +2330,154 @@ public:
             PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
             PxTransform wheel_pose = wheel_actor ? wheel_actor->getGlobalPose() : PxTransform(pose.transform(wheel_offsets[i]), pose.q);
             PxVec3 wheel_center = wheel_pose.p;
+            PxQuat query_rotation = multibody.corners[i].upright ? multibody.corners[i].upright->getGlobalPose().q : pose.q;
+            PxVec3 wheel_axis = query_rotation.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+
+            // the probes belong in the wheel plane, so they measure against the chassis down with
+            // the spin axis component taken out rather than against world down
+            PxVec3 plane_down = local_down - wheel_axis * local_down.dot(wheel_axis);
+            if (plane_down.normalize() < 1e-4f)
+            {
+                plane_down = local_down;
+            }
+
             float downward_speed = wheel_actor ? PxMax(wheel_actor->getLinearVelocity().dot(local_down), 0.0f) : PxMax(body->getLinearVelocity().dot(local_down), 0.0f);
             // predicted travel extends detection only and must never add tire penetration
             float predicted_travel = PxMax(downward_speed * dt, 0.005f);
-            PxQuat query_rotation = multibody.corners[i].upright ? multibody.corners[i].upright->getGlobalPose().q : pose.q;
-            float source_radius = PxMax(PxMax(cfg.front_wheel_radius, cfg.rear_wheel_radius), 0.05f);
-            float source_width = PxMax(PxMax(cfg.front_wheel_width, cfg.rear_wheel_width), 0.05f);
-            // one cooked mesh is scaled per corner to match configured wheel dimensions
-            PxMeshScale wheel_scale(PxVec3(wheel_width / source_width, wheel_radius / source_radius, wheel_radius / source_radius), PxQuat(PxIdentity));
-            PxConvexMeshGeometry wheel_geometry(wheel_sweep_mesh, wheel_scale);
-            float query_lift = PxMax(0.08f, wheel_radius * 0.5f);
-            float query_distance = query_lift + PxMax(0.08f, predicted_travel);
-            PxTransform sweep_pose(wheel_center + local_up * query_lift, query_rotation);
-            PxSweepBuffer hit;
-            PxHitFlags hit_flags = PxHitFlag::eNORMAL | PxHitFlag::eMTD;
-            bool swept = wheel_sweep_mesh && scene->sweep(wheel_geometry, sweep_pose, local_down, query_distance, hit, hit_flags, filter, &self_filter) && hit.block.actor;
-
-            debug_sweep[i].origin = sweep_pose.p;
-            debug_sweep[i].hit = false;
-            debug_sweep[i].hit_point = sweep_pose.p + local_down * query_distance;
-            debug_suspension_top[i] = body->getGlobalPose().transform(multibody.corners[i].chassis_shock_anchor);
-            debug_suspension_bottom[i] = wheel_center;
+            float max_penetration = PxMin(wheel_radius * 0.25f, 0.05f);
+            float ray_length = wheel_radius + PxMax(0.08f, predicted_travel);
+            float crown = PxClamp(spec.tire_crown_drop, 0.0f, wheel_radius * 0.15f);
 
             w.grounded = false;
             w.tire_load = 0.0f;
             w.contact_actor = nullptr;
             w.contact_normal = local_up;
-            sweep_distance[i] = query_distance - query_lift;
+            w.row_count = row_count;
+            for (int r = 0; r < max_tire_probe_rows; r++)
+            {
+                w.row_load[r] = 0.0f;
+            }
+            sweep_distance[i] = ray_length - wheel_radius;
+            debug_sweep[i].origin = wheel_center;
+            debug_sweep[i].hit = false;
+            debug_sweep[i].hit_point = wheel_center + plane_down * wheel_radius;
+            debug_sweep[i].row_count = 0;
+            debug_suspension_top[i] = pose.transform(multibody.corners[i].chassis_shock_anchor);
+            debug_suspension_bottom[i] = wheel_center;
 
-            if (!swept || !std::isfinite(hit.block.distance) || hit.block.distance > query_lift + predicted_travel)
+            tire_probe_row rows[max_tire_probe_rows];
+            int hit_count = 0;
+            for (int r = 0; r < row_count; r++)
+            {
+                float offset = (static_cast<float>(r) + 0.5f) * rows_inverse - 0.5f;
+                // a tread is crowned, and the mean radius is held at nominal so a flat road at zero
+                // camber still loads exactly as the single point model did before
+                float row_radius = wheel_radius + crown * (1.0f / 3.0f - 4.0f * offset * offset);
+                PxVec3 row_center = wheel_center + wheel_axis * (offset * wheel_width);
+                rows[r] = probe_tread_row(scene, row_center, plane_down, wheel_axis, local_up, row_radius, ray_length, max_penetration, column_count, arc, filter);
+                hit_count += rows[r].hit ? 1 : 0;
+            }
+
+            if (hit_count == 0)
             {
                 continue;
             }
-            sweep_distance[i] = hit.block.distance - query_lift;
 
-            PxVec3 normal = hit.block.normal;
-            if (!is_finite_vec(normal) || normal.magnitudeSquared() < 1e-6f)
+            // each row carries its share of the carcass rate, so an asymmetric patch produces a real
+            // moment on the upright instead of one force through the wheel centre line
+            float row_stiffness = PxMax(spec.tire_vertical_stiffness, 1.0f) * rows_inverse;
+            float row_damping = 2.0f * 0.7f * sqrtf(PxMax(spec.tire_vertical_stiffness, 1.0f) * PxMax(cfg.wheel_mass, 1.0f)) * rows_inverse;
+            float row_force_limit = spec.max_susp_force * rows_inverse;
+            PxVec3 total_force = PxVec3(0.0f);
+            PxVec3 point_accumulator = PxVec3(0.0f);
+            float load_sum = 0.0f;
+            float deepest = 0.0f;
+            for (int r = 0; r < row_count; r++)
             {
-                normal = local_up;
+                tire_probe_row& row = rows[r];
+                if (!row.hit)
+                {
+                    continue;
+                }
+
+                PxVec3 probe_velocity = wheel_actor ? actor_point_velocity(wheel_actor, row.point) : actor_point_velocity(body, row.point);
+                if (const PxRigidDynamic* ground_actor = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
+                {
+                    probe_velocity -= ground_actor->getLinearVelocity() + ground_actor->getAngularVelocity().cross(row.point - ground_actor->getGlobalPose().p);
+                }
+                // damping only exists while the tread is actually squashed, applying it on a grazing
+                // hit invents a force before the tire has touched anything
+                float closing = probe_velocity.dot(row.normal);
+                row.load = PxClamp(row.penetration * row_stiffness - closing * row_damping, 0.0f, row_force_limit);
+                if (row.load <= 0.0f)
+                {
+                    continue;
+                }
+
+                total_force += row.normal * row.load;
+                point_accumulator += row.point * row.load;
+                load_sum += row.load;
+                w.row_load[r] = row.load;
+                if (row.penetration > deepest)
+                {
+                    deepest = row.penetration;
+                    w.contact_actor = row.actor;
+                }
             }
-            else
+
+            if (load_sum <= 0.0f)
             {
-                normal.normalize();
-            }
-            // wall and ceiling hits cannot support tire load
-            if (normal.dot(local_up) < 0.5f)
-            {
+                w.contact_actor = nullptr;
                 continue;
+            }
+
+            PxVec3 aggregate_normal = total_force;
+            if (aggregate_normal.normalize() < 1e-4f)
+            {
+                aggregate_normal = local_up;
             }
             // normal filtering prevents mesh seams from converting forward speed into launch force
             if (is_finite_vec(previous_normal) && previous_normal.magnitudeSquared() > 1e-6f)
             {
                 previous_normal.normalize();
                 float normal_blend = exp_decay(30.0f, dt);
-                normal = previous_normal * (1.0f - normal_blend) + normal * normal_blend;
-                normal.normalize();
+                aggregate_normal = previous_normal * (1.0f - normal_blend) + aggregate_normal * normal_blend;
+                if (aggregate_normal.normalize() < 1e-4f)
+                {
+                    aggregate_normal = local_up;
+                }
             }
-
-            // overlap sweep positions are unbounded so contact is reconstructed on the wheel support
-            PxVec3 wheel_axis = query_rotation.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-            float axial_alignment = wheel_axis.dot(normal);
-            // the swept cylinder touches down on its rim edge while a tire carries load across the
-            // tread, so the hit is corrected back to the wheel plane before deflection is measured
-            float edge_drop = wheel_width * 0.5f * fabsf(axial_alignment);
-            float penetration = PxClamp(query_lift - hit.block.distance - edge_drop, 0.0f, PxMin(wheel_radius * 0.25f, 0.05f));
-            PxVec3 radial_normal = normal - wheel_axis * axial_alignment;
-            PxVec3 contact_offset = PxVec3(0.0f);
-            if (radial_normal.normalize() > 1e-4f)
+            PxVec3 aggregate_point = point_accumulator / load_sum;
+            if (!is_finite_vec(aggregate_point))
             {
-                contact_offset -= radial_normal * wheel_radius;
-            }
-            PxVec3 contact_point = wheel_center + contact_offset;
-            if (!is_finite_vec(contact_point))
-            {
+                w.contact_actor = nullptr;
                 continue;
             }
+
+            w.grounded = true;
+            w.contact_point = aggregate_point;
+            w.contact_normal = aggregate_normal;
+            w.tire_load = PxMax(total_force.dot(aggregate_normal), 0.0f);
+            sweep_distance[i] = -deepest;
             debug_sweep[i].hit = true;
-            debug_sweep[i].hit_point = contact_point;
+            debug_sweep[i].hit_point = aggregate_point;
 
-            PxVec3 contact_velocity = wheel_actor ? actor_point_velocity(wheel_actor, contact_point) : actor_point_velocity(body, contact_point);
-            if (const PxRigidDynamic* ground_actor = hit.block.actor->is<PxRigidDynamic>())
+            for (int r = 0; r < row_count; r++)
             {
-                contact_velocity -= ground_actor->getLinearVelocity() + ground_actor->getAngularVelocity().cross(contact_point - ground_actor->getGlobalPose().p);
-            }
-            float vertical_velocity = contact_velocity.dot(normal);
-            // damping only exists while the tread is actually squashed, applying it on a grazing
-            // hit invents a force before the tire has touched anything
-            float normal_force = 0.0f;
-            if (penetration > 0.0f)
-            {
-                float tire_damping = 2.0f * 0.7f * sqrtf(PxMax(spec.tire_vertical_stiffness, 1.0f) * PxMax(cfg.wheel_mass, 1.0f));
-                normal_force = PxClamp(penetration * spec.tire_vertical_stiffness - vertical_velocity * tire_damping, 0.0f, spec.max_susp_force);
-            }
-
-            w.grounded = normal_force > 0.0f;
-            w.contact_point = contact_point;
-            w.contact_normal = normal;
-            w.contact_actor = hit.block.actor;
-            w.tire_load = normal_force;
-            if (normal_force > 0.0f)
-            {
-                safe_add_force_at_pos(wheel_actor ? wheel_actor : body, normal * normal_force, contact_point);
-                if (PxRigidDynamic* ground_actor = hit.block.actor->is<PxRigidDynamic>())
+                const tire_probe_row& row = rows[r];
+                if (!row.hit || row.load <= 0.0f)
                 {
-                    safe_add_force_at_pos(ground_actor, -normal * normal_force, contact_point);
+                    continue;
                 }
+                safe_add_force_at_pos(wheel_actor ? wheel_actor : body, row.normal * row.load, row.point);
+                if (PxRigidDynamic* ground_actor = row.actor ? row.actor->is<PxRigidDynamic>() : nullptr)
+                {
+                    safe_add_force_at_pos(ground_actor, -row.normal * row.load, row.point);
+                }
+                int slot = debug_sweep[i].row_count++;
+                debug_sweep[i].row_point[slot] = row.point;
+                debug_sweep[i].row_normal[slot] = row.normal;
+                debug_sweep[i].row_load[slot] = row.load;
             }
         }
     }
@@ -2997,66 +3241,53 @@ public:
     }
 
 
-    inline void update_tire_slip_state(float dt)
+    // tire condition only tracks temperature and wear, both of which move far slower than a step, so
+    // it is evaluated once per step while slip itself is relaxed inside the substep loop
+    inline void update_tire_condition()
     {
-        PxTransform chassis_pose = body->getGlobalPose();
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
-            PxRigidDynamic* wheel_actor = multibody.corners[i].wheel_body;
             tire_condition_modifiers condition = get_tire_condition_modifiers(w.thermal.avg_surface(), w.thermal.core, w.wear, w.tire_load);
             w.condition_grip = condition.peak_grip;
             w.condition_stiffness = condition.stiffness;
             w.condition_relaxation = condition.relaxation;
             w.temperature_grip = condition.temperature_grip;
             w.wear_grip = condition.wear_grip;
-            if (!wheel_actor || !w.grounded || w.tire_load <= 0.0f)
+            if (!multibody.corners[i].wheel_body || !w.grounded || w.tire_load <= 0.0f)
             {
                 w.slip_ratio = 0.0f;
                 w.slip_angle = 0.0f;
-                continue;
+                w.tire_saturation = 0.0f;
             }
+        }
+    }
 
-            float effective_radius = get_effective_wheel_radius(i, w.tire_load);
-            PxVec3 wheel_axis = wheel_actor->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
-            PxVec3 wheel_forward = wheel_axis.cross(w.contact_normal);
-            wheel_forward -= w.contact_normal * wheel_forward.dot(w.contact_normal);
-            if (wheel_forward.normalize() < 1e-4f)
-            {
-                wheel_forward = chassis_pose.q.rotate(PxVec3(0.0f, 0.0f, 1.0f));
-            }
-            PxVec3 wheel_lateral = w.contact_normal.cross(wheel_forward).getNormalized();
-            PxVec3 wheel_velocity = wheel_actor->getLinearVelocity() - ground_point_velocity(w);
-            wheel_velocity -= w.contact_normal * wheel_velocity.dot(w.contact_normal);
-            float longitudinal_speed = wheel_velocity.dot(wheel_forward);
-            float lateral_speed = wheel_velocity.dot(wheel_lateral);
-            float surface_speed = w.angular_velocity * effective_radius;
-            float ground_speed = sqrtf(longitudinal_speed * longitudinal_speed + lateral_speed * lateral_speed);
-            float absolute_longitudinal_speed = fabsf(longitudinal_speed);
-            float absolute_surface_speed = fabsf(surface_speed);
-            float rest_speed = PxMax(ground_speed, absolute_surface_speed);
-            float slip_denominator = PxMax(PxMax(absolute_longitudinal_speed, absolute_surface_speed), 0.01f);
-            float raw_slip_ratio = PxClamp((surface_speed - longitudinal_speed) / slip_denominator, -1.0f, 1.0f);
-            float raw_slip_angle = atan2f(lateral_speed, PxMax(absolute_longitudinal_speed, 0.5f));
-            float relaxation_length = PxMax(spec.tire_relaxation_length * condition.relaxation, 0.05f);
-            float longitudinal_length = relaxation_length * (fabsf(raw_slip_ratio) > fabsf(w.slip_ratio) ? 0.85f : 0.65f);
-            float lateral_length = relaxation_length * (fabsf(raw_slip_angle) > fabsf(w.slip_angle) ? 1.10f : 0.85f);
-            float longitudinal_blend = 1.0f - expf(-PxMax(ground_speed, absolute_surface_speed) * dt / longitudinal_length);
-            float lateral_blend = 1.0f - expf(-ground_speed * dt / lateral_length);
-            w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, longitudinal_blend);
-            w.slip_angle = lerp(w.slip_angle, raw_slip_angle, lateral_blend);
 
-            if (rest_speed < spec.min_slip_speed && input.throttle <= spec.input_deadzone)
+    // slip is a state, the tread has to roll a relaxation length before it carries the force the
+    // geometry asks for, and it builds faster than it releases
+    inline void relax_tire_slip(wheel& w, float raw_slip_ratio, float raw_slip_angle, float ground_speed, float surface_speed, float dt)
+    {
+        float relaxation_length = PxMax(spec.tire_relaxation_length * w.condition_relaxation, 0.05f);
+        float longitudinal_length = relaxation_length * (fabsf(raw_slip_ratio) > fabsf(w.slip_ratio) ? 0.85f : 0.65f);
+        float lateral_length = relaxation_length * (fabsf(raw_slip_angle) > fabsf(w.slip_angle) ? 1.10f : 0.85f);
+        float absolute_surface_speed = fabsf(surface_speed);
+        float rolling_speed = PxMax(ground_speed, absolute_surface_speed);
+        float longitudinal_blend = 1.0f - expf(-rolling_speed * dt / longitudinal_length);
+        float lateral_blend = 1.0f - expf(-ground_speed * dt / lateral_length);
+        w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, longitudinal_blend);
+        w.slip_angle = lerp(w.slip_angle, raw_slip_angle, lateral_blend);
+
+        if (rolling_speed < spec.min_slip_speed && input.throttle <= spec.input_deadzone)
+        {
+            float rest_factor = 1.0f - rolling_speed / PxMax(spec.min_slip_speed, 0.01f);
+            float rest_decay = exp_decay(24.0f * rest_factor, dt);
+            w.slip_ratio = lerp(w.slip_ratio, 0.0f, rest_decay);
+            w.slip_angle = lerp(w.slip_angle, 0.0f, rest_decay);
+            if (rolling_speed < 0.03f)
             {
-                float rest_factor = 1.0f - rest_speed / PxMax(spec.min_slip_speed, 0.01f);
-                float rest_decay = exp_decay(24.0f * rest_factor, dt);
-                w.slip_ratio = lerp(w.slip_ratio, 0.0f, rest_decay);
-                w.slip_angle = lerp(w.slip_angle, 0.0f, rest_decay);
-                if (rest_speed < 0.03f)
-                {
-                    w.slip_ratio = 0.0f;
-                    w.slip_angle = 0.0f;
-                }
+                w.slip_ratio = 0.0f;
+                w.slip_angle = 0.0f;
             }
         }
     }
@@ -3092,7 +3323,10 @@ public:
             if (wheel_actor)
             {
                 PxVec3 chassis_up = pose.q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
-                float measured_camber = asinf(PxClamp(wheel_axis.dot(chassis_up), -1.0f, 1.0f));
+                // camber is an angle to the road, not to the body, measuring it against the chassis
+                // hid body roll from the tire so grip never faded as the car leaned over
+                PxVec3 camber_reference = w.grounded ? w.contact_normal : chassis_up;
+                float measured_camber = asinf(PxClamp(wheel_axis.dot(camber_reference), -1.0f, 1.0f));
                 dyn_camb = i == front_left || i == rear_left ? measured_camber : -measured_camber;
                 PxVec3 alignment_forward = wheel_axis.cross(chassis_up);
                 if (alignment_forward.normalize() > 1e-4f)
@@ -3183,18 +3417,11 @@ public:
 
             float vx = wheel_vel.dot(wheel_fwd);
             float vy = wheel_vel.dot(wheel_lat);
-            float wheel_speed  = w.angular_velocity * wr_eff;
             float ground_speed = sqrtf(vx * vx + vy * vy);
-            float slip_v_long = fabsf(wheel_speed - vx);
-            float slip_v_lat  = fabsf(vy);
-            float slip_v      = sqrtf(slip_v_long * slip_v_long + slip_v_lat * slip_v_lat);
-            // include lateral motion, otherwise a sideways slide reads as at rest and
-            // falls back to the static friction model instead of the pacejka curves
-            float max_v = PxMax(fabsf(wheel_speed), ground_speed);
 
             if (log_pacejka)
             {
-                SP_LOG_INFO("[%s] vx=%.3f, vy=%.3f, ws=%.3f", wheel_name, vx, vy, wheel_speed);
+                SP_LOG_INFO("[%s] vx=%.3f, vy=%.3f, ws=%.3f", wheel_name, vx, vy, w.angular_velocity * wr_eff);
             }
 
             float base_grip      = spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
@@ -3215,55 +3442,142 @@ public:
                 SP_LOG_INFO("[%s] load=%.0f, peak_long=%.0f, peak_lat=%.0f", wheel_name, w.tire_load, peak_force_long, peak_force_lat);
             }
 
-            float lat_f = 0.0f, long_f = 0.0f;
+            // slip relaxation and a wheel locking are both far faster than one physics step, so the tire
+            // and the spin run against a frozen chassis and physx is handed the time average
+            const int substep_count = PxClamp(spec.tire_substeps, 1, 8);
+            const float substep = dt / static_cast<float>(substep_count);
+            const float substep_inverse = 1.0f / static_cast<float>(substep_count);
+            const float tread_width = PxMax(cfg.wheel_width_for(i), 0.05f);
+            const bool use_brush = spec.tire_model_type == static_cast<int>(tire_model::brush);
+            const float camber_thrust_sign = (i == front_left || i == rear_left) ? -1.0f : 1.0f;
+            // the chassis cannot react inside the loop, so the rest state model still has to arrest a
+            // whole step of residual motion and not a fraction of one
+            const float inverse_dt = 1.0f / PxMax(dt, 0.001f);
+            const float corner_mass = PxMax(w.tire_load / 9.81f, 1.0f);
+            const float effective_longitudinal_mass = 1.0f / (1.0f / corner_mass + wr_eff * wr_eff / wmoi);
+            const float blend_lo = 0.5f;
+            const float blend_hi = PxMax(spec.min_slip_speed * 2.0f, 1.0f);
+            float omega = w.angular_velocity;
+            // only the drive, the caliper in net_torque is signed against the step start spin and the
+            // loop resigns it every substep instead
+            const float drive_torque = w.drive_torque;
+            // used where the spin is too slow to have a meaningful direction
+            const float brake_fallback = brake_torque_sign(i);
+            float sum_long = 0.0f;
+            float sum_lat = 0.0f;
+            float sum_slip_speed = 0.0f;
+            float sum_weight = 0.0f;
+            float sum_saturation = 0.0f;
+            float sum_brake = 0.0f;
+            float patch_half_length = 0.0f;
 
-            // smoothstep blend: 0 at rest, 1 at full speed, smooth transition in between
-            float blend_lo = 0.5f;
-            float blend_hi = PxMax(spec.min_slip_speed * 2.0f, 1.0f);
-            float blend_t  = PxClamp((max_v - blend_lo) / PxMax(blend_hi - blend_lo, 0.01f), 0.0f, 1.0f);
-            float pacejka_weight = blend_t * blend_t * (3.0f - 2.0f * blend_t);
-
-            // static friction model (dominant at rest / very low speed)
-            float corner_mass = PxMax(w.tire_load / 9.81f, 1.0f);
-            float effective_longitudinal_mass = 1.0f / (1.0f / corner_mass + wr_eff * wr_eff / wmoi);
-            float inverse_dt = 1.0f / PxMax(dt, 0.001f);
-            float static_lat_f = PxClamp(-vy * corner_mass * inverse_dt, -peak_force_lat * 0.8f, peak_force_lat * 0.8f);
-            float static_long_f = PxClamp((wheel_speed - vx) * effective_longitudinal_mass * inverse_dt, -peak_force_long * 0.8f, peak_force_long * 0.8f);
-            float static_x = static_long_f / PxMax(peak_force_long * 0.8f, 1.0f);
-            float static_y = static_lat_f / PxMax(peak_force_lat * 0.8f, 1.0f);
-            float static_magnitude = sqrtf(static_x * static_x + static_y * static_y);
-            if (static_magnitude > 1.0f)
+            for (int step = 0; step < substep_count; step++)
             {
-                static_long_f /= static_magnitude;
-                static_lat_f /= static_magnitude;
-            }
+                float wheel_speed = omega * wr_eff;
+                float slip_v_long = fabsf(wheel_speed - vx);
+                // include lateral motion, otherwise a sideways slide reads as at rest and
+                // falls back to the static friction model instead of the tire curve
+                float substep_slip_v = sqrtf(slip_v_long * slip_v_long + vy * vy);
+                float max_v = PxMax(fabsf(wheel_speed), ground_speed);
 
-            float effective_slip_angle = w.slip_angle;
-            if (fabsf(effective_slip_angle) < spec.slip_angle_deadband)
-            {
-                float factor = fabsf(effective_slip_angle) / spec.slip_angle_deadband;
-                effective_slip_angle *= factor * factor;
-            }
+                float slip_denominator = PxMax(PxMax(fabsf(vx), fabsf(wheel_speed)), 0.01f);
+                float raw_slip_ratio = PxClamp((wheel_speed - vx) / slip_denominator, -1.0f, 1.0f);
+                float raw_slip_angle = atan2f(vy, PxMax(fabsf(vx), 0.5f));
+                relax_tire_slip(w, raw_slip_ratio, raw_slip_angle, ground_speed, wheel_speed, substep);
 
-            float pacejka_slip_angle = PxClamp(effective_slip_angle, -spec.max_slip_angle, spec.max_slip_angle);
-            bool is_left_wheel = (i == front_left || i == rear_left);
-            tire_force_result dynamic_force = evaluate_magic_formula(spec, w.slip_ratio, pacejka_slip_angle, dyn_camb, w.tire_load, peak_force_long, peak_force_lat, w.condition_stiffness, is_left_wheel ? -1.0f : 1.0f);
+                // smoothstep blend: 0 at rest, 1 at full speed, smooth transition in between
+                float blend_t = PxClamp((max_v - blend_lo) / PxMax(blend_hi - blend_lo, 0.01f), 0.0f, 1.0f);
+                float substep_weight = blend_t * blend_t * (3.0f - 2.0f * blend_t);
 
-            // blend between static friction and pacejka
-            lat_f  = static_lat_f  * (1.0f - pacejka_weight) + dynamic_force.lateral * pacejka_weight;
-            long_f = static_long_f * (1.0f - pacejka_weight) + dynamic_force.longitudinal * pacejka_weight;
+                // static friction model (dominant at rest / very low speed)
+                float static_lat_f = PxClamp(-vy * corner_mass * inverse_dt, -peak_force_lat * 0.8f, peak_force_lat * 0.8f);
+                float static_long_f = PxClamp((wheel_speed - vx) * effective_longitudinal_mass * inverse_dt, -peak_force_long * 0.8f, peak_force_long * 0.8f);
+                float static_x = static_long_f / PxMax(peak_force_long * 0.8f, 1.0f);
+                float static_y = static_lat_f / PxMax(peak_force_lat * 0.8f, 1.0f);
+                float static_magnitude = sqrtf(static_x * static_x + static_y * static_y);
+                if (static_magnitude > 1.0f)
+                {
+                    static_long_f /= static_magnitude;
+                    static_lat_f /= static_magnitude;
+                }
 
-            // reclamp after blend, static and pacejka peaks can otherwise stack past mu n
-            {
-                float ellipse_x = long_f / PxMax(peak_force_long, 1.0f);
-                float ellipse_y = lat_f / PxMax(peak_force_lat, 1.0f);
+                float effective_slip_angle = w.slip_angle;
+                if (fabsf(effective_slip_angle) < spec.slip_angle_deadband)
+                {
+                    float factor = fabsf(effective_slip_angle) / spec.slip_angle_deadband;
+                    effective_slip_angle *= factor * factor;
+                }
+                float curve_slip_angle = PxClamp(effective_slip_angle, -spec.max_slip_angle, spec.max_slip_angle);
+
+                tire_force_result dynamic_force;
+                float saturation = 0.0f;
+                if (use_brush)
+                {
+                    brush_tire_params brush = evaluate_brush_params(spec, wr_eff, tread_width, w.tire_load, w.condition_stiffness);
+                    dynamic_force = evaluate_brush_model(spec, brush, w.slip_ratio, curve_slip_angle, dyn_camb, w.tire_load, peak_force_long, peak_force_lat, camber_thrust_sign, saturation);
+                    patch_half_length = brush.patch_half_length;
+                }
+                else
+                {
+                    dynamic_force = evaluate_magic_formula(spec, w.slip_ratio, curve_slip_angle, dyn_camb, w.tire_load, peak_force_long, peak_force_lat, w.condition_stiffness, camber_thrust_sign);
+                }
+
+                // blend between static friction and the tire curve
+                float substep_lat = static_lat_f * (1.0f - substep_weight) + dynamic_force.lateral * substep_weight;
+                float substep_long = static_long_f * (1.0f - substep_weight) + dynamic_force.longitudinal * substep_weight;
+
+                // reclamp after blend, static and curve peaks can otherwise stack past mu n
+                float ellipse_x = substep_long / PxMax(peak_force_long, 1.0f);
+                float ellipse_y = substep_lat / PxMax(peak_force_lat, 1.0f);
                 float ellipse = sqrtf(ellipse_x * ellipse_x + ellipse_y * ellipse_y);
                 if (ellipse > 1.0f)
                 {
-                    long_f /= ellipse;
-                    lat_f /= ellipse;
+                    substep_long /= ellipse;
+                    substep_lat /= ellipse;
                 }
+
+                sum_long += substep_long;
+                sum_lat += substep_lat;
+                sum_slip_speed += substep_slip_v;
+                sum_weight += substep_weight;
+                sum_saturation += saturation;
+
+                // everything acting on the spin except the caliper, the patch torque included because
+                // the next substep reads its slip from this integration
+                float free_torque = drive_torque - substep_long * wr_eff - omega * spec.bearing_friction * wmoi;
+
+                // a caliper stops a wheel, it never drives one backwards, so it is capped at the torque
+                // that brings the spin to exactly zero. this is what removes lockup chatter
+                float brake_signed = 0.0f;
+                if (w.brake_torque > 0.0f)
+                {
+                    float direction = fabsf(omega) > 0.1f ? (omega > 0.0f ? -1.0f : 1.0f) : brake_fallback;
+                    float stopping = -(omega * wmoi / substep + free_torque);
+                    if (direction > 0.0f)
+                    {
+                        brake_signed = PxMin(w.brake_torque, PxMax(stopping, 0.0f));
+                    }
+                    else if (direction < 0.0f)
+                    {
+                        brake_signed = -PxMin(w.brake_torque, PxMax(-stopping, 0.0f));
+                    }
+                }
+                sum_brake += brake_signed;
+
+                omega += (free_torque + brake_signed) / wmoi * substep;
+                w.rotation += omega * substep;
             }
+
+            float long_f = sum_long * substep_inverse;
+            float lat_f = sum_lat * substep_inverse;
+            float slip_v = sum_slip_speed * substep_inverse;
+            float pacejka_weight = sum_weight * substep_inverse;
+            float mean_brake = sum_brake * substep_inverse;
+            float wheel_speed = omega * wr_eff;
+            w.tire_saturation = sum_saturation * substep_inverse;
+            w.contact_patch_length = patch_half_length * 2.0f;
+            // physx gets what the caliper actually did, not what it was asked for
+            w.net_torque = drive_torque + mean_brake;
 
             if (log_pacejka)
             {
@@ -3283,14 +3597,53 @@ public:
             float friction_work = normalized_force * slip_ratio_eff * pacejka_weight * speed_heat_scale;
             float base_heat = friction_work * spec.tire_heat_from_slip * pressure_heat_mult + rolling_heat;
 
-            // camber determines heat distribution across zones:
-            // negative camber loads the inside zone more under cornering
-            float camber_bias = -dyn_camb * 3.0f;
-            float zone_heat[3] = {
-                PxMax(base_heat * (1.0f + camber_bias), 0.0f),
-                base_heat,
-                PxMax(base_heat * (1.0f - camber_bias), 0.0f)
-            };
+            // zone load comes from the tread rows the contact probes actually loaded, so where a tire
+            // cooks follows the measured patch rather than an estimate made from camber alone
+            float zone_load[3] = { 0.0f, 0.0f, 0.0f };
+            int zone_rows[3] = { 0, 0, 0 };
+            float zone_heat[3];
+            {
+                int probe_rows = PxClamp(w.row_count, 1, max_tire_probe_rows);
+                // row zero sits at negative offset along the spin axis, which is the outboard shoulder
+                // on the left of the car and the inboard one on the right
+                float side_sign = (i == front_left || i == rear_left) ? 1.0f : -1.0f;
+                for (int r = 0; r < probe_rows; r++)
+                {
+                    float offset = ((static_cast<float>(r) + 0.5f) / static_cast<float>(probe_rows) - 0.5f) * side_sign;
+                    int zone = PxClamp(static_cast<int>((0.5f - offset) * 3.0f), 0, 2);
+                    zone_load[zone] += w.row_load[r];
+                    zone_rows[zone]++;
+                }
+
+                float load_total = 0.0f;
+                int counted = 0;
+                for (int z = 0; z < 3; z++)
+                {
+                    if (zone_rows[z] > 0)
+                    {
+                        zone_load[z] /= static_cast<float>(zone_rows[z]);
+                        load_total += zone_load[z];
+                        counted++;
+                    }
+                }
+                // fewer rows than zones cannot resolve a shoulder, so the gaps take the mean
+                float mean_load = counted > 0 ? load_total / static_cast<float>(counted) : 0.0f;
+                for (int z = 0; z < 3; z++)
+                {
+                    if (zone_rows[z] == 0)
+                    {
+                        zone_load[z] = mean_load;
+                    }
+                }
+                float share_total = zone_load[0] + zone_load[1] + zone_load[2];
+                for (int z = 0; z < 3; z++)
+                {
+                    // shares average to one so the existing heat calibration is untouched when the
+                    // patch loads evenly
+                    float share = share_total > 1e-6f ? zone_load[z] * 3.0f / share_total : 1.0f;
+                    zone_heat[z] = base_heat * share;
+                }
+            }
 
             float surface_resp = spec.tire_surface_response;
             float core_rate = spec.tire_core_transfer_rate;
@@ -3344,18 +3697,17 @@ public:
 
             if (wheel_actor)
             {
-                float brake_signed = brake_torque_sign(i) * w.brake_torque;
                 // drive, brake and bearing only, the patch force already spins the wheel down
                 // through its contact offset so adding long_f times radius here counted it twice
                 safe_add_torque(wheel_actor, wheel_axis * w.net_torque);
                 if (multibody.corners[i].upright)
                 {
                     // caliper on upright only, irs drive reaction must not pitch the knuckle
-                    safe_add_torque(multibody.corners[i].upright, wheel_axis * (-brake_signed));
+                    safe_add_torque(multibody.corners[i].upright, wheel_axis * (-mean_brake));
                 }
             }
 
-            w.rotation += w.angular_velocity * dt;
+            // no rotation integration here, the substep loop already did it against the evolving spin
 
             if (log_pacejka)
             {
@@ -3383,7 +3735,7 @@ public:
                 continue;
             }
 
-            float trail = evaluate_pneumatic_trail(spec, wheels[i].slip_angle, wheels[i].tire_load, wheels[i].condition_stiffness);
+            float trail = get_wheel_pneumatic_trail(i);
             PxVec3 torque = wheels[i].contact_normal * (-wheels[i].lateral_force * trail * spec.self_align_gain);
             safe_add_torque(multibody.corners[i].upright, torque);
             if (const PxRigidDynamic* ground_actor = wheels[i].contact_actor ? wheels[i].contact_actor->is<PxRigidDynamic>() : nullptr)
@@ -3514,62 +3866,6 @@ public:
         destroy_multibody();
         if (body)             { body->release();             body = nullptr; }
         if (material)         { material->release();         material = nullptr; }
-        if (wheel_sweep_mesh)
-        {
-            wheel_sweep_mesh->release();
-            wheel_sweep_mesh = nullptr;
-        }
-    }
-
-
-    // sweep geometry must match the physical wheel dimensions
-    inline bool rebuild_wheel_sweep_mesh()
-    {
-        const int segments = 32;
-        std::vector<PxVec3> cyl_verts;
-        cyl_verts.reserve(segments * 2);
-        float sweep_r = PxMax(PxMax(cfg.front_wheel_radius, cfg.rear_wheel_radius), 0.05f);
-        float sweep_w = PxMax(PxMax(cfg.front_wheel_width,  cfg.rear_wheel_width),  0.05f);
-        float half_w  = sweep_w * 0.5f;
-        for (int s = 0; s < segments; s++)
-        {
-            float angle = (2.0f * PxPi * s) / segments;
-            float cy = cosf(angle) * sweep_r;
-            float cz = sinf(angle) * sweep_r;
-            cyl_verts.push_back(PxVec3(-half_w, cy, cz));
-            cyl_verts.push_back(PxVec3( half_w, cy, cz));
-        }
-
-        PxTolerancesScale px_scale;
-        px_scale.length = 1.0f;
-        px_scale.speed  = 9.81f;
-        PxCookingParams cook_params(px_scale);
-        cook_params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
-
-        PxConvexMeshDesc desc;
-        desc.points.count  = static_cast<PxU32>(cyl_verts.size());
-        desc.points.stride = sizeof(PxVec3);
-        desc.points.data   = cyl_verts.data();
-        desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
-
-        PxConvexMeshCookingResult::Enum cook_result;
-        PxConvexMesh* replacement = PxCreateConvexMesh(cook_params, desc, *PxGetStandaloneInsertionCallback(), &cook_result);
-        if (!replacement || cook_result != PxConvexMeshCookingResult::eSUCCESS)
-        {
-            if (replacement)
-            {
-                replacement->release();
-            }
-            SP_LOG_WARNING("failed to create wheel sweep cylinder mesh (r=%.3f, w=%.3f)", sweep_r, sweep_w);
-            return false;
-        }
-        if (wheel_sweep_mesh)
-        {
-            wheel_sweep_mesh->release();
-        }
-        wheel_sweep_mesh = replacement;
-        SP_LOG_INFO("wheel sweep cylinder mesh cooked: r=%.3f, w=%.3f", sweep_r, sweep_w);
-        return true;
     }
 
 
@@ -3663,12 +3959,6 @@ public:
             compute_aero_from_shape(params.vertices);
         }
 
-        if (!rebuild_wheel_sweep_mesh())
-        {
-            SP_LOG_ERROR("failed to create wheel contact geometry");
-            destroy();
-            return false;
-        }
         if (!create_multibody(params.physics, params.scene))
         {
             SP_LOG_ERROR("failed to create car suspension assembly");
@@ -3764,10 +4054,6 @@ public:
     {
         compute_constants();
         update_mass_properties();
-        if (!rebuild_wheel_sweep_mesh())
-        {
-            return false;
-        }
         return !multibody.initialized || rebuild_multibody();
     }
 
@@ -3853,7 +4139,6 @@ public:
             cfg = previous_config;
             compute_constants();
             update_mass_properties();
-            rebuild_wheel_sweep_mesh();
             return;
         }
         reset_drivetrain_transients();
@@ -4000,7 +4285,6 @@ public:
             cfg = previous_config;
             compute_constants();
             update_mass_properties();
-            rebuild_wheel_sweep_mesh();
             SP_LOG_ERROR("failed to rebuild vehicle upgrades");
         }
     }
@@ -4205,7 +4489,7 @@ public:
 
         update_multibody(dt);
         update_suspension(scene, dt);
-        update_tire_slip_state(dt);
+        update_tire_condition();
         apply_drivetrain(forward_speed * 3.6f, dt);
         engine_rotation = fmodf(engine_rotation + engine_rpm * PxPi * 2.0f / 60.0f * dt, PxPi * 2.0f);
         if (!std::isfinite(engine_rotation))
@@ -4254,6 +4538,31 @@ public:
     inline float get_brake()            { return input.brake; }
 
     inline float get_steering()         { return input.steering; }
+
+
+    // where the lateral force acts behind the wheel centre. the brush model already knows this from its
+    // patch length, only the curve fit needs the separate trail model
+    inline float get_wheel_pneumatic_trail(int i)
+    {
+        if (!is_valid_wheel(i))
+        {
+            return 0.0f;
+        }
+        const wheel& w = wheels[i];
+        return spec.tire_model_type == static_cast<int>(tire_model::brush)
+            ? evaluate_brush_trail(w.contact_patch_length * 0.5f, w.tire_saturation)
+            : evaluate_pneumatic_trail(spec, w.slip_angle, w.tire_load, w.condition_stiffness);
+    }
+
+
+    inline float get_wheel_self_aligning_torque(int i)
+    {
+        if (!is_valid_wheel(i) || !wheels[i].grounded)
+        {
+            return 0.0f;
+        }
+        return -wheels[i].lateral_force * get_wheel_pneumatic_trail(i) * spec.self_align_gain;
+    }
 
 
     // visual setters also repair the underlying simulation state
@@ -4615,6 +4924,24 @@ inline float get_wheel_temperature(int i) { return is_valid_wheel(i) ? wheels[i]
             origin    = debug_sweep[wheel].origin;
             hit_point = debug_sweep[wheel].hit_point;
             hit       = debug_sweep[wheel].hit;
+        }
+    }
+
+
+    // the individual tread rows the solver was given, so the drawn patch is the real one
+    inline int get_debug_contact_rows(int wheel) const
+    {
+        return (wheel >= 0 && wheel < wheel_count) ? debug_sweep[wheel].row_count : 0;
+    }
+
+
+    inline void get_debug_contact_row(int wheel, int row, PxVec3& point, PxVec3& normal, float& load) const
+    {
+        if (wheel >= 0 && wheel < wheel_count && row >= 0 && row < debug_sweep[wheel].row_count)
+        {
+            point  = debug_sweep[wheel].row_point[row];
+            normal = debug_sweep[wheel].row_normal[row];
+            load   = debug_sweep[wheel].row_load[row];
         }
     }
 

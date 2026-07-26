@@ -172,6 +172,9 @@ static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light
 // L_nee is view independent (lambert only nee at rc), f_rc is re-evaluated at the dst incoming
 // direction at shift time so indirect specular stays view dependent
 // rc_pos is a world space vertex (HAS_RC) or a unit sky direction (SKY)
+// rc_normal is the shading normal at rc, the same one the suffix trace sampled and shaded with,
+// storing the geometric normal instead makes f_rc reject its own rc_outgoing_dir on normal mapped
+// surfaces and silently drops L_post
 // src_* captures the source pixel primary surface so reuse passes avoid sampling a reprojected g-buffer
 struct PathSample
 {
@@ -734,8 +737,9 @@ float target_scalar(float3 f)
 // avoids the flicker a hard min creates when w bounces across the threshold between frames
 float soft_clamp_w(float w, float c)
 {
+    // a non positive cap means the clamp is disabled, returning 0 here would black out all gi
     if (c <= 0.0f)
-        return 0.0f;
+        return w;
     if (w <= c)
         return w;
     return c + (w - c) / (1.0f + (w - c) / c);
@@ -744,6 +748,9 @@ float soft_clamp_w(float w, float c)
 // soft luminance compressor, preserves chromaticity and approaches threshold asymptotically
 float3 soft_saturate_radiance(float3 radiance, float threshold)
 {
+    if (threshold <= 0.0f)
+        return radiance;
+
     float lum = dot(radiance, float3(0.299f, 0.587f, 0.114f));
     if (lum > threshold)
     {

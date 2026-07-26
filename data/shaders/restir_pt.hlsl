@@ -562,12 +562,24 @@ PathSample trace_path_from_primary(
 
     if (!hit.hit)
     {
-        // primary environment lighting is handled by ibl
+        // the ray escaped, the sky dome is the reconnection vertex and rc_pos carries the
+        // direction, restir replaces diffuse ibl wholesale in light_image_based so dropping
+        // this candidate would remove every bit of sky lighting from the primary bounce
+        // the sun disc is excluded inside sample_sky, the analytic directional light owns it
+        s.flags      |= PATH_FLAG_SKY;
+        s.rc_pos      = dir;
+        s.rc_normal   = -dir;
+        s.rc_L_nee    = sample_sky(dir);
+        s.rc_L_post   = float3(0, 0, 0);
+        s.path_length = 1;
+        s.rc_length   = 1;
         return s;
     }
 
     s.rc_pos       = hit.hit_position;
-    s.rc_normal    = hit.geometric_normal;
+    // shading normal, the suffix sampled rc_outgoing_dir around it and f_rc is re-evaluated
+    // against it at shift time, the geometric normal would reject directions the path took
+    s.rc_normal    = hit.hit_normal;
     s.rc_albedo    = hit.albedo;
     s.rc_roughness = max(hit.roughness, 0.04f);
     s.rc_metallic  = hit.metallic;
@@ -822,13 +834,12 @@ void ray_gen()
         get_restir_w_clamp() * 0.05f
     );
 
+    // real reconnection distance in w so reblur can size its kernels, sky gets the far band,
+    // rc_pos holds a unit direction for sky samples so it must not be treated as a position
     float hit_dist = 0.0f;
     if (reservoir.M > 0.0f)
     {
-        hit_dist = min(
-            length(reservoir.sample.rc_pos - pos_ws),
-            10000.0f
-        );
+        hit_dist = is_sky_sample(reservoir.sample) ? 10000.0f : min(length(reservoir.sample.rc_pos - pos_ws), 10000.0f);
     }
 
     tex_uav[launch_id] = float4(canonical_gi, hit_dist);

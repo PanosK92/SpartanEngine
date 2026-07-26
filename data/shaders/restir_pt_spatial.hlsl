@@ -57,7 +57,19 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
+    {
+        // the resample writes into a separate slot that later rotates into the temporal history,
+        // leaving sky texels untouched would carry a stale reservoir forward, clear them instead
+        float4 e0, e1, e2, e3, e4, e5;
+        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3, e4, e5);
+        tex_reservoir0[pixel] = e0;
+        tex_reservoir1[pixel] = e1;
+        tex_reservoir2[pixel] = e2;
+        tex_reservoir3[pixel] = e3;
+        tex_reservoir4[pixel] = e4;
+        tex_reservoir5[pixel] = e5;
         return;
+    }
 
     float linear_depth = linearize_depth(depth);
     float3 pos_ws      = get_position(uv);
@@ -183,6 +195,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.weight_sum = max(weight_c, 0.0f);
 
     // gris streaming weights, w_j = m_j * p_hat * W_j * jacobian, jacobian appears once here
+    bool picked_neighbor = false;
     for (uint j = 0; j < valid_neighbors; j++)
     {
         float target_at_c = stream_target[j];
@@ -195,6 +208,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         {
             combined.sample     = stream_samples[j];
             combined.target_pdf = target_at_c;
+            picked_neighbor     = true;
         }
     }
 
@@ -202,9 +216,10 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     clamp_reservoir_M(combined, get_restir_m_cap());
 
     // lin 2022 6.4 sample validation, kills stale paths that survive purely through spatial reuse
+    // liveness is weight_sum, W is only computed by the finalize further down and is still zero here
     bool validation_reset  = false;
     uint validation_period = get_restir_validation_period();
-    if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
+    if (validation_period > 0u && combined.M > 0.0f && combined.weight_sum > 0.0f)
     {
         uint hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
         uint slot = (buffer_frame.frame + hash) % validation_period;
@@ -213,12 +228,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             bool reachable = trace_shift_visibility(combined.sample, pos_ws, normal_ws);
             if (!reachable)
             {
+                // a reused path went stale, fall back to this pixel's own sample which the
+                // temporal pass already validated, only empty out when that sample is the
+                // one that failed
+                bool keep_center    = picked_neighbor && target_cur > 0.0f;
                 combined            = create_empty_reservoir();
                 combined.sample     = center.sample;
                 combined.target_pdf = target_cur;
-                combined.weight_sum = 0.0f;
-                combined.M          = 0.0f;
-                combined.W          = 0.0f;
+                combined.weight_sum = keep_center ? (target_cur * center.W) : 0.0f;
+                combined.M          = keep_center ? center_M                : 0.0f;
                 validation_reset    = true;
             }
         }
@@ -279,22 +297,33 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         gi = gi / max(albedo, 0.1f);
         gi = soft_saturate_radiance(gi, get_restir_w_clamp() * 0.05f);
     }
+    else
+    {
+        // the reused path failed validation, the vector sum is built from that same stream so
+        // shade whatever reservoir survived instead of dropping the pixel to black
+        gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+    }
 
     if (any(isnan(gi)) || any(isinf(gi)))
     {
         gi = float3(0, 0, 0);
     }
 
-    if (all(gi <= 1e-6f))
-    {
-        gi = tex_uav[pixel].rgb;
-    }
-
-    // real reconnection distance in w so reblur can size its kernels, sky gets the far band
+    // real reconnection distance in w so reblur can size its kernels, sky gets the far band,
+    // keyed on m not w so a clamped or zero weight sample still reports where it landed
     float hit_dist = 0.0f;
-    if (combined.W > 0.0f)
+    if (combined.M > 0.0f)
     {
         hit_dist = is_sky_sample(combined.sample) ? 10000.0f : min(length(combined.sample.rc_pos - pos_ws), 10000.0f);
+    }
+
+    // fall back to the temporal stage estimate and carry its hit distance too, radiance paired
+    // with a zero hit distance reads as a contact hit to reblur which then refuses to blur it
+    float4 temporal_stage = tex_uav[pixel];
+    if (all(gi <= 1e-6f))
+    {
+        gi       = temporal_stage.rgb;
+        hit_dist = temporal_stage.a;
     }
 
     // emissive nee and indirect lighting are already carried by the reservoir

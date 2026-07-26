@@ -35,6 +35,17 @@ namespace car
     static constexpr int max_gears = 11;
     static constexpr int max_engine_cylinders = 16;
 
+    // the tread is sampled as rows across the width and columns along the contact arc, a single
+    // point cannot tell a crowned tire from a flat one nor a kerb edge from level ground
+    static constexpr int max_tire_probe_rows    = 8;
+    static constexpr int max_tire_probe_columns = 5;
+
+    enum class tire_model : int
+    {
+        pacejka, // empirical curve fit, shape comes from the b c d e coefficients
+        brush    // physical, shape comes from tread stiffness patch length and mu
+    };
+
     enum class suspension_mechanism : int
     {
         double_wishbone,
@@ -45,7 +56,12 @@ namespace car
     struct suspension_geometry
     {
         suspension_mechanism mechanism = suspension_mechanism::double_wishbone;
-        float chassis_inset             = 0.48f;
+        // the upper arm must be shorter than the lower one, equal arms swing the upright through a
+        // parallelogram and the wheel simply leans with the body instead of gaining camber in bump
+        float chassis_inset             = 0.32f;  // lower arm inner pivot, fraction of half track
+        float upper_chassis_inset       = 0.50f;  // upper arm inner pivot, fraction of half track
+        float lower_upright_inset       = 0.055f; // lower ball joint, metres inboard of the wheel plane
+        float upper_upright_inset       = 0.125f; // upper ball joint, metres inboard of the wheel plane
         float upper_inner_y             = 0.18f;
         float lower_inner_y             = -0.16f;
         float upper_upright_y           = 0.18f;
@@ -115,6 +131,21 @@ namespace car
             combined_long_C = 1.0f;
             combined_lat_B = 6.0f;
             combined_lat_C = 1.0f;
+            tire_model_type = static_cast<int>(tire_model::brush);
+            // calibrated so a 200 mm tread at 4 kN on a 320 mm wheel gives about 1000 N per degree
+            // of cornering stiffness, which is where a road radial of that size actually sits
+            tread_stiffness_long = 2.0e7f;
+            tread_stiffness_lat = 1.4e7f;
+            tire_slide_friction_ratio = 0.85f;
+            tire_probe_rows = 5;
+            tire_probe_columns = 3;
+            tire_probe_arc = 0.32f;
+            tire_crown_drop = 0.004f;
+            tire_substeps = 4;
+            bushing_stiffness_radial = 1.2e7f;
+            bushing_stiffness_axial = 3.0e6f;
+            bushing_damping = 8000.0f;
+            bushing_max_deflection = 0.0015f;
             assists              = assist_settings();
             validation           = validation_targets();
         }
@@ -205,6 +236,16 @@ namespace car
         float throttle_smoothing;
         float brake_smoothing;
 
+        // which tire model produces the force curve, the pacejka coefficients below stay in the
+        // file either way because the brush model still borrows their peaks
+        int   tire_model_type;
+
+        // brush model, tread stiffness per unit volume of contact, the slip stiffness it produces
+        // scales with patch area so cornering stiffness grows with load on its own
+        float tread_stiffness_long;      // N/m3
+        float tread_stiffness_lat;       // N/m3
+        float tire_slide_friction_ratio; // sliding mu as a fraction of peak mu
+
         // pacejka magic formula coefficients
         float lat_B;
         float lat_C;
@@ -258,6 +299,17 @@ namespace car
         float tire_core_transfer_rate;   // heat transfer rate between surface and core
         float tire_surface_response;     // surface temperature response multiplier (flash heat)
 
+        // contact patch sampling, rows spread across the tread and columns along the arc so the
+        // wheel spans a bump instead of dropping into it and one shoulder can carry more than another
+        int   tire_probe_rows;
+        int   tire_probe_columns;
+        float tire_probe_arc;            // rad, half angle of the sampled arc either side of bottom dead centre
+        float tire_crown_drop;           // m, shoulder radius drop from the tread centre
+
+        // how many times the tire and wheel spin loop iterates inside one physics step, the stiff
+        // part of a tire is slip building and a wheel locking, neither survives a coarse step
+        int   tire_substeps;
+
         // suspension
         float front_spring_freq;
         float rear_spring_freq;
@@ -277,6 +329,13 @@ namespace car
         float bump_stop_progression;
         float packer_threshold; // fraction of suspension travel where packer stiffness begins
         float packer_stiffness;
+
+        // pickup point bushings, a rubber bush is stiff along the arm because that is the load path
+        // and softer across it, which is where compliance steer and fore aft absorption come from
+        float bushing_stiffness_radial; // N/m along the member, carries wheel load
+        float bushing_stiffness_axial;  // N/m across the member, the compliant direction
+        float bushing_damping;          // N s/m, rubber hysteresis
+        float bushing_max_deflection;   // m, hard backstop so the bush can never run away
 
         // aerodynamics
         float rolling_resistance;

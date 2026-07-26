@@ -9,6 +9,20 @@
 #undef min
 #undef max
 
+namespace
+{
+    // the input stream is upsampled to the audio rate, so the reconstruction filter belongs just
+    // under the input nyquist, a fixed cutoff throws away every harmonic the engine actually made
+    float reconstruction_cutoff(double inputSampleRate, double audioSampleRate)
+    {
+        const double input_nyquist = inputSampleRate * 0.5;
+        const double audio_nyquist = audioSampleRate * 0.5;
+        const double nyquist       = input_nyquist < audio_nyquist ? input_nyquist : audio_nyquist;
+
+        return static_cast<float>(nyquist * 0.9);
+    }
+}
+
 Synthesizer::Synthesizer() {
     m_inputChannels = nullptr;
     m_inputChannelCount = 0;
@@ -71,12 +85,15 @@ void Synthesizer::initialize(const Parameters &p) {
             m_audioParameters.inputSampleNoiseFrequencyCutoff,
             m_audioSampleRate);
 
-        m_filters[i].antialiasing.setCutoffFrequency(1900.0f, m_audioSampleRate);
+        m_filters[i].antialiasing.setCutoffFrequency(
+            reconstruction_cutoff(m_inputSampleRate, m_audioSampleRate), m_audioSampleRate);
     }
 
     m_levelingFilter.p_target = m_audioParameters.levelerTarget;
     m_levelingFilter.p_maxLevel = m_audioParameters.levelerMaxGain;
     m_levelingFilter.p_minLevel = m_audioParameters.levelerMinGain;
+    // the hold has to outlast the gap between firing pulses at idle, which is about 12 ms on a v12
+    m_levelingFilter.setTimeConstants(0.150f, 0.250f, static_cast<float>(m_audioSampleRate));
     m_antialiasing.setCutoffFrequency(m_audioSampleRate * 0.45f, m_audioSampleRate);
 
     for (int i = 0; i < m_audioBufferSize; ++i) {
@@ -99,9 +116,24 @@ void Synthesizer::initializeImpulseResponse(
 
     const unsigned int sampleCount = std::min(10000U, clippedLength);
     m_filters[index].convolution.initialize(sampleCount);
+
+    // an uncorrelated input leaves a convolution scaled by the root sum of squares of the taps,
+    // so without this the wet level rides on whichever response file happens to be loaded and
+    // the wet dry control stops meaning anything
+    double energy = 0.0;
+    for (unsigned int i = 0; i < sampleCount; ++i) {
+        const double tap =
+            static_cast<double>(impulseResponse[i]) / INT16_MAX;
+        energy += tap * tap;
+    }
+
+    const float normalization = energy > 0.0
+        ? static_cast<float>(1.0 / std::sqrt(energy))
+        : 1.0f;
+
     for (unsigned int i = 0; i < sampleCount; ++i) {
         m_filters[index].convolution.getImpulseResponse()[i] =
-            volume * impulseResponse[i] / INT16_MAX;
+            volume * normalization * impulseResponse[i] / INT16_MAX;
     }
 }
 
@@ -286,6 +318,14 @@ void Synthesizer::setInputSampleRate(double sampleRate) {
         std::lock_guard<std::mutex> lock(m_lock0);
         m_inputSampleRate =
             static_cast<float>(sampleRate);
+
+        // the simulator retimes itself every frame, a reconstruction filter left at the rate it
+        // was built with either aliases or muffles as soon as that rate moves
+        const float cutoff =
+            reconstruction_cutoff(m_inputSampleRate, m_audioSampleRate);
+        for (int i = 0; i < m_inputChannelCount; ++i) {
+            m_filters[i].antialiasing.setCutoffFrequency(cutoff, m_audioSampleRate);
+        }
     }
 }
 
@@ -318,7 +358,7 @@ int16_t Synthesizer::renderAudio(int inputSample) {
             ) - 1.0
         );
         const float r =
-            m_filters->airNoiseLowPass.fast_f(noise);
+            m_filters[i].airNoiseLowPass.fast_f(noise);
         const float r_mixed =
             airNoise * r + (1 - airNoise);
 

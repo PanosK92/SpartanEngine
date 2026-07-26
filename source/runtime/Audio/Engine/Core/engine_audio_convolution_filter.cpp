@@ -69,6 +69,10 @@ ConvolutionFilter::~ConvolutionFilter() {
 }
 
 void ConvolutionFilter::initialize(int samples) {
+    // the response can be rebuilt while running when its window changes, so the previous
+    // buffers have to go back before new ones are taken
+    destroy();
+
     m_sampleCount = samples;
     m_shiftOffset = 0;
     m_shiftRegister = new float[samples];
@@ -87,6 +91,12 @@ void ConvolutionFilter::destroy() {
 }
 
 float ConvolutionFilter::f(float sample) {
+    // a missing impulse response leaves no taps, the shift register write would run off a zero
+    // sized allocation and the offset wrap would divide by zero, pass the dry signal instead
+    if (m_sampleCount <= 0) {
+        return sample;
+    }
+
     m_shiftRegister[m_shiftOffset] = sample;
 
     const int first_count =

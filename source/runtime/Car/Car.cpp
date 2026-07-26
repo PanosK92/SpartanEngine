@@ -523,31 +523,70 @@ namespace spartan
             Renderer::DrawLine(previous, previous - direction_at_end * radius * 0.28f - radial * radius * 0.16f, color, color);
         }
 
+        // draws one collision shape exactly as physx holds it, every simulated body goes through
+        // here so the skeleton can never drift from the geometry the solver is actually using
         template<typename Transform>
-        void draw_skeleton_chassis_shapes(physx::PxRigidDynamic* body, Transform&& to_render)
+        void draw_skeleton_shape(
+            const physx::PxTransform& shape_pose,
+            const physx::PxGeometry& shape_geometry,
+            const Color& color,
+            Transform&& to_render
+        )
         {
-            if (!body)
+            auto line = [&](const physx::PxVec3& a, const physx::PxVec3& b)
             {
-                return;
-            }
+                Renderer::DrawLine(to_render(a), to_render(b), color, color);
+            };
 
-            const physx::PxU32 shape_count = body->getNbShapes();
-            if (shape_count == 0)
+            auto ring = [&](
+                const physx::PxVec3& center,
+                const physx::PxVec3& axis_a,
+                const physx::PxVec3& axis_b,
+                float radius
+            )
             {
-                return;
-            }
-            std::vector<physx::PxShape*> shapes(shape_count);
-            body->getShapes(shapes.data(), shape_count);
-            for (physx::PxShape* shape : shapes)
+                const int segments = 16;
+                physx::PxVec3 previous = center + axis_a * radius;
+                for (int segment = 1; segment <= segments; segment++)
+                {
+                    const float angle = static_cast<float>(segment) / static_cast<float>(segments) * math::pi * 2.0f;
+                    const physx::PxVec3 point = center + (axis_a * cosf(angle) + axis_b * sinf(angle)) * radius;
+                    line(previous, point);
+                    previous = point;
+                }
+            };
+
+            // half of a ring, bulging towards axis_b, which is how a capsule end cap is shaped
+            auto arc = [&](
+                const physx::PxVec3& center,
+                const physx::PxVec3& axis_a,
+                const physx::PxVec3& axis_b,
+                float radius
+            )
             {
-                const physx::PxTransform shape_pose = body->getGlobalPose() * shape->getLocalPose();
-                const physx::PxGeometry& shape_geometry = shape->getGeometry();
-                if (shape_geometry.getType() == physx::PxGeometryType::eCONVEXMESH)
+                const int segments = 8;
+                physx::PxVec3 previous = center + axis_a * radius;
+                for (int segment = 1; segment <= segments; segment++)
+                {
+                    const float angle = static_cast<float>(segment) / static_cast<float>(segments) * math::pi;
+                    const physx::PxVec3 point = center + (axis_a * cosf(angle) + axis_b * sinf(angle)) * radius;
+                    line(previous, point);
+                    previous = point;
+                }
+            };
+
+            const physx::PxVec3 local_x = shape_pose.q.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
+            const physx::PxVec3 local_y = shape_pose.q.rotate(physx::PxVec3(0.0f, 1.0f, 0.0f));
+            const physx::PxVec3 local_z = shape_pose.q.rotate(physx::PxVec3(0.0f, 0.0f, 1.0f));
+
+            switch (shape_geometry.getType())
+            {
+                case physx::PxGeometryType::eCONVEXMESH:
                 {
                     const physx::PxConvexMeshGeometry& geometry = static_cast<const physx::PxConvexMeshGeometry&>(shape_geometry);
                     if (!geometry.convexMesh)
                     {
-                        continue;
+                        break;
                     }
                     const physx::PxVec3* vertices = geometry.convexMesh->getVertices();
                     const physx::PxU8* indices = geometry.convexMesh->getIndexBuffer();
@@ -562,11 +601,15 @@ namespace spartan
                         {
                             const physx::PxU8 index_a = indices[polygon.mIndexBase + edge_index];
                             const physx::PxU8 index_b = indices[polygon.mIndexBase + (edge_index + 1) % polygon.mNbVerts];
-                            Renderer::DrawLine(to_render(shape_pose.transform(geometry.scale.transform(vertices[index_a]))), to_render(shape_pose.transform(geometry.scale.transform(vertices[index_b]))), skeleton_color_collision, skeleton_color_collision);
+                            line(
+                                shape_pose.transform(geometry.scale.transform(vertices[index_a])),
+                                shape_pose.transform(geometry.scale.transform(vertices[index_b]))
+                            );
                         }
                     }
+                    break;
                 }
-                else if (shape_geometry.getType() == physx::PxGeometryType::eBOX)
+                case physx::PxGeometryType::eBOX:
                 {
                     const physx::PxBoxGeometry& geometry = static_cast<const physx::PxBoxGeometry&>(shape_geometry);
                     const physx::PxVec3 h = geometry.halfExtents;
@@ -574,9 +617,93 @@ namespace spartan
                     const int edges[12][2] = { {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7} };
                     for (const auto& edge : edges)
                     {
-                        Renderer::DrawLine(to_render(shape_pose.transform(vertices[edge[0]])), to_render(shape_pose.transform(vertices[edge[1]])), skeleton_color_collision, skeleton_color_collision);
+                        line(shape_pose.transform(vertices[edge[0]]), shape_pose.transform(vertices[edge[1]]));
                     }
+                    break;
                 }
+                case physx::PxGeometryType::eCAPSULE:
+                {
+                    // a physx capsule runs along its local x, the caps sit at plus and minus the half height
+                    const physx::PxCapsuleGeometry& geometry = static_cast<const physx::PxCapsuleGeometry&>(shape_geometry);
+                    const physx::PxVec3 cap_a = shape_pose.p - local_x * geometry.halfHeight;
+                    const physx::PxVec3 cap_b = shape_pose.p + local_x * geometry.halfHeight;
+                    ring(cap_a, local_y, local_z, geometry.radius);
+                    ring(cap_b, local_y, local_z, geometry.radius);
+                    line(cap_a + local_y * geometry.radius, cap_b + local_y * geometry.radius);
+                    line(cap_a - local_y * geometry.radius, cap_b - local_y * geometry.radius);
+                    line(cap_a + local_z * geometry.radius, cap_b + local_z * geometry.radius);
+                    line(cap_a - local_z * geometry.radius, cap_b - local_z * geometry.radius);
+                    arc(cap_a, local_y, -local_x, geometry.radius);
+                    arc(cap_a, local_z, -local_x, geometry.radius);
+                    arc(cap_b, local_y, local_x, geometry.radius);
+                    arc(cap_b, local_z, local_x, geometry.radius);
+                    break;
+                }
+                case physx::PxGeometryType::eSPHERE:
+                {
+                    const physx::PxSphereGeometry& geometry = static_cast<const physx::PxSphereGeometry&>(shape_geometry);
+                    ring(shape_pose.p, local_x, local_y, geometry.radius);
+                    ring(shape_pose.p, local_y, local_z, geometry.radius);
+                    ring(shape_pose.p, local_z, local_x, geometry.radius);
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
+            }
+        }
+
+        // a rubber bush is not a ball joint, so it gets a barrel across the load path and a colour that
+        // tracks how much of its travel it is using. the deflection is under a millimetre either way
+        void draw_skeleton_bushing(physx::PxJoint* joint, const math::Vector3& pivot, const math::Vector3& outboard, float max_deflection)
+        {
+            float load = 0.0f;
+            if (physx::PxD6Joint* bush = joint ? joint->is<physx::PxD6Joint>() : nullptr)
+            {
+                const physx::PxVec3 offset = bush->getRelativeTransform().p;
+                if (std::isfinite(offset.x) && std::isfinite(offset.y) && std::isfinite(offset.z))
+                {
+                    load = std::clamp(offset.magnitude() / std::max(max_deflection, 0.0001f), 0.0f, 1.0f);
+                }
+            }
+
+            const Color bush_color = Color(0.55f + load * 0.45f, 0.45f - load * 0.28f, 0.85f - load * 0.55f, 1.0f);
+            math::Vector3 along = outboard - pivot;
+            if (along.LengthSquared() < 0.000001f)
+            {
+                draw_skeleton_joint(pivot, bush_color);
+                return;
+            }
+            along.Normalize();
+            draw_skeleton_cylinder(pivot - along * 0.022f, pivot + along * 0.022f, 0.030f + load * 0.008f, bush_color);
+            Renderer::DrawSphere(pivot, 0.014f, 5, bush_color);
+        }
+
+        template<typename Transform>
+        void draw_skeleton_actor_shapes(physx::PxRigidActor* actor, const Color& color, Transform&& to_render)
+        {
+            if (!actor)
+            {
+                return;
+            }
+
+            const physx::PxU32 shape_count = actor->getNbShapes();
+            if (shape_count == 0)
+            {
+                return;
+            }
+
+            std::vector<physx::PxShape*> shapes(shape_count);
+            actor->getShapes(shapes.data(), shape_count);
+            for (physx::PxShape* shape : shapes)
+            {
+                draw_skeleton_shape(
+                    actor->getGlobalPose() * shape->getLocalPose(),
+                    shape->getGeometry(),
+                    color,
+                    to_render
+                );
             }
         }
     }
@@ -926,7 +1053,7 @@ namespace spartan
         auto to_world = [&](const math::Vector3& local) { return vehicle_position + vehicle_rotation * local; };
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
         auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(from_px(value)); };
-        draw_skeleton_chassis_shapes(body, to_render);
+        draw_skeleton_actor_shapes(body, skeleton_color_collision, to_render);
 
         math::Vector3 wheel_local[4];
         math::Vector3 wheel_world[4];
@@ -1027,13 +1154,18 @@ namespace spartan
             const float caliper_size = 0.050f + brake_actuation * 0.016f;
             Renderer::DrawSphere(to_render(wheel_pose.p + wheel_radial_y * brake_radius * 0.72f + wheel_radial_z * brake_radius * 0.45f), caliper_size, 6, brake_color);
 
+            // the upright box is sized from the ball joint spread, drawing a fixed length rod here
+            // hid every geometry change the preset made to it
             const physx::PxTransform upright_pose = corner.upright->getGlobalPose();
-            const math::Vector3 upright_bottom = to_render(upright_pose.transform(physx::PxVec3(0.0f, -0.18f, 0.0f)));
-            const math::Vector3 upright_top = to_render(upright_pose.transform(physx::PxVec3(0.0f, 0.18f, 0.0f)));
-            draw_skeleton_cylinder(upright_bottom, upright_top, 0.028f, skeleton_color_control_arm);
-            draw_skeleton_joint(upright_bottom, skeleton_color_joint);
-            draw_skeleton_joint(upright_top, skeleton_color_joint);
+            draw_skeleton_actor_shapes(corner.upright, skeleton_color_control_arm, to_render);
+            draw_skeleton_joint(to_render(upright_pose.transform(corner.upright_shock_anchor)), skeleton_color_joint);
 
+            // the wheel carries a sphere for its rotational inertia, it is not the tyre outline and
+            // seeing the two apart is the only way to tell the collision proxy from the visual radius
+            draw_skeleton_actor_shapes(corner.wheel_body, skeleton_color_wheel, to_render);
+
+            physx::PxRigidDynamic* drawn_members[::car::max_suspension_members] = {};
+            int drawn_member_count = 0;
             for (int member_index = 0; member_index < corner.member_count; member_index++)
             {
                 const ::car::suspension_member& member = corner.members[member_index];
@@ -1046,8 +1178,35 @@ namespace spartan
                 const math::Vector3 end = to_render(member_pose.transform(member.local_end));
                 const bool tie_rod = is_front_wheel && multibody.rack && member_index == corner.member_count - 1;
                 const Color& member_color = tie_rod ? skeleton_color_steering : skeleton_color_control_arm;
-                draw_skeleton_cylinder(start, end, tie_rod ? 0.016f : 0.020f, member_color);
-                draw_skeleton_joint(start, tie_rod ? skeleton_color_steering : skeleton_color_joint);
+
+                // a wishbone registers its single arm under two members, one per inner pivot, so
+                // the shape has to be drawn once while both pivots still get their own marker
+                bool already_drawn = false;
+                for (int drawn = 0; drawn < drawn_member_count; drawn++)
+                {
+                    if (drawn_members[drawn] == member.actor)
+                    {
+                        already_drawn = true;
+                        break;
+                    }
+                }
+
+                if (!already_drawn)
+                {
+                    drawn_members[drawn_member_count++] = member.actor;
+                    // a wishbone is a box and a link is a capsule, both were drawn as one thin rod
+                    draw_skeleton_actor_shapes(member.actor, member_color, to_render);
+                }
+
+                // outboard is always a bearing, inboard is a rubber bush unless the preset disabled it
+                if (member.pivot_is_bushing && member.pivot_joint)
+                {
+                    draw_skeleton_bushing(member.pivot_joint, start, end, preset.bushing_max_deflection);
+                }
+                else
+                {
+                    draw_skeleton_joint(start, tie_rod ? skeleton_color_steering : skeleton_color_joint);
+                }
                 draw_skeleton_joint(end, tie_rod ? skeleton_color_steering : skeleton_color_joint);
             }
 
@@ -1071,10 +1230,49 @@ namespace spartan
             const math::Vector3 spring_force_vector = shock_axis * (suspension_force * 0.00001f);
             Renderer::DrawLine(shock_top, shock_top + spring_force_vector, spring_color, spring_color);
             Renderer::DrawLine(shock_bottom, shock_bottom - spring_force_vector, spring_color, spring_color);
+            // the shock carries three separate stages and only the first was ever drawn, so a car sitting
+            // on its packers looked identical to one riding on its springs
             const float current_compression = corner.shock_rest_length - corner.shock_length;
             if (current_compression > config.suspension_travel * preset.bump_stop_threshold)
             {
                 Renderer::DrawSphere(shock_bottom, 0.065f, 8, skeleton_color_torque);
+            }
+            if (current_compression > config.suspension_travel * preset.packer_threshold)
+            {
+                Renderer::DrawSphere(shock_bottom, 0.088f, 9, skeleton_color_long_force);
+            }
+
+            // the distance joint is a hard backstop on droop and bump that no spring force reveals
+            if (corner.travel_joint)
+            {
+                const float travel_length = corner.travel_joint->getDistance();
+                const float minimum = corner.travel_joint->getMinDistance();
+                const float maximum = corner.travel_joint->getMaxDistance();
+                const float band = std::max((maximum - minimum) * 0.06f, 0.002f);
+                const bool at_droop = travel_length > maximum - band;
+                const bool at_bump  = travel_length < minimum + band;
+                const Color travel_color = at_droop || at_bump ? skeleton_color_torque : skeleton_color_frame;
+                // the two ends of the allowed band, drawn along the shock so the remaining travel is visible
+                const math::Vector3 droop_mark = shock_top + shock_axis * -maximum;
+                const math::Vector3 bump_mark  = shock_top + shock_axis * -minimum;
+                Renderer::DrawLine(droop_mark, bump_mark, travel_color, travel_color);
+                Renderer::DrawSphere(droop_mark, at_droop ? 0.034f : 0.018f, 5, travel_color);
+                Renderer::DrawSphere(bump_mark, at_bump ? 0.034f : 0.018f, 5, travel_color);
+            }
+
+            // the steering lock, a twist limit on the upright about the chassis vertical. running out of
+            // angle produced no visual at all before, the wheel simply stopped turning
+            if (corner.steering_stop && corner.steering_limit > 0.0f)
+            {
+                const float twist = corner.steering_stop->getTwistAngle();
+                const float lock = std::clamp(fabsf(twist) / corner.steering_limit, 0.0f, 1.0f);
+                const Color lock_color = lock > 0.98f ? skeleton_color_torque : skeleton_color_steering;
+                const math::Vector3 steering_axis = vehicle_rotation * math::Vector3::Up;
+                draw_skeleton_torque_arc(wheel_world[i], steering_axis, wheel_radius * 0.86f, twist / corner.steering_limit, lock_color);
+                if (lock > 0.98f)
+                {
+                    Renderer::DrawSphere(wheel_world[i], wheel_radius * 0.30f, 8, lock_color);
+                }
             }
             physx::PxVec3 sweep_origin;
             physx::PxVec3 sweep_endpoint;
@@ -1083,6 +1281,21 @@ namespace spartan
             const Color& sweep_color = sweep_hit ? skeleton_color_contact : skeleton_color_collision;
             Renderer::DrawLine(to_render(sweep_origin), to_render(sweep_endpoint), sweep_color, sweep_color);
             Renderer::DrawSphere(to_render(sweep_endpoint), 0.025f, 6, sweep_color);
+
+            // the tread rows the contact model actually loaded, the stalk length is that row's share of
+            // the load so an uneven patch from camber or a kerb edge is visible rather than inferred
+            const int contact_rows = simulation->get_debug_contact_rows(i);
+            for (int row = 0; row < contact_rows; row++)
+            {
+                physx::PxVec3 row_point;
+                physx::PxVec3 row_normal;
+                float row_load = 0.0f;
+                simulation->get_debug_contact_row(i, row, row_point, row_normal, row_load);
+                const math::Vector3 row_base = to_render(row_point);
+                const math::Vector3 row_tip  = to_render(row_point + row_normal * (row_load * 0.00006f));
+                Renderer::DrawLine(row_base, row_tip, skeleton_color_contact, skeleton_color_contact);
+                Renderer::DrawSphere(row_base, 0.012f, 5, skeleton_color_contact);
+            }
             if (wheel.grounded)
             {
                 physx::PxVec3 wheel_forward = wheel_axis.cross(wheel.contact_normal);
@@ -1124,10 +1337,21 @@ namespace spartan
                 Renderer::DrawLine(contact, to_render(longitudinal_endpoint), skeleton_color_long_force, skeleton_color_long_force);
                 Renderer::DrawLine(contact, to_render(lateral_endpoint), skeleton_color_tire_force, skeleton_color_tire_force);
                 Renderer::DrawLine(contact, to_render(rolling_endpoint), skeleton_color_aero, skeleton_color_aero);
-                const float trail = std::max(preset.pneumatic_trail_max * (1.0f - fabsf(wheel.slip_angle) / std::max(preset.pneumatic_trail_peak, 0.01f)), 0.0f);
-                const float aligning_torque = -wheel.lateral_force * trail * preset.self_align_gain;
+                // the trail comes from the simulation, recomputing it here drew the curve fit result
+                // even when the brush model was the one steering the car
+                const float trail = simulation->get_wheel_pneumatic_trail(i);
+                const float aligning_torque = simulation->get_wheel_self_aligning_torque(i);
                 const math::Vector3 contact_normal_render = (to_render(wheel.contact_point + wheel.contact_normal) - contact).Normalized();
                 draw_skeleton_torque_arc(wheel_world[i], contact_normal_render, wheel_radius * 0.48f, aligning_torque / 500.0f, skeleton_color_steering);
+
+                // the patch the brush model derived from carcass deflection, and the point inside it where
+                // the lateral force actually acts. both are outputs of the tire model that nothing showed
+                const float patch_half = wheel.contact_patch_length * 0.5f;
+                if (patch_half > 0.0f)
+                {
+                    Renderer::DrawLine(to_render(wheel.contact_point - wheel_forward * patch_half), to_render(wheel.contact_point + wheel_forward * patch_half), skeleton_color_contact, skeleton_color_contact);
+                }
+                Renderer::DrawSphere(to_render(wheel.contact_point - wheel_forward * trail), 0.018f, 5, skeleton_color_steering);
             }
         }
 
@@ -1197,13 +1421,24 @@ namespace spartan
 
         if (multibody.rack)
         {
+            // the tie rod ends ride on the bar itself, so the marker span has to come from the
+            // shape rather than from a track fraction recomputed here
             const physx::PxTransform rack_pose = multibody.rack->getGlobalPose();
-            const float half_width = config.track_front * 0.35f;
-            const math::Vector3 rack_left = to_render(rack_pose.transform(physx::PxVec3(-half_width, 0.0f, 0.0f)));
-            const math::Vector3 rack_right = to_render(rack_pose.transform(physx::PxVec3(half_width, 0.0f, 0.0f)));
-            draw_skeleton_cylinder(rack_left, rack_right, 0.025f, skeleton_color_steering);
-            draw_skeleton_joint(rack_left, skeleton_color_steering);
-            draw_skeleton_joint(rack_right, skeleton_color_steering);
+            draw_skeleton_actor_shapes(multibody.rack, skeleton_color_steering, to_render);
+
+            physx::PxShape* rack_shape = nullptr;
+            if (multibody.rack->getNbShapes() > 0)
+            {
+                multibody.rack->getShapes(&rack_shape, 1);
+            }
+
+            if (rack_shape && rack_shape->getGeometry().getType() == physx::PxGeometryType::eBOX)
+            {
+                const float half_width =
+                    static_cast<const physx::PxBoxGeometry&>(rack_shape->getGeometry()).halfExtents.x;
+                draw_skeleton_joint(to_render(rack_pose.transform(physx::PxVec3(-half_width, 0.0f, 0.0f))), skeleton_color_steering);
+                draw_skeleton_joint(to_render(rack_pose.transform(physx::PxVec3(half_width, 0.0f, 0.0f))), skeleton_color_steering);
+            }
         }
 
         const int drivetrain_type = preset.drivetrain_type;
@@ -1256,6 +1491,34 @@ namespace spartan
             draw_skeleton_shaft(rear_diff, wheel_world[3], 0.04f, simulation->get_wheel_rotation(3), simulation->get_wheel_state(3).drive_torque * 0.00005f, wheel_drivetrain_color(3));
             const float rear_shaft_radius = drivetrain_type == 2 ? 0.035f + (1.0f - preset.torque_split_front) * 0.04f : 0.055f;
             draw_skeleton_shaft(gearbox, rear_diff, rear_shaft_radius, rear_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
+        }
+
+        // everything above reaches bodies by name, which silently misses any actor a future mechanism
+        // adds. walking the solver's own list means an unhandled body shows up wrong rather than not at all
+        for (int actor_index = 0; actor_index < multibody.actor_count; actor_index++)
+        {
+            physx::PxRigidDynamic* actor = multibody.actors[actor_index];
+            if (!actor || actor == multibody.rack)
+            {
+                continue;
+            }
+
+            bool covered = false;
+            for (int i = 0; i < 4 && !covered; i++)
+            {
+                const ::car::suspension_corner& corner = multibody.corners[i];
+                covered = actor == corner.upright || actor == corner.wheel_body;
+                for (int member_index = 0; member_index < corner.member_count && !covered; member_index++)
+                {
+                    covered = actor == corner.members[member_index].actor;
+                }
+            }
+
+            if (!covered)
+            {
+                draw_skeleton_actor_shapes(actor, skeleton_color_collision, to_render);
+                Renderer::DrawSphere(to_render(actor->getGlobalPose().p), 0.06f, 7, skeleton_color_torque);
+            }
         }
     }
 

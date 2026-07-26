@@ -341,6 +341,15 @@ namespace engine_sound
             }
             m_worker_condition.notify_one();
 
+            if (ready_count < num_samples)
+            {
+                m_debug.underrun_calls++;
+                m_debug.underrun_samples +=
+                    static_cast<std::uint64_t>(
+                        num_samples - ready_count
+                    );
+            }
+
             for (int i = 0; i < num_samples; i++)
             {
                 const float sample =
@@ -721,6 +730,7 @@ namespace engine_sound
 
         void create_upstream()
         {
+            m_applied_window_ms = -1.0f;
             m_factory =
                 spartan::CarEngineSimFerrari412::create(
                     m_impulse_response_path
@@ -812,6 +822,21 @@ namespace engine_sound
                 .setAudioParameters(
                     audio_parameters
                 );
+
+            // rebuilding the convolution reallocates, so it only happens when the value moves
+            const float window_ms = std::clamp(
+                params.impulse_window_ms,
+                2.0f,
+                250.0f
+            );
+            if (
+                m_factory &&
+                fabsf(window_ms - m_applied_window_ms) > 0.01f
+            )
+            {
+                m_applied_window_ms = window_ms;
+                m_factory->set_impulse_response_window(window_ms);
+            }
         }
 
         void prepare_resampler_input(
@@ -1026,6 +1051,9 @@ namespace engine_sound
         std::vector<float> m_worker_output;
         std::vector<float> m_generate_buffer;
         std::atomic<float> m_leveler_gain = 1.0f;
+
+        // negative so the first apply_controls after a rebuild always pushes the window down
+        float m_applied_window_ms = -1.0f;
 
         std::vector<float> m_dump_buffer;
         int m_dump_total = 0;

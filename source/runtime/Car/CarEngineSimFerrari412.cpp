@@ -19,6 +19,7 @@ Copyright(c) 2015-2026 Panos Karabelas
 #include "../Audio/Engine/Core/units.h"
 #include "../Audio/Engine/Core/vehicle.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -36,11 +37,17 @@ namespace spartan
         constexpr int cylinders_per_bank = 6;
         constexpr int bank_count = 2;
         constexpr int exhaust_count = 2;
+        // the convolution runs at the synthesizer rate, tap counts are measured against this
+        constexpr int synthesizer_sample_rate = 44100;
+        // the response peaks at 5 ms and its box like tail runs past 50, this keeps the head
+        constexpr float default_impulse_window_ms = 35.0f;
 
         std::string resolve_impulse_response_path(
             const std::string& requested_path
         )
         {
+            // this response carries the exhaust colouration, its tail is what smears the firing
+            // pulses so the length is trimmed at runtime rather than by picking a shorter file
             const std::array<std::filesystem::path, 2> candidates =
             {
                 requested_path,
@@ -443,6 +450,10 @@ namespace spartan
             engine_parameters.dynoHoldStep =
                 units::rpm(100.0);
             engine_parameters.throttle = throttle;
+            // gas dynamics run at this rate and nothing above half of it can exist in the output,
+            // raising it buys bandwidth but costs a proportional amount of the audio worker thread,
+            // past this the worker misses real time and generate falls back to filling zeros,
+            // which is heard as crackling, so this stays at the rate that was known to keep up
             engine_parameters.initialSimulationFrequency =
                 5000.0;
             engine_parameters.initialHighFrequencyGain =
@@ -578,9 +589,11 @@ namespace spartan
             {
                 impulse_response =
                     std::make_unique<ImpulseResponse>();
+                // the response is normalised to unit broadband gain now, so this is a plain
+                // wet path trim rather than a per file level that had to be retuned by ear
                 impulse_response->initialize(
                     filename,
-                    0.01
+                    1.0
                 );
             }
         }
@@ -1405,16 +1418,82 @@ namespace spartan
 
             for (int i = 0; i < exhaust_count; i++)
             {
-                const std::vector<std::int16_t> samples =
+                m_impulse_samples[i] =
                     load_pcm16_wav(
                         m_impulse_responses[i]->getFilename()
                     );
+            }
+
+            apply_impulse_response_window();
+        }
+
+    public:
+        void set_impulse_response_window(float window_ms)
+        {
+            m_impulse_window_ms = window_ms;
+            apply_impulse_response_window();
+        }
+
+    private:
+        void apply_impulse_response_window()
+        {
+            if (!m_simulator)
+            {
+                return;
+            }
+
+            for (int i = 0; i < exhaust_count; i++)
+            {
+                const std::vector<std::int16_t>& source =
+                    m_impulse_samples[i];
+                if (source.empty())
+                {
+                    continue;
+                }
+
+                // the convolution runs at the synthesizer rate, so the window converts to taps
+                // against that and not against whatever rate the file happens to be stored at
+                std::size_t count = source.size();
+                if (m_impulse_window_ms > 0.0f)
+                {
+                    const std::size_t requested =
+                        static_cast<std::size_t>(
+                            m_impulse_window_ms *
+                            0.001f *
+                            synthesizer_sample_rate
+                        );
+                    count = std::min(
+                        count,
+                        std::max<std::size_t>(requested, 16)
+                    );
+                }
+
+                std::vector<std::int16_t> windowed(
+                    source.begin(),
+                    source.begin() + static_cast<std::ptrdiff_t>(count)
+                );
+
+                // cutting a decaying response leaves a step at the end which rings as a tone of
+                // its own, so the last quarter is faded out instead
+                const std::size_t fade = std::max<std::size_t>(count / 4, 1);
+                for (std::size_t s = count - fade; s < count; s++)
+                {
+                    const float remaining =
+                        static_cast<float>(count - s) /
+                        static_cast<float>(fade);
+                    windowed[s] = static_cast<std::int16_t>(
+                        std::lround(
+                            static_cast<float>(windowed[s]) * remaining
+                        )
+                    );
+                }
+
                 m_simulator
                     ->synthesizer()
                     .initializeImpulseResponse(
-                        samples.data(),
+                        windowed.data(),
                         static_cast<unsigned int>(
-                            samples.size()
+                            windowed.size()
                         ),
                         static_cast<float>(
                             m_impulse_responses[i]->getVolume()
@@ -1433,6 +1512,12 @@ namespace spartan
             std::unique_ptr<ImpulseResponse>,
             exhaust_count
         > m_impulse_responses;
+        // kept so the window can be retrimmed without touching the disk again
+        std::array<
+            std::vector<std::int16_t>,
+            exhaust_count
+        > m_impulse_samples;
+        float m_impulse_window_ms = default_impulse_window_ms;
         std::array<
             std::unique_ptr<Function>,
             bank_count
@@ -1492,6 +1577,11 @@ namespace spartan
         m_implementation->initialize(
             impulse_response_path
         );
+    }
+
+    void CarEngineSimFerrari412::set_impulse_response_window(float window_ms)
+    {
+        m_implementation->set_impulse_response_window(window_ms);
     }
 
     void CarEngineSimFerrari412::destroy()

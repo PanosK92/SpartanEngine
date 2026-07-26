@@ -30,20 +30,46 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // input on tex is reservoir texture 2 whose x channel stores the replay seed
 
 static const int DUPLICATION_WINDOW_RADIUS = 8;
+static const int DUPLICATION_TILE_X        = THREAD_GROUP_COUNT_X + 2 * DUPLICATION_WINDOW_RADIUS;
+static const int DUPLICATION_TILE_Y        = THREAD_GROUP_COUNT_Y + 2 * DUPLICATION_WINDOW_RADIUS;
+
+// the window overlaps heavily between neighbouring threads, staging the apron in groupshared
+// turns 289 rgba32f fetches per pixel into roughly nine, out of bounds texels stage as zero
+// which never matches a live seed so the border needs no extra branch in the inner loop
+groupshared uint tile_seeds[DUPLICATION_TILE_Y][DUPLICATION_TILE_X];
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
+void main_cs(uint3 dispatch_id : SV_DispatchThreadID, uint3 group_id : SV_GroupID, uint group_index : SV_GroupIndex)
 {
     uint2 pixel = dispatch_id.xy;
     uint resolution_x, resolution_y;
     tex_uav.GetDimensions(resolution_x, resolution_y);
 
+    int2 tile_origin = int2(group_id.xy * uint2(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y)) - DUPLICATION_WINDOW_RADIUS;
+
+    const uint tile_texels = uint(DUPLICATION_TILE_X * DUPLICATION_TILE_Y);
+    for (uint i = group_index; i < tile_texels; i += THREAD_GROUP_COUNT)
+    {
+        int2 local = int2(int(i) % DUPLICATION_TILE_X, int(i) / DUPLICATION_TILE_X);
+        int2 p     = tile_origin + local;
+
+        uint seed = 0u;
+        if (p.x >= 0 && p.y >= 0 && p.x < (int)resolution_x && p.y < (int)resolution_y)
+        {
+            seed = asuint(tex[p].x);
+        }
+        tile_seeds[local.y][local.x] = seed;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
     if (pixel.x >= resolution_x || pixel.y >= resolution_y)
         return;
 
-    uint own_seed = asuint(tex[pixel].x);
+    int2 center   = int2(pixel) - tile_origin;
+    uint own_seed = tile_seeds[center.y][center.x];
 
-    // empty reservoirs and nee samples store no replay seed, nothing to correlate on
+    // empty reservoirs store no replay seed, nothing to correlate on
     if (own_seed == 0u)
     {
         tex_uav[pixel] = float4(0, 0, 0, 0);
@@ -55,19 +81,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         for (int dx = -DUPLICATION_WINDOW_RADIUS; dx <= DUPLICATION_WINDOW_RADIUS; dx++)
         {
-            if (dx == 0 && dy == 0)
-                continue;
-
-            int2 p = int2(pixel) + int2(dx, dy);
-            if (p.x < 0 || p.y < 0 || p.x >= (int)resolution_x || p.y >= (int)resolution_y)
-                continue;
-
-            if (asuint(tex[p].x) == own_seed)
-            {
-                duplicates++;
-            }
+            duplicates += (tile_seeds[center.y + dy][center.x + dx] == own_seed) ? 1u : 0u;
         }
     }
+
+    // the loop counted the center itself, drop it so a lone reservoir scores zero
+    duplicates -= 1u;
 
     tex_uav[pixel] = float4(float(duplicates) / 288.0f, 0, 0, 0);
 }

@@ -10,7 +10,7 @@
     <chassis
         mass="1420" length="4.49" width="1.77" height="1.45"
         wheelbase="2.625" track_front="1.515" track_rear="1.515"
-        center_of_mass_x="0" center_of_mass_y="-0.08" center_of_mass_z="0.184" />
+        center_of_mass_x="0" center_of_mass_y="-0.18" center_of_mass_z="0.184" />
 
     <!-- turbocharged inline four, torque in nm -->
     <engine
@@ -56,22 +56,28 @@
         front_arb_stiffness="15000" rear_arb_stiffness="12500"
         max_susp_force="30000" max_damper_velocity="5" bump_stop_stiffness="80000" bump_stop_threshold="0.88" bump_stop_progression="3"
         packer_threshold="1.05" packer_stiffness="650000"
+        bushing_stiffness_radial="14000000" bushing_stiffness_axial="3500000" bushing_damping="9000" bushing_max_deflection="0.0018"
         front_camber="-0.0261799" rear_camber="-0.0174533" front_toe="0" rear_toe="0.00349066" />
 
+    <!-- strut front so camber comes off the strut axis, sla rear on a 2.6 m swing arm, roll centre 110 mm -->
     <front_suspension mechanism="macpherson"
-        chassis_inset="0.52" upper_inner_y="0.2" lower_inner_y="-0.18" upper_upright_y="0.2" lower_upright_y="-0.19"
+        chassis_inset="0.3" upper_chassis_inset="0.5" lower_upright_inset="0.05" upper_upright_inset="0.12"
+        upper_inner_y="0.2" lower_inner_y="-0.18" upper_upright_y="0.2" lower_upright_y="-0.19"
         arm_span="0.25" strut_top_y="0.57" strut_top_inset="0.22" tie_rod_y="0.02" tie_rod_z="-0.15" link_spread_y="0.17" link_spread_z="0.23" />
 
     <rear_suspension mechanism="multi_link"
-        chassis_inset="0.5" upper_inner_y="0.18" lower_inner_y="-0.17" upper_upright_y="0.19" lower_upright_y="-0.19"
+        chassis_inset="0.314" upper_chassis_inset="0.459" lower_upright_inset="0.05" upper_upright_inset="0.12"
+        upper_inner_y="0.174" lower_inner_y="-0.145" upper_upright_y="0.19" lower_upright_y="-0.19"
         arm_span="0.22" strut_top_y="0.5" strut_top_inset="0.25" tie_rod_y="0.01" tie_rod_z="0.14" link_spread_y="0.19" link_spread_z="0.25" />
 
     <steering
         max_steer_angle="0.52" steering_rate="1.6"
         self_align_gain="1.0" steering_linearity="1.2" steering_deadzone="0.001" />
 
-    <!-- pacejka curve constants plus grip, pressure and thermal model -->
+    <!-- brush model, road performance radial, about 1190 N per degree at the 4.5 kN reference load -->
     <tires
+        tire_model_type="1" tread_stiffness_long="22000000" tread_stiffness_lat="16000000" tire_slide_friction_ratio="0.86"
+        tire_probe_rows="5" tire_probe_columns="3" tire_probe_arc="0.32" tire_crown_drop="0.005" tire_substeps="4"
         lat_B="10.5" lat_C="1.5" lat_D="1" lat_E="-0.2" long_B="16" long_C="1.55" long_D="1" long_E="-0.2" combined_long_B="8" combined_long_C="1" combined_long_E="0" combined_lat_B="6" combined_lat_C="1" combined_lat_E="0"
         load_B_scale_min="0.5" pneumatic_trail_max="0.04" pneumatic_trail_peak="0.14"
         tire_friction="1.3" min_slip_speed="0.5" load_sensitivity="0.9" load_reference="4500" rear_grip_ratio="1.0"

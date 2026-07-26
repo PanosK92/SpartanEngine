@@ -53,10 +53,17 @@ namespace engine_sound
 
     struct runtime_params
     {
-        float convolution_wet = 1.0f;
+        // fully wet meant no direct exhaust at all, every transient reached the ear only after
+        // the impulse response had already smeared it
+        float convolution_wet = 0.5f;
         float df_f_mix = 0.01f;
-        float air_noise = 1.0f;
+        // this multiplies the exhaust by zero mean noise, so at one there is no clean carrier
+        // left at all and the firing pulses arrive as shaped hiss rather than as a pitch
+        float air_noise = 0.6f;
         float leveler_target = 30000.0f / 32767.0f;
+        // how much of the exhaust response is kept, the head holds the colour that makes the
+        // engine identifiable and the tail is what turns firing pulses into a wash
+        float impulse_window_ms = 35.0f;
     };
 
     struct debug_data
@@ -80,6 +87,10 @@ namespace engine_sound
         bool dump_ready = false;
         std::uint64_t generate_calls = 0;
         std::uint64_t samples_generated = 0;
+        // the worker fills the gap with silence when it misses real time, which is heard as
+        // crackling, a rising count means the gas dynamics rate is too high for this machine
+        std::uint64_t underrun_calls = 0;
+        std::uint64_t underrun_samples = 0;
         bool initialized = false;
     };
 
