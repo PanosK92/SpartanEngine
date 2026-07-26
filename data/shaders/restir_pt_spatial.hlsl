@@ -60,14 +60,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     {
         // the resample writes into a separate slot that later rotates into the temporal history,
         // leaving sky texels untouched would carry a stale reservoir forward, clear them instead
-        float4 e0, e1, e2, e3, e4, e5;
-        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3, e4, e5);
+        float4 e0, e1, e2, e3, e4;
+        pack_reservoir(create_empty_reservoir(), e0, e1, e2, e3, e4);
         tex_reservoir0[pixel] = e0;
         tex_reservoir1[pixel] = e1;
         tex_reservoir2[pixel] = e2;
         tex_reservoir3[pixel] = e3;
         tex_reservoir4[pixel] = e4;
-        tex_reservoir5[pixel] = e5;
         return;
     }
 
@@ -85,15 +84,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel],
         tex_reservoir_prev3[pixel],
-        tex_reservoir_prev4[pixel],
-        tex_reservoir_prev5[pixel]
+        tex_reservoir_prev4[pixel]
     );
 
     if (!is_reservoir_valid(center))
         center = create_empty_reservoir();
 
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 2);
-    float center_confidence = saturate(center.confidence);
 
     // own domain target from the previous pass finalize at this same pixel, re-evaluating
     // would mismatch center.W for replay carried samples since W = weight_sum / stored target
@@ -119,9 +116,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // rgb integrand per neighbor for vector shading weights, lin 2026 6.3
     float3     stream_f       [RESTIR_PAIRING_COUNT];
 
-    float confidence_acc = center_M * center_confidence;
-    float confidence_w   = center_M;
-    float M_total        = center_M;
+    float M_total = center_M;
 
     for (uint t = 0; t < RESTIR_PAIRING_COUNT; t++)
     {
@@ -144,15 +139,18 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev1[neighbor_pixel],
             tex_reservoir_prev2[neighbor_pixel],
             tex_reservoir_prev3[neighbor_pixel],
-            tex_reservoir_prev4[neighbor_pixel],
-            tex_reservoir_prev5[neighbor_pixel]
+            tex_reservoir_prev4[neighbor_pixel]
         );
 
         if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f || neighbor.W <= 0.0f)
             continue;
 
-        // confidence feeds the m-weighted merge but does not gate participation
-        float neighbor_confidence = saturate(neighbor.confidence);
+        // the partner already carries this pixel's path, merging a copy of the sample with
+        // itself adds no information and only compounds its confidence, which is how a single
+        // high energy path grows into a stable blob, dropping the pair keeps the mis weights
+        // normalized over the smaller neighbor set so the estimator stays unbiased
+        if (neighbor.sample.seed_path == center.sample.seed_path)
+            continue;
 
         // backward shift, own sample evaluated at the partner, for pairwise mis, a failed
         // backward shift collapses the pair share to full canonical weight which stays unbiased
@@ -183,9 +181,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         stream_f       [valid_neighbors] = forward.rgb;
         valid_neighbors++;
 
-        M_total        += neighbor.M;
-        confidence_acc += neighbor.M * neighbor_confidence;
-        confidence_w   += neighbor.M;
+        M_total += neighbor.M;
     }
 
     // defensive pairwise mis weights, k == 0 gives the canonical the full weight
@@ -252,11 +248,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float w_unclamped = combined.W;
     combined.W      = soft_clamp_w(combined.W, w_clamp);
 
-    // m-weighted confidence across merged streams, blended with the center
-    float merged_confidence = (confidence_w > 0.0f) ? (confidence_acc / confidence_w) : center_confidence;
-    combined.confidence = saturate(max(center_confidence, merged_confidence));
-    combined.age        = center.age;
-
     // re-stamp the source primary g-buffer, the combine may have copied a neighbor src_*
     combined.sample.src_pos       = pos_ws;
     combined.sample.src_normal    = normal_ws;
@@ -264,14 +255,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample.src_roughness = roughness;
     combined.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4, t5;
-    pack_reservoir(combined, t0, t1, t2, t3, t4, t5);
+    float4 t0, t1, t2, t3, t4;
+    pack_reservoir(combined, t0, t1, t2, t3, t4);
     tex_reservoir0[pixel] = t0;
     tex_reservoir1[pixel] = t1;
     tex_reservoir2[pixel] = t2;
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
-    tex_reservoir5[pixel] = t5;
 
     // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
     // scalar weights keep driving resampling while the rgb sum averages out the chroma noise

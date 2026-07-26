@@ -24,8 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // core parameters, m_cap ramps from a moving baseline to the static target as the camera holds still
 static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
+// lin 2022 uses c_cap 20 and lin 2026 5 reduces it to 1 on a d^0.1 curve, neither transfers here
+// because this port has no random replay leg, so any path without a reconnection vertex cannot be
+// reused at all and the effective sample count is far below the paper's, starving the history
+// makes the whole image boil, the duplication reduction stays but on a linear curve to a floor
+// that keeps several frames of history alive
 static const uint  RESTIR_M_CAP_MIN          = 32;
 static const uint  RESTIR_M_CAP_MAX          = 128;
+static const float RESTIR_C_CAP_DUPLICATED   = 8.0f;
 
 // paired spatial reuse, lin 2026 3, three tileable self inverting gaussian pairing tables
 // sizes are near coprime so the tiling periods never align within a screen
@@ -39,14 +45,19 @@ float get_restir_m_cap()
     float ramp = saturate((t - 0.5f) / 1.0f);
     return lerp(float(RESTIR_M_CAP_MIN), float(RESTIR_M_CAP_MAX), ramp);
 }
+// duplication is the fraction of the 17x17 window carrying this pixel's replay seed
+float get_restir_m_cap_decorrelated(float duplication)
+{
+    return lerp(get_restir_m_cap(), RESTIR_C_CAP_DUPLICATED, saturate(duplication));
+}
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 uint  get_restir_light_candidates()    { return 16u; }
+// lin 2026 7 traces one path tree per pixel and lets reuse supply the sample count, that needs
+// the paper's full hybrid shift, without the replay leg the reuse rate here is too low to carry it
 uint  get_restir_initial_candidates()  { return 8u; }
 uint  get_restir_emtri_candidates()    { return 8u; }
-// rc roughness floor, below this reconnection bias grows so near mirrors fall back to replay
-float get_restir_rc_min_roughness()    { return 0.2f; }
-// single sample w cap from cb, trades firefly safety for highlight energy
-float get_restir_w_clamp()             { return buffer_frame.restir_pt_w_clamp; }
+// single sample w cap, trades firefly safety for highlight energy
+float get_restir_w_clamp()             { return 100.0f; }
 uint  get_restir_validation_period()   { return 8u; }
 // depth and normal gates for spatial reuse and temporal validity, ~26 deg keeps reuse on continuous surfaces
 static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
@@ -69,6 +80,9 @@ static const float RESTIR_RC_MIN_DISTANCE    = 0.01f;
 static const float RESTIR_RC_COS_FRONT       = 0.05f;
 // footprint threshold scale, c / 100 with c = 0.02 from the paper, larger is more conservative
 static const float RESTIR_RC_FOOTPRINT_C     = 0.0002f;
+// at or above this roughness the rc outgoing lobe is broad enough that reconnection barely
+// perturbs its angular density, so the inverse footprint test does not apply, lin 2026 4
+static const float RESTIR_RC_DIFFUSE_ROUGHNESS = 0.2f;
 // reject geometrically extreme shifts in both directions, the jacobian participates in the
 // pairwise mis denominators so this is only a numerical safety guard, not a bias knob
 static const float RESTIR_JACOBIAN_REJECT    = 8.0f;
@@ -161,10 +175,9 @@ void sample_spherical_rectangle(
     out_pos = origin + xu * x + yv * y + z0 * z;
 }
 
-// path flags
+// path flags, pack_path_info stores these in a nibble so a fifth bit needs a layout change
 static const uint PATH_FLAG_SKY      = 1 << 0;  // rc is the sky dome, rc_pos stores a unit direction
 static const uint PATH_FLAG_HAS_RC   = 1 << 1;  // reconnection vertex is valid for the reconnection shift
-static const uint PATH_FLAG_SPECULAR = 1 << 2;  // diagnostic, primary surface is specular leaning
 static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from the light nee strategy
 
 // suffix of a path starting at the primary hit, lin 2022 5 split of the radiance leaving rc
@@ -197,6 +210,8 @@ struct PathSample
     uint   flags;
 };
 
+// weight_sum is a pass local accumulator, it is never read back after a store because W and
+// target_pdf carry everything the next pass needs, so it stays out of the packed layout
 struct Reservoir
 {
     PathSample sample;
@@ -204,8 +219,6 @@ struct Reservoir
     float      M;
     float      W;
     float      target_pdf;
-    float      age;
-    float      confidence;
 };
 
 float2 octahedral_encode(float3 n)
@@ -230,37 +243,48 @@ float3 octahedral_decode(float2 e)
     return normalize(n);
 }
 
-uint pack_path_info(uint path_length, uint rc_length, uint flags)
+// rc_length never exceeds RESTIR_MAX_PATH_LENGTH and only three flag bits are defined, so both
+// fit in a nibble and the freed bytes carry the two roughnesses at u8, which is far finer than
+// any ggx lobe cares about
+uint pack_path_info(uint path_length, uint rc_length, uint flags, float rc_roughness, float src_roughness)
 {
-    return (path_length & 0xFFu) | ((rc_length & 0xFFu) << 8u) | ((flags & 0xFFFFu) << 16u);
+    uint rc_rough_u8  = uint(saturate(rc_roughness)  * 255.0f + 0.5f);
+    uint src_rough_u8 = uint(saturate(src_roughness) * 255.0f + 0.5f);
+
+    return (rc_length    & 0xFu)
+         | ((flags       & 0xFu)  <<  4u)
+         | ((rc_rough_u8 & 0xFFu) <<  8u)
+         | ((src_rough_u8 & 0xFFu) << 16u)
+         | ((path_length & 0xFFu) << 24u);
 }
 
-void unpack_path_info(uint packed, out uint path_length, out uint rc_length, out uint flags)
+void unpack_path_info(uint packed, out uint path_length, out uint rc_length, out uint flags, out float rc_roughness, out float src_roughness)
 {
-    path_length = packed & 0xFFu;
-    rc_length   = (packed >> 8u) & 0xFFu;
-    flags       = (packed >> 16u) & 0xFFFFu;
+    rc_length     = packed & 0xFu;
+    flags         = (packed >> 4u) & 0xFu;
+    rc_roughness  = float((packed >>  8u) & 0xFFu) / 255.0f;
+    src_roughness = float((packed >> 16u) & 0xFFu) / 255.0f;
+    path_length   = (packed >> 24u) & 0xFFu;
 }
 
-// reservoir texture packing, 6 x RGBA32F = 24 floats
+// reservoir texture packing, 5 x RGBA32F = 20 floats = 80 bytes, lin 2026 6.2.1
+// only the two radiance terms, rc_pos, W and target_pdf need full f32, everything else is
+// quantized or shares a slot, radiance stays f32 because photometric light intensities in this
+// engine run past the f16 ceiling
 // tex0.xyz = rc_pos
 // tex0.w   = asfloat(pack_f16x2(rc_normal_oct.x, rc_normal_oct.y))
 // tex1.xyz = rc_L_post
 // tex1.w   = asfloat(pack_f16x2(rc_outgoing_oct.x, rc_outgoing_oct.y))
-// tex2.x   = asfloat(seed_path)
-// tex2.y   = asfloat(packed: path_length | rc_length | flags)
-// tex2.z   = weight_sum
-// tex2.w   = M
-// tex3.x   = W
-// tex3.y   = target_pdf
-// tex3.z   = asfloat(pack_f16x2(rc_roughness, confidence))
-// tex3.w   = asfloat(pack_uint8x4(rc_albedo.r, rc_albedo.g, rc_albedo.b, rc_metallic))
-// tex4.xyz = rc_L_nee
+// tex2.xyz = rc_L_nee
+// tex2.w   = asfloat(pack_uint8x4(rc_albedo.r, rc_albedo.g, rc_albedo.b, rc_metallic))
+// tex3.x   = asfloat(seed_path)
+// tex3.y   = asfloat(packed: rc_length | flags | rc_roughness | src_roughness | path_length)
+// tex3.z   = W
+// tex3.w   = target_pdf
+// tex4.x   = asfloat(pack_f16x2(M, src_pos.x))
+// tex4.y   = asfloat(pack_f16x2(src_pos.y, src_pos.z))
+// tex4.z   = asfloat(pack_f16x2(src_normal_oct.x, src_normal_oct.y))
 // tex4.w   = asfloat(pack_uint8x4(src_albedo.r, src_albedo.g, src_albedo.b, src_metallic))
-// tex5.x   = asfloat(pack_f16x2(src_pos.x, src_pos.y))
-// tex5.y   = asfloat(pack_f16x2(src_pos.z, src_normal_oct.x))
-// tex5.z   = asfloat(pack_f16x2(src_normal_oct.y, src_roughness))
-// tex5.w   = asfloat(pack_f16x2(age, 0.0f))
 // src_pos is absolute world space f16, enough precision for the jacobian distance ratios
 float pack_f16x2_to_float(float a, float b)
 {
@@ -294,39 +318,33 @@ float4 unpack_float_to_uint8x4(float p)
     );
 }
 
-void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4, out float4 tex5)
+void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4)
 {
     float2 rc_normal_oct  = octahedral_encode(r.sample.rc_normal);
     float2 rc_out_oct     = octahedral_encode(r.sample.rc_outgoing_dir);
     float2 src_normal_oct = octahedral_encode(r.sample.src_normal);
 
-    tex0 = float4(r.sample.rc_pos, pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
-    tex1 = float4(r.sample.rc_L_post, pack_f16x2_to_float(rc_out_oct.x, rc_out_oct.y));
+    tex0 = float4(r.sample.rc_pos,    pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
+    tex1 = float4(r.sample.rc_L_post, pack_f16x2_to_float(rc_out_oct.x,    rc_out_oct.y));
     tex2 = float4(
-        asfloat(r.sample.seed_path),
-        asfloat(pack_path_info(r.sample.path_length, r.sample.rc_length, r.sample.flags)),
-        r.weight_sum,
-        r.M
-    );
-    tex3 = float4(
-        r.W,
-        r.target_pdf,
-        pack_f16x2_to_float(r.sample.rc_roughness, r.confidence),
+        r.sample.rc_L_nee,
         pack_uint8x4_to_float(r.sample.rc_albedo.r, r.sample.rc_albedo.g, r.sample.rc_albedo.b, r.sample.rc_metallic)
     );
-    tex4 = float4(
-        r.sample.rc_L_nee,
-        pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
+    tex3 = float4(
+        asfloat(r.sample.seed_path),
+        asfloat(pack_path_info(r.sample.path_length, r.sample.rc_length, r.sample.flags, r.sample.rc_roughness, r.sample.src_roughness)),
+        r.W,
+        r.target_pdf
     );
-    tex5 = float4(
-        pack_f16x2_to_float(r.sample.src_pos.x, r.sample.src_pos.y),
-        pack_f16x2_to_float(r.sample.src_pos.z, src_normal_oct.x),
-        pack_f16x2_to_float(src_normal_oct.y,   r.sample.src_roughness),
-        pack_f16x2_to_float(r.age,              0.0f)
+    tex4 = float4(
+        pack_f16x2_to_float(r.M,                r.sample.src_pos.x),
+        pack_f16x2_to_float(r.sample.src_pos.y, r.sample.src_pos.z),
+        pack_f16x2_to_float(src_normal_oct.x,   src_normal_oct.y),
+        pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
     );
 }
 
-Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4, float4 tex5)
+Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4)
 {
     Reservoir r;
 
@@ -337,38 +355,34 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.rc_normal       = octahedral_decode(rc_normal_oct);
     r.sample.rc_L_post       = tex1.xyz;
     r.sample.rc_outgoing_dir = octahedral_decode(rc_out_oct);
-    r.sample.seed_path       = asuint(tex2.x);
 
-    uint packed_info = asuint(tex2.y);
-    unpack_path_info(packed_info, r.sample.path_length, r.sample.rc_length, r.sample.flags);
-
-    float2 rc_rough_conf = unpack_float_to_f16x2(tex3.z);
-    float4 rc_albedo_met = unpack_float_to_uint8x4(tex3.w);
-
-    r.sample.rc_roughness = max(rc_rough_conf.x, 0.04f);
+    r.sample.rc_L_nee     = tex2.xyz;
+    float4 rc_albedo_met  = unpack_float_to_uint8x4(tex2.w);
     r.sample.rc_albedo    = rc_albedo_met.rgb;
     r.sample.rc_metallic  = rc_albedo_met.a;
-    r.confidence          = saturate(rc_rough_conf.y);
 
-    r.sample.rc_L_nee     = tex4.xyz;
+    r.sample.seed_path = asuint(tex3.x);
+
+    float rc_roughness, src_roughness;
+    unpack_path_info(asuint(tex3.y), r.sample.path_length, r.sample.rc_length, r.sample.flags, rc_roughness, src_roughness);
+    r.sample.rc_roughness  = max(rc_roughness,  0.04f);
+    r.sample.src_roughness = max(src_roughness, 0.04f);
+
+    float2 m_pos_x        = unpack_float_to_f16x2(tex4.x);
+    float2 pos_yz         = unpack_float_to_f16x2(tex4.y);
+    float2 src_normal_oct = unpack_float_to_f16x2(tex4.z);
     float4 src_albedo_met = unpack_float_to_uint8x4(tex4.w);
+
+    r.sample.src_pos      = float3(m_pos_x.y, pos_yz.x, pos_yz.y);
+    r.sample.src_normal   = octahedral_decode(src_normal_oct);
     r.sample.src_albedo   = src_albedo_met.rgb;
     r.sample.src_metallic = src_albedo_met.a;
 
-    float2 pos_xy       = unpack_float_to_f16x2(tex5.x);
-    float2 pos_z_norm_x = unpack_float_to_f16x2(tex5.y);
-    float2 norm_y_rough = unpack_float_to_f16x2(tex5.z);
-    float2 age_pad      = unpack_float_to_f16x2(tex5.w);
-
-    r.sample.src_pos       = float3(pos_xy.x, pos_xy.y, pos_z_norm_x.x);
-    r.sample.src_normal    = octahedral_decode(float2(pos_z_norm_x.y, norm_y_rough.x));
-    r.sample.src_roughness = max(norm_y_rough.y, 0.04f);
-
-    r.weight_sum = tex2.z;
-    r.M          = tex2.w;
-    r.W          = tex3.x;
-    r.target_pdf = tex3.y;
-    r.age        = age_pad.x;
+    r.M          = m_pos_x.x;
+    r.W          = tex3.z;
+    r.target_pdf = tex3.w;
+    // never stored, the resampling stream rebuilds it from scratch in every pass
+    r.weight_sum = 0.0f;
 
     return r;
 }
@@ -415,8 +429,6 @@ Reservoir create_empty_reservoir()
     r.M                      = 0;
     r.W                      = 0;
     r.target_pdf             = 0;
-    r.age                    = 0;
-    r.confidence             = 0;
     return r;
 }
 
@@ -442,7 +454,6 @@ bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float we
     if (random_value * reservoir.weight_sum < weight)
     {
         reservoir.sample = new_sample;
-        reservoir.age    = 0.0f;
         return true;
     }
     return false;
@@ -768,12 +779,14 @@ float3 clamp_sky_radiance(float3 radiance)
 
 // ray offset for self intersection avoidance, scales with position magnitude and camera distance
 // since float precision degrades with magnitude, wachter and binder simplified form
+// the magnitude term covers rounding in the world position itself and the distance term covers
+// depth reconstruction error, both grow without bound so a fixed ceiling here cancels the whole
+// point of the scaling and lets distant surfaces self hit, which reads as black gi far away
 float compute_ray_offset(float3 pos_ws)
 {
     float p_mag = max(abs(pos_ws.x), max(abs(pos_ws.y), abs(pos_ws.z)));
     float dist  = length(pos_ws - get_camera_position());
-    float ofs   = max(max(p_mag * 1e-4f, dist * 1e-4f), 2e-4f);
-    return min(ofs, 1e-2f);
+    return max(max(p_mag * 1e-5f, dist * 1e-4f), 2e-4f);
 }
 
 // diffuse vs specular selection probability for the importance sampled brdf, from lobe energy
@@ -1010,13 +1023,20 @@ float restir_primary_specular_blend(float roughness)
 }
 
 // primary ray footprint squared radius, lin 2026 eq 5 rhs without the constant scale
-// measures the world space area a primary sample represents at this hit
+// measures the world space area a primary sample represents at this hit, the solid angle is
+// the restir pixel cone, a whole sphere here made the gate grow with distance alone until it
+// rejected every reconnection past a few hundred units and left the far ground with no sample
 float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal)
 {
     float3 to_cam  = get_camera_position() - primary_pos;
     float  dist_sq = dot(to_cam, to_cam);
     float  cos_cam = max(dot(primary_normal, normalize(to_cam)), 1e-3f);
-    return dist_sq / (cos_cam * 4.0f * PI);
+
+    // pixels are square so the vertical angular size equals the horizontal one
+    float2 res_restir  = max(buffer_frame.resolution_render * buffer_frame.restir_pt_scale, 1.0f);
+    float  pixel_angle = 2.0f * tan(buffer_frame.camera_fov * 0.5f) / res_restir.x;
+
+    return dist_sq * (pixel_angle * pixel_angle) / cos_cam;
 }
 
 // lin 2026 reconnection conditions, the footprint gates are enforced at sample construction
@@ -1059,6 +1079,10 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
 
 // reconnection shift from source primary to destination, ok=false on degenerate geometry
 // visibility is checked separately so non visibility critical passes can skip the ray cast
+// this is the only shift, a random replay leg used to cover paths without a reconnection vertex
+// but it returns the radiance of a freshly retraced path while the reservoir keeps carrying the
+// original PathSample, so the stored target no longer described the stored sample and W blew up
+// whenever the replayed path was dimmer, paths without an rc simply fail to shift now
 ShiftResult try_reconnection_shift(
     PathSample src,
     float3 src_primary_pos,
@@ -1140,19 +1164,12 @@ ShiftResult try_reconnection_shift(
     return result;
 }
 
-// random replay shift, lin 2022 hybrid shift random replay leg
-// rebuilds the primary bounce at dst with the source xi and retraces the suffix, jacobian is the
-// ratio of primary brdf pdfs, handles paths reconnection cannot carry, near mirror and specular prefix
-
 // forward declarations, the helpers are defined later in this header
 bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal);
 bool trace_shadow_ray(float3 origin, float3 direction, float max_dist);
 
-// shared path tracing parameters, single copy used by both the initial trace and the replay
-// shift so the two evaluate the same integrand
-// dst independent roulette, lin 2026 6.2.4, a constant continuation probability and a shared
-// seed draw mean a replayed shift reproduces the exact termination of the source path, so
-// roulette can start early to cut suffix cost without ever failing a shift
+// shared path tracing parameters used by the initial trace suffix, a constant continuation
+// probability keeps the roulette decision dependent only on the seed draw
 static const uint  RESTIR_RR_START        = 1;
 static const float RESTIR_RR_CONTINUATION = 0.75f;
 static const float SKY_MIP_LEVEL             = 2.0f;
@@ -1208,8 +1225,6 @@ bool is_emtri_pool_active()
 
 // direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir
 // specular_blend weights the specular lobe, 1 keeps the full brdf, 0 leaves view independent diffuse for rc
-// single copy shared by the initial trace and the replay shift, the rng draw order is part of
-// the replay contract, any change here changes the replayed paths too which keeps both in sync
 float3 direct_lighting_at_vertex(
     float3 shading_pos,
     float3 shading_normal,
@@ -1383,403 +1398,6 @@ float3 direct_lighting_at_vertex(
     }
 
     return total;
-}
-
-// inline hit record for the replay suffix retrace, mirrors PathPayload but lives here for compute contexts
-struct InlineHit
-{
-    bool   hit;
-    float3 hit_position;
-    float3 hit_normal;
-    float3 geometric_normal;
-    float3 albedo;
-    float3 emission;
-    float  roughness;
-    float  metallic;
-};
-
-// replica of the closest hit shader for an inline RayQuery hit, must stay in sync with
-// closest_hit in restir_pt.hlsl so a replayed path sees the same surface data as the original
-void inline_pull_hit_data(
-    uint  instance_id,
-    uint  instance_index,
-    uint  primitive_index,
-    float2 bary_xy,
-    float3 ray_origin,
-    float3 ray_dir,
-    float  hit_t,
-    float4x3 obj_to_world_4x3,
-    float4x3 world_to_obj_4x3,
-    out InlineHit hit_out)
-{
-    // instance_id is the material index, instance_index is the tlas array index, they differ
-    MaterialParameters mat = material_parameters[instance_id];
-    GeometryInfo       geo = geometry_infos[instance_index];
-
-    uint index_base = geo.index_offset + primitive_index * 3u;
-    uint i0 = geometry_indices[index_base + 0u];
-    uint i1 = geometry_indices[index_base + 1u];
-    uint i2 = geometry_indices[index_base + 2u];
-
-    PulledVertex pv0 = geometry_vertices[geo.vertex_offset + i0];
-    PulledVertex pv1 = geometry_vertices[geo.vertex_offset + i1];
-    PulledVertex pv2 = geometry_vertices[geo.vertex_offset + i2];
-
-    float3 bary = float3(1.0f - bary_xy.x - bary_xy.y, bary_xy.x, bary_xy.y);
-
-    float3 n0 = unpack_vertex_oct(pv0.normal);
-    float3 n1 = unpack_vertex_oct(pv1.normal);
-    float3 n2 = unpack_vertex_oct(pv2.normal);
-    float3 t0 = unpack_vertex_oct(pv0.tangent);
-    float3 t1 = unpack_vertex_oct(pv1.tangent);
-    float3 t2 = unpack_vertex_oct(pv2.tangent);
-    float2 uv0 = unpack_vertex_uv(pv0.uv);
-    float2 uv1 = unpack_vertex_uv(pv1.uv);
-    float2 uv2 = unpack_vertex_uv(pv2.uv);
-
-    float3 normal_object  = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
-    float3 tangent_object = normalize(t0 * bary.x + t1 * bary.y + t2 * bary.z);
-    float2 texcoord       = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
-
-    float3x3 obj_to_world_3x3 = (float3x3)obj_to_world_4x3;
-    float3x3 world_to_obj_3x3 = (float3x3)world_to_obj_4x3;
-    float3   normal_world     = normalize(mul(normal_object, transpose(world_to_obj_3x3)));
-    float3   tangent_world    = normalize(mul(tangent_object, obj_to_world_3x3));
-
-    float3 hit_position = ray_origin + ray_dir * hit_t;
-    if (mat.is_terrain())
-    {
-        // terrain maps planar world xz with tiling as repeats per meter, matches the raster path
-        texcoord = hit_position.xz;
-    }
-    else if (geo.uv_world_space > 0.0f)
-    {
-        texcoord = compute_world_space_uv(hit_position, normal_world);
-    }
-    texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
-    if (geo.uv_rotation != 0.0f)
-        texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
-
-    // distance based mip selection, identical to closest_hit
-    float mip_level = clamp(log2(max(hit_t * 0.5f, 1.0f)), 0.0f, 4.0f);
-
-    float3 edge1_world = mul(pv1.position - pv0.position, obj_to_world_3x3);
-    float3 edge2_world = mul(pv2.position - pv0.position, obj_to_world_3x3);
-    float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
-    if (dot(geometric_normal, ray_dir) > 0.0f)
-        geometric_normal = -geometric_normal;
-    if (dot(normal_world, geometric_normal) < 0.0f)
-        normal_world = -normal_world;
-
-    float3 tangent_projected = tangent_world - geometric_normal * dot(tangent_world, geometric_normal);
-    if (dot(tangent_projected, tangent_projected) > 1e-6f)
-    {
-        tangent_world = normalize(tangent_projected);
-    }
-    else
-    {
-        float3 fallback_bitangent;
-        build_orthonormal_basis_fast(geometric_normal, tangent_world, fallback_bitangent);
-    }
-
-    if (mat.has_texture_normal())
-    {
-        uint normal_idx = instance_id + material_texture_index_normal;
-        float3 normal_sample = material_textures[normal_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
-
-        normal_sample = normal_sample * 2.0f - 1.0f;
-        normal_sample.xy *= mat.normal;
-
-        float3 bitangent = normalize(cross(geometric_normal, tangent_world));
-        float3x3 tbn     = float3x3(tangent_world, bitangent, geometric_normal);
-
-        normal_world = normalize(mul(normal_sample, tbn));
-        if (dot(normal_world, geometric_normal) < 0.0f)
-            normal_world = -normal_world;
-    }
-
-    float3 albedo = mat.color.rgb;
-    if (mat.has_texture_albedo())
-    {
-        uint   albedo_idx = instance_id + material_texture_index_albedo;
-        float4 s          = material_textures[albedo_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
-        if (mat.is_albedo_srgb())
-        {
-            s.rgb = srgb_to_linear(s.rgb);
-        }
-        albedo = s.rgb * mat.color.rgb;
-    }
-    albedo = saturate(albedo);
-
-    float roughness = mat.roughness;
-    if (mat.has_texture_roughness())
-    {
-        uint roughness_idx = instance_id + material_texture_index_roughness;
-        roughness *= material_textures[roughness_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).g;
-    }
-    roughness = max(roughness, 0.04f);
-
-    float metallic = mat.metalness;
-    if (mat.has_texture_metalness())
-    {
-        uint metallic_idx = instance_id + material_texture_index_metalness;
-        metallic *= material_textures[metallic_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).r;
-    }
-
-    // emissive calibration mirrors g_buffer and light_composition, see closest_hit in restir_pt.hlsl
-    float3 emission = float3(0, 0, 0);
-    if (mat.has_texture_emissive())
-    {
-        uint emissive_idx = instance_id + material_texture_index_emission;
-        float3 emissive_sample = material_textures[emissive_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
-        if (mat.is_emissive_srgb())
-        {
-            emissive_sample = srgb_to_linear(emissive_sample);
-        }
-        emission = luminance(emissive_sample) * albedo * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_TEXTURE);
-    }
-    if (mat.emissive_from_albedo())
-    {
-        emission = albedo * mat.emissive_strength * photometric_to_radiometric(RESTIR_EMISSIVE_NITS_FROM_ALBEDO);
-    }
-
-    hit_out.hit              = true;
-    hit_out.hit_position     = hit_position;
-    hit_out.hit_normal       = normal_world;
-    hit_out.geometric_normal = geometric_normal;
-    hit_out.albedo           = albedo;
-    hit_out.emission         = emission;
-    hit_out.roughness        = roughness;
-    hit_out.metallic         = metallic;
-}
-
-// inline ray cast and hit fetch, returns false on miss so the caller can handle sky escape
-bool inline_trace_hit(float3 origin, float3 dir, float t_max, out InlineHit hit_out)
-{
-    hit_out.hit              = false;
-    hit_out.hit_position     = float3(0, 0, 0);
-    hit_out.hit_normal       = float3(0, 1, 0);
-    hit_out.geometric_normal = float3(0, 1, 0);
-    hit_out.albedo           = float3(0, 0, 0);
-    hit_out.emission         = float3(0, 0, 0);
-    hit_out.roughness        = 1.0f;
-    hit_out.metallic         = 0.0f;
-
-    RayDesc ray;
-    ray.Origin    = origin;
-    ray.Direction = dir;
-    ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = t_max;
-
-    RayQuery<RAY_FLAG_NONE> q;
-    q.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
-    q.Proceed();
-
-    if (q.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
-        return false;
-
-    uint     inst_id   = q.CommittedInstanceID();
-    uint     inst_idx  = q.CommittedInstanceIndex();
-    uint     prim_idx  = q.CommittedPrimitiveIndex();
-    float2   bary_xy   = q.CommittedTriangleBarycentrics();
-    float    hit_t     = q.CommittedRayT();
-    float4x3 obj_to_w  = q.CommittedObjectToWorld4x3();
-    float4x3 w_to_obj  = q.CommittedWorldToObject4x3();
-
-    inline_pull_hit_data(inst_id, inst_idx, prim_idx, bary_xy, origin, dir, hit_t, obj_to_w, w_to_obj, hit_out);
-    return true;
-}
-
-// inline subpath retrace from the replayed first hit, returns radiance toward start_view_dir
-// mirrors accumulate_subpath_at_rc and trace_rc_suffix in restir_pt.hlsl draw for draw so the
-// same seed reproduces the original path exactly, the only structural difference is that the
-// first bounce brdf stays in the throughput instead of being factored out for reconnection
-float3 accumulate_replay_suffix(
-    InlineHit start_hit,
-    float3    start_view_dir,
-    uint      max_bounces,
-    inout uint seed)
-{
-    // emtri strategy carries emission when active, zero here to avoid double counting
-    float3 result = is_emtri_pool_active() ? float3(0, 0, 0) : start_hit.emission;
-    // lambert only nee at the first vertex, matches the rc construction in the initial trace
-    result += direct_lighting_at_vertex(
-        start_hit.hit_position, start_hit.hit_normal, start_hit.geometric_normal,
-        start_view_dir, start_hit.albedo, start_hit.roughness, start_hit.metallic, 0.0f, seed);
-
-    if (max_bounces < 2u)
-        return result;
-
-    uint max_bounces_remaining = max_bounces - 1u;
-
-    InlineHit cur           = start_hit;
-    float3    view_dir      = start_view_dir;
-    float3    throughput    = float3(1, 1, 1);
-    float     prev_brdf_pdf = 0.0f;
-    float3    prev_normal   = start_hit.hit_normal;
-
-    for (uint bounce = 0; bounce < max_bounces_remaining; bounce++)
-    {
-        if (bounce >= RESTIR_RR_START)
-        {
-            // constant probability so the decision only depends on the shared seed draw,
-            // identical at source and destination, lin 2026 6.2.4
-            if (random_float(seed) > RESTIR_RR_CONTINUATION)
-                break;
-            throughput /= RESTIR_RR_CONTINUATION;
-        }
-
-        float2 xi = random_float2(seed);
-        float  pdf;
-        float3 nd = sample_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, xi, pdf, 1.0f);
-
-        if (pdf < RESTIR_MIN_PDF || dot(nd, cur.hit_normal) <= 0.0f || any(isnan(nd)))
-            break;
-
-        float  unused_pdf;
-        float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf, 1.0f);
-        throughput *= brdf / pdf;
-
-        prev_brdf_pdf = pdf;
-        prev_normal   = cur.hit_normal;
-
-        float ofs = compute_ray_offset(cur.hit_position);
-        InlineHit next;
-        if (!inline_trace_hit(cur.hit_position + cur.geometric_normal * ofs, nd, 1000.0f, next))
-        {
-            // sky escape with the same mis weight as the original suffix trace
-            float w = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
-            result += throughput * sample_sky(nd) * w;
-            break;
-        }
-
-        // emissive triangle hit via brdf bounce, mis against the env probe at the previous
-        // vertex which can also reach this emitter through its cosine hemisphere
-        float w_emissive = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
-        result += throughput * next.emission * w_emissive;
-        // suffix vertices past the first use the full brdf
-        result += throughput * direct_lighting_at_vertex(
-            next.hit_position, next.hit_normal, next.geometric_normal,
-            -nd, next.albedo, next.roughness, next.metallic, 1.0f, seed);
-
-        cur      = next;
-        view_dir = -nd;
-    }
-
-    return result;
-}
-
-ShiftResult try_random_replay_shift(
-    PathSample src,
-    float3 src_pos,
-    float3 src_normal,
-    float3 src_view_dir,
-    float3 src_albedo,
-    float src_roughness,
-    float src_metallic,
-    float3 dst_pos,
-    float3 dst_normal,
-    float3 dst_view_dir,
-    float3 dst_albedo,
-    float dst_roughness,
-    float dst_metallic)
-{
-    ShiftResult result;
-    result.f_dst    = float3(0, 0, 0);
-    result.jacobian = 0.0f;
-    result.ok       = false;
-
-    // sky samples are already handled by the reconnection shift with a constant jacobian
-    if (is_sky_sample(src))
-        return result;
-
-    // nee candidates consumed their seed on light xi, replaying it as brdf xi fabricates an unrelated path, reconnection is their only valid shift
-    if (is_nee_sample(src))
-    {
-        return result;
-    }
-
-    // only replay paths reconnection cannot carry, specular prefix (no rc) or near mirror primary
-    // rough to rough samples with a valid rc that failed reconnection are left to fail so cost stays bounded
-    float rc_min_roughness = get_restir_rc_min_roughness();
-    bool specular_prefix   = !has_reconnection(src);
-    bool near_mirror       = (src_roughness < rc_min_roughness) || (dst_roughness < rc_min_roughness);
-    if (!specular_prefix && !near_mirror)
-        return result;
-
-    // replay xi at the stored seed, captured before the original xi was consumed
-    uint   replay_seed = src.seed_path;
-    float2 xi          = random_float2(replay_seed);
-
-    // each side picks its own lobe blend so the pdf_src / pdf_dst jacobian is exact
-    float src_specular_blend = restir_primary_specular_blend(src_roughness);
-    float dst_specular_blend = restir_primary_specular_blend(dst_roughness);
-
-    // src primary direction and pdf for the jacobian
-    float  pdf_src;
-    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src, src_specular_blend);
-    if (pdf_src < RESTIR_MIN_PDF || dot(dir_src, src_normal) <= 0.0f)
-        return result;
-
-    // dst replayed direction with the same xi
-    float  pdf_dst;
-    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst, dst_specular_blend);
-    if (pdf_dst < RESTIR_MIN_PDF || dot(dir_dst, dst_normal) <= 0.0f)
-        return result;
-
-    // trace dst primary bounce, first vertex of the replayed suffix
-    float ofs = compute_ray_offset(dst_pos);
-    InlineHit first_hit;
-    if (!inline_trace_hit(dst_pos + dst_normal * ofs, dir_dst, 1000.0f, first_hit))
-        return result;
-
-    // dst primary brdf factor of f_dst
-    float  pdf_eval;
-    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval, dst_specular_blend);
-    if (all(brdf_cos <= 0.0f))
-        return result;
-
-    // jacobian is pdf_src / pdf_dst, the xi to direction map is volume preserving
-    float jacobian = pdf_src / max(pdf_dst, RESTIR_MIN_PDF);
-    if (jacobian < 1.0f / RESTIR_JACOBIAN_REJECT || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
-        return result;
-
-    // retrace the suffix from the replayed primary hit, suffix_seed continues the xi sequence
-    // same bounce budget as the initial trace so the replayed integrand matches the original
-    uint   suffix_seed     = replay_seed;
-    float3 suffix_radiance = accumulate_replay_suffix(first_hit, -dir_dst, max(get_restir_max_path_length(), 2u) - 1u, suffix_seed);
-
-    result.f_dst    = brdf_cos * suffix_radiance;
-    result.jacobian = jacobian;
-    result.ok       = true;
-    return result;
-}
-
-// hybrid shift, tries the cheap reconnection shift first then falls back to random replay
-ShiftResult try_hybrid_shift(
-    PathSample src,
-    float3 src_primary_pos,
-    float3 src_normal,
-    float3 src_view_dir,
-    float3 src_albedo,
-    float src_roughness,
-    float src_metallic,
-    float3 dst_pos,
-    float3 dst_normal,
-    float3 dst_view_dir,
-    float3 dst_albedo,
-    float dst_roughness,
-    float dst_metallic)
-{
-    ShiftResult reconnection = try_reconnection_shift(
-        src, src_primary_pos, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic);
-    if (reconnection.ok)
-        return reconnection;
-
-    return try_random_replay_shift(
-        src,
-        src_primary_pos, src_normal, src_view_dir, src_albedo, src_roughness, src_metallic,
-        dst_pos,         dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic);
 }
 
 // visibility ray from dst primary to rc, sky samples test reachability to the sky

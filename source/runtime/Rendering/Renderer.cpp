@@ -979,7 +979,6 @@ namespace spartan
         m_cb_frame_cpu.frame                 = static_cast<uint32_t>(m_frame_num);
         m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
         m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
-        m_cb_frame_cpu.restir_pt_w_clamp     = std::max(cvar_restir_pt_w_clamp.GetValue(), 100.0f);
         // 0 = sdr, 1 = hdr10 pq (vulkan), 2 = hdr scrgb (d3d12 windowed)
         m_cb_frame_cpu.hdr_enabled = 0.0f;
         if (m_swapchain && m_swapchain->IsHdr())

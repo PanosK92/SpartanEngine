@@ -45,7 +45,8 @@ export function generated_resource_command(command)
     command === "material_create" ||
     command === "material_semantic_create" ||
     command === "mesh_generate" ||
-    command === "mesh_generate_batch"
+    command === "mesh_generate_batch" ||
+    command === "mesh_raw_create"
   );
 }
 
@@ -91,7 +92,10 @@ export function constrain_generated_resources(
       ].join("/"),
     }));
   }
-  else if (command === "mesh_generate")
+  else if (
+    command === "mesh_generate" ||
+    command === "mesh_raw_create"
+  )
   {
     constrained.path = [
       directory,

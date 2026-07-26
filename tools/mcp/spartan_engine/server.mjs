@@ -42,6 +42,19 @@ import {
   generated_resource_command,
   world_resource_directory,
 } from "./world_resources.mjs";
+import {
+  auto_register_world_asset,
+  resolve_world_resource_directory,
+  world_asset_compare,
+  world_asset_fork,
+  world_asset_inspect,
+  world_asset_load,
+  world_asset_promote,
+  world_asset_register,
+  world_asset_search,
+  world_material_inspect,
+  world_material_publish,
+} from "./world_asset_catalog.mjs";
 
 const project_root = get_project_root();
 await ensure_agent_memory();
@@ -144,22 +157,29 @@ async function benchmark_baseline_path(benchmark_id) {
 
 let active_resource_directory = null;
 
+async function resolve_active_resource_directory(world = null)
+{
+  return resolve_world_resource_directory(
+    async (command, args) =>
+    {
+      return engine.command(
+        command,
+        args,
+        engine_timeout_ms,
+      );
+    },
+    world,
+  );
+}
+
 async function send_engine_command(command, args = {}) {
   if (
     generated_resource_command(command) &&
     !active_resource_directory
   )
   {
-    const world = await engine.command(
-      "world_summary",
-      {},
-      engine_timeout_ms,
-    );
-    if (world.ok)
-    {
-      active_resource_directory =
-        world_resource_directory(world);
-    }
+    active_resource_directory =
+      await resolve_active_resource_directory();
   }
   if (generated_resource_command(command))
   {
@@ -178,7 +198,7 @@ async function send_engine_command(command, args = {}) {
   if (command === "world_summary" && result.ok)
   {
     active_resource_directory =
-      world_resource_directory(result);
+      await resolve_active_resource_directory(result);
   }
   else if (
     command === "context_snapshot" &&
@@ -195,6 +215,27 @@ async function send_engine_command(command, args = {}) {
   {
     active_resource_directory = null;
   }
+  if (
+    result.ok &&
+    (
+      command === "mesh_generate" ||
+      command === "mesh_raw_create" ||
+      command === "material_create" ||
+      command === "material_semantic_create" ||
+      command === "prefab_save"
+    )
+  )
+  {
+    result.asset_registration =
+      await auto_register_world_asset(
+        project_root,
+        active_resource_directory ??
+          await resolve_active_resource_directory(),
+        command,
+        args,
+        result,
+      );
+  }
   return result;
 }
 
@@ -210,6 +251,26 @@ function tool_result(result) {
     ],
     isError: !normalized.ok,
   };
+}
+
+async function catalog_tool_result(operation)
+{
+  try
+  {
+    return tool_result(await operation);
+  }
+  catch (error)
+  {
+    return tool_result(
+      structured_error(
+        error.message,
+        {
+          code: "asset_catalog_error",
+          retryable: false,
+        },
+      ),
+    );
+  }
 }
 
 const tool_registry = new Map();
@@ -1617,6 +1678,241 @@ register_tool(server, "context_snapshot", "Read engine status, world summary, an
   annotations: read_only,
   outputSchema: output_schemas.context_snapshot,
 });
+
+const world_asset_identity_schema = {
+  asset_id: z.string().optional(),
+  id: z.string().optional(),
+  version: z.union([z.string(), z.number().int()]).optional(),
+};
+
+register_local_tool(
+  "world_asset_search",
+  {
+    description: "Search the active world's reusable asset catalog by semantic name, aliases, tags, type, dimensions, style, and material constraints.",
+    inputSchema: {
+      query: z.string().optional(),
+      type: z.enum(["mesh", "material", "prefab"]).optional(),
+      tags: z.array(z.string()).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_search(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_asset_inspect",
+  {
+    description: "Inspect one reusable world asset, its immutable versions, metadata, and active promoted version.",
+    inputSchema: world_asset_identity_schema,
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_inspect(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_asset_register",
+  {
+    description: "Copy a mesh, material, or prefab into an immutable world-local asset version and register its semantic metadata.",
+    inputSchema: {
+      type: z.enum(["mesh", "material", "prefab"]),
+      name: z.string().min(1),
+      asset_id: z.string().optional(),
+      path: z.string(),
+      aliases: z.array(z.string()).optional(),
+      tags: z.array(z.string()).optional(),
+      constraints: z.record(z.string(), z.any()).optional(),
+      source: z.any().optional(),
+      parent_version: z.string().optional(),
+      quality_score: z.number().min(0).max(100).optional(),
+      verified: z.boolean().optional(),
+      checks: z.record(z.string(), z.boolean()).optional(),
+      notes: z.string().optional(),
+      promote: z.boolean().optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_register(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_asset_fork",
+  {
+    description: "Fork an immutable asset version into an editable source draft without changing the promoted version.",
+    inputSchema: world_asset_identity_schema,
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_fork(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_asset_compare",
+  {
+    description: "Compare two immutable versions of one reusable world asset, including quality score and verification differences.",
+    inputSchema: {
+      asset_id: z.string().optional(),
+      id: z.string().optional(),
+      left_version: z.union([z.string(), z.number().int()]).optional(),
+      right_version: z.union([z.string(), z.number().int()]).optional(),
+      candidate_version: z.union([z.string(), z.number().int()]).optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_compare(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_asset_promote",
+  {
+    description: "Promote a verified candidate only when required checks pass and its quality score exceeds the active version by the threshold.",
+    inputSchema: {
+      asset_id: z.string().optional(),
+      id: z.string().optional(),
+      version: z.union([z.string(), z.number().int()]).optional(),
+      candidate_version: z.union([z.string(), z.number().int()]).optional(),
+      threshold: z.number().min(0).optional(),
+      required_checks: z.array(z.string()).optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_promote(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_asset_load",
+  {
+    description: "Load the active or requested immutable asset version into the engine, instantiating prefabs when applicable.",
+    inputSchema: {
+      ...world_asset_identity_schema,
+      parent_id: z.string().optional(),
+      name: z.string().optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_load(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+      send_engine_command,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_material_inspect",
+  {
+    description: "Inspect a cataloged material version and its live native material properties and texture slots.",
+    inputSchema: world_asset_identity_schema,
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async (args) => catalog_tool_result(
+    world_material_inspect(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+      send_engine_command,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_material_fork",
+  {
+    description: "Fork a cataloged material version into editable source JSON without mutating its immutable XML.",
+    inputSchema: world_asset_identity_schema,
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_fork(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_material_publish",
+  {
+    description: "Publish editable material source JSON through native material commands as a new immutable XML candidate version.",
+    inputSchema: {
+      ...world_asset_identity_schema,
+      source: z.record(z.string(), z.any()).optional(),
+      properties: z.record(z.string(), z.number()).optional(),
+      textures: z.record(z.string(), z.any()).optional(),
+      quality_score: z.number().min(0).max(100).optional(),
+      verified: z.boolean().optional(),
+      checks: z.record(z.string(), z.boolean()).optional(),
+      notes: z.string().optional(),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_material_publish(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+      send_engine_command,
+    ),
+  ),
+);
 
 register_tool(server, "camera_snapshot", "Read the live editor camera position and basis vectors for camera-relative placement.", {}, "camera_snapshot", {
   annotations: read_only,
@@ -3257,6 +3553,55 @@ register_local_tool(
       args,
     );
     return tool_result(result);
+  },
+);
+
+register_tool(
+  server,
+  "mesh_raw_create",
+  "Create, save, and cache an immutable mesh from explicit vertex and index data. Intended for focused reusable asset authoring.",
+  {
+    path: z.string(),
+    vertices: z.union([
+      z.array(z.number()).min(9),
+      z.array(vector3).min(3),
+    ]),
+    indices: z.array(z.number().int().min(0)).min(3),
+    normals: z.union([
+      z.array(z.number()),
+      z.array(vector3),
+    ]).optional(),
+    uvs: z.union([
+      z.array(z.number()),
+      z.array(vector2),
+    ]).optional(),
+    colors: z.union([
+      z.array(z.number()),
+      z.array(vector4),
+    ]).optional(),
+    material_indices: z.array(z.number().int().min(0)).optional(),
+    name: z.string().optional(),
+  },
+  "mesh_raw_create",
+  {
+    annotations: edit_tool,
+    outputSchema: output_schemas.parametric_mesh,
+  },
+);
+
+register_tool(
+  server,
+  "mesh_raw_get",
+  "Read explicit vertex, index, normal, UV, color, and material-index data from a cached or file-backed mesh.",
+  {
+    path: z.string().optional(),
+    name: z.string().optional(),
+    sub_mesh_index: z.number().int().min(0).optional(),
+  },
+  "mesh_raw_get",
+  {
+    annotations: read_only,
+    outputSchema: output_schemas.generic,
   },
 );
 

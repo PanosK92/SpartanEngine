@@ -520,7 +520,6 @@ PathSample sample_light_candidate(
 PathSample trace_path_from_primary(
     float3 primary_pos,
     float3 primary_normal,
-    float primary_roughness,
     float3 dir,
     float dir_pdf,
     uint replay_seed,
@@ -602,8 +601,8 @@ PathSample trace_path_from_primary(
 
     // scene independent reconnection criteria, lin 2026 4
     // dual ray footprint thresholds bound the area density change at rc and the angular density
-    // change of the rc outgoing lobe, plus a single vertex roughness gate at the vertex before rc
-    float rc_min_roughness    = get_restir_rc_min_roughness();
+    // change of the rc outgoing lobe, the primary lobe is cosine only so its roughness never
+    // invalidates reconnection
     float dist_sq             = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
     float footprint_threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_normal);
 
@@ -612,22 +611,21 @@ PathSample trace_path_from_primary(
     float fp_forward   = dist_sq / max(dir_pdf * cos_at_rc, 1e-6f);
 
     // inverse footprint, reciprocal area density of the primary when traced back from rc,
-    // skipped for terminal paths where reconnection cannot change the outgoing density
-    float fp_inverse = 1e30f;
-    if (first_pdf > RESTIR_MIN_PDF)
+    // skipped for terminal paths and for diffuse rc, where reconnection cannot meaningfully
+    // change the outgoing density, lin 2026 4, keeping the test there only rejects reconnections
+    // that were safe and leaves those paths unreusable
+    bool  rc_is_diffuse = s.rc_roughness >= RESTIR_RC_DIFFUSE_ROUGHNESS;
+    float fp_inverse    = 1e30f;
+    if (first_pdf > RESTIR_MIN_PDF && !rc_is_diffuse)
     {
         float cos_at_primary = abs(dot(primary_normal, dir));
         fp_inverse           = dist_sq / max(first_pdf * cos_at_primary, 1e-6f);
     }
 
-    bool rc_valid = (primary_roughness >= rc_min_roughness)
-                 && (min(fp_forward, fp_inverse) >= footprint_threshold)
+    bool rc_valid = (min(fp_forward, fp_inverse) >= footprint_threshold)
                  && (dist_sq >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
     if (rc_valid)
         s.flags |= PATH_FLAG_HAS_RC;
-
-    if (primary_roughness < rc_min_roughness)
-        s.flags |= PATH_FLAG_SPECULAR;
 
     return s;
 }
@@ -644,14 +642,13 @@ void ray_gen()
     if (depth <= 0.0f)
     {
         Reservoir empty = create_empty_reservoir();
-        float4 t0, t1, t2, t3, t4, t5;
-        pack_reservoir(empty, t0, t1, t2, t3, t4, t5);
+        float4 t0, t1, t2, t3, t4;
+        pack_reservoir(empty, t0, t1, t2, t3, t4);
         tex_reservoir0[launch_id] = t0;
         tex_reservoir1[launch_id] = t1;
         tex_reservoir2[launch_id] = t2;
         tex_reservoir3[launch_id] = t3;
         tex_reservoir4[launch_id] = t4;
-        tex_reservoir5[launch_id] = t5;
         tex_uav[launch_id] = float4(0, 0, 0, 1);
         return;
     }
@@ -697,7 +694,7 @@ void ray_gen()
 
         if (dir_valid)
         {
-            candidate = trace_path_from_primary(pos_ws, normal_ws, roughness, dir, source_pdf, replay_seed, seed);
+            candidate = trace_path_from_primary(pos_ws, normal_ws, dir, source_pdf, replay_seed, seed);
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
@@ -803,10 +800,6 @@ void ray_gen()
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
     reservoir.W   = soft_clamp_w(reservoir.W, w_clamp);
 
-    float total_candidates     = n_brdf + n_light + n_emtri;
-    float sample_count_quality = saturate(reservoir.M / max(total_candidates, 1.0f));
-    reservoir.confidence       = (final_target > 0.0f) ? sample_count_quality : 0.0f;
-    reservoir.age              = 0.0f;
 
     // stamp the source primary g-buffer onto the chosen sample, all candidates from this pixel
     // share the same primary surface so we only need to write it once after ris finalization
@@ -818,14 +811,13 @@ void ray_gen()
     reservoir.sample.src_roughness = roughness;
     reservoir.sample.src_metallic  = metallic;
 
-    float4 t0, t1, t2, t3, t4, t5;
-    pack_reservoir(reservoir, t0, t1, t2, t3, t4, t5);
+    float4 t0, t1, t2, t3, t4;
+    pack_reservoir(reservoir, t0, t1, t2, t3, t4);
     tex_reservoir0[launch_id] = t0;
     tex_reservoir1[launch_id] = t1;
     tex_reservoir2[launch_id] = t2;
     tex_reservoir3[launch_id] = t3;
     tex_reservoir4[launch_id] = t4;
-    tex_reservoir5[launch_id] = t5;
 
     canonical_gi /= n_brdf;
     canonical_gi /= max(albedo, 0.1f);

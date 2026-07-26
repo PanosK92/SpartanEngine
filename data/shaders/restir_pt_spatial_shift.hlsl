@@ -56,8 +56,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel],
         tex_reservoir_prev3[pixel],
-        tex_reservoir_prev4[pixel],
-        tex_reservoir_prev5[pixel]
+        tex_reservoir_prev4[pixel]
     );
 
     bool has_sample = depth > 0.0f && is_reservoir_valid(center) && center.M > 0.0f && center.W > 0.0f;
@@ -66,11 +65,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float  linear_depth = linearize_depth(depth);
         float3 pos_ws       = get_position(uv);
         float3 normal_ws    = get_normal(uv);
-        float3 view_dir     = normalize(get_camera_position() - pos_ws);
-        float4 material     = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-        float3 albedo       = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb);
-        float  roughness    = max(material.r, 0.04f);
-        float  metallic     = material.g;
 
         for (uint t = 0; t < RESTIR_PAIRING_COUNT; t++)
         {
@@ -88,14 +82,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             float3 partner_normal_ws = get_normal(partner_uv);
             float3 partner_view_dir  = normalize(get_camera_position() - partner_pos_ws);
 
-            ShiftResult shift = try_hybrid_shift(
+            ShiftResult shift = try_reconnection_shift(
                 center.sample,
                 pos_ws,
-                normal_ws,
-                view_dir,
-                albedo,
-                roughness,
-                metallic,
                 partner_pos_ws,
                 partner_normal_ws,
                 partner_view_dir,

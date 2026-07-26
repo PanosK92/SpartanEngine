@@ -297,6 +297,62 @@ namespace spartan
             return result;
         }
 
+        bool path_is_within(
+            const string& path,
+            const string& directory
+        )
+        {
+            filesystem::path normalized_path =
+                filesystem::absolute(path).lexically_normal();
+            filesystem::path normalized_directory =
+                filesystem::absolute(directory).lexically_normal();
+
+            auto path_it = normalized_path.begin();
+            auto directory_it = normalized_directory.begin();
+            for (
+                ;
+                directory_it != normalized_directory.end();
+                ++directory_it, ++path_it
+            )
+            {
+                if (path_it == normalized_path.end())
+                {
+                    return false;
+                }
+
+                string path_part = path_it->string();
+                string directory_part = directory_it->string();
+                transform(
+                    path_part.begin(),
+                    path_part.end(),
+                    path_part.begin(),
+                    [](unsigned char character)
+                    {
+                        return static_cast<char>(
+                            tolower(character)
+                        );
+                    }
+                );
+                transform(
+                    directory_part.begin(),
+                    directory_part.end(),
+                    directory_part.begin(),
+                    [](unsigned char character)
+                    {
+                        return static_cast<char>(
+                            tolower(character)
+                        );
+                    }
+                );
+                if (path_part != directory_part)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
 
         void InitializeCoreLua()
         {
@@ -1441,6 +1497,13 @@ namespace spartan
         {
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
+            const string mcp_resource_directory =
+                directory + "mcp_resources/";
+            const string active_mcp_resource_directory =
+                world_file_path_to_resource_directory(
+                    World::GetFilePath()
+                ) +
+                "mcp_resources/";
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
             set<IResource*> referenced_resources;
@@ -1586,6 +1649,32 @@ namespace spartan
                     default: continue;
                 }
 
+                const string current_path =
+                    resource->GetResourceFilePath();
+                if (
+                    !current_path.empty() &&
+                    (
+                        path_is_within(
+                            current_path,
+                            mcp_resource_directory
+                        ) ||
+                        path_is_within(
+                            current_path,
+                            active_mcp_resource_directory
+                        )
+                    )
+                )
+                {
+                    pending_saves.push_back(
+                        {
+                            resource.get(),
+                            current_path,
+                            false
+                        }
+                    );
+                    continue;
+                }
+
                 // strip an embedded extension so a name that already carries one does not save with it doubled
                 string name = resource->GetObjectName();
                 if (name.size() > ext.size() && name.compare(name.size() - ext.size(), ext.size(), ext) == 0)
@@ -1624,6 +1713,16 @@ namespace spartan
             last_resource_cleanup_failures.clear();
             for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
             {
+                if (
+                    path_is_within(
+                        existing_file,
+                        mcp_resource_directory
+                    )
+                )
+                {
+                    continue;
+                }
+
                 if (used_file_names.find(to_file_key(FileSystem::GetFileNameFromFilePath(existing_file))) == used_file_names.end())
                 {
                     if (FileSystem::Delete(existing_file))

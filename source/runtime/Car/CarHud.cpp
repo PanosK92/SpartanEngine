@@ -1617,7 +1617,7 @@ namespace spartan::car_hud
                 ImGui::SliderFloat("convolution_wet", &s.params.convolution_wet,  0.0f, 1.0f, "%.3f");
                 ImGui::SliderFloat("df_f_mix",         &s.params.df_f_mix,         0.0f, 0.1f, "%.3f");
                 ImGui::SliderFloat("air_noise",        &s.params.air_noise,        0.0f, 1.0f, "%.3f");
-                ImGui::SliderFloat("leveler_target",   &s.params.leveler_target,   0.05f, 1.5f, "%.3f");
+                ImGui::SliderFloat("leveler_target",   &s.params.leveler_target,   0.05f, 1.0f, "%.3f");
                 ImGui::SliderFloat("exhaust_tail_ms",  &s.params.impulse_window_ms, 2.0f, 250.0f, "%.1f ms");
                 ImGui::TextColored(
                     imvec4_from_u32(text_dim),

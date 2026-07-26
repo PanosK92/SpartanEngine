@@ -811,10 +811,13 @@ namespace engine_sound
                 0.0f,
                 1.0f
             );
+            // a target above full scale would put the limiter ceiling past what int16 can hold, which
+            // hands the transients straight back to the hard clip the limiter exists to avoid
             audio_parameters.levelerTarget =
-                std::max(
+                std::clamp(
                     params.leveler_target,
-                    0.0f
+                    0.0f,
+                    1.0f
                 ) *
                 32767.0f;
             m_simulator

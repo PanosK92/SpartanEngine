@@ -61,6 +61,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <filesystem>
 #include <iomanip>
 #include <initializer_list>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <typeinfo>
@@ -257,6 +258,196 @@ namespace spartan
             }
 
             return values.size() == expected_count;
+        }
+
+        bool parse_float_array(
+            const std::string& value,
+            std::vector<float>& values,
+            size_t max_count
+        )
+        {
+            if (value.empty())
+            {
+                return false;
+            }
+
+            std::stringstream stream(value);
+            std::string part;
+            while (std::getline(stream, part, ','))
+            {
+                if (values.size() >= max_count)
+                {
+                    return false;
+                }
+
+                float parsed = 0.0f;
+                if (!parse_float(part, parsed))
+                {
+                    return false;
+                }
+                values.emplace_back(parsed);
+            }
+
+            return !values.empty();
+        }
+
+        bool parse_index_array(
+            const std::string& value,
+            std::vector<uint32_t>& values,
+            size_t max_count
+        )
+        {
+            if (value.empty())
+            {
+                return false;
+            }
+
+            std::stringstream stream(value);
+            std::string part;
+            while (std::getline(stream, part, ','))
+            {
+                if (values.size() >= max_count || part.empty())
+                {
+                    return false;
+                }
+                if (
+                    !std::all_of(
+                        part.begin(),
+                        part.end(),
+                        [](unsigned char character)
+                        {
+                            return std::isdigit(character) != 0;
+                        }
+                    )
+                )
+                {
+                    return false;
+                }
+
+                char* end = nullptr;
+                const unsigned long long parsed =
+                    std::strtoull(part.c_str(), &end, 10);
+                if (
+                    end == part.c_str() ||
+                    *end != '\0' ||
+                    parsed > UINT32_MAX
+                )
+                {
+                    return false;
+                }
+                values.emplace_back(static_cast<uint32_t>(parsed));
+            }
+
+            return !values.empty();
+        }
+
+        bool path_is_within(
+            const std::filesystem::path& path,
+            const std::filesystem::path& directory
+        )
+        {
+            const std::filesystem::path normalized_path =
+                std::filesystem::absolute(path).lexically_normal();
+            const std::filesystem::path normalized_directory =
+                std::filesystem::absolute(directory).lexically_normal();
+
+            auto path_it = normalized_path.begin();
+            auto directory_it = normalized_directory.begin();
+            for (
+                ;
+                directory_it != normalized_directory.end();
+                ++directory_it, ++path_it
+            )
+            {
+                if (path_it == normalized_path.end())
+                {
+                    return false;
+                }
+                if (
+                    to_lower_copy(path_it->string()) !=
+                    to_lower_copy(directory_it->string())
+                )
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        std::string active_mcp_resource_directory()
+        {
+            return
+                World::GetResourceDirectory(
+                    World::GetFilePath()
+                ) +
+                "mcp_resources/";
+        }
+
+        std::optional<std::string> resolve_mcp_mesh_path(
+            const McpRequest& request,
+            std::string& error
+        )
+        {
+            if (World::GetFilePath().empty())
+            {
+                error = "active world has no file path";
+                return std::nullopt;
+            }
+
+            const std::optional<std::string> path_arg =
+                get_argument(request, "path");
+            const std::optional<std::string> name_arg =
+                get_argument(request, "name");
+            if (
+                (!path_arg || path_arg->empty()) &&
+                (!name_arg || name_arg->empty())
+            )
+            {
+                error = "missing path or name";
+                return std::nullopt;
+            }
+
+            const std::filesystem::path meshes_directory =
+                std::filesystem::path(
+                    active_mcp_resource_directory()
+                ) /
+                "meshes";
+            std::filesystem::path requested =
+                path_arg && !path_arg->empty()
+                ? std::filesystem::path(*path_arg)
+                : std::filesystem::path(*name_arg);
+
+            std::filesystem::path resolved;
+            if (
+                requested.is_absolute() ||
+                path_is_within(requested, meshes_directory)
+            )
+            {
+                resolved = requested;
+            }
+            else
+            {
+                resolved = meshes_directory / requested;
+            }
+
+            if (resolved.extension() != EXTENSION_MESH)
+            {
+                resolved += EXTENSION_MESH;
+            }
+            resolved = std::filesystem::absolute(
+                resolved
+            ).lexically_normal();
+            if (!path_is_within(resolved, meshes_directory))
+            {
+                error =
+                    "mesh path must be inside the active world's mcp_resources/meshes directory";
+                return std::nullopt;
+            }
+
+            return FileSystem::GetRelativePath(
+                resolved.generic_string()
+            );
         }
 
         bool parse_profile(
@@ -3744,6 +3935,36 @@ namespace spartan
             json += ",\"retained_count\":" +
                 std::to_string(after.size());
             json += "}";
+            return json;
+        }
+
+        std::string command_world_resource_directory_get()
+        {
+            const std::string world_path = World::GetFilePath();
+            if (world_path.empty())
+            {
+                return json_error("active world has no file path");
+            }
+
+            const std::string resource_directory =
+                World::GetResourceDirectory(world_path);
+            const std::string mcp_resources =
+                resource_directory + "mcp_resources/";
+            std::string json = "{\"ok\":true";
+            json += ",\"world_path\":" +
+                json_string(world_path);
+            json += ",\"resource_directory\":" +
+                json_string(resource_directory);
+            json += ",\"mcp_resources\":{";
+            json += "\"root\":" +
+                json_string(mcp_resources);
+            json += ",\"meshes\":" +
+                json_string(mcp_resources + "meshes/");
+            json += ",\"materials\":" +
+                json_string(mcp_resources + "materials/");
+            json += ",\"textures\":" +
+                json_string(mcp_resources + "textures/");
+            json += "}}";
             return json;
         }
 
@@ -8855,6 +9076,551 @@ namespace spartan
 
             apply_entity_identity(entity, request);
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
+        }
+
+        math::Vector3 fallback_tangent(
+            const math::Vector3& normal
+        )
+        {
+            const math::Vector3 reference =
+                std::abs(normal.y) < 0.999f
+                ? math::Vector3(0.0f, 1.0f, 0.0f)
+                : math::Vector3(1.0f, 0.0f, 0.0f);
+            return math::Vector3::Cross(
+                reference,
+                normal
+            ).Normalized();
+        }
+
+        std::string command_mesh_raw_create(
+            const McpRequest& request
+        )
+        {
+            constexpr size_t max_vertex_count = 100000;
+            constexpr size_t max_index_count  = 300000;
+            constexpr size_t max_payload_size = 16 * 1024 * 1024;
+
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error(
+                    "raw mesh creation requires edit mode"
+                );
+            }
+
+            std::string path_error;
+            const std::optional<std::string> path =
+                resolve_mcp_mesh_path(request, path_error);
+            if (!path)
+            {
+                return json_error(path_error);
+            }
+
+            const std::optional<std::string> positions_arg =
+                get_argument(request, "positions");
+            const std::optional<std::string> indices_arg =
+                get_argument(request, "indices");
+            if (!positions_arg || !indices_arg)
+            {
+                return json_error(
+                    "positions and indices are required"
+                );
+            }
+
+            size_t payload_size =
+                positions_arg->size() +
+                indices_arg->size();
+            const std::optional<std::string> normals_arg =
+                get_argument(request, "normals");
+            const std::optional<std::string> uv0_arg =
+                get_argument(request, "uv0");
+            const std::optional<std::string> colors_arg =
+                get_argument(request, "colors");
+            if (normals_arg)
+            {
+                payload_size += normals_arg->size();
+            }
+            if (uv0_arg)
+            {
+                payload_size += uv0_arg->size();
+            }
+            if (colors_arg)
+            {
+                return json_error(
+                    "colors are not supported by RHI_Vertex_PosTexNorTan"
+                );
+            }
+            if (payload_size > max_payload_size)
+            {
+                return json_error(
+                    "raw mesh payload exceeds 16 MiB"
+                );
+            }
+
+            std::vector<float> position_values;
+            std::vector<uint32_t> indices;
+            if (
+                !parse_float_array(
+                    *positions_arg,
+                    position_values,
+                    max_vertex_count * 3
+                ) ||
+                position_values.size() < 9 ||
+                position_values.size() % 3 != 0
+            )
+            {
+                return json_error(
+                    "positions must be finite comma-separated triples with 3 to 100000 vertices"
+                );
+            }
+            if (
+                !parse_index_array(
+                    *indices_arg,
+                    indices,
+                    max_index_count
+                ) ||
+                indices.size() < 3 ||
+                indices.size() % 3 != 0
+            )
+            {
+                return json_error(
+                    "indices must be comma-separated unsigned triangle indices with at most 300000 values"
+                );
+            }
+
+            const size_t vertex_count =
+                position_values.size() / 3;
+            std::vector<float> normal_values;
+            if (
+                normals_arg &&
+                (
+                    !parse_float_array(
+                        *normals_arg,
+                        normal_values,
+                        max_vertex_count * 3
+                    ) ||
+                    normal_values.size() != vertex_count * 3
+                )
+            )
+            {
+                return json_error(
+                    "normals must contain one finite triple per vertex"
+                );
+            }
+
+            std::vector<float> uv_values;
+            if (
+                uv0_arg &&
+                (
+                    !parse_float_array(
+                        *uv0_arg,
+                        uv_values,
+                        max_vertex_count * 2
+                    ) ||
+                    uv_values.size() != vertex_count * 2
+                )
+            )
+            {
+                return json_error(
+                    "uv0 must contain one finite pair per vertex"
+                );
+            }
+
+            std::vector<math::Vector3> positions(vertex_count);
+            std::vector<math::Vector3> normals(
+                vertex_count,
+                math::Vector3::Zero
+            );
+            std::vector<math::Vector3> tangents(
+                vertex_count,
+                math::Vector3::Zero
+            );
+            std::vector<math::Vector2> uv0(
+                vertex_count,
+                math::Vector2::Zero
+            );
+            for (size_t i = 0; i < vertex_count; i++)
+            {
+                positions[i] = math::Vector3(
+                    position_values[i * 3],
+                    position_values[i * 3 + 1],
+                    position_values[i * 3 + 2]
+                );
+                if (normals_arg)
+                {
+                    normals[i] = math::Vector3(
+                        normal_values[i * 3],
+                        normal_values[i * 3 + 1],
+                        normal_values[i * 3 + 2]
+                    );
+                    if (
+                        normals[i].LengthSquared() <=
+                        0.000000000001f
+                    )
+                    {
+                        return json_error(
+                            "normals cannot contain zero-length vectors"
+                        );
+                    }
+                    normals[i].Normalize();
+                }
+                if (uv0_arg)
+                {
+                    uv0[i] = math::Vector2(
+                        uv_values[i * 2],
+                        uv_values[i * 2 + 1]
+                    );
+                }
+            }
+
+            for (size_t i = 0; i < indices.size(); i += 3)
+            {
+                const uint32_t index_a = indices[i];
+                const uint32_t index_b = indices[i + 1];
+                const uint32_t index_c = indices[i + 2];
+                if (
+                    index_a >= vertex_count ||
+                    index_b >= vertex_count ||
+                    index_c >= vertex_count
+                )
+                {
+                    return json_error(
+                        "an index is outside the vertex range"
+                    );
+                }
+                if (
+                    index_a == index_b ||
+                    index_b == index_c ||
+                    index_c == index_a
+                )
+                {
+                    return json_error(
+                        "indices contain a degenerate triangle"
+                    );
+                }
+
+                const math::Vector3 edge_a =
+                    positions[index_b] - positions[index_a];
+                const math::Vector3 edge_b =
+                    positions[index_c] - positions[index_a];
+                const math::Vector3 face_normal =
+                    math::Vector3::Cross(edge_a, edge_b);
+                if (
+                    face_normal.LengthSquared() <=
+                    0.000000000001f
+                )
+                {
+                    return json_error(
+                        "positions contain a zero-area triangle"
+                    );
+                }
+                if (!normals_arg)
+                {
+                    normals[index_a] += face_normal;
+                    normals[index_b] += face_normal;
+                    normals[index_c] += face_normal;
+                }
+
+                if (uv0_arg)
+                {
+                    const math::Vector2 delta_a =
+                        uv0[index_b] - uv0[index_a];
+                    const math::Vector2 delta_b =
+                        uv0[index_c] - uv0[index_a];
+                    const float determinant =
+                        delta_a.x * delta_b.y -
+                        delta_a.y * delta_b.x;
+                    if (std::abs(determinant) > 0.00000001f)
+                    {
+                        const math::Vector3 tangent =
+                            (
+                                edge_a * delta_b.y -
+                                edge_b * delta_a.y
+                            ) /
+                            determinant;
+                        tangents[index_a] += tangent;
+                        tangents[index_b] += tangent;
+                        tangents[index_c] += tangent;
+                    }
+                }
+            }
+
+            std::vector<RHI_Vertex_PosTexNorTan> vertices;
+            vertices.reserve(vertex_count);
+            for (size_t i = 0; i < vertex_count; i++)
+            {
+                if (!normals_arg)
+                {
+                    if (
+                        normals[i].LengthSquared() <=
+                        0.000000000001f
+                    )
+                    {
+                        return json_error(
+                            "a vertex has no valid triangle normal"
+                        );
+                    }
+                    normals[i].Normalize();
+                }
+
+                tangents[i] -=
+                    normals[i] *
+                    math::Vector3::Dot(
+                        normals[i],
+                        tangents[i]
+                    );
+                if (
+                    tangents[i].LengthSquared() <=
+                    0.000000000001f
+                )
+                {
+                    tangents[i] = fallback_tangent(normals[i]);
+                }
+                else
+                {
+                    tangents[i].Normalize();
+                }
+
+                vertices.emplace_back(
+                    positions[i],
+                    uv0[i],
+                    normals[i],
+                    tangents[i]
+                );
+            }
+
+            if (
+                ResourceCache::GetByPath<Mesh>(*path) ||
+                FileSystem::IsFile(*path)
+            )
+            {
+                return json_error(
+                    "mesh path already exists"
+                );
+            }
+
+            const std::filesystem::path file_path(*path);
+            if (file_path.has_parent_path())
+            {
+                std::filesystem::create_directories(
+                    file_path.parent_path()
+                );
+            }
+
+            std::shared_ptr<Mesh> mesh =
+                std::make_shared<Mesh>();
+            mesh->SetResourceFilePath(*path);
+            mesh->SetFlag(
+                static_cast<uint32_t>(
+                    MeshFlags::PostProcessOptimize
+                ),
+                false
+            );
+            mesh->AddGeometry(vertices, indices, false);
+            mesh->SaveToFile(*path);
+            if (!FileSystem::IsFile(*path))
+            {
+                return json_error("failed to save raw mesh");
+            }
+
+            std::shared_ptr<Mesh> cached =
+                ResourceCache::Cache(mesh);
+            if (!cached)
+            {
+                return json_error("failed to cache raw mesh");
+            }
+            cached->CreateGpuBuffers();
+
+            std::string json = "{\"ok\":true";
+            json += ",\"path\":" + json_string(*path);
+            json += ",\"vertex_count\":" +
+                std::to_string(vertex_count);
+            json += ",\"index_count\":" +
+                std::to_string(indices.size());
+            json += ",\"generated_normals\":" +
+                json_bool(!normals_arg);
+            json += ",\"generated_tangents\":true";
+            json += ",\"channels\":[\"positions\",\"indices\",\"normals\",\"uv0\",\"tangents\"]";
+            json += ",\"resource\":" +
+                resource_to_json(cached.get());
+            json += "}";
+            return json;
+        }
+
+        std::string command_mesh_raw_get(
+            const McpRequest& request
+        )
+        {
+            constexpr uint32_t max_output_vertices = 25000;
+            constexpr uint32_t max_output_indices  = 75000;
+
+            std::string path_error;
+            const std::optional<std::string> path =
+                resolve_mcp_mesh_path(request, path_error);
+            if (!path)
+            {
+                return json_error(path_error);
+            }
+
+            std::shared_ptr<Mesh> mesh =
+                ResourceCache::GetByPath<Mesh>(*path);
+            if (!mesh && FileSystem::IsFile(*path))
+            {
+                mesh = ResourceCache::Load<Mesh>(*path);
+            }
+            if (!mesh)
+            {
+                return json_error(
+                    "mesh was not found in the active world's mcp resource library"
+                );
+            }
+
+            uint32_t sub_mesh_index = 0;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "sub_mesh")
+            )
+            {
+                if (!parse_uint32(*value, sub_mesh_index))
+                {
+                    return json_error("invalid sub_mesh");
+                }
+            }
+            if (sub_mesh_index >= mesh->GetSubMeshCount())
+            {
+                return json_error(
+                    "sub_mesh is outside the mesh range"
+                );
+            }
+
+            uint32_t vertex_limit = max_output_vertices;
+            uint32_t index_limit  = max_output_indices;
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "max_vertices")
+            )
+            {
+                if (
+                    !parse_uint32(*value, vertex_limit) ||
+                    vertex_limit == 0 ||
+                    vertex_limit > max_output_vertices
+                )
+                {
+                    return json_error(
+                        "max_vertices must be between 1 and 25000"
+                    );
+                }
+            }
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "max_indices")
+            )
+            {
+                if (
+                    !parse_uint32(*value, index_limit) ||
+                    index_limit == 0 ||
+                    index_limit > max_output_indices
+                )
+                {
+                    return json_error(
+                        "max_indices must be between 1 and 75000"
+                    );
+                }
+            }
+
+            std::vector<RHI_Vertex_PosTexNorTan> vertices;
+            std::vector<uint32_t> indices;
+            mesh->GetGeometry(
+                sub_mesh_index,
+                &indices,
+                &vertices
+            );
+            if (
+                vertices.size() > vertex_limit ||
+                indices.size() > index_limit
+            )
+            {
+                std::string error =
+                    "mesh output exceeds requested limits, vertex_count=" +
+                    std::to_string(vertices.size()) +
+                    ", index_count=" +
+                    std::to_string(indices.size()) +
+                    ", max_vertices=" +
+                    std::to_string(vertex_limit) +
+                    ", max_indices=" +
+                    std::to_string(index_limit);
+                return json_error(error);
+            }
+
+            std::ostringstream json;
+            json << std::setprecision(
+                std::numeric_limits<float>::max_digits10
+            );
+            json << "{\"ok\":true,\"path\":"
+                 << json_string(*path)
+                 << ",\"sub_mesh\":" << sub_mesh_index
+                 << ",\"vertex_count\":" << vertices.size()
+                 << ",\"index_count\":" << indices.size()
+                 << ",\"truncated\":false";
+
+            json << ",\"positions\":[";
+            for (size_t i = 0; i < vertices.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json << ",";
+                }
+                const math::Vector3 value =
+                    vertices[i].get_position();
+                json << value.x << "," << value.y << "," << value.z;
+            }
+            json << "],\"indices\":[";
+            for (size_t i = 0; i < indices.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json << ",";
+                }
+                json << indices[i];
+            }
+            json << "],\"normals\":[";
+            for (size_t i = 0; i < vertices.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json << ",";
+                }
+                const math::Vector3 value =
+                    vertices[i].get_normal();
+                json << value.x << "," << value.y << "," << value.z;
+            }
+            json << "],\"uv0\":[";
+            for (size_t i = 0; i < vertices.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json << ",";
+                }
+                const math::Vector2 value =
+                    vertices[i].get_uv();
+                json << value.x << "," << value.y;
+            }
+            json << "],\"tangents\":[";
+            for (size_t i = 0; i < vertices.size(); i++)
+            {
+                if (i != 0)
+                {
+                    json << ",";
+                }
+                const math::Vector3 value =
+                    vertices[i].get_tangent();
+                json << value.x << "," << value.y << "," << value.z;
+            }
+            json << "],\"unsupported_channels\":[\"colors\"]}";
+            return json.str();
         }
 
         std::string command_mesh_generate(const McpRequest& request)
@@ -14441,38 +15207,18 @@ namespace spartan
 
         std::string active_world_resource_directory()
         {
-            std::string world_name =
-                std::filesystem::path(
-                    World::GetFilePath()
-                ).stem().string();
-            if (world_name.empty())
+            const std::string& world_path =
+                World::GetFilePath();
+            if (!world_path.empty())
             {
-                world_name = std::filesystem::path(
-                    World::GetName()
-                ).stem().string();
+                return World::GetResourceDirectory(
+                    world_path
+                );
             }
-            world_name = to_lower_copy(world_name);
-            for (char& character : world_name)
-            {
-                if (
-                    !std::isalnum(
-                        static_cast<unsigned char>(character)
-                    ) &&
-                    character != '_' &&
-                    character != '-'
-                )
-                {
-                    character = '_';
-                }
-            }
-            if (world_name.empty())
-            {
-                world_name = "world";
-            }
-            return
-                "project/" +
-                world_name +
-                "_resources/";
+
+            return World::GetResourceDirectory(
+                World::GetName()
+            );
         }
 
         std::shared_ptr<Material> district_blockout_material(
@@ -15616,6 +16362,13 @@ namespace spartan
         {
             return command_world_resources_clean();
         }
+        if (
+            request.command ==
+            "world_resource_directory_get"
+        )
+        {
+            return command_world_resource_directory_get();
+        }
         if (request.command == "world_set_environment")
         {
             return command_world_set_environment(request);
@@ -15687,6 +16440,14 @@ namespace spartan
         if (request.command == "mesh_generate")
         {
             return command_mesh_generate(request);
+        }
+        if (request.command == "mesh_raw_create")
+        {
+            return command_mesh_raw_create(request);
+        }
+        if (request.command == "mesh_raw_get")
+        {
+            return command_mesh_raw_get(request);
         }
         if (request.command == "mesh_generate_batch")
         {

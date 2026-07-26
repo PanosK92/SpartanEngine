@@ -37,6 +37,19 @@ import {
   constrain_generated_resources,
   world_resource_directory,
 } from "./world_resources.mjs";
+import {
+  auto_register_world_asset,
+  resolve_world_resource_directory,
+  world_asset_compare,
+  world_asset_fork,
+  world_asset_inspect,
+  world_asset_load,
+  world_asset_promote,
+  world_asset_register,
+  world_asset_search,
+  world_material_inspect,
+  world_material_publish,
+} from "./world_asset_catalog.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,6 +76,7 @@ const engine_tool_names = new Set([
   "cvar_set",
   "console_read",
   "world_summary",
+  "world_resource_directory_get",
   "world_load",
   "world_save",
   "world_set_environment",
@@ -101,6 +115,18 @@ const engine_tool_names = new Set([
   "component_get",
   "component_set",
   "execute_lua",
+  "mesh_raw_create",
+  "mesh_raw_get",
+  "world_asset_search",
+  "world_asset_inspect",
+  "world_asset_register",
+  "world_asset_fork",
+  "world_asset_compare",
+  "world_asset_promote",
+  "world_asset_load",
+  "world_material_inspect",
+  "world_material_fork",
+  "world_material_publish",
 ]);
 const scene_mutating_tool_names = new Set([
   "entity_create_empty",
@@ -120,6 +146,7 @@ const scene_mutating_tool_names = new Set([
   "component_set_batch",
   "mesh_generate",
   "mesh_generate_batch",
+  "mesh_raw_create",
   "render_set_mesh",
   "mesh_physics_bind",
   "compound_create",
@@ -141,6 +168,12 @@ const scene_mutating_tool_names = new Set([
   "prefab_load",
   "world_set_environment",
   "execute_lua",
+  "world_asset_register",
+  "world_asset_fork",
+  "world_asset_promote",
+  "world_asset_load",
+  "world_material_fork",
+  "world_material_publish",
 ]);
 for (const tool_name of advanced_scene_tool_names)
 {
@@ -152,6 +185,44 @@ let cached_agent_key = "";
 let agent_run_queue = Promise.resolve();
 let active_assistant_context = null;
 let assistant_command_queue = Promise.resolve();
+
+async function assistant_resource_directory(context)
+{
+  if (context.resource_directory)
+  {
+    return context.resource_directory;
+  }
+  context.resource_directory =
+    await resolve_world_resource_directory(
+      (command, args) => context.run.tool(
+        command,
+        args,
+        60000,
+      ),
+    );
+  return context.resource_directory;
+}
+
+async function register_assistant_asset(
+  context,
+  command,
+  args,
+  result,
+)
+{
+  const registration = await auto_register_world_asset(
+    get_project_root(),
+    await assistant_resource_directory(context),
+    command,
+    args,
+    result,
+  );
+  if (registration)
+  {
+    result.asset_registration = registration;
+  }
+  return result;
+}
 
 function native_material_properties(properties = {}) {
   const values = {
@@ -270,6 +341,21 @@ async function create_material_palette(run, args) {
         created,
         failed_material: name,
       };
+    }
+    if (active_assistant_context)
+    {
+      await register_assistant_asset(
+        active_assistant_context,
+        "material_create",
+        {
+          ...material,
+          path: material_path,
+          source: {
+            properties: material,
+          },
+        },
+        result,
+      );
     }
     created.push({
       name,
@@ -771,6 +857,15 @@ async function generate_mesh(run, args) {
   {
     return generated;
   }
+  if (active_assistant_context)
+  {
+    await register_assistant_asset(
+      active_assistant_context,
+      "mesh_generate",
+      normalized,
+      generated,
+    );
+  }
 
   const should_create_entity =
     Boolean(args.name) &&
@@ -1160,6 +1255,89 @@ async function dispatch_assistant_command(
     context.resource_directory ??
       world_resource_directory(),
   );
+  const catalog_directory =
+    await assistant_resource_directory(context);
+  const catalog_root = get_project_root();
+  const catalog_send = (name, value) =>
+    run.tool(name, value, 60000);
+  if (command === "world_asset_search")
+  {
+    return world_asset_search(
+      catalog_root,
+      catalog_directory,
+      args,
+    );
+  }
+  if (command === "world_asset_inspect")
+  {
+    return world_asset_inspect(
+      catalog_root,
+      catalog_directory,
+      args,
+    );
+  }
+  if (command === "world_asset_register")
+  {
+    return world_asset_register(
+      catalog_root,
+      catalog_directory,
+      args,
+    );
+  }
+  if (
+    command === "world_asset_fork" ||
+    command === "world_material_fork"
+  )
+  {
+    return world_asset_fork(
+      catalog_root,
+      catalog_directory,
+      args,
+    );
+  }
+  if (command === "world_asset_compare")
+  {
+    return world_asset_compare(
+      catalog_root,
+      catalog_directory,
+      args,
+    );
+  }
+  if (command === "world_asset_promote")
+  {
+    return world_asset_promote(
+      catalog_root,
+      catalog_directory,
+      args,
+    );
+  }
+  if (command === "world_asset_load")
+  {
+    return world_asset_load(
+      catalog_root,
+      catalog_directory,
+      args,
+      catalog_send,
+    );
+  }
+  if (command === "world_material_inspect")
+  {
+    return world_material_inspect(
+      catalog_root,
+      catalog_directory,
+      args,
+      catalog_send,
+    );
+  }
+  if (command === "world_material_publish")
+  {
+    return world_material_publish(
+      catalog_root,
+      catalog_directory,
+      args,
+      catalog_send,
+    );
+  }
   if (command === "agent_memory_read")
   {
     return {
@@ -1571,6 +1749,20 @@ async function dispatch_assistant_command(
   {
     return generate_mesh_batch(run, args);
   }
+  if (command === "mesh_raw_create")
+  {
+    const result = await run.tool(
+      command,
+      args,
+      60000,
+    );
+    return register_assistant_asset(
+      context,
+      command,
+      args,
+      result,
+    );
+  }
   if (command === "mesh_physics_bind")
   {
     return bind_generated_mesh(run, args);
@@ -1690,6 +1882,24 @@ async function dispatch_assistant_command(
           args.view,
       },
       60000,
+    );
+  }
+  if (
+    command === "material_create" ||
+    command === "material_semantic_create" ||
+    command === "prefab_save"
+  )
+  {
+    const result = await run.tool(
+      command,
+      args,
+      60000,
+    );
+    return register_assistant_asset(
+      context,
+      command,
+      args,
+      result,
     );
   }
   return run.tool(
@@ -2703,7 +2913,14 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     const agent = await run.stage("Prepare Cursor", "starting or reusing the Cursor agent", () => get_agent({ api_key, model_id, engine_host, engine_port, run }));
     const snapshot = await run.stage("Read Context", "reading engine state for Cursor", () => run.tool("context_snapshot"));
     active_assistant_context.resource_directory =
-      world_resource_directory(snapshot.world);
+      await resolve_world_resource_directory(
+        (command, args) => run.tool(
+          command,
+          args,
+          60000,
+        ),
+        snapshot.world,
+      );
     intent = recover_new_build_intent(
       prompt,
       intent,

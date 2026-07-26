@@ -36,6 +36,13 @@ float LevelingFilter::f(float sample) {
         m_peak = magnitude;
     }
 
+    // the hold is long on purpose, so one wild spike would otherwise leave the engine muted for
+    // seconds while the peak bled back down. this caps the reduction at about 36 db
+    const float ceiling = p_target * 64.0f;
+    if (m_peak > ceiling) {
+        m_peak = ceiling;
+    }
+
     if (m_peak <= 0.0f) {
         return 0.0f;
     }

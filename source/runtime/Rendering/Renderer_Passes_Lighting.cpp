@@ -44,6 +44,9 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    // restir gi composition gain, pairs with get_restir_w_clamp in restir_reservoir.hlsl
+    static const float restir_composition_intensity = 5.0f;
+
     void Renderer::Pass_Reflections_Apply(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* tex_frame             = GetRenderTarget(Renderer_RenderTarget::frame_render);
@@ -580,7 +583,7 @@ namespace spartan
 
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
 
-            for (uint32_t i = 0; i < 6; i++)
+            for (uint32_t i = 0; i < restir_reservoir_textures; i++)
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0) + i, reservoirs[i], rhi_all_mips, 0, true);
 
             cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -615,15 +618,12 @@ namespace spartan
                 cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             }
 
-            // bind the per renderable geometry info ring and the emissive triangle nee pool so
-            // the random replay shift can do its full suffix retrace inline, the retrace pulls
-            // material / geometry data via the bindless arrays which require geometry_infos to
-            // be bound, the emissive triangle buffer is bound here too so future use of emtri
-            // nee inside the inline retrace (if added) finds the pool populated
+            // the shared restir header declares the bindless geometry and emissive triangle
+            // resources, bind them so the pass has a complete descriptor set
             cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info,      GetBuffer(Renderer_Buffer::GeometryInfo));
             cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
 
-            for (uint32_t i = 0; i < 6; i++)
+            for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs_prev[i]);
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs[i], rhi_all_mips, 0, true);
@@ -699,9 +699,7 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
 
-            // bind the per renderable geometry info ring and the emissive triangle nee pool so
-            // the random replay shift can do its full suffix retrace inline, see the matching
-            // comment in Pass_ReSTIR_Temporal for details
+            // see the matching comment in Pass_ReSTIR_Temporal
             cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info,      GetBuffer(Renderer_Buffer::GeometryInfo));
             cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
             cmd_list->SetBuffer(Renderer_BindingsUav::restir_pairing,     GetBuffer(Renderer_Buffer::RestirPairing));
@@ -711,7 +709,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             }
 
-            for (uint32_t i = 0; i < 6; i++)
+            for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
             }
@@ -743,7 +741,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, shift[1]);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, shift[2]);
 
-            for (uint32_t i = 0; i < 6; i++)
+            for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs_spatial[i], rhi_all_mips, 0, true);
@@ -755,10 +753,10 @@ namespace spartan
         cmd_list->EndTimeblock();
 
         // the resample leaves its output in reservoirs_spatial, swap the canonical and spatial
-        // render target pointers so subsequent passes reading restir_reservoir0..5 see the
-        // freshly resampled reservoirs, the pointer swap is free compared to blitting 6 textures
+        // render target pointers so subsequent passes reading restir_reservoir0..4 see the
+        // freshly resampled reservoirs, the pointer swap is free compared to blitting them
         auto& render_targets = GetRenderTargets();
-        for (uint32_t i = 0; i < 6; i++)
+        for (uint32_t i = 0; i < restir_reservoir_textures; i++)
         {
             uint32_t idx_cur     = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0)         + i;
             uint32_t idx_spatial = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_spatial0) + i;
@@ -771,7 +769,7 @@ namespace spartan
     void Renderer::Pass_ReSTIR_SwapReservoirs()
     {
         auto& render_targets = GetRenderTargets();
-        for (uint32_t i = 0; i < 6; i++)
+        for (uint32_t i = 0; i < restir_reservoir_textures; i++)
         {
             uint32_t idx_cur  = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0)      + i;
             uint32_t idx_prev = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_prev0) + i;
@@ -847,10 +845,10 @@ namespace spartan
             return;
         }
 
-        RHI_Texture* reservoirs[6];
-        RHI_Texture* reservoirs_prev[6];
-        RHI_Texture* reservoirs_spatial[6];
-        for (uint32_t i = 0; i < 6; i++)
+        RHI_Texture* reservoirs[restir_reservoir_textures];
+        RHI_Texture* reservoirs_prev[restir_reservoir_textures];
+        RHI_Texture* reservoirs_spatial[restir_reservoir_textures];
+        for (uint32_t i = 0; i < restir_reservoir_textures; i++)
         {
             reservoirs[i]         = GetRenderTarget(static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0)         + i));
             reservoirs_prev[i]    = GetRenderTarget(static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_prev0)    + i));
@@ -875,7 +873,7 @@ namespace spartan
         // back to the canonical sample instead of merging against garbage history
         if (!m_pass_state.restir_reservoirs_initialized)
         {
-            for (uint32_t i = 0; i < 6; i++)
+            for (uint32_t i = 0; i < restir_reservoir_textures; i++)
             {
                 cmd_list->ClearTexture(reservoirs[i],         Color::standard_transparent);
                 cmd_list->ClearTexture(reservoirs_prev[i],    Color::standard_transparent);
@@ -938,9 +936,9 @@ namespace spartan
                     pso.shaders[Compute] = shader_duplication;
                     cmd_list->SetPipelineState(pso);
 
-                    // reservoir texture 2 carries the replay seed in its x channel, the spatial
+                    // reservoir texture 3 carries the replay seed in its x channel, the spatial
                     // pass left the final reservoirs in the spatial slot when it ran
-                    RHI_Texture* reservoir_seed = ran_spatial ? reservoirs_spatial[2] : reservoirs[2];
+                    RHI_Texture* reservoir_seed = ran_spatial ? reservoirs_spatial[3] : reservoirs[3];
                     cmd_list->SetTexture(Renderer_BindingsSrv::tex, reservoir_seed);
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_duplication, rhi_all_mips, 0, true);
                     cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -1381,7 +1379,7 @@ namespace spartan
                     )->GetMipCount()
                 ),
                 restir_enabled ? 1.0f : 0.0f,
-                max(cvar_restir_pt_intensity.GetValue(), 0.0f)
+                restir_composition_intensity
             );
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(tex_out, Renderer::GetResolutionScale());

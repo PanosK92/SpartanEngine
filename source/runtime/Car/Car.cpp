@@ -3068,7 +3068,9 @@ namespace spartan
                 simulation->get_rev_limiter_active()
             );
 
-            const float engine_volume_scale = 0.30f;
+            // the synth no longer reaches the rail on every firing pulse, so the level it delivers is
+            // lower by about the distortion that used to be filling the gap
+            const float engine_volume_scale = 0.45f;
             float volume = (0.6f + rpm_normalized * 0.3f + throttle * 0.1f) * engine_volume_scale;
             audio_engine->SetVolume(volume);
         }
