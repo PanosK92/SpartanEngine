@@ -98,10 +98,7 @@ namespace spartan
 
         ClearRoadMesh();
 
-        // don't call ClearInstances() here because during destruction the world's entity
-        // list may contain dangling pointers (e.g. shutdown deletes entities in a loop),
-        // and RemoveEntity -> AcquireChildren would iterate over freed memory.
-        // the world already removes all descendants when an entity is removed or shut down.
+        // no ClearInstances here, shutdown may leave dangling entities and the world already removes descendants
     }
 
     void Spline::OnWorldLoaded()
@@ -428,13 +425,13 @@ namespace spartan
         m_attach_sample_count         = node.attribute("attach_sample_count").as_uint(0);
         m_source_spline_entity        = nullptr;
 
-        // if a mesh was saved, remove the renderable and physics as they will be recreated
+        // if a mesh was saved, remove the render and physics components as they will be recreated
         // save the material name first so it can be restored after regeneration
         if (m_needs_road_regeneration && m_entity_ptr)
         {
-            if (Render* renderable = m_entity_ptr->GetComponent<Render>())
+            if (Render* render = m_entity_ptr->GetComponent<Render>())
             {
-                if (Material* material = renderable->GetMaterial())
+                if (Material* material = render->GetMaterial())
                 {
                     m_saved_material_name = material->GetObjectName();
                 }
@@ -663,9 +660,9 @@ namespace spartan
         // preserve the user-assigned material before clearing the old mesh
         if (m_saved_material_name.empty() && m_entity_ptr)
         {
-            if (Render* renderable = m_entity_ptr->GetComponent<Render>())
+            if (Render* render = m_entity_ptr->GetComponent<Render>())
             {
-                if (Material* material = renderable->GetMaterial())
+                if (Material* material = render->GetMaterial())
                 {
                     m_saved_material_name = material->GetObjectName();
                 }
@@ -688,16 +685,16 @@ namespace spartan
             // preserve the current material so it can be restored on next regeneration
             if (m_saved_material_name.empty() && m_entity_ptr)
             {
-                if (Render* renderable = m_entity_ptr->GetComponent<Render>())
+                if (Render* render = m_entity_ptr->GetComponent<Render>())
                 {
-                    if (Material* material = renderable->GetMaterial())
+                    if (Material* material = render->GetMaterial())
                     {
                         m_saved_material_name = material->GetObjectName();
                     }
                 }
             }
 
-            // remove the renderable and physics components to avoid dangling mesh pointers
+            // remove the render and physics components to avoid dangling mesh pointers
             if (m_entity_ptr)
             {
                 m_entity_ptr->RemoveComponent<Physics>();
@@ -793,9 +790,9 @@ namespace spartan
                 else
                 {
                     instance = World::CreateEntity();
-                    Render* renderable = instance->AddComponent<Render>();
-                    renderable->SetMesh(MeshType::Cylinder);
-                    renderable->SetDefaultMaterial();
+                    Render* render = instance->AddComponent<Render>();
+                    render->SetMesh(MeshType::Cylinder);
+                    render->SetDefaultMaterial();
                 }
 
                 instance->SetObjectName(prefix_instance + to_string(spawned));
@@ -1416,13 +1413,13 @@ namespace spartan
         m_mesh->AddGeometry(vertices, indices, false);
         m_mesh->CreateGpuBuffers();
 
-        // attach to a renderable component on this entity
-        Render* renderable = m_entity_ptr->GetComponent<Render>();
-        if (!renderable)
+        // attach to a render component on this entity
+        Render* render = m_entity_ptr->GetComponent<Render>();
+        if (!render)
         {
-            renderable = m_entity_ptr->AddComponent<Render>();
+            render = m_entity_ptr->AddComponent<Render>();
         }
-        renderable->SetMesh(m_mesh.get(), 0);
+        render->SetMesh(m_mesh.get(), 0);
 
         // restore saved material if one was preserved from a previous load, otherwise use default
         if (!m_saved_material_name.empty())
@@ -1430,23 +1427,23 @@ namespace spartan
             shared_ptr<Material> material = ResourceCache::GetByName<Material>(m_saved_material_name);
             if (material)
             {
-                renderable->SetMaterial(material);
+                render->SetMaterial(material);
             }
             else
             {
-                renderable->SetDefaultMaterial();
+                render->SetDefaultMaterial();
             }
             m_saved_material_name.clear();
         }
-        else if (!renderable->GetMaterial())
+        else if (!render->GetMaterial())
         {
-            renderable->SetDefaultMaterial();
+            render->SetDefaultMaterial();
         }
 
         // disable face culling for profiles that are visible from both sides
         if (m_profile == SplineProfile::Wall || m_profile == SplineProfile::Fence || m_profile == SplineProfile::Tube)
         {
-            if (Material* material = renderable->GetMaterial())
+            if (Material* material = render->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }

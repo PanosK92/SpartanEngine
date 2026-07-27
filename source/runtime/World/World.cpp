@@ -46,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Physics/PhysicsWorld.h"
 #include "../Input/Input.h"
 #include <cstdlib>
+#include <filesystem>
 #include <functional>
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
@@ -65,7 +66,7 @@ namespace spartan
         sol::state lua_state;
         vector<Entity*> entities;
         vector<Entity*> entities_lights;       // entities subset that contains only lights
-        vector<Entity*> entities_renderables;  // entities subset that contains only active renderables
+        vector<Entity*> entities_with_render;  // entities subset that contains only active render components
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
@@ -232,11 +233,11 @@ namespace spartan
 
             for (uint32_t i = 0; i < light->GetSliceCount(); i++)
             {
-                const Matrix& vp       = light->GetViewProjectionMatrix(i);
-                const float* vp_data   = vp.Data();
+                const Matrix& view_projection = light->GetViewProjectionMatrix(i);
+                const float* elements         = view_projection.Data();
                 for (uint32_t j = 0; j < 16; j++)
                 {
-                    hash = (hash * 31) ^ std::hash<float>{}(vp_data[j]);
+                    hash = (hash * 31) ^ std::hash<float>{}(elements[j]);
                 }
             }
 
@@ -251,9 +252,9 @@ namespace spartan
             {
                 if (entity->GetActive())
                 {
-                    if (Render* renderable = entity->GetComponent<Render>())
+                    if (Render* render = entity->GetComponent<Render>())
                     {
-                        bounding_box.Merge(renderable->GetBoundingBox());
+                        bounding_box.Merge(render->GetBoundingBox());
                     }
                 }
             }
@@ -372,42 +373,41 @@ namespace spartan
             lua_state.set_function("print", [&](sol::this_state s, const sol::variadic_args& args)
             {
                 sol::state_view lua(s);
-                sol::protected_function LuaStringFunc = lua["tostring"];
+                sol::protected_function tostring_function =
+                    lua["tostring"];
 
-                std::string Output;
-                Output.reserve(256);
+                std::string line;
+                line.reserve(256);
                 for (size_t i = 0; i < args.size(); ++i)
                 {
-                    sol::object Obj = args[i];
-
-                    sol::protected_function_result Result = LuaStringFunc(Obj);
-
-                    if (Result.valid())
+                    sol::protected_function_result stringified =
+                        tostring_function(args[i]);
+                    if (stringified.valid())
                     {
-                        if (sol::optional<const char*> str = Result)
+                        if (sol::optional<const char*> text = stringified)
                         {
-                            Output += *str;
+                            line += *text;
                         }
                         else
                         {
-                            Output += "[tostring error]";
+                            line += "[tostring error]";
                         }
                     }
                     else
                     {
-                        sol::error err = Result;
-                        Output += "[error: ";
-                        Output += err.what();
-                        Output += "]";
+                        sol::error error = stringified;
+                        line += "[error: ";
+                        line += error.what();
+                        line += "]";
                     }
 
                     if (i < args.size() - 1)
                     {
-                        Output += "\t";
+                        line += "\t";
                     }
                 }
 
-                SP_LOG_INFO("[Lua] %s", Output.c_str())
+                SP_LOG_INFO("[Lua] %s", line.c_str());
             });
 
             sol::table Timer = lua_state.create_named_table("Timer");
@@ -437,7 +437,7 @@ namespace spartan
                 "Camera",                   ComponentType::Camera,
                 "Light",                    ComponentType::Light,
                 "Physics",                  ComponentType::Physics,
-                "Renderable",               ComponentType::Render,
+                "Render",               ComponentType::Render,
                 "Terrain",                  ComponentType::Terrain,
                 "Volume",                   ComponentType::Volume,
                 "Script",                   ComponentType::Script,
@@ -710,7 +710,7 @@ namespace spartan
                 },
 
                 // Length
-                sol::meta_function::length, [](const Vector3& V) { return 2; },
+                sol::meta_function::length, [](const Vector3& V) { return 3; },
 
                 // Index access
                 sol::meta_function::index, [](const Vector3& V, int index) -> float
@@ -727,7 +727,7 @@ namespace spartan
                     {
                         return V.z;
                     }
-                    throw std::out_of_range("Vector2 index out of range (1-2)");
+                    throw std::out_of_range("Vector3 index out of range (1-3)");
                 },
 
                 sol::meta_function::new_index, [](Vector3& V, int index, float value)
@@ -746,7 +746,7 @@ namespace spartan
                     }
                     else
                     {
-                        throw std::out_of_range("Vector3 index out of range (1-2)");
+                        throw std::out_of_range("Vector3 index out of range (1-3)");
                     }
                 },
 
@@ -794,7 +794,7 @@ namespace spartan
                 ),
 
                 // Unary minus
-                //@TODO
+                sol::meta_function::unary_minus, [](const Vector4& V) { return -V; },
 
                 // Equality
                 sol::meta_function::equal_to, [](const Vector4& LHS, const Vector4& RHS) { return LHS == RHS; },
@@ -802,7 +802,7 @@ namespace spartan
                 // To string
                 sol::meta_function::to_string, [](const Vector4& V)
                 {
-                    return "Vector4(" + std::to_string(V.x) + ", " + std::to_string(V.y) + std::to_string(V.z) + ", " + std::to_string(V.w) + ")";
+                    return "Vector4(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ", " + std::to_string(V.z) + ", " + std::to_string(V.w) + ")";
                 },
 
                 // Length
@@ -826,7 +826,7 @@ namespace spartan
                     {
                         return V.w;
                     }
-                    throw std::out_of_range("Vector4 index out of range (1-2-3-4)");
+                    throw std::out_of_range("Vector4 index out of range (1-4)");
                 },
 
                 sol::meta_function::new_index, [](Vector4& V, int index, float value) {
@@ -848,7 +848,7 @@ namespace spartan
                     }
                     else
                     {
-                        throw std::out_of_range("Vector3 index out of range (1-2)");
+                        throw std::out_of_range("Vector4 index out of range (1-4)");
                     }
                 },
 
@@ -857,8 +857,8 @@ namespace spartan
                 "LengthSquared", [](const Vector4& V) { return V.LengthSquared(); },
                 "Normalize", [](Vector4& V) { return V.Normalize(); },
                 "Normalized", [](const Vector4& V) { return V.Normalized(); },
-                "Distance", [](const Vector4& V, const Vector4& Other) { return Vector3::Distance(V, Other); },
-                "DistanceSquared", [](const Vector4& V, const Vector4& Other) { return Vector3::DistanceSquared(V, Other); }
+                "Distance", [](const Vector4& V, const Vector4& Other) { return Vector4::Distance(V, Other); },
+                "DistanceSquared", [](const Vector4& V, const Vector4& Other) { return Vector4::DistanceSquared(V, Other); }
             );
 
             lua_state.new_usertype<Quaternion>("Quaternion",
@@ -1068,6 +1068,38 @@ namespace spartan
             return;
         }
 
+        // unlink doomed entities from survivors first, everything is still alive
+        // here so no surviving entity is left holding a freed parent or child
+        for (Entity* entity : entities)
+        {
+            if (!entity || pending_remove.count(entity->GetObjectId()) == 0)
+            {
+                continue;
+            }
+
+            if (Entity* parent = entity->GetParent())
+            {
+                if (pending_remove.count(parent->GetObjectId()) == 0)
+                {
+                    parent->RemoveChild(entity, false);
+                }
+            }
+
+            const vector<Entity*> children = entity->GetChildren();
+            for (Entity* child : children)
+            {
+                if (!child)
+                {
+                    continue;
+                }
+
+                if (pending_remove.count(child->GetObjectId()) == 0)
+                {
+                    child->ClearParent();
+                }
+            }
+        }
+
         for (auto it = entities.begin(); it != entities.end(); )
         {
             uint64_t id = (*it)->GetObjectId();
@@ -1138,7 +1170,7 @@ namespace spartan
         }
         entities.clear();
         entities_lights.clear();
-        entities_renderables.clear();
+        entities_with_render.clear();
         // also clear any entities the loader had queued, otherwise we'd leak partially-built objects when a load is aborted
         {
             lock_guard<mutex> lock(entity_access_mutex);
@@ -1329,9 +1361,9 @@ namespace spartan
                     // cull mode
                     uint8_t prev_cull = (state >> 16) & 0xFF;
                     uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
-                    if (Render* renderable = entity->GetComponent<Render>())
+                    if (Render* render = entity->GetComponent<Render>())
                     {
-                        if (Material* material = renderable->GetMaterial())
+                        if (Material* material = render->GetMaterial())
                         {
                             curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
                         }
@@ -1373,7 +1405,7 @@ namespace spartan
                 light              = nullptr;
                 audio_source_count = 0;
                 entities_lights.clear();
-                entities_renderables.clear();
+                entities_with_render.clear();
                 for (Entity* entity : entities)
                 {
                     if (entity->GetActive())
@@ -1391,7 +1423,7 @@ namespace spartan
 
                         if (entity->GetComponent<Render>())
                         {
-                            entities_renderables.push_back(entity);
+                            entities_with_render.push_back(entity);
                         }
 
                         if (entity->GetComponent<AudioSource>())
@@ -1420,6 +1452,23 @@ namespace spartan
         return world_file_path_to_resource_directory(
             world_file_path
         );
+    }
+
+    string World::GetMcpResourceDirectory()
+    {
+        string directory =
+            ResourceCache::GetProjectDirectory();
+        replace(
+            directory.begin(),
+            directory.end(),
+            '\\',
+            '/'
+        );
+        if (!directory.empty() && directory.back() != '/')
+        {
+            directory += '/';
+        }
+        return directory + "mcp_resources/";
     }
 
     const vector<string>& World::GetLastResourceCleanup()
@@ -1498,12 +1547,7 @@ namespace spartan
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
             const string mcp_resource_directory =
-                directory + "mcp_resources/";
-            const string active_mcp_resource_directory =
-                world_file_path_to_resource_directory(
-                    World::GetFilePath()
-                ) +
-                "mcp_resources/";
+                World::GetMcpResourceDirectory();
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
             set<IResource*> referenced_resources;
@@ -1529,16 +1573,16 @@ namespace spartan
                 {
                     continue;
                 }
-                if (Render* renderable = entity->GetComponent<Render>())
+                if (Render* render = entity->GetComponent<Render>())
                 {
-                    if (Mesh* mesh = renderable->GetMesh())
+                    if (Mesh* mesh = render->GetMesh())
                     {
                         referenced_resources.insert(mesh);
                     }
-                    if (!renderable->IsUsingDefaultMaterial())
+                    if (!render->IsUsingDefaultMaterial())
                     {
                         reference_material(
-                            renderable->GetMaterial()
+                            render->GetMaterial()
                         );
                     }
                 }
@@ -1602,9 +1646,7 @@ namespace spartan
                 return key;
             };
 
-            // pass 1, give every resource a unique file inside the resource directory and repoint it now,
-            // duplicate object names used to overwrite each others files on save and made the name based
-            // lookups of Render::Load resolve the wrong resource after a round trip
+            // give every resource a unique file, duplicate object names used to overwrite each other and break Render::Load
             struct PendingResourceSave
             {
                 IResource* resource;
@@ -1653,25 +1695,12 @@ namespace spartan
                     resource->GetResourceFilePath();
                 if (
                     !current_path.empty() &&
-                    (
-                        path_is_within(
-                            current_path,
-                            mcp_resource_directory
-                        ) ||
-                        path_is_within(
-                            current_path,
-                            active_mcp_resource_directory
-                        )
+                    path_is_within(
+                        current_path,
+                        mcp_resource_directory
                     )
                 )
                 {
-                    pending_saves.push_back(
-                        {
-                            resource.get(),
-                            current_path,
-                            false
-                        }
-                    );
                     continue;
                 }
 
@@ -1707,6 +1736,90 @@ namespace spartan
                 pending.resource->SaveToFile(pending.target_path);
             }
 
+            // prefabs on disk reference meshes and materials that no live entity owns,
+            // without protecting them a save turns every saved prefab into dangling references
+            {
+                auto protect_prefab_references =
+                    [&used_file_names, &to_file_key](
+                        const string& prefab_path
+                    )
+                {
+                    pugi::xml_document prefab_document;
+                    if (!prefab_document.load_file(prefab_path.c_str()))
+                    {
+                        return;
+                    }
+
+                    vector<pugi::xml_node> pending =
+                    {
+                        prefab_document.document_element()
+                    };
+                    while (!pending.empty())
+                    {
+                        const pugi::xml_node node = pending.back();
+                        pending.pop_back();
+                        for (
+                            pugi::xml_node child = node.first_child();
+                            child;
+                            child = child.next_sibling()
+                        )
+                        {
+                            pending.push_back(child);
+                        }
+
+                        for (
+                            const char* attribute :
+                            {
+                                "mesh_path",
+                                "material_path"
+                            }
+                        )
+                        {
+                            const string reference =
+                                node.attribute(attribute).as_string();
+                            if (!reference.empty())
+                            {
+                                used_file_names.insert(
+                                    to_file_key(
+                                        FileSystem::GetFileNameFromFilePath(
+                                            reference
+                                        )
+                                    )
+                                );
+                            }
+                        }
+                    }
+                };
+
+                try
+                {
+                    for (
+                        const filesystem::directory_entry& entry :
+                        filesystem::recursive_directory_iterator(directory)
+                    )
+                    {
+                        if (
+                            entry.is_regular_file() &&
+                            FileSystem::IsEnginePrefabFile(
+                                entry.path().string()
+                            )
+                        )
+                        {
+                            protect_prefab_references(
+                                entry.path().string()
+                            );
+                        }
+                    }
+                }
+                catch (const exception& e)
+                {
+                    SP_LOG_WARNING(
+                        "Failed to scan prefabs for referenced resources: %s",
+                        e.what()
+                    );
+                }
+            }
+
             // prune files that no longer belong to this save, loading picks up every file in this directory
             // so stale duplicates from older saves would otherwise come back and shadow the right resources
             last_resource_cleanup.clear();
@@ -1738,6 +1851,29 @@ namespace spartan
                         );
                     }
                 }
+            }
+
+            // pruning used to be silent, which made deleted resources look like
+            // files that never existed
+            for (
+                size_t index = 0;
+                index < last_resource_cleanup.size();
+                index++
+            )
+            {
+                if (index == 10)
+                {
+                    SP_LOG_INFO(
+                        "Pruned %zu more unreferenced resource files",
+                        last_resource_cleanup.size() - index
+                    );
+                    break;
+                }
+
+                SP_LOG_INFO(
+                    "Pruned unreferenced resource: %s",
+                    last_resource_cleanup[index].c_str()
+                );
             }
         }
 
@@ -2224,16 +2360,34 @@ namespace spartan
         entities_to_remove.push_back(entity_to_remove);
         entity_to_remove->GetDescendants(&entities_to_remove);
 
-        // if there was a parent, update it
+        // detach from the parent before deleting, re-acquiring here would keep the
+        // doomed entity in the list because it is still part of the world
         if (Entity* parent = entity_to_remove->GetParent())
         {
-            parent->AcquireChildren();
+            parent->RemoveChild(entity_to_remove, false);
         }
 
         // remove and delete immediately
         for (Entity* entity : entities_to_remove)
         {
             uint64_t id = entity->GetObjectId();
+
+            // any child that outlives this entity must not keep a freed parent
+            const vector<Entity*> children = entity->GetChildren();
+            for (Entity* child : children)
+            {
+                const bool child_survives =
+                    child &&
+                    find(
+                        entities_to_remove.begin(),
+                        entities_to_remove.end(),
+                        child
+                    ) == entities_to_remove.end();
+                if (child_survives)
+                {
+                    child->ClearParent();
+                }
+            }
 
             if (entity == camera)
             {
@@ -2262,7 +2416,7 @@ namespace spartan
                 entities.erase(it);
             }
 
-            entities_renderables.erase(remove(entities_renderables.begin(), entities_renderables.end(), entity), entities_renderables.end());
+            entities_with_render.erase(remove(entities_with_render.begin(), entities_with_render.end(), entity), entities_with_render.end());
             entities_lights.erase(remove(entities_lights.begin(), entities_lights.end(), entity), entities_lights.end());
 
             // also remove from the pending additions list in case it was just created and not yet drained
@@ -2411,9 +2565,9 @@ namespace spartan
         return entities_lights;
     }
 
-    const vector<Entity*>& World::GetEntitiesRenderables()
+    const vector<Entity*>& World::GetEntitiesWithRender()
     {
-        return entities_renderables;
+        return entities_with_render;
     }
 
     const string& World::GetName()
@@ -2471,9 +2625,9 @@ namespace spartan
         bool changed = false;
         for (Entity* entity : entities)
         {
-            if (Render* renderable = entity->GetComponent<Render>())
+            if (Render* render = entity->GetComponent<Render>())
             {
-                if (Material* material = renderable->GetMaterial())
+                if (Material* material = render->GetMaterial())
                 {
                     const uint64_t id   = material->GetObjectId();
                     size_t current_hash = compute_material_hash(material);

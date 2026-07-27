@@ -35,16 +35,18 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    // mouse
-    Vector2 m_mouse_position         = Vector2::Zero;
-    Vector2 m_mouse_delta            = Vector2::Zero;
-    Vector2 m_mouse_wheel_delta      = Vector2::Zero;
-    Vector2 m_editor_viewport_offset = Vector2::Zero;
-    bool m_mouse_is_in_viewport      = true;
+    namespace
+    {
+        Vector2 mouse_position         = Vector2::Zero;
+        Vector2 mouse_delta            = Vector2::Zero;
+        Vector2 mouse_wheel_delta      = Vector2::Zero;
+        Vector2 editor_viewport_offset = Vector2::Zero;
+        bool mouse_is_in_viewport      = true;
+    }
 
     void Input::PreTick()
     {
-        m_mouse_wheel_delta = Vector2::Zero;
+        mouse_wheel_delta = Vector2::Zero;
     }
 
     void Input::PollMouse()
@@ -55,15 +57,15 @@ namespace spartan
         Vector2 position                 = Vector2(static_cast<float>(x), static_cast<float>(y));
 
         // get delta
-        m_mouse_delta = position - m_mouse_position;
+        mouse_delta = position - mouse_position;
 
         // get position
-        m_mouse_position = position;
+        mouse_position = position;
 
         // get keys
-        GetKeys()[m_start_index_mouse]     = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_LEFT))   != 0; // left button pressed
-        GetKeys()[m_start_index_mouse + 1] = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) != 0; // middle button pressed
-        GetKeys()[m_start_index_mouse + 2] = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT))  != 0; // right button pressed
+        m_keys[key_index_mouse]     = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_LEFT))   != 0; // left button pressed
+        m_keys[key_index_mouse + 1] = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) != 0; // middle button pressed
+        m_keys[key_index_mouse + 2] = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT))  != 0; // right button pressed
     }
 
     void Input::OnEventMouse(void* event)
@@ -75,19 +77,19 @@ namespace spartan
         {
             if (sdl_event->wheel.x > 0)
             {
-                m_mouse_wheel_delta.x += 1;
+                mouse_wheel_delta.x += 1;
             }
             if (sdl_event->wheel.x < 0)
             {
-                m_mouse_wheel_delta.x -= 1;
+                mouse_wheel_delta.x -= 1;
             }
             if (sdl_event->wheel.y > 0)
             {
-                m_mouse_wheel_delta.y += 1;
+                mouse_wheel_delta.y += 1;
             }
             if (sdl_event->wheel.y < 0)
             {
-                m_mouse_wheel_delta.y -= 1;
+                mouse_wheel_delta.y -= 1;
             }
         }
     }
@@ -114,17 +116,17 @@ namespace spartan
         SDL_Window* window = static_cast<SDL_Window*>(Window::GetHandleSDL());
         int window_x, window_y;
         SDL_GetWindowPosition(window, &window_x, &window_y);
-        return Vector2(static_cast<float>(m_mouse_position.x - window_x), static_cast<float>(m_mouse_position.y - window_y));
+        return Vector2(static_cast<float>(mouse_position.x - window_x), static_cast<float>(mouse_position.y - window_y));
     }
 
     const Vector2 Input::GetMousePositionRelativeToEditorViewport()
     {
-        return GetMousePositionRelativeToWindow() - m_editor_viewport_offset;
+        return GetMousePositionRelativeToWindow() - editor_viewport_offset;
     }
 
     void Input::SetMouseIsInViewport(const bool is_in_viewport)
     {
-        m_mouse_is_in_viewport = is_in_viewport;
+        mouse_is_in_viewport = is_in_viewport;
     }
 
     bool Input::GetMouseIsInViewport()
@@ -134,12 +136,12 @@ namespace spartan
             return false;
         }
 
-        return m_mouse_is_in_viewport;
+        return mouse_is_in_viewport;
     }
 
     const Vector2& Input::GetMousePosition()
     {
-        return m_mouse_position;
+        return mouse_position;
     }
 
     void Input::SetMousePosition(const math::Vector2& position)
@@ -150,7 +152,7 @@ namespace spartan
             return;
         }
 
-        m_mouse_position = position;
+        mouse_position = position;
     }
 
     const spartan::math::Vector2& Input::GetMouseDelta()
@@ -160,7 +162,7 @@ namespace spartan
             return Vector2::Zero;
         }
 
-        return m_mouse_delta;
+        return mouse_delta;
     }
 
     const spartan::math::Vector2& Input::GetMouseWheelDelta()
@@ -170,11 +172,11 @@ namespace spartan
             return Vector2::Zero;
         }
 
-        return m_mouse_wheel_delta;
+        return mouse_wheel_delta;
     }
 
     void Input::SetEditorViewportOffset(const math::Vector2& offset)
     {
-        m_editor_viewport_offset = offset;
+        editor_viewport_offset = offset;
     }
 }

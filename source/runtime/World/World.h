@@ -41,6 +41,7 @@ namespace spartan
         std::string description;
     };
 
+    // owns every entity, its serialization and the cached per-component entity lists the renderer reads
     class World
     {
     public:
@@ -57,6 +58,7 @@ namespace spartan
         static std::string GetResourceDirectory(
             const std::string& world_file_path
         );
+        static std::string GetMcpResourceDirectory();
         static const std::vector<std::string>&
             GetLastResourceCleanup();
         static const std::vector<std::string>&
@@ -66,10 +68,7 @@ namespace spartan
         static sol::state_view GetLuaState();
         static Entity* CreateEntity();
 
-        // deferred script initialization
-        // during a bulk world load entities load across the thread pool, lua is single threaded so script
-        // initialization is queued here and executed sequentially on the load thread once all entities exist
-        // lower order runs first, light configuring scripts go early so the scene is lit while builders populate it
+        // lua is single threaded, so script init is queued during a bulk load and run in order once every entity exists
         static bool IsDeferringScriptInit();
         static void AddDeferredScriptInit(int order, std::function<void()>&& init);
 
@@ -82,7 +81,7 @@ namespace spartan
         static Entity* GetEntityById(uint64_t id);
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
-        static const std::vector<Entity*>& GetEntitiesRenderables();
+        static const std::vector<Entity*>& GetEntitiesWithRender();
 
         // misc
         static const std::string& GetName();

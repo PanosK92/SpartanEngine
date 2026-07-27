@@ -367,6 +367,10 @@ export function scene_quality_prompt_lines(prompt, intent) {
     "Scale the work into bounded internal passes by zone or discipline, preserving good existing work during refinement. Finish each pass coherently instead of scattering shallow edits across the whole scene.",
     "Use context-sensitive design judgment rather than a fixed prop checklist. Details must explain how the place is built, used, accessed, maintained, and lit.",
     "Before creating entities, use the fresh prepared design context when present. Otherwise call scene_plan_suggest from the current request. Never search for or reuse a stored design.",
+    "Search the world asset library before building reusable objects. Match semantic aliases, tags, dimensions, style, and material constraints, then load a suitable promoted version.",
+    "Environment builds may make at most one focused improvement attempt per reused asset in a run. Preserve the active version when that candidate does not pass verification and promotion thresholds.",
+    "A focused asset request needs an isolated detailed build, registration, deliberate visual review, verified checks, and version comparison before promotion.",
+    "Do not store layouts or build instructions as resource files. Every persistent MCP-generated mesh, material, texture, prefab, editable source, thumbnail, and catalog record belongs under shared project/mcp_resources, never under a world-specific resource directory.",
     "Complete layout and circulation before structure, complete structure before functional objects, and complete functional objects before decoration. Do not hide an incoherent layout under detail.",
     "As soon as the quality root exists or is resolved, call viewport_frame on its id with the perspective view so the editor camera follows the build location. Frame it again after major layout changes.",
     "The planner is environment-agnostic. Infer suitable roles and dimensions for the current request; never force car, room, city, or other domain-specific structure onto unrelated scenes.",
@@ -374,7 +378,7 @@ export function scene_quality_prompt_lines(prompt, intent) {
     "Attach semantic tags such as entrance, support, walkable, focal_point, and service_route to entities where the role applies.",
     "For planned elements with count greater than one, name instance roots semantic_name_1, semantic_name_2, and so on. Put detail parts below each instance root.",
     "Optimize tool calls for completeness and visual quality, not for the smallest call count.",
-    "Unless the user explicitly asks for an uncolored greybox, create a coordinated material_palette_create palette and assign non-default semantic materials to nearly every visible renderable.",
+    "Unless the user explicitly asks for an uncolored greybox, create a coordinated material_palette_create palette and assign non-default semantic materials to nearly every visible render component.",
     "Call construction_grammar_suggest for each major architectural purpose, then use construction_grammar_create where a ranked assembly fits. Prefer layered assemblies over hand-authored primitive repetition.",
     "Read spartan://engine/construction-grammars when choosing grammar dimensions, material roles, or combinations.",
     "Use mesh_generate, compound_create, and detail_pattern_create for custom silhouettes and smaller details that construction grammars do not cover.",
@@ -880,7 +884,7 @@ export async function audit_scene_quality(
       }
       if (check.name === "collision_coverage")
       {
-        return "add a static convex compatible physics collider to every renderable";
+        return "add a static convex compatible physics collider to every render component";
       }
       if (check.name.startsWith("role_"))
       {

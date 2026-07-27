@@ -75,6 +75,7 @@ const engine = new EngineClient({
   port: engine_port,
   timeout_ms: context_timeout_ms,
   source: "assistant",
+  idle_close_ms: 0,
 });
 void append_debug_log({
   type: "assistant_started",
@@ -83,8 +84,8 @@ void append_debug_log({
   engine_host,
   engine_port,
   client_features: {
-    idle_socket_reuse: true,
-    idle_close_ms: 250,
+    run_scoped_socket_reuse: true,
+    idle_close_ms: 0,
     command_timeout_names: true,
   },
 });
@@ -423,6 +424,7 @@ async function execute_prompt(socket, payload) {
     });
     return { ok: false, text };
   } finally {
+    engine.close();
     stop_heartbeat();
     active_runs.delete(run.id);
   }

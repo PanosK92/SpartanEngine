@@ -289,19 +289,19 @@ namespace spartan
                 for (uint32_t c = start_index; c < end_index; c++)
                 {
                     auto& nearby    = cluster_nearby_tris[c];
-                    ClusterData& cl = clusters[c];
-                    Vector2 cl_xz(cl.center_position.x, cl.center_position.z);
+                    ClusterData& cluster = clusters[c];
+                    Vector2 cluster_xz(cluster.center_position.x, cluster.center_position.z);
                     
                     if (prop_desc.cluster_radius <= 0.0f)
                     {
-                        nearby.push_back(cl.center_tri_idx);
+                        nearby.push_back(cluster.center_tri_idx);
                         continue;
                     }
                     
                     // generate noise parameters from cluster position
-                    float seed1 = (cl.center_position.x * 12.9898f + cl.center_position.z * 78.233f) * 43758.5453f;
-                    float seed2 = (cl.center_position.x * 39.346f + cl.center_position.z * 11.135f) * 23421.631f;
-                    float seed3 = (cl.center_position.z * 47.134f + cl.center_position.x * 93.271f) * 67823.183f;
+                    float seed1 = (cluster.center_position.x * 12.9898f + cluster.center_position.z * 78.233f) * 43758.5453f;
+                    float seed2 = (cluster.center_position.x * 39.346f + cluster.center_position.z * 11.135f) * 23421.631f;
+                    float seed3 = (cluster.center_position.z * 47.134f + cluster.center_position.x * 93.271f) * 67823.183f;
                     seed1 -= floorf(seed1);
                     seed2 -= floorf(seed2);
                     seed3 -= floorf(seed3);
@@ -319,8 +319,8 @@ namespace spartan
                     
                     // query nearby grid cells
                     float max_radius   = prop_desc.cluster_radius * 1.6f;
-                    int32_t cell_x     = static_cast<int32_t>(floorf(cl_xz.x / cell_size)) - grid_min_x;
-                    int32_t cell_z     = static_cast<int32_t>(floorf(cl_xz.y / cell_size)) - grid_min_z;
+                    int32_t cell_x     = static_cast<int32_t>(floorf(cluster_xz.x / cell_size)) - grid_min_x;
+                    int32_t cell_z     = static_cast<int32_t>(floorf(cluster_xz.y / cell_size)) - grid_min_z;
                     int32_t cell_range = static_cast<int32_t>(ceilf(max_radius / cell_size));
                     
                     for (int32_t dz = -cell_range; dz <= cell_range; dz++)
@@ -339,7 +339,7 @@ namespace spartan
                                 uint32_t tri_idx  = acceptable_triangles[t];
                                 TriangleData& tri = tile_triangle_data[tri_idx];
                                 Vector2 tri_xz(tri.centroid.x, tri.centroid.z);
-                                Vector2 offset  = tri_xz - cl_xz;
+                                Vector2 offset  = tri_xz - cluster_xz;
                                 float dist_sq   = offset.LengthSquared();
                                 float dist      = sqrtf(dist_sq);
                                 float angle     = atan2f(offset.y, offset.x);
@@ -368,7 +368,7 @@ namespace spartan
                     
                     if (nearby.empty())
                     {
-                        nearby.push_back(cl.center_tri_idx);
+                        nearby.push_back(cluster.center_tri_idx);
                     }
                 }
             };
@@ -1463,11 +1463,11 @@ namespace spartan
 
         // bake height map texture
         {
-            vector<RHI_Texture_Slice> data(1);
-            data[0].mips.resize(1);
-            data[0].mips[0].bytes.resize(m_dense_width * m_dense_height * sizeof(float));
+            vector<RHI_Texture_Slice> slices(1);
+            slices[0].mips.resize(1);
+            slices[0].mips[0].bytes.resize(m_dense_width * m_dense_height * sizeof(float));
         
-            float* height_ptr = reinterpret_cast<float*>(data[0].mips[0].bytes.data());
+            float* height_ptr = reinterpret_cast<float*>(slices[0].mips[0].bytes.data());
             auto copy_heights = [this, height_ptr](uint32_t start, uint32_t end)
             {
                 for (uint32_t i = start; i < end; i++)
@@ -1479,7 +1479,7 @@ namespace spartan
                 RHI_Texture_Type::Type2D,
                 m_dense_width, m_dense_height, 1, 1,
                 RHI_Format::R32_Float, RHI_Texture_Srv,
-                "terrain_baked", data
+                "terrain_baked", slices
             );
         }
     
@@ -1543,10 +1543,10 @@ namespace spartan
             entity->SetParent(GetEntity());
             entity->SetPosition(m_tile_offsets[tile_index]);
 
-            if (Render* renderable = entity->AddComponent<Render>())
+            if (Render* render = entity->AddComponent<Render>())
             {
-                renderable->SetMesh(m_mesh.get(), tile_index);
-                renderable->SetMaterial(m_material);
+                render->SetMesh(m_mesh.get(), tile_index);
+                render->SetMaterial(m_material);
             }
         }
 
@@ -1573,9 +1573,9 @@ namespace spartan
 
         for (Entity* child : m_entity_ptr->GetChildren())
         {
-            if (Render* renderable = child->AddComponent<Render>())
+            if (Render* render = child->AddComponent<Render>())
             {
-                renderable->SetMesh(nullptr);
+                render->SetMesh(nullptr);
             }
         }
     }

@@ -233,7 +233,7 @@ namespace ImGui::TransformGizmo
                     float best_correction[3] = { 0.0f, 0.0f, 0.0f };
                     float best_dist[3]       = { FLT_MAX, FLT_MAX, FLT_MAX };
 
-                    for (spartan::Entity* other : spartan::World::GetEntitiesRenderables())
+                    for (spartan::Entity* other : spartan::World::GetEntitiesWithRender())
                     {
                         bool is_selected = false;
                         for (spartan::Entity* sel : selected_entities)

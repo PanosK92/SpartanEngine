@@ -227,7 +227,7 @@ namespace spartan
   
         // frustum
         bool IsInViewFrustum(const math::BoundingBox& bounding_box) const;
-        bool IsInViewFrustum(std::shared_ptr<Render> renderable) const;
+        bool IsInViewFrustum(std::shared_ptr<Render> render) const;
 
         // flags
         bool GetFlag(const CameraFlags flag) { return m_flags & flag; }

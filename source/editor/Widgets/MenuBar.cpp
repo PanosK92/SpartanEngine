@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureViewer.h"
 #include "ResourceViewer.h"
 #include "McpAssistant.h"
+#include "AssetViewer.h"
 #include "AssetBrowser.h"
 #include "Console.h"
 #include "Properties.h"
@@ -317,7 +318,7 @@ namespace
         {
             if (ImGui::BeginMenu("View"))
             {
-                bool* controls_visible = GeneralWindows::GetVisiblityWindowControls();
+                bool* controls_visible = GeneralWindows::GetVisibilityWindowControls();
                 if (ImGui::MenuItem("Controls", "Ctrl+P", *controls_visible))
                 {
                     *controls_visible = !*controls_visible;
@@ -332,6 +333,7 @@ namespace
                     menu_entry<TextureViewer>();
                     menu_entry<ResourceViewer>();
                     menu_entry<McpAssistant>();
+                    menu_entry<AssetViewer>();
                     menu_entry<AssetBrowser>();
                     menu_entry<Console>();
                     menu_entry<Properties>();
@@ -359,7 +361,7 @@ namespace
         {
             if (ImGui::BeginMenu("Help"))
             {
-                bool* about_visible = GeneralWindows::GetVisiblityWindowAbout();
+                bool* about_visible = GeneralWindows::GetVisibilityWindowAbout();
                 if (ImGui::MenuItem("About", nullptr, *about_visible))
                 {
                     *about_visible = !*about_visible;
@@ -1002,6 +1004,7 @@ void MenuBar::Initialize(Editor* _editor)
     buttons_toolbar::widgets.push_back({ spartan::IconType::Shader,        editor->GetWidget<ShaderEditor>()   });
     buttons_toolbar::widgets.push_back({ spartan::IconType::Gear,          editor->GetWidget<RenderOptions>()  });
     buttons_toolbar::widgets.push_back({ spartan::IconType::Texture,       editor->GetWidget<TextureViewer>()  });
+    buttons_toolbar::widgets.push_back({ spartan::IconType::Model,         editor->GetWidget<AssetViewer>()    });
 
     spartan::Engine::SetFlag(spartan::EngineMode::Playing, false);
 }

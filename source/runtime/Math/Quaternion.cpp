@@ -38,13 +38,13 @@ namespace spartan::math
 {
     const Quaternion Quaternion::Identity(0.0f, 0.0f, 0.0f, 1.0f);
 
-    void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
+    void Quaternion::FromAxes(const Vector3& axis_x, const Vector3& axis_y, const Vector3& axis_z)
     {
-        // compute quaternion directly from rotation matrix axes (avoids unstable GetRotation decomposition)
+        // straight from the rotation matrix axes, GetRotation's decomposition is unstable
         // based on: http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
-        const float m00 = xAxis.x, m01 = xAxis.y, m02 = xAxis.z;
-        const float m10 = yAxis.x, m11 = yAxis.y, m12 = yAxis.z;
-        const float m20 = zAxis.x, m21 = zAxis.y, m22 = zAxis.z;
+        const float m00 = axis_x.x, m01 = axis_x.y, m02 = axis_x.z;
+        const float m10 = axis_y.x, m11 = axis_y.y, m12 = axis_y.z;
+        const float m20 = axis_z.x, m21 = axis_z.y, m22 = axis_z.z;
         
         const float trace = m00 + m11 + m22;
         
@@ -93,8 +93,8 @@ namespace spartan::math
 
     string Quaternion::ToString() const
     {
-        char tempBuffer[200];
-        sprintf_s(tempBuffer, sizeof(tempBuffer), "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
-        return string(tempBuffer);
+        char buffer[200];
+        sprintf_s(buffer, sizeof(buffer), "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
+        return string(buffer);
     }
 }

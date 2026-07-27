@@ -767,12 +767,12 @@ void GeneralWindows::SetVisibilityWorlds(const bool visibility)
     WorldSelector::SetVisible(visibility);
 }
 
-bool* GeneralWindows::GetVisiblityWindowAbout()
+bool* GeneralWindows::GetVisibilityWindowAbout()
 {
     return &about::visible;
 }
 
-bool* GeneralWindows::GetVisiblityWindowControls()
+bool* GeneralWindows::GetVisibilityWindowControls()
 {
     return &controls::visible;
 }

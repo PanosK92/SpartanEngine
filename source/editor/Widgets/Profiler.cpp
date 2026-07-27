@@ -79,19 +79,19 @@ namespace
     void show_memory_bar(const char* label, float used_mb, float budget_mb, float total_mb, ImVec2 size = ImVec2(-1, 0))
     {
         ImVec2 pos  = ImGui::GetCursorScreenPos();
-        float fullW = (size.x <= 0.0f ? ImGui::GetContentRegionAvail().x : size.x);
-        float fullH = (size.y <= 0.0f ? ImGui::GetTextLineHeightWithSpacing() : size.y);
+        float full_width = (size.x <= 0.0f ? ImGui::GetContentRegionAvail().x : size.x);
+        float full_height = (size.y <= 0.0f ? ImGui::GetTextLineHeightWithSpacing() : size.y);
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
         ImU32 col_total  = IM_COL32(20, 30, 60, 255);
         ImU32 col_budget = IM_COL32(80, 150, 220, 255);
-        float usedFrac = (budget_mb > 0.0f) ? (used_mb / budget_mb) : 0.0f;
-        usedFrac = ImClamp(usedFrac, 0.0f, 1.0f);
+        float used_fraction = (budget_mb > 0.0f) ? (used_mb / budget_mb) : 0.0f;
+        used_fraction = ImClamp(used_fraction, 0.0f, 1.0f);
         ImU32 col_used;
-        if (usedFrac < 0.5f)
+        if (used_fraction < 0.5f)
         {
-            float t = usedFrac / 0.5f;
+            float t = used_fraction / 0.5f;
             col_used = IM_COL32(
                 (int)(80  + t * (220-80)),
                 (int)(220 - t * (220-180)),
@@ -100,22 +100,22 @@ namespace
         }
         else
         {
-            float t = (usedFrac - 0.5f) / 0.5f;
+            float t = (used_fraction - 0.5f) / 0.5f;
             col_used = IM_COL32(220, (int)(180 - t * 180), 80, 255);
         }
 
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW, pos.y + fullH), col_total);
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + full_width, pos.y + full_height), col_total);
 
-        float budgetFrac = (budget_mb > 0.0f && total_mb > 0.0f) ? (budget_mb / total_mb) : 0.0f;
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * budgetFrac, pos.y + fullH), col_budget);
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * usedFrac * budgetFrac, pos.y + fullH), col_used);
-        draw_list->AddRect(pos, ImVec2(pos.x + fullW, pos.y + fullH), IM_COL32(255, 255, 255, 255));
+        float budget_fraction = (budget_mb > 0.0f && total_mb > 0.0f) ? (budget_mb / total_mb) : 0.0f;
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + full_width * budget_fraction, pos.y + full_height), col_budget);
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + full_width * used_fraction * budget_fraction, pos.y + full_height), col_used);
+        draw_list->AddRect(pos, ImVec2(pos.x + full_width, pos.y + full_height), IM_COL32(255, 255, 255, 255));
 
         char buf[128];
         snprintf(buf, sizeof(buf), "%s %.0f/%.0f MB (Budget %.0f MB)", label, used_mb, total_mb, budget_mb);
-        ImGui::RenderTextClipped(pos, ImVec2(pos.x + fullW, pos.y + fullH), buf, nullptr, nullptr, ImVec2(0.5f, 0.5f));
+        ImGui::RenderTextClipped(pos, ImVec2(pos.x + full_width, pos.y + full_height), buf, nullptr, nullptr, ImVec2(0.5f, 0.5f));
 
-        ImGui::Dummy(ImVec2(fullW, fullH));
+        ImGui::Dummy(ImVec2(full_width, full_height));
     }
 
     int mode_hardware = 0; // 0: gpu, 1: cpu

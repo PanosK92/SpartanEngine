@@ -95,27 +95,27 @@ namespace spartan
         controller_thumb_right.y = get_normalized_axis_value(gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTY);
     
         //button states
-        m_keys[GetKeyIndexGamepad()]      = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP);
-        m_keys[GetKeyIndexGamepad() + 1]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
-        m_keys[GetKeyIndexGamepad() + 2]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
-        m_keys[GetKeyIndexGamepad() + 3]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
-        m_keys[GetKeyIndexGamepad() + 4]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
-        m_keys[GetKeyIndexGamepad() + 5]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_EAST);
-        m_keys[GetKeyIndexGamepad() + 6]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_WEST);
-        m_keys[GetKeyIndexGamepad() + 7]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_NORTH);
-        m_keys[GetKeyIndexGamepad() + 8]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_BACK);
-        m_keys[GetKeyIndexGamepad() + 9]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_GUIDE);
-        m_keys[GetKeyIndexGamepad() + 10] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_START);
-        m_keys[GetKeyIndexGamepad() + 11] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK);
-        m_keys[GetKeyIndexGamepad() + 12] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_STICK);
-        m_keys[GetKeyIndexGamepad() + 13] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
-        m_keys[GetKeyIndexGamepad() + 14] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
-        m_keys[GetKeyIndexGamepad() + 15] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_MISC1);
-        m_keys[GetKeyIndexGamepad() + 16] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1);
-        m_keys[GetKeyIndexGamepad() + 17] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_PADDLE1);
-        m_keys[GetKeyIndexGamepad() + 18] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2);
-        m_keys[GetKeyIndexGamepad() + 19] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_PADDLE2);
-        m_keys[GetKeyIndexGamepad() + 20] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_TOUCHPAD);
+        m_keys[key_index_gamepad]      = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP);
+        m_keys[key_index_gamepad + 1]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
+        m_keys[key_index_gamepad + 2]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+        m_keys[key_index_gamepad + 3]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
+        m_keys[key_index_gamepad + 4]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_SOUTH);
+        m_keys[key_index_gamepad + 5]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_EAST);
+        m_keys[key_index_gamepad + 6]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_WEST);
+        m_keys[key_index_gamepad + 7]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_NORTH);
+        m_keys[key_index_gamepad + 8]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_BACK);
+        m_keys[key_index_gamepad + 9]  = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_GUIDE);
+        m_keys[key_index_gamepad + 10] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_START);
+        m_keys[key_index_gamepad + 11] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_STICK);
+        m_keys[key_index_gamepad + 12] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_STICK);
+        m_keys[key_index_gamepad + 13] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
+        m_keys[key_index_gamepad + 14] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
+        m_keys[key_index_gamepad + 15] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_MISC1);
+        m_keys[key_index_gamepad + 16] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1);
+        m_keys[key_index_gamepad + 17] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_PADDLE1);
+        m_keys[key_index_gamepad + 18] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2);
+        m_keys[key_index_gamepad + 19] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_LEFT_PADDLE2);
+        m_keys[key_index_gamepad + 20] = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_TOUCHPAD);
     }
 
     void Input::OnEventGamepad(void* event)

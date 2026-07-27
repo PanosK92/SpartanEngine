@@ -103,12 +103,16 @@ namespace spartan
         template<Concept::TIsConsoleVar T>
         [[nodiscard]] const T* TryGetAs(std::string_view name)
         {
-            auto It = Find(name)->m_value_ptr;
-            if (It == nullptr)
+            auto* stored = Find(name)->m_value_ptr;
+            if (stored == nullptr)
+            {
                 return nullptr;
+            }
 
-            if (auto* Ptr = std::get_if<T>(It))
-                return Ptr;
+            if (auto* typed = std::get_if<T>(stored))
+            {
+                return typed;
+            }
 
             return nullptr;
         }

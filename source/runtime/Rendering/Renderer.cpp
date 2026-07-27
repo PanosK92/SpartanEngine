@@ -134,6 +134,65 @@ namespace spartan
         mutex screenshot_mutex;
         screenshot_request screenshot;
         uint32_t screenshot_index = 0;
+        Entity* secondary_camera_request = nullptr;
+        Entity* secondary_render_root_request = nullptr;
+        Entity* secondary_render_root_active = nullptr;
+        shared_ptr<RHI_Texture> secondary_view_output;
+        shared_ptr<RHI_Texture> secondary_view_primary_backup;
+        bool secondary_view_ready = false;
+        uint32_t secondary_view_recovery_frames = 0;
+
+        bool ensure_secondary_view_targets()
+        {
+            RHI_Texture* source =
+                Renderer::GetRenderTarget(
+                    Renderer_RenderTarget::frame_output
+                );
+            if (!source)
+            {
+                return false;
+            }
+            const bool recreate =
+                !secondary_view_output ||
+                secondary_view_output->GetWidth() != source->GetWidth() ||
+                secondary_view_output->GetHeight() != source->GetHeight() ||
+                secondary_view_output->GetFormat() != source->GetFormat();
+            if (!recreate)
+            {
+                return true;
+            }
+
+            const uint32_t flags =
+                RHI_Texture_Srv |
+                RHI_Texture_Rtv |
+                RHI_Texture_ClearBlit;
+            secondary_view_output = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                source->GetWidth(),
+                source->GetHeight(),
+                1,
+                1,
+                source->GetFormat(),
+                flags,
+                "secondary_view_output"
+            );
+            secondary_view_primary_backup =
+                make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    source->GetWidth(),
+                    source->GetHeight(),
+                    1,
+                    1,
+                    source->GetFormat(),
+                    flags,
+                    "secondary_view_primary_backup"
+                );
+            secondary_view_ready = false;
+            secondary_view_recovery_frames = 0;
+            return
+                secondary_view_output->GetRhiResource() &&
+                secondary_view_primary_backup->GetRhiResource();
+        }
 
         float sanitize_resolution_scale(float scale)
         {
@@ -245,18 +304,18 @@ namespace spartan
             return request;
         }
 
-        // pack the renderable's resolved uv state into any struct that exposes the standard uv fields
-        // raster and ray tracing both call this so they always agree on per-renderable uv overrides
+        // pack the render's resolved uv state into any struct that exposes the standard uv fields
+        // raster and ray tracing both call this so they always agree on per-render uv overrides
         template<typename T>
-        void fill_uv_draw_fields_from_renderable(T& out, const Render* renderable)
+        void fill_uv_draw_fields_from_render(T& out, const Render* render)
         {
-            if (renderable)
+            if (render)
             {
-                out.uv_tiling      = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
-                out.uv_offset      = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
-                out.uv_invert      = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
-                out.uv_rotation    = renderable->ResolveUvRotation();
-                out.uv_world_space = renderable->ResolveUvWorldSpace();
+                out.uv_tiling      = math::Vector2(render->ResolveUvTilingX(), render->ResolveUvTilingY());
+                out.uv_offset      = math::Vector2(render->ResolveUvOffsetX(), render->ResolveUvOffsetY());
+                out.uv_invert      = math::Vector2(render->ResolveUvInvertX(), render->ResolveUvInvertY());
+                out.uv_rotation    = render->ResolveUvRotation();
+                out.uv_world_space = render->ResolveUvWorldSpace();
             }
             else
             {
@@ -391,6 +450,12 @@ namespace spartan
             m_swapchain           = nullptr;
             m_lines_vertex_buffer = nullptr;
             m_tlas                = nullptr;
+            secondary_view_output.reset();
+            secondary_view_primary_backup.reset();
+            secondary_camera_request = nullptr;
+            secondary_render_root_request = nullptr;
+            secondary_render_root_active = nullptr;
+            secondary_view_ready = false;
         }
 
         RHI_VendorTechnology::Shutdown();
@@ -452,10 +517,19 @@ namespace spartan
 
         m_draw_data_count      = 0;
         m_draw_data_gpu_synced = false;
+        Entity* primary_camera_entity = nullptr;
+        Entity* secondary_camera_entity = nullptr;
+        Entity* secondary_render_root_entity = nullptr;
+        bool render_secondary_view = false;
 
         if (can_render)
         {
             TickUpdateHiZSuppressionState();
+            if (secondary_view_recovery_frames > 0)
+            {
+                m_is_hiz_suppressed = true;
+                secondary_view_recovery_frames--;
+            }
 
             // batch world geometry into one gpu upload after loading
             if (!ProgressTracker::IsLoading())
@@ -470,6 +544,72 @@ namespace spartan
                 RHI_Device::DeletionQueueParse();
             }
 
+            secondary_camera_entity =
+                secondary_camera_request;
+            secondary_camera_request = nullptr;
+            secondary_render_root_entity =
+                secondary_render_root_request;
+            secondary_render_root_request = nullptr;
+            if (
+                secondary_camera_entity &&
+                secondary_render_root_entity &&
+                secondary_camera_entity->GetComponent<Camera>() &&
+                ensure_secondary_view_targets()
+            )
+            {
+                if (Camera* primary_camera = World::GetCamera())
+                {
+                    primary_camera_entity =
+                        primary_camera->GetEntity();
+                }
+                m_cmd_list_present->Copy(
+                    GetRenderTarget(
+                        Renderer_RenderTarget::frame_output
+                    ),
+                    secondary_view_primary_backup.get(),
+                    false
+                );
+                World::SetActiveCamera(
+                    secondary_camera_entity
+                );
+                secondary_camera_entity
+                    ->GetComponent<Camera>()
+                    ->Tick();
+                secondary_render_root_entity->SetActive(true);
+                secondary_render_root_active =
+                    secondary_render_root_entity;
+                for (
+                    Entity* entity :
+                    World::GetEntitiesWithRender()
+                )
+                {
+                    if (
+                        !entity ||
+                        (
+                            entity != secondary_render_root_entity &&
+                            !entity->IsDescendantOf(
+                                secondary_render_root_entity
+                            )
+                        )
+                    )
+                    {
+                        continue;
+                    }
+                    if (
+                        Render* render =
+                            entity->GetComponent<Render>()
+                    )
+                    {
+                        render->UpdateAabb();
+                        render->SetVisible(true);
+                        render->UpdateLodIndices();
+                    }
+                }
+                m_is_hiz_suppressed = true;
+                ResetTaauHistory();
+                render_secondary_view = true;
+            }
+
             RotateFrameBuffers();
             UpdateDrawCalls(m_cmd_list_present);
 
@@ -482,8 +622,11 @@ namespace spartan
             TickAdvanceFrameConstantBufferRing();
             TickUploadBindlessDependencies(m_cmd_list_present);
 
-            UpdatePersistentLines();
-            AddLinesToBeRendered();
+            if (!render_secondary_view)
+            {
+                UpdatePersistentLines();
+                AddLinesToBeRendered();
+            }
         }
 
         // xrBeginFrame must precede UpdateFrameConstantBuffer so per eye matrices reflect this frame's predicted pose, paired with xrEndFrame below
@@ -497,6 +640,31 @@ namespace spartan
         {
             UpdateFrameConstantBuffer(m_cmd_list_present);
             ProduceFrame(m_cmd_list_present, m_cmd_list_compute);
+            if (render_secondary_view)
+            {
+                m_cmd_list_present->Copy(
+                    GetRenderTarget(
+                        Renderer_RenderTarget::frame_output
+                    ),
+                    secondary_view_output.get(),
+                    false
+                );
+                m_cmd_list_present->Copy(
+                    secondary_view_primary_backup.get(),
+                    GetRenderTarget(
+                        Renderer_RenderTarget::frame_output
+                    ),
+                    false
+                );
+                World::SetActiveCamera(
+                    primary_camera_entity
+                );
+                secondary_render_root_entity->SetActive(false);
+                secondary_render_root_active = nullptr;
+                secondary_view_ready = true;
+                secondary_view_recovery_frames = 2;
+                ResetTaauHistory();
+            }
         }
 
         if (xr_should_render && can_render)
@@ -753,6 +921,34 @@ namespace spartan
             m_viewport.height             = height;
             dirty_orthographic_projection = true;
         }
+    }
+
+    bool Renderer::RequestSecondaryView(
+        Entity* camera_entity,
+        Entity* render_root
+    )
+    {
+        if (
+            !camera_entity ||
+            !render_root ||
+            !camera_entity->GetComponent<Camera>()
+        )
+        {
+            return false;
+        }
+        secondary_camera_request = camera_entity;
+        secondary_render_root_request = render_root;
+        return true;
+    }
+
+    RHI_Texture* Renderer::GetSecondaryViewOutput()
+    {
+        return secondary_view_output.get();
+    }
+
+    bool Renderer::IsSecondaryViewReady()
+    {
+        return secondary_view_ready;
     }
 
     const Vector2& Renderer::GetResolutionRender()
@@ -1130,20 +1326,20 @@ namespace spartan
             return true;
         };
 
-        for (Entity* entity : World::GetEntitiesRenderables())
+        for (Entity* entity : World::GetEntitiesWithRender())
         {
             if (count >= 8)
             {
                 break;
             }
 
-            Render* renderable = entity->GetComponent<Render>();
-            if (!renderable)
+            Render* render = entity->GetComponent<Render>();
+            if (!render)
             {
                 continue;
             }
 
-            Material* material = renderable->GetMaterial();
+            Material* material = render->GetMaterial();
             if (!material || material->GetProperty(MaterialProperty::MotionBlurRadial) == 0.0f)
             {
                 continue;
@@ -1163,7 +1359,7 @@ namespace spartan
             }
             axis.Normalize();
 
-            const math::BoundingBox& aabb = renderable->GetBoundingBox();
+            const math::BoundingBox& aabb = render->GetBoundingBox();
             const Vector3 center          = aabb.GetCenter();
             const Vector3 extents         = aabb.GetExtents();
             const float radius_world      = max(extents.x, max(extents.y, extents.z));
@@ -1243,31 +1439,28 @@ namespace spartan
         }
 
         // statics avoid per frame heap thrash, the vectors are reused across frames and the
-        // capacity ratchets up to the largest emissive renderable seen so far
+        // capacity ratchets up to the largest emissive render seen so far
         static vector<Sb_EmissiveTriangle>      tris;
         static vector<uint32_t>                 indices;
         static vector<RHI_Vertex_PosTexNorTan>  vertices;
         tris.clear();
         bool truncated = false;
 
-        for (Entity* entity : World::GetEntitiesRenderables())
+        for (Entity* entity : World::GetEntitiesWithRender())
         {
-            Render* renderable = entity->GetComponent<Render>();
-            if (!renderable)
+            Render* render = entity->GetComponent<Render>();
+            if (!render)
             {
                 continue;
             }
 
-            Material* material = renderable->GetMaterial();
+            Material* material = render->GetMaterial();
             if (!material)
             {
                 continue;
             }
 
-            // emission test, accept either the synthetic albedo->emission path or an explicit
-            // emission texture, the radiance estimate uses the material base color which is
-            // the same heuristic used by probe_emission_estimate in the existing path tracer
-            // threshold matches the bit 15 flag set in UpdateMaterials, any nonzero strength counts
+            // accepts the synthetic albedo to emission path or an explicit emission texture, matching the bit 15 flag in UpdateMaterials
             bool has_emission =
                 material->GetProperty(MaterialProperty::EmissiveFromAlbedo) > 0.0f ||
                 material->HasTextureOfType(MaterialTextureType::Emission);
@@ -1298,7 +1491,7 @@ namespace spartan
             // loop reads from contiguous memory without further indirection
             indices.clear();
             vertices.clear();
-            renderable->GetGeometry(&indices, &vertices);
+            render->GetGeometry(&indices, &vertices);
             if (indices.empty() || vertices.empty() || (indices.size() % 3u) != 0)
             {
                 continue;
@@ -1426,10 +1619,7 @@ namespace spartan
         m_pass_state.grass_params    = params;
         m_pass_state.grass_enabled   = true;
 
-        // derive WorldWidth and WorldHeight from the lod0 vertex bounds, the grass blade vs uses
-        // these to compute width_percent and height_percent for the camera-bias and wind logic.
-        // normal renderables get this done by Render::SetMaterial, but procedural grass has no Render component,
-        // without it the vs divides by zero on width and gets a saturated zero on height, the blade collapses to a point
+        // Render::SetMaterial normally derives these, procedural grass has no Render component and the blade vs divides by zero without them
         {
             const std::vector<RHI_Vertex_PosTexNorTan>& mesh_vertices = grass_mesh->GetVertices();
             if (!mesh_vertices.empty())
@@ -1641,7 +1831,7 @@ namespace spartan
         }
     }
 
-    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* renderable)
+    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* render)
     {
         // soft fail, world draws and imgui share this buffer so a busy scene plus a dense asset
         // browser can hit the ceiling, asserting here crashed the editor on folder navigation
@@ -1670,7 +1860,7 @@ namespace spartan
         entry.instance_index     = 0;
         entry.lod_vertex_offset  = 0;
 
-        fill_uv_draw_fields_from_renderable(entry, renderable);
+        fill_uv_draw_fields_from_render(entry, render);
 
         // the draw data buffer is a single large allocation partitioned into per-frame regions;
         // each frame writes to its own region so there is no write-after-read race with the gpu
@@ -1752,7 +1942,7 @@ namespace spartan
             unique_material_ids.insert(material->GetObjectId());
             {
                 // uv state (tiling, offset, invert, rotation, world_space_uv) intentionally not uploaded here,
-                // it is per-renderable and lives on Sb_DrawData (see WriteDrawData) and Sb_GeometryInfo for rt
+                // it is per-render and lives on Sb_DrawData (see WriteDrawData) and Sb_GeometryInfo for rt
                 properties[count].local_width           = material->GetProperty(MaterialProperty::WorldWidth);
                 properties[count].local_height          = material->GetProperty(MaterialProperty::WorldHeight);
                 properties[count].emissive_strength     = material->GetProperty(MaterialProperty::EmissiveFromAlbedo);
@@ -1828,15 +2018,15 @@ namespace spartan
     
         auto update_entities = [update_material]()
         {
-            for (Entity* entity : World::GetEntitiesRenderables())
+            for (Entity* entity : World::GetEntitiesWithRender())
             {
-                Render* renderable = entity->GetComponent<Render>();
-                if (!renderable)
+                Render* render = entity->GetComponent<Render>();
+                if (!render)
                 {
                     continue;
                 }
 
-                if (Material* material = renderable->GetMaterial())
+                if (Material* material = render->GetMaterial())
                 {
                     update_material(material);
                 }
@@ -1909,9 +2099,7 @@ namespace spartan
             light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Area        ? (1 << 6) : 0;
             // bit 7 is set by the caller for flare-only lights past draw distance
 
-            // build the compact volumetric index list, the light shader scans this instead of every light
-            // slot 0 is the directional sun which is evaluated unconditionally in the first evaluate_light call,
-            // including it here would double count its volumetric contribution
+            // compact volumetric index list, slot 0 is skipped because the sun is already evaluated unconditionally
             if (volumetric_effective && index > 0 && volumetric_count < rhi_max_array_size)
             {
                 volumetric_indices[volumetric_count++] = index;
@@ -2046,8 +2234,8 @@ namespace spartan
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-            Render* renderable                 = draw_call.renderable;
-            const BoundingBox& aabb            = renderable->GetBoundingBox();
+            Render* render                     = draw_call.render;
+            const BoundingBox& aabb            = render->GetBoundingBox();
             m_bindless_aabbs[i].min            = aabb.GetMin();
             m_bindless_aabbs[i].max            = aabb.GetMax();
             m_bindless_aabbs[i].is_occluder    = draw_call.is_occluder;
@@ -2058,9 +2246,9 @@ namespace spartan
         const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
         for (uint32_t i = 0; i < m_indirect_draw_count; i++)
         {
-            Render* renderable               = m_indirect_renderables[i];
-            const Sb_DrawData& data          = m_indirect_draw_data[i];
-            const uint32_t aabb_slot_global  = data.aabb_index;
+            Render* render                   = m_indirect_renders[i];
+            const Sb_DrawData& draw_data     = m_indirect_draw_data[i];
+            const uint32_t aabb_slot_global  = draw_data.aabb_index;
             if (aabb_slot_global < aabb_frame_offset)
             {
                 continue;
@@ -2070,13 +2258,13 @@ namespace spartan
             {
                 continue;
             }
-            const BoundingBox& aabb         = renderable->GetBoundingBox();
+            const BoundingBox& aabb         = render->GetBoundingBox();
             m_bindless_aabbs[aabb_slot].min = aabb.GetMin();
             m_bindless_aabbs[aabb_slot].max = aabb.GetMax();
         }
 
         // upload covers both the prepass region and the trailing indirect region, the indirect aabb slots start at m_draw_calls_prepass_count
-        const uint32_t total_aabb_count = m_draw_calls_prepass_count + m_indirect_renderable_count;
+        const uint32_t total_aabb_count = m_draw_calls_prepass_count + m_indirect_render_count;
         if (total_aabb_count > 0)
         {
             RHI_Buffer* buffer         = GetBuffer(Renderer_Buffer::AABBs);
@@ -2093,28 +2281,38 @@ namespace spartan
         m_draw_data_count           = 0;
         m_draw_data_gpu_synced      = false;
         m_indirect_draw_count       = 0;
-        m_indirect_renderable_count = 0;
+        m_indirect_render_count     = 0;
         m_cull_task_count           = 0;
         m_transparents_present      = false;
     }
 
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
-        for (Entity* entity : World::GetEntitiesRenderables())
+        for (Entity* entity : World::GetEntitiesWithRender())
         {
             if (!entity || !entity->GetActive())
             {
                 continue;
             }
-
-            // a worker may still be assigning the Render component, the mesh or the material, so guard every step
-            Render* renderable = entity->GetComponent<Render>();
-            if (!renderable || !renderable->GetMesh())
+            if (
+                secondary_render_root_active &&
+                entity != secondary_render_root_active &&
+                !entity->IsDescendantOf(
+                    secondary_render_root_active
+                )
+            )
             {
                 continue;
             }
 
-            Material* material = renderable->GetMaterial();
+            // a worker may still be assigning the Render component, the mesh or the material, so guard every step
+            Render* render = entity->GetComponent<Render>();
+            if (!render || !render->GetMesh())
+            {
+                continue;
+            }
+
+            Material* material = render->GetMaterial();
             if (!material)
             {
                 continue;
@@ -2135,7 +2333,7 @@ namespace spartan
                 entity->GetMatrixPrevious(),
                 material->GetIndex(),
                 material->IsTransparent() ? 1 : 0,
-                renderable
+                render
             );
             if (draw_data_index == numeric_limits<uint32_t>::max())
             {
@@ -2143,28 +2341,28 @@ namespace spartan
             }
 
             Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-            draw_call.renderable         = renderable;
-            draw_call.distance_squared   = renderable->GetDistanceSquared();
-            draw_call.lod_index          = renderable->GetLodIndex();
+            draw_call.render             = render;
+            draw_call.distance_squared   = render->GetDistanceSquared();
+            draw_call.lod_index          = render->GetLodIndex();
             draw_call.is_occluder        = false;
-            draw_call.camera_visible     = renderable->IsVisible();
+            draw_call.camera_visible     = render->IsVisible();
             draw_call.instance_index     = 0;
-            draw_call.instance_count     = renderable->GetInstanceCount();
+            draw_call.instance_count     = render->GetInstanceCount();
             draw_call.draw_data_index    = draw_data_index;
         }
 
         // opaque before transparent, then by material id, then by distance
         sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
         {
-            const bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-            const bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+            const bool a_transparent = a.render->GetMaterial()->IsTransparent();
+            const bool b_transparent = b.render->GetMaterial()->IsTransparent();
             if (a_transparent != b_transparent)
             {
                 return !a_transparent;
             }
 
-            const uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
-            const uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
+            const uint64_t a_material_id = a.render->GetMaterial()->GetObjectId();
+            const uint64_t b_material_id = b.render->GetMaterial()->GetObjectId();
             if (a_material_id != b_material_id)
             {
                 return a_material_id < b_material_id;
@@ -2179,7 +2377,7 @@ namespace spartan
         for (uint32_t i = 0; i < m_draw_call_count; ++i)
         {
             const Renderer_DrawCall& dc = m_draw_calls[i];
-            if (!dc.renderable->GetMaterial()->IsTransparent() && dc.camera_visible)
+            if (!dc.render->GetMaterial()->IsTransparent() && dc.camera_visible)
             {
                 m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
             }
@@ -2187,8 +2385,8 @@ namespace spartan
 
         sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
         {
-            const bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
-            const bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+            const bool a_alpha = a.render->GetMaterial()->IsAlphaTested();
+            const bool b_alpha = b.render->GetMaterial()->IsAlphaTested();
             if (a_alpha != b_alpha)
             {
                 return !a_alpha;
@@ -2199,27 +2397,25 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_BuildIndirectAndCullTasks()
     {
-        // one draw entry per renderable lod, one instance cull task per (renderable, instance) tuple
+        // one draw entry per render lod, one instance cull task per (render, instance) tuple
         // phase a compacts visible instances, phase b expands their meshlets, the triangle cull then feeds the indirect draw
         m_indirect_draw_count       = 0;
-        m_indirect_renderable_count = 0;
+        m_indirect_render_count = 0;
         m_cull_task_count           = 0;
         const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
         const uint32_t indirect_draw_capacity = GetBuffer(Renderer_Buffer::IndirectDrawData)->GetElementCount();
         const uint32_t cull_task_capacity = GetBuffer(Renderer_Buffer::CullTasks)->GetElementCount();
         const uint32_t meshlet_instance_capacity = GetBuffer(Renderer_Buffer::MeshletInstances)->GetElementCount();
 
-        // diagnostics, the cull pipeline silently drops survivors once a budget is hit which manifests as
-        // distant terrain, leaves or rocks failing to draw, the worst case survivor count is tracked here
-        // so the one-shot log below can name the renderable that pushed the engine over the cliff
+        // the cull pipeline drops survivors silently once a budget is hit, tracked so the log below can name the culprit
         uint64_t expected_survivors_worst_case = 0;
-        uint32_t cull_task_overflow_renderables = 0;
+        uint32_t cull_task_overflow_renders = 0;
 
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& dc = m_draw_calls[i];
-            Render* renderable          = dc.renderable;
-            Material* material          = renderable->GetMaterial();
+            Render* render              = dc.render;
+            Material* material          = render->GetMaterial();
 
             if (!material || material->IsTransparent())
             {
@@ -2234,13 +2430,13 @@ namespace spartan
                 continue;
             }
 
-            const uint32_t lod_index_count = renderable->GetIndexCount(dc.lod_index);
+            const uint32_t lod_index_count = render->GetIndexCount(dc.lod_index);
             if (lod_index_count == 0)
             {
                 continue;
             }
 
-            const uint32_t lod_meshlet_count = renderable->GetMeshletCount(dc.lod_index);
+            const uint32_t lod_meshlet_count = render->GetMeshletCount(dc.lod_index);
             if (lod_meshlet_count == 0)
             {
                 continue;
@@ -2259,20 +2455,20 @@ namespace spartan
             }
             if (m_cull_task_count + tasks_add > cull_task_capacity)
             {
-                cull_task_overflow_renderables++;
+                cull_task_overflow_renders++;
                 continue;
             }
 
             // worst case survivor accounting, every instance visible and emitting all of its meshlets
             expected_survivors_worst_case += static_cast<uint64_t>(inst_n) * static_cast<uint64_t>(lod_meshlet_count);
 
-            const uint32_t renderable_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_renderable_count;
-            const uint32_t base_first_index     = renderable->GetIndexOffset(dc.lod_index);
-            const uint32_t vertex_offset        = renderable->GetVertexOffset(dc.lod_index);
-            const uint32_t base_meshlet_index   = renderable->GetGlobalMeshletOffset() + renderable->GetMeshletOffset(dc.lod_index);
+            const uint32_t render_aabb_slot     = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_render_count;
+            const uint32_t base_first_index     = render->GetIndexOffset(dc.lod_index);
+            const uint32_t vertex_offset        = render->GetVertexOffset(dc.lod_index);
+            const uint32_t base_meshlet_index   = render->GetGlobalMeshletOffset() + render->GetMeshletOffset(dc.lod_index);
 
-            Entity* entity = renderable->GetEntity();
-            Mesh* mesh     = renderable->GetMesh();
+            Entity* entity = render->GetEntity();
+            Mesh* mesh     = render->GetMesh();
 
             // flags bit 0 skinned, bit 1 per instance, bit 3 two sided material, bit 4 alpha tested (bit 2 retired with the hw-instancing fallback)
             const bool is_skinned       = mesh->IsSkinned() && !cvar_meshlet_cull_skinned.GetValueAs<bool>();
@@ -2298,40 +2494,36 @@ namespace spartan
             }
 
             const uint32_t draw_idx        = m_indirect_draw_count++;
-            Sb_DrawData& data              = m_indirect_draw_data[draw_idx];
-            data.transform                 = entity->GetMatrix();
-            data.transform_previous        = entity->GetMatrixPrevious();
-            data.material_index            = material->GetIndex();
-            data.is_transparent            = 0;
-            data.aabb_index                = renderable_aabb_slot;
-            data.lod_first_index           = base_first_index;
-            data.flags                     = base_flags;
-            data.instance_offset           = renderable->GetGlobalInstanceOffset();
-            data.instance_index            = 0;
-            data.lod_vertex_offset         = vertex_offset;
-            data.lod_meshlet_offset        = base_meshlet_index;
-            data.lod_meshlet_count         = lod_meshlet_count;
-            fill_uv_draw_fields_from_renderable(data, renderable);
+            Sb_DrawData& draw_data         = m_indirect_draw_data[draw_idx];
+            draw_data.transform            = entity->GetMatrix();
+            draw_data.transform_previous   = entity->GetMatrixPrevious();
+            draw_data.material_index       = material->GetIndex();
+            draw_data.is_transparent       = 0;
+            draw_data.aabb_index           = render_aabb_slot;
+            draw_data.lod_first_index      = base_first_index;
+            draw_data.flags                = base_flags;
+            draw_data.instance_offset      = render->GetGlobalInstanceOffset();
+            draw_data.instance_index       = 0;
+            draw_data.lod_vertex_offset    = vertex_offset;
+            draw_data.lod_meshlet_offset   = base_meshlet_index;
+            draw_data.lod_meshlet_count    = lod_meshlet_count;
+            fill_uv_draw_fields_from_render(draw_data, render);
 
             // lod-local aabb, must match the one build_meshlets quantized the compressed meshlet bounds against
             // diag is precomputed length(extent), the cull shader uses it to dequantize radius without a sqrt
-            const BoundingBox& lod_aabb_local = renderable->GetLodAabb(dc.lod_index);
+            const BoundingBox& lod_aabb_local = render->GetLodAabb(dc.lod_index);
             const Vector3 lod_extent          = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
-            data.lod_aabb_min                 = lod_aabb_local.GetMin();
-            data.lod_aabb_extent              = lod_extent;
-            data.lod_aabb_diag                = lod_extent.Length();
+            draw_data.lod_aabb_min            = lod_aabb_local.GetMin();
+            draw_data.lod_aabb_extent         = lod_extent;
+            draw_data.lod_aabb_diag           = lod_extent.Length();
 
-            // per-instance distance cull on the gpu, zero disables the check (used when max_distance is FLT_MAX or non-finite)
-            // squaring once on the cpu avoids a sqrt per cull task on the gpu, the cull shader compares against length squared
-            // this is the gpu-side counterpart to the cpu Render::UpdateFrustumAndDistanceCulling, the cpu check uses the renderable
-            // bounding box which is the world for consolidated entities, so the per-instance gpu test below is the only thing that
-            // stops a 6 km world of forest props from dumping every instance into the cull pipeline regardless of artist intent
-            const float max_distance          = renderable->GetMaxRenderDistance();
+            // squared once here so the cull shader skips a sqrt, zero disables the check, this is the only per-instance distance test for consolidated entities
+            const float max_distance          = render->GetMaxRenderDistance();
             const bool  finite_distance       = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
-            data.max_render_distance_squared  = finite_distance ? (max_distance * max_distance) : 0.0f;
+            draw_data.max_render_distance_squared = finite_distance ? (max_distance * max_distance) : 0.0f;
 
-            // parallel renderable handle, UpdateBoundingBoxes uses this to write each aabb at exactly the slot the cull shader will read
-            m_indirect_renderables[draw_idx] = renderable;
+            // parallel render handle, UpdateBoundingBoxes uses this to write each aabb at exactly the slot the cull shader will read
+            m_indirect_renders[draw_idx] = render;
 
             // one instance cull task per instance, phase a tests each instance's bounds, phase b expands the survivors' meshlets
             for (uint32_t inst = 0; inst < inst_n; inst++)
@@ -2343,12 +2535,10 @@ namespace spartan
                 task.instance_count = 1;
             }
 
-            m_indirect_renderable_count++;
+            m_indirect_render_count++;
         }
 
-        // one-shot diagnostics, fires when the worst case survivor count exceeds the buffer or when the cull task budget rejected renderables
-        // the previous failure mode was silent, the wave atomic add would clamp group_count_x and every task above the cap skipped its writes,
-        // leaving the user with only whichever renderables won the atomic race drawn, both conditions are reported once per session here
+        // reported once per session, either the survivor count exceeded the buffer or the cull task budget rejected renders
         static bool s_logged_survivor_overflow   = false;
         static bool s_logged_cull_task_overflow  = false;
         if (!s_logged_survivor_overflow && expected_survivors_worst_case > meshlet_instance_capacity)
@@ -2360,11 +2550,11 @@ namespace spartan
             );
             s_logged_survivor_overflow = true;
         }
-        if (!s_logged_cull_task_overflow && cull_task_overflow_renderables > 0)
+        if (!s_logged_cull_task_overflow && cull_task_overflow_renders > 0)
         {
             SP_LOG_WARNING(
-                "instance cull task budget exhausted, %u renderable lods rejected, current capacity is %u",
-                cull_task_overflow_renderables,
+                "instance cull task budget exhausted, %u render lods rejected, current capacity is %u",
+                cull_task_overflow_renders,
                 cull_task_capacity
             );
             s_logged_cull_task_overflow = true;
@@ -2394,16 +2584,16 @@ namespace spartan
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
             Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-            Render* renderable           = draw_call.renderable;
-            Material* material           = renderable->GetMaterial();
+            Render* render               = draw_call.render;
+            Material* material           = render->GetMaterial();
 
-            if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
+            if (!material || material->IsTransparent() || render->HasInstancing() || !draw_call.camera_visible)
             {
                 continue;
             }
 
-            float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
-            if (previous_occluders.find(renderable) != previous_occluders.end())
+            float screen_area = compute_screen_space_area(render->GetBoundingBox());
+            if (previous_occluders.find(render) != previous_occluders.end())
             {
                 screen_area *= 1.5f;
             }
@@ -2420,7 +2610,7 @@ namespace spartan
         for (uint32_t i = 0; i < occluder_count; i++)
         {
             m_draw_calls_prepass[areas[i].index].is_occluder = true;
-            previous_occluders.insert(m_draw_calls_prepass[areas[i].index].renderable);
+            previous_occluders.insert(m_draw_calls_prepass[areas[i].index].render);
         }
     }
 
@@ -2452,9 +2642,7 @@ namespace spartan
             return;
         }
 
-        // blas
-        // built incrementally with a per-frame cap so big scenes (forest has 2148 unique meshes)
-        // don't hit driver tdr or peak gpu memory by recording all builds onto one command list
+        // blas builds are capped per frame, recording thousands onto one command list hits driver tdr
         bool blas_burst_done = false;
         {
             cmd_list->BeginMarker("blas_build");
@@ -2464,34 +2652,34 @@ namespace spartan
             uint32_t blas_built     = 0;
             uint32_t blas_remaining = 0;
             uint32_t blas_total     = 0;
-            for (Entity* entity : World::GetEntitiesRenderables())
+            for (Entity* entity : World::GetEntitiesWithRender())
             {
                 if (!entity || !entity->GetActive())
                 {
                     continue;
                 }
 
-                Render* renderable = entity->GetComponent<Render>();
-                if (!renderable)
+                Render* render = entity->GetComponent<Render>();
+                if (!render)
                 {
                     continue;
                 }
 
-                // skip the ray tracing path for renderables that opt out (foliage, anything with millions of instances)
+                // skip the ray tracing path for render components that opt out (foliage, anything with millions of instances)
                 // these never become a blas and never enter the tlas, so the big instance buffers don't drag blas memory along with them
-                if (renderable->HasFlag(RenderableFlags::ExcludeFromRayTracing))
+                if (render->HasFlag(RenderFlags::ExcludeFromRayTracing))
                 {
                     continue;
                 }
 
                 blas_total++;
 
-                if (!renderable->HasAccelerationStructure())
+                if (!render->HasAccelerationStructure())
                 {
                     if (blas_built < blas_builds_per_frame)
                     {
-                        renderable->BuildAccelerationStructure(cmd_list);
-                        if (renderable->HasAccelerationStructure())
+                        render->BuildAccelerationStructure(cmd_list);
+                        if (render->HasAccelerationStructure())
                         {
                             blas_built++;
                         }
@@ -2503,10 +2691,10 @@ namespace spartan
                 }
 
                 // refit blas for deformable meshes (cloth, skinned, etc.)
-                if (renderable->NeedsBlasRefit() && renderable->HasAccelerationStructure())
+                if (render->NeedsBlasRefit() && render->HasAccelerationStructure())
                 {
-                    renderable->RefitAccelerationStructure(cmd_list);
-                    renderable->SetNeedsBlasRefit(false);
+                    render->RefitAccelerationStructure(cmd_list);
+                    render->SetNeedsBlasRefit(false);
                 }
             }
 
@@ -2545,39 +2733,39 @@ namespace spartan
             instances.clear();
             geometry_infos.clear();
 
-            for (Entity* entity : World::GetEntitiesRenderables())
+            for (Entity* entity : World::GetEntitiesWithRender())
             {
                 if (!entity || !entity->GetActive())
                 {
                     continue;
                 }
 
-                Render* renderable = entity->GetComponent<Render>();
-                if (!renderable)
+                Render* render = entity->GetComponent<Render>();
+                if (!render)
                 {
                     continue;
                 }
 
-                // same opt-out as the blas loop above, keep the tlas instance list in sync with the blas set so we don't try to register a renderable that has no blas
-                if (renderable->HasFlag(RenderableFlags::ExcludeFromRayTracing))
+                // same opt-out as the blas loop above, keep the tlas instance list in sync with the blas set so we don't try to register a render component that has no blas
+                if (render->HasFlag(RenderFlags::ExcludeFromRayTracing))
                 {
                     continue;
                 }
 
-                Material* material = renderable->GetMaterial();
+                Material* material = render->GetMaterial();
                 if (!material)
                 {
                     continue;
                 }
 
-                uint64_t device_address = renderable->GetAccelerationStructureDeviceAddress();
+                uint64_t device_address = render->GetAccelerationStructureDeviceAddress();
                 if (device_address == 0)
                 {
                     continue;
                 }
 
-                RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
-                RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
+                RHI_Buffer* vertex_buffer = render->GetVertexBuffer();
+                RHI_Buffer* index_buffer  = render->GetIndexBuffer();
                 if (!vertex_buffer || !index_buffer)
                 {
                     continue;
@@ -2593,7 +2781,7 @@ namespace spartan
                 instance.device_address                              = device_address;
 
                 // row-major 3x4 transform (transpose 3x3 because vulkan uses column vectors)
-                const Matrix& m = renderable->GetEntity()->GetMatrix();
+                const Matrix& m = render->GetEntity()->GetMatrix();
                 instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
                 instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
                 instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
@@ -2601,9 +2789,9 @@ namespace spartan
                 instances.push_back(instance);
 
                 Sb_GeometryInfo geo_info = {};
-                geo_info.vertex_offset  = renderable->GetVertexOffset(0);
-                geo_info.index_offset   = renderable->GetIndexOffset(0);
-                fill_uv_draw_fields_from_renderable(geo_info, renderable);
+                geo_info.vertex_offset  = render->GetVertexOffset(0);
+                geo_info.index_offset   = render->GetIndexOffset(0);
+                fill_uv_draw_fields_from_render(geo_info, render);
                 geometry_infos.push_back(geo_info);
             }
     
@@ -2642,16 +2830,13 @@ namespace spartan
 
         m_tlas = nullptr;
 
-        // invalidate every blas, they hold device addresses into the previous global vertex/index buffers,
-        // those buffers are about to be freed via DeletionQueueParse so leaving stale blas in place would have
-        // future trace rays read freed gpu memory, dedup by mesh because many renderables share one mesh,
-        // e.g. terrain has one mesh with hundreds of sub-meshes and matching renderables
+        // every blas holds device addresses into the global buffers about to be freed, dedup by mesh since many renders share one
         std::unordered_set<Mesh*> meshes;
-        for (Entity* entity : World::GetEntitiesRenderables())
+        for (Entity* entity : World::GetEntitiesWithRender())
         {
-            if (Render* renderable = entity->GetComponent<Render>())
+            if (Render* render = entity->GetComponent<Render>())
             {
-                if (Mesh* mesh = renderable->GetMesh())
+                if (Mesh* mesh = render->GetMesh())
                 {
                     meshes.insert(mesh);
                 }
@@ -2727,8 +2912,8 @@ namespace spartan
 
                 if (rects)
                 {
-                    (*rects)[i].res  = slice_res;
-                    (*rects)[i].rect = math::Rectangle(
+                    (*rects)[i].resolution = slice_res;
+                    (*rects)[i].rect       = math::Rectangle(
                         static_cast<float>(placed_x), static_cast<float>(y),
                         static_cast<float>(slice_res), static_cast<float>(slice_res));
                 }
@@ -2819,8 +3004,14 @@ namespace spartan
                 cmd_list->Copy(tex_in, tex_sdr, false);
             }
 
-            Pass_PostProcess_EditorOverlays(cmd_list, tex_sdr);
-            Pass_Text(cmd_list, tex_sdr);
+            if (!secondary_render_root_active)
+            {
+                Pass_PostProcess_EditorOverlays(
+                    cmd_list,
+                    tex_sdr
+                );
+                Pass_Text(cmd_list, tex_sdr);
+            }
         }
         cmd_list->EndMarker();
 
@@ -2872,9 +3063,7 @@ namespace spartan
 
     uint32_t Renderer::GetClusterOverflowCount()
     {
-        // best effort readback, the buffer is host visible so we read the previous frame's accumulated value
-        // gpu writes commit via the cross queue timeline before the cpu samples here, on integrated/uma gpus
-        // this is exact, on discrete gpus the value may lag by a frame which is fine for a debug warning
+        // best effort readback of a host visible buffer, the value can lag a frame on discrete gpus
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::ClusterStats);
         if (buffer)
         {
@@ -2892,9 +3081,9 @@ namespace spartan
     array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls_prepass;
     uint32_t Renderer::m_draw_calls_prepass_count;
     array<Sb_DrawData, renderer_max_indirect_draws> Renderer::m_indirect_draw_data;
-    array<Render*,     renderer_max_indirect_draws> Renderer::m_indirect_renderables;
+    array<Render*,     renderer_max_indirect_draws> Renderer::m_indirect_renders;
     uint32_t Renderer::m_indirect_draw_count       = 0;
-    uint32_t Renderer::m_indirect_renderable_count = 0;
+    uint32_t Renderer::m_indirect_render_count = 0;
     array<Sb_CullTask, renderer_max_cull_tasks> Renderer::m_cull_tasks;
     uint32_t Renderer::m_cull_task_count = 0;
 
@@ -2933,9 +3122,7 @@ namespace spartan
         // between the full-burst and the partial-dispatch mode on the same frame
         m_pass_state.sky_warmup_this_frame = m_pass_state.sky_frames_remaining > 0;
 
-        // progressive average blend, the n-th warmup frame weighs 1/n so the first frame fully
-        // replaces the panorama, no ghost of the previous cloudscape survives a coverage or sun
-        // change, and the following frames converge to the exact mean of the jittered bakes
+        // progressive average, the n-th warmup frame weighs 1/n so the first one fully replaces the panorama
         const uint32_t warmup_frame_index = temporal_convergence_frames - m_pass_state.sky_frames_remaining;
         m_pass_state.sky_warmup_blend     = 1.0f / static_cast<float>(warmup_frame_index + 1);
 
@@ -3018,10 +3205,7 @@ namespace spartan
         // accel structures first so batch b's rt passes inherit the tlas via compute queue order
         UpdateAccelerationStructures(cmd_list);
 
-        // light cluster assign lives here, it only needs the camera frustum and the light list,
-        // not the gbuffer, so it runs in parallel with graphics phase 1 instead of waiting for it
-        // like the rest of batch b does, this widens batch a so it overlaps the entire gbuffer pass
-        // and shortens batch b so ray-traced shadows can start sooner
+        // only needs the camera frustum and the light list, so it overlaps the gbuffer pass instead of waiting in batch b
         Pass_LightClusterAssign(cmd_list);
 
         if (!m_pass_state.brdf_lut_produced)
@@ -3078,11 +3262,7 @@ namespace spartan
 
     void Renderer::ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer)
     {
-        // opaque per-eye lighting runs on the graphics queue here, on purpose, because the
-        // graphics queue would otherwise be idle for the duration of pass_light (the heaviest
-        // compute shader in the frame) while waiting for the compute queue to finish, doing it
-        // on graphics keeps both queues busy: compute runs batches a + b in parallel, graphics
-        // runs phase 1 + phase 2 + this lighting + post-process, which is a much better balance
+        // on graphics on purpose, the graphics queue would otherwise idle for the whole of pass_light
         Pass_Light(cmd_list, false, eye_layer);
         Pass_Light_Composition(cmd_list, false, eye_layer);
 
@@ -3172,9 +3352,7 @@ namespace spartan
         // compute batch a, view independent prep, runs alongside graphics phase 1
         Pass_ComputeBatchA(cmd_list_compute, update_skysphere, directional_light);
 
-        // submit batch a after the upload flush so light cluster assign reads this frame's camera matrices
-        // we submit before recording any graphics phase 1 work so the compute queue starts skysphere,
-        // tlas update and light cluster assign as early as possible, maximising overlap with the gbuffer pass
+        // after the upload flush so cluster assign sees this frame's matrices, before graphics phase 1 so the queues overlap
         cmd_list_compute->Submit(nullptr, false, nullptr, uploads_timeline, uploads_value);
         RHI_SyncPrimitive* batch_a_timeline = cmd_list_compute->GetTimelineSemaphore();
         const uint64_t batch_a_value        = cmd_list_compute->GetLastTimelineSignalValue();
@@ -3196,9 +3374,7 @@ namespace spartan
             const uint64_t gfx_phase1_timeline_value = cmd_list_graphics_present->GetLastTimelineSignalValue();
             RHI_SyncPrimitive* gfx_timeline          = cmd_list_graphics_present->GetTimelineSemaphore();
 
-            // compute batch b, gbuffer consumers, waits on phase 1, overlaps with graphics phase 2
-            // batch b's outputs are read by phase 3 on the graphics queue, the present submit in
-            // SubmitAndPresent will wait on batch b's timeline to make those writes visible
+            // compute batch b, the gbuffer consumers, waits on phase 1 and overlaps graphics phase 2
             RHI_Queue* queue_compute            = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
             RHI_CommandList* cmd_list_compute_b = queue_compute->NextCommandList();
             cmd_list_compute_b->Begin();
@@ -3214,10 +3390,7 @@ namespace spartan
             Pass_GraphicsPhase2_ShadowsAndRT(cmd_list_graphics_present);
             cmd_list_graphics_present->Submit(nullptr, false, nullptr, batch_a_timeline, batch_a_value);
 
-            // graphics phase 3, opaque lighting + post-process, present cmd list waits on batch b in SubmitAndPresent
-            // pass_light lives here on the graphics queue (not on compute) on purpose, because the
-            // graphics queue is otherwise mostly idle for the duration of the lighting dispatch,
-            // running it here keeps both queues busy and produces a better overall frame time
+            // graphics phase 3, opaque lighting + post-process, the present cmd list waits on batch b in SubmitAndPresent
             cmd_list_graphics_present = queue_graphics->NextCommandList();
             cmd_list_graphics_present->Begin();
             m_cmd_list_present                                = cmd_list_graphics_present;
@@ -3271,12 +3444,15 @@ namespace spartan
             cmd_list_graphics_present->ClearTexture(rt_output, Color::standard_black);
         }
 
-        Pass_Text(cmd_list_graphics_present, rt_output);
+        if (!secondary_render_root_active)
+        {
+            Pass_Text(
+                cmd_list_graphics_present,
+                rt_output
+            );
+        }
 
-        // swap the gbuffer depth and normal history slots on the cpu, after this point any
-        // GetRenderTarget(gbuffer_depth/normal) call resolves to the slot the next frame will
-        // overwrite and the *_previous slots resolve to this frame's data, which is exactly
-        // what restir's temporal validity gate needs to read next frame
+        // after this the _previous slots resolve to this frame's data, which is what restir's temporal gate reads next frame
         Pass_ReSTIR_SwapGBufferHistory();
     }
 }

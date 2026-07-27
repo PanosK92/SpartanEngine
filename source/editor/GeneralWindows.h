@@ -32,6 +32,6 @@ public:
     static bool GetVisibilityWorlds();
     static void SetVisibilityWorlds(const bool visibility);
 
-    static bool* GetVisiblityWindowAbout();
-    static bool* GetVisiblityWindowControls();
+    static bool* GetVisibilityWindowAbout();
+    static bool* GetVisibilityWindowControls();
 };

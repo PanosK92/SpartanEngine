@@ -161,9 +161,7 @@ namespace spartan
             ".pfr"
         };
 
-        // create a silent process (no visible console window) without waiting
-        // caller is responsible for calling SDL_WaitProcess and SDL_DestroyProcess
-        // note: using STDIO_APP for stdout/stderr helps ensure no console window appears
+        // starts a windowless process without waiting, the caller must SDL_WaitProcess and SDL_DestroyProcess
         SDL_Process* create_silent_process(const vector<string>& args)
         {
             vector<const char*> c_args;
@@ -205,16 +203,17 @@ namespace spartan
             if (process)
             {
                 // read and wait - this drains stdout/stderr and waits for completion
-                size_t data_size = 0;
-                int exit_code = 0;
-                char* data = static_cast<char*>(SDL_ReadProcess(process, &data_size, &exit_code));
-                if (output && data && data_size > 0)
+                size_t output_size   = 0;
+                int exit_code        = 0;
+                char* process_output = static_cast<char*>(SDL_ReadProcess(process, &output_size, &exit_code));
+                if (output && process_output && output_size > 0)
                 {
-                    *output = string(data, data_size);
+                    *output = string(process_output, output_size);
                 }
-                if (data)
+
+                if (process_output)
                 {
-                    SDL_free(data);
+                    SDL_free(process_output);
                 }
 
                 SDL_DestroyProcess(process);
@@ -305,26 +304,6 @@ namespace spartan
         // ("The quick brown fox", "brown") -> "fox"
         const size_t position = str.find(exp);
         return position != string::npos ? str.substr(position + exp.length()) : "";
-    }
-
-    string FileSystem::GetStringBetweenExpressions(const string& str, const string& exp_a, const string& exp_b)
-    {
-        // ("The quick brown fox", "The ", " brown") -> "quick"
-
-        const regex base_regex(exp_a + "(.*)" + exp_b);
-
-        smatch base_match;
-        if (regex_search(str, base_match, base_regex))
-        {
-            // The first sub_match is the whole string; the next
-            // sub_match is the first parenthesized expression.
-            if (base_match.size() == 2)
-            {
-                return base_match[1].str();
-            }
-        }
-
-        return str;
     }
 
     string FileSystem::ConvertToUppercase(const string& lower)
@@ -759,24 +738,13 @@ namespace spartan
 
     vector<string> FileSystem::GetSupportedFilesInDirectory(const string& path)
     {
-        const vector<string> filesInDirectory = GetFilesInDirectory(path);
-        vector<string> imagesInDirectory      = GetSupportedImageFilesFromPaths(filesInDirectory);  // get all the images
-        vector<string> modelsInDirectory      = GetSupportedModelFilesFromPaths(filesInDirectory);  // get all the models
-        vector<string> supportedFiles;
+        const vector<string> files  = GetFilesInDirectory(path);
+        const vector<string> models = GetSupportedModelFilesFromPaths(files);
 
-        // get supported images
-        for (const auto& imageInDirectory : imagesInDirectory)
-        {
-            supportedFiles.emplace_back(imageInDirectory);
-        }
+        vector<string> supported = GetSupportedImageFilesFromPaths(files);
+        supported.insert(supported.end(), models.begin(), models.end());
 
-        // get supported models
-        for (const auto& modelInDirectory : modelsInDirectory)
-        {
-            supportedFiles.emplace_back(modelInDirectory);
-        }
-
-        return supportedFiles;
+        return supported;
     }
 
     vector<string> FileSystem::GetSupportedImageFilesFromPaths(const vector<string>& paths)
@@ -834,7 +802,7 @@ namespace spartan
 
     vector<string> FileSystem::GetSupportedSceneFilesInDirectory(const string& path)
     {
-        vector<string> sceneFiles;
+        vector<string> scene_files;
 
         auto files = GetFilesInDirectory(path);
         for (const auto& file : files)
@@ -844,10 +812,10 @@ namespace spartan
                 continue;
             }
 
-            sceneFiles.emplace_back(file);
+            scene_files.emplace_back(file);
         }
 
-        return sceneFiles;
+        return scene_files;
     }
 
     string FileSystem::GetRelativePath(const string& path)

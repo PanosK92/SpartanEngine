@@ -4,7 +4,7 @@ local function add_mesh_physics(root)
     local descendants = root:GetDescendants()
     for i = 1, #descendants do
         local node = descendants[i]
-        if node:GetComponent(ComponentType.Renderable) then
+        if node:GetComponent(ComponentType.Render) then
             local physics = node:AddComponent(ComponentType.Physics)
             physics:SetBodyType(BodyType.Mesh)
         end
@@ -39,9 +39,9 @@ function light_test.Initialize(self, entity)
         -- emissive ceiling panel lights the scene through path tracing
         local light_entity = cornell:GetDescendantByName("light")
         if light_entity then
-            local renderable = light_entity:GetComponent(ComponentType.Renderable)
-            if renderable then
-                local material = renderable:GetMaterial()
+            local render = light_entity:GetComponent(ComponentType.Render)
+            if render then
+                local material = render:GetMaterial()
                 if material then
                     material:SetProperty(MaterialProperty.EmissiveFromAlbedo, 1.0)
                 end

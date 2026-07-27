@@ -106,7 +106,7 @@ namespace spartan
     {
         Light* light;
         uint32_t slice_index;
-        uint32_t res;
+        uint32_t resolution;
         math::Rectangle rect;
     };
 
@@ -119,14 +119,11 @@ namespace spartan
         double expire_time;
     };
 
+    // owns the frame, it collects the world's draw calls, records every pass and presents the result
     class Renderer
     {
     public:
-        // configures the gpu procedural grass system, passed verbatim to Renderer::EnableProceduralGrass
-        // ring_radii_m and cell_size_m carry one entry per lod ring, the renderer assumes three rings ordered near to far
-        // the populate compute shader walks a square grid of (2 * ring_radius / cell_size)^2 cells per ring,
-        // samples the terrain heightmap, hashes the cell for placement jitter, yaw and scale,
-        // and atomically appends accepted samples to the per-lod section of grass_instances
+        // one ring_radii_m and cell_size_m entry per lod ring, the renderer assumes three rings ordered near to far
         struct ProceduralGrassParams
         {
             float ring_radii_m[3]    = { 30.0f, 120.0f, 500.0f };
@@ -168,27 +165,19 @@ namespace spartan
         static bool Screenshot(const std::string& file_path);
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
-        // write a draw data entry and return its index, or uint32_max when the per frame budget is full
-        // when renderable is non-null its uv overrides are resolved against the material defaults,
-        // otherwise an identity uv transform (tiling 1, offset 0, rotation 0, no invert) is written
-        static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* renderable = nullptr);
+        // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
+        static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* render = nullptr);
 
         // wind
         static const math::Vector3& GetWind();
         static void SetWind(const math::Vector3& wind);
 
-        // gpu procedural grass
-        // EnableProceduralGrass sets up the per-lod indirect args (based on the grass mesh's lod offsets in the
-        // global geometry buffer) and arms the per-frame populate/draw passes. the mesh, material and heightmap
-        // pointers are stored as raw and must outlive the renderer's use, the engine owns the actual resources.
-        // DisableProceduralGrass tears it back down and lets the game ship its own grass system if it wants.
+        // gpu procedural grass, the caller keeps ownership of the mesh, material and heightmap and must outlive the renderer's use
         static void EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params);
         static void DisableProceduralGrass();
         static bool IsProceduralGrassEnabled();
 
-        // fft ocean
-        // the water component registers itself and remains the single owner of the simulation parameters,
-        // the renderer reads them each frame, the raw pointer must outlive its use, Remove() deregisters it
+        // fft ocean, the water component stays the owner of the simulation parameters and must outlive its use
         static void EnableOcean(Water* water);
         static void DisableOcean();
         static bool IsOceanEnabled();
@@ -198,6 +187,12 @@ namespace spartan
         // viewport
         static const RHI_Viewport& GetViewport();
         static void SetViewport(float width, float height);
+        static bool RequestSecondaryView(
+            Entity* camera_entity,
+            Entity* render_root
+        );
+        static RHI_Texture* GetSecondaryViewOutput();
+        static bool IsSecondaryViewReady();
 
         // resolution render
         static const math::Vector2& GetResolutionRender();
@@ -247,8 +242,7 @@ namespace spartan
         static void UpdateFrameCb_FeatureBits();
         static void UpdateFrameCb_StereoXr();
         static void UpdateFrameCb_RadialBlurHubs();
-        static bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources,
-                                  bool create_render, bool create_output, const char* label);
+        static bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources, bool create_render, bool create_output, const char* label);
 
         // resources
         static void CreateBuffers();
@@ -339,8 +333,7 @@ namespace spartan
         static void Pass_AA_Upscale(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         template<typename F = std::nullptr_t>
-        static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum,
-                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
+        static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum, RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
         // passes - utility
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
@@ -378,12 +371,7 @@ namespace spartan
         static void UpdateDrawCalls_BuildIndirectAndCullTasks();
         static void UpdateDrawCalls_SelectOccluders();
         static void UpdateAccelerationStructures(RHI_CommandList* cmd_list);
-        // walk every visible renderable with a non zero emission property and write an entry
-        // into the EmissiveTriangles structured buffer for each of its lod 0 triangles, the
-        // entries carry world space positions, area, normal and emission radiance plus a
-        // per triangle weight = area * lum(emission) and a running prefix sum used by the
-        // restir initial trace pass to area sample a triangle in o(log n), the count gets
-        // written into buffer_frame.restir_pt_emissive_tri_count, zero disables the strategy
+        // fills EmissiveTriangles from lod 0 of every emissive render, area weighted with a prefix sum so restir can sample in o(log n)
         static void BuildEmissiveTriangleNeePool(RHI_CommandList* cmd_list);
         static void RotateFrameBuffers();
 
@@ -393,15 +381,11 @@ namespace spartan
         static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls_prepass;
         static uint32_t m_draw_calls_prepass_count;
 
-        // gpu-driven indirect drawing
-        // m_indirect_draw_data holds per-renderable lod entries, sized for the per-renderable budget
-        // m_indirect_renderables is a parallel array so UpdateBoundingBoxes can write each renderable's aabb at the same slot the cull shader reads, no filter divergence allowed
-        // m_cull_tasks expands to one entry per (renderable, meshlet) and is what the cull pass dispatches over
+        // gpu-driven indirect drawing, m_indirect_renders is parallel to m_indirect_draw_data so both must be filtered identically
         static std::array<Sb_DrawData, renderer_max_indirect_draws> m_indirect_draw_data;
-        static std::array<Render*, renderer_max_indirect_draws>     m_indirect_renderables;
+        static std::array<Render*, renderer_max_indirect_draws>     m_indirect_renders;
         static uint32_t m_indirect_draw_count;
-        // count of distinct renderables in the indirect path, used to lay out one aabb slot per renderable
-        static uint32_t m_indirect_renderable_count;
+        static uint32_t m_indirect_render_count; // distinct renders, one aabb slot each
         static std::array<Sb_CullTask, renderer_max_cull_tasks> m_cull_tasks;
         static uint32_t m_cull_task_count;
 
@@ -410,7 +394,7 @@ namespace spartan
         {
             std::shared_ptr<RHI_Buffer> indirect_draw_args;     // single-slot args buffer for the final non-indexed indirect draw
             std::shared_ptr<RHI_Buffer> cpu_indirect_draw_args;
-            std::shared_ptr<RHI_Buffer> indirect_draw_data;     // per-renderable lod draw data
+            std::shared_ptr<RHI_Buffer> indirect_draw_data;     // per-render lod draw data
             std::shared_ptr<RHI_Buffer> meshlet_instances;      // meshlet-cull survivor list
             std::shared_ptr<RHI_Buffer> visible_triangles;      // triangle-cull survivor list (packed meshlet_instance + triangle index)
             std::shared_ptr<RHI_Buffer> triangle_dispatch_args; // single-slot indirect dispatch args for the triangle cull pass
@@ -446,22 +430,14 @@ namespace spartan
             bool cleared_rt_reflections  = false;
             bool cleared_rt_shadows      = false;
             bool cleared_restir          = false;
-            // first-frame reservoir clear, prevents uninitialized memory from being read by the
-            // temporal pass before the initial trace has populated all 15 reservoir textures,
-            // toggled false when restir resources are (re)allocated, then set true after the
-            // one-shot clear on the next dispatch, see Pass_ReSTIR_PathTracing
+            // false until the one-shot clear runs, keeps the temporal pass off uninitialized reservoirs
             bool restir_reservoirs_initialized = false;
 
-            // skysphere convergence tracking
-            // sky_warmup_this_frame is the warmup flag for this frame's Pass_Skysphere dispatch,
-            // captured by UpdateSkysphereConvergenceState before it decrements sky_frames_remaining.
-            // during warmup the shader does full bakes blended as a progressive average, the first
-            // frame fully replaces the panorama so no ghost of the previous sky survives a change,
-            // after warmup it switches to a phase-distributed partial dispatch with a gentle blend
+            // skysphere convergence, warmup does full bakes blended as a progressive average, then partial dispatches
             bool     sky_first_frame           = true;
             bool     sky_had_directional_light = false;
             uint32_t sky_frames_remaining      = 0;
-            bool     sky_warmup_this_frame     = false;
+            bool     sky_warmup_this_frame     = false; // captured before sky_frames_remaining decrements
             float    sky_warmup_blend          = 1.0f;
 
             bool     cloud_history_valid       = false;
@@ -483,17 +459,13 @@ namespace spartan
             // vrs
             RHI_Texture* vrs_last_cleared_texture = nullptr;
 
-            // gpu procedural grass
-            // enabled is toggled by EnableProceduralGrass / DisableProceduralGrass, the per-frame passes
-            // early out when it is false. mesh/material/heightmap and the params are captured at enable time
-            // and used to build the static parts of the per-lod indirect args plus the populate dispatches.
-            bool                  grass_enabled = false;
+            // gpu procedural grass, captured on enable, the per-frame passes early out when disabled
+            bool                  grass_enabled    = false;
             Mesh*                 grass_mesh       = nullptr;
             Material*             grass_material   = nullptr;
             RHI_Texture*          grass_heightmap  = nullptr;
             ProceduralGrassParams grass_params;
-            // baked once on enable, mirrors what the cpu would write into grass_indirect_args before the
-            // args build shader bakes in the dynamic instance_count from grass_count, three entries per lod
+            // one entry per lod, the args build shader adds the dynamic instance_count from grass_count
             std::array<Sb_IndirectDrawArgs, renderer_max_grass_lod_count> grass_indirect_args_static{};
             bool                  grass_args_baked = false;
 

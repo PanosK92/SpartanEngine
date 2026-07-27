@@ -75,10 +75,7 @@ namespace spartan
         shared_ptr<Font>                                                                     standard_font;
         shared_ptr<Material>                                                                 standard_material;
 
-        // five reservoirs each across current, previous and spatial slots, abi mirrors restir_reservoir_prev0 and restir_reservoir_spatial0 stride
-        // the 5th slot per reservoir holds the source primary g-buffer for the chosen sample,
-        // used by the temporal and spatial passes to evaluate the source brdf and jacobian
-        // without sampling the current frame g-buffer at a reprojected pixel
+        // five reservoirs across current, previous and spatial slots, the 5th slot holds the source g-buffer for brdf and jacobian
         const uint32_t restir_reservoir_slot_count = restir_reservoir_textures * 3;
 
         // visit every restir reservoir slot offset by index, fn signature is void(uint32_t i, Renderer_RenderTarget rt)
@@ -113,10 +110,7 @@ namespace spartan
         at(buffers, Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Instance),                           static_cast<uint32_t>(identity.size()), &identity,          true, "dummy_instance_buffer");
         at(buffers, Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size,                     nullptr,            true, "geometry_info");
 
-        // single draw data and aabb buffers large enough for all frames; each frame writes to its
-        // own offset region so the bindless descriptors never change, eliminating the race where
-        // vkUpdateDescriptorSets (host-side, instantly visible under UPDATE_AFTER_BIND) would
-        // change the buffer pointer while in-flight gpu commands were still reading from it
+        // one buffer for every frame, each writes its own offset region so the bindless descriptors never change under in-flight commands
         at(buffers, Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),
             renderer_max_draw_calls * renderer_draw_data_buffer_count, nullptr, true,
@@ -207,10 +201,7 @@ namespace spartan
         at(buffers, Renderer_Buffer::SurvivingInstances)   = fr.surviving_instances;
         at(buffers, Renderer_Buffer::InstanceDispatchArgs) = fr.instance_dispatch_args;
 
-        // clustered lighting buffers, written by the cluster assign pass and read by the light pass
-        // grid stores (first_index, count) per cluster, indices is fixed-slot with first_index = cluster_id * CLUSTER_MAX_LIGHTS
-        // single grid is shared across both eyes in vr stereo, built in the left eye's view-projection space which
-        // contains the right eye's view to within the inter pupillary distance, far less than one cluster tile width
+        // grid holds (first_index, count) per cluster, one grid serves both vr eyes since they diverge by well under a tile
         at(buffers, Renderer_Buffer::ClusterLightGrid) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 2),
             CLUSTER_COUNT_TOTAL, nullptr, false, "cluster_light_grid"
@@ -220,26 +211,19 @@ namespace spartan
             CLUSTER_COUNT_TOTAL * CLUSTER_MAX_LIGHTS, nullptr, false, "cluster_light_indices"
         );
 
-        // tiny stats buffer for the cluster assign pass, currently holds a single overflow counter
-        // bumped atomically when a cluster exceeds CLUSTER_MAX_LIGHTS, cleared each frame on the cpu
-        // host visible so the cpu can read the previous frame's value for editor telemetry without a fence stall
+        // one overflow counter bumped when a cluster exceeds CLUSTER_MAX_LIGHTS, host visible for editor telemetry
         at(buffers, Renderer_Buffer::ClusterStats) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
             1, nullptr, true, "cluster_stats"
         );
 
-        // restir path tracing emissive triangle nee pool, rebuilt each frame on the cpu inside
-        // UpdateAccelerationStructures by walking every renderable whose material has non-zero
-        // emission, capped at restir_emissive_tri_max to bound the cpu walk cost on dense scenes
-        // (handful of glowing surfaces is the common case, a million tri ferns are not)
+        // rebuilt each frame from every emissive material, capped at restir_emissive_tri_max to bound the cpu walk
         at(buffers, Renderer_Buffer::EmissiveTriangles) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmissiveTriangle)),
             restir_emissive_tri_max, nullptr, true, "emissive_triangles"
         );
 
-        // restir paired spatial reuse tables, lin 2026 3, three concatenated tileable pairing
-        // tables of packed partner deltas, generated on the cpu and uploaded once when the
-        // restir reservoirs initialize, see Pass_ReSTIR_PathTracing
+        // three concatenated tileable pairing tables, uploaded once when the restir reservoirs initialize
         at(buffers, Renderer_Buffer::RestirPairing) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
             restir_pairing_element_count, nullptr, true, "restir_pairing"
@@ -252,9 +236,7 @@ namespace spartan
             rhi_max_array_size, nullptr, true, "volumetric_light_indices"
         );
 
-        // fft ocean vertical displacement per cascade, quarter resolution, written by the assemble pass
-        // host visible so the cpu can sample wave height for buoyancy without a fence stall,
-        // like cluster_stats the value may lag a frame on discrete gpus which is fine for physics
+        // host visible so the cpu can sample wave height without a fence stall, it may lag a frame on discrete gpus
         at(buffers, Renderer_Buffer::OceanHeights) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(float)),
             renderer_ocean_heights_resolution * renderer_ocean_heights_resolution * renderer_ocean_max_cascades, nullptr, true, "ocean_heights"
@@ -286,17 +268,7 @@ namespace spartan
         at(buffers, Renderer_Buffer::ParticleVolumeDensity) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count, nullptr, false, "particle_volume_density");
         at(buffers, Renderer_Buffer::ParticleVolumeColor)   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count * 3, nullptr, false, "particle_volume_color");
 
-        // gpu procedural grass, sized once and reused for the lifetime of the renderer
-        // GrassInstances is the transient per-frame ring buffer that the populate shader fills
-        // GrassCount is the per-lod atomic counter, cleared each frame by the populate setup
-        // GrassIndirectArgs is the per-lod DrawIndexedIndirect args buffer, populated each frame by the args build shader
-        // sizes are constants so the descriptors stay stable across worlds, EnableProceduralGrass just bakes per-lod offsets
-        // grass uses a dedicated GrassInstance layout, 16 bytes with full float xyz, the shared PackedInstance
-        // format keeps positions as half-floats and quantizes world positions to a ~1m lattice past a few hundred
-        // meters from the origin, snapping every blade onto a visible grid regardless of how random the populate
-        // compute scatters them. the raster vs reads this buffer via the same uav descriptor the populate compute
-        // wrote, so the per-instance vertex stream slot is bound to the global geometry instance buffer instead.
-        // device local since the cpu never touches it, the compute populate writes the entire content each frame
+        // GrassInstance keeps full float xyz, the shared packed format quantizes distant positions onto a visible lattice
         at(buffers, Renderer_Buffer::GrassInstances) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Instance, static_cast<uint32_t>(sizeof(Sb_GrassInstance)),
             renderer_max_grass_instances, nullptr, false, "grass_instances"
@@ -588,9 +560,7 @@ namespace spartan
         // grouped builders, each owns one cohesive slice of allocations
         auto create_gbuffer = [&]()
         {
-            // frame_render is written by the opaque light + light composition compute batch and
-            // read by the graphics queue from the blit onward, concurrent sharing avoids the need
-            // for explicit queue family ownership transfers between the two queues
+            // concurrent sharing, the compute batch writes it and the graphics queue reads it from the blit onward
             at(render_targets, Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
             at(render_targets, Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
             at(render_targets, Renderer_RenderTarget::particle_volume)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
@@ -606,10 +576,7 @@ namespace spartan
             // rgba: xy = ndc velocity, z = radial motion blur mask, w unused
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_velocity");
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
-            // previous frame depth, used by restir's temporal validity gate so disocclusion is
-            // tested against the actual prior depth at prev_uv instead of the current frame's
-            // depth at prev_uv (the latter mistreats moving objects as disocclusion and is the
-            // dominant cause of motion ghosting on the gi term)
+            // restir's temporal gate tests disocclusion against the prior depth, the current frame's depth ghosts moving objects
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");
             // previous frame normals for the same gate, sampling the current normal buffer at
             // prev_uv reads a different surface whenever anything moved
@@ -675,9 +642,7 @@ namespace spartan
                 uint32_t vrs_height   = (height_render + texel_size_y - 1) / texel_size_y;
                 at(render_targets, Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, vrs_width, vrs_height, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shading_rate");
             }
-            // concurrent sharing because the opaque light compute batch reads the atlas after the
-            // shadow_maps graphics pass writes it, without this flag the cross-queue read would
-            // require an explicit ownership transfer
+            // concurrent sharing, the opaque light compute batch reads the atlas after the graphics shadow pass writes it
             at(render_targets, Renderer_RenderTarget::shadow_atlas) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_shadow_atlas, renderer_resolution_shadow_atlas, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shadow_atlas");
         };
 
@@ -1161,10 +1126,10 @@ namespace spartan
             for (uint32_t c = 0; c < grid_w * grid_h; c++)
             {
                 float cell[4];
-                uint32_t off = cell_offset[c];
-                uint32_t cnt = cell_count[c];
-                memcpy(&cell[0], &off, 4);
-                memcpy(&cell[1], &cnt, 4);
+                uint32_t offset = cell_offset[c];
+                uint32_t count  = cell_count[c];
+                memcpy(&cell[0], &offset, 4);
+                memcpy(&cell[1], &count, 4);
                 cell[2] = 0.0f;
                 cell[3] = 0.0f;
                 memcpy(grid_bytes.data() + static_cast<size_t>(c) * 16u, cell, 16);

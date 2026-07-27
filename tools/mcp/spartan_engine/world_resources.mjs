@@ -1,5 +1,7 @@
 import path from "node:path";
 
+const shared_library_directory = "project/mcp_resources";
+
 function safe_name(value)
 {
   return String(value ?? "world")
@@ -34,8 +36,13 @@ export function world_resource_directory(world)
   const world_name =
     world?.name ??
     world?.file_path ??
-    world?.path ??
-    "world";
+    world?.path;
+  if (!world_name)
+  {
+    throw new Error(
+      "Save or open a world before running scene-editing MCP commands.",
+    );
+  }
   return `project/${safe_name(world_name)}_resources`;
 }
 
@@ -46,7 +53,12 @@ export function generated_resource_command(command)
     command === "material_semantic_create" ||
     command === "mesh_generate" ||
     command === "mesh_generate_batch" ||
-    command === "mesh_raw_create"
+    command === "texture_generate" ||
+    command === "prefab_save" ||
+    command === "material_palette_create" ||
+    command === "compound_create" ||
+    command === "construction_grammar_create" ||
+    command === "detail_pattern_create"
   );
 }
 
@@ -64,18 +76,29 @@ export function constrain_generated_resources(
     command === "material_semantic_create"
   )
   {
-    constrained.path = [
-      directory,
-      file_name(
-        args.path,
-        args.name ?? args.semantic ?? "material",
-        ".material",
-      ),
-    ].join("/");
+    const requested_path = String(args.path ?? "")
+      .replaceAll("\\", "/");
+    const library_root =
+      `${shared_library_directory}/materials/`;
+    const destination_directory =
+      `${shared_library_directory}/materials`;
+    constrained.path =
+      requested_path.startsWith(library_root) &&
+      !requested_path.split("/").includes("..")
+        ? requested_path
+        : [
+            destination_directory,
+            file_name(
+              requested_path,
+              args.name ?? args.semantic ?? "material",
+              ".xml",
+            ),
+          ].join("/");
   }
   else if (command === "material_palette_create")
   {
-    constrained.directory = directory;
+    constrained.directory =
+      `${shared_library_directory}/materials`;
     constrained.materials = (
       Array.isArray(args.materials)
         ? args.materials
@@ -83,32 +106,66 @@ export function constrain_generated_resources(
     ).map((material) => ({
       ...material,
       path: [
-        directory,
+        `${shared_library_directory}/materials`,
         file_name(
           material.path,
           material.name ?? "material",
-          ".material",
+          ".xml",
         ),
       ].join("/"),
     }));
   }
-  else if (
-    command === "mesh_generate" ||
-    command === "mesh_raw_create"
-  )
+  else if (command === "mesh_generate")
   {
-    constrained.path = [
-      directory,
-      file_name(
-        args.path ?? args.mesh_path,
-        args.name ??
-          args.shape ??
-          args.generator ??
-          "mesh",
-        ".mesh",
-      ),
-    ].join("/");
+    const requested_path = String(
+      args.path ??
+      args.mesh_path ??
+      "",
+    ).replaceAll("\\", "/");
+    const library_root =
+      `${shared_library_directory}/meshes/`;
+    const destination_directory =
+      `${shared_library_directory}/meshes`;
+    constrained.path =
+      requested_path.startsWith(library_root) &&
+      !requested_path.split("/").includes("..")
+        ? requested_path
+        : [
+            destination_directory,
+            file_name(
+              requested_path,
+              args.name ??
+                args.shape ??
+                args.generator ??
+                "mesh",
+              ".mesh",
+            ),
+          ].join("/");
     delete constrained.mesh_path;
+  }
+  else if (command === "texture_generate")
+  {
+    const requested_path = String(
+      args.path ??
+      args.texture_path ??
+      "",
+    ).replaceAll("\\", "/");
+    const library_root =
+      `${shared_library_directory}/textures/`;
+    constrained.library = true;
+    constrained.path =
+      requested_path.startsWith(library_root) &&
+      !requested_path.split("/").includes("..")
+        ? requested_path
+        : [
+            `${shared_library_directory}/textures`,
+            file_name(
+              requested_path,
+              args.name ?? "texture",
+              ".png",
+            ),
+          ].join("/");
+    delete constrained.texture_path;
   }
   else if (command === "mesh_generate_batch")
   {
@@ -126,8 +183,10 @@ export function constrain_generated_resources(
     for (let index = 0; index < count; index++)
     {
       const prefix = `item_${index}_`;
+      const destination_directory =
+        `${shared_library_directory}/meshes`;
       constrained[`${prefix}path`] = [
-        directory,
+        destination_directory,
         file_name(
           args[`${prefix}path`] ??
             args[`${prefix}mesh_path`],
@@ -146,7 +205,19 @@ export function constrain_generated_resources(
     command === "detail_pattern_create"
   )
   {
-    constrained.asset_directory = directory;
+    constrained.asset_directory =
+      `${shared_library_directory}/meshes`;
+    if (args.prefab_path)
+    {
+      constrained.prefab_path = [
+        `${shared_library_directory}/prefabs`,
+        file_name(
+          args.prefab_path,
+          args.name ?? "prefab",
+          ".prefab",
+        ),
+      ].join("/");
+    }
     if (Array.isArray(args.parts))
     {
       constrained.parts = args.parts.map((part) => {
@@ -157,7 +228,7 @@ export function constrain_generated_resources(
         return {
           ...part,
           mesh_path: [
-            directory,
+            `${shared_library_directory}/meshes`,
             file_name(
               part.mesh_path,
               part.name ?? part.shape,
@@ -167,6 +238,25 @@ export function constrain_generated_resources(
         };
       });
     }
+  }
+  else if (command === "prefab_save")
+  {
+    const requested_path = String(args.path ?? "")
+      .replaceAll("\\", "/");
+    const prefab_root =
+      `${shared_library_directory}/prefabs/`;
+    constrained.path =
+      requested_path.startsWith(prefab_root) &&
+      !requested_path.split("/").includes("..")
+        ? requested_path
+        : [
+            `${shared_library_directory}/prefabs`,
+            file_name(
+              requested_path,
+              args.name ?? "prefab",
+              ".prefab",
+            ),
+          ].join("/");
   }
   return constrained;
 }

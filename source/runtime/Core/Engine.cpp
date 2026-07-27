@@ -72,7 +72,6 @@ namespace spartan
             Settings::LoadPreInitSettings();
             FontImporter::Initialize();
             ImageImporter::Initialize();
-            ModelImporter::Initialize();
             Window::Initialize();
             Display::Initialize();
             Timer::Initialize();

@@ -117,9 +117,7 @@ void Synthesizer::initializeImpulseResponse(
     const unsigned int sampleCount = std::min(10000U, clippedLength);
     m_filters[index].convolution.initialize(sampleCount);
 
-    // an uncorrelated input leaves a convolution scaled by the root sum of squares of the taps,
-    // so without this the wet level rides on whichever response file happens to be loaded and
-    // the wet dry control stops meaning anything
+    // normalized by the root sum of squares of the taps, otherwise the wet level rides on whichever response is loaded
     double energy = 0.0;
     for (unsigned int i = 0; i < sampleCount; ++i) {
         const double tap =

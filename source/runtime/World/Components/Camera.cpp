@@ -133,16 +133,7 @@ namespace spartan
             SetFlag(CameraFlags::IsDirty, true);
         }
 
-        // always process input for movement (gamepad, keyboard, physics body control)
         ProcessInput();
-
-        // note: when an xr session is running, we intentionally do NOT overwrite the
-        // camera entity's local transform with the hmd pose.  the entity stays where
-        // gameplay placed it (e.g. on the player capsule at head height) and acts as
-        // the "rig root" in world space.  the hmd eye poses are then composed on top
-        // of the camera's world transform inside Xr::UpdateViews, which is what turns
-        // head motion into per-eye world-space translations/rotations for rendering.
-
         ComputeMatrices();
     }
 
@@ -285,9 +276,9 @@ namespace spartan
         return m_frustum.IsVisible(center, extents);
     }
 
-    bool Camera::IsInViewFrustum(shared_ptr<Render> renderable) const
+    bool Camera::IsInViewFrustum(shared_ptr<Render> render) const
     {
-        const BoundingBox& box = renderable->GetBoundingBox();
+        const BoundingBox& box = render->GetBoundingBox();
         return IsInViewFrustum(box);
     }
 
@@ -303,9 +294,7 @@ namespace spartan
     
     Entity* Camera::FindEntityUnderCursor()
     {
-        // hover cache, the picking ray is reasonably expensive (per-entity geometry copy + triangle loop)
-        // so we reuse the previous result while the cursor is steady, drag-preview ticks this every frame
-        // a small staleness budget lets animated meshes eventually re-resolve under a held cursor
+        // the picking ray is expensive, so the last result is reused while the cursor is steady, with a staleness budget
         static Vector2  s_cached_cursor    = Vector2(numeric_limits<float>::infinity(), numeric_limits<float>::infinity());
         static uint64_t s_cached_entity_id = 0;
         static uint64_t s_cached_frame     = 0;
@@ -349,9 +338,7 @@ namespace spartan
         std::sort(m_pick_hits.begin(), m_pick_hits.end(),
             [](const RayHitResult& a, const RayHitResult& b) { return a.m_distance < b.m_distance; });
 
-        // mesh-based triangle picking, rank by smallest ray distance (z-pick)
-        // screen-distance ranking is unstable here because the ray-triangle intersection lands on the cursor
-        // by definition so all candidates have screen_distance ~0 and float noise picks the winner
+        // rank by ray distance, every candidate lands on the cursor so screen distance ranking is float noise
         for (RayHitResult& broad_hit : m_pick_hits)
         {
             if (broad_hit.m_distance >= best_depth)
@@ -359,11 +346,11 @@ namespace spartan
                 break;
             }
 
-            Render* renderable = broad_hit.m_entity->GetComponent<Render>();
+            Render* render = broad_hit.m_entity->GetComponent<Render>();
 
             // query mesh size first to reserve exact capacity and avoid allocations
-            uint32_t index_count  = renderable->GetIndexCount();
-            uint32_t vertex_count = renderable->GetVertexCount();
+            uint32_t index_count  = render->GetIndexCount();
+            uint32_t vertex_count = render->GetVertexCount();
 
             // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
             // only reserve if current capacity is insufficient
@@ -380,7 +367,7 @@ namespace spartan
             m_pick_indices.clear();
             m_pick_vertices.clear();
 
-            renderable->GetGeometry(&m_pick_indices, &m_pick_vertices);
+            render->GetGeometry(&m_pick_indices, &m_pick_vertices);
             if (m_pick_indices.empty() || m_pick_vertices.empty())
             {
                 continue;
@@ -1231,12 +1218,12 @@ namespace spartan
             entity->SetPosition(GetEntity()->GetPosition() + spawn_offset);
 
             // give it a mesh and a material
-            Render* renderable = entity->AddComponent<Render>();
-            renderable->SetMesh(MeshType::Cube);
-            renderable->SetDefaultMaterial();
+            Render* render = entity->AddComponent<Render>();
+            render->SetMesh(MeshType::Cube);
+            render->SetDefaultMaterial();
 
             // the default material projects its texture in world space, override to object space so the texture sticks to the cube as it moves
-            renderable->GetMaterialOverrideMutable().uv_world_space = 0.0f;
+            render->GetMaterialOverrideMutable().uv_world_space = 0.0f;
 
             // add physics
             Physics* physics = entity->AddComponent<Physics>();
@@ -1333,11 +1320,11 @@ namespace spartan
             m_lerp_to_target_position = entity->GetPosition();
             const Vector3 target_direction = (m_lerp_to_target_position - GetEntity()->GetPosition()).Normalized();
 
-            // if the entity has a renderable component, we can get a more accurate target position
+            // if the entity has a render component, we can get a more accurate target position
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
-            if (Render* renderable = entity->GetComponent<Render>())
+            if (Render* render = entity->GetComponent<Render>())
             {
-                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox().GetExtents().Length() * 2.0f;
+                m_lerp_to_target_position -= target_direction * render->GetBoundingBox().GetExtents().Length() * 2.0f;
             }
             else
             {

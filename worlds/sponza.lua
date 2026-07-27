@@ -12,12 +12,12 @@ local function set_cull_none(root, name)
         return nil
     end
 
-    local renderable = node:GetComponent(ComponentType.Renderable)
-    if not renderable then
+    local render = node:GetComponent(ComponentType.Render)
+    if not render then
         return nil
     end
 
-    local material = renderable:GetMaterial()
+    local material = render:GetMaterial()
     if material then
         material:SetProperty(MaterialProperty.CullMode, cull_none)
     end
@@ -72,7 +72,7 @@ function sponza.Initialize(self, entity)
         local descendants = main:GetDescendants()
         for i = 1, #descendants do
             local node = descendants[i]
-            if node:GetActive() and node:GetComponent(ComponentType.Renderable) then
+            if node:GetActive() and node:GetComponent(ComponentType.Render) then
                 local physics = node:AddComponent(ComponentType.Physics)
                 physics:SetBodyType(BodyType.Mesh)
             end
@@ -105,9 +105,9 @@ function sponza.Initialize(self, entity)
 
         local leaves = ivy:GetDescendantByName("IvySim_Leaves")
         if leaves then
-            local renderable = leaves:GetComponent(ComponentType.Renderable)
-            if renderable then
-                local material = renderable:GetMaterial()
+            local render = leaves:GetComponent(ComponentType.Render)
+            if render then
+                local material = render:GetMaterial()
                 if material then
                     material:SetProperty(MaterialProperty.CullMode, cull_none)
                     material:SetProperty(MaterialProperty.SubsurfaceScattering, 1.0)
@@ -118,9 +118,9 @@ function sponza.Initialize(self, entity)
 
         local stems = ivy:GetDescendantByName("IvySim_Stems")
         if stems then
-            local renderable = stems:GetComponent(ComponentType.Renderable)
-            if renderable then
-                local material = renderable:GetMaterial()
+            local render = stems:GetComponent(ComponentType.Render)
+            if render then
+                local material = render:GetMaterial()
                 if material then
                     material:SetProperty(MaterialProperty.SubsurfaceScattering, 1.0)
                 end

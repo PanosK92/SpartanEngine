@@ -93,6 +93,11 @@ namespace spartan::math
             return Vector4(x - Other.x, y - Other.y, z - Other.z, w - Other.w);
         }
 
+        Vector4 operator-() const
+        {
+            return Vector4(-x, -y, -z, -w);
+        }
+
         void operator*=(const float value)
         {
             x *= value;
@@ -168,6 +173,9 @@ namespace spartan::math
         {
             return a * (1.0f - t) + b * t;
         }
+
+        [[nodiscard]] static float Distance(const Vector4& a, const Vector4& b)        { return (b - a).Length(); }
+        [[nodiscard]] static float DistanceSquared(const Vector4& a, const Vector4& b) { return (b - a).LengthSquared(); }
 
         std::string ToString() const;
         const float* Data() const { return &x; }

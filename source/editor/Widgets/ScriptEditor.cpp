@@ -70,8 +70,8 @@ void ScriptEditor::OnTickVisible()
                     script_file = directory.path().string();
                     std::string script_contents;
                     FileSystem::ReadFile(script_file, script_contents);
-                    std::memset(m_buffer, 0, kBufferSize);
-                    strncpy_s(m_buffer, kBufferSize, script_contents.c_str(), script_contents.size() < kBufferSize ? script_contents.size() : kBufferSize - 1);
+                    std::memset(m_buffer, 0, buffer_size);
+                    strncpy_s(m_buffer, buffer_size, script_contents.c_str(), script_contents.size() < buffer_size ? script_contents.size() : buffer_size - 1);
 
                     TextEditor.SetText(script_contents);
                 }

@@ -43,9 +43,7 @@ namespace spartan::geometry_processing
         std::vector<uint32_t>& indices
     );
 
-    // build per-lod meshlets and repack the index buffer in meshlet order
-    // each meshlet ends up with a contiguous range in the returned index buffer (first_index packed inside Sb_MeshletBounds is local to that range)
-    // returns the meshlet bounds (center/radius compressed against lod_aabb_out) in the same order as the repacked indices, and the computed lod aabb the caller is expected to publish via DrawData.lod_aabb_min/extent
+    // builds per-lod meshlets and repacks the indices in meshlet order, the returned bounds match that order
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,

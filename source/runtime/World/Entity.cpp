@@ -932,7 +932,7 @@ namespace spartan
         }
 
         // refuse non finite inputs, a NaN or inf position seeps into the world matrix and
-        // then into every renderable bbox derived from it, which crashes the frustum culler
+        // then into every render component bbox derived from it, which crashes the frustum culler
         if (!position.IsFinite())
         {
             SP_LOG_WARNING("Entity::SetPositionLocal: rejecting non finite position on '%s'", GetObjectName().c_str());
@@ -1038,9 +1038,7 @@ namespace spartan
         }
         else
         {
-            // go through SetPosition so the world-space point (not direction) is correctly
-            // converted to local space - Matrix * Vector3 treats the vector as a point (w=1),
-            // so we must not pass a displacement directly through the inverse parent matrix
+            // go through SetPosition, Matrix * Vector3 treats the vector as a point so a displacement cannot pass through the inverse
             SetPosition(GetPosition() + delta);
         }
     }
@@ -1225,6 +1223,14 @@ namespace spartan
         {
             child->SetParent(nullptr);
         }
+    }
+
+    void Entity::ClearParent()
+    {
+        lock_guard lock(m_mutex_parent);
+
+        m_parent = nullptr;
+        UpdateTransform();
     }
 
     // searches the entire hierarchy, finds any children and saves them in m_children

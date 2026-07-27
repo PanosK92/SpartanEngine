@@ -34,17 +34,19 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    // keys
-    array<bool, 107> Input::m_keys;
-    array<bool, 107> m_keys_previous_frame;
+    array<bool, Input::key_count> Input::m_keys;
     bool Input::m_blocked_by_ui = false;
-    uint32_t Input::m_start_index_mouse   = 83;
-    uint32_t Input::m_start_index_gamepad = 86;
+
+    namespace
+    {
+        // GetKeyDown and GetKeyUp compare against this
+        array<bool, Input::key_count> keys_previous_frame;
+    }
 
     void Input::Initialize()
     {
         m_keys.fill(false);
-        m_keys_previous_frame.fill(false);
+        keys_previous_frame.fill(false);
 
         // get events from the main window's event processing loop
         SP_SUBSCRIBE_TO_EVENT(EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(OnEvent));
@@ -52,7 +54,7 @@ namespace spartan
 
     void Input::Tick()
     {
-        m_keys_previous_frame = m_keys;
+        keys_previous_frame = m_keys;
 
         PollMouse();
         PollKeyboard();
@@ -86,7 +88,7 @@ namespace spartan
             return false;
         }
 
-        return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)];
+        return GetKey(key) && !keys_previous_frame[static_cast<uint32_t>(key)];
     }
 
     bool Input::GetKeyUp(const KeyCode key)
@@ -96,7 +98,7 @@ namespace spartan
             return false;
         }
 
-        return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)];
+        return !GetKey(key) && keys_previous_frame[static_cast<uint32_t>(key)];
     }
 
     void Input::SetBlockedByUi(bool blocked)
@@ -107,21 +109,6 @@ namespace spartan
     bool Input::IsBlockedByUi()
     {
         return m_blocked_by_ui;
-    }
-
-    array<bool, 107>& Input::GetKeys()
-    {
-        return m_keys;
-    }
-
-    uint32_t Input::GetKeyIndexMouse()
-    {
-        return m_start_index_mouse;
-    }
-
-    uint32_t Input::GetKeyIndexGamepad()
-    {
-        return m_start_index_gamepad;
     }
 
     void Input::CheckDeviceState(void* event, Controller* controller)

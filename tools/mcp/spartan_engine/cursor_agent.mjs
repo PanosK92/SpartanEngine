@@ -32,10 +32,13 @@ import {
 import {
   scene_root_name_from_prompt,
 } from "./intent_router.mjs";
-import { get_project_root } from "./shared_codebase.mjs";
+import {
+  get_project_root,
+  get_shared_codebase,
+} from "./shared_codebase.mjs";
 import {
   constrain_generated_resources,
-  world_resource_directory,
+  generated_resource_command,
 } from "./world_resources.mjs";
 import {
   auto_register_world_asset,
@@ -47,6 +50,7 @@ import {
   world_asset_promote,
   world_asset_register,
   world_asset_search,
+  world_material_fork,
   world_material_inspect,
   world_material_publish,
 } from "./world_asset_catalog.mjs";
@@ -107,6 +111,12 @@ const engine_tool_names = new Set([
   "entity_clone",
   "entity_select",
   "entity_set_transform",
+  "asset_viewer_open",
+  "asset_viewer_status",
+  "asset_viewer_select",
+  "asset_viewer_preview_entity",
+  "asset_viewer_set_view",
+  "asset_viewer_screenshot",
   "entity_render_materials",
   "component_types",
   "primitive_types",
@@ -117,9 +127,12 @@ const engine_tool_names = new Set([
   "execute_lua",
   "mesh_raw_create",
   "mesh_raw_get",
+  "texture_generate",
+  "material_textured_create",
   "world_asset_search",
   "world_asset_inspect",
   "world_asset_register",
+  "world_asset_version",
   "world_asset_fork",
   "world_asset_compare",
   "world_asset_promote",
@@ -169,6 +182,7 @@ const scene_mutating_tool_names = new Set([
   "world_set_environment",
   "execute_lua",
   "world_asset_register",
+  "world_asset_version",
   "world_asset_fork",
   "world_asset_promote",
   "world_asset_load",
@@ -185,6 +199,28 @@ let cached_agent_key = "";
 let agent_run_queue = Promise.resolve();
 let active_assistant_context = null;
 let assistant_command_queue = Promise.resolve();
+const maximum_cursor_run_ms = Number.parseInt(
+  process.env.SPARTAN_CURSOR_MAX_RUN_MS ??
+  "360000",
+  10,
+);
+
+function is_engine_bridge_failure(result)
+{
+  const code = String(result?.code ?? "");
+  const error = String(result?.error ?? "")
+    .toLowerCase();
+  return (
+    code === "engine_timeout" ||
+    code === "engine_connect_timeout" ||
+    error.includes("engine connection closed") ||
+    error.includes("econnreset") ||
+    error.includes("engine command") &&
+      error.includes("timed out") ||
+    error.includes("engine connection") &&
+      error.includes("timed out")
+  );
+}
 
 async function assistant_resource_directory(context)
 {
@@ -220,6 +256,21 @@ async function register_assistant_asset(
   if (registration)
   {
     result.asset_registration = registration;
+    const asset_id = registration.asset?.id;
+    if (
+      command === "prefab_save" &&
+      asset_id &&
+      is_focused_asset_request(context.prompt)
+    )
+    {
+      result.asset_viewer = await context.run.tool(
+        "asset_viewer_select",
+        {
+          asset_id,
+        },
+        10000,
+      );
+    }
   }
   return result;
 }
@@ -284,6 +335,114 @@ async function set_material_properties(
     ok: true,
     path: path_value,
     updated,
+  };
+}
+
+// creates the material and the maps it needs in one call, on its own the agent
+// makes a flat material and never comes back to texture it
+async function create_textured_material(run, args) {
+  const name = String(args.name ?? "").trim();
+  if (!name)
+  {
+    return {
+      ok: false,
+      error: "name is required",
+    };
+  }
+  if (!Array.isArray(args.layers) || args.layers.length === 0)
+  {
+    return {
+      ok: true,
+      introspection: true,
+      required: [
+        "name",
+        "layers",
+      ],
+      note:
+        "layers describe the texture, each layer needs a type such as fill, noise, bricks, spots, scratches, shape or text",
+    };
+  }
+
+  const material_path =
+    args.material_path ??
+    args.path ??
+    `${name}.xml`;
+  const material = await run.tool(
+    "material_create",
+    {
+      path: material_path,
+      name,
+    },
+  );
+  if (!material.ok)
+  {
+    return material;
+  }
+
+  const created_path =
+    material.resource?.path ??
+    material.material?.path ??
+    material_path;
+  const properties = await set_material_properties(
+    run,
+    created_path,
+    args,
+  );
+  if (!properties.ok)
+  {
+    return properties;
+  }
+
+  const texture = await run.tool(
+    "texture_generate",
+    {
+      name: args.texture_name ?? name,
+      path: args.texture_path,
+      layers: args.layers,
+      width: args.width,
+      height: args.height,
+      seed: args.seed,
+      seamless: args.seamless,
+      normal_strength: args.normal_strength,
+      base_roughness: args.base_roughness,
+      base_metalness: args.base_metalness,
+      library_asset: args.library_asset,
+      material_path: created_path,
+    },
+    60000,
+  );
+  if (!texture.ok)
+  {
+    return {
+      ...texture,
+      material_path: created_path,
+    };
+  }
+
+  const tiling = Number(args.tiling ?? 0);
+  if (tiling > 0)
+  {
+    for (const property of [
+      "texture_tiling_x",
+      "texture_tiling_y",
+    ])
+    {
+      await run.tool(
+        "material_set_property",
+        {
+          path: created_path,
+          property,
+          value: tiling,
+        },
+      );
+    }
+  }
+
+  return {
+    ok: true,
+    material_path: created_path,
+    texture,
+    tiling: tiling > 0 ? tiling : 1,
   };
 }
 
@@ -513,19 +672,37 @@ async function calibrate_lights(run, args) {
 }
 
 async function wait_for_screenshot(file_path, wait_ms = 5000) {
+  const requested_path = String(file_path ?? "")
+    .replaceAll("\\", "/");
+  const candidates = path.isAbsolute(requested_path)
+    ? [requested_path]
+    : [
+        path.resolve(
+          get_project_root(),
+          "binaries",
+          requested_path,
+        ),
+        path.resolve(
+          get_project_root(),
+          requested_path,
+        ),
+      ];
   const deadline = Date.now() + wait_ms;
   while (Date.now() < deadline)
   {
-    try
+    for (const candidate of candidates)
     {
-      const stats = await fs.stat(file_path);
-      if (stats.size > 0)
+      try
       {
-        return true;
+        const stats = await fs.stat(candidate);
+        if (stats.size > 0)
+        {
+          return true;
+        }
       }
-    }
-    catch
-    {
+      catch
+      {
+      }
     }
     await new Promise(
       (resolve) => setTimeout(resolve, 100),
@@ -596,6 +773,104 @@ async function review_scene(run, args) {
         entry.screenshot.ok &&
         entry.screenshot.ready,
     ),
+    views,
+  };
+}
+
+async function review_asset_viewer(
+  run,
+  args,
+  asset_id,
+)
+{
+  if (!asset_id)
+  {
+    return {
+      ok: false,
+      error:
+        "select or register a mesh or prefab in the Asset Viewer before visual review",
+    };
+  }
+  const selected = await run.tool(
+    "asset_viewer_select",
+    { asset_id },
+    10000,
+  );
+  if (!selected.ok)
+  {
+    return selected;
+  }
+
+  const requested_views = Array.isArray(args.views)
+    ? args.views
+    : [
+        "perspective",
+        "front",
+        "right",
+        "top",
+      ];
+  const views = [];
+  for (const view of requested_views.slice(0, 4))
+  {
+    const camera = await run.tool(
+      "asset_viewer_set_view",
+      {
+        view,
+        zoom: args.zoom ?? 1,
+      },
+      10000,
+    );
+    if (!camera.ok)
+    {
+      return {
+        ...camera,
+        views,
+      };
+    }
+    const screenshot = await run.tool(
+      "asset_viewer_screenshot",
+      {
+        path:
+          `asset_${asset_id}_${view}.png`,
+        width: args.width ?? 768,
+        height: args.height ?? 768,
+      },
+      10000,
+    );
+    if (
+      screenshot.ok &&
+      screenshot.async &&
+      screenshot.path
+    )
+    {
+      screenshot.ready = await wait_for_screenshot(
+        screenshot.path,
+        10000,
+      );
+      if (!screenshot.ready)
+      {
+        screenshot.ok = false;
+        screenshot.error =
+          "Asset Viewer screenshot was not written within 10 seconds";
+      }
+    }
+    views.push({
+      view,
+      camera,
+      screenshot,
+    });
+    if (!screenshot.ok)
+    {
+      return {
+        ...screenshot,
+        views,
+      };
+    }
+  }
+  return {
+    ok: true,
+    target: "asset_viewer",
+    asset_id,
     views,
   };
 }
@@ -803,6 +1078,69 @@ function normalized_mesh_arguments(args) {
       args.mesh_path ??
       `meshes/${name}.mesh`,
   };
+  const modifiers = Array.isArray(normalized.modifiers)
+    ? normalized.modifiers
+    : [];
+  for (const modifier of modifiers)
+  {
+    if (!modifier || typeof modifier !== "object")
+    {
+      continue;
+    }
+    const type = String(modifier.type ?? "").toLowerCase();
+    if (type === "radial_array")
+    {
+      normalized.radial_count =
+        modifier.count ??
+        normalized.radial_count;
+      normalized.radial_axis =
+        modifier.axis ??
+        normalized.radial_axis;
+      normalized.radial_radius =
+        modifier.radius ??
+        normalized.radial_radius;
+      normalized.radial_step_degrees =
+        modifier.step_degrees ??
+        normalized.radial_step_degrees;
+    }
+    else if (type === "linear_array")
+    {
+      normalized.linear_count =
+        modifier.count ??
+        normalized.linear_count;
+      normalized.linear_step =
+        modifier.step ??
+        normalized.linear_step;
+    }
+    else if (type === "shell")
+    {
+      normalized.shell_thickness =
+        modifier.thickness ??
+        normalized.shell_thickness;
+    }
+    else if (type === "taper")
+    {
+      normalized.taper_start =
+        modifier.start ??
+        normalized.taper_start;
+      normalized.taper_end =
+        modifier.end ??
+        normalized.taper_end;
+    }
+  }
+  normalized.rotation_euler =
+    normalized.rotation_euler ??
+    normalized.rotation;
+  if (
+    shape === "revolved_profile" &&
+    Number.isFinite(normalized.segments)
+  )
+  {
+    normalized.segments = Math.min(
+      64,
+      Math.max(3, Math.trunc(normalized.segments)),
+    );
+  }
   if (
     shape === "rounded_box" &&
     Array.isArray(normalized.size) &&
@@ -893,18 +1231,18 @@ async function generate_mesh(run, args) {
     };
   }
   if (
-    args.position ||
-    args.rotation_euler ||
-    args.scale
+    normalized.position ||
+    normalized.rotation_euler ||
+    normalized.scale
   )
   {
     const transformed = await run.tool(
       "entity_set_transform",
       {
         id: created.entity.id,
-        position: args.position,
-        rotation_euler: args.rotation_euler,
-        scale: args.scale,
+        position: normalized.position,
+        rotation_euler: normalized.rotation_euler,
+        scale: normalized.scale,
       },
     );
     if (!transformed.ok)
@@ -916,22 +1254,40 @@ async function generate_mesh(run, args) {
       };
     }
   }
-  const bound = await bind_generated_mesh(
-    run,
-    {
-      id: created.entity.id,
-      mesh:
-        generated.resource?.path ??
-        normalized.path,
-      material: args.material,
-      body_type: args.body_type,
-      static: args.static,
-      kinematic: args.kinematic,
-      mass: args.mass,
-      friction: args.friction,
-      restitution: args.restitution,
-    },
-  );
+  const bind_args = {
+    id: created.entity.id,
+    mesh:
+      generated.resource?.path ??
+      normalized.path,
+    material: args.material,
+    body_type: args.body_type,
+    static: args.static,
+    kinematic: args.kinematic,
+    mass: args.mass,
+    friction: args.friction,
+    restitution: args.restitution,
+  };
+  const collision_requested =
+    args.with_physics === true ||
+    args.collision === true ||
+    (
+      args.collision &&
+      typeof args.collision === "object"
+    ) ||
+    Boolean(args.body_type);
+  const bound = collision_requested
+    ? await bind_generated_mesh(
+        run,
+        bind_args,
+      )
+    : await run.tool(
+        "render_set_mesh",
+        {
+          id: bind_args.id,
+          mesh: bind_args.mesh,
+          material: bind_args.material,
+        },
+      );
   return {
     ...bound,
     generated,
@@ -1093,13 +1449,26 @@ async function create_compound(run, args) {
           },
         );
       }
-      result = await bind_generated_mesh(
-        run,
-        {
-          ...part,
-          id: child.entity.id,
-        },
-      );
+      const collision_requested =
+        part.with_physics === true ||
+        part.collision === true ||
+        Boolean(part.body_type);
+      result = collision_requested
+        ? await bind_generated_mesh(
+            run,
+            {
+              ...part,
+              id: child.entity.id,
+            },
+          )
+        : await run.tool(
+            "render_set_mesh",
+            {
+              id: child.entity.id,
+              mesh: part.mesh,
+              material: part.material,
+            },
+          );
     }
     if (!result.ok)
     {
@@ -1112,11 +1481,45 @@ async function create_compound(run, args) {
     }
     completed_parts.push(result);
   }
+  let prefab = null;
+  if (args.prefab_path)
+  {
+    prefab = await run.tool(
+      "prefab_save",
+      {
+        id: root.entity.id,
+        path: args.prefab_path,
+      },
+    );
+    if (!prefab.ok)
+    {
+      return {
+        ...prefab,
+        root: root.entity,
+        completed_parts,
+      };
+    }
+    if (active_assistant_context)
+    {
+      await register_assistant_asset(
+        active_assistant_context,
+        "prefab_save",
+        {
+          name: args.name,
+          path: args.prefab_path,
+          tags: args.tags,
+          constraints: args.constraints,
+        },
+        prefab,
+      );
+    }
+  }
   return {
     ok: true,
     root: root.entity,
     completed_parts,
     completed_count: completed_parts.length,
+    prefab,
   };
 }
 
@@ -1249,11 +1652,166 @@ async function dispatch_assistant_command(
     };
     delete args.arguments;
   }
+  if (
+    (
+      command === "component_set" ||
+      command === "entity_add_component" ||
+      command === "entity_remove_component"
+    ) &&
+    args.component &&
+    !args.type
+  )
+  {
+    args.type = args.component;
+  }
+  if (
+    command === "prefab_save" &&
+    args.entity_id &&
+    !args.id
+  )
+  {
+    args.id = args.entity_id;
+  }
+  if (
+    command === "asset_viewer_select" &&
+    args.asset &&
+    !args.asset_id
+  )
+  {
+    args.asset_id = args.asset;
+  }
+  if (
+    command === "asset_viewer_select" &&
+    args.entity_id
+  )
+  {
+    return run.tool(
+      "asset_viewer_preview_entity",
+      {
+        id: args.entity_id,
+      },
+      10000,
+    );
+  }
+  if (
+    command === "asset_viewer_preview_entity" &&
+    args.entity_id &&
+    !args.id
+  )
+  {
+    args.id = args.entity_id;
+  }
+  if (command === "entity_set_active")
+  {
+    const requested =
+      args.active ?? args.value;
+    const active =
+      typeof requested === "string" ?
+        ![
+          "false",
+          "0",
+          "no",
+          "off",
+        ].includes(requested.toLowerCase()) :
+        Boolean(requested);
+    return run.tool(
+      "entity_update",
+      {
+        id: args.id ?? args.entity_id,
+        active,
+      },
+      10000,
+    );
+  }
+  if (command === "wait_for_screenshot")
+  {
+    const screenshot_path =
+      args.path ?? args.file_path;
+    if (!screenshot_path)
+    {
+      return {
+        ok: false,
+        ready: false,
+        error: "screenshot path is required",
+      };
+    }
+    const ready = await wait_for_screenshot(
+      screenshot_path,
+      args.wait_ms ?? 10000,
+    );
+    return {
+      ok: ready,
+      ready,
+      path: screenshot_path,
+      ...(
+        ready ?
+          {} :
+          {
+            error:
+              "screenshot was not written before the timeout",
+          }
+      ),
+    };
+  }
+  if (command === "search_codebase")
+  {
+    const query = String(args.query ?? "").trim();
+    if (!query)
+    {
+      return {
+        ok: false,
+        error: "query is required",
+      };
+    }
+    const codebase = get_shared_codebase();
+    return {
+      ok: true,
+      ready: codebase.status().ready,
+      query,
+      results: await codebase.search(
+        query,
+        args.top_k ?? 8,
+      ),
+    };
+  }
+  if (command === "read_source_file")
+  {
+    try
+    {
+      return {
+        ok: true,
+        ...await get_shared_codebase().read_file(
+          args.path,
+          {
+            start_line: args.start_line ?? 1,
+            line_count: args.line_count ?? 160,
+          },
+        ),
+      };
+    }
+    catch (error)
+    {
+      return {
+        ok: false,
+        error: error.message,
+      };
+    }
+  }
+  if (
+    generated_resource_command(command) &&
+    !context.resource_directory
+  )
+  {
+    return {
+      ok: false,
+      error:
+        "Save or open a world before creating MCP resources.",
+    };
+  }
   args = constrain_generated_resources(
     command,
     args,
-    context.resource_directory ??
-      world_resource_directory(),
+    context.resource_directory ?? "",
   );
   const catalog_directory =
     await assistant_resource_directory(context);
@@ -1276,23 +1834,62 @@ async function dispatch_assistant_command(
       args,
     );
   }
-  if (command === "world_asset_register")
+  if (
+    command === "world_asset_register" ||
+    command === "world_asset_version"
+  )
   {
-    return world_asset_register(
+    const result = await world_asset_register(
       catalog_root,
       catalog_directory,
       args,
     );
+    if (
+      result.ok &&
+      (
+        args.type === "mesh" ||
+        args.type === "prefab"
+      ) &&
+      is_focused_asset_request(
+        context.prompt ??
+        context.intent?.prompt
+      )
+    )
+    {
+      const selection = await run.tool(
+        "asset_viewer_select",
+        {
+          asset_id:
+            result.asset?.id ??
+            args.asset_id,
+        },
+        10000,
+      );
+      if (selection.ok)
+      {
+        context.asset_viewer_asset_id =
+          result.asset?.id ??
+          args.asset_id;
+      }
+      result.asset_viewer = selection;
+    }
+    return result;
   }
-  if (
-    command === "world_asset_fork" ||
-    command === "world_material_fork"
-  )
+  if (command === "world_asset_fork")
   {
     return world_asset_fork(
       catalog_root,
       catalog_directory,
       args,
+    );
+  }
+  if (command === "world_material_fork")
+  {
+    return world_material_fork(
+      catalog_root,
+      catalog_directory,
+      args,
+      catalog_send,
     );
   }
   if (command === "world_asset_compare")
@@ -1440,6 +2037,25 @@ async function dispatch_assistant_command(
         },
     };
   }
+  if (command === "scene_plan_create")
+  {
+    if (
+      !args.plan ||
+      typeof args.plan !== "object" ||
+      Array.isArray(args.plan)
+    )
+    {
+      return {
+        ok: false,
+        error: "plan must be an object",
+      };
+    }
+    context.prepared_plan = args.plan;
+    return {
+      ok: true,
+      plan: args.plan,
+    };
+  }
   if (command === "mesh_geometry_capabilities")
   {
     return {
@@ -1542,6 +2158,29 @@ async function dispatch_assistant_command(
   if (command === "material_palette_create")
   {
     return create_material_palette(run, args);
+  }
+  if (
+    command === "material_textured_create" ||
+    command === "textured_material_create"
+  )
+  {
+    return create_textured_material(run, args);
+  }
+  if (
+    command === "texture_generate" &&
+    !Array.isArray(args.layers)
+  )
+  {
+    return {
+      ok: true,
+      introspection: true,
+      required: [
+        "name",
+        "layers",
+      ],
+      note:
+        "layers is an array of objects, each with a type of fill, linear_gradient, radial_gradient, noise, checker, stripes, bricks, tiles, spots, scratches, shape or text",
+    };
   }
   if (
     command === "material_set" ||
@@ -1678,16 +2317,90 @@ async function dispatch_assistant_command(
         },
       );
     }
-    return bind_generated_mesh(
-      run,
-      {
-        ...args,
-        id: created.entity.id,
-      },
+    const bind_args = {
+      ...args,
+      id: created.entity.id,
+    };
+    const collision_requested =
+      args.with_physics === true ||
+      args.collision === true ||
+      Boolean(args.body_type);
+    return collision_requested
+      ? bind_generated_mesh(
+          run,
+          bind_args,
+        )
+      : run.tool(
+          "render_set_mesh",
+          {
+            id: created.entity.id,
+            mesh: args.mesh,
+            material: args.material,
+          },
+        );
+  }
+  if (command === "entity_set_transform_batch")
+  {
+    const items =
+      args.items ??
+      args.entities ??
+      args.transforms;
+    if (!Array.isArray(items))
+    {
+      return run.tool(
+        command,
+        args,
+        60000,
+      );
+    }
+    if (items.length < 1 || items.length > 64)
+    {
+      return {
+        ok: false,
+        error:
+          "entity_set_transform_batch requires one to 64 items",
+      };
+    }
+    const mapped = {
+      count: items.length,
+    };
+    for (let index = 0; index < items.length; index++)
+    {
+      const item = items[index] ?? {};
+      const rotation = item.rotation;
+      mapped[`item_${index}_id`] =
+        item.id ??
+        item.entity_id;
+      mapped[`item_${index}_position`] =
+        item.position ??
+        item.position_local;
+      mapped[`item_${index}_rotation_euler`] =
+        item.rotation_euler ??
+        item.rotation_local ??
+        (
+          Array.isArray(rotation) &&
+          rotation.length === 3
+            ? rotation
+            : undefined
+        );
+      mapped[`item_${index}_rotation`] =
+        Array.isArray(rotation) &&
+        rotation.length === 4
+          ? rotation
+          : undefined;
+      mapped[`item_${index}_scale`] =
+        item.scale ??
+        item.scale_local;
+    }
+    return run.tool(
+      command,
+      mapped,
+      60000,
     );
   }
   if (command === "entity_set_transform")
   {
+    const rotation = args.rotation;
     return run.tool(
       command,
       {
@@ -1700,7 +2413,18 @@ async function dispatch_assistant_command(
           args.position_local,
         rotation_euler:
           args.rotation_euler ??
-          args.rotation_local,
+          args.rotation_local ??
+          (
+            Array.isArray(rotation) &&
+            rotation.length === 3
+              ? rotation
+              : undefined
+          ),
+        rotation:
+          Array.isArray(rotation) &&
+          rotation.length === 4
+            ? rotation
+            : undefined,
         scale:
           args.scale ??
           args.scale_local,
@@ -1826,7 +2550,71 @@ async function dispatch_assistant_command(
   }
   if (command === "scene_visual_review")
   {
-    return review_scene(run, args);
+    if (is_focused_asset_request(context.prompt))
+    {
+      const review = await review_asset_viewer(
+        run,
+        args,
+        context.asset_viewer_asset_id,
+      );
+      if (review.ok)
+      {
+        context.mark_visual_review?.();
+      }
+      return review;
+    }
+    const review = await review_scene(run, args);
+    if (review.ok)
+    {
+      context.mark_visual_review?.();
+    }
+    return review;
+  }
+  if (
+    command === "screenshot_take" &&
+    is_focused_asset_request(context.prompt)
+  )
+  {
+    if (!context.asset_viewer_asset_id)
+    {
+      return {
+        ok: false,
+        error:
+          "register or select the reusable asset before taking an Asset Viewer screenshot",
+      };
+    }
+    const screenshot = await run.tool(
+      "asset_viewer_screenshot",
+      {
+        path:
+          args.path ??
+          `asset_${context.asset_viewer_asset_id}.png`,
+        width: args.width ?? 768,
+        height: args.height ?? 768,
+      },
+      10000,
+    );
+    if (
+      screenshot.ok &&
+      screenshot.async &&
+      screenshot.path
+    )
+    {
+      screenshot.ready = await wait_for_screenshot(
+        screenshot.path,
+        10000,
+      );
+      if (!screenshot.ready)
+      {
+        return {
+          ...screenshot,
+          ok: false,
+          error:
+            "Asset Viewer screenshot was not written within 10 seconds",
+        };
+      }
+    }
+    return screenshot;
   }
   if (command === "screenshot_take" && args.path)
   {
@@ -1841,15 +2629,42 @@ async function dispatch_assistant_command(
         path:
           requested_path
             .toLowerCase()
-            .startsWith("screenshots/")
+            .startsWith(
+              "project/mcp_resources/thumbnails/",
+            )
             ? requested_path
-            : `screenshots/${file_name}`,
+            : `project/mcp_resources/thumbnails/${file_name}`,
       },
       60000,
     );
   }
   if (command === "viewport_frame")
   {
+    if (is_focused_asset_request(context.prompt))
+    {
+      const result = await run.tool(
+        context.asset_viewer_asset_id
+          ? "asset_viewer_set_view"
+          : "asset_viewer_open",
+        context.asset_viewer_asset_id
+          ? {
+              view:
+                args.view === "side"
+                  ? "right"
+                  : args.view ?? "perspective",
+            }
+          : {},
+        10000,
+      );
+      return {
+        ...result,
+        target: "asset_viewer",
+        note:
+          context.asset_viewer_asset_id
+            ? "framed in Asset Viewer"
+            : "Asset Viewer opened; register or select the reusable asset before framing",
+      };
+    }
     const view_aliases = {
       side: "right",
       driver_height: "perspective",
@@ -1901,6 +2716,65 @@ async function dispatch_assistant_command(
       args,
       result,
     );
+  }
+  if (
+    command === "asset_viewer_open" ||
+    command === "asset_viewer_status" ||
+    command === "asset_viewer_select" ||
+    command === "asset_viewer_preview_entity" ||
+    command === "asset_viewer_set_view" ||
+    command === "asset_viewer_screenshot"
+  )
+  {
+    if (command === "asset_viewer_screenshot")
+    {
+      args = {
+        ...args,
+        path:
+          args.path ??
+          args.filename ??
+          args.file ??
+          args.file_path ??
+          args.name ??
+          `asset_${
+            context.asset_viewer_asset_id ?? "preview"
+          }.png`,
+      };
+      delete args.filename;
+      delete args.file;
+      delete args.file_path;
+      delete args.name;
+    }
+    const result = await run.tool(
+      command,
+      args,
+      15000,
+    );
+    if (
+      command === "asset_viewer_select" &&
+      result.ok
+    )
+    {
+      context.asset_viewer_asset_id =
+        result.selected_asset_id ??
+        args.asset_id ??
+        args.id;
+    }
+    return result;
+  }
+  if (command === "world_load" || command === "world_new")
+  {
+    const result = await run.tool(
+      command,
+      args,
+      60000,
+    );
+    if (result.ok)
+    {
+      context.resource_directory = null;
+      await assistant_resource_directory(context);
+    }
+    return result;
   }
   return run.tool(
     command,
@@ -1956,6 +2830,17 @@ const spartan_engine_command_tool = {
         : {};
     const assistant_context =
       active_assistant_context;
+    if (assistant_context.bridge_failure)
+    {
+      return {
+        ok: false,
+        error: assistant_context.bridge_failure,
+        code: "engine_bridge_unhealthy",
+        retryable: false,
+        suggested_action:
+          "restart the engine before starting another assistant run",
+      };
+    }
     const previous_command =
       assistant_command_queue;
     let release_command;
@@ -1966,13 +2851,40 @@ const spartan_engine_command_tool = {
       },
     );
     await previous_command;
+    if (assistant_context.bridge_failure)
+    {
+      release_command();
+      return {
+        ok: false,
+        error: assistant_context.bridge_failure,
+        code: "engine_bridge_unhealthy",
+        retryable: false,
+        suggested_action:
+          "restart the engine before starting another assistant run",
+      };
+    }
     try
     {
-      return await dispatch_assistant_command(
+      const result = await dispatch_assistant_command(
         assistant_context,
         command,
         command_arguments,
       );
+      if (is_engine_bridge_failure(result))
+      {
+        assistant_context.bridge_failure =
+          `engine bridge became unresponsive during ${command}`;
+        assistant_context.cancel_on_bridge_failure?.(
+          assistant_context.bridge_failure,
+        );
+        return {
+          ...result,
+          retryable: false,
+          suggested_action:
+            "restart the engine before starting another assistant run",
+        };
+      }
+      return result;
     }
     finally
     {
@@ -2404,11 +3316,80 @@ function is_scene_mutation_event(value)
   });
 }
 
+async function prepare_asset_library_context(
+  context,
+  prompt,
+  prepared_plan,
+)
+{
+  const elements = prepared_plan?.plan?.elements ?? [];
+  const requests = [
+    {
+      query: prompt,
+      tags: [],
+    },
+    ...elements.slice(0, 12).map((element) => ({
+      query:
+        element.name ??
+        element.role ??
+        element.purpose ??
+        "",
+      tags: element.semantic_tags ?? [],
+    })),
+  ].filter((request) => request.query);
+  const resource_directory =
+    await assistant_resource_directory(context);
+  const matches = [];
+  const seen = new Set();
+  for (const request of requests)
+  {
+    const result = await world_asset_search(
+      get_project_root(),
+      resource_directory,
+      {
+        ...request,
+        limit: 3,
+      },
+    );
+    for (const asset of result.matches ?? [])
+    {
+      if (
+        !asset.active_version ||
+        seen.has(asset.id)
+      )
+      {
+        continue;
+      }
+      seen.add(asset.id);
+      matches.push(asset);
+    }
+  }
+  return matches.slice(0, 20);
+}
+
+function focused_asset_quality_prompt_lines()
+{
+  return [
+    "Focused asset quality standard:",
+    "Treat every reusable asset as a production-quality hero prop unless the user explicitly asks for a blockout, greybox, proxy, or intentionally low-poly style. A short prompt reduces unknown design constraints, not the expected craft quality.",
+    "Infer the ordinary real-world construction, proportions, silhouette transitions, wall thickness, joins, seams, rims, bevels, recesses, contact surfaces, manufacturing details, and material boundaries that make the object recognizable and credible. The user should not need to enumerate standard object anatomy.",
+    "Build primary form, secondary construction, and tertiary identity detail as separate deliberate passes. Materials and textures complement geometry; they never excuse a crude silhouette.",
+    "Do not approximate a continuous manufactured or organic surface by visibly stacking cylinders, boxes, spheres, cones, or capsules. Use mesh_generate, variable lofts, sweeps, profiles, shells, bends, tapers, or mesh_raw_create to produce continuous curved transitions with enough radial and longitudinal resolution for a clean solid silhouette.",
+    "Primitives are acceptable only for hidden construction, genuinely primitive parts, or an explicitly requested blockout. If several visible primitive sections merely trace one continuous outline, replace them with one coherent generated surface.",
+    "Use physically plausible dimensions and thickness. Avoid coplanar overlaps, open shells, abrupt radius jumps, floating trim, z-fighting, and decorative parts that do not follow the parent surface.",
+    "For transparent materials, model the actual outer and inner surfaces or a valid shell and preserve believable thickness at rims and openings. Do not rely on transparency to imply missing geometry.",
+    "Build only the reusable object under its prepared root. Do not surround it with a ground pad, route, display structure, studio set, or review lights unless the user explicitly requests those as part of the asset.",
+    "Review the candidate in the Asset Viewer using solid mode first, then wire or points only for topology diagnosis. Inspect perspective plus front or side views. A recognizable outline, smooth curvature, clean transitions, and readable secondary details are mandatory before registration.",
+    "Compare against any active version and never promote a candidate that regresses silhouette, construction detail, topology, or material separation. Aim for a verified quality score of at least 80 and perform a correction pass when the candidate is below that standard.",
+  ];
+}
+
 function build_prompt(
   prompt,
   snapshot,
   intent = null,
   prepared_plan = null,
+  prepared_assets = [],
 ) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
@@ -2421,15 +3402,27 @@ function build_prompt(
     "Use spartan_status when you need to know whether the MCP bridge, engine, or codebase index is ready.",
     "Use debug_log_read when diagnosing what commands the assistant sent to the engine and what came back.",
     "Use context_snapshot and entity_resolve instead of multiple separate read calls.",
-    "For every new build, design directly from the current request and prepared context. Do not search for stored build definitions or prior generated instructions.",
+    "For every new build, design directly from the current request and prepared context. Do not search for persisted layouts, build definitions, or prior generated instructions.",
+    "Before creating a reusable object, call world_asset_search with semantic aliases, tags, dimensions, style, and material constraints. Load a suitable promoted asset instead of rebuilding it.",
+    "For a focused single-asset request, build the asset in isolation with detailed geometry and materials, review it, register an immutable version, and promote it only after verified checks and a sufficient quality-score improvement.",
+    "For focused asset work, begin editing the prepared asset root immediately. Do not spend multiple minutes narrating, repeating lookups, or redesigning the prepared baseline before the first mutation.",
+    "For focused asset work, never move or capture the main scene viewport. Register the candidate, use asset_viewer_select, asset_viewer_set_view, and asset_viewer_screenshot, and perform scene_visual_review through the Asset Viewer.",
+    "For an environment build, reuse promoted library assets where they fit. Attempt at most one focused improvement per reused asset during the run; otherwise keep the active version and continue the environment.",
+    "Every persistent resource created through MCP belongs under the shared project/mcp_resources directory. Put meshes, materials, textures, prefabs, editable sources, thumbnails, and catalog metadata in their matching shared subdirectories. Never write MCP-generated resources into a world-specific resource directory.",
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
     "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
     "Use mesh_geometry_capabilities before deciding that requested procedural geometry is unavailable.",
     "Prefer concave extruded profiles, multi-opening walls, variable lofts or sweeps, shell thickness, and seam-split box UVs when they express the design better than stacked boxes.",
     "For multiple materials, split semantic surfaces into compound parts because one render entity owns one material.",
-    "Every created renderable must have static collision. Use mesh_convex for generated or imported meshes and the matching box, sphere, capsule, or plane collider for standard primitives. Never leave collision coverage partial.",
+    "Texture every material that represents a real surface. Use material_textured_create so the material and its color, normal and packed maps are made together, and set tiling so the pattern reads at the right scale.",
+    "Build textures from layers: fill for the base, noise for variation, bricks, tiles, stripes or checker for structure, spots and scratches for wear and dirt, shape and text for labels, signage and decals.",
+    "Give layers relief for bumps, roughness and roughness_b for finish, and metalness for metal, otherwise the surface stays flat and uniformly shiny.",
+    "Keep environment textures seamless and check seam_error in the response. Labels and decals are not tiled, so set seamless false and use alpha.",
+    "Skip textures only for glass, pure emitters, and placeholder greybox volumes.",
+    "Add collision only where gameplay needs it. For focused assets, use one simplified collider on the functional root or primary body; never add mesh_convex physics to decorative shells, threads, labels, liners, trim, or repeated details. For environments, cover structural and traversable surfaces without giving every visual detail its own body.",
     "Use entity_create_light for every light. Never hand-roll lights with entity_create_empty + entity_add_component light + component_set; that path leaves weak invisible lights.",
+    "A light entity satisfies a key_lights plan element. Never add a render component to it or fabricate emissive primitives merely to satisfy an audit. If the requested scene needs a visible fixture, create a separate child primitive and tag it as detail rather than light or plan_element:key_lights.",
     "entity_create_light fully initializes the light: intensity is lux for directional and lumens otherwise. Visible blockout defaults are point/spot 8500, area 12000, directional 120000, plus range, angle, area size, shadows, and draw/shadow distances.",
     "Do not pass tiny intensities like 25-100 for blockout lights. If you omit intensity, the tool calibrates it. Only set calibrated false when you intentionally want a dim light.",
     "To calibrate existing scene lights, call lights_calibrate once. Do not write execute_lua or dozens of component_set calls for that.",
@@ -2444,11 +3437,16 @@ function build_prompt(
     "Use primitive-only single-area construction only when the user explicitly asks for a greybox. Normal environments require semantic planning, generated or compound geometry, materials, calibrated lighting, and correction audits.",
     "Do not use execute_lua for API discovery, pairs/next probing, method listing, or exploratory scripts. Those crash or hang the engine.",
     "Prefer entity_create_primitive_batch over execute_lua for repeated primitives. Use execute_lua only when a native batch tool cannot express the edit, and then only with one focused script that uses known bindings.",
-    "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Renderable|Light|...), Renderable:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
+    "Known Lua facts if you must use it: World.CreateEntity, World.GetEntityByName, World.GetEntityById(id_string), entity:SetParent, entity:AddComponent(ComponentType.Render|Light|...), Render:SetMesh(MeshType.Cube), Light:SetLightType(LightType.Point), never pairs() on World.GetEntities or GetChildren, use ForEachChild instead.",
     "When you learn a durable lesson, correction, recurring problem, or maintainer improvement idea, update agent memory concisely.",
     "world_resources_clean is available for explicit cleanup receipts. Finished scene construction runs it automatically.",
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
   ];
+
+  if (is_focused_asset_request(prompt))
+  {
+    lines.push(...focused_asset_quality_prompt_lines());
+  }
 
   if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
   {
@@ -2468,6 +3466,13 @@ function build_prompt(
       lines.push(
         "A validated internal baseline plan has already been prepared. Before geometry, expand or revise it with request-specific functions, zones, relationships, and details that the baseline template missed, then keep the resulting plan as the spatial contract.",
         `Prepared plan: ${safe_json(prepared_plan.plan, 7000)}`,
+      );
+    }
+    if (prepared_assets.length > 0)
+    {
+      lines.push(
+        "Promoted reusable asset matches were searched before this run. Reuse suitable entries with world_asset_load; inspect or improve only when their constraints do not fit.",
+        `Prepared asset matches: ${safe_json(prepared_assets, 5000)}`,
       );
     }
   }
@@ -2522,13 +3527,17 @@ function quality_root_from_matches(matches)
   );
 }
 
-async function resolve_quality_root(run, target_name)
+async function resolve_quality_root(
+  run,
+  target_name,
+  attempts = 10,
+)
 {
   let last_result = {
     ok: false,
     error: "quality root not found",
   };
-  for (let attempt = 0; attempt < 10; attempt++)
+  for (let attempt = 0; attempt < attempts; attempt++)
   {
     const exact = await run.tool(
       "entity_find",
@@ -2542,6 +3551,13 @@ async function resolve_quality_root(run, target_name)
       exact.matches ?? [],
     );
     last_result = exact;
+    if (is_engine_bridge_failure(exact))
+    {
+      return {
+        ...exact,
+        root: null,
+      };
+    }
     if (exact.ok && exact_root)
     {
       return {
@@ -2550,7 +3566,7 @@ async function resolve_quality_root(run, target_name)
         resolution: "exact_name",
       };
     }
-    if (attempt < 9)
+    if (attempt < attempts - 1)
     {
       await new Promise(
         (resolve) => setTimeout(resolve, 500),
@@ -2665,12 +3681,88 @@ function recover_new_build_intent(prompt, intent, run)
   return recovered;
 }
 
+function is_focused_asset_request(prompt)
+{
+  const value = String(prompt ?? "").toLowerCase();
+  return (
+    /\bfocused[\s-]+(?:hero[\s-]+)?asset\b/.test(value) ||
+    /\breusable\s+.+\s+(?:model|asset)\b/.test(value) ||
+    /\basset[\s-]+(?:library|catalog|catalogue)\b/.test(value) ||
+    /\b(?:standalone|isolated|hero)[\s-]+(?:asset|model|prop)\b/.test(value) ||
+    /\b(?:create|make|build|generate|design|model)\b[^.\n]{0,120}\b(?:asset|prefab|prop|model)\b/.test(value)
+  );
+}
+
+async function prepare_focused_asset_root(
+  run,
+  snapshot,
+  target_name,
+)
+{
+  const existing = await resolve_quality_root(
+    run,
+    target_name,
+    1,
+  );
+  if (existing.ok && existing.root?.id)
+  {
+    await run.tool(
+      "entity_update",
+      {
+        id: existing.root.id,
+        active: false,
+        transient: true,
+      },
+      10000,
+    );
+    await run.tool(
+      "asset_viewer_preview_entity",
+      {
+        id: existing.root.id,
+      },
+      10000,
+    );
+    return existing.root;
+  }
+
+  const created = await run.tool(
+    "entity_create_empty",
+    {
+      name: target_name,
+      position: [0, 0, 0],
+      active: false,
+      transient: true,
+      tags: [
+        "mcp_focused_asset",
+        "mcp_generated",
+      ],
+    },
+    10000,
+  );
+  if (!created.ok)
+  {
+    return null;
+  }
+  await run.tool(
+    "asset_viewer_preview_entity",
+    {
+      id: created.entity.id,
+    },
+    10000,
+  );
+  return created.entity;
+}
+
 async function prepare_scene_build_plan({
   prompt,
   intent,
   run,
 })
 {
+  if (is_focused_asset_request(prompt))
+  {
+    return null;
+  }
   const is_scene_construction =
     intent?.kind === "scene_rebuild" ||
     intent?.kind === "city_develop";
@@ -2716,21 +3808,36 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     };
   }
 
-  active_assistant_context = {
-    run,
-    engine_host,
-    engine_port,
-    intent,
-  };
   let cursor_run = null;
   let engine_tool_seen = false;
   let scene_mutation_seen = false;
   let cancel_message = "";
+  active_assistant_context = {
+    run,
+    prompt,
+    engine_host,
+    engine_port,
+    intent,
+    bridge_failure: "",
+    cancel_on_bridge_failure: (message) =>
+    {
+      cancel_message = message;
+      run.event("stage_note", { text: message });
+      if (cursor_run?.supports?.("cancel"))
+      {
+        void cursor_run.cancel();
+      }
+    },
+  };
   let guard_timer = null;
   let idle_timer = null;
   let activity_flush_timer = null;
   let last_activity_at = Date.now();
   let visual_review_seen = false;
+  active_assistant_context.mark_visual_review = () =>
+  {
+    visual_review_seen = true;
+  };
   let activity_buffer = "";
   let activity_prefix = "";
   let last_emitted_activity = "";
@@ -2927,6 +4034,15 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       run,
     );
     active_assistant_context.intent = intent;
+    if (
+      is_focused_asset_request(prompt) &&
+      !snapshot.world?.file_path
+    )
+    {
+      throw new Error(
+        "Focused asset work requires a saved world so its world-local MCP asset library has a valid resource directory. Save or open a world, then retry.",
+      );
+    }
     const prepared_plan = await run.stage(
       "Design Scene",
       "inferring scale, layout, circulation, and functional requirements",
@@ -2939,6 +4055,37 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     active_assistant_context.prepared_plan =
       prepared_plan?.plan ??
       null;
+    const prepared_assets = await run.stage(
+      "Search Asset Library",
+      "finding promoted reusable assets for this request",
+      () => prepare_asset_library_context(
+        active_assistant_context,
+        prompt,
+        prepared_plan,
+      ),
+    );
+    let initial_root = null;
+    if (
+      intent?.target_name &&
+      is_focused_asset_request(prompt)
+    )
+    {
+      initial_root = await run.stage(
+        "Prepare Asset Workspace",
+        "creating an isolated root for focused asset work",
+        () => prepare_focused_asset_root(
+          run,
+          snapshot,
+          intent.target_name,
+        ),
+      );
+      scene_mutation_seen = Boolean(initial_root?.id);
+      await run.tool(
+        "asset_viewer_open",
+        {},
+        10000,
+      );
+    }
     const should_focus_build =
       intent?.kind === "scene_rebuild" ||
       intent?.live_scene_action;
@@ -2950,13 +4097,23 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       )
     )
     {
-      const initial_root = intent.target_name
-        ? await resolve_quality_root(
+      const resolved_initial_root = initial_root
+        ? {
+            ok: true,
+            root: initial_root,
+          }
+        : intent.target_name
+          ? await resolve_quality_root(
           run,
           intent.target_name,
+          1,
         )
-        : await resolve_selected_quality_root(run);
-      if (initial_root.ok && initial_root.root?.id)
+          : await resolve_selected_quality_root(run);
+      if (
+        resolved_initial_root.ok &&
+        resolved_initial_root.root?.id &&
+        !is_focused_asset_request(prompt)
+      )
       {
         await run.stage(
           "Focus Build Location",
@@ -2964,7 +4121,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           () => run.tool(
             "viewport_frame",
             {
-              id: initial_root.root.id,
+              id: resolved_initial_root.root.id,
               view: "perspective",
               padding: 1.35,
             },
@@ -3000,6 +4157,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           snapshot,
           intent,
           prepared_plan,
+          prepared_assets,
         ),
       );
     });
@@ -3107,18 +4265,21 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       };
     }
 
-    await run.stage(
-      "Focus Completed Build",
-      "framing the constructed scene",
-      () => run.tool(
-        "viewport_frame",
-        {
-          id: root_id,
-          view: "perspective",
-          padding: 1.35,
-        },
-      ),
-    );
+    if (!is_focused_asset_request(prompt))
+    {
+      await run.stage(
+        "Focus Completed Build",
+        "framing the constructed scene",
+        () => run.tool(
+          "viewport_frame",
+          {
+            id: root_id,
+            view: "perspective",
+            padding: 1.35,
+          },
+        ),
+      );
+    }
 
     const send_command = (name, args) =>
       run.tool(name, args);
@@ -3126,6 +4287,8 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       prepared_plan?.plan ??
       null;
     const planned_elements = plan?.elements ?? [];
+    const focused_asset =
+      is_focused_asset_request(prompt);
     const audit_args = {
       id: root_id,
       required_features: infer_required_features(prompt),
@@ -3143,6 +4306,18 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           ),
         ),
       ],
+      ...(focused_asset
+        ? {
+            min_entities: 2,
+            min_unique_materials: 1,
+            min_advanced_mesh_ratio: 0.35,
+            require_light: false,
+            min_collision_ratio: 0,
+            max_duplicate_geometry: 2,
+            max_repetition_ratio: 0.5,
+            max_dominant_geometry_ratio: 0.96,
+          }
+        : {}),
     };
     let audit = await run.stage(
       "Audit Scene Quality",
@@ -3157,6 +4332,16 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       root_name,
     };
     const audit_current_layout = async () => {
+      if (focused_asset)
+      {
+        return {
+          ok: true,
+          pass: true,
+          skipped: true,
+          reason:
+            "focused assets use geometry and visual quality gates",
+        };
+      }
       return audit_scene_layout(
         send_command,
         {
@@ -3165,11 +4350,13 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         },
       );
     };
-    let layout_audit = await run.stage(
-      "Audit Scene Layout",
-      "checking scale, support, relationships, and lighting",
-      audit_current_layout,
-    );
+    let layout_audit = focused_asset
+      ? await audit_current_layout()
+      : await run.stage(
+        "Audit Scene Layout",
+        "checking scale, support, relationships, and lighting",
+        audit_current_layout,
+      );
     let final_result = cursor_result;
 
     for (
@@ -3189,15 +4376,42 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         `Root entity: ${root_name}, id ${root_id}.`,
         `Quality audit: ${safe_json(audit, 3500)}`,
         `Layout audit: ${safe_json(layout_audit, 5000)}`,
-        "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
-        "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
-        "Fix every failed scene_layout_audit and scene_quality_audit check, including every renderable listed by collision_coverage, plus the most visible weakness in the image.",
-        "Keep entities aligned with plan element names, plan_element values, semantic_tags, and repeated instances so the layout audit can verify the authored result.",
+        ...(focused_asset
+          ? [
+              ...focused_asset_quality_prompt_lines(),
+              "This correction must replace any visibly stacked primitive approximation with coherent generated geometry before re-registration. Review focused assets from perspective, front, and side views in solid mode.",
+            ]
+          : []),
+        ...(focused_asset
+          ? [
+              "Do not create an environment plan, ground pad, route, display structure, or studio lights around the asset. The reusable object itself is the complete deliverable.",
+              "Call scene_visual_review on the root with perspective, front, and side Asset Viewer views, then inspect the images.",
+            ]
+          : [
+              "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
+              "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
+            ]),
+        focused_asset
+          ? "Fix every failed scene_quality_audit check, including every render component listed by collision_coverage, plus the most visible weakness in the image."
+          : "Fix every failed scene_layout_audit and scene_quality_audit check, including every render component listed by collision_coverage, plus the most visible weakness in the image.",
+        ...(!focused_asset
+          ? [
+              "Keep entities aligned with plan element names, plan_element values, semantic_tags, and repeated instances so the layout audit can verify the authored result.",
+            ]
+          : []),
         "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
-        "Use entity_create_light for lights and mesh_physics_bind or compound_create for collidable generated geometry. Do not expand these atomic tools into probe and component-setting sequences.",
+        ...(focused_asset
+          ? [
+              "Use mesh_physics_bind or compound_create for collidable generated geometry. Do not add lighting unless the asset itself is a functional light.",
+            ]
+          : [
+              "Use entity_create_light for lights and mesh_physics_bind or compound_create for collidable generated geometry. Do not expand these atomic tools into probe and component-setting sequences.",
+            ]),
         "Resolve every correction parent from the current scene and use the returned id. Never retry a missing parent with another guessed id.",
         "Preserve all good existing work and keep every addition under the root.",
-        "Call scene_layout_audit and scene_quality_audit after corrections and do not report completion unless both pass.",
+        focused_asset
+          ? "Call scene_quality_audit after corrections and do not report completion unless it passes."
+          : "Call scene_layout_audit and scene_quality_audit after corrections and do not report completion unless both pass.",
       ].join("\n");
 
       final_result = await run.stage(

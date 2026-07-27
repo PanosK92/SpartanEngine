@@ -32,26 +32,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(pop)
 
 // must match the RHI_CullMode enum order, Back, Front, None
-static const D3D12_CULL_MODE d3d12_cull_mode[] =
+inline constexpr D3D12_CULL_MODE d3d12_cull_mode[] =
 {
     D3D12_CULL_MODE_BACK,
     D3D12_CULL_MODE_FRONT,
     D3D12_CULL_MODE_NONE
 };
 
-static const D3D12_FILL_MODE d3d12_polygon_mode[] =
+inline constexpr D3D12_FILL_MODE d3d12_polygon_mode[] =
 {
     D3D12_FILL_MODE_SOLID,
     D3D12_FILL_MODE_WIREFRAME
 };
 
-static const D3D12_PRIMITIVE_TOPOLOGY_TYPE d3d12_primitive_topology[] =
+inline constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE d3d12_primitive_topology[] =
 {
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE
 };
 
-static const DXGI_FORMAT d3d12_format[] =
+inline constexpr DXGI_FORMAT d3d12_format[] =
 {
     // R
     DXGI_FORMAT_R8_UNORM,
@@ -91,7 +91,7 @@ static const DXGI_FORMAT d3d12_format[] =
     DXGI_FORMAT_UNKNOWN
 };
 
-static const D3D12_TEXTURE_ADDRESS_MODE d3d12_sampler_address_mode[] =
+inline constexpr D3D12_TEXTURE_ADDRESS_MODE d3d12_sampler_address_mode[] =
 {
     D3D12_TEXTURE_ADDRESS_MODE_WRAP,
     D3D12_TEXTURE_ADDRESS_MODE_MIRROR,
@@ -100,7 +100,7 @@ static const D3D12_TEXTURE_ADDRESS_MODE d3d12_sampler_address_mode[] =
     D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE
 };
 
-static const D3D12_COMPARISON_FUNC d3d12_comparison_function[] =
+inline constexpr D3D12_COMPARISON_FUNC d3d12_comparison_function[] =
 {
     D3D12_COMPARISON_FUNC_NEVER,
     D3D12_COMPARISON_FUNC_LESS,
@@ -112,7 +112,7 @@ static const D3D12_COMPARISON_FUNC d3d12_comparison_function[] =
     D3D12_COMPARISON_FUNC_ALWAYS
 };
 
-static const D3D12_STENCIL_OP d3d12_stencil_operation[] =
+inline constexpr D3D12_STENCIL_OP d3d12_stencil_operation[] =
 {
     D3D12_STENCIL_OP_KEEP,
     D3D12_STENCIL_OP_ZERO,
@@ -124,7 +124,7 @@ static const D3D12_STENCIL_OP d3d12_stencil_operation[] =
     D3D12_STENCIL_OP_DECR
 };
 
-static const D3D12_BLEND d3d12_blend_factor[] =
+inline constexpr D3D12_BLEND d3d12_blend_factor[] =
 {
     D3D12_BLEND_ZERO,
     D3D12_BLEND_ONE,
@@ -145,7 +145,7 @@ static const D3D12_BLEND d3d12_blend_factor[] =
     D3D12_BLEND_INV_SRC1_ALPHA
 };
 
-static const D3D12_BLEND_OP d3d12_blend_operation[] =
+inline constexpr D3D12_BLEND_OP d3d12_blend_operation[] =
 {
     D3D12_BLEND_OP_ADD,
     D3D12_BLEND_OP_SUBTRACT,
@@ -167,27 +167,27 @@ static const D3D12_BLEND_OP d3d12_blend_operation[] =
 #include <vulkan/vulkan.h>
 #pragma warning(pop)
 
-static const VkPolygonMode vulkan_polygon_mode[] =
+inline constexpr VkPolygonMode vulkan_polygon_mode[] =
 {
     VK_POLYGON_MODE_FILL,
     VK_POLYGON_MODE_LINE,
     VK_POLYGON_MODE_MAX_ENUM
 };
 
-static const VkCullModeFlags vulkan_cull_mode[] =
+inline constexpr VkCullModeFlags vulkan_cull_mode[] =
 {
     VK_CULL_MODE_BACK_BIT,
     VK_CULL_MODE_FRONT_BIT,
     VK_CULL_MODE_NONE
 };
 
-static const VkPrimitiveTopology vulkan_primitive_topology[] =
+inline constexpr VkPrimitiveTopology vulkan_primitive_topology[] =
 {
     VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
     VK_PRIMITIVE_TOPOLOGY_LINE_LIST
 };
 
-static const VkFormat vulkan_format[] =
+inline constexpr VkFormat vulkan_format[] =
 {
     // R
     VK_FORMAT_R8_UNORM,
@@ -227,7 +227,7 @@ static const VkFormat vulkan_format[] =
     VK_FORMAT_UNDEFINED
 };
 
-static const VkObjectType vulkan_object_type[] =
+inline constexpr VkObjectType vulkan_object_type[] =
 {
     VK_OBJECT_TYPE_FENCE,
     VK_OBJECT_TYPE_SEMAPHORE,
@@ -249,7 +249,7 @@ static const VkObjectType vulkan_object_type[] =
     VK_OBJECT_TYPE_UNKNOWN
 };
 
-static const VkSamplerAddressMode vulkan_sampler_address_mode[] =
+inline constexpr VkSamplerAddressMode vulkan_sampler_address_mode[] =
 {
     VK_SAMPLER_ADDRESS_MODE_REPEAT,
     VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
@@ -258,7 +258,7 @@ static const VkSamplerAddressMode vulkan_sampler_address_mode[] =
     VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE
 };
 
-static const VkCompareOp vulkan_compare_operator[] =
+inline constexpr VkCompareOp vulkan_compare_operator[] =
 {
     VK_COMPARE_OP_NEVER,
     VK_COMPARE_OP_LESS,
@@ -270,7 +270,7 @@ static const VkCompareOp vulkan_compare_operator[] =
     VK_COMPARE_OP_ALWAYS
 };
 
-static const VkStencilOp vulkan_stencil_operation[] =
+inline constexpr VkStencilOp vulkan_stencil_operation[] =
 {
     VK_STENCIL_OP_KEEP,
     VK_STENCIL_OP_ZERO,
@@ -282,7 +282,7 @@ static const VkStencilOp vulkan_stencil_operation[] =
     VK_STENCIL_OP_DECREMENT_AND_WRAP
 };
 
-static const VkBlendFactor vulkan_blend_factor[] =
+inline constexpr VkBlendFactor vulkan_blend_factor[] =
 {
     VK_BLEND_FACTOR_ZERO,
     VK_BLEND_FACTOR_ONE,
@@ -303,7 +303,7 @@ static const VkBlendFactor vulkan_blend_factor[] =
     VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
 };
 
-static const VkBlendOp vulkan_blend_operation[] =
+inline constexpr VkBlendOp vulkan_blend_operation[] =
 {
     VK_BLEND_OP_ADD,
     VK_BLEND_OP_SUBTRACT,
@@ -312,19 +312,19 @@ static const VkBlendOp vulkan_blend_operation[] =
     VK_BLEND_OP_MAX
 };
 
-static const VkFilter vulkan_filter[] =
+inline constexpr VkFilter vulkan_filter[] =
 {
     VK_FILTER_NEAREST,
     VK_FILTER_LINEAR
 };
 
-static const VkSamplerMipmapMode vulkan_mipmap_mode[] =
+inline constexpr VkSamplerMipmapMode vulkan_mipmap_mode[] =
 {
     VK_SAMPLER_MIPMAP_MODE_NEAREST,
     VK_SAMPLER_MIPMAP_MODE_LINEAR
 };
 
-static const VkImageLayout vulkan_image_layout[] =
+inline constexpr VkImageLayout vulkan_image_layout[] =
 {
     VK_IMAGE_LAYOUT_GENERAL,
     VK_IMAGE_LAYOUT_PREINITIALIZED,
@@ -337,7 +337,7 @@ static const VkImageLayout vulkan_image_layout[] =
     VK_IMAGE_LAYOUT_UNDEFINED
 };
 
-static const char* vkresult_to_string(const VkResult result)
+inline const char* vkresult_to_string(const VkResult result)
 {
     switch (result)
     {

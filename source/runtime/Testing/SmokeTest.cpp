@@ -51,12 +51,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHE SOFTWARE.
 
 namespace spartan
 {
-    bool SmokeTest::m_delayedTestsPending = false;
-    uint32_t SmokeTest::m_testCount = 0;
-    uint32_t SmokeTest::m_passedCount = 0;
+    bool SmokeTest::m_delayed_tests_pending = false;
+    uint32_t SmokeTest::m_test_count = 0;
+    uint32_t SmokeTest::m_passed_count = 0;
     std::string SmokeTest::m_error;
-    bool SmokeTest::m_testsPassed = true;
-    double SmokeTest::m_startTimeMs = 0.0;
+    bool SmokeTest::m_all_tests_passed = true;
+    double SmokeTest::m_start_time_ms = 0.0;
 
     namespace
     {
@@ -83,7 +83,7 @@ namespace spartan
 
     void SmokeTest::Tick()
     {
-        if (!m_delayedTestsPending)
+        if (!m_delayed_tests_pending)
         {
             return;
         }
@@ -91,25 +91,25 @@ namespace spartan
         Material* standard_material = Renderer::GetStandardMaterial().get();
         if (standard_material && standard_material->GetResourceState() >= ResourceState::PreparedForGpu)
         {
-            m_delayedTestsPending = false;
+            m_delayed_tests_pending = false;
             RunDelayedTests();
         }
     }
 
     void SmokeTest::RunTest(const char* name, bool (*test_func)(std::string&))
     {
-        m_testCount++;
+        m_test_count++;
         m_error.clear();
         SP_LOG_INFO("Running: %s...", name);
 
         if (test_func(m_error))
         {
-            m_passedCount++;
+            m_passed_count++;
             SP_LOG_INFO("  ✓ PASSED: %s", name);
         }
         else
         {
-            m_testsPassed = false;
+            m_all_tests_passed = false;
             SP_LOG_ERROR("  ✗ FAILED: %s - %s", name, m_error.c_str());
         }
     }
@@ -119,11 +119,11 @@ namespace spartan
         SP_LOG_INFO("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         SP_LOG_INFO("Starting Smoke Tests...");
         SP_LOG_INFO("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        m_startTimeMs = Timer::GetTimeMs();
-        m_testCount = 0;
-        m_passedCount = 0;
+        m_start_time_ms = Timer::GetTimeMs();
+        m_test_count = 0;
+        m_passed_count = 0;
         m_error.clear();
-        m_testsPassed = true;
+        m_all_tests_passed = true;
 
         RunTest("RHI.BackendInitialization",  Test_RHI_BackendInitialization);
         RunTest("RHI.MemoryAllocation",          Test_RHI_MemoryAllocation);
@@ -133,22 +133,22 @@ namespace spartan
         RunTest("RHI.ResourceTransitions",      Test_RHI_ResourceTransitions);
         RunTest("Threading.ResourceCreation",  Test_Threading_ResourceCreation);
 
-        m_delayedTestsPending = true;
+        m_delayed_tests_pending = true;
     }
 
     void SmokeTest::RunDelayedTests()
     {
         RunTest("Render.BasicCube", Test_Render_BasicCube);
 
-        double elapsed_ms = Timer::GetTimeMs() - m_startTimeMs;
+        double elapsed_ms = Timer::GetTimeMs() - m_start_time_ms;
         std::ofstream file("ci_test.txt");
         if (file.is_open())
         {
-            if (m_testsPassed)
+            if (m_all_tests_passed)
             {
                 file << "0";
                 SP_LOG_INFO("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                SP_LOG_INFO("Smoke Tests: %d/%d PASSED in %.2f ms", m_passedCount, m_testCount, elapsed_ms);
+                SP_LOG_INFO("Smoke Tests: %d/%d PASSED in %.2f ms", m_passed_count, m_test_count, elapsed_ms);
                 SP_LOG_INFO("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             else
@@ -156,7 +156,7 @@ namespace spartan
                 file << "1" << std::endl;
                 file << m_error;
                 SP_LOG_ERROR("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                SP_LOG_ERROR("Smoke Tests: %d/%d FAILED in %.2f ms", m_passedCount, m_testCount, elapsed_ms);
+                SP_LOG_ERROR("Smoke Tests: %d/%d FAILED in %.2f ms", m_passed_count, m_test_count, elapsed_ms);
                 SP_LOG_ERROR("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
             file.close();
@@ -425,9 +425,9 @@ namespace spartan
     {
         Entity* entity = World::CreateEntity();
         entity->SetObjectName(name);
-        Render* renderable = entity->AddComponent<Render>();
-        renderable->SetMesh(MeshType::Cube);
-        renderable->SetMaterial(Renderer::GetStandardMaterial());
+        Render* render = entity->AddComponent<Render>();
+        render->SetMesh(MeshType::Cube);
+        render->SetMaterial(Renderer::GetStandardMaterial());
         entity->SetPositionLocal(position);
         return entity;
     }

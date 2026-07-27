@@ -34,8 +34,8 @@ namespace spartan::math
 
     string Vector2::ToString() const
     {
-        char tempBuffer[200];
-        sprintf_s(tempBuffer, sizeof(tempBuffer), "X:%f, Y:%f", x, y);
-        return string(tempBuffer);
+        char buffer[200];
+        sprintf_s(buffer, sizeof(buffer), "X:%f, Y:%f", x, y);
+        return string(buffer);
     }
 }

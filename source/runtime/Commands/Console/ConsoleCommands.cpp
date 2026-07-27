@@ -33,11 +33,11 @@ namespace spartan
         requires(std::is_same_v<T, int32_t>)
         std::optional<T> ParseValue(std::string_view value)
         {
-            char* End = nullptr;
-            long long Value = std::strtoll(value.data(), &End, 10);
-            if (End != value.data() && Value >= std::numeric_limits<T>::min() && Value <= std::numeric_limits<T>::max())
+            char* end     = nullptr;
+            long long raw = std::strtoll(value.data(), &end, 10);
+            if (end != value.data() && raw >= std::numeric_limits<T>::min() && raw <= std::numeric_limits<T>::max())
             {
-                return static_cast<T>(Value);
+                return static_cast<T>(raw);
             }
             return std::nullopt;
         }
@@ -46,9 +46,9 @@ namespace spartan
         requires(std::is_floating_point_v<T>)
         std::optional<T> ParseValue(std::string_view value)
         {
-            char* End = nullptr;
-            T var_value = static_cast<T>(std::strtod(value.data(), &End));
-            if (End != value.data())
+            char* end   = nullptr;
+            T var_value = static_cast<T>(std::strtod(value.data(), &end));
+            if (end != value.data())
             {
                 return var_value;
             }
@@ -107,32 +107,32 @@ namespace spartan
 
     bool ConsoleRegistry::SetValueFromString(std::string_view target_name, std::string_view string_value)
     {
-        ConsoleVariable* ConsoleVar = Find(target_name);
-        if (ConsoleVar == nullptr)
+        ConsoleVariable* console_variable = Find(target_name);
+        if (console_variable == nullptr)
         {
             return false;
         }
 
-        bool bSuccess = std::visit([&]<typename T0>(T0&&) -> bool
+        bool parsed = std::visit([&]<typename T0>(T0&&) -> bool
         {
             using T = std::decay_t<T0>;
 
             std::optional<T> parsed_value = ParseValue<T>(string_value);
             if (parsed_value.has_value())
             {
-                *(ConsoleVar->m_value_ptr) = *parsed_value;
+                *(console_variable->m_value_ptr) = *parsed_value;
                 return true;
             }
 
             return false;
-        }, *(ConsoleVar->m_value_ptr));
+        }, *(console_variable->m_value_ptr));
 
-        if (bSuccess && ConsoleVar->m_on_change)
+        if (parsed && console_variable->m_on_change)
         {
-            ConsoleVar->m_on_change(*(ConsoleVar->m_value_ptr));
+            console_variable->m_on_change(*(console_variable->m_value_ptr));
         }
 
-        return bSuccess;
+        return parsed;
     }
 
     std::optional<std::string> ConsoleRegistry::GetValueAsString(std::string_view variable_name)
@@ -143,23 +143,23 @@ namespace spartan
             return std::nullopt;
         }
 
-        std::string Result;
+        std::string result;
 
-        bool bSuccess = std::visit([&]<typename T0>(T0&& Value) -> bool
+        bool formatted = std::visit([&]<typename T0>(T0&& value) -> bool
         {
             using T = std::decay_t<T0>;
 
             if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>)
             {
-                Result = std::to_string(std::forward<T0>(Value));
+                result = std::to_string(std::forward<T0>(value));
             }
             else if constexpr (std::is_same_v<T, bool>)
             {
-                Result = Value ? "true" : "false";
+                result = value ? "true" : "false";
             }
             else if constexpr (std::is_same_v<T, std::string>)
             {
-                Result = Value;
+                result = value;
             }
             else
             {
@@ -169,12 +169,12 @@ namespace spartan
             return true;
         }, *(console_variable->m_value_ptr));
 
-        if (!bSuccess)
+        if (!formatted)
         {
             return std::nullopt;
         }
 
-        return Result;
+        return result;
     }
 }
 

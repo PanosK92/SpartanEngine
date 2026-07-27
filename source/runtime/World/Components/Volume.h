@@ -32,6 +32,7 @@ namespace spartan
 {
     class Entity;
 
+    // a box that overrides cvars and enables reverb while the camera or an audio source is inside it
     class Volume : public Component
     {
     public:

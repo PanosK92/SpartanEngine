@@ -266,13 +266,13 @@ namespace spartan
                                 continue;
                             }
                                 
-                            Render* renderable = entity_selected->GetComponent<Render>();
-                            if (!renderable)
+                            Render* render = entity_selected->GetComponent<Render>();
+                            if (!render)
                             {
                                 continue;
                             }
                                 
-                            if (!renderable->GetVertexBuffer() || !renderable->GetIndexBuffer())
+                            if (!render->GetVertexBuffer() || !render->GetIndexBuffer())
                             {
                                 continue;
                             }
@@ -286,9 +286,9 @@ namespace spartan
                             m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
                             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                            cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                            cmd_list->SetBufferVertex(render->GetVertexBuffer());
+                            cmd_list->SetBufferIndex(render->GetIndexBuffer());
+                            cmd_list->DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(), render->GetVertexOffset());
                             any_rendered = true;
                         }
                     }

@@ -47,12 +47,12 @@ namespace spartan
         static void RunDelayedTests();
         static void RunTest(const char* name, bool (*test_func)(std::string&));
 
-        static bool m_delayedTestsPending;
-        static uint32_t m_testCount;
-        static uint32_t m_passedCount;
+        static bool m_delayed_tests_pending;
+        static uint32_t m_test_count;
+        static uint32_t m_passed_count;
         static std::string m_error;
-        static bool m_testsPassed;
-        static double m_startTimeMs;
+        static bool m_all_tests_passed;
+        static double m_start_time_ms;
 
         // Individual Tests
         static bool Test_RHI_BackendInitialization(std::string& out_error);

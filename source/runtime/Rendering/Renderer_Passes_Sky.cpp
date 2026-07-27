@@ -48,9 +48,7 @@ namespace spartan
         {
             if (World::GetDirectionalLight())
             {
-                // sky view lut, one small march per texel replaces the per panorama pixel
-                // atmosphere integration, rebaked every frame since it tracks the sun, the
-                // moon and the camera altitude, cost is negligible next to the cloud march
+                // sky view lut, one small march per texel instead of integrating the atmosphere per panorama pixel
                 {
                     RHI_PipelineState pso;
                     pso.name             = "skysphere_sky_view_lut";
@@ -64,9 +62,7 @@ namespace spartan
                     cmd_list->Dispatch(tex_lut_sky_view);
                 }
 
-                // cloud shadow map, cumulus transmittance along the sun projected on the cloud
-                // base plane, rebaked every frame since it tracks the camera and the sun, the
-                // volumetric fog march samples it to carve the sun shafts through cloud gaps
+                // cumulus transmittance along the sun on the cloud base plane, the fog march samples it for sun shafts
                 {
                     RHI_PipelineState pso;
                     pso.name             = "cloud_shadow";
@@ -78,9 +74,7 @@ namespace spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                     cmd_list->Dispatch(tex_cloud_shadow);
 
-                    // soft penumbra plus anti-moire, the raw bake carries texel-rate edges that
-                    // beat against the screen grid on the ground, a few texels of blur and a mip
-                    // chain remove that high frequency before lighting samples the map
+                    // the raw bake has texel-rate edges that moire against the screen grid, blur and mips remove them
                     Pass_Blur(cmd_list, tex_cloud_shadow, false, 4.0f, 0);
                     Pass_Downscale(cmd_list, tex_cloud_shadow, Renderer_DownsampleFilter::Average);
                 }
@@ -99,9 +93,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_stars ? tex_stars : GetStandardTexture(Renderer_StandardTexture::Black));
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex6, tex_grid  ? tex_grid  : GetStandardTexture(Renderer_StandardTexture::Black));
 
-                // values[0].x carries the warmup blend during the burst (1, 1/2, 1/3 ... so the
-                // full bakes average progressively with no ghost of the previous sky), 0.0 in
-                // steady state which selects the partial dispatch animation mode in the shader
+                // values[0].x is the warmup blend, 0.0 in steady state selects the partial dispatch mode in the shader
                 m_pcb_pass_cpu.set_f3_value(m_pass_state.sky_warmup_this_frame ? m_pass_state.sky_warmup_blend : 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -111,13 +103,7 @@ namespace spartan
                 }
                 else
                 {
-                    // steady state coarse dispatch, one sixteenth of the threads
-                    //   shader picks a 4x4 tile offset that cycles with the frame counter
-                    //   each thread writes exactly one full resolution pixel and every pixel
-                    //   refreshes every 16 frames (~267 ms at 60 fps). the previous early
-                    //   return scheme launched every wave and paid full cloud march time
-                    //   per wave because of gpu lockstep execution, this version actually
-                    //   removes the dead waves for a real 16x reduction in bake cost
+                    // steady state dispatches one sixteenth of the threads, the shader cycles a 4x4 tile offset so every pixel refreshes every 16 frames
                     const uint32_t thread_group_size = 8;
                     const uint32_t quarter_w         = (tex_skysphere->GetWidth()  + 3) / 4;
                     const uint32_t quarter_h         = (tex_skysphere->GetHeight() + 3) / 4;
@@ -131,16 +117,7 @@ namespace spartan
                 cmd_list->ClearTexture(tex_skysphere, Color::standard_black);
             }
 
-            // mip pyramid rebuild
-            //   pass_downscale is a single pass averaging downsampler, only runs every fourth
-            //   frame in steady state so the steady state cost stays well under a millisecond
-            //   the mip chain ends up at most ~67 ms stale relative to mip 0, which is below
-            //   any visible ibl response time for slow-evolving clouds
-            //   the ggx prefilter loop below is the expensive part (~512 importance samples
-            //   per pixel on mip 1) and is restricted to the warmup burst so steady state
-            //   animation pays only the occasional downscale cost. clouds are soft and mostly
-            //   drive diffuse-style ibl, so the averaged mips are a good enough approximation
-            //   of the proper ggx-filtered specular mips between sun direction changes
+            // averaging downsampler every fourth frame, the ggx prefilter below is warmup only since clouds mostly drive diffuse ibl
             {
                 const bool do_downscale = m_pass_state.sky_warmup_this_frame ||
                                           ((m_cb_frame_cpu.frame & 3u) == 0u);
@@ -167,11 +144,7 @@ namespace spartan
                         m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
                         cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                        // dispatch sized to the mip resolution, not the base panorama
-                        // the legacy code dispatched the full 4096x2048 grid for every mip and
-                        // relied on per-thread bounds checks, wasting thread launches that this
-                        // mip-sized dispatch avoids. matters most when the filter is on the hot
-                        // path during the warmup burst
+                        // sized to the mip, not the base panorama, so no thread launches are wasted on bounds checks
                         const uint32_t mip_w     = max(1u, base_w >> mip_level);
                         const uint32_t mip_h     = max(1u, base_h >> mip_level);
                         const uint32_t dispatch_x = (mip_w + 7) / 8;

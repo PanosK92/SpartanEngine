@@ -63,9 +63,9 @@ namespace spartan::math
 
     Plane Plane::Normalize(const Plane& plane)
     {
-        Plane newPlane = plane;
-        newPlane.Normalize();
-        return newPlane;
+        Plane normalized = plane;
+        normalized.Normalize();
+        return normalized;
     }
 
     float Plane::Dot(const Vector3& v) const
@@ -73,9 +73,8 @@ namespace spartan::math
         return (this->normal.x * v.x) + (this->normal.y * v.y) + (this->normal.z * v.z) + this->d;
     }
 
-    float Plane::Dot(const Plane& p, const Vector3& v)
+    float Plane::Dot(const Plane& plane, const Vector3& v)
     {
-        const Plane& newPlane = p;
-        return newPlane.Dot(v);
+        return plane.Dot(v);
     }
 }

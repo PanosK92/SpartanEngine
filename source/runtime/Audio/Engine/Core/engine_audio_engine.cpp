@@ -233,9 +233,7 @@ bool placeRod(
 }
 
 void Engine::calculateDisplacement() {
-    // There is a closed-form/correct way to do this which I really
-    // don't feel like deriving right now, so I'm just going with this
-    // numerical approximation.
+    // numerical approximation, the closed form is not worth deriving here
     constexpr int Resolution = 1000;
 
     double *min_s = new double[m_cylinderCount];

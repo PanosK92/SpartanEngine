@@ -101,9 +101,7 @@ namespace spartan
             m_mesh->CreateGpuBuffers();
         }
 
-        // transparent water material, the fft passes supply displacement and normals
-        // a small roughness is essential, a perfectly smooth surface gives a delta specular lobe with no visible sun glint
-        // the albedo matches the deep in-scattering tint so the sky-lit body and the refracted depths read as the same water
+        // the fft passes supply displacement and normals, a little roughness is essential or the sun glint disappears
         m_material = make_shared<Material>();
         m_material->SetResourceName("water_fft" + string(EXTENSION_MATERIAL));
         m_material->SetColor(Color(0.0f, 0.09f, 0.13f, 0.9f));
@@ -117,7 +115,7 @@ namespace spartan
         {
             render->SetMesh(m_mesh.get());
             render->SetMaterial(m_material);
-            render->SetFlag(RenderableFlags::CastsShadows, false);
+            render->SetFlag(RenderFlags::CastsShadows, false);
         }
     }
 

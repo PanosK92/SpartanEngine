@@ -1541,8 +1541,8 @@ McpAssistant::McpAssistant(Editor* editor) : Widget(editor)
 {
     m_title        = "Spartan AI";
     m_visible      = false;
-    m_size_initial = spartan::math::Vector2(660.0f, 540.0f);
-    m_size_min     = spartan::math::Vector2(460.0f, 360.0f);
+    m_size_initial = spartan::math::Vector2(920.0f, 700.0f);
+    m_size_min     = spartan::math::Vector2(560.0f, 440.0f);
     m_api_key_file_status = "Will look for cursor_api_key.txt next to the exe when opened.";
     assistant_response.clear();
 }
@@ -1561,6 +1561,25 @@ void McpAssistant::OnTick()
     {
         m_blocks_input = false;
         spartan::Input::SetBlockedByUi(false);
+    }
+}
+
+void McpAssistant::OnVisible()
+{
+    if (
+        m_cursor_api_key[0] == '\0' &&
+        LoadApiKeyFromFile()
+    )
+    {
+        m_refresh_models_after_key_load = true;
+    }
+    else if (
+        m_cursor_api_key[0] != '\0' &&
+        m_model_ids.size() == 1 &&
+        m_model_ids.front() == "auto"
+    )
+    {
+        m_refresh_models_after_key_load = true;
     }
 }
 
@@ -1679,19 +1698,76 @@ void McpAssistant::OnTickVisible()
         ImGui::EndGroup();
 
         ImGui::Spacing();
+        draw_status_pill(
+            is_assistant_busy
+                ? "working"
+                : has_api_key
+                    ? "ready"
+                    : "setup required",
+            is_assistant_busy
+                ? ImGui::Style::color_warning
+                : has_api_key
+                    ? ImGui::Style::color_ok
+                    : ImGui::Style::color_info
+        );
         if (has_api_key)
         {
-            if (ImGuiSp::button(m_show_settings ? "Hide settings" : "Settings"))
+            ImGui::SameLine(0.0f, 8.0f * scale);
+            draw_status_pill(
+                is_running
+                    ? "engine connected"
+                    : "engine offline",
+                status_color
+            );
+
+            ImGui::SameLine(0.0f, 12.0f * scale);
+            ImGui::SetNextItemWidth(190.0f * scale);
+            const char* model_preview = m_model_labels.empty()
+                ? "Auto"
+                : m_model_labels[
+                    static_cast<size_t>(m_model_index)
+                ].c_str();
+            if (ImGui::BeginCombo("##mcp_header_agent", model_preview))
+            {
+                for (
+                    int index = 0;
+                    index < static_cast<int>(m_model_labels.size());
+                    index++
+                )
+                {
+                    const bool selected =
+                        index == m_model_index;
+                    if (
+                        ImGui::Selectable(
+                            m_model_labels[
+                                static_cast<size_t>(index)
+                            ].c_str(),
+                            selected
+                        )
+                    )
+                    {
+                        m_model_index = index;
+                    }
+                    if (selected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGuiSp::tooltip("Choose the Cursor agent");
+
+            ImGui::SameLine(0.0f, 8.0f * scale);
+            if (
+                ImGuiSp::button(
+                    m_show_settings
+                        ? "Close settings"
+                        : "Settings"
+                )
+            )
             {
                 m_show_settings = !m_show_settings;
             }
-            ImGui::SameLine(0.0f, 8.0f * scale);
-        }
-        draw_status_pill(is_assistant_busy ? "working" : (has_api_key ? "ready" : "setup required"), is_assistant_busy ? ImGui::Style::color_warning : (has_api_key ? ImGui::Style::color_ok : ImGui::Style::color_info));
-        if (has_api_key)
-        {
-            ImGui::SameLine(0.0f, 8.0f * scale);
-            draw_status_pill(is_running ? "engine connected" : "engine offline", status_color);
         }
     }
     end_card();
@@ -1774,30 +1850,8 @@ void McpAssistant::OnTickVisible()
             }
 
             ImGui::Spacing();
-            ImGui::TextUnformatted("Agent");
-            ImGui::SameLine(0.0f, 8.0f * scale);
-            const float actions_width = 224.0f * scale;
-            ImGui::SetNextItemWidth(std::max(160.0f * scale, ImGui::GetContentRegionAvail().x - actions_width));
-            const char* model_preview = m_model_labels.empty() ? "Auto" : m_model_labels[static_cast<size_t>(m_model_index)].c_str();
-            if (ImGui::BeginCombo("##mcp_agent", model_preview))
-            {
-                for (int i = 0; i < static_cast<int>(m_model_labels.size()); i++)
-                {
-                    const bool selected = i == m_model_index;
-                    if (ImGui::Selectable(m_model_labels[static_cast<size_t>(i)].c_str(), selected))
-                    {
-                        m_model_index = i;
-                    }
-
-                    if (selected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
-            ImGui::SameLine();
+            ImGui::TextUnformatted("Assistant runtime");
+            ImGui::SameLine(0.0f, 10.0f * scale);
             if (is_assistant_busy)
             {
                 ImGui::BeginDisabled();
@@ -1806,6 +1860,7 @@ void McpAssistant::OnTickVisible()
             {
                 RefreshModels();
             }
+            ImGuiSp::tooltip("Refresh available Cursor agents");
             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && is_assistant_busy)
             {
                 ImGui::SetTooltip("Spartan AI is still working.");
@@ -1834,7 +1889,95 @@ void McpAssistant::OnTickVisible()
         ImGui::Spacing();
     }
 
-    const float composer_height = std::max(132.0f * scale, ImGui::GetTextLineHeight() * 6.8f + style.ItemSpacing.y * 7.0f);
+    ImGui::TextUnformatted("CONVERSATION");
+    ImGui::SameLine();
+    ImGui::TextDisabled(
+        "%zu message%s",
+        m_messages.size(),
+        m_messages.size() == 1 ? "" : "s"
+    );
+
+    const float conversation_actions_width =
+        164.0f * scale;
+    if (
+        ImGui::GetContentRegionAvail().x >
+        conversation_actions_width
+    )
+    {
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(
+            ImGui::GetCursorPosX() +
+            ImGui::GetContentRegionAvail().x -
+            conversation_actions_width
+        );
+    }
+    if (m_messages.empty())
+    {
+        ImGui::BeginDisabled();
+    }
+    if (ImGui::SmallButton("Copy all"))
+    {
+        std::string transcript;
+        for (const ChatMessage& message : m_messages)
+        {
+            if (!transcript.empty())
+            {
+                transcript += "\n\n";
+            }
+            transcript += message.is_user
+                ? "You\n"
+                : "Spartan AI\n";
+            transcript += message.text;
+        }
+        ImGui::SetClipboardText(transcript.c_str());
+    }
+    ImGuiSp::tooltip("Copy the conversation");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("New chat"))
+    {
+        ImGui::OpenPopup("Start new chat?");
+    }
+    if (m_messages.empty())
+    {
+        ImGui::EndDisabled();
+    }
+
+    if (
+        ImGui::BeginPopupModal(
+            "Start new chat?",
+            nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize
+        )
+    )
+    {
+        ImGui::TextUnformatted("Clear the current conversation?");
+        ImGui::TextDisabled(
+            "This only clears the visible chat history."
+        );
+        ImGui::Spacing();
+        if (primary_button("Start new chat"))
+        {
+            if (is_assistant_busy)
+            {
+                CancelRun();
+            }
+            m_messages.clear();
+            set_response("");
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGuiSp::button("Cancel"))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    const float composer_height = std::max(
+        142.0f * scale,
+        ImGui::GetTextLineHeight() * 7.2f +
+        style.ItemSpacing.y * 7.0f
+    );
     const ImVec4 chat_bg = ImGui::Style::lerp(ImGui::Style::bg_color_1, ImVec4(0.0f, 0.0f, 0.0f, 1.0f), 0.22f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f * scale, 10.0f * scale));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, with_alpha(chat_bg, 0.72f));
@@ -1842,26 +1985,74 @@ void McpAssistant::OnTickVisible()
     {
         if (m_messages.empty() && !is_assistant_busy)
         {
+            ImGui::Spacing();
             const bool bold_font = push_bold_font();
-            ImGui::TextUnformatted("Start with a concrete engine task");
+            ImGui::TextUnformatted("What should we build?");
             pop_bold_font(bold_font);
-            ImGui::TextDisabled("The assistant can use the running MCP bridge when the engine is active.");
+            ImGui::TextDisabled(
+                "Spartan AI can inspect and modify the running world."
+            );
             ImGui::Spacing();
 
-            const float suggestion_width = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x * 2.0f) / 3.0f;
-            if (ImGuiSp::button("Inspect selection", ImVec2(suggestion_width, 0.0f)))
+            const float suggestion_width =
+                (
+                    ImGui::GetContentRegionAvail().x -
+                    style.ItemSpacing.x
+                ) /
+                2.0f;
+            if (
+                ImGuiSp::button(
+                    "Inspect selection",
+                    ImVec2(suggestion_width, 34.0f * scale)
+                )
+            )
             {
-                snprintf(m_prompt.data(), m_prompt.size(), "Inspect and explain the currently selected entity.");
+                snprintf(
+                    m_prompt.data(),
+                    m_prompt.size(),
+                    "Inspect the selected entity and recommend the three highest impact improvements."
+                );
             }
             ImGui::SameLine();
-            if (ImGuiSp::button("Summarize world", ImVec2(suggestion_width, 0.0f)))
+            if (
+                ImGuiSp::button(
+                    "Improve this world",
+                    ImVec2(suggestion_width, 34.0f * scale)
+                )
+            )
             {
-                snprintf(m_prompt.data(), m_prompt.size(), "Summarize the current world and its important entities.");
+                snprintf(
+                    m_prompt.data(),
+                    m_prompt.size(),
+                    "Review the current world and implement the most valuable visual improvement."
+                );
+            }
+            if (
+                ImGuiSp::button(
+                    "Diagnose rendering",
+                    ImVec2(suggestion_width, 34.0f * scale)
+                )
+            )
+            {
+                snprintf(
+                    m_prompt.data(),
+                    m_prompt.size(),
+                    "Inspect the current rendering setup and identify any visible problems."
+                );
             }
             ImGui::SameLine();
-            if (ImGuiSp::button("Create entity", ImVec2(suggestion_width, 0.0f)))
+            if (
+                ImGuiSp::button(
+                    "Create an entity",
+                    ImVec2(suggestion_width, 34.0f * scale)
+                )
+            )
             {
-                snprintf(m_prompt.data(), m_prompt.size(), "Create a new empty entity in the current world.");
+                snprintf(
+                    m_prompt.data(),
+                    m_prompt.size(),
+                    "Create a useful new entity that fits the current world."
+                );
             }
         }
 
@@ -1889,7 +2080,10 @@ void McpAssistant::OnTickVisible()
 
     if (begin_card("##mcp_composer_card"))
     {
-        draw_section_title("Message");
+        draw_section_title(
+            "Ask Spartan AI",
+            "Describe the outcome you want, Ctrl+Enter to send."
+        );
         if (m_voice_active)
         {
             PollVoiceCapture();
@@ -1898,49 +2092,68 @@ void McpAssistant::OnTickVisible()
             "##mcp_prompt",
             m_prompt.data(),
             m_prompt.size(),
-            ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 3.3f)
+            ImVec2(
+                -FLT_MIN,
+                ImGui::GetTextLineHeight() * 3.6f
+            )
         );
 
-        const bool submit_from_keyboard = ImGui::IsItemFocused() && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Enter);
+        const bool submit_from_keyboard =
+            ImGui::IsItemFocused() &&
+            ImGui::GetIO().KeyCtrl &&
+            ImGui::IsKeyPressed(ImGuiKey_Enter);
         const bool has_prompt = m_prompt[0] != '\0';
-        if (submit_from_keyboard && has_prompt && !is_assistant_busy)
+        if (
+            submit_from_keyboard &&
+            has_prompt &&
+            !is_assistant_busy
+        )
         {
             SubmitPrompt();
         }
 
         ImGui::Spacing();
-        if (!has_prompt || is_assistant_busy)
+        if (is_assistant_busy)
         {
-            ImGui::BeginDisabled();
+            if (
+                ImGuiSp::button(
+                    "Stop",
+                    ImVec2(96.0f * scale, 0.0f)
+                )
+            )
+            {
+                CancelRun();
+            }
         }
-        if (primary_button("Send", ImVec2(96.0f * scale, 0.0f)))
+        else
         {
-            SubmitPrompt();
-        }
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && is_assistant_busy)
-        {
-            ImGui::SetTooltip("Spartan AI is still working.");
-        }
-        if (!has_prompt || is_assistant_busy)
-        {
-            ImGui::EndDisabled();
+            if (!has_prompt)
+            {
+                ImGui::BeginDisabled();
+            }
+            if (
+                primary_button(
+                    "Send",
+                    ImVec2(96.0f * scale, 0.0f)
+                )
+            )
+            {
+                SubmitPrompt();
+            }
+            if (!has_prompt)
+            {
+                ImGui::EndDisabled();
+            }
         }
 
         ImGui::SameLine();
-        ImGui::TextDisabled("Ctrl+Enter");
-        ImGui::SameLine();
-        if (ImGuiSp::button("Clear message"))
-        {
-            m_prompt[0] = '\0';
-        }
-        ImGui::SameLine();
-        if (ImGuiSp::button("Clear chat"))
-        {
-            m_messages.clear();
-            set_response("");
-        }
-        ImGui::SameLine();
-        if (ImGuiSp::button(m_voice_active ? "Stop voice" : "Voice"))
+        if (
+            ImGuiSp::button(
+                m_voice_active
+                    ? "Stop listening"
+                    : "Voice input"
+            )
+        )
         {
             if (m_voice_active)
             {
@@ -1955,10 +2168,50 @@ void McpAssistant::OnTickVisible()
         {
             ImGui::SetTooltip(m_voice_active ? "Listening, click to stop." : "Dictate into the message box with the default microphone.");
         }
+
+        ImGui::SameLine();
+        if (!has_prompt)
+        {
+            ImGui::BeginDisabled();
+        }
+        if (ImGuiSp::button("Clear draft"))
+        {
+            m_prompt[0] = '\0';
+        }
+        if (!has_prompt)
+        {
+            ImGui::EndDisabled();
+        }
+
+        const size_t prompt_length =
+            std::strlen(m_prompt.data());
+        const std::string composer_status =
+            std::to_string(prompt_length) +
+            " / " +
+            std::to_string(m_prompt.size() - 1) +
+            "  |  " +
+            GetSelectedModelId();
+        const float composer_status_width =
+            ImGui::CalcTextSize(composer_status.c_str()).x;
+        if (
+            ImGui::GetContentRegionAvail().x >
+            composer_status_width
+        )
+        {
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(
+                ImGui::GetCursorPosX() +
+                ImGui::GetContentRegionAvail().x -
+                composer_status_width
+            );
+            ImGui::TextDisabled(
+                "%s",
+                composer_status.c_str()
+            );
+        }
 #ifdef _WIN32
         if (m_voice_active)
         {
-            ImGui::SameLine();
             draw_voice_meter(m_voice_history, m_voice_history_index);
         }
 #endif
@@ -2012,6 +2265,9 @@ void McpAssistant::PollVoiceCapture()
     if (voice_failed.load())
     {
         StopVoiceCapture();
+        set_response(
+            "Voice input stopped because speech recognition failed."
+        );
         return;
     }
 
@@ -2085,24 +2341,43 @@ void McpAssistant::SubmitPrompt()
             {
                 log_error(response);
                 set_response(response);
-                set_busy(false);
+                finish_run_locally(
+                    true,
+                    false,
+                    response
+                );
                 return;
             }
 
             log_info("Starting Cursor assistant.");
             if (!start_assistant_process())
             {
-                set_response("failed to start Cursor assistant. install Node.js and run npm install under tools/mcp/spartan_engine, then try again.");
-                set_busy(false);
+                const std::string error =
+                    "failed to start Cursor assistant. install Node.js "
+                    "and run npm install under tools/mcp/spartan_engine, "
+                    "then try again.";
+                set_response(error);
+                finish_run_locally(
+                    true,
+                    false,
+                    error
+                );
                 return;
             }
 
             if (!send_prompt_to_assistant(prompt, api_key, model_id, response))
             {
-                response = response.empty() ? "failed to connect to Cursor assistant. install Node.js, then try again." : response;
+                response = response.empty()
+                    ? "failed to connect to Cursor assistant. "
+                        "install Node.js, then try again."
+                    : response;
                 log_error(response);
                 set_response(response);
-                set_busy(false);
+                finish_run_locally(
+                    true,
+                    false,
+                    response
+                );
                 return;
             }
         }
@@ -2401,9 +2676,22 @@ void McpAssistant::DrawChatMessage(const ChatMessage& message, int index)
         )
     )
     {
+        const float content_right =
+            ImGui::GetCursorPosX() +
+            ImGui::GetContentRegionAvail().x;
         const bool bold_font = push_bold_font();
         ImGui::TextColored(role_color, "%s", message.is_user ? "You" : "Spartan AI");
         pop_bold_font(bold_font);
+        const float copy_width =
+            ImGui::CalcTextSize("Copy").x +
+            ImGui::GetStyle().FramePadding.x * 2.0f;
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(content_right - copy_width);
+        if (ImGui::SmallButton("Copy"))
+        {
+            ImGui::SetClipboardText(message.text.c_str());
+        }
+        ImGuiSp::tooltip("Copy message");
 
         ImGui::PushTextWrapPos(
             ImGui::GetCursorPosX() +

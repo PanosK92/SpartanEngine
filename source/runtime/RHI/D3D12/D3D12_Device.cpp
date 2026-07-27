@@ -308,7 +308,7 @@ namespace spartan
     namespace pipeline_library
     {
         ID3D12PipelineLibrary* lib = nullptr;
-        std::vector<uint8_t>   data;
+        std::vector<uint8_t>   cache_bytes;
         std::once_flag         init_flag;
         bool                   has_disk_cache = false;
         const char*            cache_path = "pipeline_cache_d3d12_v2.bin";
@@ -1430,30 +1430,35 @@ namespace spartan
 
     uint64_t RHI_Device::MemoryGetAllocatedMb()
     {
-        DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
-        return query_video_memory_info(info) ? (info.CurrentUsage / (1024ull * 1024ull)) : 0;
+        DXGI_QUERY_VIDEO_MEMORY_INFO memory_info = {};
+        return query_video_memory_info(memory_info) ? (memory_info.CurrentUsage / (1024ull * 1024ull)) : 0;
     }
 
     uint64_t RHI_Device::MemoryGetAvailableMb()
     {
-        DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
-        if (!query_video_memory_info(info))
+        DXGI_QUERY_VIDEO_MEMORY_INFO memory_info = {};
+        if (!query_video_memory_info(memory_info))
         {
             return 0;
         }
-        return (info.Budget > info.CurrentUsage) ? ((info.Budget - info.CurrentUsage) / (1024ull * 1024ull)) : 0;
+        return (memory_info.Budget > memory_info.CurrentUsage) ? ((memory_info.Budget - memory_info.CurrentUsage) / (1024ull * 1024ull)) : 0;
     }
 
     uint64_t RHI_Device::MemoryGetTotalMb()
     {
-        DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
-        return query_video_memory_info(info) ? (info.Budget / (1024ull * 1024ull)) : 0;
+        DXGI_QUERY_VIDEO_MEMORY_INFO memory_info = {};
+        return query_video_memory_info(memory_info) ? (memory_info.Budget / (1024ull * 1024ull)) : 0;
     }
 
     // staging buffer pool - simple acquire/release wrapping committed upload buffers
     namespace staging
     {
-        struct Entry { ID3D12Resource* res = nullptr; uint64_t size = 0; bool in_use = false; };
+        struct Entry
+        {
+            ID3D12Resource* buffer = nullptr;
+            uint64_t size          = 0;
+            bool in_use            = false;
+        };
         vector<Entry> pool;
         mutex mutex_pool;
     }
@@ -1463,12 +1468,12 @@ namespace spartan
         lock_guard<mutex> lock(staging::mutex_pool);
 
         // find a free entry that fits
-        for (auto& e : staging::pool)
+        for (auto& entry : staging::pool)
         {
-            if (!e.in_use && e.size >= size)
+            if (!entry.in_use && entry.size >= size)
             {
-                e.in_use = true;
-                return e.res;
+                entry.in_use = true;
+                return entry.buffer;
             }
         }
 
@@ -1486,28 +1491,28 @@ namespace spartan
         desc.SampleDesc.Count   = 1;
         desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-        ID3D12Resource* res = nullptr;
-        if (FAILED(RHI_Context::device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&res))))
+        ID3D12Resource* upload_buffer = nullptr;
+        if (FAILED(RHI_Context::device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upload_buffer))))
         {
             return nullptr;
         }
 
-        staging::pool.push_back({ res, size, true });
-        d3d12_state::SetState(res, D3D12_RESOURCE_STATE_GENERIC_READ);
-        d3d12_state::SetDecaysToCommon(res, true);
-        d3d12_state::SetIsBuffer(res, true);
-        d3d12_state::SetSubresourceCount(res, 1);
-        return res;
+        staging::pool.push_back({ upload_buffer, size, true });
+        d3d12_state::SetState(upload_buffer, D3D12_RESOURCE_STATE_GENERIC_READ);
+        d3d12_state::SetDecaysToCommon(upload_buffer, true);
+        d3d12_state::SetIsBuffer(upload_buffer, true);
+        d3d12_state::SetSubresourceCount(upload_buffer, 1);
+        return upload_buffer;
     }
 
     void RHI_Device::StagingBufferRelease(void* buffer)
     {
         lock_guard<mutex> lock(staging::mutex_pool);
-        for (auto& e : staging::pool)
+        for (auto& entry : staging::pool)
         {
-            if (e.res == buffer)
+            if (entry.buffer == buffer)
             {
-                e.in_use = false;
+                entry.in_use = false;
                 return;
             }
         }
@@ -1516,11 +1521,11 @@ namespace spartan
     void RHI_Device::StagingBufferPoolDestroy()
     {
         lock_guard<mutex> lock(staging::mutex_pool);
-        for (auto& e : staging::pool)
+        for (auto& entry : staging::pool)
         {
-            if (e.res)
+            if (entry.buffer)
             {
-                e.res->Release();
+                entry.buffer->Release();
             }
         }
         staging::pool.clear();
@@ -1567,21 +1572,21 @@ namespace spartan
                     const size_t size = static_cast<size_t>(file.tellg());
                     if (size > 0)
                     {
-                        pipeline_library::data.resize(size);
+                        pipeline_library::cache_bytes.resize(size);
                         file.seekg(0, ios::beg);
-                        file.read(reinterpret_cast<char*>(pipeline_library::data.data()), static_cast<streamsize>(size));
+                        file.read(reinterpret_cast<char*>(pipeline_library::cache_bytes.data()), static_cast<streamsize>(size));
                         pipeline_library::has_disk_cache = true;
                     }
                 }
             }
 
-            const void* initial_data = pipeline_library::data.empty() ? nullptr : pipeline_library::data.data();
-            const SIZE_T initial_size = pipeline_library::data.size();
+            const void* initial_data  = pipeline_library::cache_bytes.empty() ? nullptr : pipeline_library::cache_bytes.data();
+            const SIZE_T initial_size = pipeline_library::cache_bytes.size();
             HRESULT hr = device1->CreatePipelineLibrary(initial_data, initial_size, IID_PPV_ARGS(&pipeline_library::lib));
             if (FAILED(hr) && initial_size > 0)
             {
                 // stale cache from another driver/device, fall back to an empty library
-                pipeline_library::data.clear();
+                pipeline_library::cache_bytes.clear();
                 pipeline_library::has_disk_cache = false;
                 hr = device1->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&pipeline_library::lib));
             }
@@ -1687,9 +1692,7 @@ namespace spartan
     void* RHI_Device::GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type) { return nullptr; }
     void* RHI_Device::GetDescriptorSetLayout(const RHI_Device_Bindless_Resource resource_type) { return nullptr; }
 
-    // map an rhi descriptor to its d3d12 root parameter slot, used by callers that want to know
-    // which root slot a binding maps to in the unified bindless root signature; mirrors the layout
-    // baked into create_root_signature_bindless above
+    // maps an rhi descriptor to its root parameter slot, mirroring create_root_signature_bindless above
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
     {
         switch (descriptor.type)

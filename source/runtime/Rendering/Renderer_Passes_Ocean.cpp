@@ -39,9 +39,7 @@ namespace spartan
 {
     namespace
     {
-        // gpu mapped memory is write combined and uncached, scattered reads from it stall for the
-        // full memory latency each time, buoyancy samples per body per 200hz substep so it must
-        // read a cached ram copy, refreshed with one bulk memcpy per rendered frame
+        // mapped gpu memory is uncached, buoyancy samples it every substep so it reads this ram copy, refreshed once per frame
         vector<float> ocean_heights_cache;
         uint64_t ocean_heights_cache_frame = numeric_limits<uint64_t>::max();
     }

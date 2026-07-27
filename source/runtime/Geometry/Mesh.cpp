@@ -398,11 +398,7 @@ namespace spartan
         // generate additional lods if requested
         if (generate_lods && (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods)))
         {
-            // screen coverage thresholds from renderable::update_lod_indices()
-            // these define at what screen fraction each lod becomes active
-            // lod generation targets are derived directly from these to ensure
-            // simplification is matched to runtime selection - the user should never
-            // see low quality geometry up close, yet we render minimum triangles
+            // screen fraction at which each lod becomes active, the simplification targets below derive from these
             static constexpr array<float, mesh_lod_count> screen_thresholds =
             {
                 0.05f,   // lod0: object covers >= 5% of screen height
@@ -430,10 +426,7 @@ namespace spartan
                     break;
                 }
 
-                // compute optimal simplification target from screen coverage ratio
-                // since visible detail scales with screen coverage, and we want
-                // imperceptible quality loss, we use: target = coverage / base_coverage
-                // this gives ~2x reduction per lod, matching the ~2x screen size steps
+                // target is coverage / base_coverage, about 2x reduction per lod to match the 2x screen size steps
                 float coverage      = screen_thresholds[lod_level];
                 float base_coverage = screen_thresholds[0];
                 float target_ratio  = coverage / base_coverage;

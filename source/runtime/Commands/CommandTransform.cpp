@@ -36,10 +36,7 @@ namespace spartan
     {
         SP_ASSERT(entity);
 
-        // In the current implementation of GetObjectId, it may seem unnecessary to not just store a (shared) pointer to the entity
-        // however if we ever move to a UUID based system, or hashed name system, and entities can be destroyed/created or unloaded/loaded with consistent ids
-        // we want to actually store the ID and then resolve from that.
-        // Right now this wont work as expected, since the object ids are just incremented on creation
+        // @todo store the id, not a pointer, so this survives a move to uuids where entities can be unloaded and reloaded
         m_entity_id = entity->GetObjectId();
 
         m_old_position = old_position;

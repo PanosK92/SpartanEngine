@@ -40,11 +40,11 @@ namespace spartan
 {
     Volume::Volume(Entity* entity) : Component(entity)
     {
-        // if the entity has a renderable, match the volume to its mesh-space bounding box
+        // if the entity has a render component, match the volume to its mesh-space bounding box
         // (not the world-space one, since the volume transforms by the entity matrix itself)
-        if (Render* renderable = entity->GetComponent<Render>())
+        if (Render* render = entity->GetComponent<Render>())
         {
-            m_bounding_box = renderable->GetBoundingBoxMesh();
+            m_bounding_box = render->GetBoundingBoxMesh();
         }
         else
         {

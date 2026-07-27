@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan::math
 {
-    // boudning box, frustum and ray intersection
+    // bounding box, frustum and ray intersection
     enum class Intersection
     {
         Outside,

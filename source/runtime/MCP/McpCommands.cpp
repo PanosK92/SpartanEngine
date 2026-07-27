@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "McpCommands.h"
 #include "McpGeometryKernel.h"
+#include "McpTextureKernel.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "../Commands/CommandStack.h"
 #include "../Core/ProgressTracker.h"
@@ -48,6 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Car/CarSimulation.h"
 #include "../Car/CarState.h"
 #include "../Resource/ResourceCache.h"
+#include "../Resource/Import/ImageImporter.h"
 #include "../Animation/Animation.h"
 #include "../Geometry/GeometryGeneration.h"
 #include "../Geometry/Mesh.h"
@@ -377,11 +379,7 @@ namespace spartan
 
         std::string active_mcp_resource_directory()
         {
-            return
-                World::GetResourceDirectory(
-                    World::GetFilePath()
-                ) +
-                "mcp_resources/";
+            return World::GetMcpResourceDirectory();
         }
 
         std::optional<std::string> resolve_mcp_mesh_path(
@@ -389,12 +387,6 @@ namespace spartan
             std::string& error
         )
         {
-            if (World::GetFilePath().empty())
-            {
-                error = "active world has no file path";
-                return std::nullopt;
-            }
-
             const std::optional<std::string> path_arg =
                 get_argument(request, "path");
             const std::optional<std::string> name_arg =
@@ -419,16 +411,15 @@ namespace spartan
                 : std::filesystem::path(*name_arg);
 
             std::filesystem::path resolved;
-            if (
-                requested.is_absolute() ||
-                path_is_within(requested, meshes_directory)
-            )
+            if (path_is_within(requested, meshes_directory))
             {
                 resolved = requested;
             }
             else
             {
-                resolved = meshes_directory / requested;
+                resolved =
+                    meshes_directory /
+                    requested.filename();
             }
 
             if (resolved.extension() != EXTENSION_MESH)
@@ -441,10 +432,115 @@ namespace spartan
             if (!path_is_within(resolved, meshes_directory))
             {
                 error =
-                    "mesh path must be inside the active world's mcp_resources/meshes directory";
+                    "mesh path must be inside the shared project mcp_resources/meshes directory";
                 return std::nullopt;
             }
 
+            return FileSystem::GetRelativePath(
+                resolved.generic_string()
+            );
+        }
+
+        std::optional<std::string> resolve_mcp_texture_path(
+            const McpRequest& request,
+            std::string& error
+        )
+        {
+            const std::optional<std::string> path_arg =
+                get_argument(request, "path");
+            const std::optional<std::string> name_arg =
+                get_argument(request, "name");
+            if (
+                (!path_arg || path_arg->empty()) &&
+                (!name_arg || name_arg->empty())
+            )
+            {
+                error = "missing path or name";
+                return std::nullopt;
+            }
+
+            const std::filesystem::path textures_directory =
+                std::filesystem::path(
+                    active_mcp_resource_directory()
+                ) /
+                "textures";
+            std::filesystem::path requested =
+                path_arg && !path_arg->empty()
+                ? std::filesystem::path(*path_arg)
+                : std::filesystem::path(*name_arg);
+
+            std::filesystem::path resolved;
+            if (path_is_within(requested, textures_directory))
+            {
+                resolved = requested;
+            }
+            else
+            {
+                resolved =
+                    textures_directory /
+                    requested.filename();
+            }
+
+            if (to_lower_copy(resolved.extension().string()) != ".png")
+            {
+                resolved.replace_extension(".png");
+            }
+            resolved = std::filesystem::absolute(
+                resolved
+            ).lexically_normal();
+            if (!path_is_within(resolved, textures_directory))
+            {
+                error =
+                    "texture path must be inside the shared project mcp_resources/textures directory";
+                return std::nullopt;
+            }
+
+            return FileSystem::GetRelativePath(
+                resolved.generic_string()
+            );
+        }
+
+        std::optional<std::string> resolve_mcp_output_path(
+            const std::string& requested_path,
+            const char* directory_name,
+            const std::string& extension,
+            std::string& error
+        )
+        {
+            const std::filesystem::path directory =
+                std::filesystem::path(
+                    active_mcp_resource_directory()
+                ) /
+                directory_name;
+            const std::filesystem::path requested(
+                requested_path
+            );
+            std::filesystem::path resolved;
+            if (path_is_within(requested, directory))
+            {
+                resolved = requested;
+            }
+            else
+            {
+                resolved = directory / requested.filename();
+            }
+            if (
+                to_lower_copy(resolved.extension().string()) !=
+                extension
+            )
+            {
+                resolved.replace_extension(extension);
+            }
+            resolved = std::filesystem::absolute(
+                resolved
+            ).lexically_normal();
+            if (!path_is_within(resolved, directory))
+            {
+                error =
+                    "resource path must be inside project/mcp_resources/" +
+                    std::string(directory_name);
+                return std::nullopt;
+            }
             return FileSystem::GetRelativePath(
                 resolved.generic_string()
             );
@@ -471,7 +567,7 @@ namespace spartan
 
             if (
                 values.size() < 6 ||
-                values.size() > 64 ||
+                values.size() > 256 ||
                 values.size() % 2 != 0
             )
             {
@@ -934,23 +1030,42 @@ namespace spartan
 
         std::optional<MeshType> mesh_type_from_name(const std::string& name)
         {
-            if (name == "cube")
+            const std::string normalized = to_lower_copy(name);
+            if (
+                normalized == "cube" ||
+                normalized == "box" ||
+                normalized == "standard_cube"
+            )
             {
                 return MeshType::Cube;
             }
-            if (name == "quad" || name == "plane")
+            if (
+                normalized == "quad" ||
+                normalized == "plane" ||
+                normalized == "standard_quad"
+            )
             {
                 return MeshType::Quad;
             }
-            if (name == "sphere")
+            if (
+                normalized == "sphere" ||
+                normalized == "ball" ||
+                normalized == "standard_sphere"
+            )
             {
                 return MeshType::Sphere;
             }
-            if (name == "cylinder")
+            if (
+                normalized == "cylinder" ||
+                normalized == "standard_cylinder"
+            )
             {
                 return MeshType::Cylinder;
             }
-            if (name == "cone")
+            if (
+                normalized == "cone" ||
+                normalized == "standard_cone"
+            )
             {
                 return MeshType::Cone;
             }
@@ -1184,32 +1299,38 @@ namespace spartan
 
         std::string normalize_screenshot_path(const std::optional<std::string>& path)
         {
-            std::filesystem::path file_path;
-            if (path && !path->empty())
+            std::filesystem::path file_name =
+                path && !path->empty()
+                ? std::filesystem::path(*path).filename()
+                : std::filesystem::path(
+                    "mcp_screenshot_" +
+                    std::to_string(
+                        Renderer::GetFrameNumber()
+                    ) +
+                    ".png"
+                );
+            if (file_name.extension().empty())
             {
-                file_path = std::filesystem::path(*path);
-                if (file_path.extension().empty())
-                {
-                    file_path.replace_extension(".png");
-                }
+                file_name.replace_extension(".png");
             }
-            else
-            {
-                file_path = std::filesystem::path("screenshots") / ("mcp_screenshot_" + std::to_string(Renderer::GetFrameNumber()) + ".png");
-            }
-
-            if (file_path.is_relative())
-            {
-                file_path = std::filesystem::absolute(file_path);
-            }
-
-            return file_path.generic_string();
+            return std::filesystem::absolute(
+                std::filesystem::path(
+                    World::GetMcpResourceDirectory()
+                ) /
+                "thumbnails" /
+                file_name
+            ).lexically_normal().generic_string();
         }
 
         bool is_screenshot_path_valid(const std::string& path)
         {
             const std::filesystem::path screenshot_root =
-                std::filesystem::absolute("screenshots").lexically_normal();
+                std::filesystem::absolute(
+                    std::filesystem::path(
+                        World::GetMcpResourceDirectory()
+                    ) /
+                    "thumbnails"
+                ).lexically_normal();
             const std::filesystem::path file_path =
                 std::filesystem::path(path).lexically_normal();
             const std::filesystem::path relative =
@@ -2013,8 +2134,88 @@ namespace spartan
             {
                 return MaterialProperty::ColorA;
             }
+            if (
+                name == "alpha" ||
+                name == "opacity"
+            )
+            {
+                return MaterialProperty::ColorA;
+            }
+            if (name == "metallic")
+            {
+                return MaterialProperty::Metalness;
+            }
+            if (
+                name == "ior" ||
+                name == "refraction" ||
+                name == "refractive_index" ||
+                name == "index_of_refraction"
+            )
+            {
+                return MaterialProperty::Ior;
+            }
+            if (
+                name == "glass_thickness" ||
+                name == "shell_thickness"
+            )
+            {
+                return MaterialProperty::Thickness;
+            }
+            if (
+                name == "dye_density" ||
+                name == "tint_density"
+            )
+            {
+                return MaterialProperty::Absorption;
+            }
+            if (name == "subsurface")
+            {
+                return MaterialProperty::SubsurfaceScattering;
+            }
+            if (name == "emissive")
+            {
+                return MaterialProperty::EmissiveFromAlbedo;
+            }
 
             return std::nullopt;
+        }
+
+        // gltf style names whose convention is inverted relative to the engine property
+        std::optional<MaterialProperty> material_property_inverted_from_name(
+            const std::string& name
+        )
+        {
+            if (
+                name == "transmission" ||
+                name == "transparency"
+            )
+            {
+                return MaterialProperty::ColorA;
+            }
+
+            return std::nullopt;
+        }
+
+        std::string material_property_names_csv()
+        {
+            std::string names;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); i++)
+            {
+                const std::string name =
+                    material_property_to_name(static_cast<MaterialProperty>(i));
+                if (name == "unknown")
+                {
+                    continue;
+                }
+
+                if (!names.empty())
+                {
+                    names += ", ";
+                }
+                names += name;
+            }
+
+            return names;
         }
 
         std::optional<MaterialPaintPreset> material_paint_preset_from_name(
@@ -3498,7 +3699,7 @@ namespace spartan
             if (!is_screenshot_path_valid(path))
             {
                 return json_error(
-                    "screenshot path must be inside the screenshots directory"
+                    "screenshot path must be inside project/mcp_resources/thumbnails"
                 );
             }
             std::string extension = std::filesystem::path(path).extension().generic_string();
@@ -3507,6 +3708,9 @@ namespace spartan
             {
                 return json_error("screenshot path must be a .png file");
             }
+            std::filesystem::create_directories(
+                std::filesystem::path(path).parent_path()
+            );
 
             const bool accepted = Renderer::Screenshot(path);
             if (!accepted)
@@ -3949,7 +4153,7 @@ namespace spartan
             const std::string resource_directory =
                 World::GetResourceDirectory(world_path);
             const std::string mcp_resources =
-                resource_directory + "mcp_resources/";
+                World::GetMcpResourceDirectory();
             std::string json = "{\"ok\":true";
             json += ",\"world_path\":" +
                 json_string(world_path);
@@ -3964,6 +4168,14 @@ namespace spartan
                 json_string(mcp_resources + "materials/");
             json += ",\"textures\":" +
                 json_string(mcp_resources + "textures/");
+            json += ",\"prefabs\":" +
+                json_string(mcp_resources + "prefabs/");
+            json += ",\"sources\":" +
+                json_string(mcp_resources + "sources/");
+            json += ",\"thumbnails\":" +
+                json_string(mcp_resources + "thumbnails/");
+            json += ",\"catalog\":" +
+                json_string(mcp_resources + "catalog.json");
             json += "}}";
             return json;
         }
@@ -4258,14 +4470,14 @@ namespace spartan
             std::function<void(Entity*)> merge_bounds =
                 [&](Entity* current)
             {
-                if (Render* renderable =
+                if (Render* render =
                     current->GetComponent<Render>())
                 {
                     auto merge_matrix =
                         [&](const math::Matrix& matrix)
                     {
                         const math::BoundingBox world_bounds =
-                            renderable->GetBoundingBoxMesh() *
+                            render->GetBoundingBoxMesh() *
                             matrix;
                         if (!has_bounds)
                         {
@@ -4277,16 +4489,16 @@ namespace spartan
                             bounds.Merge(world_bounds);
                         }
                     };
-                    if (renderable->HasInstancing())
+                    if (render->HasInstancing())
                     {
                         for (
                             uint32_t i = 0;
-                            i < renderable->GetInstanceCount();
+                            i < render->GetInstanceCount();
                             i++
                         )
                         {
                             merge_matrix(
-                                renderable->GetInstance(i, true)
+                                render->GetInstance(i, true)
                             );
                         }
                     }
@@ -4312,11 +4524,11 @@ namespace spartan
             std::function<void(Entity*)> compute_support =
                 [&](Entity* current)
             {
-                if (Render* renderable =
+                if (Render* render =
                     current->GetComponent<Render>())
                 {
                     std::array<math::Vector3, 8> corners;
-                    renderable->GetBoundingBoxMesh().GetCorners(
+                    render->GetBoundingBoxMesh().GetCorners(
                         &corners
                     );
                     auto accumulate_matrix =
@@ -4335,16 +4547,16 @@ namespace spartan
                             );
                         }
                     };
-                    if (renderable->HasInstancing())
+                    if (render->HasInstancing())
                     {
                         for (
                             uint32_t i = 0;
-                            i < renderable->GetInstanceCount();
+                            i < render->GetInstanceCount();
                             i++
                         )
                         {
                             accumulate_matrix(
-                                renderable->GetInstance(i, true)
+                                render->GetInstance(i, true)
                             );
                         }
                     }
@@ -4504,10 +4716,10 @@ namespace spartan
 
                 math::BoundingBox own_bounds;
                 bool has_own_bounds = false;
-                if (Render* renderable =
+                if (Render* render =
                     entity->GetComponent<Render>())
                 {
-                    own_bounds = renderable->GetBoundingBox();
+                    own_bounds = render->GetBoundingBox();
                     has_own_bounds =
                         own_bounds.GetMin().IsFinite() &&
                         own_bounds.GetMax().IsFinite() &&
@@ -4525,11 +4737,11 @@ namespace spartan
                     {
                         continue;
                     }
-                    if (Render* renderable =
+                    if (Render* render =
                         current->GetComponent<Render>())
                     {
                         const math::BoundingBox& bounds =
-                            renderable->GetBoundingBox();
+                            render->GetBoundingBox();
                         if (
                             !bounds.GetMin().IsFinite() ||
                             !bounds.GetMax().IsFinite() ||
@@ -4972,6 +5184,19 @@ namespace spartan
                 entity->SetActive(parsed);
                 changed = true;
             }
+            if (
+                const std::optional<std::string> transient =
+                    get_argument(request, "transient")
+            )
+            {
+                bool parsed = false;
+                if (!parse_bool(*transient, parsed))
+                {
+                    return json_error("invalid transient");
+                }
+                entity->SetTransient(parsed);
+                changed = true;
+            }
 
             if (const std::optional<std::string> parent_id = get_argument(request, "parent_id"))
             {
@@ -5168,10 +5393,22 @@ namespace spartan
                 return json_error("unknown component type");
             }
 
+            const bool component_exists =
+                entity->GetComponentByType(*type) != nullptr;
             Component* component = entity->AddComponent(*type);
             if (component == nullptr)
             {
                 return json_error("failed to add component");
+            }
+            if (
+                *type == ComponentType::Render &&
+                !component_exists
+            )
+            {
+                Render* render =
+                    static_cast<Render*>(component);
+                render->SetMesh(MeshType::Cube);
+                render->SetDefaultMaterial();
             }
 
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
@@ -5227,15 +5464,15 @@ namespace spartan
 
             if (type == ComponentType::Render)
             {
-                Render* renderable = static_cast<Render*>(component);
-                json += "\"mesh\":" + json_string(renderable->GetMeshName());
-                json += ",\"material\":" + json_string(renderable->GetMaterialName());
-                json += ",\"default_material\":" + json_bool(renderable->IsUsingDefaultMaterial());
-                json += ",\"visible\":" + json_bool(renderable->IsVisible());
-                json += ",\"casts_shadows\":" + json_bool(renderable->HasFlag(RenderableFlags::CastsShadows));
-                json += ",\"exclude_from_ray_tracing\":" + json_bool(renderable->HasFlag(RenderableFlags::ExcludeFromRayTracing));
-                json += ",\"max_render_distance\":" + std::to_string(renderable->GetMaxRenderDistance());
-                json += ",\"max_shadow_distance\":" + std::to_string(renderable->GetMaxShadowDistance());
+                Render* render = static_cast<Render*>(component);
+                json += "\"mesh\":" + json_string(render->GetMeshName());
+                json += ",\"material\":" + json_string(render->GetMaterialName());
+                json += ",\"default_material\":" + json_bool(render->IsUsingDefaultMaterial());
+                json += ",\"visible\":" + json_bool(render->IsVisible());
+                json += ",\"casts_shadows\":" + json_bool(render->HasFlag(RenderFlags::CastsShadows));
+                json += ",\"exclude_from_ray_tracing\":" + json_bool(render->HasFlag(RenderFlags::ExcludeFromRayTracing));
+                json += ",\"max_render_distance\":" + std::to_string(render->GetMaxRenderDistance());
+                json += ",\"max_shadow_distance\":" + std::to_string(render->GetMaxShadowDistance());
             }
             else if (type == ComponentType::Physics)
             {
@@ -5728,7 +5965,7 @@ namespace spartan
                 return;
             }
 
-            if (Render* renderable = entity->GetComponent<Render>())
+            if (Render* render = entity->GetComponent<Render>())
             {
                 if (!first)
                 {
@@ -5742,9 +5979,9 @@ namespace spartan
                 json += ",\"name\":" + json_string(entity->GetObjectName());
                 json += ",\"parent_id\":";
                 json += parent ? json_string(std::to_string(parent->GetObjectId())) : "null";
-                json += ",\"mesh\":" + json_string(renderable->GetMeshName());
-                json += ",\"material\":" + json_string(renderable->GetMaterialName());
-                json += ",\"default_material\":" + json_bool(renderable->IsUsingDefaultMaterial());
+                json += ",\"mesh\":" + json_string(render->GetMeshName());
+                json += ",\"material\":" + json_string(render->GetMaterialName());
+                json += ",\"default_material\":" + json_bool(render->IsUsingDefaultMaterial());
                 json += "}";
             }
 
@@ -5905,10 +6142,21 @@ namespace spartan
                 return json_error("missing property or value");
             }
 
-            const std::optional<MaterialProperty> property = material_property_from_name(to_lower_copy(*property_arg));
+            const std::string property_name = to_lower_copy(*property_arg);
+            bool inverted = false;
+            std::optional<MaterialProperty> property =
+                material_property_from_name(property_name);
             if (!property)
             {
-                return json_error("invalid material property");
+                property = material_property_inverted_from_name(property_name);
+                inverted = property.has_value();
+            }
+            if (!property)
+            {
+                return json_error(
+                    "invalid material property, valid names: " +
+                    material_property_names_csv()
+                );
             }
 
             float value = 0.0f;
@@ -5917,8 +6165,17 @@ namespace spartan
                 return json_error("invalid material property value");
             }
 
+            if (inverted)
+            {
+                value = std::clamp(1.0f - value, 0.0f, 1.0f);
+            }
+
             material->SetProperty(*property, value);
-            return "{\"ok\":true,\"material\":" + material_to_json(material) + "}";
+            std::string json = "{\"ok\":true,\"applied_property\":";
+            json += json_string(material_property_to_name(*property));
+            json += ",\"applied_value\":" + std::to_string(value);
+            json += ",\"material\":" + material_to_json(material) + "}";
+            return json;
         }
 
         std::string command_material_set_texture(const McpRequest& request)
@@ -6072,8 +6329,22 @@ namespace spartan
                 return json_error("missing path or semantic");
             }
 
-            const std::string path =
-                FileSystem::GetRelativePath(*path_arg);
+            std::string path_error;
+            const std::optional<std::string> resolved_path =
+                resolve_mcp_output_path(
+                    *path_arg,
+                    "materials",
+                    EXTENSION_MATERIAL,
+                    path_error
+                );
+            if (!resolved_path)
+            {
+                return json_error(path_error);
+            }
+            const std::string path = *resolved_path;
+            std::filesystem::create_directories(
+                std::filesystem::path(path).parent_path()
+            );
             const std::string semantic =
                 to_lower_copy(*semantic_arg);
             std::shared_ptr<Material> material =
@@ -6519,12 +6790,86 @@ namespace spartan
             }
 
             const std::optional<std::string> save_path = get_argument(request, "save_path");
-            const std::string path = save_path && !save_path->empty() ? *save_path : resource->GetResourceFilePath();
-            if (path.empty())
+            const std::string requested_path =
+                save_path && !save_path->empty()
+                ? *save_path
+                : resource->GetResourceFilePath();
+            if (requested_path.empty())
             {
                 return json_error("resource has no save path");
             }
 
+            const char* directory_name = "resources";
+            std::string extension =
+                std::filesystem::path(
+                    requested_path
+                ).extension().string();
+            switch (resource->GetResourceType())
+            {
+            case ResourceType::Texture:
+            case ResourceType::Cubemap:
+                directory_name = "textures";
+                if (extension.empty())
+                {
+                    extension = EXTENSION_TEXTURE;
+                }
+                break;
+            case ResourceType::Audio:
+                directory_name = "audio";
+                if (extension.empty())
+                {
+                    extension = EXTENSION_AUDIO;
+                }
+                break;
+            case ResourceType::Material:
+                directory_name = "materials";
+                extension = EXTENSION_MATERIAL;
+                break;
+            case ResourceType::Mesh:
+                directory_name = "meshes";
+                extension = EXTENSION_MESH;
+                break;
+            case ResourceType::Font:
+                directory_name = "fonts";
+                if (extension.empty())
+                {
+                    extension = EXTENSION_FONT;
+                }
+                break;
+            case ResourceType::Shader:
+                directory_name = "shaders";
+                if (extension.empty())
+                {
+                    extension = EXTENSION_SHADER;
+                }
+                break;
+            case ResourceType::Animation:
+                directory_name = "animations";
+                if (extension.empty())
+                {
+                    extension = ".animation";
+                }
+                break;
+            default:
+                if (extension.empty())
+                {
+                    extension = ".resource";
+                }
+                break;
+            }
+            std::string path_error;
+            const std::optional<std::string> resolved_path =
+                resolve_mcp_output_path(
+                    requested_path,
+                    directory_name,
+                    extension,
+                    path_error
+                );
+            if (!resolved_path)
+            {
+                return json_error(path_error);
+            }
+            const std::string path = *resolved_path;
             const std::filesystem::path file_path(path);
             if (file_path.has_parent_path())
             {
@@ -6596,15 +6941,27 @@ namespace spartan
             {
                 return json_error("missing path");
             }
+            std::string path_error;
+            const std::optional<std::string> path =
+                resolve_mcp_output_path(
+                    *path_arg,
+                    "materials",
+                    EXTENSION_MATERIAL,
+                    path_error
+                );
+            if (!path)
+            {
+                return json_error(path_error);
+            }
 
             std::shared_ptr<Material> material = std::make_shared<Material>();
-            const std::filesystem::path file_path(*path_arg);
+            const std::filesystem::path file_path(*path);
             if (file_path.has_parent_path())
             {
                 std::filesystem::create_directories(file_path.parent_path());
             }
-            material->SetResourceFilePath(*path_arg);
-            material->SaveToFile(*path_arg);
+            material->SetResourceFilePath(*path);
+            material->SaveToFile(*path);
             if (const std::optional<std::string> name = get_argument(request, "name"))
             {
                 material->SetObjectName(*name);
@@ -6712,10 +7069,10 @@ namespace spartan
                 {
                     continue;
                 }
-                if (Render* renderable = entity->GetComponent<Render>())
+                if (Render* render = entity->GetComponent<Render>())
                 {
                     const math::BoundingBox& render_bounds =
-                        renderable->GetBoundingBox();
+                        render->GetBoundingBox();
                     if (
                         !render_bounds.GetMin().IsFinite() ||
                         !render_bounds.GetMax().IsFinite() ||
@@ -7828,14 +8185,39 @@ namespace spartan
             {
                 return json_error("missing path");
             }
+            std::string path_error;
+            const std::optional<std::string> resolved_path =
+                resolve_mcp_output_path(
+                    *path,
+                    "prefabs",
+                    EXTENSION_PREFAB,
+                    path_error
+                );
+            if (!resolved_path)
+            {
+                return json_error(path_error);
+            }
+            std::filesystem::create_directories(
+                std::filesystem::path(
+                    *resolved_path
+                ).parent_path()
+            );
 
-            const bool saved = Prefab::SaveToFile(entity, *path);
+            const bool saved = Prefab::SaveToFile(
+                entity,
+                *resolved_path
+            );
             if (!saved)
             {
                 return json_error("failed to save prefab");
             }
 
-            return "{\"ok\":true,\"path\":" + json_string(*path) + ",\"entity\":" + entity_to_json_compact(entity) + "}";
+            return
+                "{\"ok\":true,\"path\":" +
+                json_string(*resolved_path) +
+                ",\"entity\":" +
+                entity_to_json_compact(entity) +
+                "}";
         }
 
         std::string command_prefab_load(const McpRequest& request)
@@ -7897,24 +8279,24 @@ namespace spartan
             return "{\"ok\":true,\"path\":" + json_string(*path) + ",\"entity\":" + entity_to_json(parent, true) + "}";
         }
 
-        bool assign_render_material(Render* renderable, const std::string& name_or_path, std::string& error)
+        bool assign_render_material(Render* render, const std::string& name_or_path, std::string& error)
         {
             if (name_or_path == "default")
             {
-                renderable->SetDefaultMaterial();
+                render->SetDefaultMaterial();
                 return true;
             }
 
             // prefer the cached resource so both resource names and paths bind
             if (std::shared_ptr<IResource> cached = get_resource_shared_by_name_or_path(name_or_path, ResourceType::Material))
             {
-                renderable->SetMaterial(std::static_pointer_cast<Material>(cached));
+                render->SetMaterial(std::static_pointer_cast<Material>(cached));
                 return true;
             }
 
             if (FileSystem::IsFile(name_or_path))
             {
-                renderable->SetMaterial(name_or_path);
+                render->SetMaterial(name_or_path);
                 return true;
             }
 
@@ -7922,7 +8304,7 @@ namespace spartan
             return false;
         }
 
-        bool set_render_property(Render* renderable, const std::string& property, const std::string& value, std::string& error)
+        bool set_render_property(Render* render, const std::string& property, const std::string& value, std::string& error)
         {
             if (property == "mesh")
             {
@@ -7932,12 +8314,18 @@ namespace spartan
                     error = "invalid mesh";
                     return false;
                 }
-                renderable->SetMesh(*parsed);
+                render->SetMesh(*parsed);
                 return true;
             }
             if (property == "material")
             {
-                return assign_render_material(renderable, value, error);
+                if (render->GetMesh() == nullptr)
+                {
+                    error =
+                        "assign a mesh before assigning a render material";
+                    return false;
+                }
+                return assign_render_material(render, value, error);
             }
             if (property == "default_material")
             {
@@ -7949,7 +8337,7 @@ namespace spartan
                 }
                 if (parsed)
                 {
-                    renderable->SetDefaultMaterial();
+                    render->SetDefaultMaterial();
                 }
                 return true;
             }
@@ -7961,7 +8349,7 @@ namespace spartan
                     error = "invalid visible";
                     return false;
                 }
-                renderable->SetVisible(parsed);
+                render->SetVisible(parsed);
                 return true;
             }
             if (property == "casts_shadows" || property == "exclude_from_ray_tracing")
@@ -7972,7 +8360,7 @@ namespace spartan
                     error = "invalid render flag";
                     return false;
                 }
-                renderable->SetFlag(property == "casts_shadows" ? RenderableFlags::CastsShadows : RenderableFlags::ExcludeFromRayTracing, parsed);
+                render->SetFlag(property == "casts_shadows" ? RenderFlags::CastsShadows : RenderFlags::ExcludeFromRayTracing, parsed);
                 return true;
             }
             if (property == "max_render_distance" || property == "max_shadow_distance")
@@ -7985,11 +8373,11 @@ namespace spartan
                 }
                 if (property == "max_render_distance")
                 {
-                    renderable->SetMaxRenderDistance(parsed);
+                    render->SetMaxRenderDistance(parsed);
                 }
                 else
                 {
-                    renderable->SetMaxShadowDistance(parsed);
+                    render->SetMaxShadowDistance(parsed);
                 }
                 return true;
             }
@@ -9074,6 +9462,69 @@ namespace spartan
                 entity->SetParent(parent);
             }
 
+            if (
+                const std::optional<std::string> position =
+                    get_argument(request, "position")
+            )
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*position, parsed))
+                {
+                    return json_error("invalid position");
+                }
+                entity->SetPositionLocal(parsed);
+            }
+            if (
+                const std::optional<std::string> rotation_euler =
+                    get_argument(request, "rotation_euler")
+            )
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*rotation_euler, parsed))
+                {
+                    return json_error("invalid rotation_euler");
+                }
+                entity->SetRotationLocal(
+                    math::Quaternion::FromEulerAngles(parsed)
+                );
+            }
+            if (
+                const std::optional<std::string> scale =
+                    get_argument(request, "scale")
+            )
+            {
+                math::Vector3 parsed;
+                if (!parse_vector3(*scale, parsed))
+                {
+                    return json_error("invalid scale");
+                }
+                entity->SetScaleLocal(parsed);
+            }
+            if (
+                const std::optional<std::string> transient =
+                    get_argument(request, "transient")
+            )
+            {
+                bool parsed = false;
+                if (!parse_bool(*transient, parsed))
+                {
+                    return json_error("invalid transient");
+                }
+                entity->SetTransient(parsed);
+            }
+            if (
+                const std::optional<std::string> active =
+                    get_argument(request, "active")
+            )
+            {
+                bool parsed = false;
+                if (!parse_bool(*active, parsed))
+                {
+                    return json_error("invalid active");
+                }
+                entity->SetActive(parsed);
+            }
+
             apply_entity_identity(entity, request);
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
         }
@@ -9450,6 +9901,269 @@ namespace spartan
             return json;
         }
 
+        std::string command_texture_generate(
+            const McpRequest& request
+        )
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error(
+                    "texture generation requires edit mode"
+                );
+            }
+
+            std::string path_error;
+            const std::optional<std::string> path =
+                resolve_mcp_texture_path(request, path_error);
+            if (!path)
+            {
+                return json_error(path_error);
+            }
+
+            const std::optional<std::string> layers_arg =
+                get_argument(request, "layers");
+            if (!layers_arg || layers_arg->empty())
+            {
+                return json_error("layers are required");
+            }
+
+            mcp_texture_kernel::request settings;
+            settings.font_directory =
+                ResourceCache::GetResourceDirectory(
+                    ResourceDirectory::Fonts
+                );
+
+            auto read_uint = [&request](
+                const char* key,
+                uint32_t& target
+            )
+            {
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, key)
+                )
+                {
+                    uint32_t parsed = 0;
+                    if (parse_uint32(*value, parsed))
+                    {
+                        target = parsed;
+                    }
+                }
+            };
+            auto read_float = [&request](
+                const char* key,
+                float& target
+            )
+            {
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, key)
+                )
+                {
+                    float parsed = 0.0f;
+                    if (parse_float(*value, parsed))
+                    {
+                        target = parsed;
+                    }
+                }
+            };
+
+            read_uint("width", settings.width);
+            read_uint("height", settings.height);
+            read_uint("seed", settings.seed);
+            read_float("normal_strength", settings.normal_strength);
+            read_float("base_roughness", settings.base_roughness);
+            read_float("base_metalness", settings.base_metalness);
+            if (
+                const std::optional<std::string> value =
+                    get_argument(request, "seamless")
+            )
+            {
+                settings.seamless = to_lower_copy(*value) != "false";
+            }
+
+            std::string error;
+            if (
+                !mcp_texture_kernel::request_from_json(
+                    *layers_arg,
+                    settings,
+                    error
+                )
+            )
+            {
+                return json_error(error);
+            }
+
+            bool contributes_surface = false;
+            for (
+                const mcp_texture_kernel::layer& entry :
+                settings.layers
+            )
+            {
+                contributes_surface =
+                    contributes_surface ||
+                    entry.roughness_value >= 0.0f ||
+                    entry.metalness_value >= 0.0f ||
+                    entry.occlusion > 0.0f;
+            }
+
+            mcp_texture_kernel::result generated;
+            if (
+                !mcp_texture_kernel::generate(
+                    settings,
+                    generated,
+                    error
+                )
+            )
+            {
+                return json_error(error);
+            }
+
+            const std::filesystem::path color_path(*path);
+            if (color_path.has_parent_path())
+            {
+                std::filesystem::create_directories(
+                    color_path.parent_path()
+                );
+            }
+
+            const std::string stem =
+                (
+                    color_path.parent_path() /
+                    color_path.stem()
+                ).generic_string();
+            const std::string normal_path = stem + "_normal.png";
+            const std::string packed_path = stem + "_packed.png";
+
+            const bool write_normal =
+                generated.stats.relief_range > 0.0001f;
+            const bool write_packed =
+                contributes_surface || write_normal;
+
+            ImageImporter::SaveSdrRgba8(
+                *path,
+                generated.width,
+                generated.height,
+                generated.albedo.data()
+            );
+            if (write_normal)
+            {
+                ImageImporter::SaveSdrRgba8(
+                    normal_path,
+                    generated.width,
+                    generated.height,
+                    generated.normal.data()
+                );
+            }
+            if (write_packed)
+            {
+                ImageImporter::SaveSdrRgba8(
+                    packed_path,
+                    generated.width,
+                    generated.height,
+                    generated.packed.data()
+                );
+            }
+
+            if (!FileSystem::Exists(*path))
+            {
+                return json_error(
+                    "texture could not be written to " + *path
+                );
+            }
+
+            // wiring the maps here keeps the agent from creating a material and
+            // forgetting to attach what it just generated
+            std::string assigned_material;
+            if (
+                const std::optional<std::string> material_path =
+                    get_argument(request, "material_path")
+            )
+            {
+                if (!material_path->empty())
+                {
+                    std::shared_ptr<Material> material =
+                        ResourceCache::GetByPath<Material>(
+                            *material_path
+                        );
+                    if (!material && FileSystem::IsFile(*material_path))
+                    {
+                        material = ResourceCache::Load<Material>(
+                            *material_path
+                        );
+                    }
+                    if (!material)
+                    {
+                        return json_error(
+                            "material_path could not be resolved: " +
+                            *material_path
+                        );
+                    }
+
+                    material->SetTexture(
+                        MaterialTextureType::Color,
+                        *path,
+                        0
+                    );
+                    if (write_normal)
+                    {
+                        material->SetTexture(
+                            MaterialTextureType::Normal,
+                            normal_path,
+                            0
+                        );
+                    }
+                    if (write_packed)
+                    {
+                        material->SetTexture(
+                            MaterialTextureType::Packed,
+                            packed_path,
+                            0
+                        );
+                    }
+                    assigned_material = *material_path;
+                }
+            }
+
+            std::string json = "{\"ok\":true,\"path\":";
+            json += json_string(*path);
+            json += ",\"normal_path\":" +
+                json_string(write_normal ? normal_path : "");
+            json += ",\"packed_path\":" +
+                json_string(write_packed ? packed_path : "");
+            json += ",\"material_path\":" +
+                json_string(assigned_material);
+            json += ",\"width\":" +
+                std::to_string(generated.width);
+            json += ",\"height\":" +
+                std::to_string(generated.height);
+            json += ",\"seamless\":" +
+                json_bool(settings.seamless);
+            json += ",\"layer_count\":" +
+                std::to_string(settings.layers.size());
+            json += ",\"stats\":{";
+            json += "\"mean_color\":[" +
+                std::to_string(generated.stats.mean_r) + "," +
+                std::to_string(generated.stats.mean_g) + "," +
+                std::to_string(generated.stats.mean_b) + "]";
+            json += ",\"mean_luminance\":" +
+                std::to_string(generated.stats.mean_luminance);
+            json += ",\"contrast\":" +
+                std::to_string(generated.stats.contrast);
+            json += ",\"coverage\":" +
+                std::to_string(generated.stats.coverage);
+            json += ",\"seam_error\":" +
+                std::to_string(generated.stats.seam_error);
+            json += ",\"relief_range\":" +
+                std::to_string(generated.stats.relief_range);
+            json += "}}";
+            return json;
+        }
+
         std::string command_mesh_raw_get(
             const McpRequest& request
         )
@@ -9644,12 +10358,19 @@ namespace spartan
             }
 
             const std::string shape = to_lower_copy(*shape_arg);
-            std::string path = *path_arg;
-            if (std::filesystem::path(path).extension() != EXTENSION_MESH)
+            std::string path_error;
+            const std::optional<std::string> resolved_path =
+                resolve_mcp_output_path(
+                    *path_arg,
+                    "meshes",
+                    EXTENSION_MESH,
+                    path_error
+                );
+            if (!resolved_path)
             {
-                path += EXTENSION_MESH;
+                return json_error(path_error);
             }
-            path = FileSystem::GetRelativePath(path);
+            const std::string path = *resolved_path;
 
             bool reuse_existing = false;
             if (
@@ -10953,7 +11674,7 @@ namespace spartan
                 )
                 {
                     return json_error(
-                        "profile must contain between 3 and 32 finite 2d points"
+                        "profile must contain between 3 and 128 finite 2d points"
                     );
                 }
 
@@ -11305,6 +12026,40 @@ namespace spartan
                 if (!selected_axis)
                 {
                     return json_error("invalid radial_axis");
+                }
+                float radial_radius = 0.0f;
+                if (
+                    const std::optional<std::string> value =
+                        get_argument(request, "radial_radius")
+                )
+                {
+                    if (
+                        !parse_float(*value, radial_radius) ||
+                        radial_radius < 0.0f
+                    )
+                    {
+                        return json_error("invalid radial_radius");
+                    }
+                }
+                if (radial_radius > 0.0f)
+                {
+                    for (
+                        RHI_Vertex_PosTexNorTan& vertex :
+                        vertices
+                    )
+                    {
+                        if (
+                            *selected_axis ==
+                            mcp_geometry_kernel::axis::x
+                        )
+                        {
+                            vertex.pos[1] += radial_radius;
+                        }
+                        else
+                        {
+                            vertex.pos[0] += radial_radius;
+                        }
+                    }
                 }
                 std::vector<RHI_Vertex_PosTexNorTan> output_vertices;
                 std::vector<uint32_t> output_indices;
@@ -11690,23 +12445,23 @@ namespace spartan
                 }
             }
 
-            Render* renderable = entity->GetComponent<Render>();
-            if (renderable == nullptr)
+            Render* render = entity->GetComponent<Render>();
+            if (render == nullptr)
             {
-                renderable = entity->AddComponent<Render>();
+                render = entity->AddComponent<Render>();
             }
-            if (renderable == nullptr)
+            if (render == nullptr)
             {
                 return json_error("failed to add render component");
             }
 
-            renderable->SetMesh(
+            render->SetMesh(
                 mesh.get(),
                 sub_mesh_index
             );
-            if (renderable->GetMaterial() == nullptr)
+            if (render->GetMaterial() == nullptr)
             {
-                renderable->SetDefaultMaterial();
+                render->SetDefaultMaterial();
             }
 
             if (
@@ -11717,7 +12472,7 @@ namespace spartan
                 std::string material_error;
                 if (
                     !assign_render_material(
-                        renderable,
+                        render,
                         *material,
                         material_error
                     )
@@ -11939,25 +12694,25 @@ namespace spartan
             }
 
             step_timer.Start();
-            Render* renderable = entity->AddComponent<Render>();
+            Render* render = entity->AddComponent<Render>();
             step_ms = step_timer.GetElapsedTimeMs();
             if (step_ms > 500.0f)
             {
                 SP_LOG_WARNING("MCP entity_create_primitive: AddComponent<Render> took %.1f ms", step_ms);
             }
-            if (renderable == nullptr)
+            if (render == nullptr)
             {
                 return json_error("failed to add render component");
             }
             step_timer.Start();
-            renderable->SetMesh(mesh_type);
+            render->SetMesh(mesh_type);
             step_ms = step_timer.GetElapsedTimeMs();
             if (step_ms > 500.0f)
             {
                 SP_LOG_WARNING("MCP entity_create_primitive: Render::SetMesh took %.1f ms", step_ms);
             }
             step_timer.Start();
-            renderable->SetDefaultMaterial();
+            render->SetDefaultMaterial();
             step_ms = step_timer.GetElapsedTimeMs();
             if (step_ms > 500.0f)
             {
@@ -11966,7 +12721,7 @@ namespace spartan
             if (const std::optional<std::string> material = get_argument(request, "material"))
             {
                 std::string material_error;
-                if (!assign_render_material(renderable, *material, material_error))
+                if (!assign_render_material(render, *material, material_error))
                 {
                     return json_error(material_error);
                 }
@@ -13298,9 +14053,9 @@ namespace spartan
                 {
                     continue;
                 }
-                if (Render* renderable = entity->GetComponent<Render>())
+                if (Render* render = entity->GetComponent<Render>())
                 {
-                    const math::BoundingBox& box = renderable->GetBoundingBox();
+                    const math::BoundingBox& box = render->GetBoundingBox();
                     if (box.GetMin().IsFinite() && box.GetMax().IsFinite() && box.GetSize().LengthSquared() > 0.0f)
                     {
                         if (!has_bounds)
@@ -15022,10 +15777,10 @@ namespace spartan
                     pole->SetParent(entity);
                     pole->SetPosition(point + right * (light_lateral * side) + math::Vector3(0.0f, 3.0f, 0.0f));
                     pole->SetScale(math::Vector3(0.25f, 6.0f, 0.25f));
-                    if (Render* renderable = pole->AddComponent<Render>())
+                    if (Render* render = pole->AddComponent<Render>())
                     {
-                        renderable->SetMesh(MeshType::Cylinder);
-                        renderable->SetDefaultMaterial();
+                        render->SetMesh(MeshType::Cylinder);
+                        render->SetDefaultMaterial();
                     }
 
                     Entity* lamp = World::CreateEntity();
@@ -15054,10 +15809,10 @@ namespace spartan
                     barrier->SetPosition(point + right * (prop_lateral * -side) + math::Vector3(0.0f, 0.4f, 0.0f));
                     barrier->SetScale(math::Vector3(0.35f, 0.8f, 1.6f));
                     barrier->SetRotation(math::Quaternion::FromLookRotation(tangent, math::Vector3::Up));
-                    if (Render* renderable = barrier->AddComponent<Render>())
+                    if (Render* render = barrier->AddComponent<Render>())
                     {
-                        renderable->SetMesh(MeshType::Cube);
-                        renderable->SetDefaultMaterial();
+                        render->SetMesh(MeshType::Cube);
+                        render->SetDefaultMaterial();
                     }
                     prop_count++;
                 }
@@ -15205,22 +15960,6 @@ namespace spartan
             uint32_t light_count = 0;
         };
 
-        std::string active_world_resource_directory()
-        {
-            const std::string& world_path =
-                World::GetFilePath();
-            if (!world_path.empty())
-            {
-                return World::GetResourceDirectory(
-                    world_path
-                );
-            }
-
-            return World::GetResourceDirectory(
-                World::GetName()
-            );
-        }
-
         std::shared_ptr<Material> district_blockout_material(
             const DistrictPreset preset,
             const std::string& role
@@ -15229,12 +15968,13 @@ namespace spartan
             const std::string preset_name =
                 district_preset_to_name(preset);
             const std::string path =
-                active_world_resource_directory() +
+                World::GetMcpResourceDirectory() +
+                "materials/" +
                 "district_" +
                 preset_name +
                 "_" +
                 role +
-                ".material";
+                EXTENSION_MATERIAL;
             if (
                 std::shared_ptr<Material> existing =
                     ResourceCache::GetByPath<Material>(path)
@@ -15351,9 +16091,9 @@ namespace spartan
             {
                 entity->SetRotationLocal(math::Quaternion::FromEulerAngles(local_euler));
             }
-            if (Render* renderable = entity->AddComponent<Render>())
+            if (Render* render = entity->AddComponent<Render>())
             {
-                renderable->SetMesh(mesh);
+                render->SetMesh(mesh);
                 const std::string lower_name =
                     to_lower_copy(name);
                 const bool is_surface =
@@ -15377,11 +16117,11 @@ namespace spartan
                         );
                 if (material)
                 {
-                    renderable->SetMaterial(material);
+                    render->SetMaterial(material);
                 }
                 else
                 {
-                    renderable->SetDefaultMaterial();
+                    render->SetDefaultMaterial();
                 }
             }
             if (Physics* physics = entity->AddComponent<Physics>())
@@ -16448,6 +17188,10 @@ namespace spartan
         if (request.command == "mesh_raw_get")
         {
             return command_mesh_raw_get(request);
+        }
+        if (request.command == "texture_generate")
+        {
+            return command_texture_generate(request);
         }
         if (request.command == "mesh_generate_batch")
         {

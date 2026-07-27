@@ -493,20 +493,20 @@ namespace spartan
                 return false;
             }
 
-            RHI_Texture temp;
-            temp.SetFlags(RHI_Texture_Srv | RHI_Texture_DeferUpload); // defer skips the auto gpu upload, we only want cpu bytes
-            temp.LoadFromFile(path);
+            RHI_Texture atlas;
+            atlas.SetFlags(RHI_Texture_Srv | RHI_Texture_DeferUpload); // defer skips the auto gpu upload, we only want cpu bytes
+            atlas.LoadFromFile(path);
 
-            const uint32_t width    = temp.GetWidth();
-            const uint32_t height   = temp.GetHeight();
-            const uint32_t channels = temp.GetChannelCount();
-            if (width == 0 || height == 0 || !temp.HasData() || temp.GetBytesPerChannel() != 1)
+            const uint32_t width    = atlas.GetWidth();
+            const uint32_t height   = atlas.GetHeight();
+            const uint32_t channels = atlas.GetChannelCount();
+            if (width == 0 || height == 0 || !atlas.HasData() || atlas.GetBytesPerChannel() != 1)
             {
                 SP_LOG_WARNING("icon atlas: \"%s\" has an unsupported pixel layout", path.c_str());
                 return false;
             }
 
-            RHI_Texture_Mip* mip = temp.GetMip(0, 0);
+            RHI_Texture_Mip* mip = atlas.GetMip(0, 0);
             if (!mip)
             {
                 return false;
@@ -662,11 +662,11 @@ namespace spartan
         }
 
         // upload the packed atlas as a single gpu texture
-        vector<RHI_Texture_Slice> data;
-        data.emplace_back().mips.emplace_back().bytes = move(pixels);
+        vector<RHI_Texture_Slice> slices;
+        slices.emplace_back().mips.emplace_back().bytes = move(pixels);
         atlas_texture = make_shared<RHI_Texture>(
             RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1,
-            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "gui_icon_atlas", data
+            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "gui_icon_atlas", slices
         );
 
         // resolve uv rects

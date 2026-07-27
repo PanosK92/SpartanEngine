@@ -86,7 +86,7 @@ namespace spartan
         node.append_attribute("material_path")    = m_material && !m_material_default ? m_material->GetResourceFilePath().c_str() : "";
         node.append_attribute("material_default") = m_material_default;
 
-        // per-renderable material overrides, only set fields are written so unset ones keep inheriting from the material
+        // per-render material overrides, only set fields are written so unset ones keep inheriting from the material
         auto save_override = [&node](const char* name, float v)
         {
             if (MaterialOverride::is_set(v))
@@ -182,7 +182,7 @@ namespace spartan
                 }
                 else
                 {
-                    SP_LOG_WARNING("Renderable::Load - mesh '%s' not found in cache", mesh_name.c_str());
+                    SP_LOG_WARNING("Render::Load - mesh '%s' not found in cache", mesh_name.c_str());
                 }
             }
         }
@@ -230,7 +230,7 @@ namespace spartan
         m_max_distance_render = node.attribute("max_render_distance").as_float(FLT_MAX);
         m_max_distance_shadow = node.attribute("max_shadow_distance").as_float(FLT_MAX);
 
-        // per-renderable material overrides, missing attributes keep the nan default which means inherit
+        // per-render material overrides, missing attributes keep the nan default which means inherit
         auto load_override = [&node](const char* name, float& target)
         {
             if (auto attr = node.attribute(name))
@@ -319,12 +319,12 @@ namespace spartan
             "Max",      MeshType::Max
         );
 
-        State.new_enum("RenderableFlags",
-            "CastsShadows",          RenderableFlags::CastsShadows,
-            "ExcludeFromRayTracing", RenderableFlags::ExcludeFromRayTracing
+        State.new_enum("RenderFlags",
+            "CastsShadows",          RenderFlags::CastsShadows,
+            "ExcludeFromRayTracing", RenderFlags::ExcludeFromRayTracing
         );
 
-        State.new_usertype<Render>("Renderable",
+        State.new_usertype<Render>("Render",
             sol::base_classes,              sol::bases<Component>(),
             "GetMaterialName",              &Render::GetMaterialName,
             "GetBoundingBox",               &Render::GetBoundingBox,
@@ -361,7 +361,7 @@ namespace spartan
             "SetDefaultMaterial",           &Render::SetDefaultMaterial,
             "SetMaxRenderDistance",         &Render::SetMaxRenderDistance,
             "SetMaxShadowDistance",         &Render::SetMaxShadowDistance,
-            "SetFlag", [](Render& self, RenderableFlags flag, bool enable) { self.SetFlag(flag, enable); }
+            "SetFlag", [](Render& self, RenderFlags flag, bool enable) { self.SetFlag(flag, enable); }
         );
     }
 
@@ -374,7 +374,7 @@ namespace spartan
     {
         if (!mesh)
         {
-            SP_LOG_WARNING("Renderable::SetMesh called with null mesh");
+            SP_LOG_WARNING("Render::SetMesh called with null mesh");
             return;
         }
 
@@ -736,7 +736,7 @@ namespace spartan
         return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());
     }
 
-    void Render::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
+    void Render::SetFlag(const RenderFlags flag, const bool enable /*= true*/)
     {
         bool enabled      = false;
         bool disabled     = false;
@@ -826,12 +826,7 @@ namespace spartan
 
     void Render::UpdateLodIndices()
     {
-        // screen-space coverage based lod selection
-        // this approach (used by unreal, unity, cryengine, frostbite) naturally handles:
-        // - distance: farther objects appear smaller
-        // - object size: larger objects maintain detail longer
-        // - fov: wider fov = everything smaller on screen
-        // - works uniformly for all object types (no special cases needed)
+        // screen coverage handles distance, object size and fov uniformly with no per-type special cases
 
         const uint32_t lod_count = GetLodCount();
         if (lod_count == 0)
@@ -868,9 +863,7 @@ namespace spartan
         float tan_half_fov      = tan(camera->GetFovVerticalRad() * 0.5f);
         float screen_fraction   = bounding_diameter / (2.0f * distance * tan_half_fov);
 
-        // lod thresholds as percentage of screen height coverage
-        // calibrated so transitions remain imperceptible to the user
-        // higher threshold = object must cover more screen to qualify for that lod
+        // screen height coverage each lod requires, calibrated so the transitions stay imperceptible
         static constexpr array<float, 5> screen_thresholds =
         {
             0.05f,   // lod0: object covers >= 5% of screen height
@@ -880,9 +873,7 @@ namespace spartan
             0.003f   // lod4: object covers >= 0.3% of screen height
         };
 
-        // hysteresis prevents lod popping at threshold boundaries
-        // upgrading to higher detail requires exceeding threshold by 10%
-        // downgrading to lower detail requires dropping 10% below threshold
+        // hysteresis against lod popping, a change requires passing the threshold by 10 percent in either direction
         constexpr float hysteresis = 1.1f;
 
         uint32_t new_lod = lod_count - 1;

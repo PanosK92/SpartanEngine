@@ -129,8 +129,8 @@ namespace spartan::geometry_generation
             {
                 const float x = static_cast<float>(i) * spacing - (extent / 2.0f); // center the grid around origin
                 const float z = static_cast<float>(j) * spacing - (extent / 2.0f); // center the grid around origin
-                const Vector2 texCoord(static_cast<float>(i) / (grid_points_per_dimension - 1), static_cast<float>(j) / (grid_points_per_dimension - 1)); // normalized UVs [0,1]
-                vertices->emplace_back(Vector3(x, 0.0f, z), texCoord, normal, tangent);
+                const Vector2 uv(static_cast<float>(i) / (grid_points_per_dimension - 1), static_cast<float>(j) / (grid_points_per_dimension - 1)); // normalized UVs [0,1]
+                vertices->emplace_back(Vector3(x, 0.0f, z), uv, normal, tangent);
             }
         }
     
@@ -139,27 +139,25 @@ namespace spartan::geometry_generation
         {
             for (uint32_t j = 0; j < grid_points_per_dimension - 1; ++j)
             {
-                int topLeft     = i * grid_points_per_dimension + j;
-                int topRight    = i * grid_points_per_dimension + j + 1;
-                int bottomLeft  = (i + 1) * grid_points_per_dimension + j;
-                int bottomRight = (i + 1) * grid_points_per_dimension + j + 1;
+                int top_left     = i * grid_points_per_dimension + j;
+                int top_right    = i * grid_points_per_dimension + j + 1;
+                int bottom_left  = (i + 1) * grid_points_per_dimension + j;
+                int bottom_right = (i + 1) * grid_points_per_dimension + j + 1;
     
                 // triangle 1 (top-left, bottom-right, bottom-left) - clockwise when viewed from above
-                indices->emplace_back(topLeft);
-                indices->emplace_back(bottomRight);
-                indices->emplace_back(bottomLeft);
+                indices->emplace_back(top_left);
+                indices->emplace_back(bottom_right);
+                indices->emplace_back(bottom_left);
     
                 // triangle 2 (top-left, top-right, bottom-right) - clockwise when viewed from above
-                indices->emplace_back(topLeft);
-                indices->emplace_back(topRight);
-                indices->emplace_back(bottomRight);
+                indices->emplace_back(top_left);
+                indices->emplace_back(top_right);
+                indices->emplace_back(bottom_right);
             }
         }
     }
 
-    // camera-centered ocean clipmap, a single mesh made of concentric square levels
-    // level 0 is a dense grid, each outer level doubles the cell size and skips the inner block
-    // so the rings tile seamlessly, the vertex shader recenters the whole mesh on the camera
+    // camera centered ocean clipmap, each outer level doubles the cell size and skips the inner block so the rings tile
     static void generate_ocean_clipmap(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution, uint32_t levels, float base_cell_size)
     {
         using namespace math;
@@ -221,15 +219,15 @@ namespace spartan::geometry_generation
         Vector3 tangent = Vector3(1, 0, 0);
         vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent);
 
-        const float phiStep   = pi / stacks;
-        const float thetaStep = 2.0f * pi / slices;
+        const float phi_step   = pi / stacks;
+        const float theta_step = 2.0f * pi / slices;
 
         for (int i = 1; i <= stacks - 1; i++)
         {
-            const float phi = i * phiStep;
+            const float phi = i * phi_step;
             for (int j = 0; j <= slices; j++)
             {
-                const float theta = j * thetaStep;
+                const float theta = j * theta_step;
                 Vector3 p = Vector3(
                     (radius * sin(phi) * cos(theta)),
                     (radius * cos(phi)),
@@ -253,54 +251,54 @@ namespace spartan::geometry_generation
             indices->emplace_back(i + 1);
             indices->emplace_back(i);
         }
-        int baseIndex = 1;
-        const int ringVertexCount = slices + 1;
+        int base_index = 1;
+        const int ring_vertex_count = slices + 1;
         for (int i = 0; i < stacks - 2; i++)
         {
             for (int j = 0; j < slices; j++)
             {
-                indices->emplace_back(baseIndex + i * ringVertexCount + j);
-                indices->emplace_back(baseIndex + i * ringVertexCount + j + 1);
-                indices->emplace_back(baseIndex + (i + 1) * ringVertexCount + j);
+                indices->emplace_back(base_index + i * ring_vertex_count + j);
+                indices->emplace_back(base_index + i * ring_vertex_count + j + 1);
+                indices->emplace_back(base_index + (i + 1) * ring_vertex_count + j);
 
-                indices->emplace_back(baseIndex + (i + 1) * ringVertexCount + j);
-                indices->emplace_back(baseIndex + i * ringVertexCount + j + 1);
-                indices->emplace_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+                indices->emplace_back(base_index + (i + 1) * ring_vertex_count + j);
+                indices->emplace_back(base_index + i * ring_vertex_count + j + 1);
+                indices->emplace_back(base_index + (i + 1) * ring_vertex_count + j + 1);
             }
         }
-        int southPoleIndex = (int)vertices->size() - 1;
-        baseIndex = southPoleIndex - ringVertexCount;
+        int south_pole_index = (int)vertices->size() - 1;
+        base_index = south_pole_index - ring_vertex_count;
         for (int i = 0; i < slices; i++)
         {
-            indices->emplace_back(southPoleIndex);
-            indices->emplace_back(baseIndex + i);
-            indices->emplace_back(baseIndex + i + 1);
+            indices->emplace_back(south_pole_index);
+            indices->emplace_back(base_index + i);
+            indices->emplace_back(base_index + i + 1);
         }
     }
 
-    static void generate_cylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 64, int stacks = 1)
+    static void generate_cylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius_top = 1.0f, float radius_bottom = 1.0f, float height = 1.0f, int slices = 64, int stacks = 1)
     {
         using namespace math;
 
-        const float stackHeight = height / stacks;
-        const float radiusStep = (radiusTop - radiusBottom) / stacks;
-        const float ringCount = (float)(stacks + 1);
+        const float stack_height = height / stacks;
+        const float radius_step = (radius_top - radius_bottom) / stacks;
+        const float ring_count = (float)(stacks + 1);
 
-        for (int i = 0; i < ringCount; i++)
+        for (int i = 0; i < ring_count; i++)
         {
-            const float y = -0.5f * height + i * stackHeight;
-            const float r = radiusBottom + i * radiusStep;
-            const float dTheta = 2.0f * pi / slices;
+            const float y = -0.5f * height + i * stack_height;
+            const float r = radius_bottom + i * radius_step;
+            const float theta_step = 2.0f * pi / slices;
             for (int j = 0; j <= slices; j++)
             {
-                const float c = cos(j * dTheta);
-                const float s = sin(j * dTheta);
+                const float c = cos(j * theta_step);
+                const float s = sin(j * theta_step);
 
                 Vector3 v = Vector3(r*c, y, r*s);
                 Vector2 uv = Vector2((float)j / slices, 1.0f - (float)i / stacks);
                 Vector3 t = Vector3(-s, 0.0f, c);
 
-                const float dr = radiusBottom - radiusTop;
+                const float dr = radius_bottom - radius_top;
                 Vector3 bitangent = Vector3(dr*c, -height, dr*s);
 
                 Vector3 n = Vector3::Cross(t, bitangent).Normalized();
@@ -309,33 +307,33 @@ namespace spartan::geometry_generation
             }
         }
 
-        const int ringVertexCount = slices + 1;
+        const int ring_vertex_count = slices + 1;
         for (int i = 0; i < stacks; i++)
         {
             for (int j = 0; j < slices; j++)
             {
-                indices->push_back(i * ringVertexCount + j);
-                indices->push_back((i + 1) * ringVertexCount + j);
-                indices->push_back((i + 1) * ringVertexCount + j + 1);
+                indices->push_back(i * ring_vertex_count + j);
+                indices->push_back((i + 1) * ring_vertex_count + j);
+                indices->push_back((i + 1) * ring_vertex_count + j + 1);
 
-                indices->push_back(i * ringVertexCount + j);
-                indices->push_back((i + 1) * ringVertexCount + j + 1);
-                indices->push_back(i * ringVertexCount + j + 1);
+                indices->push_back(i * ring_vertex_count + j);
+                indices->push_back((i + 1) * ring_vertex_count + j + 1);
+                indices->push_back(i * ring_vertex_count + j + 1);
             }
         }
 
         // build top cap
-        int baseIndex = (int)vertices->size();
+        int base_index = (int)vertices->size();
         float y = 0.5f * height;
-        const float dTheta = 2.0f * pi / slices;
+        const float theta_step = 2.0f * pi / slices;
 
         Vector3 normal;
         Vector3 tangent;
 
         for (int i = 0; i <= slices; i++)
         {
-            const float x = radiusTop * cos(i*dTheta);
-            const float z = radiusTop * sin(i*dTheta);
+            const float x = radius_top * cos(i*theta_step);
+            const float z = radius_top * sin(i*theta_step);
             const float u = x / height + 0.5f;
             const float v = z / height + 0.5f;
 
@@ -348,22 +346,22 @@ namespace spartan::geometry_generation
         tangent = Vector3(1, 0, 0);
         vertices->emplace_back(Vector3(0, y, 0), Vector2(0.5f, 0.5f), normal, tangent);
 
-        int centerIndex = (int)vertices->size() - 1;
+        int center_index = (int)vertices->size() - 1;
         for (int i = 0; i < slices; i++)
         {
-            indices->push_back(centerIndex);
-            indices->push_back(baseIndex + i + 1);
-            indices->push_back(baseIndex + i);
+            indices->push_back(center_index);
+            indices->push_back(base_index + i + 1);
+            indices->push_back(base_index + i);
         }
 
         // build bottom cap
-        baseIndex = (int)vertices->size();
+        base_index = (int)vertices->size();
         y = -0.5f * height;
 
         for (int i = 0; i <= slices; i++)
         {
-            const float x = radiusBottom * cos(i * dTheta);
-            const float z = radiusBottom * sin(i * dTheta);
+            const float x = radius_bottom * cos(i * theta_step);
+            const float z = radius_bottom * sin(i * theta_step);
             const float u = x / height + 0.5f;
             const float v = z / height + 0.5f;
 
@@ -376,12 +374,12 @@ namespace spartan::geometry_generation
         tangent = Vector3(1, 0, 0);
         vertices->emplace_back(Vector3(0, y, 0), Vector2(0.5f, 0.5f), normal, tangent);
 
-        centerIndex = (int)vertices->size() - 1;
+        center_index = (int)vertices->size() - 1;
         for (int i = 0; i < slices; i++)
         {
-            indices->push_back(centerIndex);
-            indices->push_back(baseIndex + i);
-            indices->push_back(baseIndex + i + 1);
+            indices->push_back(center_index);
+            indices->push_back(base_index + i);
+            indices->push_back(base_index + i + 1);
         }
     }
 

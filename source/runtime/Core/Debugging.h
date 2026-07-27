@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    // build time toggles for the validation, instrumentation and tooling paths
     class Debugging
     {
     public:

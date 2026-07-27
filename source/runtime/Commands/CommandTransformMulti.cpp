@@ -52,48 +52,48 @@ namespace spartan
                 continue;
             }
 
-            EntityTransformData data;
-            data.entity_id = entities[i]->GetObjectId();
-            data.old_position = old_positions[i];
-            data.old_rotation = old_rotations[i];
-            data.old_scale = old_scales[i];
-            data.new_position = entities[i]->GetPosition();
-            data.new_rotation = entities[i]->GetRotation();
-            data.new_scale = entities[i]->GetScale();
+            EntityTransformData transform;
+            transform.entity_id    = entities[i]->GetObjectId();
+            transform.old_position = old_positions[i];
+            transform.old_rotation = old_rotations[i];
+            transform.old_scale    = old_scales[i];
+            transform.new_position = entities[i]->GetPosition();
+            transform.new_rotation = entities[i]->GetRotation();
+            transform.new_scale    = entities[i]->GetScale();
 
-            m_transforms.push_back(data);
+            m_transforms.push_back(transform);
         }
     }
 
     void CommandTransformMulti::OnApply()
     {
-        for (const auto& data : m_transforms)
+        for (const auto& transform : m_transforms)
         {
-            Entity* entity = World::GetEntityById(data.entity_id);
+            Entity* entity = World::GetEntityById(transform.entity_id);
             if (!entity)
             {
                 continue;
             }
 
-            entity->SetPosition(data.new_position);
-            entity->SetRotation(data.new_rotation);
-            entity->SetScale(data.new_scale);
+            entity->SetPosition(transform.new_position);
+            entity->SetRotation(transform.new_rotation);
+            entity->SetScale(transform.new_scale);
         }
     }
 
     void CommandTransformMulti::OnRevert()
     {
-        for (const auto& data : m_transforms)
+        for (const auto& transform : m_transforms)
         {
-            Entity* entity = World::GetEntityById(data.entity_id);
+            Entity* entity = World::GetEntityById(transform.entity_id);
             if (!entity)
             {
                 continue;
             }
 
-            entity->SetPosition(data.old_position);
-            entity->SetRotation(data.old_rotation);
-            entity->SetScale(data.old_scale);
+            entity->SetPosition(transform.old_position);
+            entity->SetRotation(transform.old_rotation);
+            entity->SetScale(transform.old_scale);
         }
     }
 }

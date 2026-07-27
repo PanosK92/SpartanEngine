@@ -200,38 +200,36 @@ namespace spartan::math
 
     float Ray::HitDistance(const Sphere& sphere) const
     {
-        Vector3 centeredOrigin = m_origin - sphere.center;
-        float squaredRadius = sphere.radius * sphere.radius;
+        Vector3 center_to_origin = m_origin - sphere.center;
+        float radius_squared     = sphere.radius * sphere.radius;
 
-        // Check if ray originates inside the sphere
-        if (centeredOrigin.LengthSquared() <= squaredRadius)
+        // the ray starts inside the sphere
+        if (center_to_origin.LengthSquared() <= radius_squared)
         {
             return 0.0f;
         }
 
-        // Calculate intersection by quadratic equation
-        float a = m_direction.Dot(m_direction);
-        float b = 2.0f * centeredOrigin.Dot(m_direction);
-        float c = centeredOrigin.Dot(centeredOrigin) - squaredRadius;
-        float d = b * b - 4.0f * a * c;
-    
-        // No solution
-        if (d < 0.0f)
+        // solve the quadratic
+        float a            = m_direction.Dot(m_direction);
+        float b            = 2.0f * center_to_origin.Dot(m_direction);
+        float c            = center_to_origin.Dot(center_to_origin) - radius_squared;
+        float discriminant = b * b - 4.0f * a * c;
+
+        // no solution
+        if (discriminant < 0.0f)
         {
             return std::numeric_limits<float>::infinity();
         }
 
-        // Get the nearer solution
-        float dSqrt = sqrtf(d);
-        float dist = (-b - dSqrt) / (2.0f * a);
+        // the nearer of the two roots
+        float discriminant_sqrt = sqrtf(discriminant);
+        float dist              = (-b - discriminant_sqrt) / (2.0f * a);
         if (dist >= 0.0f)
         {
             return dist;
         }
-        else
-        {
-            return (-b + dSqrt) / (2.0f * a);
-        }
+
+        return (-b + discriminant_sqrt) / (2.0f * a);
     }
 
     float Ray::Distance(const Vector3& point) const

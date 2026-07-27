@@ -176,6 +176,6 @@ void AssetBrowser::OnPathClicked(const string& path) const
     if (FileSystem::IsEngineMaterialFile(path))
     {
         const auto material = ResourceCache::Load<Material>(path);
-        Properties::Inspect(material);
+        Properties::InspectMaterial(material);
     }
 }

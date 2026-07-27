@@ -1085,12 +1085,12 @@ namespace spartan
         namespace timestamp
         {
             const uint32_t query_count = 256;
-            array<uint64_t, query_count> data;
+            array<uint64_t, query_count> timestamps;
             array<uint64_t, query_count> availability;
 
             void update(void* query_pool, uint32_t query_count_to_read, const bool wait_for_results = false)
             {
-                data.fill(0);
+                timestamps.fill(0);
                 availability.fill(0);
 
                 if (Debugging::IsGpuTimingEnabled())
@@ -1101,14 +1101,15 @@ namespace spartan
                         return;
                     }
 
-                    array<uint64_t, query_count * 2> results = {};
+                    // each query writes a (timestamp, availability) pair, hence the doubled size and stride
+                    array<uint64_t, query_count * 2> interleaved = {};
                     VkResult result = vkGetQueryPoolResults(
                         RHI_Context::device,                  // device
                         static_cast<VkQueryPool>(query_pool), // queryPool
                         0,                                    // firstQuery
                         query_count_to_read,                  // queryCount
                         query_count_to_read * sizeof(uint64_t) * 2, // dataSize
-                        results.data(),                       // pData
+                        interleaved.data(),                   // pData
                         sizeof(uint64_t) * 2,                // stride
                         VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | (wait_for_results ? VK_QUERY_RESULT_WAIT_BIT : 0) // flags
                     );
@@ -1120,12 +1121,12 @@ namespace spartan
 
                     for (uint32_t i = 0; i < query_count_to_read; i++)
                     {
-                        data[i]         = results[i * 2];
-                        availability[i] = results[i * 2 + 1];
+                        timestamps[i]   = interleaved[i * 2];
+                        availability[i] = interleaved[i * 2 + 1];
 
                         if (!availability[i])
                         {
-                            data[i] = 0;
+                            timestamps[i] = 0;
                         }
                     }
                 }
@@ -1146,7 +1147,7 @@ namespace spartan
             uint32_t index_active       = 0;
             bool occlusion_query_active = false;
             const uint32_t query_count  = 4096;
-            array<uint64_t, query_count> data;
+            array<uint64_t, query_count> visible_samples;
             unordered_map<uint64_t, uint32_t> id_to_index;
 
             void update(void* query_pool)
@@ -1157,7 +1158,7 @@ namespace spartan
                     0,                                                   // firstQuery
                     query_count,                                         // queryCount
                     query_count * sizeof(uint64_t),                      // dataSize
-                    data.data(),                                         // pData
+                    visible_samples.data(),                              // pData
                     sizeof(uint64_t),                                    // stride
                     VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT // flags
                 );
@@ -1171,7 +1172,7 @@ namespace spartan
                 // this is safe because the query pool is reset, so all previous results are invalidated
                 index = 0;
                 id_to_index.clear();
-                data.fill(0);
+                visible_samples.fill(0);
             }
 
             uint32_t allocate_index(uint64_t entity_id)
@@ -1211,7 +1212,7 @@ namespace spartan
                 SP_ASSERT_VK(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool));
                 RHI_Device::SetResourceName(pool_timestamp, RHI_Resource_Type::QueryPool, "query_pool_timestamp");
 
-                timestamp::data.fill(0);
+                timestamp::timestamps.fill(0);
             }
 
             // occlusion
@@ -1225,7 +1226,7 @@ namespace spartan
                 SP_ASSERT_VK(vkCreateQueryPool(RHI_Context::device, &query_pool_info, nullptr, query_pool));
                 RHI_Device::SetResourceName(pool_occlusion, RHI_Resource_Type::QueryPool, "query_pool_occlusion");
 
-                occlusion::data.fill(0);
+                occlusion::visible_samples.fill(0);
             }
         }
 
@@ -1326,7 +1327,7 @@ namespace spartan
                 queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index);
 
                 // store per-command-list copy so other queues don't overwrite our results
-                m_timestamp_data = queries::timestamp::data;
+                m_timestamp_data = queries::timestamp::timestamps;
                 m_gpu_frame_reference_tick = m_timestamp_data[0];
             }
     
@@ -2943,9 +2944,7 @@ namespace spartan
 
         uint32_t timestamp_index = m_timestamp_index;
 
-        // top-of-pipe bunches timestamps near command buffer start, which makes later
-        // passes appear to share the same cumulative duration. all-commands gives us
-        // a monotonic point after previously recorded work has completed.
+        // top-of-pipe bunches timestamps at command buffer start, all-commands gives a point after recorded work completed
         vkCmdWriteTimestamp2(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
@@ -3024,7 +3023,7 @@ namespace spartan
 
         // read fresh results from the query pool into m_timestamp_data
         queries::timestamp::update(m_rhi_query_pool_timestamps, m_timestamp_index, true);
-        m_timestamp_data          = queries::timestamp::data;
+        m_timestamp_data          = queries::timestamp::timestamps;
         m_gpu_frame_reference_tick = m_timestamp_data[0];
     }
 
@@ -3078,7 +3077,7 @@ namespace spartan
         }
 
         uint32_t index  = queries::occlusion::id_to_index[entity_id];
-        uint64_t result = queries::occlusion::data[index]; // visible pixel count
+        uint64_t result = queries::occlusion::visible_samples[index];
 
         return result == 0;
     }

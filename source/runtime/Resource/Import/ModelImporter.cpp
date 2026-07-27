@@ -344,9 +344,7 @@ namespace spartan
             SP_ASSERT(material_assimp != nullptr);
             shared_ptr<Material> material = make_shared<Material>();
 
-            // each texture type writes to its own m_textures slot in the material so concurrent loads are safe
-            // packing (Material::PrepareForGpu) only runs after the material is fully populated, no race here
-            // note: gltf uses aiTextureType_GLTF_METALLIC_ROUGHNESS for combined metallic-roughness texture
+            // each type writes its own m_textures slot so concurrent loads are safe, packing only runs once the material is complete
             struct TextureBinding
             {
                 MaterialTextureType type;
@@ -421,14 +419,7 @@ namespace spartan
             material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
             material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
-            // two-sided
-            // glTF exporters routinely flag opaque pbr materials as doubleSided as a precaution even though the mesh
-            // has consistent winding and would render correctly with hardware backface culling, honoring that hint
-            // here silently disables the indirect path's per-triangle backface cull for entire scenes (newsponza ships
-            // every wall, column and ceiling with doubleSided=true so the viewer ends up seeing the inside of buildings),
-            // only honor the import-side two-sided flag when the material actually needs both sides, transparent surfaces
-            // (alpha < 1) and alpha-tested foliage (opacity mask texture) are the two cases that legitimately want it,
-            // anything else stays on the engine default RHI_CullMode::Back regardless of what the dcc tool exported
+            // gltf exporters flag opaque materials doubleSided as a precaution, only honor it for transparent and alpha tested surfaces
             const bool has_alpha_mask = material->HasTextureOfType(MaterialTextureType::AlphaMask);
             if (is_transparent || has_alpha_mask)
             {
@@ -517,8 +508,8 @@ namespace spartan
 
                         if (assimp_mesh->HasTextureCoords(0))
                         {
-                            const auto& tc = assimp_mesh->mTextureCoords[0][i];
-                            vertex.set_uv(tc.x, tc.y);
+                            const auto& uv = assimp_mesh->mTextureCoords[0][i];
+                            vertex.set_uv(uv.x, uv.y);
                         }
                     }
                 }, vertex_count);
@@ -942,11 +933,6 @@ namespace spartan
         }
     }
 
-    void ModelImporter::Initialize()
-    {
-    
-    }
-
     void ModelImporter::Load(Mesh* mesh_in, const string& file_path)
     {
         SP_ASSERT_MSG(mesh_in != nullptr, "Invalid parameter");
@@ -998,9 +984,7 @@ namespace spartan
             import_flags |= aiProcess_CalcTangentSpace;
             import_flags |= aiProcess_GenUVCoords;
 
-            // keep assimp smooth normal generation behind an explicit import flag so
-            // callers can disable it for meshes that rely on authored hard edges.
-            // gltf/glb authoring is required to ship normals so skip the cpu-heavy regeneration step
+            // smooth normal generation stays behind an import flag, gltf must ship normals so the regeneration is skipped
             const string extension      = FileSystem::GetExtensionFromFilePath(file_path);
             const bool source_has_normals = (extension == ".gltf") || (extension == ".glb");
             if (!source_has_normals && (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportGenerateSmoothNormals)))
@@ -1018,10 +1002,7 @@ namespace spartan
                 import_flags |= aiProcess_PreTransformVertices;
             }
 
-            // validate
-            // note, aiProcess_JoinIdenticalVertices is intentionally not set here, meshoptimizer's
-            // meshopt_generateVertexRemap in geometry_processing::optimize() welds identical vertices
-            // faster, so letting assimp do it as well is just duplicate work on big scenes
+            // aiProcess_JoinIdenticalVertices is deliberately off, meshoptimizer welds identical vertices faster in optimize()
             if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
             {
                 import_flags |= aiProcess_RemoveRedundantMaterials;
@@ -1047,12 +1028,7 @@ namespace spartan
             // recursively parse nodes (sequential, just creates entities and collects mesh jobs)
             ParseNode(ctx, ctx.scene->mRootNode);
 
-            // process all collected mesh jobs in parallel, this runs the heavy per-submesh work
-            // (vertex/index extraction, optimize, lod simplify, meshlet build, material+texture load)
-            // concurrently across all submeshes of this model,
-            // sub-mesh slots are reserved up front so each ParseMesh writes to the deterministic index
-            // set during ParseNode, the old auto-allocating AddGeometry path raced on m_sub_meshes.size()
-            // and silently swapped which sub-mesh ended up on which entity (broke tree bark/leaves materials)
+            // sub-mesh slots are reserved up front so each parallel ParseMesh writes a deterministic index
             if (!ctx.mesh_jobs.empty())
             {
                 const uint32_t mesh_job_count = static_cast<uint32_t>(ctx.mesh_jobs.size());
@@ -1252,7 +1228,7 @@ namespace spartan
             const string spartan_asset_path = ctx.model_directory + material->GetObjectName() + EXTENSION_MATERIAL;
             material->SetResourceFilePath(spartan_asset_path);
 
-            // add a renderable and set the material to it
+            // add a render component and set the material to it
             entity_parent->AddComponent<Render>()->SetMaterial(material);
         }
     }

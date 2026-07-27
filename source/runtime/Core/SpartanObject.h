@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    // gives a type a unique id and a name, the base of components, resources and rhi objects
     class SpartanObject
     {
     public:

@@ -277,6 +277,8 @@ namespace spartan
 
         void handle_client(socket_t client_socket)
         {
+            constexpr size_t max_request_size =
+                64 * 1024 * 1024;
             std::string buffer;
             char receive_buffer[4096];
 
@@ -293,6 +295,14 @@ namespace spartan
                 size_t newline = buffer.find('\n');
                 while (newline != std::string::npos)
                 {
+                    if (newline > max_request_size)
+                    {
+                        send_all(
+                            client_socket,
+                            "{\"ok\":false,\"error\":\"request exceeds 64 MiB\"}\n"
+                        );
+                        return;
+                    }
                     std::string line = buffer.substr(0, newline);
                     if (!line.empty() && line.back() == '\r')
                     {
@@ -316,9 +326,12 @@ namespace spartan
                     newline = buffer.find('\n');
                 }
 
-                if (buffer.size() > 64 * 1024)
+                if (buffer.size() > max_request_size)
                 {
-                    send_all(client_socket, "{\"ok\":false,\"error\":\"request is too large\"}\n");
+                    send_all(
+                        client_socket,
+                        "{\"ok\":false,\"error\":\"request exceeds 64 MiB\"}\n"
+                    );
                     break;
                 }
             }

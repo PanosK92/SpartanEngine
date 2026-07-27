@@ -78,10 +78,7 @@ namespace spartan
 
         static bool SphereCast(const math::Vector3& origin, const math::Vector3& direction, float radius, float max_distance, uint32_t ignored_collision_group, math::Vector3& hit_position, float& hit_distance, Entity*& hit_entity);
 
-        // global physx scene lock, used to serialize all reads and writes that touch
-        // PxScene/PxRigidActor/PxShape state, async scene loading runs Physics::Create on
-        // worker threads which races with the main thread, recursive so the same thread
-        // can re-enter under nested helpers like PhysicsWorld::AddActor
+        // serializes every PxScene, PxRigidActor and PxShape access, recursive so nested helpers can re-enter
         static std::recursive_mutex& GetMutex();
     };
 }

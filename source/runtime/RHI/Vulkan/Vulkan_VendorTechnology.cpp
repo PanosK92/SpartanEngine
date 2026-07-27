@@ -33,7 +33,7 @@ SP_WARNINGS_OFF
 #include "NRDIntegration.hpp"
 #endif
 SP_WARNINGS_ON
-#include "../RHI_VendorTechnology.h"
+#include "../RHI_VendorTechnologyNrd.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
@@ -142,9 +142,7 @@ namespace spartan
             intel::params_init.outputResolution.x = common::resolution_output_width;
             intel::params_init.outputResolution.y = common::resolution_output_height;
             intel::params_init.qualitySetting     = intel::get_quality(scale_factor);
-            // let xess compute its own exposure from input statistics, the engine's tonemapper
-            // handles exposure for the displayed image, decoupling these two avoids feeding xess
-            // a value that lags or fluctuates relative to its training assumptions
+            // xess computes its own exposure, feeding it the tonemapper's value would lag its training assumptions
             intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
             intel::params_init.creationNodeMask   = 0;
             intel::params_init.visibleNodeMask    = 0;
@@ -192,21 +190,21 @@ namespace spartan
 
         xess_vk_image_view_info to_xess_image_view(RHI_Texture* texture)
         {
-            xess_vk_image_view_info info          = {};
-            info.image                            = static_cast<VkImage>(texture->GetRhiResource()); 
-            info.imageView                        = static_cast<VkImageView>(texture->GetRhiSrv());
-            info.subresourceRange                 = {};
-            info.subresourceRange.aspectMask      = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-            info.subresourceRange.aspectMask     |= texture->IsStencilFormat() ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
-            info.subresourceRange.baseMipLevel    = 0;
-            info.subresourceRange.levelCount      = 1;
-            info.subresourceRange.baseArrayLayer  = 0;
-            info.subresourceRange.layerCount      = 1;
-            info.format                           = vulkan_format[static_cast<uint32_t>(texture->GetFormat())];
-            info.width                            = texture->GetWidth();
-            info.height                           = texture->GetHeight();
+            xess_vk_image_view_info view_info          = {};
+            view_info.image                            = static_cast<VkImage>(texture->GetRhiResource()); 
+            view_info.imageView                        = static_cast<VkImageView>(texture->GetRhiSrv());
+            view_info.subresourceRange                 = {};
+            view_info.subresourceRange.aspectMask      = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+            view_info.subresourceRange.aspectMask     |= texture->IsStencilFormat() ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
+            view_info.subresourceRange.baseMipLevel    = 0;
+            view_info.subresourceRange.levelCount      = 1;
+            view_info.subresourceRange.baseArrayLayer  = 0;
+            view_info.subresourceRange.layerCount      = 1;
+            view_info.format                           = vulkan_format[static_cast<uint32_t>(texture->GetFormat())];
+            view_info.width                            = texture->GetWidth();
+            view_info.height                           = texture->GetHeight();
         
-            return info;
+            return view_info;
         }
     }
 

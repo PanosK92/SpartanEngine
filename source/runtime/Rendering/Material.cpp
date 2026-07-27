@@ -969,9 +969,7 @@ namespace spartan
                 string tex_name = node_texture.attribute("texture_name").as_string();
                 string tex_path = node_texture.attribute("texture_path").as_string();
 
-                // load by path first since paths are unique
-                // name-based lookup is a fallback because names like "normal" collide across materials
-                // procedural textures carry a synthetic path with no file behind it, so check existence first
+                // by path first since paths are unique, names like normal collide and procedural textures have no file behind them
                 shared_ptr<RHI_Texture> texture;
                 if (!tex_path.empty() && FileSystem::Exists(tex_path))
                 {
@@ -1059,7 +1057,7 @@ namespace spartan
         }
     }
 
-    void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot, const bool auto_adjust_multipler)
+    void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot, const bool auto_adjust_multiplier)
     {
         SP_ASSERT(slot < slots_per_texture);
     
@@ -1084,7 +1082,7 @@ namespace spartan
             }
         }
 
-        if (auto_adjust_multipler)
+        if (auto_adjust_multiplier)
         {
             if (texture_type == MaterialTextureType::Metalness)
             {
@@ -1104,8 +1102,8 @@ namespace spartan
             }
         }
 
-        // save on change, but not during loading (auto_adjust_multipler is false when called from LoadFromFile)
-        if (auto_adjust_multipler)
+        // save on change, but not during loading (auto_adjust_multiplier is false when called from LoadFromFile)
+        if (auto_adjust_multiplier)
         {
             SaveToFile(GetResourceFilePath());
         }
@@ -1118,10 +1116,7 @@ namespace spartan
 
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
-        // don't compress source textures - keep raw bytes available for packing/repacking
-        // only packed textures get compressed
-        // defer the gpu upload so pack_textures can still mutate the cpu bytes (alpha mask merge, etc.) before they reach the gpu,
-        // PrepareForGpu() runs later from Material::PrepareForGpu's async pass once packing is done
+        // only packed textures get compressed, the gpu upload is deferred so pack_textures can still mutate the cpu bytes
         SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_DeferUpload), slot);
     }
  

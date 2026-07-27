@@ -63,10 +63,7 @@ namespace spartan
         const float distance_deactivate = 80.0f;
         const float distance_activate   = 40.0f;
 
-        // average european male: ~1.78m tall, eye level at ~1.65m
-        // capsule total height = cylinder_height + 2 * radius
-        // we want total height = 1.8m, with radius 0.25m
-        // so cylinder_height = 1.8 - 0.5 = 1.3m
+        // 1.8m total height for an average adult, a capsule totals cylinder_height + 2 * radius
         const float controller_radius   = 0.25f;
         const float standing_height     = 1.3f;  // cylinder height (total = 1.3 + 0.5 = 1.8m)
         const float crouch_height       = 0.5f;  // cylinder height when crouching (total = 0.5 + 0.5 = 1.0m)
@@ -256,11 +253,11 @@ namespace spartan
 
     BodyType Physics::DetectBodyType()
     {
-        Render* renderable = GetEntity()->GetComponent<Render>();
-        if (renderable)
+        Render* render = GetEntity()->GetComponent<Render>();
+        if (render)
         {
             // check if the mesh is a simple primitive shape (case-insensitive)
-            string mesh_name = renderable->GetMeshName();
+            string mesh_name = render->GetMeshName();
             transform(mesh_name.begin(), mesh_name.end(), mesh_name.begin(), ::tolower);
 
             if (mesh_name.find("cube") != string::npos || mesh_name.find("box") != string::npos)
@@ -286,7 +283,7 @@ namespace spartan
             }
         }
 
-        // no renderable - default to box (common for invisible colliders/triggers)
+        // no render - default to box (common for invisible colliders/triggers)
         return BodyType::Box;
     }
 
@@ -358,18 +355,13 @@ namespace spartan
 
     void Physics::PreTick()
     {
-        // during world load worker threads are busy inside pxphysics/pxscene creating actors and
-        // shapes, the editor sync path below writes to pxrigidactor on the main thread which physx
-        // flags as concurrent api access and corrupts the internal pruner aabb tree, the entities
-        // were just placed at the right pose so this sync would be a no-op anyway
-        // we also defer Create until loading completes, this avoids racing with workers that are
-        // still populating sibling components like Render whose mesh data we read for the shape
+        // physx treats a main thread write during worker actor creation as concurrent access and corrupts its pruner tree
         if (ProgressTracker::IsLoading())
         {
             return;
         }
 
-        // deferred creation after loading (renderable component needs to be available first)
+        // deferred creation after loading (render component needs to be available first)
         if (m_needs_creation)
         {
             m_needs_creation = false;
@@ -421,9 +413,7 @@ namespace spartan
 
     void Physics::Tick()
     {
-        // distance activation iterates m_actors which a worker thread may still be appending to
-        // inside Create, the entity is already published to the world before its physics component
-        // finishes creating actors so reading m_actors here would race
+        // the entity is published before Create finishes appending actors, so reading m_actors here would race
         if (ProgressTracker::IsLoading())
         {
             return;
@@ -510,20 +500,14 @@ namespace spartan
 
         if (is_playing)
         {
-            // the vehicle force model is driven from PhysicsWorld's fixed-step loop via
-            // the registered substep callback so it runs exactly once per scene->simulate step. that
-            // keeps the forces it applies in lockstep with the integration, reading a freshly
-            // integrated pose each step instead of accumulating several substeps worth of force into
-            // a single integration step, which is what made the chassis wobble at low framerates
+            // driven from PhysicsWorld's substep callback so forces stay in lockstep with the integration, otherwise the chassis wobbles
 
             // get the raw physx pose, this is the same pose used by the wheel debug shapes
             Vector3 physics_pos;
             Quaternion physics_rot;
             from_px_transform(actor->getGlobalPose(), physics_pos, physics_rot);
 
-            // extrapolate forward by the unsimulated leftover time so the chassis stays smooth
-            // between fixed physx steps without lagging behind real time, the leftover is bounded
-            // by a single physx step so the offset is tiny even at very high speed
+            // extrapolate the leftover time so the chassis stays smooth between fixed steps, bounded by one physx step
             PxRigidDynamic* dynamic         = actor->is<PxRigidDynamic>();
             Vector3 physics_vel             = dynamic ? from_px_vec3(dynamic->getLinearVelocity())  : Vector3::Zero;
             Vector3 physics_ang_vel         = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
@@ -620,8 +604,8 @@ namespace spartan
 
     void Physics::TickDynamicBodies(bool is_playing)
     {
-        Render* renderable = GetEntity()->GetComponent<Render>();
-        if (!renderable)
+        Render* render = GetEntity()->GetComponent<Render>();
+        if (!render)
         {
             return;
         }
@@ -639,9 +623,9 @@ namespace spartan
             // get transform (from instance or entity)
             auto get_transform = [&]() -> math::Matrix
             {
-                if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
+                if (render->HasInstancing() && i < render->GetInstanceCount())
                 {
-                    return renderable->GetInstance(i, true);
+                    return render->GetInstance(i, true);
                 }
                 if (i == 0)
                 {
@@ -798,8 +782,8 @@ namespace spartan
     void Physics::TickDistanceActivation()
     {
         Camera* camera = World::GetCamera();
-        Render* renderable = GetEntity()->GetComponent<Render>();
-        if (!camera || !renderable)
+        Render* render = GetEntity()->GetComponent<Render>();
+        if (!camera || !render)
         {
             return;
         }
@@ -821,9 +805,9 @@ namespace spartan
             }
 
             // compute distance to actor
-            Vector3 closest_point = renderable->HasInstancing()
-                ? renderable->GetInstance(i, true).GetTranslation()
-                : renderable->GetBoundingBox().GetClosestPoint(camera_pos);
+            Vector3 closest_point = render->HasInstancing()
+                ? render->GetInstance(i, true).GetTranslation()
+                : render->GetBoundingBox().GetClosestPoint(camera_pos);
             const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
 
             // use hysteresis to prevent flickering at boundary
@@ -899,8 +883,8 @@ namespace spartan
         m_cloth_pin_direction.z = node.attribute("cloth_pin_direction_z").as_float(0.0f);
         m_cloth_pin_direction = m_cloth_pin_direction.LengthSquared() > 0.0001f ? m_cloth_pin_direction.Normalized() : Vector3::Up;
 
-        // defer creation until tick so that renderable component is available
-        // (components load in enum order, and renderable comes after physics)
+        // defer creation until tick so that render component is available
+        // (components load in enum order, and render comes after physics)
         m_needs_creation = true;
     }
 
@@ -937,7 +921,7 @@ namespace spartan
             "SetFriction",                  &Physics::SetFriction,
             "GetFrictionRolling",           &Physics::GetFrictionRolling,
             "SetFrictionRolling",           &Physics::SetFrictionRolling,
-            "GetRestitution",               &Physics::SetRestitution,
+            "GetRestitution",               &Physics::GetRestitution,
             "SetRestitution",               &Physics::SetRestitution,
 
             "SetLinearVelocity",            &Physics::SetLinearVelocity,
@@ -1500,9 +1484,9 @@ namespace spartan
             case BodyType::Cloth:
             {
                 // approximate with the bounding box, extents are half size
-                if (Render* renderable = GetEntity()->GetComponent<Render>())
+                if (Render* render = GetEntity()->GetComponent<Render>())
                 {
-                    Vector3 extents = renderable->GetBoundingBox().GetExtents();
+                    Vector3 extents = render->GetBoundingBox().GetExtents();
                     return extents.x * extents.y * extents.z * 8.0f;
                 }
                 return m_body_type == BodyType::Cloth ? 0.01f : 1.0f;
@@ -1548,9 +1532,7 @@ namespace spartan
         float height                    = controller->getHeight();
         float radius                    = controller->getRadius();
 
-        // for an average european male (1.8m), eye level is at ~1.65m from the ground
-        // that's about 0.15m below the top of the head
-        // this returns eye level position relative to capsule center (where camera should be)
+        // eye level for an average adult sits about 0.15m below the top of the head, returned relative to the capsule center
         const float eye_offset_from_top = 0.13f;
         return Vector3(0.0f, (height * 0.5f) + radius - eye_offset_from_top, 0.0f);
     }
@@ -1757,13 +1739,13 @@ namespace spartan
                     Quaternion vehicle_world_rot = vehicle_entity->GetRotation();
                     Quaternion vehicle_world_rot_inv = vehicle_world_rot.Conjugate();
 
-                    // try to get the actual mesh center from the renderable's bounding box
+                    // try to get the actual mesh center from the render's bounding box
                     Vector3 wheel_world_pos = entity->GetPosition();
-                    Render* renderable = entity->GetComponent<Render>();
-                    if (renderable)
+                    Render* render = entity->GetComponent<Render>();
+                    if (render)
                     {
-                        renderable->Tick();
-                        BoundingBox aabb = renderable->GetBoundingBox();
+                        render->Tick();
+                        BoundingBox aabb = render->GetBoundingBox();
                         wheel_world_pos = aabb.GetCenter();
                         Vector3 center_offset = entity->GetRotation().Conjugate() * (wheel_world_pos - entity->GetPosition());
                         m_wheel_mesh_center_offsets[index] = center_offset.IsFinite() ? center_offset : Vector3::Zero;
@@ -1834,7 +1816,7 @@ namespace spartan
         // scene, async load runs this on worker threads so serialize against other physx writes
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
-        // collect all entities with renderables in the hierarchy
+        // collect all entities with render components in the hierarchy
         vector<Entity*> mesh_entities;
         mesh_entities.push_back(chassis_entity);
         chassis_entity->GetDescendants(&mesh_entities);
@@ -1863,8 +1845,8 @@ namespace spartan
             return false;
         };
 
-        // filter to only entities with renderable components, excluding specified entities
-        vector<pair<Entity*, Render*>> renderable_entities;
+        // filter to only entities with render components, excluding specified entities
+        vector<pair<Entity*, Render*>> render_entities;
         for (Entity* ent : mesh_entities)
         {
             // skip inactive entities and excluded entities
@@ -1877,20 +1859,20 @@ namespace spartan
                 continue;
             }
 
-            if (Render* renderable = ent->GetComponent<Render>())
+            if (Render* render = ent->GetComponent<Render>())
             {
-                renderable_entities.push_back({ent, renderable});
+                render_entities.push_back({ent, render});
             }
         }
 
-        if (renderable_entities.empty())
+        if (render_entities.empty())
         {
-            SP_LOG_WARNING("No renderable entities found in chassis hierarchy (after exclusions)");
+            SP_LOG_WARNING("No render entities found in chassis hierarchy (after exclusions)");
             return;
         }
 
         SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)",
-            renderable_entities.size(), entities_to_exclude.size());
+            render_entities.size(), entities_to_exclude.size());
 
         // the chassis entity's local transform relative to the vehicle (physics body)
         Vector3 chassis_local_pos = chassis_entity->GetPositionLocal();
@@ -1910,12 +1892,12 @@ namespace spartan
         float pre_clip_min_y = std::numeric_limits<float>::infinity();
         size_t clipped_count = 0;
 
-        for (const auto& [ent, renderable] : renderable_entities)
+        for (const auto& [ent, render] : render_entities)
         {
             // get geometry
             vector<uint32_t> indices;
             vector<RHI_Vertex_PosTexNorTan> vertices;
-            renderable->GetGeometry(&indices, &vertices);
+            render->GetGeometry(&indices, &vertices);
             if (vertices.empty())
             {
                 continue;
@@ -2050,9 +2032,7 @@ namespace spartan
             return;
         }
 
-        // a non finite or non positive radius lands in cfg.wheel_radius_for(i), then in wheel_moi,
-        // then in every divide in apply_tire_forces. reject it at the entry point and keep going
-        // with a sane default so the sim never has to deal with a zero radius wheel
+        // a bad radius would divide through every tire force, so reject it here and continue with a sane default
         if (!std::isfinite(radius) || radius <= 0.0f)
         {
             SP_LOG_WARNING("SetWheelRadius: refusing non finite or non positive radius %.3f, keeping %.3f", radius, m_wheel_radius);
@@ -2073,11 +2053,7 @@ namespace spartan
             // the body is in the scene, async load reaches this from car prefab workers
             lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
-            // equilibrium body height: at rest the spring is compressed by expected_sag and the
-            // wheel center sits at radius above the ground. wheel center in body local space is
-            // -suspension_height + compression*travel, so body_y = radius + suspension_height - sag.
-            // spawning at this height puts the car immediately at rest instead of letting it bounce
-            // through 2*sag of vertical travel on the first ticks
+            // spawn at the resting height, radius + suspension_height - sag, so the car does not bounce through its travel
             float front_mass_per_wheel = m_vehicle_simulation->chassis_mass() * m_vehicle_simulation->get_weight_distribution_front() * 0.5f;
             float front_omega = 2.0f * math::pi * m_vehicle_simulation->get_spec().front_spring_freq;
             float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
@@ -2113,20 +2089,20 @@ namespace spartan
             return;
         }
 
-        // get the renderable component to access the bounding box
-        Render* renderable = wheel_entity->GetComponent<Render>();
-        if (!renderable)
+        // get the render component to access the bounding box
+        Render* render = wheel_entity->GetComponent<Render>();
+        if (!render)
         {
-            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel entity has no Renderable component");
+            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel entity has no Render component");
             return;
         }
 
         // force bounding box update to reflect current entity transform (including scale)
         // this is needed because the bounding box is lazily updated during Tick()
-        renderable->Tick();
+        render->Tick();
 
         // get the aabb - this is in world space (transformed by entity matrix including scale)
-        BoundingBox aabb = renderable->GetBoundingBox();
+        BoundingBox aabb = render->GetBoundingBox();
         Vector3 extents = aabb.GetExtents(); // half-sizes, already scaled
 
         // a default constructed bbox has m_min = inf and m_max = -inf which produces a non finite
@@ -2171,14 +2147,14 @@ namespace spartan
             return;
         }
 
-        Render* renderable = wheel_entity->GetComponent<Render>();
-        if (!renderable)
+        Render* render = wheel_entity->GetComponent<Render>();
+        if (!render)
         {
             return;
         }
 
         // scale is absolute and derives only from unscaled local mesh bounds
-        Vector3 extents = renderable->GetBoundingBoxMesh().GetExtents();
+        Vector3 extents = render->GetBoundingBoxMesh().GetExtents();
         if (!extents.IsFinite() || extents.x <= 0.0001f || extents.y <= 0.0001f || extents.z <= 0.0001f)
         {
             return;
@@ -2192,7 +2168,7 @@ namespace spartan
         }
 
         wheel_entity->SetScaleLocal(scale);
-        renderable->Tick();
+        render->Tick();
     }
 
     float Physics::GetVehicleThrottle() const
@@ -2789,22 +2765,22 @@ namespace spartan
             }
 
             // skip wheels with non finite world transforms, the bbox derived from such a transform
-            // would otherwise crash the frustum culler assert when renderable->Tick runs below
+            // would otherwise crash the frustum culler assert when render->Tick runs below
             if (!wheel_entity->GetMatrix().IsFinite())
             {
                 SP_LOG_WARNING("non finite world matrix on wheel '%s' in SyncWheelOffsetsFromEntities, skipping", wheel_entity->GetObjectName().c_str());
                 continue;
             }
 
-            // try to get the actual mesh center from the renderable's bounding box
+            // try to get the actual mesh center from the render's bounding box
             // this handles meshes where the origin is not at the geometric center
             Vector3 wheel_world_pos = wheel_entity->GetPosition();
 
-            Render* renderable = wheel_entity->GetComponent<Render>();
-            if (renderable)
+            Render* render = wheel_entity->GetComponent<Render>();
+            if (render)
             {
-                renderable->Tick(); // ensure bounding box is up to date
-                BoundingBox aabb = renderable->GetBoundingBox();
+                render->Tick(); // ensure bounding box is up to date
+                BoundingBox aabb = render->GetBoundingBox();
                 Vector3 aabb_center = aabb.GetCenter();
                 if (!aabb_center.IsNaN())
                 {
@@ -2911,9 +2887,7 @@ namespace spartan
 
     void Physics::Create()
     {
-        // serialize the entire physx setup, the car prefab path calls this on loader workers
-        // in parallel with the main thread's PreTick, so without this lock physx flags concurrent
-        // scene writes (addActor, setGlobalPose, setSimulationFilterData) and corrupts the scene
+        // serializes the whole physx setup, the prefab path runs on loader workers and physx corrupts the scene on concurrent writes
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
         // clear previous state
@@ -3043,24 +3017,24 @@ namespace spartan
                 return;
             }
 
-            // collect all entities with renderables in the hierarchy
+            // collect all entities with render components in the hierarchy
             vector<Entity*> mesh_entities;
             mesh_entities.push_back(source_entity);
             source_entity->GetDescendants(&mesh_entities);
 
-            // filter to only entities with renderable components
-            vector<pair<Entity*, Render*>> renderable_entities;
+            // filter to only entities with render components
+            vector<pair<Entity*, Render*>> render_entities;
             for (Entity* entity : mesh_entities)
             {
-                if (Render* renderable = entity->GetComponent<Render>())
+                if (Render* render = entity->GetComponent<Render>())
                 {
-                    renderable_entities.push_back({entity, renderable});
+                    render_entities.push_back({entity, render});
                 }
             }
 
-            if (renderable_entities.empty())
+            if (render_entities.empty())
             {
-                SP_LOG_ERROR("No renderable entities found in hierarchy for MeshConvex");
+                SP_LOG_ERROR("No render entities found in hierarchy for MeshConvex");
                 return;
             }
 
@@ -3104,22 +3078,28 @@ namespace spartan
             PxCookingParams params(px_scale);
             params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
             params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-            params.meshWeldTolerance = 0.01f;
+            params.meshWeldTolerance = 0.00001f;
             params.gaussMapLimit = 32;
 
             PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
             PxMaterial* material = static_cast<PxMaterial*>(m_material);
+            if (!insertion_callback || !material)
+            {
+                SP_LOG_ERROR("MeshConvex requires valid PhysX cooking and material state");
+                actor->release();
+                return;
+            }
 
             // inverse transform to convert world positions to body-local space
             Quaternion body_rot_inv = body_rot.Conjugate();
 
             int shapes_created = 0;
-            for (const auto& [entity, renderable] : renderable_entities)
+            for (const auto& [entity, render] : render_entities)
             {
                 // get geometry
                 vector<uint32_t> indices;
                 vector<RHI_Vertex_PosTexNorTan> vertices;
-                renderable->GetGeometry(&indices, &vertices);
+                render->GetGeometry(&indices, &vertices);
                 if (vertices.empty())
                 {
                     continue;
@@ -3153,13 +3133,55 @@ namespace spartan
                         vertex.pos[2] * entity_scale.z
                     );
                 }
+                if (px_vertices.size() < 4)
+                {
+                    SP_LOG_WARNING(
+                        "Skipping convex hull with fewer than four vertices for entity '%s'",
+                        entity->GetObjectName().c_str()
+                    );
+                    continue;
+                }
+                PxVec3 minimum(PX_MAX_F32);
+                PxVec3 maximum(-PX_MAX_F32);
+                bool finite = true;
+                for (const PxVec3& vertex : px_vertices)
+                {
+                    if (!vertex.isFinite())
+                    {
+                        finite = false;
+                        break;
+                    }
+                    minimum.x = min(minimum.x, vertex.x);
+                    minimum.y = min(minimum.y, vertex.y);
+                    minimum.z = min(minimum.z, vertex.z);
+                    maximum.x = max(maximum.x, vertex.x);
+                    maximum.y = max(maximum.y, vertex.y);
+                    maximum.z = max(maximum.z, vertex.z);
+                }
+                const PxVec3 extent = maximum - minimum;
+                if (
+                    !finite ||
+                    extent.x <= 0.000001f ||
+                    extent.y <= 0.000001f ||
+                    extent.z <= 0.000001f
+                )
+                {
+                    SP_LOG_WARNING(
+                        "Skipping degenerate convex hull for entity '%s'",
+                        entity->GetObjectName().c_str()
+                    );
+                    continue;
+                }
 
                 // create convex mesh
                 PxConvexMeshDesc mesh_desc;
                 mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
                 mesh_desc.points.stride = sizeof(PxVec3);
                 mesh_desc.points.data = px_vertices.data();
-                mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+                mesh_desc.flags =
+                    PxConvexFlag::eCOMPUTE_CONVEX |
+                    PxConvexFlag::eSHIFT_VERTICES;
+                mesh_desc.vertexLimit = 64;
 
                 PxConvexMeshCookingResult::Enum condition;
                 PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
@@ -3221,24 +3243,24 @@ namespace spartan
             m_actors[0] = actor;
             m_actors_active.resize(1, true);
 
-            SP_LOG_INFO("MeshConvex created: %d convex shapes from %zu entities", shapes_created, renderable_entities.size());
+            SP_LOG_INFO("MeshConvex created: %d convex shapes from %zu entities", shapes_created, render_entities.size());
         }
         else
         {
             // mesh
             if (m_body_type == BodyType::Mesh)
             {
-                Render* renderable = GetEntity()->GetComponent<Render>();
-                if (!renderable)
+                Render* render = GetEntity()->GetComponent<Render>();
+                if (!render)
                 {
-                    SP_LOG_ERROR("No Renderable component found for mesh shape");
+                    SP_LOG_ERROR("No Render component found for mesh shape");
                     return;
                 }
 
                 // get geometry
                 vector<uint32_t> indices;
                 vector<RHI_Vertex_PosTexNorTan> vertices;
-                renderable->GetGeometry(&indices, &vertices);
+                render->GetGeometry(&indices, &vertices);
                 if (vertices.empty() || indices.empty())
                 {
                     SP_LOG_ERROR("Empty vertex or index data for mesh shape");
@@ -3246,7 +3268,7 @@ namespace spartan
                 }
 
                 // simplify geometry
-                const float volume        = renderable->GetBoundingBox().GetVolume();
+                const float volume        = render->GetBoundingBox().GetVolume();
                 const float max_volume    = 100000.0f;
                 // simplify geometry based on volume (larger objects get more detail)
                 const float volume_factor       = clamp(volume / max_volume, 0.0f, 1.0f);
@@ -3258,7 +3280,7 @@ namespace spartan
                 // warn if we hit the complexity cap (original mesh was very detailed)
                 if (indices.size() > max_index_count && target_index_count == max_index_count)
                 {
-                    SP_LOG_WARNING("Mesh '%s' was simplified to %zu indices. It's still complex and may impact physics performance.", renderable->GetEntity()->GetObjectName().c_str(), target_index_count);
+                    SP_LOG_WARNING("Mesh '%s' was simplified to %zu indices. It's still complex and may impact physics performance.", render->GetEntity()->GetObjectName().c_str(), target_index_count);
                 }
 
                 // convert vertices to physx format
@@ -3433,17 +3455,17 @@ namespace spartan
     void Physics::CreateBodies()
     {
         PxPhysics* physics      = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
-        Render* renderable  = GetEntity()->GetComponent<Render>();
+        Render* render  = GetEntity()->GetComponent<Render>();
 
-        // determine instance count - use renderable if available, otherwise single instance
-        const uint32_t instance_count = renderable ? renderable->GetInstanceCount() : 1;
+        // determine instance count - use render if available, otherwise single instance
+        const uint32_t instance_count = render ? render->GetInstanceCount() : 1;
 
         // create bodies and shapes
         m_actors.resize(instance_count, nullptr);
         m_actors_active.resize(instance_count, true); // all actors start active
         for (uint32_t i = 0; i < instance_count; i++)
         {
-            math::Matrix transform = (renderable && renderable->HasInstancing()) ? renderable->GetInstance(i, true) : GetEntity()->GetMatrix();
+            math::Matrix transform = (render && render->HasInstancing()) ? render->GetInstance(i, true) : GetEntity()->GetMatrix();
             PxTransform pose(
                 PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
                 PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
@@ -3513,7 +3535,7 @@ namespace spartan
                     {
                         if (IsStatic() || IsKinematic())
                         {
-                            Vector3 scale = renderable->HasInstancing() ? renderable->GetInstance(i, false).GetScale() : Vector3::One;
+                            Vector3 scale = render->HasInstancing() ? render->GetInstance(i, false).GetScale() : Vector3::One;
                             PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // this is a runtime transform, cheap for statics but it won't be reflected for the internal baked shape (raycasts etc)
                             PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
                             shape = physics->createShape(geometry, *material);
@@ -3547,25 +3569,25 @@ namespace spartan
 
     void Physics::CreateCloth()
     {
-        Render* renderable = GetEntity()->GetComponent<Render>();
-        if (!renderable)
+        Render* render = GetEntity()->GetComponent<Render>();
+        if (!render)
         {
-            SP_LOG_ERROR("Cloth requires a Renderable component");
+            SP_LOG_ERROR("Cloth requires a Render component");
             return;
         }
 
-        // extract geometry from the renderable's mesh
+        // extract geometry from the render's mesh
         vector<uint32_t> indices;
         vector<RHI_Vertex_PosTexNorTan> vertices;
-        renderable->GetGeometry(&indices, &vertices);
+        render->GetGeometry(&indices, &vertices);
         if (vertices.empty() || indices.empty())
         {
             SP_LOG_ERROR("Cloth mesh has no geometry");
             return;
         }
 
-        Mesh* source_mesh = renderable->GetMesh();
-        uint32_t source_sub_mesh_index = renderable->GetSubMeshIndex();
+        Mesh* source_mesh = render->GetMesh();
+        uint32_t source_sub_mesh_index = render->GetSubMeshIndex();
         shared_ptr<Mesh> cloth_mesh = make_shared<Mesh>();
         cloth_mesh->SetObjectName(source_mesh->GetObjectName());
         cloth_mesh->SetType(source_mesh->GetType());
@@ -3575,12 +3597,12 @@ namespace spartan
         vector<uint32_t> cloth_mesh_indices = indices;
         cloth_mesh->AddGeometry(cloth_mesh_vertices, cloth_mesh_indices, false, source_sub_mesh_index);
         cloth_mesh->CreateGpuBuffers();
-        renderable->SetMesh(cloth_mesh.get(), source_sub_mesh_index);
+        render->SetMesh(cloth_mesh.get(), source_sub_mesh_index);
         m_cloth_mesh = move(cloth_mesh);
 
         // store the global geometry buffer offset so we can update vertices in-place later
-        m_cloth_global_vertex_offset = renderable->GetVertexOffset();
-        m_cloth_vertex_count         = renderable->GetVertexCount();
+        m_cloth_global_vertex_offset = render->GetVertexOffset();
+        m_cloth_vertex_count         = render->GetVertexCount();
 
         // entity transform for converting local-space vertices to world space
         Vector3 entity_pos   = GetEntity()->GetPosition();
@@ -3604,9 +3626,7 @@ namespace spartan
             m_cloth_particles[i].inverse_mass      = 1.0f / max(m_mass, 0.001f);
         }
 
-        // build weld map: imported meshes duplicate vertices at uv seams and hard edges,
-        // so we need to identify coincident vertices and treat them as the same particle
-        // to keep the cloth connected across seams
+        // imported meshes duplicate vertices at seams and hard edges, weld the coincident ones so the cloth stays connected
         {
             const float weld_epsilon = 1e-4f;
 
@@ -3706,8 +3726,8 @@ namespace spartan
 
         // the renderer may have already built this entity's blas without the update bit,
         // so invalidate it to force a rebuild with ALLOW_UPDATE_BIT on the next frame
-        renderable->SetAllowBlasUpdate(true);
-        renderable->InvalidateAccelerationStructure();
+        render->SetAllowBlasUpdate(true);
+        render->InvalidateAccelerationStructure();
 
         SP_LOG_INFO("Cloth created: %u particles (%zu vertices, %u welded), %zu constraints, %zu triangles",
             canonical_count, m_cloth_particles.size(), static_cast<uint32_t>(m_cloth_particles.size()) - canonical_count,
@@ -3960,9 +3980,9 @@ namespace spartan
         GeometryBuffer::UpdateVertices(updated_vertices.data(), m_cloth_global_vertex_offset, m_cloth_vertex_count);
 
         // signal that the blas needs an in-place refit so ray-traced shadows track the deformed mesh
-        if (Render* renderable = GetEntity()->GetComponent<Render>())
+        if (Render* render = GetEntity()->GetComponent<Render>())
         {
-            renderable->SetNeedsBlasRefit(true);
+            render->SetNeedsBlasRefit(true);
         }
     }
 }

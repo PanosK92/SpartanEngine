@@ -25,10 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <d3d12.h>
 #include <dxgiformat.h>
 
-// internal scaling-blit support, mirrors the vkCmdBlitImage scaling semantics on the d3d12 backend
-// the rhi command list calls into this when the source and destination dimensions differ, since copyresource and
-// copytextureregion can not scale, the implementation runs a fullscreen triangle that samples the source srv and
-// outputs to either an rtv or sv_depth depending on the destination format
+// mirrors vkCmdBlitImage scaling on d3d12 with a fullscreen triangle, since copyresource cannot scale
 namespace spartan::d3d12_blit
 {
     struct BlitParams

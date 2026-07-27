@@ -31,12 +31,12 @@ namespace spartan
     class RHI_PhysicalDevice
     {
     public:
-        RHI_PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const char* driver_info, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* data)
+        RHI_PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const char* driver_info, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* native_handle)
         {
-            this->vendor_id = vendor_id;
-            this->type      = type;
-            this->memory    = static_cast<uint32_t>(memory / 1024 / 1024); // mb
-            this->data      = data;
+            this->vendor_id     = vendor_id;
+            this->type          = type;
+            this->memory        = static_cast<uint32_t>(memory / 1024 / 1024); // mb
+            this->native_handle = native_handle;
 
             // copy strings into local buffers (no heap allocations)
             strncpy_s(this->name, sizeof(this->name), name ? name : "Unknown", _TRUNCATE);
@@ -106,7 +106,7 @@ namespace spartan
         const char* GetApiVersion()       const { return api_version; }
         const char* GetVendorName()       const { return vendor_name; }
         uint32_t GetMemory()              const { return memory; }
-        void* GetData()                   const { return data; }
+        void* GetNativeHandle()           const { return native_handle; }
         RHI_PhysicalDevice_Type GetType() const { return type; }
 
     private:
@@ -148,6 +148,6 @@ namespace spartan
         uint32_t vendor_id               = 0;                            // vendor unique id
         RHI_PhysicalDevice_Type type     = RHI_PhysicalDevice_Type::Max; // type of device (discrete, integrated, etc.)
         uint32_t memory                  = 0;                            // total device memory in mb
-        void* data                       = nullptr;                      // pointer to device-specific extra data
+        void* native_handle              = nullptr;                      // the backend device handle, a VkPhysicalDevice on vulkan
     };
 }

@@ -10,6 +10,7 @@ const target_name_stopwords = new Set([
   "this", "selected", "current", "the", "an", "a", "entity", "entities", "children", "child", "contents",
   "parent", "under", "called", "named", "existing", "new", "area", "scene", "world", "level", "blockout",
   "there", "is", "are", "it", "its", "it's", "their", "our", "your", "my", "some", "any", "all",
+  "seam_error", "asset_id", "root_id", "entity_id", "parent_id",
 ]);
 
 function clean_target_name(raw) {
@@ -105,7 +106,13 @@ export function target_name_from_prompt(prompt) {
   const explicit_entity_match = value.match(/\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/);
   if (explicit_entity_match?.[1])
   {
-    return explicit_entity_match[1].trim();
+    const cleaned = clean_target_name(
+      explicit_entity_match[1],
+    );
+    if (cleaned)
+    {
+      return cleaned;
+    }
   }
 
   const named_match = value.match(/\bnamed\s+["']?([a-z0-9 _-]+?)["']?(?:\s|,|\.|$)/);

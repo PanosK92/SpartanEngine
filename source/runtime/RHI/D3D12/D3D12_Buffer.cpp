@@ -89,9 +89,7 @@ namespace spartan
             m_object_size = size;
         }
 
-        // shader binding tables are mappable upload buffers laid out as
-        // [raygen][miss][hit] each padded to base alignment, identifiers are 32 bytes wide
-        // we precompute per-record offsets here so GetRegion can return them later
+        // shader binding tables are upload buffers laid out [raygen][miss][hit], per-record offsets are precomputed for GetRegion
         if (m_type == RHI_Buffer_Type::ShaderBindingTable)
         {
             SP_ASSERT(m_element_count >= 3);
@@ -108,9 +106,7 @@ namespace spartan
             m_object_size        = size;
         }
 
-        // d3d12 forbids combining allow_unordered_access with upload heaps, but the engine model assumes that
-        // any storage buffer can be bound as a uav, so storage buffers always live on the default heap with the
-        // uav flag, cpu updates go through staging via the command list (see RHI_CommandList::UpdateBuffer)
+        // d3d12 forbids uav on upload heaps, so storage buffers live on the default heap and cpu updates go through staging
         const bool force_default_heap_uav = (m_type == RHI_Buffer_Type::Storage);
 
         D3D12_HEAP_TYPE heap_type = D3D12_HEAP_TYPE_DEFAULT;

@@ -37,9 +37,7 @@ namespace spartan
 {
     class Entity;
 
-    // prefab factory function signature
-    // takes the xml node with prefab attributes and parent entity
-    // returns the created entity (or nullptr on failure)
+    // takes the prefab xml node and a parent, returns the created entity or nullptr
     using PrefabCreateFn = std::function<Entity*(pugi::xml_node& node, Entity* parent)>;
 
     class Prefab

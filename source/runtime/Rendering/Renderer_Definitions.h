@@ -43,40 +43,21 @@ namespace spartan
     const uint32_t restir_pairing_sizes[3]         = { 254, 230, 210 };
     const uint32_t restir_pairing_element_count    = 254 * 254 + 230 * 230 + 210 * 210;
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
-    const uint32_t renderer_max_indirect_draws     = 131072;  // per-renderable lod draw data, cull shader clamps writes
-    // per (renderable, instance) cull tasks, drives the phase a instance cull dispatch size and caps the phase a survivor list
-    // this is one task per instance now (not per meshlet x instance), so the budget scales with instance count, not geometry density,
-    // a consolidated world-spanning forest entity costs one task per tree here instead of meshlets x trees
+    const uint32_t renderer_max_indirect_draws     = 131072;  // per render component lod draw data, cull shader clamps writes
+    // one cull task per (render, instance), so the budget scales with instance count, not geometry density
     const uint32_t renderer_max_cull_tasks         = 8 * 1024 * 1024;
-    // meshlet cull survivor list (phase b output), bounded by the visible meshlets of the phase a survivors
-    // 4M is ample once phase a frustum + hi-z + distance culls out-of-view and out-of-range instances before meshlet expansion
+    // meshlet cull survivors, bounded by the visible meshlets of the instance cull survivors
     const uint32_t renderer_max_meshlet_instances  = 4 * 1024 * 1024;
-    // triangle cull survivor list, the cull pass packs (meshlet_instance_idx, triangle_idx) into a uint per visible triangle
-    // sized to absorb the burst of dense foliage + terrain meshlets without throttling, when this overflows the wave-atomic
-    // race silently drops late triangles which manifests as distant terrain rendering only a few meshlets at a time
+    // triangle cull survivors, packed (meshlet_instance, triangle), overflow silently drops late triangles
     const uint32_t renderer_max_visible_triangles  = 32 * 1024 * 1024;
-    // the triangle cull partitions the one visible-triangle buffer into two equal halves, opaque survivors
-    // grow from offset 0, alpha-tested survivors grow from this midpoint, the split lets the depth prepass
-    // draw the opaque half with no pixel shader (double-speed z) and run the alpha-test ps only on the alpha half
-    // both halves draw with first_vertex 0 and a base offset pushed in the constant, so the addressing is api agnostic
+    // opaque survivors grow from 0 and alpha tested from here, so the prepass can draw the opaque half with no pixel shader
     const uint32_t renderer_visible_triangles_half = renderer_max_visible_triangles / 2;
 
-    // gpu procedural grass
-    // per-lod hard cap on the number of blades the populate shader is allowed to emit, the visible
-    // density inside a ring is cap_per_lod / ring_area so the caps are tuned per lod independently:
-    //  - lod 0 is the close ring, blades are big and individually readable, dense but not insane
-    //  - lod 1 and lod 2 are the mid/far rings, the eye sees them at a shallow angle so they need
-    //    higher cell-density to hide the lod transition, but the depth prepass pays vs+setup cost
-    //    per blade and the close ring dominates the on-screen pixel count anyway, so the boost vs
-    //    lod 0 stays modest, the segment counts in Game.cpp pair with these (6/3/1 segments)
-    // the buffer is one contiguous block of GrassInstance entries (16 bytes each), each lod gets a
-    // dedicated slot at a cumulative offset, see renderer_grass_lod_base() for the offset calc
+    // per-lod grass blade cap, visible density is cap / ring_area so each lod is tuned on its own
     const uint32_t renderer_max_grass_lod_count                                              = 3;
     constexpr std::array<uint32_t, renderer_max_grass_lod_count> renderer_max_grass_per_lod  = { 384u * 1024u, 512u * 1024u, 512u * 1024u };
     const uint32_t renderer_max_grass_instances                                              = renderer_max_grass_per_lod[0] + renderer_max_grass_per_lod[1] + renderer_max_grass_per_lod[2];
-    // ~1.4m instances * 16 bytes = ~22 mb, well within budget for a 500 m far ring
     // cumulative prefix sum of the per-lod caps, the populate shader writes into [base, base + cap)
-    // and the raster reads with the same base via sv_instanceid + base in the push constant
     constexpr uint32_t renderer_grass_lod_base(uint32_t lod)
     {
         uint32_t base = 0u;
@@ -207,14 +188,10 @@ namespace spartan
         // integer format textures (vrs, etc)
         tex_uint               = 30,
         // gpu-driven indirect drawing
-        // indirect_draw_args is a single-slot args buffer for the final non-indexed indirect draw, vertex_count is bumped by triangle cull
-        // meshlet_instances holds the meshlet-cull survivors, the triangle cull dispatches one workgroup per entry
-        // visible_triangles holds packed (meshlet_instance, triangle_in_meshlet) tuples emitted by triangle cull
-        // triangle_dispatch_args is the indirect dispatch args buffer for the triangle cull pass
-        indirect_draw_args     = 31,
+        indirect_draw_args     = 31, // single slot, vertex_count is bumped by triangle cull
         indirect_draw_data     = 32,
-        meshlet_instances      = 33,
-        visible_triangles      = 34,
+        meshlet_instances      = 33, // meshlet cull survivors, triangle cull dispatches one workgroup each
+        visible_triangles      = 34, // packed (meshlet_instance, triangle_in_meshlet)
         triangle_dispatch_args = 35,
         // gpu-driven particles
         particle_buffer_a      = 36,
@@ -237,18 +214,10 @@ namespace spartan
         // cluster stats and compacted volumetric light index list
         cluster_stats          = 47,
         volumetric_light_indices = 48,
-        // restir path tracing nee pool, world space emissive triangles built each frame on the
-        // cpu by Renderer::BuildEmissiveTriangleNeePool, declared rw to match the engine pattern
-        // for per-pass structured buffers (cull_tasks, meshlet_bounds, etc.) even though the
-        // shader treats it read-only
+        // restir nee pool and spatial reuse tables, both cpu built and rw only to match the per-pass buffer pattern
         emissive_triangles     = 49,
-        // restir paired spatial reuse tables, lin 2026 3, packed partner deltas built once
-        // on the cpu, declared rw to match the per-pass structured buffer pattern
         restir_pairing         = 57,
-        // gpu procedural grass, transient ring buffer + per-lod atomic counter + indirect draw args
-        // populate compute writes grass_instances and bumps grass_count, the args compute reads
-        // grass_count and writes grass_indirect_args (one entry per lod), the raster passes
-        // read grass_instances using sv_instanceid plus the per-draw lod_base in the push constant
+        // gpu procedural grass, populate writes instances and bumps the count, the args pass turns that into draw args
         grass_instances        = 50,
         grass_count            = 51,
         grass_indirect_args    = 52,
@@ -523,11 +492,11 @@ namespace spartan
         GeometryInfo,
         IndirectDrawArgs,          // single-slot args buffer for the final non-indexed indirect draw
         CpuIndirectDrawArgs,       // frame-rotated cpu-built indexed indirect arguments
-        IndirectDrawData,          // per-renderable lod draw data
+        IndirectDrawData,          // per render component lod draw data
         MeshletInstances,          // meshlet-cull survivor list, the triangle cull pass dispatches one workgroup per entry
         VisibleTriangles,          // triangle-cull survivor list, one packed (meshlet_instance, triangle_in_meshlet) per entry
         TriangleDispatchArgs,      // single-slot indirect dispatch args buffer driving the triangle cull pass
-        CullTasks,                 // per (renderable, instance) cull tasks consumed by the instance cull compute shader (phase a)
+        CullTasks,                 // per (render, instance) cull tasks consumed by the instance cull compute shader (phase a)
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
@@ -537,10 +506,8 @@ namespace spartan
         ClusterStats,              // tiny stats buffer for the cluster assign pass (overflow counter)
         VolumetricLightIndices,    // compact list of volumetric light indices, built on cpu each frame
         OceanHeights,              // fft ocean vertical displacement per cascade texel, host visible for cpu buoyancy queries
-        // restir path tracing emissive triangle nee pool, rebuilt each frame from renderables with non-zero emission
-        EmissiveTriangles,
-        // restir paired spatial reuse tables, built once on the cpu when the reservoirs initialize
-        RestirPairing,
+        EmissiveTriangles,         // restir nee pool, rebuilt each frame from render components with non-zero emission
+        RestirPairing,             // restir spatial reuse tables, built once when the reservoirs initialize
         // gpu-driven particles
         ParticleBufferA,
         ParticleCounter,
@@ -548,12 +515,9 @@ namespace spartan
         ParticleVolumeDensity,
         ParticleVolumeColor,
         // gpu procedural grass, allocated lazily by Renderer::EnableProceduralGrass
-        // GrassInstances is the transient ring buffer of GrassInstance entries (full float xyz)
-        // GrassCount holds one uint per lod, bumped atomically by the populate shader
-        // GrassIndirectArgs holds one DrawIndexedIndirect entry per lod, written by the args build shader
-        GrassInstances,
-        GrassCount,
-        GrassIndirectArgs,
+        GrassInstances,            // ring buffer of GrassInstance entries
+        GrassCount,                // one uint per lod, bumped atomically by the populate shader
+        GrassIndirectArgs,         // one DrawIndexedIndirect entry per lod, written by the args build shader
         Max
     };
 
@@ -612,7 +576,7 @@ namespace spartan
     class Render;
     struct Renderer_DrawCall
     {
-        Render* renderable   = nullptr;
+        Render* render           = nullptr;
         uint32_t instance_index  = 0;
         uint32_t instance_count  = 0;
         uint32_t lod_index       = 0;

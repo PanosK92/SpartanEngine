@@ -382,13 +382,13 @@ namespace spartan
                         vector<Matrix> transforms;
                         terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 0.64f, transforms);
 
-                        Render* renderable = entity->AddComponent<Render>();
-                        renderable->SetMesh(mesh_flower.get());
-                        renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
-                        renderable->SetInstances(transforms);
-                        renderable->SetMaterial(material_flower);
-                        renderable->SetMaxRenderDistance(render_distance_foliage);
+                        Render* render = entity->AddComponent<Render>();
+                        render->SetMesh(mesh_flower.get());
+                        render->SetFlag(RenderFlags::CastsShadows, false);
+                        render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
+                        render->SetInstances(transforms);
+                        render->SetMaterial(material_flower);
+                        render->SetMaxRenderDistance(render_distance_foliage);
                     }
                 }
             };
@@ -416,23 +416,23 @@ namespace spartan
                     vector<Entity*> tree_candidates;
                     tree_candidates.push_back(entity);
                     entity->GetDescendants(&tree_candidates);
-                    uint32_t tree_renderable_count = 0;
+                    uint32_t tree_render_count = 0;
                     for (Entity* candidate : tree_candidates)
                     {
-                        Render* renderable = candidate->GetComponent<Render>();
-                        if (!renderable || !renderable->GetMesh())
+                        Render* render = candidate->GetComponent<Render>();
+                        if (!render || !render->GetMesh())
                         {
                             continue;
                         }
 
-                        renderable->SetInstances(all_tree_transforms);
-                        renderable->SetMaxRenderDistance(render_distance_trees);
-                        renderable->SetMaxShadowDistance(shadow_distance);
+                        render->SetInstances(all_tree_transforms);
+                        render->SetMaxRenderDistance(render_distance_trees);
+                        render->SetMaxShadowDistance(shadow_distance);
 
-                        Material* imported_material = renderable->GetMaterial();
+                        Material* imported_material = render->GetMaterial();
                         const string imported_name  = imported_material ? imported_material->GetObjectName() : string();
                         const bool   is_bark        = imported_name.find("Bark") != string::npos || imported_name.find("bark") != string::npos;
-                        renderable->SetMaterial(is_bark ? material_body : material_leaf);
+                        render->SetMaterial(is_bark ? material_body : material_leaf);
 
                         if (is_bark)
                         {
@@ -440,7 +440,7 @@ namespace spartan
                             physics->SetBodyType(BodyType::Mesh);
                         }
 
-                        tree_renderable_count++;
+                        tree_render_count++;
                     }
                 }
             }
@@ -466,27 +466,27 @@ namespace spartan
                     vector<Entity*> rock_candidates;
                     rock_candidates.push_back(entity);
                     entity->GetDescendants(&rock_candidates);
-                    uint32_t rock_renderable_count = 0;
+                    uint32_t rock_render_count = 0;
                     for (Entity* candidate : rock_candidates)
                     {
-                        Render* renderable = candidate->GetComponent<Render>();
-                        if (!renderable || !renderable->GetMesh())
+                        Render* render = candidate->GetComponent<Render>();
+                        if (!render || !render->GetMesh())
                         {
                             continue;
                         }
 
-                        renderable->SetInstances(all_rock_transforms);
-                        renderable->SetMaxRenderDistance(render_distance_trees);
-                        renderable->SetMaxShadowDistance(shadow_distance);
-                        renderable->SetMaterial(material_rock);
+                        render->SetInstances(all_rock_transforms);
+                        render->SetMaxRenderDistance(render_distance_trees);
+                        render->SetMaxShadowDistance(shadow_distance);
+                        render->SetMaterial(material_rock);
 
-                        if (rock_renderable_count == 0)
+                        if (rock_render_count == 0)
                         {
                             Physics* physics = candidate->AddComponent<Physics>();
                             physics->SetBodyType(BodyType::Mesh);
                         }
 
-                        rock_renderable_count++;
+                        rock_render_count++;
                     }
                 }
             }

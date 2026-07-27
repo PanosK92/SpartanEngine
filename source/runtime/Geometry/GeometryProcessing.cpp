@@ -364,28 +364,28 @@ namespace spartan::geometry_processing
 
         for (size_t m = 0; m < meshlet_count; ++m)
         {
-            const meshopt_Meshlet& ml = meshlets[m];
+            const meshopt_Meshlet& meshlet = meshlets[m];
 
             Sb_MeshletBounds bounds      = {};
             const uint32_t first_index   = static_cast<uint32_t>(repacked.size());
-            const uint32_t triangle_count = ml.triangle_count;
+            const uint32_t triangle_count = meshlet.triangle_count;
 
             // emit triangles for this meshlet
             for (uint32_t t = 0; t < triangle_count; ++t)
             {
-                const uint8_t i0 = meshlet_triangles[ml.triangle_offset + t * 3 + 0];
-                const uint8_t i1 = meshlet_triangles[ml.triangle_offset + t * 3 + 1];
-                const uint8_t i2 = meshlet_triangles[ml.triangle_offset + t * 3 + 2];
+                const uint8_t i0 = meshlet_triangles[meshlet.triangle_offset + t * 3 + 0];
+                const uint8_t i1 = meshlet_triangles[meshlet.triangle_offset + t * 3 + 1];
+                const uint8_t i2 = meshlet_triangles[meshlet.triangle_offset + t * 3 + 2];
 
-                repacked.push_back(meshlet_vertices[ml.vertex_offset + i0]);
-                repacked.push_back(meshlet_vertices[ml.vertex_offset + i1]);
-                repacked.push_back(meshlet_vertices[ml.vertex_offset + i2]);
+                repacked.push_back(meshlet_vertices[meshlet.vertex_offset + i0]);
+                repacked.push_back(meshlet_vertices[meshlet.vertex_offset + i1]);
+                repacked.push_back(meshlet_vertices[meshlet.vertex_offset + i2]);
             }
 
             // bounding sphere for hi-z meshlet culling
-            meshopt_Bounds mb = meshopt_computeMeshletBounds(
-                &meshlet_vertices[ml.vertex_offset],
-                &meshlet_triangles[ml.triangle_offset],
+            meshopt_Bounds meshlet_bounds = meshopt_computeMeshletBounds(
+                &meshlet_vertices[meshlet.vertex_offset],
+                &meshlet_triangles[meshlet.triangle_offset],
                 triangle_count,
                 &vertices[0].pos[0],
                 vertex_count,
@@ -393,16 +393,16 @@ namespace spartan::geometry_processing
             );
 
             // quantize center against the lod aabb, clamp first so any tiny float drift past the aabb edges doesn't underflow the unorm round
-            const float tx    = std::clamp((mb.center[0] - aabb_min.x) / aabb_extent_safe.x, 0.0f, 1.0f);
-            const float ty    = std::clamp((mb.center[1] - aabb_min.y) / aabb_extent_safe.y, 0.0f, 1.0f);
-            const float tz    = std::clamp((mb.center[2] - aabb_min.z) / aabb_extent_safe.z, 0.0f, 1.0f);
+            const float tx    = std::clamp((meshlet_bounds.center[0] - aabb_min.x) / aabb_extent_safe.x, 0.0f, 1.0f);
+            const float ty    = std::clamp((meshlet_bounds.center[1] - aabb_min.y) / aabb_extent_safe.y, 0.0f, 1.0f);
+            const float tz    = std::clamp((meshlet_bounds.center[2] - aabb_min.z) / aabb_extent_safe.z, 0.0f, 1.0f);
             const uint32_t cx = static_cast<uint32_t>(tx * 65535.0f + 0.5f);
             const uint32_t cy = static_cast<uint32_t>(ty * 65535.0f + 0.5f);
             const uint32_t cz = static_cast<uint32_t>(tz * 65535.0f + 0.5f);
 
             // expand radius by the center quantization error and the unorm step that radius itself will round to, then round up so the encoded sphere always covers the true sphere
             const float radius_step    = aabb_diag_safe / 65535.0f;
-            const float radius_padded  = mb.radius + center_quant_err_3d + radius_step;
+            const float radius_padded  = meshlet_bounds.radius + center_quant_err_3d + radius_step;
             const float radius_norm    = std::clamp(radius_padded / aabb_diag_safe, 0.0f, 1.0f);
             const uint32_t r_quant     = static_cast<uint32_t>(std::ceil(radius_norm * 65535.0f));
             const uint32_t r           = r_quant > 0xFFFFu ? 0xFFFFu : r_quant;
@@ -411,10 +411,10 @@ namespace spartan::geometry_processing
             bounds.center_z_radius  = cz | (r << 16);
 
             // pack the snorm cone axis xyz and cone cutoff into one uint, byte 0..2 axis, byte 3 cutoff
-            const uint32_t ax = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[0]));
-            const uint32_t ay = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[1]));
-            const uint32_t az = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[2]));
-            const uint32_t cc = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_cutoff_s8));
+            const uint32_t ax = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[0]));
+            const uint32_t ay = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[1]));
+            const uint32_t az = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_axis_s8[2]));
+            const uint32_t cc = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_cutoff_s8));
             bounds.cone_axis_cutoff = ax | (ay << 8) | (az << 16) | (cc << 24);
 
             // pack first_index (25 bits, max ~33m) and triangle_count (7 bits, engine cap 124) into one uint

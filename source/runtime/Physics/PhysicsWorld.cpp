@@ -443,9 +443,7 @@ namespace spartan
 
     Vector3 PhysicsWorld::GetGravity()
     {
-        // read from the cpu side settings rather than scene->getGravity() so worker threads
-        // cooking physics during world load don't race against the main thread's pxscene access,
-        // physx flags any concurrent read/write into NpScene as undefined and corrupts the pruner
+        // read the cpu side settings, physx treats a concurrent NpScene access as undefined and corrupts its pruner
         return Vector3(0.0f, settings::gravity, 0.0f);
     }
 

@@ -37,10 +37,7 @@ namespace spartan
     {
         if (m_rhi_resource)
         {
-            // evict cached descriptor sets that reference this buffer before the
-            // gpu handle is queued for deletion, the descriptor cache key includes
-            // the cpu side rhi_buffer pointer and a future allocation at the same
-            // address would otherwise resurrect a stale cache entry with a dead vkbuffer
+            // the descriptor cache is keyed on this pointer, a future allocation at the same address would resurrect a dead vkbuffer
             RHI_Device::DescriptorSetInvalidateReferencingResource(this);
 
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
@@ -52,9 +49,7 @@ namespace spartan
     {
         if (m_rhi_resource)
         {
-            // synchronous destruction must also invalidate cached descriptor sets,
-            // otherwise the next dispatch can bind a set that still references this
-            // now destroyed vkbuffer and gpu assisted validation aborts the submit
+            // synchronous destruction must evict cached sets too, otherwise validation aborts on a bind of this dead vkbuffer
             RHI_Device::DescriptorSetInvalidateReferencingResource(this);
 
             RHI_Device::MemoryBufferDestroy(m_rhi_resource);
@@ -128,12 +123,7 @@ namespace spartan
         }
         else if (m_type == RHI_Buffer_Type::Storage)
         {
-            // note: do not pad m_stride to minStorageBufferOffsetAlignment, that limit applies to
-            // binding offsets when binding a sub-range of the buffer (e.g. dynamic storage with
-            // offset), not to per-element stride. element stride is dictated by the shader's
-            // struct layout (std430), padding it here breaks data alignment and wastes memory
-            // (e.g. an 8-byte struct would be padded to 16 bytes, doubling buffer size and
-            // reading 2x past the end of the cpu source array on bulk uploads)
+            // minStorageBufferOffsetAlignment applies to binding offsets, not element stride, padding here breaks the std430 layout
 
             // create
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -279,9 +269,7 @@ namespace spartan
             m_offset += m_stride;
         }
 
-        // memcpy directly to the persistent host-coherent mapping and emit a single host->device
-        // barrier, this avoids vkCmdUpdateBuffer which records data inline into the command buffer
-        // and bloats it for large uploads (the cull tasks buffer can be several mb per frame)
+        // memcpy into the persistent mapping, vkCmdUpdateBuffer records data inline and bloats the command buffer
         const uint32_t upload_size = (size != 0) ? size : m_stride;
         SP_ASSERT(static_cast<uint64_t>(m_offset) + upload_size <= m_object_size);
 

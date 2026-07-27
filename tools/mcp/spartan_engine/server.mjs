@@ -52,6 +52,7 @@ import {
   world_asset_promote,
   world_asset_register,
   world_asset_search,
+  world_material_fork,
   world_material_inspect,
   world_material_publish,
 } from "./world_asset_catalog.mjs";
@@ -206,7 +207,7 @@ async function send_engine_command(command, args = {}) {
   )
   {
     active_resource_directory =
-      world_resource_directory(result.world);
+      await resolve_active_resource_directory(result.world);
   }
   else if (
     command === "world_load" ||
@@ -222,7 +223,8 @@ async function send_engine_command(command, args = {}) {
       command === "mesh_raw_create" ||
       command === "material_create" ||
       command === "material_semantic_create" ||
-      command === "prefab_save"
+      command === "prefab_save" ||
+      command === "texture_generate"
     )
   )
   {
@@ -647,7 +649,7 @@ const parametric_shape = z.enum([
 ]);
 const profile2d = z.array(
   z.array(z.number()).length(2),
-).min(3).max(32);
+).min(3).max(128);
 const parametric_mesh_args = {
   shape: parametric_shape,
   path: z.string().describe("immutable mesh cache key, use a new path when geometry parameters change"),
@@ -701,6 +703,7 @@ const parametric_mesh_args = {
   linear_step: vector3.optional(),
   radial_count: z.number().int().min(1).max(128).optional(),
   radial_axis: geometry_axis.optional(),
+  radial_radius: z.number().min(0).max(10000).optional(),
   radial_step_degrees: z.number().min(-360).max(360).optional(),
   uv_projection: z.enum([
     "planar",
@@ -768,6 +771,7 @@ const compound_part_args = {
   linear_step: vector3.optional(),
   radial_count: z.number().int().min(1).max(128).optional(),
   radial_axis: geometry_axis.optional(),
+  radial_radius: z.number().min(0).max(10000).optional(),
   radial_step_degrees: z.number().min(-360).max(360).optional(),
   uv_projection: z.enum([
     "planar",
@@ -1674,6 +1678,18 @@ register_tool(server, "world_summary", "Read the current world name, path, count
   outputSchema: output_schemas.world_summary,
 });
 
+register_tool(
+  server,
+  "world_resource_directory_get",
+  "Read the active world resource directory and shared MCP library paths.",
+  {},
+  "world_resource_directory_get",
+  {
+    annotations: read_only,
+    outputSchema: output_schemas.generic,
+  },
+);
+
 register_tool(server, "context_snapshot", "Read engine status, world summary, and current selection in one native request.", {}, "context_snapshot", {
   annotations: read_only,
   outputSchema: output_schemas.context_snapshot,
@@ -1684,15 +1700,36 @@ const world_asset_identity_schema = {
   id: z.string().optional(),
   version: z.union([z.string(), z.number().int()]).optional(),
 };
+const world_asset_register_schema = {
+  type: z.enum(["mesh", "material", "prefab", "texture"]),
+  name: z.string().min(1),
+  asset_id: z.string().optional(),
+  path: z.string(),
+  thumbnail_path: z.string().optional(),
+  aliases: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  constraints: z.record(z.string(), z.any()).optional(),
+  source: z.any().optional(),
+  parent_version: z.string().optional(),
+  quality_score: z.number().min(0).max(100).optional(),
+  verified: z.boolean().optional(),
+  checks: z.record(z.string(), z.boolean()).optional(),
+  required_checks: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  promote: z.boolean().optional(),
+};
 
 register_local_tool(
   "world_asset_search",
   {
-    description: "Search the active world's reusable asset catalog by semantic name, aliases, tags, type, dimensions, style, and material constraints.",
+    description: "Search the shared project asset catalog by semantic name, aliases, tags, type, dimensions, style, and material constraints.",
     inputSchema: {
       query: z.string().optional(),
-      type: z.enum(["mesh", "material", "prefab"]).optional(),
+      type: z.enum(["mesh", "material", "prefab", "texture"]).optional(),
       tags: z.array(z.string()).optional(),
+      style: z.array(z.string()).optional(),
+      materials: z.array(z.string()).optional(),
+      dimensions: z.record(z.string(), z.any()).optional(),
       limit: z.number().int().min(1).max(100).optional(),
     },
     outputSchema: output_schemas.generic,
@@ -1729,23 +1766,26 @@ register_local_tool(
 register_local_tool(
   "world_asset_register",
   {
-    description: "Copy a mesh, material, or prefab into an immutable world-local asset version and register its semantic metadata.",
-    inputSchema: {
-      type: z.enum(["mesh", "material", "prefab"]),
-      name: z.string().min(1),
-      asset_id: z.string().optional(),
-      path: z.string(),
-      aliases: z.array(z.string()).optional(),
-      tags: z.array(z.string()).optional(),
-      constraints: z.record(z.string(), z.any()).optional(),
-      source: z.any().optional(),
-      parent_version: z.string().optional(),
-      quality_score: z.number().min(0).max(100).optional(),
-      verified: z.boolean().optional(),
-      checks: z.record(z.string(), z.boolean()).optional(),
-      notes: z.string().optional(),
-      promote: z.boolean().optional(),
-    },
+    description: "Copy a mesh, material, or prefab into an immutable shared project asset version and register its semantic metadata.",
+    inputSchema: world_asset_register_schema,
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_register(
+      project_root,
+      active_resource_directory ??
+        await resolve_active_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "world_asset_version",
+  {
+    description: "Create a new immutable candidate version for an existing reusable world asset.",
+    inputSchema: world_asset_register_schema,
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
   },
@@ -1877,11 +1917,12 @@ register_local_tool(
     annotations: edit_tool,
   },
   async (args) => catalog_tool_result(
-    world_asset_fork(
+    world_material_fork(
       project_root,
       active_resource_directory ??
         await resolve_active_resource_directory(),
       args,
+      send_engine_command,
     ),
   ),
 );
@@ -1893,11 +1934,13 @@ register_local_tool(
     inputSchema: {
       ...world_asset_identity_schema,
       source: z.record(z.string(), z.any()).optional(),
+      draft_path: z.string().optional(),
       properties: z.record(z.string(), z.number()).optional(),
       textures: z.record(z.string(), z.any()).optional(),
       quality_score: z.number().min(0).max(100).optional(),
       verified: z.boolean().optional(),
       checks: z.record(z.string(), z.boolean()).optional(),
+      required_checks: z.array(z.string()).optional(),
       notes: z.string().optional(),
     },
     outputSchema: output_schemas.generic,
@@ -2292,11 +2335,13 @@ register_local_tool("screenshot_take", {
   let requested_path = args.path?.replaceAll("\\", "/");
   if (
     requested_path &&
-    !requested_path.toLowerCase().startsWith("screenshots/")
+    !requested_path.toLowerCase().startsWith(
+      "project/mcp_resources/thumbnails/",
+    )
   )
   {
     requested_path =
-      `screenshots/${path.posix.basename(requested_path)}`;
+      `project/mcp_resources/thumbnails/${path.posix.basename(requested_path)}`;
   }
   if (
     requested_path &&
@@ -3206,6 +3251,11 @@ register_tool(
   {
     name: z.string().optional(),
     parent_id: z.string().optional(),
+    position: vector3.optional(),
+    rotation_euler: vector3.optional(),
+    scale: vector3.optional(),
+    active: z.boolean().optional(),
+    transient: z.boolean().optional(),
     ...entity_identity_args,
   },
   "entity_create_empty",
@@ -3552,6 +3602,46 @@ register_local_tool(
       "mesh_generate_batch",
       args,
     );
+    if (result.ok)
+    {
+      const generated_items =
+        result.generated ??
+        result.resources ??
+        [];
+      result.asset_registrations = [];
+      for (
+        let index = 0;
+        index < items.length;
+        index++
+      )
+      {
+        const constrained_item =
+          constrain_generated_resources(
+            "mesh_generate",
+            items[index],
+            active_resource_directory ??
+              world_resource_directory(),
+          );
+        const registration =
+          await auto_register_world_asset(
+            project_root,
+            active_resource_directory ??
+              await resolve_active_resource_directory(),
+            "mesh_generate",
+            constrained_item,
+            generated_items[index] ?? {
+              ok: true,
+              resource: {
+                path: constrained_item.path,
+              },
+            },
+          );
+        if (registration)
+        {
+          result.asset_registrations.push(registration);
+        }
+      }
+    }
     return tool_result(result);
   },
 );
@@ -3561,8 +3651,9 @@ register_tool(
   "mesh_raw_create",
   "Create, save, and cache an immutable mesh from explicit vertex and index data. Intended for focused reusable asset authoring.",
   {
-    path: z.string(),
-    vertices: z.union([
+    path: z.string().optional(),
+    name: z.string().optional(),
+    positions: z.union([
       z.array(z.number()).min(9),
       z.array(vector3).min(3),
     ]),
@@ -3571,16 +3662,10 @@ register_tool(
       z.array(z.number()),
       z.array(vector3),
     ]).optional(),
-    uvs: z.union([
+    uv0: z.union([
       z.array(z.number()),
       z.array(vector2),
     ]).optional(),
-    colors: z.union([
-      z.array(z.number()),
-      z.array(vector4),
-    ]).optional(),
-    material_indices: z.array(z.number().int().min(0)).optional(),
-    name: z.string().optional(),
   },
   "mesh_raw_create",
   {
@@ -3592,11 +3677,13 @@ register_tool(
 register_tool(
   server,
   "mesh_raw_get",
-  "Read explicit vertex, index, normal, UV, color, and material-index data from a cached or file-backed mesh.",
+  "Read explicit vertex, index, normal, UV, and tangent data from a cached or file-backed reusable mesh.",
   {
     path: z.string().optional(),
     name: z.string().optional(),
-    sub_mesh_index: z.number().int().min(0).optional(),
+    sub_mesh: z.number().int().min(0).optional(),
+    max_vertices: z.number().int().min(1).max(25000).optional(),
+    max_indices: z.number().int().min(3).max(75000).optional(),
   },
   "mesh_raw_get",
   {
@@ -3754,7 +3841,7 @@ register_local_tool(
       position: vector3.optional(),
       rotation_euler: vector3.optional(),
       scale: vector3.optional(),
-      asset_directory: z.string().optional().describe("generated mesh directory, always constrained to the active world resource directory"),
+      asset_directory: z.string().optional().describe("generated mesh directory, always constrained to project/mcp_resources/meshes"),
       prefab_path: z.string().optional(),
       parts: z.array(
         z.object(compound_part_args),
@@ -3769,7 +3856,7 @@ register_local_tool(
     position,
     rotation_euler,
     scale,
-    asset_directory = "project/world_resources",
+    asset_directory = "project/mcp_resources/meshes",
     prefab_path,
     parts,
   }) => {
@@ -3963,16 +4050,12 @@ register_local_tool(
         }
       }
 
-      const render_result = part.with_physics === false
-        ? await send_engine_command(
-          "render_set_mesh",
-          {
-            id: child.id,
-            mesh,
-            material: part.material,
-          },
-        )
-        : await bind_mesh_physics({
+      const collision_requested =
+        part.with_physics === true ||
+        part.collision === true ||
+        Boolean(part.body_type);
+      const render_result = collision_requested
+        ? await bind_mesh_physics({
           id: child.id,
           mesh,
           material: part.material,
@@ -3982,7 +4065,15 @@ register_local_tool(
           mass: part.physics_mass ?? 1,
           friction: part.physics_friction ?? 0.5,
           restitution: part.physics_restitution ?? 0,
-        });
+        })
+        : await send_engine_command(
+          "render_set_mesh",
+          {
+            id: child.id,
+            mesh,
+            material: part.material,
+          },
+        );
       if (!render_result.ok)
       {
         return tool_result({
@@ -4212,7 +4303,7 @@ register_local_tool(
     const spacing = args.spacing ?? 0.004;
     const directory = (
       args.asset_directory ??
-      "project/world_resources"
+      "project/mcp_resources/meshes"
     ).replace(/[\\/]+$/g, "");
     const base_name = safe_asset_name(args.name);
 
@@ -4480,6 +4571,7 @@ register_tool(
     id: z.string(),
     name: z.string().optional(),
     active: z.boolean().optional(),
+    transient: z.boolean().optional(),
     parent_id: z.string().optional(),
     tags: z.string().optional(),
     tags_mode: z.enum([
@@ -4520,7 +4612,7 @@ register_tool(
 register_tool(
   server,
   "viewport_frame",
-  "Frame the complete renderable hierarchy of the current selection or a specific entity. Fits every subtree AABB corner to the horizontal and vertical camera FOV with explicit padding.",
+  "Frame the complete render component hierarchy of the current selection or a specific entity. Fits every subtree AABB corner to the horizontal and vertical camera FOV with explicit padding.",
   {
     id: z.string().optional(),
     view: z.enum([
@@ -4535,6 +4627,83 @@ register_tool(
   },
   "viewport_frame",
   { annotations: edit_tool, outputSchema: output_schemas.camera_snapshot },
+);
+
+register_tool(
+  server,
+  "asset_viewer_open",
+  "Open the Asset Viewer without changing the main scene viewport.",
+  {},
+  "asset_viewer_open",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_status",
+  "Read the Asset Viewer selection, loaded preview, and orbit state.",
+  {},
+  "asset_viewer_status",
+  { annotations: read_only, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_select",
+  "Select and load a catalog asset in the Asset Viewer without changing the main scene viewport.",
+  {
+    asset_id: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+  },
+  "asset_viewer_select",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_preview_entity",
+  "Open the Asset Viewer and preview an isolated entity hierarchy without changing the main viewport.",
+  {
+    id: z.string(),
+  },
+  "asset_viewer_preview_entity",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_set_view",
+  "Set the Asset Viewer orbit using a named view or explicit yaw, pitch, and zoom.",
+  {
+    view: z.enum([
+      "perspective",
+      "front",
+      "back",
+      "left",
+      "right",
+      "top",
+      "bottom",
+    ]).optional(),
+    yaw: z.number().optional(),
+    pitch: z.number().min(-1.45).max(1.45).optional(),
+    zoom: z.number().min(0.2).max(8).optional(),
+  },
+  "asset_viewer_set_view",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_screenshot",
+  "Save a screenshot of the current Asset Viewer preview without capturing or moving the main scene viewport.",
+  {
+    path: z.string().optional(),
+    width: z.number().int().min(256).max(2048).optional(),
+    height: z.number().int().min(256).max(2048).optional(),
+  },
+  "asset_viewer_screenshot",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
 );
 
 register_tool(
@@ -4744,7 +4913,7 @@ register_tool(
 register_tool(
   server,
   "material_set_property",
-  "Set one scalar material property in edit mode. Use material_get to inspect valid property names.",
+  "Set one scalar material property in edit mode. Use material_get to inspect valid property names. Glass uses color_a, ior, absorption, and thickness; transmission and transparency are accepted as inverted color_a.",
   {
     name: z.string().optional(),
     path: z.string().optional(),
@@ -4753,6 +4922,187 @@ register_tool(
   },
   "material_set_property",
   { annotations: edit_tool, outputSchema: output_schemas.material },
+);
+
+const texture_layer_schema = z.object({
+  type: z.enum([
+    "fill",
+    "linear_gradient",
+    "radial_gradient",
+    "noise",
+    "checker",
+    "stripes",
+    "bricks",
+    "tiles",
+    "spots",
+    "scratches",
+    "shape",
+    "text",
+  ]),
+  blend: z.enum([
+    "normal",
+    "multiply",
+    "screen",
+    "overlay",
+    "add",
+    "subtract",
+    "difference",
+    "darken",
+    "lighten",
+  ]).optional(),
+  color: z.string().optional(),
+  color_b: z.string().optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  value_as_alpha: z.boolean().optional(),
+  invert: z.boolean().optional(),
+  scale_x: z.number().optional(),
+  scale_y: z.number().optional(),
+  offset_x: z.number().optional(),
+  offset_y: z.number().optional(),
+  rotation: z.number().optional(),
+  noise: z.enum([
+    "value",
+    "perlin",
+    "ridged",
+    "worley",
+  ]).optional(),
+  frequency: z.number().min(0.25).max(256).optional(),
+  octaves: z.number().int().min(1).max(8).optional(),
+  lacunarity: z.number().min(1.05).max(4).optional(),
+  gain: z.number().min(0.05).max(0.95).optional(),
+  warp: z.number().min(0).max(1).optional(),
+  contrast: z.number().min(0.01).max(8).optional(),
+  brightness: z.number().min(-1).max(1).optional(),
+  count_x: z.number().min(1).max(256).optional(),
+  count_y: z.number().min(1).max(256).optional(),
+  mortar: z.number().min(0).max(0.45).optional(),
+  row_offset: z.number().min(0).max(1).optional(),
+  variation: z.number().min(0).max(1).optional(),
+  angle: z.number().optional(),
+  duty: z.number().min(0.02).max(0.98).optional(),
+  density: z.number().min(0.01).max(1).optional(),
+  sharpness: z.number().min(0.05).max(8).optional(),
+  shape: z.enum([
+    "rectangle",
+    "rounded_rectangle",
+    "ellipse",
+    "polygon",
+    "line",
+  ]).optional(),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  corner: z.number().optional(),
+  thickness: z.number().optional(),
+  points: z.array(z.number()).optional(),
+  text: z.string().optional(),
+  font: z.string().optional(),
+  font_size: z.number().min(0.01).max(1).optional(),
+  letter_spacing: z.number().optional(),
+  line_spacing: z.number().optional(),
+  align: z.enum(["left", "center", "right"]).optional(),
+  relief: z.number().min(-1).max(1).optional(),
+  roughness: z.number().min(0).max(1).optional(),
+  roughness_b: z.number().min(0).max(1).optional(),
+  metalness: z.number().min(0).max(1).optional(),
+  occlusion: z.number().min(0).max(1).optional(),
+  clip_low: z.number().min(0).max(1).optional(),
+  clip_high: z.number().min(0).max(1).optional(),
+});
+
+const texture_generate_args = {
+  name: z.string().optional(),
+  path: z.string().optional(),
+  layers: z.array(texture_layer_schema).min(1).max(24),
+  width: z.number().int().min(32).max(2048).optional(),
+  height: z.number().int().min(32).max(2048).optional(),
+  seed: z.number().int().min(0).optional(),
+  seamless: z.boolean().optional(),
+  normal_strength: z.number().min(0).max(8).optional(),
+  base_roughness: z.number().min(0).max(1).optional(),
+  base_metalness: z.number().min(0).max(1).optional(),
+  library_asset: z.boolean().optional(),
+  material_path: z.string().optional(),
+};
+
+register_tool(
+  server,
+  "texture_generate",
+  [
+    "Composite a texture from procedural layers and write the color map, plus normal and packed maps when layers carry relief, roughness, metalness or occlusion.",
+    "Layers stack bottom to top. Use fill and noise for surfaces, bricks, tiles, stripes and checker for repeating structure, spots and scratches for wear, shape and text for labels and decals.",
+    "Colors accept #rrggbb, #rrggbbaa, or comma separated components. Give a layer color and color_b to tint it by its pattern value.",
+    "Set relief for bumps, roughness and roughness_b for surface finish, and metalness for metal. Pass material_path to attach every generated map to that material.",
+    "The response reports mean color, contrast and seam_error so a tiling texture can be tuned without looking at it.",
+  ].join(" "),
+  texture_generate_args,
+  "texture_generate",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_local_tool(
+  "material_textured_create",
+  {
+    description: "Create a material and generate its textures in one call, attaching color, normal and packed maps and optional uv tiling.",
+    inputSchema: {
+      name: z.string(),
+      material_path: z.string().optional(),
+      texture_name: z.string().optional(),
+      texture_path: z.string().optional(),
+      tiling: z.number().min(0.1).max(100).optional(),
+      roughness: z.number().min(0).max(1).optional(),
+      metalness: z.number().min(0).max(1).optional(),
+      color_r: z.number().min(0).max(1).optional(),
+      color_g: z.number().min(0).max(1).optional(),
+      color_b: z.number().min(0).max(1).optional(),
+      ...texture_generate_args,
+    },
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => {
+    const material = await send_engine_command(
+      "material_create",
+      {
+        path: args.material_path ?? `${args.name}.xml`,
+        name: args.name,
+      },
+    );
+    if (!material.ok)
+    {
+      return tool_result(material);
+    }
+
+    const material_path =
+      material.resource?.path ??
+      material.material?.path ??
+      args.material_path ??
+      `${args.name}.xml`;
+    const texture = await send_engine_command(
+      "texture_generate",
+      {
+        name: args.texture_name ?? args.name,
+        path: args.texture_path,
+        layers: args.layers,
+        width: args.width,
+        height: args.height,
+        seed: args.seed,
+        seamless: args.seamless,
+        normal_strength: args.normal_strength,
+        base_roughness: args.base_roughness,
+        base_metalness: args.base_metalness,
+        library_asset: args.library_asset,
+        material_path,
+      },
+    );
+
+    return tool_result({
+      ok: texture.ok,
+      material_path,
+      texture,
+    });
+  },
 );
 
 register_tool(
@@ -4847,7 +5197,7 @@ register_local_tool(
   },
   async ({
     theme = "cozy",
-    directory = "project/world_resources",
+    directory = "project/mcp_resources/materials",
     prefix = "palette",
     accent_ratio = 0.12,
     texture_scale = 1,
@@ -4963,7 +5313,7 @@ register_tool(
 register_tool(
   server,
   "prefab_save",
-  "Save an entity hierarchy as a .prefab file in edit mode.",
+  "Save an entity hierarchy under shared project/mcp_resources/prefabs in edit mode.",
   {
     id: z.string(),
     path: z.string(),
@@ -5051,7 +5401,7 @@ register_tool(
   "component_action",
   [
     "Invoke deterministic component methods that are not simple property writes.",
-    "Supported actions include terrain generate; spline generate_road_mesh, clear_road_mesh, spawn_instances, clear_instances; particle_system apply_preset and trigger_burst; physics apply_force and vehicle utility actions; audio_source play and stop; light fit_to_mesh; camera focus_selected. Camera focus_selected is for one renderable, not hierarchy visual review; use viewport_frame for scenes.",
+    "Supported actions include terrain generate; spline generate_road_mesh, clear_road_mesh, spawn_instances, clear_instances; particle_system apply_preset and trigger_burst; physics apply_force and vehicle utility actions; audio_source play and stop; light fit_to_mesh; camera focus_selected. Camera focus_selected is for one render component, not hierarchy visual review; use viewport_frame for scenes.",
   ].join(" "),
   {
     id: z.string(),
@@ -5236,7 +5586,7 @@ register_tool(
   server,
   "execute_lua",
   [
-    "Run one focused Lua script inside the engine using known bindings (World, Entity, Renderable, Light, MeshType, LightType, ComponentType, WorldHelpers, etc.).",
+    "Run one focused Lua script inside the engine using known bindings (World, Entity, Render, Light, MeshType, LightType, ComponentType, WorldHelpers, etc.).",
     "Do not use this for API discovery, pairs/next probing, method listing, or exploratory scripts.",
     "For blockouts and repeated primitives prefer entity_create_primitive_batch; for lights prefer entity_create_light.",
     "Use this only when a native batch tool cannot express the edit. Keep the script bounded, use print(...) for diagnostics, and return a short summary string.",

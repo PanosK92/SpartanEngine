@@ -136,25 +136,25 @@ namespace spartan
                 for (uint32_t i = 0; i < m_draw_call_count; i++)
                 {
                     const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                    Render* renderable                 = draw_call.renderable;
-                    Material* material                 = renderable->GetMaterial();
-                    const float shadow_distance        = renderable->GetMaxShadowDistance();
-                    if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
+                    Render* render                     = draw_call.render;
+                    Material* material                 = render->GetMaterial();
+                    const float shadow_distance        = render->GetMaxShadowDistance();
+                    if (!material || material->IsTransparent() || !render->HasFlag(RenderFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
                     {
                         continue;
                     }
 
-                    if (!light->IsInViewFrustum(renderable, array_index))
+                    if (!light->IsInViewFrustum(render, array_index))
                     {
                         continue;
                     }
 
                     slice.visible_draws.push_back(&draw_call);
-                    RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
-                    RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
+                    RHI_Buffer* vertex_buffer = render->GetVertexBuffer();
+                    RHI_Buffer* index_buffer  = render->GetIndexBuffer();
                     const bool alpha_tested   = array_index == 0 && light->GetLightType() == LightType::Directional && material->IsAlphaTested();
                     has_alpha_draws          |= alpha_tested;
-                    const bool can_batch      = draw_call.instance_count == 1 && renderable->GetGlobalInstanceOffset() == 0 && vertex_buffer && index_buffer;
+                    const bool can_batch      = draw_call.instance_count == 1 && render->GetGlobalInstanceOffset() == 0 && vertex_buffer && index_buffer;
                     if (!can_batch)
                     {
                         slice.direct_draws.push_back(&draw_call);
@@ -174,16 +174,16 @@ namespace spartan
                     }
                     ShadowBatch& batch = slice.batches[it->second];
 
-                    const bool close_to_shadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f;
+                    const bool close_to_shadow      = render->GetDistanceSquared() < 100.0f * 100.0f;
                     const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
-                    const uint32_t lod_index_shadow = clamp(renderable->GetLodIndex() + lod_index_bias, 0u, renderable->GetLodCount() - 1);
+                    const uint32_t lod_index_shadow = clamp(render->GetLodIndex() + lod_index_bias, 0u, render->GetLodCount() - 1);
                     const uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;
 
                     Sb_IndirectDrawArgs& argument = batch.arguments.emplace_back();
-                    argument.index_count          = renderable->GetIndexCount(lod_index);
+                    argument.index_count          = render->GetIndexCount(lod_index);
                     argument.instance_count       = 1;
-                    argument.first_index          = renderable->GetIndexOffset(lod_index);
-                    argument.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(lod_index));
+                    argument.first_index          = render->GetIndexOffset(lod_index);
+                    argument.vertex_offset        = static_cast<int32_t>(render->GetVertexOffset(lod_index));
                     argument.first_instance       = draw_call.draw_data_index;
                     argument_count++;
                 }
@@ -265,8 +265,8 @@ namespace spartan
 
                 auto draw_direct = [&](const Renderer_DrawCall& draw_call)
                 {
-                    Render* renderable = draw_call.renderable;
-                    Material* material = renderable->GetMaterial();
+                    Render* render = draw_call.render;
+                    Material* material = render->GetMaterial();
                     const bool is_first_cascade = slice.array_index == 0 && light->GetLightType() == LightType::Directional;
                     RHI_Shader* vertex_shader   = use_batches ? multi_vertex_shader : GetShader(Renderer_Shader::depth_light_v);
                     RHI_Shader* pixel_shader    = is_first_cascade && material->IsAlphaTested() ? (use_batches ? multi_pixel_shader : GetShader(Renderer_Shader::depth_light_alpha_color_p)) : nullptr;
@@ -288,14 +288,14 @@ namespace spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                     RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
+                    cmd_list->SetBufferIndex(render->GetIndexBuffer());
 
-                    const bool close_to_shadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f;
+                    const bool close_to_shadow      = render->GetDistanceSquared() < 100.0f * 100.0f;
                     const uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;
-                    const uint32_t lod_index_shadow = clamp(renderable->GetLodIndex() + lod_index_bias, 0u, renderable->GetLodCount() - 1);
+                    const uint32_t lod_index_shadow = clamp(render->GetLodIndex() + lod_index_bias, 0u, render->GetLodCount() - 1);
                     const uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;
-                    cmd_list->DrawIndexed(renderable->GetIndexCount(lod_index), renderable->GetIndexOffset(lod_index), renderable->GetVertexOffset(lod_index), renderable->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
+                    cmd_list->DrawIndexed(render->GetIndexCount(lod_index), render->GetIndexOffset(lod_index), render->GetVertexOffset(lod_index), render->GetGlobalInstanceOffset() + draw_call.instance_index, draw_call.instance_count);
                 };
 
                 const vector<const Renderer_DrawCall*>& draws = use_batches ? slice.direct_draws : slice.visible_draws;
@@ -310,12 +310,7 @@ namespace spartan
 
     void Renderer::Pass_HiZ(RHI_CommandList* cmd_list)
     {
-        // renders major occluders to a depth buffer and builds a hi-z mip chain.
-        // the indirect cull compute shader samples this for gpu-driven occlusion culling.
-        // the depth texture is ALWAYS cleared to 0.0 (far plane, reverse-z) and the mip
-        // chain is always rebuilt, even when occlusion is disabled or suppressed. this
-        // guarantees the cull shader never reads stale/uninitialized depth, which would
-        // cause non-deterministic culling artifacts depending on gpu memory contents.
+        // renders major occluders and builds the hi-z chain, always cleared and rebuilt so the cull shader never reads stale depth
 
         cmd_list->BeginTimeblock("hiz");
 
@@ -349,17 +344,17 @@ namespace spartan
                 }
 
                 visible_draws.push_back(&draw_call);
-                Render* renderable        = draw_call.renderable;
-                RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
-                RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
-                const bool can_batch      = draw_call.instance_count == 1 && renderable->GetGlobalInstanceOffset() == 0 && vertex_buffer && index_buffer;
+                Render* render            = draw_call.render;
+                RHI_Buffer* vertex_buffer = render->GetVertexBuffer();
+                RHI_Buffer* index_buffer  = render->GetIndexBuffer();
+                const bool can_batch      = draw_call.instance_count == 1 && render->GetGlobalInstanceOffset() == 0 && vertex_buffer && index_buffer;
                 if (!can_batch)
                 {
                     direct_draws.push_back(&draw_call);
                     continue;
                 }
 
-                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(render->GetMaterial()->GetProperty(MaterialProperty::CullMode));
                 cull_mode              = GetRasterizerState(Renderer_RasterizerState::Solid)->GetPolygonMode() == RHI_PolygonMode::Wireframe ? RHI_CullMode::None : cull_mode;
                 const IndexedBatchKey key = { vertex_buffer, index_buffer, cull_mode, false };
                 auto [it, inserted]       = batch_lookup.try_emplace(key, static_cast<uint32_t>(batches.size()));
@@ -373,10 +368,10 @@ namespace spartan
                 HiZBatch& batch = batches[it->second];
 
                 Sb_IndirectDrawArgs& argument = batch.arguments.emplace_back();
-                argument.index_count          = renderable->GetIndexCount(draw_call.lod_index);
+                argument.index_count          = render->GetIndexCount(draw_call.lod_index);
                 argument.instance_count       = 1;
-                argument.first_index          = renderable->GetIndexOffset(draw_call.lod_index);
-                argument.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(draw_call.lod_index));
+                argument.first_index          = render->GetIndexOffset(draw_call.lod_index);
+                argument.vertex_offset        = static_cast<int32_t>(render->GetVertexOffset(draw_call.lod_index));
                 argument.first_instance       = draw_call.draw_data_index;
                 argument_count++;
             }
@@ -398,9 +393,7 @@ namespace spartan
             m_cpu_indirect_draw_arg_count += argument_count;
         }
 
-        // always start the render pass so the depth texture is cleared to far plane (0.0).
-        // without this, the blit and downscale would propagate stale depth into the hi-z
-        // mip chain, causing the cull shader to incorrectly occlude objects.
+        // always start the pass so the depth clears, stale depth would propagate into the hi-z chain
         {
             RHI_PipelineState pso;
             pso.name                             = "occluders";
@@ -431,18 +424,18 @@ namespace spartan
 
                 auto draw_direct = [&](const Renderer_DrawCall& draw_call)
                 {
-                    Render* renderable = draw_call.renderable;
-                    RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                    Render* render = draw_call.render;
+                    RHI_CullMode cull_mode = static_cast<RHI_CullMode>(render->GetMaterial()->GetProperty(MaterialProperty::CullMode));
                     cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
 
                     m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(render->GetVertexBuffer());
+                    cmd_list->SetBufferIndex(render->GetIndexBuffer());
 
-                    cmd_list->DrawIndexed(renderable->GetIndexCount(draw_call.lod_index), renderable->GetIndexOffset(draw_call.lod_index), renderable->GetVertexOffset(draw_call.lod_index));
+                    cmd_list->DrawIndexed(render->GetIndexCount(draw_call.lod_index), render->GetIndexOffset(draw_call.lod_index), render->GetVertexOffset(draw_call.lod_index));
                 };
 
                 const vector<const Renderer_DrawCall*>& draws = use_batches ? direct_draws : visible_draws;
@@ -562,10 +555,7 @@ namespace spartan
 
         cmd_list->BeginTimeblock("depth_prepass");
         {
-            // indirect prepass, two draws over the split survivor list (must match the g-buffer indirect path)
-            // opaque half runs with no pixel shader so the hardware uses double-speed depth, the alpha half
-            // runs the alpha-test pixel shader so foliage cutouts still discard, both pull from one buffer
-            // with a region base pushed in f4_value.x and first_vertex 0
+            // two draws over the split survivor list, opaque with no pixel shader for double-speed depth, alpha with the cutout ps
             {
                 const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
 
@@ -633,8 +623,8 @@ namespace spartan
                 for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
                 {
                     const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-                    Render* renderable                 = draw_call.renderable;
-                    Material* material                 = renderable->GetMaterial();
+                    Render* render                     = draw_call.render;
+                    Material* material                 = render->GetMaterial();
                     if (!material || material->IsTransparent() || !draw_call.camera_visible)
                     {
                         continue;
@@ -661,14 +651,14 @@ namespace spartan
                     cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
                     RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
+                    cmd_list->SetBufferIndex(render->GetIndexBuffer());
 
                     cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(draw_call.lod_index),
-                        renderable->GetIndexOffset(draw_call.lod_index),
-                        renderable->GetVertexOffset(draw_call.lod_index),
-                        renderable->GetGlobalInstanceOffset() + draw_call.instance_index,
+                        render->GetIndexCount(draw_call.lod_index),
+                        render->GetIndexOffset(draw_call.lod_index),
+                        render->GetVertexOffset(draw_call.lod_index),
+                        render->GetGlobalInstanceOffset() + draw_call.instance_index,
                         draw_call.instance_count
                     );
                 }
@@ -688,12 +678,7 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_indirect_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-        // equal-z gates the gbuffer on the depth value the prepass actually wrote,
-        // alpha-tested geometry (tree leaves, ivy, foliage cards) discards in the prepass which leaves the depth at whatever opaque
-        // surface sits behind the transparent leaf pixel (terrain, sky clear value of zero), greater-equal would happily pass those
-        // pixels because the leaf quad is in front of that stored depth and the gbuffer pixel shader has no alpha discard of its own,
-        // the net effect was leaf alpha cutouts rendering as solid quads in close range where get_alpha_threshold is non-zero,
-        // switching to equal keeps the pixel shader discard-free (early-z preserved) and lets only the prepass-survivors draw
+        // equal, not greater-equal, so only prepass survivors draw, otherwise alpha cutouts render as solid quads
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
         pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
         pso.resolution_scale                 = true;
@@ -774,8 +759,8 @@ namespace spartan
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
-            Render* renderable                 = draw_call.renderable;
-            Material* material                 = renderable->GetMaterial();
+            Render* render                     = draw_call.render;
+            Material* material                 = render->GetMaterial();
             if (!material || !draw_call.camera_visible)
             {
                 continue;
@@ -818,14 +803,14 @@ namespace spartan
 
             cmd_list->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
             RHI_Buffer* instance_buffer = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
-            cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
-            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+            cmd_list->SetBufferVertex(render->GetVertexBuffer(), instance_buffer);
+            cmd_list->SetBufferIndex(render->GetIndexBuffer());
 
             cmd_list->DrawIndexed(
-                renderable->GetIndexCount(draw_call.lod_index),
-                renderable->GetIndexOffset(draw_call.lod_index),
-                renderable->GetVertexOffset(draw_call.lod_index),
-                renderable->GetGlobalInstanceOffset() + draw_call.instance_index,
+                render->GetIndexCount(draw_call.lod_index),
+                render->GetIndexOffset(draw_call.lod_index),
+                render->GetVertexOffset(draw_call.lod_index),
+                render->GetGlobalInstanceOffset() + draw_call.instance_index,
                 draw_call.instance_count
             );
 
@@ -854,12 +839,10 @@ namespace spartan
                 RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
                 cmd_list->Blit(tex_depth, tex_depth_output, false, Renderer::GetResolutionScale());
 
-                // single source of truth for motion vector previous transforms, the indirect, tessellated and transparent
-                // paths all read transform_previous from the draw data snapshot taken in UpdateDrawCalls so updating here once
-                // per frame (not per pass or per eye) is correct and replaces the duplicated per-draw updates
+                // the one place motion vector previous transforms are updated, every path reads the UpdateDrawCalls snapshot
                 for (uint32_t i = 0; i < m_draw_call_count; i++)
                 {
-                    Entity* entity = m_draw_calls[i].renderable->GetEntity();
+                    Entity* entity = m_draw_calls[i].render->GetEntity();
                     entity->SetMatrixPrevious(entity->GetMatrix());
                 }
             }
@@ -870,10 +853,7 @@ namespace spartan
 
     void Renderer::Pass_Grass_Populate(RHI_CommandList* cmd_list)
     {
-        // gpu procedural grass placement (ghost of tsushima style)
-        // runs every frame just before the geometry rasters, fills the per-lod sections of
-        // grass_instances with newly placed blades around the camera, and then bakes the
-        // dynamic instance_count into grass_indirect_args so the raster passes can draw indirectly.
+        // fills the per-lod sections of grass_instances around the camera, then bakes instance_count into the indirect args
 
         if (!m_pass_state.grass_enabled || !m_pass_state.grass_mesh || !m_pass_state.grass_heightmap)
             return;
@@ -933,7 +913,7 @@ namespace spartan
                     const uint32_t lod_base   = renderer_grass_lod_base(lod);
                     const uint32_t lod_cap    = renderer_max_grass_per_lod[lod];
 
-                    // pack push constant payload, layout mirrors grass_populate.hlsl values[0..2]
+                    // layout mirrors grass_populate.hlsl values[0..2]
                     // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
                     // values[1] = (height_min, height_max, max_slope_cos, lod_index)
                     // values[2] = (camera_xz.x, camera_xz.z, terrain_extent.x, terrain_extent.z)
@@ -954,10 +934,7 @@ namespace spartan
                     m_pcb_pass_cpu.v[11] = m_pass_state.grass_params.terrain_extent_m.y;
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                    // square grid of cells, 8x8 thread groups, one cell per thread, the shader culls out-of-ring cells
-                    // dispatch z dimension carries the per-cell blade index, blades_per_cell is derived from the ring area
-                    // and the per-lod cap so the total writes stay below the cap, the shader recomputes the exact same value
-                    // for its in-bounds check on dispatch_thread_id.z, both formulas must stay in lockstep
+                    // one cell per thread, dispatch z carries the blade index, the shader recomputes blades_per_cell so both formulas must match
                     const uint32_t cells_per_axis  = static_cast<uint32_t>(ceilf(2.0f * ring_radius / cell_size));
                     const uint32_t groups          = (cells_per_axis + 7u) / 8u;
                     const float    ring_area       = math::pi * ring_radius * ring_radius;
@@ -977,9 +954,7 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::grass_count,         buf_count);
                 cmd_list->SetBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
 
-                // values[0] = (cap_lod0, cap_lod1, cap_lod2, lod_count), one float per lod cap
-                // grass_indirect_args_c reads the matching slot for its own lod_index and clamps the
-                // atomic counter against it before baking the instance_count into the indirect args
+                // values[0] = (cap_lod0, cap_lod1, cap_lod2, lod_count), the args shader clamps its atomic counter against its own slot
                 static_assert(renderer_max_grass_lod_count == 3, "grass_indirect_args push constant layout assumes 3 lods");
                 m_pcb_pass_cpu.material_index = 0;
                 m_pcb_pass_cpu.v[0] = static_cast<float>(renderer_max_grass_per_lod[0]);
@@ -1007,9 +982,7 @@ namespace spartan
         Mesh*     mesh     = m_pass_state.grass_mesh;
         Material* material = m_pass_state.grass_material;
 
-        // wait for the global geometry buffer to be built, the indirect args reference it for vertex and index data
-        // also wait for the material to be registered in the bindless table, until then the index is zero and the
-        // pixel shader would read another renderable's textures producing garbage colour for the grass blade
+        // wait for the geometry buffer and the bindless material index, a zero index reads another render's textures
         if (!mesh->GetVertexBuffer() || !mesh->GetIndexBuffer() || !GeometryBuffer::GetInstanceBuffer())
         {
             return;
@@ -1044,10 +1017,7 @@ namespace spartan
         // grass blades are double sided, the material flags carry this but the raster needs an explicit setting
         cmd_list->SetCullMode(RHI_CullMode::None);
 
-        // grass_instances is uav-bound here, the vertex shader reads GrassInstance via the same descriptor
-        // the per-instance vertex stream is bound to the global geometry instance buffer just like every other
-        // geometry pass, the grass vs never reads those attributes so any in-range buffer is fine, sharing the
-        // same binding keeps the engine wide vertex layout consistent and avoids any cross talk with subsequent passes
+        // the grass vs never reads the per-instance stream, it is bound to the global instance buffer only to keep the vertex layout uniform
         RHI_Buffer* buf_instances     = GetBuffer(Renderer_Buffer::GrassInstances);
         RHI_Buffer* buf_args          = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
         RHI_Buffer* binding1_instance = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);

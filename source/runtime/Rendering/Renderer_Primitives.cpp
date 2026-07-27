@@ -345,9 +345,9 @@ namespace spartan
 
         if (cvar_aabb.GetValueAs<bool>())
         {
-            auto get_color = [](Render* renderable)
+            auto get_color = [](Render* render)
             {
-                return renderable->IsVisible() ? Color::standard_renderer_lines : Color(1.0f, 0.0f, 0.0f, 1.0f);
+                return render->IsVisible() ? Color::standard_renderer_lines : Color(1.0f, 0.0f, 0.0f, 1.0f);
             };
 
             for (Entity* entity : World::GetEntities())
@@ -357,20 +357,20 @@ namespace spartan
                     continue;
                 }
 
-                if (Render* renderable = entity->GetComponent<Render>())
+                if (Render* render = entity->GetComponent<Render>())
                 {
                     if (Camera* camera = World::GetCamera())
                     {
                         const Vector3 camera_position   = camera->GetEntity()->GetPosition();
-                        const BoundingBox& bounding_box = renderable->GetBoundingBox();
+                        const BoundingBox& bounding_box = render->GetBoundingBox();
                         const float distance            = bounding_box.GetClosestPoint(camera_position).Distance(camera_position);
 
-                        if (distance > renderable->GetMaxRenderDistance())
+                        if (distance > render->GetMaxRenderDistance())
                         {
                             continue;
                         }
 
-                        DrawBox(bounding_box, get_color(renderable));
+                        DrawBox(bounding_box, get_color(render));
                     }
                 }
 

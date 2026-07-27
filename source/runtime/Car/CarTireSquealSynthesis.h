@@ -27,11 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 //==========================================
 
-// procedural tire squeal synthesizer
-// real squeal is stick-slip: the tread grabs and releases the road hundreds of times
-// a second, driving the tire carcass into a pitched scream around 1 khz with harsh
-// harmonics, random pitch wobble and amplitude flutter. filtered noise layers sit
-// underneath for the scrub character, and the tone fades in with slip severity.
+// stick-slip squeal, a pitched carcass scream near 1 khz over filtered noise layers, fading in with slip severity
 
 namespace tire_squeal_sound
 {
@@ -50,9 +46,7 @@ namespace tire_squeal_sound
         constexpr float body_freq_low        = 500.0f;
         constexpr float body_freq_high       = 900.0f;
 
-        // squeal tone, matched offline to a real screech recording: two inharmonic
-        // carcass modes at ratio 1.25 (the reference shows 551 and 691 hz together),
-        // strong 2nd harmonic, energy spread 500-2500 hz, hard rolloff above 4 khz
+        // matched to a real screech, two inharmonic carcass modes at ratio 1.25 with energy spread over 500-2500 hz
         constexpr float tone_freq_base       = 480.0f;
         constexpr float tone_freq_speed      = 80.0f;
         constexpr float tone_freq_intensity  = 120.0f;
@@ -313,9 +307,7 @@ namespace tire_squeal_sound
                 float noise_w = m_noise.white();
                 float noise_p = m_noise.pink();
 
-                // ---- screech layer ----
-                // white noise -> bandpass -> warm multi-stage saturation -> bandpass
-                // warm tanh saturation instead of hard-clipping avoids the dry/papery character
+                // noise, bandpass, warm tanh saturation, bandpass, hard clipping would sound dry and papery
                 float screech_freq = tuning::screech_freq_low +
                     (tuning::screech_freq_high - tuning::screech_freq_low) * (speed_norm * 0.4f + intensity * 0.6f);
                 m_screech_pre_bp.set_params(screech_freq, 1.8f + intensity * 0.5f, m_sample_rate);

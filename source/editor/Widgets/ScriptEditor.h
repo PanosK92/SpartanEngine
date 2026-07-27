@@ -15,8 +15,8 @@ private:
 
     std::string script_file;
 
-    static constexpr size_t kBufferSize = 1024 * 64;
-    char m_buffer[kBufferSize]      = {0};
+    static constexpr size_t buffer_size = 1024 * 64;
+    char m_buffer[buffer_size]      = {0};
 
     TextEditor TextEditor;
 };

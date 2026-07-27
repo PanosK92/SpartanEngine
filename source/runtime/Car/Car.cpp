@@ -143,13 +143,13 @@ namespace spartan
         // scales prop wheels without a physics component
         void scale_wheel_to_radius(Entity* wheel_entity, float target_radius)
         {
-            Render* renderable = wheel_entity->GetComponent<Render>();
-            if (!renderable || !std::isfinite(target_radius) || target_radius <= 0.0f)
+            Render* render = wheel_entity->GetComponent<Render>();
+            if (!render || !std::isfinite(target_radius) || target_radius <= 0.0f)
             {
                 return;
             }
 
-            const math::Vector3 extents  = renderable->GetBoundingBoxMesh().GetExtents();
+            const math::Vector3 extents  = render->GetBoundingBoxMesh().GetExtents();
             const float measured_radius  = std::max({ extents.x, extents.y, extents.z });
             if (!std::isfinite(measured_radius) || measured_radius <= 1e-5f)
             {
@@ -178,7 +178,7 @@ namespace spartan
             return relative;
         }
 
-        std::string get_material_context(Entity* entity, Render* renderable)
+        std::string get_material_context(Entity* entity, Render* render)
         {
             std::string context;
             for (Entity* current = entity; current != nullptr; current = current->GetParent())
@@ -187,18 +187,18 @@ namespace spartan
                 context += to_lower_copy(current->GetObjectName());
             }
 
-            if (renderable)
+            if (render)
             {
                 context += " ";
-                context += to_lower_copy(renderable->GetMaterialName());
+                context += to_lower_copy(render->GetMaterialName());
             }
 
             return context;
         }
 
-        CarMaterialSlot resolve_car_material_slot(Entity* entity, Render* renderable)
+        CarMaterialSlot resolve_car_material_slot(Entity* entity, Render* render)
         {
-            const std::string context = get_material_context(entity, renderable);
+            const std::string context = get_material_context(entity, render);
 
             if (contains(context, "car_paint") || contains(context, "body"))
             {
@@ -291,12 +291,12 @@ namespace spartan
 
         std::shared_ptr<Material> clone_car_material(
             Entity* car_entity,
-            Render* renderable,
+            Render* render,
             const char* slot_name,
             CarMaterialClones& clones
         )
         {
-            Material* source = renderable ? renderable->GetMaterial() : nullptr;
+            Material* source = render ? render->GetMaterial() : nullptr;
             if (!source)
             {
                 return nullptr;
@@ -309,7 +309,7 @@ namespace spartan
             const auto existing = clones.find(key);
             if (existing != clones.end())
             {
-                renderable->SetMaterial(existing->second);
+                render->SetMaterial(existing->second);
                 return existing->second;
             }
 
@@ -323,7 +323,7 @@ namespace spartan
                 std::string(EXTENSION_MATERIAL);
             std::shared_ptr<Material> material = source->Clone(resource_name);
             material->SetPersistent(false);
-            renderable->SetMaterial(material);
+            render->SetMaterial(material);
             clones.emplace(key, material);
             return material;
         }
@@ -1943,13 +1943,16 @@ namespace spartan
     math::Vector3 Car::SmoothDamp(const math::Vector3& current, const math::Vector3& target, 
                                    math::Vector3& velocity, float smooth_time, float dt)
     {
-        float omega = 2.0f / std::max(smooth_time, 0.0001f);
-        float x = omega * dt;
-        float exp_factor = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
-        math::Vector3 delta = current - target;
-        math::Vector3 temp = (velocity + omega * delta) * dt;
-        velocity = (velocity - omega * temp) * exp_factor;
-        return target + (delta + temp) * exp_factor;
+        // critically damped spring, exp_factor is a rational approximation of exp(-omega * dt)
+        float omega            = 2.0f / std::max(smooth_time, 0.0001f);
+        float x                = omega * dt;
+        float exp_factor       = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
+        math::Vector3 delta    = current - target;
+        math::Vector3 momentum = (velocity + omega * delta) * dt;
+
+        velocity = (velocity - omega * momentum) * exp_factor;
+
+        return target + (delta + momentum) * exp_factor;
     }
 
     float Car::LerpAngle(float a, float b, float t)
@@ -1972,9 +1975,9 @@ namespace spartan
 
         for (Entity* entity : descendants)
         {
-            if (Render* renderable = entity->GetComponent<Render>())
+            if (Render* render = entity->GetComponent<Render>())
             {
-                combined.Merge(renderable->GetBoundingBox());
+                combined.Merge(render->GetBoundingBox());
             }
         }
 
@@ -2000,9 +2003,9 @@ namespace spartan
                 part->SetParent(car_entity);
                 part->SetPositionLocal(position);
                 part->SetScaleLocal(scale);
-                Render* renderable = part->AddComponent<Render>();
-                renderable->SetMesh(MeshType::Cube);
-                renderable->SetDefaultMaterial();
+                Render* render = part->AddComponent<Render>();
+                render->SetMesh(MeshType::Cube);
+                render->SetDefaultMaterial();
             };
             create_part("generic_lower_body", math::Vector3(0.0f, -preset.height * 0.18f, 0.0f), math::Vector3(preset.width * 0.92f, preset.height * 0.38f, preset.length * 0.84f));
             create_part("generic_cabin", math::Vector3(0.0f, preset.height * 0.22f, -preset.length * 0.08f), math::Vector3(preset.width * 0.68f, preset.height * 0.42f, preset.length * 0.48f));
@@ -2074,25 +2077,25 @@ namespace spartan
             car_entity->GetDescendants(&descendants);
             CarMaterialClones material_clones;
             auto clone_material =
-                [&](Render* renderable, const char* slot_name)
+                [&](Render* render, const char* slot_name)
                 {
                     return clone_car_material(
                         car_entity,
-                        renderable,
+                        render,
                         slot_name,
                         material_clones
                     );
                 };
             for (Entity* descendant : descendants)
             {
-                Render* renderable = descendant->GetComponent<Render>();
-                if (!renderable || !renderable->GetMaterial())
+                Render* render = descendant->GetComponent<Render>();
+                if (!render || !render->GetMaterial())
                 {
                     continue;
                 }
 
-                const std::string context = get_material_context(descendant, renderable);
-                const CarMaterialSlot material_slot = resolve_car_material_slot(descendant, renderable);
+                const std::string context = get_material_context(descendant, render);
+                const CarMaterialSlot material_slot = resolve_car_material_slot(descendant, render);
                 if (material_slot == CarMaterialSlot::MainGlass && (contains(context, "object_58") || contains(context, "windshield")))
                 {
                     m_window_entity = descendant;
@@ -2107,7 +2110,7 @@ namespace spartan
                     case CarMaterialSlot::BodyPaint:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "body_paint"))
+                            clone_material(render, "body_paint"))
                         {
                             material->ApplyPaintPreset(m_paint_preset, m_paint_color, false);
                         }
@@ -2116,7 +2119,7 @@ namespace spartan
                     case CarMaterialSlot::CarbonTrim:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "carbon_trim"))
+                            clone_material(render, "carbon_trim"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::CarbonFiber, false);
                         }
@@ -2125,7 +2128,7 @@ namespace spartan
                     case CarMaterialSlot::TireRubber:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "tire_rubber"))
+                            clone_material(render, "tire_rubber"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::RubberTire, false);
                         }
@@ -2134,7 +2137,7 @@ namespace spartan
                     case CarMaterialSlot::RimMetal:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "rim_metal"))
+                            clone_material(render, "rim_metal"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::Chrome, false);
                         }
@@ -2143,7 +2146,7 @@ namespace spartan
                     case CarMaterialSlot::HeadlightLens:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "headlight_lens"))
+                            clone_material(render, "headlight_lens"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::HeadlightLens, false);
                         }
@@ -2152,7 +2155,7 @@ namespace spartan
                     case CarMaterialSlot::TaillightLens:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "taillight_lens"))
+                            clone_material(render, "taillight_lens"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::TaillightLens, false);
                         }
@@ -2161,7 +2164,7 @@ namespace spartan
                     case CarMaterialSlot::MainGlass:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "main_glass"))
+                            clone_material(render, "main_glass"))
                         {
                             // smoked engine covers use tinted glass, windshields and side glass stay clear
                             const MaterialSurfacePreset glass_preset = contains(context, "engine")
@@ -2179,7 +2182,7 @@ namespace spartan
                     case CarMaterialSlot::MirrorGlass:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "mirror_glass"))
+                            clone_material(render, "mirror_glass"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::Chrome, false);
                         }
@@ -2188,7 +2191,7 @@ namespace spartan
                     case CarMaterialSlot::EngineMetal:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "engine_metal"))
+                            clone_material(render, "engine_metal"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::PolishedMetal, false);
                         }
@@ -2197,7 +2200,7 @@ namespace spartan
                     case CarMaterialSlot::BrakeDisc:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "brake_disc"))
+                            clone_material(render, "brake_disc"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::BrakeDisc, false);
                         }
@@ -2206,7 +2209,7 @@ namespace spartan
                     case CarMaterialSlot::InteriorLeather:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "interior_leather"))
+                            clone_material(render, "interior_leather"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::Leather, false);
                         }
@@ -2215,7 +2218,7 @@ namespace spartan
                     case CarMaterialSlot::BlackTrim:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "black_trim"))
+                            clone_material(render, "black_trim"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::BlackPlastic, false);
                         }
@@ -2224,7 +2227,7 @@ namespace spartan
                     case CarMaterialSlot::EmissiveRedLight:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "emissive_red_light"))
+                            clone_material(render, "emissive_red_light"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveRedLight, false);
                         }
@@ -2233,7 +2236,7 @@ namespace spartan
                     case CarMaterialSlot::EmissiveWhiteLight:
                     {
                         if (std::shared_ptr<Material> material =
-                            clone_material(renderable, "emissive_white_light"))
+                            clone_material(render, "emissive_white_light"))
                         {
                             material->ApplySurfacePreset(MaterialSurfacePreset::EmissiveWhiteLight, false);
                         }
@@ -2290,9 +2293,9 @@ namespace spartan
         // wheel bounds must be measured at unit scale before absolute dimension scaling
         wheel_base->SetScale(1.0f);
 
-        if (Render* renderable = wheel_base->GetComponent<Render>())
+        if (Render* render = wheel_base->GetComponent<Render>())
         {
-            Material* material = renderable->GetMaterial();
+            Material* material = render->GetMaterial();
             if (!m_definition->wheel_albedo.empty())
             {
                 material->SetTexture(MaterialTextureType::Color, m_definition->wheel_albedo);
@@ -2380,9 +2383,9 @@ namespace spartan
             baked->GetDescendants(&parts);
             for (Entity* part : parts)
             {
-                if (Render* renderable = part->GetComponent<Render>())
+                if (Render* render = part->GetComponent<Render>())
                 {
-                    const math::BoundingBox part_bounds = renderable->GetBoundingBoxMesh() * part->GetMatrix();
+                    const math::BoundingBox part_bounds = render->GetBoundingBoxMesh() * part->GetMatrix();
                     if (bounds == math::BoundingBox::Zero)
                     {
                         bounds = part_bounds;
@@ -2494,19 +2497,16 @@ namespace spartan
                 continue;
             }
 
-            // the renderable can live on a child node, merge every render bound under the part.
-            // world bounds are built from the mesh bbox and the entity matrix directly because
-            // Render::UpdateAabb falls back to an identity transform on inactive entities and
-            // these tires were just deactivated by CreateBody
+            // bounds come from the mesh bbox and entity matrix directly, Render::UpdateAabb falls back to identity on inactive entities
             math::BoundingBox aabb = math::BoundingBox::Zero;
             std::vector<Entity*> parts;
             parts.push_back(baked);
             baked->GetDescendants(&parts);
             for (Entity* part : parts)
             {
-                if (Render* renderable = part->GetComponent<Render>())
+                if (Render* render = part->GetComponent<Render>())
                 {
-                    const math::BoundingBox part_aabb = renderable->GetBoundingBoxMesh() * part->GetMatrix();
+                    const math::BoundingBox part_aabb = render->GetBoundingBoxMesh() * part->GetMatrix();
                     if (aabb == math::BoundingBox::Zero)
                     {
                         aabb = part_aabb;

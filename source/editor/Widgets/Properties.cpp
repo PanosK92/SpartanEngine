@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Properties.h"
 #include "Window.h"
-#include "FileSelection.h"
+#include "FileDialog.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../Widgets/ButtonColorPicker.h"
@@ -55,16 +55,74 @@ using namespace spartan;
 using namespace math;
 //======================
 
-weak_ptr<Material> Properties::m_inspected_material;
-
 namespace
 {
+    // the material currently pinned to the inspector, if any
+    weak_ptr<Material> inspected_material;
+
+    // click-to-browse, the inspector is the only place that needs a file dialog
+    namespace file_selection
+    {
+        unique_ptr<FileDialog> dialog;
+        bool visible = false;
+        function<void(const string&)> callback;
+        Editor* owner = nullptr;
+
+        void initialize(Editor* editor)
+        {
+            owner = editor;
+        }
+
+        void open(const function<void(const string&)>& on_selected)
+        {
+            if (!dialog)
+            {
+                dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_All);
+            }
+
+            callback = on_selected;
+            visible  = true;
+        }
+
+        void tick()
+        {
+            if (!visible || !owner)
+            {
+                return;
+            }
+
+            string selected_path;
+            if (dialog->Show(&visible, owner, nullptr, &selected_path))
+            {
+                if (callback && !selected_path.empty())
+                {
+                    callback(selected_path);
+                }
+
+                visible  = false;
+                callback = nullptr;
+            }
+        }
+
+        // the "..." button that opens the dialog
+        bool browse_button(const char* id)
+        {
+            ImGui::PushID(id);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 2));
+            bool clicked = ImGuiSp::button("...");
+            ImGui::PopStyleVar();
+            ImGui::PopID();
+
+            return clicked;
+        }
+    }
+
     // color pickers
-    std::unique_ptr<ButtonColorPicker> m_material_color_picker;
-    std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
-    std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
-    std::unique_ptr<ButtonColorPicker> m_colorPicker_particle_start;
-    std::unique_ptr<ButtonColorPicker> m_colorPicker_particle_end;
+    std::unique_ptr<ButtonColorPicker> color_picker_material;
+    std::unique_ptr<ButtonColorPicker> color_picker_light;
+    std::unique_ptr<ButtonColorPicker> color_picker_camera;
+    std::unique_ptr<ButtonColorPicker> color_picker_particle_start;
+    std::unique_ptr<ButtonColorPicker> color_picker_particle_end;
 
     // context menu state
     string context_menu_id;
@@ -101,7 +159,7 @@ namespace
         inline ImVec4 accent_entity()     { return ImVec4(0.45f, 0.55f, 0.70f, 1.0f); }
         inline ImVec4 accent_light()      { return ImVec4(0.85f, 0.75f, 0.35f, 1.0f); }
         inline ImVec4 accent_camera()     { return ImVec4(0.50f, 0.70f, 0.55f, 1.0f); }
-        inline ImVec4 accent_renderable() { return ImVec4(0.60f, 0.50f, 0.70f, 1.0f); }
+        inline ImVec4 accent_render() { return ImVec4(0.60f, 0.50f, 0.70f, 1.0f); }
         inline ImVec4 accent_material()   { return ImVec4(0.70f, 0.55f, 0.50f, 1.0f); }
         inline ImVec4 accent_physics()    { return ImVec4(0.55f, 0.65f, 0.80f, 1.0f); }
         inline ImVec4 accent_audio()      { return ImVec4(0.70f, 0.45f, 0.55f, 1.0f); }
@@ -606,11 +664,11 @@ Properties::Properties(Editor* editor) : Widget(editor)
     m_title          = "Properties";
     m_size_initial.x = 500;
 
-    m_colorPicker_light          = make_unique<ButtonColorPicker>("Light Color Picker");
-    m_material_color_picker      = make_unique<ButtonColorPicker>("Material Color Picker");
-    m_colorPicker_camera         = make_unique<ButtonColorPicker>("Camera Color Picker");
-    m_colorPicker_particle_start = make_unique<ButtonColorPicker>("Particle Start Color");
-    m_colorPicker_particle_end   = make_unique<ButtonColorPicker>("Particle End Color");
+    color_picker_light          = make_unique<ButtonColorPicker>("Light Color Picker");
+    color_picker_material      = make_unique<ButtonColorPicker>("Material Color Picker");
+    color_picker_camera         = make_unique<ButtonColorPicker>("Camera Color Picker");
+    color_picker_particle_start = make_unique<ButtonColorPicker>("Particle Start Color");
+    color_picker_particle_end   = make_unique<ButtonColorPicker>("Particle End Color");
 
     file_selection::initialize(editor);
 }
@@ -664,7 +722,7 @@ void Properties::OnTickVisible()
             ShowAudioSource(entity->GetComponent<AudioSource>());
             ShowText3D(entity->GetComponent<Text3D>());
 
-            // re-fetch after ShowSpline since clearing a road mesh removes the render
+            // re-fetch after ShowSpline since clearing a road mesh removes the render component
             Render* render = entity->GetComponent<Render>();
             Material* material = render ? render->GetMaterial() : nullptr;
             ShowRender(render);
@@ -688,9 +746,9 @@ void Properties::OnTickVisible()
                 pending_removal_id    = 0;
             }
         }
-        else if (!m_inspected_material.expired())
+        else if (!inspected_material.expired())
         {
-            ShowMaterial(m_inspected_material.lock().get());
+            ShowMaterial(inspected_material.lock().get());
         }
         else
         {
@@ -709,17 +767,7 @@ void Properties::OnTickVisible()
     file_selection::tick();
 }
 
-void Properties::Inspect(spartan::Entity* entity)
-{
-    // if we were previously inspecting a material, save changes
-    if (!m_inspected_material.expired())
-    {
-        m_inspected_material.lock()->SaveToFile(m_inspected_material.lock()->GetResourceFilePath());
-    }
-    m_inspected_material.reset();
-}
-
-void Properties::Inspect(const shared_ptr<Material> material)
+void Properties::InspectMaterial(const shared_ptr<Material> material)
 {
     // clear entity selection so the material is shown instead
     if (Camera* camera = World::GetCamera())
@@ -727,7 +775,18 @@ void Properties::Inspect(const shared_ptr<Material> material)
         camera->ClearSelection();
     }
 
-    m_inspected_material = material;
+    inspected_material = material;
+}
+
+void Properties::ClearMaterialInspection()
+{
+    // the inspector is the only place a material is edited, so persist before letting go of it
+    if (!inspected_material.expired())
+    {
+        inspected_material.lock()->SaveToFile(inspected_material.lock()->GetResourceFilePath());
+    }
+
+    inspected_material.reset();
 }
 
 void Properties::ShowEntity(Entity* entity) const
@@ -1002,7 +1061,7 @@ void Properties::ShowLight(spartan::Light* light) const
         float range                 = light->GetRange();
         float area_width            = light->GetAreaWidth();
         float area_height           = light->GetAreaHeight();
-        m_colorPicker_light->SetColor(light->GetColor());
+        color_picker_light->SetColor(light->GetColor());
         //====================================================================================
 
         // type
@@ -1025,7 +1084,7 @@ void Properties::ShowLight(spartan::Light* light) const
                 // refresh local copies so the map-back at the bottom does not revert the new values
                 intensity          = light->GetIntensityPhotometric();
                 temperature_kelvin = light->GetTemperature();
-                m_colorPicker_light->SetColor(light->GetColor());
+                color_picker_light->SetColor(light->GetColor());
             }
         }
 
@@ -1035,7 +1094,7 @@ void Properties::ShowLight(spartan::Light* light) const
         // color and temperature are derived from atmospheric transmittance for directional lights
         if (!is_directional)
         {
-            property_color("Color", m_colorPicker_light.get(), "light color");
+            property_color("Color", color_picker_light.get(), "light color");
             property_float("Temperature", &temperature_kelvin, 10.0f, 1000.0f, 40000.0f, "color temperature in kelvin", "%.0f K");
         }
 
@@ -1206,9 +1265,9 @@ void Properties::ShowLight(spartan::Light* light) const
         {
             light->SetAreaHeight(area_height);
         }
-        if (!is_directional && m_colorPicker_light->GetColor() != light->GetColor())
+        if (!is_directional && color_picker_light->GetColor() != light->GetColor())
         {
-            light->SetColor(m_colorPicker_light->GetColor());
+            light->SetColor(color_picker_light->GetColor());
         }
         if (!is_directional && temperature_kelvin != light->GetTemperature())
         {
@@ -1222,30 +1281,30 @@ void Properties::ShowLight(spartan::Light* light) const
     component_end();
 }
 
-void Properties::ShowRender(spartan::Render* renderable) const
+void Properties::ShowRender(spartan::Render* render) const
 {
-    if (!renderable)
+    if (!render)
     {
         return;
     }
 
-    if (component_begin("Render", design::accent_renderable(), renderable))
+    if (component_begin("Render", design::accent_render(), render))
     {
         //= REFLECT ========================================================================================================
-        string& name_mesh                 = const_cast<string&>(renderable->GetMeshName());
-        Material* material                = renderable->GetMaterial();
-        uint32_t instance_count           = renderable->GetInstanceCount();
+        string& name_mesh                 = const_cast<string&>(render->GetMeshName());
+        Material* material                = render->GetMaterial();
+        uint32_t instance_count           = render->GetInstanceCount();
         static string name_material_empty = "N/A";
         string& name_material             = material ? const_cast<string&>(material->GetObjectName()) : name_material_empty;
-        bool cast_shadows                 = renderable->HasFlag(RenderableFlags::CastsShadows);
-        bool is_visible                   = renderable->IsVisible();
+        bool cast_shadows                 = render->HasFlag(RenderFlags::CastsShadows);
+        bool is_visible                   = render->IsVisible();
         //==================================================================================================================
 
         // mesh info
         property_input_text("Mesh", &name_mesh, true);
 
         // lod information
-        int lod_count = renderable->GetLodCount();
+        int lod_count = render->GetLodCount();
         if (lod_count > 0)
         {
             layout::separator();
@@ -1280,7 +1339,7 @@ void Properties::ShowRender(spartan::Render* renderable) const
                 for (int i = 0; i < lod_count; ++i)
                 {
                     ImGui::TableSetColumnIndex(i + 1);
-                    ImGui::Text("%d", renderable->GetVertexCount(i));
+                    ImGui::Text("%d", render->GetVertexCount(i));
                 }
 
                 // indices row
@@ -1290,7 +1349,7 @@ void Properties::ShowRender(spartan::Render* renderable) const
                 for (int i = 0; i < lod_count; ++i)
                 {
                     ImGui::TableSetColumnIndex(i + 1);
-                    ImGui::Text("%d", renderable->GetIndexCount(i));
+                    ImGui::Text("%d", render->GetIndexCount(i));
                 }
 
                 ImGui::EndTable();
@@ -1298,16 +1357,16 @@ void Properties::ShowRender(spartan::Render* renderable) const
             ImGui::PopStyleColor(5);
             ImGui::PopStyleVar();
 
-            if (!renderable->HasInstancing())
+            if (!render->HasInstancing())
             {
                 char lod_buf[32];
-                std::snprintf(lod_buf, sizeof(lod_buf), "%u", renderable->GetLodIndex());
+                std::snprintf(lod_buf, sizeof(lod_buf), "%u", render->GetLodIndex());
                 property_text("Current LOD", lod_buf);
             }
         }
 
         // instancing
-        if (instance_count > 1 || renderable->HasInstancing())
+        if (instance_count > 1 || render->HasInstancing())
         {
             layout::separator();
             layout::section_header("Instancing");
@@ -1316,11 +1375,11 @@ void Properties::ShowRender(spartan::Render* renderable) const
             std::snprintf(buf, sizeof(buf), "%u", instance_count);
             property_text("Instances", buf);
 
-            if (renderable->HasInstancing() && ImGui::TreeNode("Instance Transforms"))
+            if (render->HasInstancing() && ImGui::TreeNode("Instance Transforms"))
             {
-                for (uint32_t i = 0; i < renderable->GetInstanceCount(); ++i)
+                for (uint32_t i = 0; i < render->GetInstanceCount(); ++i)
                 {
-                    Matrix instance = renderable->GetInstance(i, true);
+                    Matrix instance = render->GetInstance(i, true);
 
                     ImGui::PushID(static_cast<int>(i));
 
@@ -1360,10 +1419,10 @@ void Properties::ShowRender(spartan::Render* renderable) const
         layout::section_header("Rendering");
 
         // draw distance
-        float draw_distance = renderable->GetMaxRenderDistance();
+        float draw_distance = render->GetMaxRenderDistance();
         if (property_float("Draw Distance", &draw_distance, 1.0f, 0.0f, 10000.0f, "maximum render distance", "%.0f m"))
         {
-            renderable->SetMaxRenderDistance(draw_distance);
+            render->SetMaxRenderDistance(draw_distance);
         }
 
         // material
@@ -1382,10 +1441,10 @@ void Properties::ShowRender(spartan::Render* renderable) const
             ImGui::SameLine(0, design::spacing_sm);
             if (file_selection::browse_button("browse_Material"))
             {
-                file_selection::open([renderable](const std::string& path) {
+                file_selection::open([render](const std::string& path) {
                     if (FileSystem::IsEngineMaterialFile(path))
                     {
-                        renderable->SetMaterial(path);
+                        render->SetMaterial(path);
                     }
                 });
             }
@@ -1396,7 +1455,7 @@ void Properties::ShowRender(spartan::Render* renderable) const
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 2));
             if (ImGuiSp::button("x"))
             {
-                renderable->SetDefaultMaterial();
+                render->SetDefaultMaterial();
             }
             ImGui::PopStyleVar();
             ImGui::PopID();
@@ -1414,7 +1473,7 @@ void Properties::ShowRender(spartan::Render* renderable) const
             {
                 if (payload->path[0] != '\0' && FileSystem::IsEngineMaterialFile(payload->path))
                 {
-                    renderable->SetMaterial(payload->path);
+                    render->SetMaterial(payload->path);
                 }
             }
         }
@@ -1425,7 +1484,7 @@ void Properties::ShowRender(spartan::Render* renderable) const
         property_text("Visible", is_visible ? "Yes" : "No", "current visibility state");
 
         //= MAP =========================================================
-        renderable->SetFlag(RenderableFlags::CastsShadows, cast_shadows);
+        render->SetFlag(RenderFlags::CastsShadows, cast_shadows);
         //===============================================================
     }
     component_end();
@@ -1627,31 +1686,29 @@ void Properties::ShowPhysics(Physics* body) const
     component_end();
 }
 
-void Properties::ShowMaterial(Material* material, Render* renderable) const
+void Properties::ShowMaterial(Material* material, Render* render) const
 {
     if (!material)
     {
         return;
     }
 
-    const bool default_open = renderable == nullptr;
+    const bool default_open = render == nullptr;
     if (component_begin("Material", design::accent_material(), nullptr, false, true, default_open))
     {
-        // when shown with a renderable, uv edits go to the renderable's override, not the material asset,
-        // so multiple renderables sharing this material can each have their own uv tweak
-        // when shown standalone (no renderable), uv edits modify the material defaults instead
-        const bool uv_per_renderable = renderable != nullptr;
+        // with a render component uv edits go to its override, standalone they modify the material defaults
+        const bool uv_per_render = render != nullptr;
 
         //= REFLECT ================================================
-        math::Vector2 tiling = uv_per_renderable
-            ? Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY())
+        math::Vector2 tiling = uv_per_render
+            ? Vector2(render->ResolveUvTilingX(), render->ResolveUvTilingY())
             : Vector2(material->GetProperty(MaterialProperty::TextureTilingX), material->GetProperty(MaterialProperty::TextureTilingY));
 
-        math::Vector2 offset = uv_per_renderable
-            ? Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY())
+        math::Vector2 offset = uv_per_render
+            ? Vector2(render->ResolveUvOffsetX(), render->ResolveUvOffsetY())
             : Vector2(material->GetProperty(MaterialProperty::TextureOffsetX), material->GetProperty(MaterialProperty::TextureOffsetY));
 
-        m_material_color_picker->SetColor(Color(
+        color_picker_material->SetColor(Color(
             material->GetProperty(MaterialProperty::ColorR),
             material->GetProperty(MaterialProperty::ColorG),
             material->GetProperty(MaterialProperty::ColorB),
@@ -1671,15 +1728,15 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
 
         auto refresh_material_color_picker = [&]()
         {
-            tiling = uv_per_renderable
-                ? Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY())
+            tiling = uv_per_render
+                ? Vector2(render->ResolveUvTilingX(), render->ResolveUvTilingY())
                 : Vector2(material->GetProperty(MaterialProperty::TextureTilingX), material->GetProperty(MaterialProperty::TextureTilingY));
 
-            offset = uv_per_renderable
-                ? Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY())
+            offset = uv_per_render
+                ? Vector2(render->ResolveUvOffsetX(), render->ResolveUvOffsetY())
                 : Vector2(material->GetProperty(MaterialProperty::TextureOffsetX), material->GetProperty(MaterialProperty::TextureOffsetY));
 
-            m_material_color_picker->SetColor(Color(
+            color_picker_material->SetColor(Color(
                 material->GetProperty(MaterialProperty::ColorR),
                 material->GetProperty(MaterialProperty::ColorG),
                 material->GetProperty(MaterialProperty::ColorB),
@@ -1712,7 +1769,7 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
                 {
                     material->ApplyPaintPreset(
                         static_cast<MaterialPaintPreset>(paint_preset_index - 1),
-                        m_material_color_picker->GetColor()
+                        color_picker_material->GetColor()
                     );
                     refresh_material_color_picker();
                 }
@@ -1830,7 +1887,7 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
 
                 if (mat_property == MaterialProperty::ColorA)
                 {
-                    m_material_color_picker->Update();
+                    color_picker_material->Update();
                 }
                 else if (mat_property == MaterialProperty::Metalness)
                 {
@@ -2002,11 +2059,11 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
         }
 
         // inversion
-        bool invert_x = uv_per_renderable
-            ? renderable->ResolveUvInvertX() > 0.5f
+        bool invert_x = uv_per_render
+            ? render->ResolveUvInvertX() > 0.5f
             : material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
-        bool invert_y = uv_per_renderable
-            ? renderable->ResolveUvInvertY() > 0.5f
+        bool invert_y = uv_per_render
+            ? render->ResolveUvInvertY() > 0.5f
             : material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
         {
             layout::begin_property("Invert", "flip texture axes");
@@ -2027,15 +2084,15 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
 
         // rotation
         static vector<string> rotation_options = { "0", "90", "180", "270" };
-        const float rotation_source = uv_per_renderable
-            ? renderable->ResolveUvRotation()
+        const float rotation_source = uv_per_render
+            ? render->ResolveUvRotation()
             : material->GetProperty(MaterialProperty::TextureRotation);
         uint32_t rotation_index = static_cast<uint32_t>(rotation_source);
         if (property_combo("Rotation", rotation_options, &rotation_index, "rotate texture in 90 degree increments"))
         {
-            if (uv_per_renderable)
+            if (uv_per_render)
             {
-                renderable->GetMaterialOverrideMutable().uv_rotation = static_cast<float>(rotation_index);
+                render->GetMaterialOverrideMutable().uv_rotation = static_cast<float>(rotation_index);
             }
             else
             {
@@ -2079,14 +2136,14 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
             material->SetProperty(MaterialProperty::EmissiveFromAlbedo, emissive_from_albedo ? 1.0f : 0.0f);
         }
 
-        bool world_space_uv = uv_per_renderable
-            ? renderable->ResolveUvWorldSpace() != 0.0f
+        bool world_space_uv = uv_per_render
+            ? render->ResolveUvWorldSpace() != 0.0f
             : material->GetProperty(MaterialProperty::WorldSpaceUv) != 0.0f;
         if (property_toggle("World Space UV", &world_space_uv, "world-space texture coordinates"))
         {
-            if (uv_per_renderable)
+            if (uv_per_render)
             {
-                renderable->GetMaterialOverrideMutable().uv_world_space = world_space_uv ? 1.0f : 0.0f;
+                render->GetMaterialOverrideMutable().uv_world_space = world_space_uv ? 1.0f : 0.0f;
             }
             else
             {
@@ -2095,9 +2152,7 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
         }
 
         //= MAP ===============================================================================
-        // uv values: per-renderable override when a renderable is present, material default otherwise
-        // an edit lights up only the fields whose values actually changed, so untouched fields
-        // keep inheriting from the material default (uv_per_renderable nan sentinel)
+        // an edit lights up only the fields that changed, untouched ones keep inheriting through the nan sentinel
         auto write_override = [](float& target, float new_value, float resolved_value)
         {
             if (new_value != resolved_value)
@@ -2105,15 +2160,15 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
                 target = new_value;
             }
         };
-        if (uv_per_renderable)
+        if (uv_per_render)
         {
-            MaterialOverride& ovr = renderable->GetMaterialOverrideMutable();
-            write_override(ovr.uv_tiling_x, tiling.x,                    renderable->ResolveUvTilingX());
-            write_override(ovr.uv_tiling_y, tiling.y,                    renderable->ResolveUvTilingY());
-            write_override(ovr.uv_offset_x, offset.x,                    renderable->ResolveUvOffsetX());
-            write_override(ovr.uv_offset_y, offset.y,                    renderable->ResolveUvOffsetY());
-            write_override(ovr.uv_invert_x, invert_x ? 1.0f : 0.0f,      renderable->ResolveUvInvertX());
-            write_override(ovr.uv_invert_y, invert_y ? 1.0f : 0.0f,      renderable->ResolveUvInvertY());
+            MaterialOverride& ovr = render->GetMaterialOverrideMutable();
+            write_override(ovr.uv_tiling_x, tiling.x,                    render->ResolveUvTilingX());
+            write_override(ovr.uv_tiling_y, tiling.y,                    render->ResolveUvTilingY());
+            write_override(ovr.uv_offset_x, offset.x,                    render->ResolveUvOffsetX());
+            write_override(ovr.uv_offset_y, offset.y,                    render->ResolveUvOffsetY());
+            write_override(ovr.uv_invert_x, invert_x ? 1.0f : 0.0f,      render->ResolveUvInvertX());
+            write_override(ovr.uv_invert_y, invert_y ? 1.0f : 0.0f,      render->ResolveUvInvertY());
         }
         else
         {
@@ -2124,10 +2179,10 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
             material->SetProperty(MaterialProperty::TextureInvertX, invert_x ? 1.0f : 0.0f);
             material->SetProperty(MaterialProperty::TextureInvertY, invert_y ? 1.0f : 0.0f);
         }
-        material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().r);
-        material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().g);
-        material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().b);
-        material->SetProperty(MaterialProperty::ColorA, m_material_color_picker->GetColor().a);
+        material->SetProperty(MaterialProperty::ColorR, color_picker_material->GetColor().r);
+        material->SetProperty(MaterialProperty::ColorG, color_picker_material->GetColor().g);
+        material->SetProperty(MaterialProperty::ColorB, color_picker_material->GetColor().b);
+        material->SetProperty(MaterialProperty::ColorA, color_picker_material->GetColor().a);
         //=====================================================================================
     }
 
@@ -2168,7 +2223,7 @@ void Properties::ShowCamera(Camera* camera) const
         //================================================================================
 
         // background
-        property_color("Background", m_colorPicker_camera.get(), "clear color");
+        property_color("Background", color_picker_camera.get(), "clear color");
 
         // projection
         uint32_t proj_index = static_cast<uint32_t>(camera->GetProjectionType());
@@ -3513,8 +3568,8 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         float flipbook_rows        = static_cast<float>(particle_system->GetFlipbookRows());
         float flipbook_columns     = static_cast<float>(particle_system->GetFlipbookColumns());
         float flipbook_fps         = particle_system->GetFlipbookFps();
-        m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
-        m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
+        color_picker_particle_start->SetColor(particle_system->GetStartColor());
+        color_picker_particle_end->SetColor(particle_system->GetEndColor());
         //===============================================================
 
         // preset selector
@@ -3551,8 +3606,8 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             wind_influence = particle_system->GetWindInfluence();
             velocity_inheritance = particle_system->GetVelocityInheritance();
             velocity_stretch = particle_system->GetVelocityStretch();
-            m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
-            m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
+            color_picker_particle_start->SetColor(particle_system->GetStartColor());
+            color_picker_particle_end->SetColor(particle_system->GetEndColor());
         }
 
         layout::separator();
@@ -3773,22 +3828,22 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
 
         // start color
         ImGui::PushID("particle_start_color");
-        property_color("Start Color", m_colorPicker_particle_start.get(), "particle color at birth");
+        property_color("Start Color", color_picker_particle_start.get(), "particle color at birth");
         ImGui::PopID();
 
         // end color
         ImGui::PushID("particle_end_color");
-        property_color("End Color", m_colorPicker_particle_end.get(), "particle color at death");
+        property_color("End Color", color_picker_particle_end.get(), "particle color at death");
         ImGui::PopID();
 
         //= MAP ==========================================================
-        if (m_colorPicker_particle_start->GetColor() != particle_system->GetStartColor())
+        if (color_picker_particle_start->GetColor() != particle_system->GetStartColor())
         {
-            particle_system->SetStartColor(m_colorPicker_particle_start->GetColor());
+            particle_system->SetStartColor(color_picker_particle_start->GetColor());
         }
-        if (m_colorPicker_particle_end->GetColor() != particle_system->GetEndColor())
+        if (color_picker_particle_end->GetColor() != particle_system->GetEndColor())
         {
-            particle_system->SetEndColor(m_colorPicker_particle_end->GetColor());
+            particle_system->SetEndColor(color_picker_particle_end->GetColor());
         }
         //=================================================================
     }

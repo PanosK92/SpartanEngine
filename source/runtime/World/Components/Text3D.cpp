@@ -577,7 +577,7 @@ namespace spartan
             m_mesh.reset();
             m_render_bound     = false;
             m_created_render   = false;
-            m_bound_render_id = 0;
+            m_bound_render_id  = 0;
         }
 
         if (
@@ -1170,7 +1170,7 @@ namespace spartan
         m_mesh.reset();
         m_created_render   = false;
         m_render_bound     = false;
-        m_bound_render_id = 0;
+        m_bound_render_id  = 0;
         m_dirty            = false;
     }
 }

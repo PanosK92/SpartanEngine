@@ -41,37 +41,36 @@ namespace spartan
         const float B_G = -0.0755148492f;
 
         // Ensure temperature is above absolute zero
-        if (temperature_kelvin < 0) {
-            // Handle error
-        }
+        SP_ASSERT(temperature_kelvin >= 0.0f);
 
-        float temp = temperature_kelvin / 100.0f;
+        // the helland fit is expressed in hundreds of kelvin
+        const float kelvin_100s = temperature_kelvin / 100.0f;
 
         r = 0.0f;
         g = 0.0f;
         b = 0.0f;
 
-        if (temp <= 66)
+        if (kelvin_100s <= 66)
         {
             r = 255;
-            g = temp;
+            g = kelvin_100s;
             g = 99.4708025861f * log(g) - 161.1195681661f;
 
-            if (temp <= 19)
+            if (kelvin_100s <= 19)
             {
                 b = 0;
             }
             else
             {
-                b = temp - 10.0f;
+                b = kelvin_100s - 10.0f;
                 b = 138.5177312231f * log(b) - 305.0447927307f;
             }
         }
         else
         {
-            r = temp - 60.0f;
+            r = kelvin_100s - 60.0f;
             r = A_R * pow(r, B_R);
-            g = temp - 60.0f;
+            g = kelvin_100s - 60.0f;
             g = A_G * pow(g, B_G);
             b = 255;
         }

@@ -140,7 +140,7 @@ namespace spartan
         Car() = default;
         ~Car() = default;
 
-        // helper to compute bounding box from all renderables in hierarchy
+        // helper to compute bounding box from all render components in hierarchy
         math::BoundingBox GetCarAABB() const;
 
         // creation helpers

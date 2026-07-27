@@ -35,6 +35,7 @@ public:
     ~McpAssistant() override;
 
     void OnTick() override;
+    void OnVisible() override;
     void OnTickVisible() override;
     void OnInvisible() override;
 

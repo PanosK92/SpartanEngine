@@ -134,11 +134,11 @@ namespace spartan
             uint32_t accel_idx = g_ctx.accel_count++;
             g_ctx.accel_handles[accel_idx] = accel;
 
-            auto& info = g_ctx.accel_structs[accel_idx];
-            info.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-            info.pNext                      = nullptr;
-            info.accelerationStructureCount = 1;
-            info.pAccelerationStructures    = &g_ctx.accel_handles[accel_idx];
+            auto& accel_write = g_ctx.accel_structs[accel_idx];
+            accel_write.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+            accel_write.pNext                      = nullptr;
+            accel_write.accelerationStructureCount = 1;
+            accel_write.pAccelerationStructures    = &g_ctx.accel_handles[accel_idx];
 
             uint32_t write_idx = g_ctx.write_count++;
             auto& write = g_ctx.writes[write_idx];

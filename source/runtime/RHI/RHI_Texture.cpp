@@ -45,9 +45,7 @@ namespace spartan
     {
         static mutex compress_mutex;
 
-        // pool of transient buffers reused across compress() calls, sized to the largest
-        // texture seen and grown geometrically, eliminates per texture vmaCreateBuffer churn
-        // and the vk_error_out_of_device_memory thrashing that follows it
+        // transient buffers pooled across compress calls, per texture vmaCreateBuffer churn thrashes device memory
         namespace pool
         {
             // device local input buffer for compressed shaders to read from fast vram
@@ -276,9 +274,7 @@ namespace spartan
                 return false;
             }
 
-            // the vulkan spec guarantees at least 65535 groups per dispatch axis,
-            // bail out if the total work is so large that even a 2D dispatch
-            // can't represent it, extremely unlikely, would need over 17 billion blocks
+            // the spec only guarantees 65535 groups per axis, bail when even a 2d dispatch cannot cover the work
             {
                 constexpr uint32_t max_groups_per_axis = 65535;
                 uint32_t max_dispatch_groups = (mip_block_counts[0] + 3) / 4;
@@ -345,10 +341,7 @@ namespace spartan
                 return f;
             };
 
-            // single submission, copy + every mip dispatch + readback copy share one cmd list,
-            // each mip writes a disjoint slice of the output buffer so consecutive dispatches
-            // need no inter dispatch barrier, only the boundaries do (transfer to compute,
-            // compute to transfer)
+            // one cmd list for the copy, every mip dispatch and the readback, each mip writes a disjoint slice so only the boundaries need barriers
             Breadcrumbs::BeginMarker("texture_compress_gpu_dispatch");
             {
                 RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Compute);
@@ -573,7 +566,7 @@ namespace spartan
         const RHI_Format format,
         const uint32_t flags,
         const char* name,
-        vector<RHI_Texture_Slice> data
+        vector<RHI_Texture_Slice> slices
     ) : IResource(ResourceType::Texture)
     {
         m_type             = type;
@@ -584,7 +577,7 @@ namespace spartan
         m_format           = format;
         m_flags            = flags;
         m_object_name      = name;
-        m_slices           = data;
+        m_slices           = move(slices);
         m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
@@ -678,8 +671,8 @@ namespace spartan
             for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
                 const auto& mip = slice.mips[mip_index];
-                const uint64_t sz = static_cast<uint64_t>(mip.bytes.size());
-                if (!binary_format::write_all(ofs, &sz, sizeof(sz)) || !binary_format::write_all(ofs, mip.bytes.data(), mip.bytes.size()))
+                const uint64_t byte_count = static_cast<uint64_t>(mip.bytes.size());
+                if (!binary_format::write_all(ofs, &byte_count, sizeof(byte_count)) || !binary_format::write_all(ofs, mip.bytes.data(), mip.bytes.size()))
                 {
                     SP_LOG_ERROR("SaveToFile failed while writing slice %u mip %u", array_index, mip_index);
                     return;
@@ -764,8 +757,8 @@ namespace spartan
 
                 for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
                 {
-                    uint64_t sz = 0;
-                    if (!binary_format::read_all(ifs, &sz, sizeof(sz)) || sz == 0)
+                    uint64_t byte_count = 0;
+                    if (!binary_format::read_all(ifs, &byte_count, sizeof(byte_count)) || byte_count == 0)
                     {
                         SP_LOG_ERROR("Failed to read size for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load
@@ -774,8 +767,8 @@ namespace spartan
                     }
 
                     RHI_Texture_Mip& mip = slice.mips[mip_index];
-                    mip.bytes.resize(static_cast<size_t>(sz));
-                    if (!binary_format::read_all(ifs, mip.bytes.data(), static_cast<size_t>(sz)))
+                    mip.bytes.resize(static_cast<size_t>(byte_count));
+                    if (!binary_format::read_all(ifs, mip.bytes.data(), static_cast<size_t>(byte_count)))
                     {
                         SP_LOG_ERROR("Failed to read data for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
                         Breadcrumbs::EndMarker(); // texture_load

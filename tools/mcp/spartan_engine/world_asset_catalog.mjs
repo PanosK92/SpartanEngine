@@ -6,21 +6,38 @@ const asset_types = new Set([
   "mesh",
   "material",
   "prefab",
+  "texture",
 ]);
 const type_folders = {
   mesh: "meshes",
   material: "materials",
   prefab: "prefabs",
+  texture: "textures",
 };
 const type_extensions = {
   mesh: ".mesh",
   material: ".xml",
   prefab: ".prefab",
+  texture: ".png",
 };
+const catalog_queues = new Map();
+
+function semantic_asset_name(value, fallback = "asset")
+{
+  const normalized = String(value ?? fallback)
+    .trim()
+    .replace(
+      /^(?:build|create|generate|make)(?=[A-Z_\-\s])/,
+      "",
+    )
+    .replace(/^[_\-\s]+/, "");
+  return normalized || fallback;
+}
 
 function safe_name(value, fallback = "asset")
 {
-  return String(value ?? fallback)
+  return semantic_asset_name(value, fallback)
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "") ||
@@ -36,6 +53,14 @@ function unique_strings(values)
   )];
 }
 
+function finite_number(value, fallback = 0)
+{
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? number
+    : fallback;
+}
+
 function normalize_constraints(value)
 {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -43,10 +68,10 @@ function normalize_constraints(value)
     return {};
   }
   return {
+    ...value,
     dimensions: value.dimensions ?? {},
     style: unique_strings(value.style),
     materials: unique_strings(value.materials),
-    ...value,
   };
 }
 
@@ -54,6 +79,7 @@ function normalize_engine_path(value)
 {
   const normalized = String(value ?? "")
     .replaceAll("\\", "/")
+    .replace(/^(?:\.\/)+/g, "")
     .replace(/^\/+/g, "");
   if (
     !normalized ||
@@ -67,24 +93,14 @@ function normalize_engine_path(value)
   return normalized;
 }
 
-function safe_world_directory(value)
-{
-  const normalized = normalize_engine_path(value);
-  if (
-    !/^project\/[a-z0-9_-]+_resources$/i.test(normalized)
-  )
-  {
-    throw new Error(
-      "world resource directory must match project/<world>_resources",
-    );
-  }
-  return normalized;
-}
-
 function local_path(project_root, engine_path)
 {
   const relative = normalize_engine_path(engine_path);
-  const root = path.resolve(project_root);
+  const repository_root = path.resolve(project_root);
+  const root = path.join(
+    repository_root,
+    "binaries",
+  );
   const resolved = path.resolve(root, ...relative.split("/"));
   if (
     resolved !== root &&
@@ -96,9 +112,9 @@ function local_path(project_root, engine_path)
   return resolved;
 }
 
-function library_paths(project_root, resource_directory)
+function library_paths(project_root)
 {
-  const directory = safe_world_directory(resource_directory);
+  const directory = "project";
   const engine_root = `${directory}/mcp_resources`;
   return {
     directory,
@@ -128,13 +144,38 @@ async function path_exists(value)
 async function write_json_atomic(file_path, value)
 {
   const temporary_path =
-    `${file_path}.${process.pid}.${Date.now()}.tmp`;
+    `${file_path}.${process.pid}.${Date.now()}.` +
+    `${Math.random().toString(16).slice(2)}.tmp`;
   await fs.writeFile(
     temporary_path,
     `${JSON.stringify(value, null, 2)}\n`,
     "utf8",
   );
   await fs.rename(temporary_path, file_path);
+}
+
+async function with_catalog_lock(key, operation)
+{
+  const previous = catalog_queues.get(key) ?? Promise.resolve();
+  let release;
+  const current = new Promise((resolve) =>
+  {
+    release = resolve;
+  });
+  catalog_queues.set(key, current);
+  await previous;
+  try
+  {
+    return await operation();
+  }
+  finally
+  {
+    release();
+    if (catalog_queues.get(key) === current)
+    {
+      catalog_queues.delete(key);
+    }
+  }
 }
 
 async function ensure_catalog(
@@ -167,7 +208,7 @@ async function ensure_catalog(
       paths.catalog_local_path,
       {
         schema_version: catalog_version,
-        world_resource_directory: paths.directory,
+        project_resource_directory: paths.directory,
         assets: {},
       },
     );
@@ -255,6 +296,22 @@ function source_file_path(paths, asset_id, number)
   ].join("/");
 }
 
+function thumbnail_file_path(
+  paths,
+  asset_id,
+  number,
+  extension,
+)
+{
+  const version = `v${String(number).padStart(4, "0")}`;
+  return [
+    paths.engine_root,
+    "thumbnails",
+    asset_id,
+    `${version}${extension || ".png"}`,
+  ].join("/");
+}
+
 async function copy_immutable(
   project_root,
   source_path,
@@ -283,6 +340,135 @@ async function copy_immutable(
   await fs.copyFile(source, destination);
 }
 
+// prefabs reference meshes and materials that live outside the library, those
+// files are pruned when the world is saved without them, so every referenced
+// file is copied into the library and the copied prefab is repointed at it
+async function internalize_prefab_dependencies(
+  project_root,
+  paths,
+  asset_id,
+  number,
+  prefab_path,
+)
+{
+  const prefab_local = local_path(project_root, prefab_path);
+  const version = `v${String(number).padStart(4, "0")}`;
+  const dependency_root =
+    `${paths.engine_root}/dependencies/${asset_id}/${version}`;
+  let text = await fs.readFile(prefab_local, "utf8");
+  const copied = [];
+  const missing = [];
+
+  for (const attribute of ["mesh_path", "material_path"])
+  {
+    const references = new Set(
+      [...text.matchAll(
+        new RegExp(`${attribute}="([^"]+)"`, "g"),
+      )].map((match) => match[1]),
+    );
+    for (const reference of references)
+    {
+      let normalized = null;
+      try
+      {
+        normalized = normalize_engine_path(reference);
+      }
+      catch
+      {
+        continue;
+      }
+      const source_local = local_path(project_root, normalized);
+      if (!(await path_exists(source_local)))
+      {
+        missing.push(normalized);
+        continue;
+      }
+
+      const destination =
+        `${dependency_root}/${path.posix.basename(normalized)}`;
+      const destination_local = local_path(project_root, destination);
+      await fs.mkdir(
+        path.dirname(destination_local),
+        { recursive: true },
+      );
+      await fs.copyFile(source_local, destination_local);
+      if (attribute === "material_path")
+      {
+        let material_text = await fs.readFile(
+          destination_local,
+          "utf8",
+        );
+        const texture_references = new Set(
+          [...material_text.matchAll(
+            /texture_path="([^"]+)"/g,
+          )]
+            .map((match) => match[1])
+            .filter(Boolean),
+        );
+        for (const texture_reference of texture_references)
+        {
+          let texture_path = null;
+          try
+          {
+            texture_path = normalize_engine_path(
+              texture_reference,
+            );
+          }
+          catch
+          {
+            continue;
+          }
+          if (texture_path.startsWith(`${dependency_root}/`))
+          {
+            continue;
+          }
+
+          const texture_local = local_path(
+            project_root,
+            texture_path,
+          );
+          if (!(await path_exists(texture_local)))
+          {
+            missing.push(texture_path);
+            continue;
+          }
+
+          const texture_destination =
+            `${dependency_root}/${path.posix.basename(texture_path)}`;
+          const texture_destination_local = local_path(
+            project_root,
+            texture_destination,
+          );
+          await fs.copyFile(
+            texture_local,
+            texture_destination_local,
+          );
+          material_text = material_text
+            .split(`"${texture_reference}"`)
+            .join(`"${texture_destination}"`);
+          copied.push(texture_destination);
+        }
+        await fs.writeFile(
+          destination_local,
+          material_text,
+          "utf8",
+        );
+      }
+      text = text.split(`"${reference}"`).join(`"${destination}"`);
+      copied.push(destination);
+    }
+  }
+
+  if (copied.length > 0)
+  {
+    await fs.writeFile(prefab_local, text, "utf8");
+  }
+  return {
+    copied: [...new Set(copied)],
+    missing: [...new Set(missing)],
+  };
+}
+
 function asset_summary(asset)
 {
   const active = find_version(asset, asset.active_version);
@@ -301,7 +487,7 @@ function asset_summary(asset)
 
 export async function resolve_world_resource_directory(
   send_command,
-  world = null,
+  _world = null,
 )
 {
   const native = await send_command(
@@ -310,31 +496,16 @@ export async function resolve_world_resource_directory(
   );
   if (native?.ok)
   {
-    const directory =
-      native.directory ??
-      native.resource_directory ??
-      native.path;
-    if (directory)
+    const directory = normalize_engine_path(
+      native.mcp_resources?.root ??
+      "project/mcp_resources",
+    ).replace(/\/+$/g, "");
+    if (directory === "project/mcp_resources")
     {
-      return safe_world_directory(directory);
+      return directory;
     }
   }
-  let fallback_world = world;
-  if (!fallback_world)
-  {
-    fallback_world = await send_command("world_summary", {});
-  }
-  const world_name =
-    fallback_world?.name ??
-    fallback_world?.file_path ??
-    fallback_world?.path ??
-    "world";
-  return `project/${safe_name(
-    path.posix.basename(
-      String(world_name).replaceAll("\\", "/"),
-    ).replace(/\.[^.]+$/g, ""),
-    "world",
-  )}_resources`;
+  return "project/mcp_resources";
 }
 
 export async function world_asset_search(
@@ -352,6 +523,13 @@ export async function world_asset_search(
     .split(/[^a-z0-9_-]+/g)
     .filter(Boolean);
   const required_tags = unique_strings(args.tags);
+  const required_styles = unique_strings(args.style);
+  const required_materials = unique_strings(args.materials);
+  const required_dimensions =
+    args.dimensions &&
+    typeof args.dimensions === "object"
+      ? args.dimensions
+      : {};
   const matches = Object.values(catalog.assets)
     .filter((asset) =>
     {
@@ -361,19 +539,68 @@ export async function world_asset_search(
       }
       if (
         required_tags.some(
-          (tag) => !asset.tags.includes(tag),
+          (tag) => !(asset.tags ?? []).includes(tag),
         )
       )
       {
         return false;
       }
+      if (
+        required_styles.some(
+          (style) =>
+            !(asset.constraints?.style ?? []).includes(style),
+        ) ||
+        required_materials.some(
+          (material) =>
+            !(asset.constraints?.materials ?? []).includes(material),
+        )
+      )
+      {
+        return false;
+      }
+      for (
+        const [dimension, requested] of
+        Object.entries(required_dimensions)
+      )
+      {
+        const available =
+          asset.constraints?.dimensions?.[dimension];
+        if (available === undefined)
+        {
+          return false;
+        }
+        if (
+          typeof requested === "number" &&
+          Number(available) !== requested
+        )
+        {
+          return false;
+        }
+        if (
+          requested &&
+          typeof requested === "object" &&
+          (
+            (
+              requested.min !== undefined &&
+              Number(available) < Number(requested.min)
+            ) ||
+            (
+              requested.max !== undefined &&
+              Number(available) > Number(requested.max)
+            )
+          )
+        )
+        {
+          return false;
+        }
+      }
       const searchable = [
         asset.id,
         asset.name,
-        ...asset.aliases,
-        ...asset.tags,
-        ...asset.constraints.style,
-        ...asset.constraints.materials,
+        ...(asset.aliases ?? []),
+        ...(asset.tags ?? []),
+        ...(asset.constraints?.style ?? []),
+        ...(asset.constraints?.materials ?? []),
       ].join(" ").toLowerCase();
       return terms.every((term) => searchable.includes(term));
     })
@@ -412,6 +639,13 @@ export async function world_asset_inspect(
     };
   }
   const version = find_version(asset, args.version);
+  if (!version)
+  {
+    return {
+      ok: false,
+      error: "asset version not found",
+    };
+  }
   return {
     ok: true,
     catalog_path: paths.catalog_path,
@@ -420,7 +654,7 @@ export async function world_asset_inspect(
   };
 }
 
-export async function world_asset_register(
+async function world_asset_register_unlocked(
   project_root,
   resource_directory,
   args,
@@ -448,7 +682,10 @@ export async function world_asset_register(
   }
   const asset = existing ?? {
     id: asset_id,
-    name: String(args.name ?? asset_id),
+    name: semantic_asset_name(
+      args.name,
+      asset_id,
+    ),
     type,
     aliases: [],
     tags: [],
@@ -465,6 +702,12 @@ export async function world_asset_register(
   const extension =
     path.posix.extname(source_path) ||
     type_extensions[type];
+  if (extension.toLowerCase() !== type_extensions[type])
+  {
+    throw new Error(
+      `${type} assets must use ${type_extensions[type]} files`,
+    );
+  }
   const destination_path = version_file_path(
     paths,
     type,
@@ -472,11 +715,41 @@ export async function world_asset_register(
     number,
     extension,
   );
+  if (!(await path_exists(local_path(project_root, source_path))))
+  {
+    throw new Error(
+      `asset source file does not exist: ${source_path}`,
+    );
+  }
+  if (
+    args.thumbnail_path &&
+    !(
+      await path_exists(
+        local_path(project_root, args.thumbnail_path),
+      )
+    )
+  )
+  {
+    throw new Error(
+      `asset thumbnail does not exist: ${args.thumbnail_path}`,
+    );
+  }
   await copy_immutable(
     project_root,
     source_path,
     destination_path,
   );
+  let dependencies = null;
+  if (type === "prefab")
+  {
+    dependencies = await internalize_prefab_dependencies(
+      project_root,
+      paths,
+      asset_id,
+      number,
+      destination_path,
+    );
+  }
   let immutable_source_path = null;
   if (args.source !== undefined)
   {
@@ -492,19 +765,60 @@ export async function world_asset_register(
     await fs.mkdir(path.dirname(source_local), { recursive: true });
     await write_json_atomic(source_local, args.source);
   }
+  let immutable_thumbnail_path = null;
+  if (args.thumbnail_path)
+  {
+    const thumbnail_source = normalize_engine_path(
+      args.thumbnail_path,
+    );
+    immutable_thumbnail_path = thumbnail_file_path(
+      paths,
+      asset_id,
+      number,
+      path.posix.extname(thumbnail_source),
+    );
+    await copy_immutable(
+      project_root,
+      thumbnail_source,
+      immutable_thumbnail_path,
+    );
+  }
   const version = {
     id: `v${String(number).padStart(4, "0")}`,
     number,
     path: destination_path,
     source_path: immutable_source_path,
+    thumbnail_path: immutable_thumbnail_path,
+    dependencies: dependencies?.copied ?? [],
+    missing_dependencies: dependencies?.missing ?? [],
     parent_version:
       args.parent_version ??
       asset.active_version,
     created_at: new Date().toISOString(),
     quality: {
-      score: Number(args.quality_score ?? 0),
+      score: Math.min(
+        100,
+        Math.max(
+          0,
+          finite_number(args.quality_score),
+        ),
+      ),
       verified: Boolean(args.verified),
       checks: args.checks ?? {},
+      required_checks:
+        unique_strings(args.required_checks).length > 0
+          ? unique_strings(args.required_checks)
+          : type === "material"
+            ? [
+                "material_valid",
+                "visual_review",
+              ]
+            : [
+                "geometry_valid",
+                "collision_coverage",
+                "material_coverage",
+                "visual_review",
+              ],
     },
     notes: String(args.notes ?? ""),
   };
@@ -522,7 +836,16 @@ export async function world_asset_register(
     ...normalize_constraints(args.constraints),
   };
   asset.versions.push(version);
-  if (!asset.active_version && args.promote !== false)
+  const initial_promotion_checks =
+    version.quality.required_checks;
+  if (
+    !asset.active_version &&
+    args.promote === true &&
+    version.quality.verified &&
+    initial_promotion_checks.every(
+      (check) => version.quality.checks[check] === true,
+    )
+  )
   {
     asset.active_version = version.id;
   }
@@ -535,6 +858,26 @@ export async function world_asset_register(
     version,
     catalog_path: paths.catalog_path,
   };
+}
+
+export async function world_asset_register(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  const paths = library_paths(
+    project_root,
+    resource_directory,
+  );
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_asset_register_unlocked(
+      project_root,
+      resource_directory,
+      args,
+    ),
+  );
 }
 
 export async function world_asset_fork(
@@ -579,14 +922,17 @@ export async function world_asset_fork(
     parent_version: version.id,
     resource_path: version.path,
     source:
-      version.source_path
+      args.draft_source ??
+      (
+        version.source_path
         ? JSON.parse(
           await fs.readFile(
             local_path(project_root, version.source_path),
             "utf8",
           ),
         )
-        : {},
+        : {}
+      ),
     created_at: new Date().toISOString(),
   };
   const draft_local = local_path(project_root, draft_path);
@@ -649,7 +995,7 @@ export async function world_asset_compare(
   };
 }
 
-export async function world_asset_promote(
+async function world_asset_promote_unlocked(
   project_root,
   resource_directory,
   args,
@@ -680,14 +1026,38 @@ export async function world_asset_promote(
       error: "candidate version not found",
     };
   }
-  const required_checks = unique_strings(
-    args.required_checks ?? [],
+  const requested_checks = unique_strings(args.required_checks);
+  const candidate_checks = unique_strings(
+    candidate.quality.required_checks,
   );
+  const required_checks = unique_strings([
+    ...(
+      candidate_checks.length > 0
+        ? candidate_checks
+        : asset.type === "material"
+          ? [
+              "material_valid",
+              "visual_review",
+            ]
+          : [
+              "geometry_valid",
+              "collision_coverage",
+              "material_coverage",
+              "visual_review",
+            ]
+    ),
+    ...requested_checks,
+  ]);
   const failed_checks = required_checks.filter(
     (check) => candidate.quality.checks?.[check] !== true,
   );
-  const threshold = Number(args.threshold ?? 1);
-  const current_score = Number(current?.quality?.score ?? 0);
+  const threshold = Math.max(
+    0,
+    finite_number(args.threshold, 1),
+  );
+  const current_score = finite_number(
+    current?.quality?.score,
+  );
   if (!candidate.quality.verified)
   {
     return {
@@ -727,6 +1097,26 @@ export async function world_asset_promote(
   };
 }
 
+export async function world_asset_promote(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  const paths = library_paths(
+    project_root,
+    resource_directory,
+  );
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_asset_promote_unlocked(
+      project_root,
+      resource_directory,
+      args,
+    ),
+  );
+}
+
 export async function world_asset_load(
   project_root,
   resource_directory,
@@ -745,6 +1135,13 @@ export async function world_asset_load(
   }
   const asset = inspected.asset;
   const version = inspected.version;
+  if (!args.version && !asset.active_version)
+  {
+    return {
+      ok: false,
+      error: "asset has no active promoted version",
+    };
+  }
   if (!version)
   {
     return {
@@ -808,6 +1205,49 @@ export async function world_material_inspect(
   };
 }
 
+export async function world_material_fork(
+  project_root,
+  resource_directory,
+  args,
+  send_command,
+)
+{
+  const inspected = await world_asset_inspect(
+    project_root,
+    resource_directory,
+    args,
+  );
+  if (!inspected.ok)
+  {
+    return inspected;
+  }
+  if (inspected.asset.type !== "material")
+  {
+    return {
+      ok: false,
+      error: "asset is not a material",
+    };
+  }
+  const material = await send_command(
+    "material_get",
+    { path: inspected.version.path },
+  );
+  if (!material.ok)
+  {
+    return material;
+  }
+  return world_asset_fork(
+    project_root,
+    resource_directory,
+    {
+      ...args,
+      draft_source:
+        material.material ??
+        material,
+    },
+  );
+}
+
 export async function world_material_publish(
   project_root,
   resource_directory,
@@ -843,8 +1283,23 @@ export async function world_material_publish(
     number,
     ".xml",
   );
-  const source =
-    args.source ??
+  let source = args.source;
+  if (!source && args.draft_path)
+  {
+    const draft_path = normalize_engine_path(args.draft_path);
+    if (!draft_path.startsWith(`${paths.engine_root}/sources/`))
+    {
+      throw new Error("material draft must be under mcp_resources/sources");
+    }
+    const draft = JSON.parse(
+      await fs.readFile(
+        local_path(project_root, draft_path),
+        "utf8",
+      ),
+    );
+    source = draft.source;
+  }
+  source ??=
     {
       properties: args.properties ?? {},
       textures: args.textures ?? {},
@@ -854,6 +1309,8 @@ export async function world_material_publish(
     {
       path: material_path,
       name: args.name ?? inspected.asset.name,
+      library_asset: true,
+      skip_catalog_registration: true,
     },
   );
   if (!created.ok)
@@ -928,6 +1385,18 @@ export async function auto_register_world_asset(
   {
     return null;
   }
+  if (args.skip_catalog_registration === true)
+  {
+    return null;
+  }
+  if (
+    command !== "mesh_raw_create" &&
+    args.library_asset !== true &&
+    args.catalog_register !== true
+  )
+  {
+    return null;
+  }
   let type = null;
   let resource_path = null;
   let name = args.name;
@@ -959,14 +1428,21 @@ export async function auto_register_world_asset(
     type = "prefab";
     resource_path = result.path ?? args.path;
   }
+  else if (command === "texture_generate")
+  {
+    type = "texture";
+    resource_path = result.path ?? args.path;
+  }
   if (!type || !resource_path)
   {
     return null;
   }
+  const normalized_resource_path = String(resource_path)
+    .replaceAll("\\", "/");
   if (
-    String(resource_path)
-      .replaceAll("\\", "/")
-      .includes("/mcp_resources/")
+    /\/mcp_resources\/(?:meshes|materials|prefabs|textures)\/[^/]+\/v\d+\.[^/]+$/i.test(
+      normalized_resource_path,
+    )
   )
   {
     return null;
@@ -989,7 +1465,7 @@ export async function auto_register_world_asset(
         tags: args.tags,
         constraints: args.constraints,
         source: args.source ?? args,
-        promote: true,
+        promote: false,
         notes: `automatically registered from ${command}`,
       },
     );

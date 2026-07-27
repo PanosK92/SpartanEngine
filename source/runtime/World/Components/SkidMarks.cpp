@@ -115,9 +115,7 @@ namespace spartan
             Vector3 normal  = m_physics->GetWheelContactNormal(wheel);
             Vector3 contact = m_physics->GetWheelContactPoint(wheel);
 
-            // the visual wheel hub is far smoother than the convex sweep contact, which jitters laterally on a
-            // spinning or locked wheel and is the source of the remaining zigzag, place the mark directly under
-            // the hub projected onto the contact plane so it lines up with the tire exactly
+            // placed under the hub projected onto the contact plane, the sweep contact jitters laterally and zigzags the mark
             Vector3 ground_point = contact;
             if (Entity* wheel_entity = m_physics->GetWheelEntity(wheel))
             {
@@ -263,13 +261,13 @@ namespace spartan
         trail.entity->SetObjectName(name);
         trail.entity->SetTransient(true);
 
-        Render* renderable = trail.entity->AddComponent<Render>();
-        renderable->SetMesh(trail.mesh.get(), 0);
-        renderable->SetMaterial(m_material);
-        renderable->SetFlag(RenderableFlags::CastsShadows, false);
-        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
+        Render* render = trail.entity->AddComponent<Render>();
+        render->SetMesh(trail.mesh.get(), 0);
+        render->SetMaterial(m_material);
+        render->SetFlag(RenderFlags::CastsShadows, false);
+        render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
 
-        trail.global_vertex_offset = renderable->GetVertexOffset();
+        trail.global_vertex_offset = render->GetVertexOffset();
     }
 
     void SkidMarks::DepositQuad(WheelTrail& trail, const Vector3& bl, const Vector3& br, float u_a, float u_b, const Vector3& normal, const Vector3& tangent, float intensity_a, float intensity_b)
@@ -307,9 +305,7 @@ namespace spartan
             return;
         }
 
-        // collapse the tail back to a point over the fade distance measured from the strip end, the strip
-        // narrows to zero width and zero alpha at the very tip so the end eases away instead of stopping on a
-        // full width cross section, the width collapse is geometric so it holds regardless of the texture
+        // the tail narrows to zero width and alpha so the strip eases away instead of ending on a full width cross section
         float u_end = trail.u_accum;
         const int pairs[2][2] = { { 0, 1 }, { 2, 3 } };
         for (RecentQuad& rq : trail.recent)
@@ -353,9 +349,7 @@ namespace spartan
             {
                 // cheap per-column streak variation so the mark is not a flat band
                 float n      = 0.6f + 0.4f * fabsf(sinf(static_cast<float>(x) * 1.7f) * 0.5f + sinf(static_cast<float>(x) * 0.37f) * 0.5f);
-                // intensity is encoded in v, but the material sampler wraps, so a plain 0..1 ramp bleeds the
-                // full alpha top row into the v=0 edge and leaves a hard line at the strip ends, a tent that is
-                // zero at both v=0 and v=1 removes that seam so the fade can actually reach full transparency
+                // the sampler wraps, so a plain 0..1 ramp bleeds the top row into v=0, a tent zero at both ends removes the seam
                 float tent   = 1.0f - fabsf(2.0f * v - 1.0f);
                 float alpha  = tent * n;
                 alpha        = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha);
@@ -370,11 +364,11 @@ namespace spartan
 
         RHI_Texture_Slice slice;
         slice.mips.push_back(move(mip));
-        vector<RHI_Texture_Slice> data;
-        data.push_back(move(slice));
+        vector<RHI_Texture_Slice> slices;
+        slices.push_back(move(slice));
 
         m_texture = make_shared<RHI_Texture>(
-            RHI_Texture_Type::Type2D, w, h, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "skidmarks_texture", data);
+            RHI_Texture_Type::Type2D, w, h, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "skidmarks_texture", slices);
         m_texture->SetResourceFilePath("skidmarks_color.png");
         m_texture = ResourceCache::Cache<RHI_Texture>(m_texture);
 

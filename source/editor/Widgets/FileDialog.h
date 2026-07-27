@@ -87,7 +87,7 @@ public:
     const auto& GetLabel() const { return m_label; }
     uint32_t GetId() const { return m_id; }
     const spartan::Icon& GetIcon() const { return m_icon; }
-    auto IsDirectory() const { return m_isDirectory; }
+    auto IsDirectory() const { return m_is_directory; }
     auto GetTimeSinceLastClickMs() const { return static_cast<float>(m_time_since_last_click.count()); }
     void Clicked()
     {
@@ -103,7 +103,7 @@ private:
         m_path_relative = spartan::FileSystem::GetRelativePath(path);
         static uint32_t id = 0;
         m_id          = id++;
-        m_isDirectory = spartan::FileSystem::IsDirectory(path);
+        m_is_directory = spartan::FileSystem::IsDirectory(path);
         m_label       = spartan::FileSystem::GetFileNameFromFilePath(path);
     }
 
@@ -112,7 +112,7 @@ private:
     std::string m_path;
     std::string m_path_relative;
     std::string m_label;
-    bool m_isDirectory;
+    bool m_is_directory;
     std::chrono::duration<double, std::milli> m_time_since_last_click;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_last_click_time;
 };

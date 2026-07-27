@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    // the monitor the window sits on, its available modes and its hdr capability
     class Display
     {
     public:

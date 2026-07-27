@@ -162,6 +162,8 @@ namespace spartan
         Entity* GetDescendantByPath(const std::string& path);
         void AcquireChildren();
         void RemoveChild(Entity* child, bool update_child_with_null_parent = true);
+        // drops the parent link without touching the parent, used when the parent is about to be deleted
+        void ClearParent();
         void AddChild(Entity* child);
         void MoveChildToIndex(Entity* child, uint32_t index);
         bool IsDescendantOf(Entity* transform) const;
@@ -255,9 +257,7 @@ namespace spartan
         std::string m_prefab_file_path;
         std::unordered_map<std::string, std::string> m_prefab_attributes;
 
-        // prefab override tracking
-        // m_prefab_owned marks an entity created as part of a prefab base
-        // the mask marks which components on this entity came from the prefab base
+        // m_prefab_owned marks an entity from a prefab base, the mask marks which of its components came from that base
         bool m_prefab_owned = false;
         std::array<bool, static_cast<uint32_t>(ComponentType::Max)> m_prefab_owned_components{};
         math::Vector3 m_prefab_position_local    = math::Vector3::Zero;

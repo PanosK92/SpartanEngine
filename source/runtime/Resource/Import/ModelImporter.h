@@ -41,7 +41,6 @@ namespace spartan
     class ModelImporter
     {
     public:
-        static void Initialize();
         static void Load(Mesh* mesh, const std::string& file_path);
 
     private:

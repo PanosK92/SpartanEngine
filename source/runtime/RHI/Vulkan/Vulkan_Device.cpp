@@ -460,10 +460,7 @@ namespace spartan
         {
             VkDebugUtilsMessengerEXT messenger;
 
-            // suppress known non-actionable warnings from third-party libraries and validation sdk.
-            // these are either caused by external code (xess, openxr) requesting
-            // deprecated-but-functional extensions, or by sdk best-practice heuristics that
-            // don't apply to this engine's architecture (e.g. sub-allocation, gpu-av overhead).
+            // non-actionable warnings from third-party extensions and sdk best-practice heuristics that do not apply here
             bool is_suppressed(const VkDebugUtilsMessengerCallbackDataEXT* data)
             {
                 if (!data || !data->pMessage)
@@ -1588,7 +1585,7 @@ namespace spartan
             // go through all the devices (sorted from best to worst based on their properties)
             for (uint32_t device_index = 0; device_index < RHI_Device::PhysicalDeviceGet().size(); device_index++)
             {
-                VkPhysicalDevice device = static_cast<VkPhysicalDevice>(RHI_Device::PhysicalDeviceGet()[device_index].GetData());
+                VkPhysicalDevice device = static_cast<VkPhysicalDevice>(RHI_Device::PhysicalDeviceGet()[device_index].GetNativeHandle());
 
                 // get the first device which supports graphics, compute and transfer queues
                 if (queues::detect_queue_family_indices(device))
@@ -1613,8 +1610,8 @@ namespace spartan
                 _dupenv_s(&layer_path, &len, "VK_LAYER_PATH");
                 if (layer_path)
                 {
-                    struct stat info;
-                    if (stat(layer_path, &info) != 0 || !(info.st_mode & S_IFDIR))
+                    struct stat layer_stat;
+                    if (stat(layer_path, &layer_stat) != 0 || !(layer_stat.st_mode & S_IFDIR))
                     {
                         SP_LOG_WARNING("VK_LAYER_PATH points to \"%s\" which doesn't exist, clearing it", layer_path);
                         _putenv_s("VK_LAYER_PATH", "");
@@ -1850,9 +1847,7 @@ namespace spartan
 
     void RHI_Device::Tick(const uint64_t frame_count)
     {
-        // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
-        // make sure to call vmaSetCurrentFrameIndex() every frame
-        // budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation
+        // vmaSetCurrentFrameIndex must run every frame, it queries the budget once instead of per allocation
         vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, static_cast<uint32_t>(frame_count));
 
         descriptors::current_frame.store(frame_count, memory_order_relaxed);
@@ -1883,10 +1878,7 @@ namespace spartan
 
     void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
     {
-        // descriptor sets are keyed by a binding hash that includes the cpu side
-        // resource pointer, so once that resource is gone any cached set that
-        // references it must be evicted, otherwise a future binding hash collision
-        // will return a stale set holding destroyed gpu handles
+        // cached sets are keyed on this pointer, a later hash collision would return a set holding destroyed gpu handles
         if (!resource)
         {
             return;
@@ -2059,9 +2051,7 @@ namespace spartan
 
         deletion_queue_frame++;
 
-        // retire resources that are old enough for the gpu to have finished using them;
-        // with renderer_draw_data_buffer_count command lists rotating per queue, anything
-        // older than that many frames is guaranteed to be no longer in flight
+        // with renderer_draw_data_buffer_count lists rotating per queue, anything older than that many frames is no longer in flight
         const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
 
         auto it = deletion_queue.begin();
@@ -2424,10 +2414,7 @@ namespace spartan
         {
             SP_ASSERT_MSG(is_mappable, "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag");
         
-            // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
-            // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
-            // invalidate the cache before reading a mapped pointer and flush cache after writing to
-            // it. Map/unmap operations don't do that automatically.
+            // non-coherent memory needs a manual invalidate before reads and a flush after writes, map and unmap do not do it
         
             void* mapped_data = nullptr;
             SP_ASSERT_VK(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data));
@@ -2491,18 +2478,18 @@ namespace spartan
 
         // check physical device format support
         {
-            VkPhysicalDeviceImageFormatInfo2 info = {};
-            info.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
-            info.format                           = create_info_image.format;
-            info.type                             = create_info_image.imageType;
-            info.tiling                           = create_info_image.tiling;
-            info.usage                            = create_info_image.usage;
-            info.flags                            = create_info_image.flags;
+            VkPhysicalDeviceImageFormatInfo2 format_info = {};
+            format_info.sType                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+            format_info.format                          = create_info_image.format;
+            format_info.type                            = create_info_image.imageType;
+            format_info.tiling                          = create_info_image.tiling;
+            format_info.usage                           = create_info_image.usage;
+            format_info.flags                           = create_info_image.flags;
 
             VkImageFormatProperties2 properties = {};
             properties.sType                    = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
 
-            VkResult result = vkGetPhysicalDeviceImageFormatProperties2(RHI_Context::device_physical, &info, &properties);
+            VkResult result = vkGetPhysicalDeviceImageFormatProperties2(RHI_Context::device_physical, &format_info, &properties);
             SP_ASSERT_MSG(result != VK_ERROR_FORMAT_NOT_SUPPORTED, "The GPU doesn't support this image format with the specified properties");
         }
 
@@ -2721,11 +2708,11 @@ namespace spartan
 
     uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
     {
-        VkBufferDeviceAddressInfo info = {};
-        info.sType                     = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-        info.pNext                     = nullptr;
-        info.buffer                    = static_cast<VkBuffer>(buffer);
-        return functions::get_buffer_device_address(static_cast<VkDevice>(RHI_Context::device), &info);
+        VkBufferDeviceAddressInfo address_info = {};
+        address_info.sType                     = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        address_info.pNext                     = nullptr;
+        address_info.buffer                    = static_cast<VkBuffer>(buffer);
+        return functions::get_buffer_device_address(static_cast<VkDevice>(RHI_Context::device), &address_info);
     }
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)

@@ -1023,10 +1023,9 @@ void Console::ExecuteCommand(const char* command)
     }
     else
     {
-        if (std::optional<std::string> maybe_val = ConsoleRegistry::Get().GetValueAsString(command); maybe_val.has_value())
+        if (std::optional<std::string> current = ConsoleRegistry::Get().GetValueAsString(command); current.has_value())
         {
-            const char* Val = maybe_val.value().c_str();
-            SP_LOG_WARNING("Current Value of %s : ", command, Val)
+            SP_LOG_WARNING("%s is currently %s", command, current->c_str())
         }
     }
 

@@ -92,9 +92,9 @@ function footsteps.Tick(self, entity)
 
     local sound_file = default_sound
     if hit and hit.entity then
-        local renderable = hit.entity:GetComponent(ComponentType.Renderable)
-        if renderable then
-            local mat_name = string.lower(renderable:GetMaterialName() or "")
+        local render = hit.entity:GetComponent(ComponentType.Render)
+        if render then
+            local mat_name = string.lower(render:GetMaterialName() or "")
             for pattern, file in pairs(sound_map) do
                 if string.find(mat_name, pattern) then
                     sound_file = file

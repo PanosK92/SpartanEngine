@@ -380,9 +380,9 @@ namespace spartan
             // avoid extra ‘diagonal whitespace’.
             if (char_code >= 1 && FT_HAS_KERNING(ft_font))
             {
-                FT_Vector kerningVec;
-                FT_Get_Kerning(ft_font, char_code - 1, char_code, FT_KERNING_DEFAULT, &kerningVec);
-                glyph.horizontal_advance += kerningVec.x >> 6;
+                FT_Vector kerning;
+                FT_Get_Kerning(ft_font, char_code - 1, char_code, FT_KERNING_DEFAULT, &kerning);
+                glyph.horizontal_advance += kerning.x >> 6;
             }
 
             return glyph;

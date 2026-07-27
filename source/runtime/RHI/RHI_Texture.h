@@ -80,8 +80,8 @@ namespace spartan
             const uint32_t mip_count,
             const RHI_Format format,
             const uint32_t flags,
-            const char* name                    = nullptr,
-            std::vector<RHI_Texture_Slice> data = {}
+            const char* name                      = nullptr,
+            std::vector<RHI_Texture_Slice> slices = {}
         );
         RHI_Texture(const std::string& file_path);
         RHI_Texture();

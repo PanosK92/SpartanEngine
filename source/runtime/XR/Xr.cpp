@@ -52,6 +52,11 @@ namespace spartan
         return m_hmd_connected;
     }
 
+    bool Xr::GetStereoMode()
+    {
+        return m_stereo_3d;
+    }
+
     void Xr::SetStereoMode(bool enabled)
     {
         if (m_stereo_3d == enabled)

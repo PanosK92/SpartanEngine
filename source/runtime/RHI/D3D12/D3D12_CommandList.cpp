@@ -201,10 +201,7 @@ namespace spartan
     // per-cmd-list pending bindings state (srv/uav slots that SetTexture/SetBuffer wrote to)
     namespace cmd_state
     {
-        // per-subresource tracking, when per_subresource is empty the resource is uniform and uniform_state applies
-        // to every subresource, ALL_SUBRESOURCES transitions reset back to uniform, specific-subresource transitions
-        // expand into per_subresource on first use to record divergence (e.g. mip filtering passes that bind one
-        // mip as UAV while reading lower mips as SRV)
+        // an empty per_subresource means the resource is uniform, specific-subresource transitions expand it to record divergence
         struct ResourceStateInfo
         {
             D3D12_RESOURCE_STATES uniform_state = D3D12_RESOURCE_STATE_COMMON;
@@ -248,9 +245,7 @@ namespace spartan
             std::vector<D3D12_RESOURCE_BARRIER> pending_barriers;
             // staging buffers acquired during recording, released on next Begin once gpu execution has finished
             std::vector<void*> staging_buffers_in_flight;
-            // per-cmd-list resource state, populated lazily on first use of each resource by snapshotting
-            // from the global tracker, this isolates concurrent cmd list recording from each other so
-            // the StateBefore in barriers reflects what the gpu will actually be in at execution time
+            // snapshotted from the global tracker on first use, so concurrent recording still emits a correct StateBefore
             std::unordered_map<ID3D12Resource*, ResourceStateInfo> resource_states;
         };
 
@@ -295,28 +290,25 @@ namespace spartan
             return d3d12_state::GetSubresourceCount(resource);
         }
 
-        // get or create the state info for a resource, lazy-initializing from the global tracker on first use
+        // get or create the tracked state for a resource, lazy-initialized from the global tracker on first use
         static ResourceStateInfo& get_or_init_state(PendingBindings& b, ID3D12Resource* resource)
         {
-            ResourceStateInfo& info = b.resource_states[resource];
-            if (!info.initialized)
+            ResourceStateInfo& state_info = b.resource_states[resource];
+            if (!state_info.initialized)
             {
-                info.uniform_state = d3d12_state::GetState(resource);
+                state_info.uniform_state = d3d12_state::GetState(resource);
                 // compute always waits on the producer timeline before touching shared resources, by then
                 // buffers and simultaneous-access textures have decayed to common on the gpu
                 if (b.is_compute_queue && d3d12_state::DecaysToCommon(resource))
                 {
-                    info.uniform_state = D3D12_RESOURCE_STATE_COMMON;
+                    state_info.uniform_state = D3D12_RESOURCE_STATE_COMMON;
                 }
-                info.initialized = true;
+                state_info.initialized = true;
             }
-            return info;
+            return state_info;
         }
 
-        // publish all per-cmd-list resource state changes to the global tracker, called at submit time
-        // resources left non-uniform get unifying barriers so the next cmd list sees a single state
-        // do not emit pixel-strip barriers here, they repeatedly av d3d12SDKLayers when state_before is stale
-        // compute already skips transitions when pixel|non_pixel already covers the needed non_pixel bits
+        // publishes state to the global tracker at submit, no pixel-strip barriers here since a stale state_before avs d3d12SDKLayers
         void commit_states_to_global(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
         {
             std::vector<D3D12_RESOURCE_BARRIER> unify;
@@ -327,15 +319,15 @@ namespace spartan
                     continue;
                 }
 
-                ResourceStateInfo& info = kv.second;
-                if (!info.per_subresource.empty())
+                ResourceStateInfo& state_info = kv.second;
+                if (!state_info.per_subresource.empty())
                 {
                     // collapse divergent mips to subresource 0's state
-                    const D3D12_RESOURCE_STATES target = info.per_subresource[0];
-                    const uint32_t count = static_cast<uint32_t>(info.per_subresource.size());
+                    const D3D12_RESOURCE_STATES target = state_info.per_subresource[0];
+                    const uint32_t count = static_cast<uint32_t>(state_info.per_subresource.size());
                     for (uint32_t i = 0; i < count; i++)
                     {
-                        if (info.per_subresource[i] == target)
+                        if (state_info.per_subresource[i] == target)
                         {
                             continue;
                         }
@@ -344,15 +336,15 @@ namespace spartan
                         barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                         barrier.Transition.pResource   = kv.first;
                         barrier.Transition.Subresource = i;
-                        barrier.Transition.StateBefore = info.per_subresource[i];
+                        barrier.Transition.StateBefore = state_info.per_subresource[i];
                         barrier.Transition.StateAfter  = target;
                         unify.push_back(barrier);
                     }
-                    info.per_subresource.clear();
-                    info.uniform_state = target;
+                    state_info.per_subresource.clear();
+                    state_info.uniform_state = target;
                 }
 
-                d3d12_state::SetState(kv.first, info.uniform_state);
+                d3d12_state::SetState(kv.first, state_info.uniform_state);
             }
             if (!unify.empty())
             {
@@ -373,11 +365,7 @@ namespace spartan
             }
         }
 
-        // push a transition for resource into the pending list, updating the per-cmd-list state tracker
-        // when subresource is ALL_SUBRESOURCES and the resource is currently divergent, this emits per-subresource
-        // barriers for the subresources that differ from state_after, then collapses back to uniform
-        // returns true if any barrier was actually queued, false if all subresources were already in state_after
-        // force skips the subset early-out so callers can strip extra bits (e.g. pixel for xess)
+        // collapses a divergent resource with per-subresource barriers, returns true if any was queued, force skips the early-out
         bool push_transition(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state_after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, bool force = false)
         {
             if (!resource)
@@ -391,15 +379,13 @@ namespace spartan
                 subresource = 0;
             }
 
-            // on the compute queue strip graphics-only state bits from state_after, otherwise the runtime rejects the
-            // barrier, the (pixel|non_pixel) shader_read combo collapses to non_pixel only which is the valid compute
-            // equivalent, graphics-only states like render_target should not appear as targets in compute paths
+            // the compute queue rejects graphics-only state bits, pixel|non_pixel collapses to non_pixel there
             if (b.is_compute_queue)
             {
                 state_after &= ~compute_invalid_states;
             }
 
-            ResourceStateInfo& info = get_or_init_state(b, resource);
+            ResourceStateInfo& state_info = get_or_init_state(b, resource);
 
             // true when the resource is already usable for state_after, even if it also has extra graphics-only bits
             // compute cannot legally barrier away from pixel_shader_resource, so skip when the needed bits are present
@@ -427,15 +413,15 @@ namespace spartan
 
             if (subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
             {
-                if (info.per_subresource.empty())
+                if (state_info.per_subresource.empty())
                 {
-                    if (already_usable(info.uniform_state))
+                    if (already_usable(state_info.uniform_state))
                     {
                         return false;
                     }
 
                     // compute cannot emit a barrier whose state_before still has pixel/rt/depth bits
-                    if (b.is_compute_queue && (info.uniform_state & compute_invalid_states))
+                    if (b.is_compute_queue && (state_info.uniform_state & compute_invalid_states))
                     {
                         return false;
                     }
@@ -449,24 +435,24 @@ namespace spartan
                         barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                         barrier.Transition.pResource   = resource;
                         barrier.Transition.Subresource = i;
-                        barrier.Transition.StateBefore = info.uniform_state;
+                        barrier.Transition.StateBefore = state_info.uniform_state;
                         barrier.Transition.StateAfter  = state_after;
                         b.pending_barriers.push_back(barrier);
                     }
 
-                    info.uniform_state = state_after;
+                    state_info.uniform_state = state_after;
                     return true;
                 }
 
                 // currently divergent, emit per-subresource transitions for those that differ from the target
                 bool any = false;
-                for (uint32_t i = 0; i < info.per_subresource.size(); i++)
+                for (uint32_t i = 0; i < state_info.per_subresource.size(); i++)
                 {
-                    if (already_usable(info.per_subresource[i]))
+                    if (already_usable(state_info.per_subresource[i]))
                     {
                         continue;
                     }
-                    if (b.is_compute_queue && (info.per_subresource[i] & compute_invalid_states))
+                    if (b.is_compute_queue && (state_info.per_subresource[i] & compute_invalid_states))
                     {
                         continue;
                     }
@@ -475,19 +461,19 @@ namespace spartan
                     barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                     barrier.Transition.pResource   = resource;
                     barrier.Transition.Subresource = i;
-                    barrier.Transition.StateBefore = info.per_subresource[i];
+                    barrier.Transition.StateBefore = state_info.per_subresource[i];
                     barrier.Transition.StateAfter  = state_after;
                     b.pending_barriers.push_back(barrier);
-                    info.per_subresource[i] = state_after;
+                    state_info.per_subresource[i] = state_after;
                     any = true;
                 }
 
                 // only collapse when every subresource actually matches, skipped compute/pixel cases must keep their gpu state
-                const D3D12_RESOURCE_STATES first = info.per_subresource[0];
+                const D3D12_RESOURCE_STATES first = state_info.per_subresource[0];
                 bool all_same = true;
-                for (uint32_t i = 1; i < info.per_subresource.size(); i++)
+                for (uint32_t i = 1; i < state_info.per_subresource.size(); i++)
                 {
-                    if (info.per_subresource[i] != first)
+                    if (state_info.per_subresource[i] != first)
                     {
                         all_same = false;
                         break;
@@ -495,20 +481,20 @@ namespace spartan
                 }
                 if (all_same)
                 {
-                    info.per_subresource.clear();
-                    info.uniform_state = first;
+                    state_info.per_subresource.clear();
+                    state_info.uniform_state = first;
                 }
                 return any;
             }
 
             // specific subresource, expand to per-subresource if currently uniform
-            if (info.per_subresource.empty())
+            if (state_info.per_subresource.empty())
             {
-                if (already_usable(info.uniform_state))
+                if (already_usable(state_info.uniform_state))
                 {
                     return false;
                 }
-                if (b.is_compute_queue && (info.uniform_state & compute_invalid_states))
+                if (b.is_compute_queue && (state_info.uniform_state & compute_invalid_states))
                 {
                     return false;
                 }
@@ -518,15 +504,15 @@ namespace spartan
                 {
                     count = subresource + 1;
                 }
-                info.per_subresource.assign(count, info.uniform_state);
+                state_info.per_subresource.assign(count, state_info.uniform_state);
             }
 
-            if (subresource >= info.per_subresource.size())
+            if (subresource >= state_info.per_subresource.size())
             {
                 return false;
             }
 
-            D3D12_RESOURCE_STATES state_before = info.per_subresource[subresource];
+            D3D12_RESOURCE_STATES state_before = state_info.per_subresource[subresource];
             if (already_usable(state_before))
             {
                 return false;
@@ -544,7 +530,7 @@ namespace spartan
             barrier.Transition.StateAfter  = state_after;
             b.pending_barriers.push_back(barrier);
 
-            info.per_subresource[subresource] = state_after;
+            state_info.per_subresource[subresource] = state_after;
             return true;
         }
 
@@ -567,9 +553,9 @@ namespace spartan
             {
                 return;
             }
-            ResourceStateInfo& info = get_or_init_state(b, resource);
-            info.per_subresource.clear();
-            info.uniform_state = state;
+            ResourceStateInfo& state_info = get_or_init_state(b, resource);
+            state_info.per_subresource.clear();
+            state_info.uniform_state = state;
             d3d12_state::SetState(resource, state);
         }
 
@@ -587,9 +573,7 @@ namespace spartan
                 return;
             }
 
-            // dedup transitions, multiple push_transition calls on the same resource between flushes produce
-            // a chain like A->B then B->C in pending_barriers, d3d12 accepts this but warns about it,
-            // collapse them into a single A->C barrier per (resource, subresource) pair
+            // collapse an A to B to C chain into one A to C barrier per (resource, subresource), d3d12 warns about the chain
             std::vector<D3D12_RESOURCE_BARRIER> deduped;
             deduped.reserve(b.pending_barriers.size());
             for (const auto& barrier : b.pending_barriers)
@@ -744,9 +728,7 @@ namespace spartan
         }
     }
 
-    // per-cmd-list query state: timestamp + occlusion heaps and their readback buffers
-    // keyed by RHI_CommandList so we don't bloat the public class while still keeping the d3d12-specific
-    // ID3D12QueryHeap and readback ID3D12Resource pointers off the rhi header
+    // timestamp and occlusion heaps keyed by command list, so the d3d12 handles stay out of the rhi header
     namespace queries
     {
         constexpr uint32_t timestamp_count    = 256;
@@ -808,12 +790,12 @@ namespace spartan
             desc.SampleDesc.Count   = 1;
             desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-            ID3D12Resource* res = nullptr;
+            ID3D12Resource* readback_buffer = nullptr;
             RHI_Context::device->CreateCommittedResource(
                 &heap_props, D3D12_HEAP_FLAG_NONE,
                 &desc, D3D12_RESOURCE_STATE_COPY_DEST,
-                nullptr, IID_PPV_ARGS(&res));
-            return res;
+                nullptr, IID_PPV_ARGS(&readback_buffer));
+            return readback_buffer;
         }
 
         void initialize(const RHI_CommandList* cmd, RHI_Queue_Type queue_type)
@@ -1163,9 +1145,7 @@ namespace spartan
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
 
-        // flush any deferred barriers before closing, then publish the per-cmd-list state to the global
-        // tracker so the next cmd list sees the post-execution state of resources touched by this one
-        // commit emits unifying barriers for resources left in divergent per-subresource state
+        // flush deferred barriers, then publish state so the next cmd list sees the post-execution state of what this one touched
         {
             auto& b = cmd_state::get(this);
             cmd_state::flush(cmd_list, b);
@@ -1248,9 +1228,7 @@ namespace spartan
         }
         ResetTrackedBindings();
 
-        // determine load flags by comparing render targets with the previous pso
-        // matching vertex shader and array index means this pso continues drawing into the same attachments,
-        // so we must preserve their contents (load) rather than clearing
+        // a matching vertex shader and array index means the same attachments continue, so load instead of clear
         if ((m_pso.shaders[RHI_Shader_Type::Vertex] != nullptr && m_pso.shaders[RHI_Shader_Type::Vertex] == pso.shaders[RHI_Shader_Type::Vertex]) && m_pso.render_target_array_index == pso.render_target_array_index)
         {
             m_load_depth_render_target = (pso.render_target_depth_texture == m_pso.render_target_depth_texture);
@@ -2927,10 +2905,7 @@ namespace spartan
         const uint32_t array_size = texture->GetArrayLength();
         const uint32_t effective_mip_range = mip_range == 0 ? 1u : mip_range;
 
-        // helper, push a transition for either a specific subresource range or all subresources
-        // when the request does not cover all mips/layers, only those subresources transition, this keeps the rest of
-        // the texture in its existing state, required for passes that read other mips as srv while writing one mip as
-        // uav, e.g. mipmap filtering, bloom up/down sample
+        // a partial mip or layer range leaves the rest of the texture alone, needed when a pass reads other mips as srv
         const bool layer_specified = array_layer != rhi_all_mips;
         const bool covers_all_mips = !mip_specified || (mip_index == 0 && effective_mip_range >= total_mips);
         const bool covers_full     = covers_all_mips && !layer_specified;
@@ -3826,9 +3801,7 @@ namespace spartan
     {
         static const uint32_t queue_type_count = static_cast<uint32_t>(RHI_Queue_Type::Max);
 
-        // dedicated queues for one-shot uploads etc., kept separate from the renderer's main queues
-        // so a one-shot submission cannot rotate through the same ring as m_cmd_list_present and
-        // accidentally submit it mid-frame
+        // one-shot upload queues stay separate so a submission cannot rotate through the present ring mid-frame
         array<mutex, queue_type_count>              mutexes;
         array<condition_variable, queue_type_count> condition_vars;
         array<bool, queue_type_count>               is_executing = { false, false, false };

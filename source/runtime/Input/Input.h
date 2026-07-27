@@ -102,6 +102,11 @@ namespace spartan
     class Input
     {
     public:
+        // one flat block of key states, mouse buttons and gamepad buttons continue where the keyboard ends
+        static constexpr uint32_t key_count         = 107;
+        static constexpr uint32_t key_index_mouse   = 83;
+        static constexpr uint32_t key_index_gamepad = 86;
+
         static void Initialize();
         static void Tick();
         static void PreTick();
@@ -160,15 +165,10 @@ namespace spartan
         static bool GamepadVibrate(const float left_motor_speed, const float right_motor_speed);
 
     private:
-        static std::array<bool, 107>& GetKeys();
-        static uint32_t GetKeyIndexMouse();
-        static uint32_t GetKeyIndexGamepad();
         static void CheckDeviceState(void* event, Controller* controller);
 
-        // keys
-        static std::array<bool, 107> m_keys;
+        // the polling lives in InputKeyboard, InputMouse, InputGamepad and InputSteeringWheel, so this state is shared
+        static std::array<bool, key_count> m_keys;
         static bool m_blocked_by_ui;
-        static uint32_t m_start_index_mouse;
-        static uint32_t m_start_index_gamepad;
     };
 }

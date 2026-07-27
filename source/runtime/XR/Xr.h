@@ -94,7 +94,7 @@ namespace spartan
 
         // stereo mode (2D uses center pose for both eyes, 3D uses per-eye poses)
         static void SetStereoMode(bool enabled);
-        static bool GetStereoMode() { return m_stereo_3d; }
+        static bool GetStereoMode();
 
     private:
         static void InitializeWorker();
@@ -106,7 +106,8 @@ namespace spartan
         static void ProcessEvents();
         static void UpdateViews();
 
-        // state
+        // this state is declared here rather than in a .cpp because the lifecycle and frame methods
+        // live in the per-rhi files (Vulkan_Xr.cpp, D3D12_Xr.cpp) and write to it
         static std::atomic<bool> m_initialized;
         static bool m_hmd_connected;
         static bool m_session_running;

@@ -363,9 +363,7 @@ namespace spartan
             uint32_t array_length          = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
-            // empty srv-only textures: use general instead of shader_read to avoid the validation
-            // warning about transitioning from undefined (content-discarding) to a read-only layout.
-            // SetTexture() will transition to shader_read on first use.
+            // general, not shader_read, to avoid the undefined to read-only transition warning, SetTexture fixes it on first use
             if (!HasData() && target_layout == RHI_Image_Layout::Shader_Read)
             {
                 target_layout = RHI_Image_Layout::General;

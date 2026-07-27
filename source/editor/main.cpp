@@ -28,9 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Windows.h>
 #include <shellapi.h>
 
-// ensure the working directory is the executable's own directory
-// this prevents path resolution failures when the os or shell provides
-// a different cwd (e.g. after environment variable changes from other installers)
+// force the working directory to the executable's own, the shell can hand us a different cwd
 static void set_working_directory_to_executable()
 {
     wchar_t path[MAX_PATH];

@@ -78,9 +78,9 @@ namespace spartan::version
     inline const char* c_str()
     {
         // static buffer, filled once
-        static char buf[32] = {};
-        std::snprintf(buf, sizeof(buf), "Spartan v%d.%d.%d.%d", major, minor, patch, build);
-        return buf;
+        static char version[32] = {};
+        std::snprintf(version, sizeof(version), "Spartan v%d.%d.%d.%d", major, minor, patch, build);
+        return version;
     }
 }
 

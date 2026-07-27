@@ -39,12 +39,16 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `component_action` before falling back to Lua for terrain, spline, particle, physics, audio, light, or camera actions.
 - Use `selection_update`, `entity_clone`, `entity_move_index`, and prefab tools before using Lua for common editor hierarchy workflows.
 - Use `material_set_property` and `material_set_texture` for material edits instead of custom Lua.
+- Use `material_textured_create` for any real surface; it creates the material and generates and attaches its color, normal, and packed maps in one call.
+- `texture_generate` composites layers: fill, linear_gradient, radial_gradient, noise, checker, stripes, bricks, tiles, spots, scratches, shape, text. Layer `relief` drives the normal map, `roughness`/`roughness_b`/`metalness`/`occlusion` drive the packed map.
+- Texture responses report mean color, contrast, and `seam_error`; tune tiling textures from those numbers instead of guessing. Labels and decals should set `seamless` false.
 - Use resource lifecycle tools for asset cache load/reload/save/remove and new material creation.
 - Use `viewport_frame` and `camera_set_view` before manual camera transform scripts.
 - Use `renderer_debug_set` and `physics_state` for visual debugging and vehicle/rigid body inspection.
 - To drive and inspect a car: `engine_set_mode` play, `vehicle_enter`, hold `vehicle_set_input` for a stretch, then `vehicle_telemetry` and report anomalies. Agents cannot compile; stop at diagnosis unless the user asks for code changes.
 - Use `screenshot_take` when visual verification matters; it waits briefly for the async save and returns the image when ready.
 - Before deleting or rebuilding geometry that should preserve look, call `entity_render_materials` on the target and reuse material names.
+- Focused reusable assets default to production-quality hero props, not blockouts. Infer standard anatomy and construction, use coherent generated surfaces for continuous silhouettes, add secondary and tertiary detail, review in solid mode, and never promote a candidate that regresses geometry because the prompt emphasized materials.
 - Use `entity_create_light` for every light; it fully initializes intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.
 - Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible.
 - Use `lights_calibrate` to fix existing scene lights in one call; specialty car lights stay dim, blockout lights get lifted.
@@ -70,14 +74,15 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Long Lua scripts run on the main thread, so they should do a bounded amount of work and return a short summary.
 - Tool errors are advisory data for recovery, not transport failures.
 - Sphere, cylinder, and cone primitives have radius 1, so diameter is 2x the xz scale, while cube and quad are 1x1x1 per scale unit; halve xz scale versus a cube for the same footprint. Lua has `World.GetEntityByName(name)` (exact match) and `World.GetEntityById(id_string)`; ids exceed lua number precision, so pass them as strings.
-- Batch positions are parent-local when `parent_id` is set. Lua entities expose `GetName`, and the render enum is `ComponentType.Renderable`, not Render.
+- Batch positions are parent-local when `parent_id` is set. Lua entities expose `GetName`, and the render component enum is `ComponentType.Render`.
 - Prompt phrases like `parent under an entity called dockyard` must resolve to `dockyard`, not filler text such as `parent under an`.
 - Do not call `pairs()` or `next()` on raw C++ entity containers from Lua; use the table wrappers or `ForEachChild`.
 - spline_junction snaps nearest endpoints only, not mid-spline points. For a mid-route T, split the arterial into two legs that both end at the junction, then join those ends with the spur.
 - `spline_reroute` preserves and redistributes its own furniture while excluding descendants of foreign spline roads from reclaim.
 - `detail_pattern_create` with `pattern: slats` treats `size` as each slat mesh size, not the total array span; use a narrow per slat size and control total coverage with `count * spacing`, otherwise scene bounds can expand dramatically.
-- Visual-review and screenshot paths outside `screenshots/` are normalized to a safe filename under that directory.
-- Native district and city blockouts create static collision and coordinated surface, structure, and accent materials for every renderable.
+- Visual-review and screenshot paths are normalized to a safe filename under shared `project/mcp_resources/thumbnails`.
+- Native district and city blockouts create static collision and coordinated surface, structure, and accent materials for every render component.
+- Every persistent MCP-generated resource belongs under shared `project/mcp_resources`: meshes, materials, textures, prefabs, sources, thumbnails, and catalog metadata. Never write MCP output into `<world>_resources`. Text layers rasterize with fonts from `data/fonts` (Calibri), so labels are latin only.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.
@@ -111,7 +116,10 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Rebuild the engine and restart the assistant bridge when deploying new native MCP commands.
 - `scene_quality_audit` feature evidence includes the quality root, descendants, and render-material entity names so semantic hierarchies remain auditable.
 - Capability gap: Native MCP command or tool `resource_read` is missing from the engine bridge or Node registry. Prompt: "Build a cozy, fully drivable Japanese tuning shop inspired by Gran Turismo 4 and Sega GT 2002, designed as a physical open-world location like Test Drive Unlimited 2. Create a p..."
-- Capability gap: Native MCP command or tool `construction_grammar_create` is missing from the engine bridge or Node registry. Prompt: "Build a fully explorable Japanese tuning shop inspired by Gran Turismo 4 and Sega GT 2002, with a nostalgic, cozy, slightly bittersweet early-2000s atmosphere. Make it a believa..."
 - Capability gap: Native MCP command or tool `async_task_start` is missing from the engine bridge or Node registry. Prompt: "Build a fully explorable Japanese tuning shop inspired by Gran Turismo 4 and Sega GT 2002, with a nostalgic, cozy, slightly bittersweet early-2000s atmosphere. Make it a believa..."
-- Capability gap: Native MCP command `context_snapshot` timed out. Error: engine connection for context_snapshot timed out after 2500ms Prompt: "Create a coffee shop, it also has a garden where it also has tables"
-- Capability gap: Native MCP command `entity_find` timed out. Error: engine connection for entity_find timed out after 2500ms Prompt: "Create a coffee shop, it also has a garden where it also has tables"
+- Glass materials use color_a, ior, absorption, and thickness. gltf style names transmission and transparency are accepted and stored as inverted color_a.
+- A focused asset is only the reusable object. Do not add environment plans, staging geometry, routes, review lights, or render components on light entities. Stop the run after the first engine bridge timeout.
+- Capability gap: Native MCP command or tool `prefab_create` is missing from the engine bridge or Node registry. Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."
+- Capability gap: Native MCP command `context_snapshot` timed out. Error: engine connection for context_snapshot timed out after 2500ms Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."
+- Capability gap: Native MCP command `world_resource_directory_get` timed out. Error: engine connection for world_resource_directory_get timed out after 60000ms Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."
+- Capability gap: Native MCP command `world_summary` timed out. Error: engine connection for world_summary timed out after 60000ms Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."

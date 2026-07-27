@@ -911,7 +911,7 @@ namespace
             ImGui::SameLine(0.0f, scaled(8.0f));
             if (launcher_button("Controls", ImVec2(button_w, 0.0f)))
             {
-                *GeneralWindows::GetVisiblityWindowControls() = true;
+                *GeneralWindows::GetVisibilityWindowControls() = true;
             }
             end_panel();
             return;
@@ -981,7 +981,7 @@ namespace
         ImGui::SameLine(0.0f, scaled(8.0f));
         if (launcher_button("Controls", ImVec2(button_w, 0.0f)))
         {
-            *GeneralWindows::GetVisiblityWindowControls() = true;
+            *GeneralWindows::GetVisibilityWindowControls() = true;
         }
 
         end_panel();

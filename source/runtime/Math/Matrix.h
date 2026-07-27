@@ -55,11 +55,11 @@ namespace spartan::math
 
         Matrix(const Vector3& translation, const Quaternion& rotation, const Vector3& scale)
         {
-            const Matrix mRotation = CreateRotation(rotation);
+            const Matrix rotation_matrix = CreateRotation(rotation);
 
-            m00 = scale.x * mRotation.m00;  m01 = scale.x * mRotation.m01;  m02 = scale.x * mRotation.m02;  m03 = 0.0f;
-            m10 = scale.y * mRotation.m10;  m11 = scale.y * mRotation.m11;  m12 = scale.y * mRotation.m12;  m13 = 0.0f;
-            m20 = scale.z * mRotation.m20;  m21 = scale.z * mRotation.m21;  m22 = scale.z * mRotation.m22;  m23 = 0.0f;
+            m00 = scale.x * rotation_matrix.m00;  m01 = scale.x * rotation_matrix.m01;  m02 = scale.x * rotation_matrix.m02;  m03 = 0.0f;
+            m10 = scale.y * rotation_matrix.m10;  m11 = scale.y * rotation_matrix.m11;  m12 = scale.y * rotation_matrix.m12;  m13 = 0.0f;
+            m20 = scale.z * rotation_matrix.m20;  m21 = scale.z * rotation_matrix.m21;  m22 = scale.z * rotation_matrix.m22;  m23 = 0.0f;
             m30 = translation.x;            m31 = translation.y;            m32 = translation.z;            m33 = 1.0f;
         }
 
@@ -88,28 +88,28 @@ namespace spartan::math
 
         static Matrix CreateRotation(const Quaternion& rotation)
         {
-            const float num9 = rotation.x * rotation.x;
-            const float num8 = rotation.y * rotation.y;
-            const float num7 = rotation.z * rotation.z;
-            const float num6 = rotation.x * rotation.y;
-            const float num5 = rotation.z * rotation.w;
-            const float num4 = rotation.z * rotation.x;
-            const float num3 = rotation.y * rotation.w;
-            const float num2 = rotation.y * rotation.z;
-            const float num  = rotation.x * rotation.w;
+            const float xx = rotation.x * rotation.x;
+            const float yy = rotation.y * rotation.y;
+            const float zz = rotation.z * rotation.z;
+            const float xy = rotation.x * rotation.y;
+            const float zw = rotation.z * rotation.w;
+            const float zx = rotation.z * rotation.x;
+            const float yw = rotation.y * rotation.w;
+            const float yz = rotation.y * rotation.z;
+            const float xw = rotation.x * rotation.w;
 
             return Matrix(
-                1.0f - (2.0f * (num8 + num7)),
-                2.0f * (num6 + num5),
-                2.0f * (num4 - num3),
+                1.0f - (2.0f * (yy + zz)),
+                2.0f * (xy + zw),
+                2.0f * (zx - yw),
                 0.0f,
-                2.0f * (num6 - num5),
-                1.0f - (2.0f * (num7 + num9)),
-                2.0f * (num2 + num),
+                2.0f * (xy - zw),
+                1.0f - (2.0f * (zz + xx)),
+                2.0f * (yz + xw),
                 0.0f,
-                2.0f * (num4 + num3),
-                2.0f * (num2 - num),
-                1.0f - (2.0f * (num8 + num9)),
+                2.0f * (zx + yw),
+                2.0f * (yz - xw),
+                1.0f - (2.0f * (yy + xx)),
                 0.0f,
                 0.0f,
                 0.0f,
@@ -168,12 +168,12 @@ namespace spartan::math
         #endif
         }
 
-        static Quaternion RotationMatrixToQuaternion(const Matrix& mRot)
+        static Quaternion RotationMatrixToQuaternion(const Matrix& rotation_matrix)
         {
             Quaternion quaternion;
             float sqrt_;
             float half;
-            const float scale = mRot.m00 + mRot.m11 + mRot.m22;
+            const float scale = rotation_matrix.m00 + rotation_matrix.m11 + rotation_matrix.m22;
 
             if (scale > 0.0f)
             {
@@ -181,39 +181,39 @@ namespace spartan::math
                 quaternion.w = sqrt_ * 0.5f;
                 sqrt_ = 0.5f / sqrt_;
 
-                quaternion.x = (mRot.m12 - mRot.m21) * sqrt_;
-                quaternion.y = (mRot.m20 - mRot.m02) * sqrt_;
-                quaternion.z = (mRot.m01 - mRot.m10) * sqrt_;
+                quaternion.x = (rotation_matrix.m12 - rotation_matrix.m21) * sqrt_;
+                quaternion.y = (rotation_matrix.m20 - rotation_matrix.m02) * sqrt_;
+                quaternion.z = (rotation_matrix.m01 - rotation_matrix.m10) * sqrt_;
             }
-            else if ((mRot.m00 >= mRot.m11) && (mRot.m00 >= mRot.m22))
+            else if ((rotation_matrix.m00 >= rotation_matrix.m11) && (rotation_matrix.m00 >= rotation_matrix.m22))
             {
-                sqrt_ = sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
+                sqrt_ = sqrt(1.0f + rotation_matrix.m00 - rotation_matrix.m11 - rotation_matrix.m22);
                 half = 0.5f / sqrt_;
 
                 quaternion.x = 0.5f * sqrt_;
-                quaternion.y = (mRot.m01 + mRot.m10) * half;
-                quaternion.z = (mRot.m02 + mRot.m20) * half;
-                quaternion.w = (mRot.m12 - mRot.m21) * half;
+                quaternion.y = (rotation_matrix.m01 + rotation_matrix.m10) * half;
+                quaternion.z = (rotation_matrix.m02 + rotation_matrix.m20) * half;
+                quaternion.w = (rotation_matrix.m12 - rotation_matrix.m21) * half;
             }
-            else if (mRot.m11 > mRot.m22)
+            else if (rotation_matrix.m11 > rotation_matrix.m22)
             {
-                sqrt_ = sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
+                sqrt_ = sqrt(1.0f + rotation_matrix.m11 - rotation_matrix.m00 - rotation_matrix.m22);
                 half = 0.5f / sqrt_;
 
-                quaternion.x = (mRot.m10 + mRot.m01) * half;
+                quaternion.x = (rotation_matrix.m10 + rotation_matrix.m01) * half;
                 quaternion.y = 0.5f * sqrt_;
-                quaternion.z = (mRot.m21 + mRot.m12) * half;
-                quaternion.w = (mRot.m20 - mRot.m02) * half;
+                quaternion.z = (rotation_matrix.m21 + rotation_matrix.m12) * half;
+                quaternion.w = (rotation_matrix.m20 - rotation_matrix.m02) * half;
             }
             else
             {
-                sqrt_ = sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
+                sqrt_ = sqrt(1.0f + rotation_matrix.m22 - rotation_matrix.m00 - rotation_matrix.m11);
                 half  = 0.5f / sqrt_;
 
-                quaternion.x = (mRot.m20 + mRot.m02) * half;
-                quaternion.y = (mRot.m21 + mRot.m12) * half;
+                quaternion.x = (rotation_matrix.m20 + rotation_matrix.m02) * half;
+                quaternion.y = (rotation_matrix.m21 + rotation_matrix.m12) * half;
                 quaternion.z = 0.5f * sqrt_;
-                quaternion.w = (mRot.m01 - mRot.m10) * half;
+                quaternion.w = (rotation_matrix.m01 - rotation_matrix.m10) * half;
             }
 
             // ensure canonical form (w >= 0) to prevent sign flipping between equivalent quaternions
@@ -231,7 +231,7 @@ namespace spartan::math
         [[nodiscard]] Vector3 GetScale() const
         {
         #if defined(__AVX2__)
-            const float* data = Data();
+            const float* elements = Data();
         
             // calculate signs (scalar)
             float xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
@@ -244,9 +244,9 @@ namespace spartan::math
             __m128i idx2 = _mm_set_epi32(2, 10, 6, 2);  // m20, m21, m22 (last ignored)
         
             // gather rows using avx2 gather
-            __m128 row0 = _mm_i32gather_ps(data, idx0, 4);
-            __m128 row1 = _mm_i32gather_ps(data, idx1, 4);
-            __m128 row2 = _mm_i32gather_ps(data, idx2, 4);
+            __m128 row0 = _mm_i32gather_ps(elements, idx0, 4);
+            __m128 row1 = _mm_i32gather_ps(elements, idx1, 4);
+            __m128 row2 = _mm_i32gather_ps(elements, idx2, 4);
         
             // use dot product to sum squares of first 3 elements (mask 0x71 = sum xyz, result in lowest)
             __m128 len_sq0 = _mm_dp_ps(row0, row0, 0x71);
@@ -273,47 +273,47 @@ namespace spartan::math
 
         static Matrix CreateScale(float scale) { return CreateScale(scale, scale, scale); }
         static Matrix CreateScale(const Vector3& scale) { return CreateScale(scale.x, scale.y, scale.z); }
-        static Matrix CreateScale(float scaleX, float scaleY, float ScaleZ)
+        static Matrix CreateScale(float scale_x, float scale_y, float scale_z)
         {
             return Matrix(
-                scaleX, 0, 0, 0,
-                0, scaleY, 0, 0,
-                0, 0, ScaleZ, 0,
+                scale_x, 0, 0, 0,
+                0, scale_y, 0, 0,
+                0, 0, scale_z, 0,
                 0, 0, 0, 1
             );
         }
 
         static Matrix CreateLookAtLH(const Vector3& position, const Vector3& target, const Vector3& up)
         {
-            const Vector3 zAxis = Vector3::Normalize(target - position);
-            const Vector3 xAxis = Vector3::Normalize(Vector3::Cross(up, zAxis));
-            const Vector3 yAxis = Vector3::Cross(zAxis, xAxis);
+            const Vector3 axis_z = Vector3::Normalize(target - position);
+            const Vector3 axis_x = Vector3::Normalize(Vector3::Cross(up, axis_z));
+            const Vector3 axis_y = Vector3::Cross(axis_z, axis_x);
 
             return Matrix(
-                xAxis.x, yAxis.x, zAxis.x, 0,
-                xAxis.y, yAxis.y, zAxis.y, 0,
-                xAxis.z, yAxis.z, zAxis.z, 0,
-                -Vector3::Dot(xAxis, position), -Vector3::Dot(yAxis, position), -Vector3::Dot(zAxis, position), 1.0f
+                axis_x.x, axis_y.x, axis_z.x, 0,
+                axis_x.y, axis_y.y, axis_z.y, 0,
+                axis_x.z, axis_y.z, axis_z.z, 0,
+                -Vector3::Dot(axis_x, position), -Vector3::Dot(axis_y, position), -Vector3::Dot(axis_z, position), 1.0f
             );
         }
 
-        static Matrix CreateOrthographicLH(float width, float height, float zNearPlane, float zFarPlane)
+        static Matrix CreateOrthographicLH(float width, float height, float z_near, float z_far)
         {
             return Matrix(
                 2 / width, 0, 0, 0,
                 0, 2 / height, 0, 0,
-                0, 0, 1 / (zFarPlane - zNearPlane), 0,
-                0, 0, zNearPlane / (zNearPlane - zFarPlane), 1
+                0, 0, 1 / (z_far - z_near), 0,
+                0, 0, z_near / (z_near - z_far), 1
             );
         }
 
-        static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane)
+        static Matrix CreateOrthoOffCenterLH(float left, float right, float bottom, float top, float z_near, float z_far)
         {
             return Matrix(
                 2 / (right - left), 0, 0, 0,
                 0, 2 / (top - bottom), 0, 0,
-                0, 0, 1 / (zFarPlane - zNearPlane), 0,
-                (left + right) / (left - right), (top + bottom) / (bottom - top), zNearPlane / (zNearPlane - zFarPlane), 1
+                0, 0, 1 / (z_far - z_near), 0,
+                (left + right) / (left - right), (top + bottom) / (bottom - top), z_near / (z_near - z_far), 1
             );
         }
 
@@ -471,13 +471,12 @@ namespace spartan::math
                 __m128 v3 = _mm_broadcast_ss(right_data + 4 * j + 3);
         
                 // compute using fma
-                __m128 res = _mm_mul_ps(left_col0, v0);
-                res = _mm_fmadd_ps(left_col1, v1, res);
-                res = _mm_fmadd_ps(left_col2, v2, res);
-                res = _mm_fmadd_ps(left_col3, v3, res);
+                __m128 column = _mm_mul_ps(left_col0, v0);
+                column = _mm_fmadd_ps(left_col1, v1, column);
+                column = _mm_fmadd_ps(left_col2, v2, column);
+                column = _mm_fmadd_ps(left_col3, v3, column);
         
-                // store result column
-                _mm_storeu_ps(const_cast<float*>(result.Data()) + 4 * j, res);
+                _mm_storeu_ps(const_cast<float*>(result.Data()) + 4 * j, column);
             }
         
             return result;

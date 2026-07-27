@@ -46,9 +46,7 @@ namespace spartan
 
     void RHI_DescriptorSetLayout::CreateRhiResource()
     {
-        // d3d12 uses a single bindless root signature shared across all psos, so per-layout d3d12 objects
-        // are not needed; encode the layout hash into m_rhi_resource so it's a stable non-null token,
-        // matching what the shared rhi code expects (it asserts on null in some paths)
+        // one bindless root signature serves every pso, so m_rhi_resource just holds the layout hash as a non-null token
         m_rhi_resource = reinterpret_cast<void*>(m_layout_hash != 0 ? m_layout_hash : static_cast<uint64_t>(0x1));
     }
 }

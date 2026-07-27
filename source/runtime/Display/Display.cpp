@@ -215,11 +215,11 @@ namespace spartan
                 int by2 = r.bottom;
         
                 // compute the intersection
-                int intersectArea = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
-                if (intersectArea > best_intersection_area)
+                int intersect_area = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
+                if (intersect_area > best_intersection_area)
                 {
                     output_primary = output_current;
-                    best_intersection_area = static_cast<float>(intersectArea);
+                    best_intersection_area = static_cast<float>(intersect_area);
                 }
         
                 i++;

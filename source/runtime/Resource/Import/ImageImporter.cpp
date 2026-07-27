@@ -202,9 +202,7 @@ namespace spartan
             return format;
         }
 
-        // converts a bitmap to 8 bits. If the bitmap was a high-color bitmap (16, 24 or 32-bit) or
-        // if it was a monochrome or greyscale bitmap (1 or 4-bit), the end result will be a greyscale
-        // bitmap, otherwise (1 or 4-bit palletized bitmaps) it will be a palletized bitmap
+        // converts to 8 bits, high-color and monochrome sources end up greyscale, palettized sources stay palettized
         FIBITMAP* convert_to_8bits(FIBITMAP* bitmap)
         {
             SP_ASSERT(bitmap != nullptr);
@@ -282,9 +280,7 @@ namespace spartan
                 bitmap = convert_to_32bits(bitmap);
             }
         
-            // most GPUs can't use a 32 bit RGB texture as a color attachment
-            // vulkan tells you, your GPU doesn't support it
-            // So to prevent that, we maintain the 32 bits and convert to an RGBA format
+            // 32 bit rgb is not a valid color attachment on most gpus, so keep the depth and convert to rgba
             if (get_channel_count(bitmap) == 3 && get_bits_per_channel(bitmap) == 32)
             {
                 FIBITMAP* previous_bitmap = bitmap;
@@ -564,8 +560,8 @@ namespace spartan
                 texture->AllocateMip();
                 RHI_Texture_Mip* mip = texture->GetMip(0, mip_index);
 
-                const auto& data = dds_file.GetImageData(mip_index, 0);
-                memcpy(&mip->bytes[0], data->m_mem, mip->bytes.size());
+                const auto& mip_data = dds_file.GetImageData(mip_index, 0);
+                memcpy(&mip->bytes[0], mip_data->m_mem, mip->bytes.size());
             }
 
             return;
@@ -675,10 +671,62 @@ namespace spartan
         }
     }
 
+    void ImageImporter::SaveSdrRgba8(const string& file_path, const uint32_t width, const uint32_t height, const void* data)
+    {
+        if (width == 0 || height == 0 || !data)
+        {
+            return;
+        }
+
+        // 32 bit so generated labels and decals keep their alpha
+        FIBITMAP* bitmap = FreeImage_Allocate(width, height, 32);
+        if (!bitmap)
+        {
+            SP_LOG_ERROR("Failed to allocate FreeImage SDR bitmap");
+            return;
+        }
+
+        const uint8_t* source = static_cast<const uint8_t*>(data);
+        for (uint32_t y = 0; y < height; y++)
+        {
+            BYTE* scanline      = FreeImage_GetScanLine(bitmap, height - 1 - y);
+            const uint8_t* row  = source + static_cast<size_t>(y) * width * 4;
+            for (uint32_t x = 0; x < width; x++)
+            {
+                // freeimage stores 32 bit bitmaps as bgra
+                scanline[x * 4 + 0] = row[x * 4 + 2];
+                scanline[x * 4 + 1] = row[x * 4 + 1];
+                scanline[x * 4 + 2] = row[x * 4 + 0];
+                scanline[x * 4 + 3] = row[x * 4 + 3];
+            }
+        }
+
+        BOOL saved = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_Z_BEST_SPEED);
+        FreeImage_Unload(bitmap);
+
+        if (!saved)
+        {
+            SP_LOG_ERROR("Failed to save SDR PNG to %s", file_path.c_str());
+        }
+    }
+
     void ImageImporter::SaveSdr(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
         if (width == 0 || height == 0)
         {
+            return;
+        }
+
+        // the half float path below reads two bytes per channel, an 8 bit buffer would be read out of bounds
+        if (bits_per_channel == 8)
+        {
+            if (channel_count != 4)
+            {
+                SP_LOG_ERROR("SaveSdr expects 4 channels for 8 bit data");
+                return;
+            }
+
+            SaveSdrRgba8(file_path, width, height, data);
             return;
         }
 

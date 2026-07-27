@@ -68,9 +68,7 @@ namespace spartan
         void BuildSurface();
         void PushToRenderer();
 
-        // simulation parameters
-        // four cascades spanning swells down to microwaves, each band-limited to its own range in the spectrum shader
-        // the spectrum is physically normalized, so 1.0 means the wind speed alone dictates the sea state
+        // four cascades from swells to microwaves, the spectrum is normalized so wind speed alone dictates the sea state
         uint32_t m_cascade_count    = 4;
         float m_cascade_length[4]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
         float m_amplitude           = 1.0f;

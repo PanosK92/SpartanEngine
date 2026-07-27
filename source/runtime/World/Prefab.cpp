@@ -95,9 +95,7 @@ namespace spartan
         declaration.append_attribute("version")  = "1.0";
         declaration.append_attribute("encoding") = "utf-8";
 
-        // root <Prefab> node - we manually serialize components and children
-        // instead of calling Entity::Save() because that would early-return
-        // for prefab entities (writing only the prefab reference)
+        // components and children are serialized by hand, Entity::Save early-returns for prefab entities
         pugi::xml_node prefab_node = doc.append_child("Prefab");
         prefab_node.append_attribute("name") = entity->GetObjectName().c_str();
 
@@ -112,9 +110,27 @@ namespace spartan
             }
         }
 
-        // save children as child entity nodes
+        // save children as child entity nodes, a child that is no longer in the
+        // world would be a freed pointer so it is compared by address, not by id
+        const vector<Entity*>& live_entities = World::GetEntities();
         for (Entity* child : entity->GetChildren())
         {
+            const bool child_is_live =
+                child &&
+                find(
+                    live_entities.begin(),
+                    live_entities.end(),
+                    child
+                ) != live_entities.end();
+            if (!child_is_live)
+            {
+                SP_LOG_WARNING(
+                    "Skipped a stale child while saving prefab: %s",
+                    file_path.c_str()
+                );
+                continue;
+            }
+
             if (child->IsTransient())
             {
                 continue;

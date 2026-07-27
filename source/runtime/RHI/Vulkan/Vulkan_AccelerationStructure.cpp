@@ -188,11 +188,7 @@ namespace spartan
         as_create(device, &create_info, nullptr, reinterpret_cast<VkAccelerationStructureKHR*>(&m_rhi_resource));
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
 
-        // scratch buffer
-        // for static blas (no refit) all builds share a single global scratch buffer that grows monotonically
-        // building thousands of blas with per-instance scratch oom'd the gpu, sharing keeps it bounded
-        // overallocate by alignment so the device address can be aligned at use time, vma does not
-        // guarantee the base address satisfies minAccelerationStructureScratchOffsetAlignment
+        // static blas share one growing scratch buffer, per-instance scratch oom'd the gpu, overallocated so the address can be aligned at use
         const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
         uint64_t scratch_size    = max(size_info.buildScratchSize, size_info.updateScratchSize);
         scratch_size             = ((scratch_size + alignment - 1) & ~(alignment - 1)) + alignment;
@@ -486,9 +482,7 @@ namespace spartan
         // update dst
         build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
     
-        // reuse or create scratch buffer
-        // overallocate by alignment so the device address can be aligned at use time, vma does not
-        // guarantee the base address satisfies minAccelerationStructureScratchOffsetAlignment
+        // overallocated by alignment, vma does not guarantee the base satisfies minAccelerationStructureScratchOffsetAlignment
         const uint64_t scratch_alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
         uint64_t required_scratch_size   = size_info.buildScratchSize;
         required_scratch_size            = ((required_scratch_size + scratch_alignment - 1) & ~(scratch_alignment - 1)) + scratch_alignment;

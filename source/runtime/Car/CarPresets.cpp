@@ -52,8 +52,9 @@ namespace car
                 return;
             }
 
-            string data = attribute.as_string();
-            for (char& character : data)
+            // accept both comma and space separated lists by normalizing to spaces
+            string text = attribute.as_string();
+            for (char& character : text)
             {
                 if (character == ',')
                 {
@@ -61,7 +62,7 @@ namespace car
                 }
             }
 
-            stringstream stream(data);
+            stringstream stream(text);
             for (int i = 0; i < count; i++)
             {
                 float value = 0.0f;

@@ -777,13 +777,13 @@ namespace spartan
             return false;
         }
 
-        Render* renderable = GetEntity()->GetComponent<Render>();
-        if (!renderable || !renderable->GetMesh())
+        Render* render = GetEntity()->GetComponent<Render>();
+        if (!render || !render->GetMesh())
         {
             return false;
         }
 
-        const BoundingBox& bbox_local = renderable->GetBoundingBoxMesh();
+        const BoundingBox& bbox_local = render->GetBoundingBoxMesh();
         const Vector3 bbox_extent     = bbox_local.GetMax() - bbox_local.GetMin();
         if (bbox_extent == Vector3::Zero)
         {
@@ -938,9 +938,7 @@ namespace spartan
         }
         else if (m_light_type == LightType::Area)
         {
-            // wide perspective from the rectangle center so the shadow map captures occluders
-            // across the front hemisphere, an orthographic at the rectangle size only covers
-            // a narrow column directly under the emitter and misses anything outside it
+            // wide perspective from the rectangle center, an orthographic at the rectangle size only covers a narrow column
             const float fov_y_radians = math::deg_to_rad * 120.0f;
             const float aspect_ratio  = 1.0f;
             m_matrix_projection[0]    = Matrix::CreatePerspectiveFieldOfViewLH(fov_y_radians, aspect_ratio, m_range, 0.05f);
@@ -1093,9 +1091,9 @@ namespace spartan
         return is_within_distance(this, m_distance_volumetric);
     }
 
-    bool Light::IsInViewFrustum(Render* renderable, const uint32_t array_index) const
+    bool Light::IsInViewFrustum(Render* render, const uint32_t array_index) const
     {
-        const BoundingBox& bounding_box = renderable->GetBoundingBox();
+        const BoundingBox& bounding_box = render->GetBoundingBox();
         if (bounding_box.IsInfinite())
         {
             return true;

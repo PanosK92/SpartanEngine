@@ -4,7 +4,18 @@ import { append_debug_log } from "./debug_log.mjs";
 function protocol_value(value) {
   if (Array.isArray(value))
   {
-    return value.join(",");
+    // scalar arrays stay comma separated, structured ones travel as json
+    const structured = value.some(
+      (entry) => entry !== null && typeof entry === "object",
+    );
+    return structured
+      ? JSON.stringify(value)
+      : value.join(",");
+  }
+
+  if (value !== null && typeof value === "object")
+  {
+    return JSON.stringify(value);
   }
 
   if (typeof value === "boolean")
@@ -31,7 +42,13 @@ function command_line(command, args = {}) {
 }
 
 export class EngineClient {
-  constructor({ host, port, timeout_ms, source = "engine_client" }) {
+  constructor({
+    host,
+    port,
+    timeout_ms,
+    source = "engine_client",
+    idle_close_ms = 250,
+  }) {
     this.host = host;
     this.port = port;
     this.timeout_ms = timeout_ms;
@@ -43,6 +60,7 @@ export class EngineClient {
     this.next_request_id = 1;
     this.connecting = null;
     this.idle_close_timer = null;
+    this.idle_close_ms = idle_close_ms;
   }
 
   async command(command, args = {}, timeout_ms = this.timeout_ms) {
@@ -299,6 +317,10 @@ export class EngineClient {
 
   schedule_idle_close() {
     this.cancel_idle_close();
+    if (this.idle_close_ms <= 0)
+    {
+      return;
+    }
     this.idle_close_timer = setTimeout(() => {
       this.idle_close_timer = null;
       if (this.pending.length !== 0 || !this.socket || this.socket.destroyed)
@@ -306,8 +328,10 @@ export class EngineClient {
         return;
       }
 
-      this.socket.end();
-    }, 250);
+      const socket = this.socket;
+      this.socket = null;
+      socket.destroy();
+    }, this.idle_close_ms);
     this.idle_close_timer.unref?.();
   }
 

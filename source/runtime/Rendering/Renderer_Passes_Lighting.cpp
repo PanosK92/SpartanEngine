@@ -102,10 +102,7 @@ namespace spartan
         {
             return;
         }
-        // rt reflections owns the entire primary specular lobe at every roughness now that it
-        // jitters its ray across the ggx lobe and denoises it, restir pt is diffuse only at the
-        // primary (restir_primary_specular_blend returns 0 in restir_reservoir.hlsl), so there is
-        // no blend band and no roughness cutoff, the tracer fires for every reflective pixel
+        // rt reflections owns the whole primary specular lobe, so there is no blend band and no roughness cutoff
         const bool rt_reflections_active = cvar_ray_traced_reflections.GetValueAs<bool>();
         if (!rt_reflections_active || !tex_reflections_position)
         {
@@ -161,9 +158,7 @@ namespace spartan
     
     void Renderer::Pass_Reflections_Shade(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        // rt reflections shades the full primary specular lobe at every roughness, restir pt is
-        // diffuse only at the primary (restir_primary_specular_blend returns 0 in
-        // restir_reservoir.hlsl) so the two never double count specular
+        // restir pt is diffuse only at the primary, so the two never double count specular
         if (!cvar_ray_traced_reflections.GetValueAs<bool>())
         {
             return;
@@ -471,10 +466,7 @@ namespace spartan
         cmd_list->EndMarker();
     }
 
-    // build one self inverting pairing table, lin 2026 3.1, each link index starts as two
-    // horizontally adjacent copies, repeated random 2x2 shuffles move each copy by a gaussian
-    // of sigma / sqrt(2), pairing the copies yields deltas with standard deviation sigma,
-    // deltas wrap at half the table size so the table tiles across the screen
+    // self inverting pairing table, lin 2026 3.1, repeated 2x2 shuffles yield deltas of standard deviation sigma, wrapped so it tiles
     static void build_restir_pairing_table(uint32_t size, float sigma, uint32_t seed, uint32_t* out)
     {
         const uint32_t n = size * size;
@@ -609,10 +601,7 @@ namespace spartan
 
             SetCommonTextures(cmd_list);
 
-            // tlas is required for the lin 2022 sample validation step inside the temporal pass,
-            // periodically re-traces the chosen reservoir's primary->rc visibility ray to kill
-            // stale samples that no longer reach their reconnection vertex (moved lights, opened
-            // doors, broken geometry), validation cadence is set by get_restir_validation_period
+            // the temporal pass re-traces the chosen reservoir's visibility ray to kill samples that no longer reach their reconnection vertex
             if (tlas)
             {
                 cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
@@ -629,9 +618,7 @@ namespace spartan
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs[i], rhi_all_mips, 0, true);
             }
 
-            // bind previous frame depth so the temporal validity gate compares against the actual
-            // prior surface depth at prev_uv instead of the current depth at prev_uv, the latter
-            // mistreats moving objects as disocclusion and is the dominant cause of motion ghosting
+            // the validity gate needs the prior surface depth at prev_uv, the current depth there ghosts moving objects
             if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
             {
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, depth_prev);
@@ -655,9 +642,7 @@ namespace spartan
             }
 
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
-            // pipeline layout always declares the push constant range, vulkan validation requires
-            // a vkCmdPushConstants call before every dispatch even when the shader does not read
-            // any of the per pass values, this dispatches with whatever the renderer tagged
+            // vulkan validation wants a push constant call before every dispatch even when the shader reads none of it
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
         }
@@ -683,10 +668,7 @@ namespace spartan
             return false;
         }
 
-        // paired spatial reuse, lin 2026 3, the pairing tables couple every pixel with one
-        // mutual partner per table, the pre-pass shifts each pixel's path to its partners once
-        // and the resample pass reads both directions of every pair from the shift textures,
-        // halving the shift mapping and visibility cost versus per-neighbor bidirectional shifts
+        // paired spatial reuse, lin 2026 3, the pre-pass shifts each pixel to its partners once so the resample reads both directions
         cmd_list->BeginTimeblock("restir_pt_spatial_shift");
         {
             RHI_PipelineState pso;
@@ -752,9 +734,7 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
 
-        // the resample leaves its output in reservoirs_spatial, swap the canonical and spatial
-        // render target pointers so subsequent passes reading restir_reservoir0..4 see the
-        // freshly resampled reservoirs, the pointer swap is free compared to blitting them
+        // the resample output lands in reservoirs_spatial, swapping pointers is free compared to blitting
         auto& render_targets = GetRenderTargets();
         for (uint32_t i = 0; i < restir_reservoir_textures; i++)
         {
@@ -777,12 +757,7 @@ namespace spartan
         }
     }
 
-    // cpu only pointer swap between the current and previous gbuffer depth and normal slots,
-    // must be called at frame end after every consumer of the current targets has finished
-    // recording, so the slot that just held this frame's data becomes next frame's *_previous
-    // and the slot with stale data becomes next frame's current target which the gbuffer pass
-    // overwrites, this avoids the queue compatibility issue of cmd blit on the compute queue
-    // and removes two full screen copies from the per frame cost
+    // cpu only pointer swap, call at frame end once every consumer of the current depth and normal targets has finished recording
     void Renderer::Pass_ReSTIR_SwapGBufferHistory()
     {
         auto& render_targets = GetRenderTargets();
@@ -860,17 +835,7 @@ namespace spartan
         const uint32_t dispatch_x  = (width  + 7) / 8;
         const uint32_t dispatch_y  = (height + 7) / 8;
 
-        // one-shot clear of every reservoir slot after (re)allocation, the rhi cannot guarantee
-        // freshly-created textures contain zero-initialized memory and the temporal pass would
-        // otherwise read garbage on the first frame; is_reservoir_valid catches most of it but
-        // a stray valid-looking sample can propagate noise for several frames before the cap
-        // ratchets it out
-        //
-        // gbuffer_depth_previous is also cleared here on the same one-shot, on the very first
-        // frame of a restir enable the temporal pass calls evaluate_disocclusion which reads
-        // tex_depth_previous before the end-of-frame swap has copied anything into it,
-        // initializing to 1.0 (far) makes disocclusion fail closed so the first frame falls
-        // back to the canonical sample instead of merging against garbage history
+        // one-shot clear after (re)allocation, new textures are not guaranteed zeroed and depth_previous must start at far so disocclusion fails closed
         if (!m_pass_state.restir_reservoirs_initialized)
         {
             for (uint32_t i = 0; i < restir_reservoir_textures; i++)
@@ -897,9 +862,7 @@ namespace spartan
                 cmd_list->ClearTexture(tex_duplication, Color::standard_black);
             }
 
-            // paired spatial reuse tables, lin 2026 3, sigma is the paper's 16 px at full
-            // resolution scaled by the restir resolution factor, the init flag resets on
-            // scale changes so the tables regenerate together with the reservoirs
+            // sigma is the paper's 16 px scaled by the restir resolution factor, the tables regenerate with the reservoirs
             if (RHI_Buffer* pairing_buffer = GetBuffer(Renderer_Buffer::RestirPairing))
             {
                 float sigma = min(max(16.0f * cvar_restir_pt_scale.GetValue(), 2.0f), 16.0f);
@@ -921,9 +884,7 @@ namespace spartan
         Pass_ReSTIR_Temporal(cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
         const bool ran_spatial = Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
 
-        // sample duplication map, lin 2026 5, counts shifted copies of the same initial candidate
-        // around each pixel in the final reservoirs, next frame's temporal pass reads it at the
-        // backprojected pixel to adaptively reduce the confidence cap in correlated regions
+        // counts shifted copies of the same candidate per pixel, next frame's temporal pass lowers the confidence cap where they cluster
         if (RHI_Texture* tex_duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
         {
             RHI_Shader* shader_duplication = GetShader(Renderer_Shader::restir_pt_duplication_c);
@@ -1147,9 +1108,7 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_stats,         GetBuffer(Renderer_Buffer::ClusterStats));
 
-            // single dispatch even in vr stereo, the grid lives in the left eye view-projection space which contains
-            // the right eye to within the ipd, far less than one cluster tile width, force eye_index = 0 so the shader
-            // helpers (get_view, get_projection, world_to_view) select the left eye matrices for the assign math
+            // one dispatch even in vr, the grid lives in left eye space which contains the right eye to well under a tile, so force eye 0
             const uint32_t saved_eye = m_pcb_pass_cpu.eye_index;
             m_pcb_pass_cpu.eye_index = 0;
             cmd_list->PushConstants(m_pcb_pass_cpu);

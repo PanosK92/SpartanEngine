@@ -460,8 +460,7 @@ namespace spartan
     //   8: SRV table t19 space5 (draw_data)
     //   9: SRV table t20 space8 (geometry_vertices) + t22 space9 (indices) + t23 space10 (instances)
     //  10: Sampler table s0 space6 unbounded + s1 space7 unbounded
-    // the bindless root signature is identical for every pipeline, so build it once and share it
-    // each pipeline takes a reference (see create_root_signature_bindless) balanced by its deletion-queue release
+    // identical for every pipeline, so it is built once and each pipeline takes a reference released through the deletion queue
     static void create_root_signature_bindless(RHI_Pipeline* pipeline)
     {
         ID3D12RootSignature* root_sig = get_or_create_bindless_root_signature();
@@ -604,9 +603,7 @@ namespace spartan
         params[9].DescriptorTable.pDescriptorRanges   = geo_ranges;
         params[9].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 10: Sampler table s0 space6 (comparison) + s1 space7 (regular)
-        // d3d12 forbids OFFSET_APPEND after an unbounded range, and forbids any range after an unbounded one,
-        // so use bounded counts with explicit offsets that match the sampler heap zones (compare 0..63, regular 64..127)
+        // d3d12 forbids anything after an unbounded range, so use bounded counts matching the heap zones, compare 0..63 and regular 64..127
         static D3D12_DESCRIPTOR_RANGE sampler_ranges[2] = {};
         sampler_ranges[0].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         sampler_ranges[0].NumDescriptors                    = d3d12_descriptors::GetSamplersCompareCount();
@@ -669,9 +666,7 @@ namespace spartan
         return s_root_signature;
     }
 
-    // build a dxr ray tracing pipeline state object using the bindless root signature as the global root sig
-    // dxr requires a state object composed of: dxil library (per shader), hit groups, shader config,
-    // pipeline config, and the global root signature
+    // a dxr state object needs a dxil library per shader, hit groups, shader config, pipeline config and the global root signature
     static void create_ray_tracing_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state)
     {
         // dxr is only available on devices that expose ID3D12Device5
@@ -734,9 +729,7 @@ namespace spartan
         hit_group.ClosestHitShaderImport = L"ClosestHit";
         hit_group.IntersectionShaderImport = nullptr;
 
-        // shader config: payload + attribute storage budgets
-        // 128 bytes covers the largest engine payload (restir_pt PathPayload ~76 bytes), with headroom
-        // attributes are 8 bytes for built-in triangle barycentrics
+        // 128 bytes covers the largest engine payload with headroom, attributes are the 8 byte triangle barycentrics
         D3D12_RAYTRACING_SHADER_CONFIG shader_config = {};
         shader_config.MaxPayloadSizeInBytes   = 128;
         shader_config.MaxAttributeSizeInBytes = 8;

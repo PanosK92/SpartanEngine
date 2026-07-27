@@ -61,7 +61,7 @@ namespace spartan::math
             return Quaternion(axis.x * sin, axis.y * sin, axis.z * sin, cos);
         }
 
-        void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
+        void FromAxes(const Vector3& axis_x, const Vector3& axis_y, const Vector3& axis_z);
 
         void ToAngleAxis(float& angle, Vector3& axis) const
         {
@@ -95,49 +95,50 @@ namespace spartan::math
         // Roll around the z axis in radians.
         static inline Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
         {
-            const float halfRoll  = roll * 0.5f;
-            const float halfPitch = pitch * 0.5f;
-            const float halfYaw   = yaw * 0.5f;
+            const float half_roll  = roll * 0.5f;
+            const float half_pitch = pitch * 0.5f;
+            const float half_yaw   = yaw * 0.5f;
 
-            const float sinRoll  = sin(halfRoll);
-            const float cosRoll  = cos(halfRoll);
-            const float sinPitch = sin(halfPitch);
-            const float cosPitch = cos(halfPitch);
-            const float sinYaw   = sin(halfYaw);
-            const float cosYaw   = cos(halfYaw);
+            const float sin_roll  = sin(half_roll);
+            const float cos_roll  = cos(half_roll);
+            const float sin_pitch = sin(half_pitch);
+            const float cos_pitch = cos(half_pitch);
+            const float sin_yaw   = sin(half_yaw);
+            const float cos_yaw   = cos(half_yaw);
 
             return Quaternion(
-                cosYaw * sinPitch * cosRoll + sinYaw * cosPitch * sinRoll,
-                sinYaw * cosPitch * cosRoll - cosYaw * sinPitch * sinRoll,
-                cosYaw * cosPitch * sinRoll - sinYaw * sinPitch * cosRoll,
-                cosYaw * cosPitch * cosRoll + sinYaw * sinPitch * sinRoll
+                cos_yaw * sin_pitch * cos_roll + sin_yaw * cos_pitch * sin_roll,
+                sin_yaw * cos_pitch * cos_roll - cos_yaw * sin_pitch * sin_roll,
+                cos_yaw * cos_pitch * sin_roll - sin_yaw * sin_pitch * cos_roll,
+                cos_yaw * cos_pitch * cos_roll + sin_yaw * sin_pitch * sin_roll
             );
         }
 
         static Quaternion FromRotation(const Vector3& start, const Vector3& end)
         {
-            const Vector3 normStart = start.Normalized();
-            const Vector3 normEnd   = end.Normalized();
-            const float d           = normStart.Dot(normEnd);
+            const Vector3 start_normalized = start.Normalized();
+            const Vector3 end_normalized   = end.Normalized();
+            const float dot                = start_normalized.Dot(end_normalized);
 
-            if (d > -1.0f + std::numeric_limits<float>::epsilon())
+            if (dot > -1.0f + std::numeric_limits<float>::epsilon())
             {
-                const Vector3 c = normStart.Cross(normEnd);
-                const float s = sqrtf((1.0f + d) * 2.0f);
-                const float invS = 1.0f / s;
+                const Vector3 cross    = start_normalized.Cross(end_normalized);
+                const float scale      = sqrtf((1.0f + dot) * 2.0f);
+                const float scale_inv  = 1.0f / scale;
 
                 return Quaternion(
-                    c.x * invS,
-                    c.y * invS,
-                    c.z * invS,
-                    0.5f * s);
+                    cross.x * scale_inv,
+                    cross.y * scale_inv,
+                    cross.z * scale_inv,
+                    0.5f * scale);
             }
             else
             {
-                Vector3 axis = Vector3::Right.Cross(normStart);
+                // the vectors are opposite, any perpendicular axis gives a valid 180 degree turn
+                Vector3 axis = Vector3::Right.Cross(start_normalized);
                 if (axis.Length() < std::numeric_limits<float>::epsilon())
                 {
-                    axis = Vector3::Up.Cross(normStart);
+                    axis = Vector3::Up.Cross(start_normalized);
                 }
 
                 return FromAxisAngle(axis, 180.0f * deg_to_rad);
@@ -183,26 +184,19 @@ namespace spartan::math
             return quaternion.Normalized();
         }
 
-        static Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
+        // hamilton product, the vector parts contribute a cross product and the scalar parts a dot
+        static Quaternion Multiply(const Quaternion& a, const Quaternion& b)
         {
-            const float x     = Qa.x;
-            const float y     = Qa.y;
-            const float z     = Qa.z;
-            const float w     = Qa.w;
-            const float num4  = Qb.x;
-            const float num3  = Qb.y;
-            const float num2  = Qb.z;
-            const float num   = Qb.w;
-            const float num12 = (y * num2) - (z * num3);
-            const float num11 = (z * num4) - (x * num2);
-            const float num10 = (x * num3) - (y * num4);
-            const float num9  = ((x * num4) + (y * num3)) + (z * num2);
+            const float cross_x = (a.y * b.z) - (a.z * b.y);
+            const float cross_y = (a.z * b.x) - (a.x * b.z);
+            const float cross_z = (a.x * b.y) - (a.y * b.x);
+            const float dot     = (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 
             return Quaternion(
-                ((x * num) + (num4 * w)) + num12,
-                ((y * num) + (num3 * w)) + num11,
-                ((z * num) + (num2 * w)) + num10,
-                (w * num) - num9
+                (a.x * b.w) + (b.x * a.w) + cross_x,
+                (a.y * b.w) + (b.y * a.w) + cross_y,
+                (a.z * b.w) + (b.z * a.w) + cross_z,
+                (a.w * b.w) - dot
             );
         }
 
@@ -290,7 +284,7 @@ namespace spartan::math
 
         // euler angles to quaternion (input in degrees)
         static Quaternion FromEulerAngles(const Vector3& rotation)                           { return FromYawPitchRoll(rotation.y * deg_to_rad, rotation.x * deg_to_rad, rotation.z * deg_to_rad); }
-        static Quaternion FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * deg_to_rad,  rotationX * deg_to_rad,  rotationZ * deg_to_rad); }
+        static Quaternion FromEulerAngles(float rotation_x, float rotation_y, float rotation_z) { return FromYawPitchRoll(rotation_y * deg_to_rad,  rotation_x * deg_to_rad,  rotation_z * deg_to_rad); }
 
         // Returns yaw in degrees
         float Yaw() const   { return ToEulerAngles().y; }
@@ -315,9 +309,9 @@ namespace spartan::math
         void operator*=(const Quaternion& rhs)            { *this = Multiply(*this, rhs); }
         Vector3 operator*(const Vector3& rhs) const
         {
-            const Vector3 qVec(x, y, z);
-            const Vector3 cross1(qVec.Cross(rhs));
-            const Vector3 cross2(qVec.Cross(cross1));
+            const Vector3 vector_part(x, y, z);
+            const Vector3 cross1(vector_part.Cross(rhs));
+            const Vector3 cross2(vector_part.Cross(cross1));
 
             return rhs + 2.0f * (cross1 * w + cross2);
         }

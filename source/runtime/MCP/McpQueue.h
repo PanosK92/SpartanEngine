@@ -34,6 +34,7 @@ namespace spartan
         std::unordered_map<std::string, std::string> arguments;
     };
 
+    // marshals mcp requests from the server thread onto the main thread, Submit blocks until Tick runs it
     class McpQueue
     {
     public:

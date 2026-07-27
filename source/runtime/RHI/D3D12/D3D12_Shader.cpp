@@ -284,11 +284,11 @@ namespace spartan
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
 
-        // dxc utils, cached because creation is expensive and the interface is reentrant
-        static IDxcUtils* utils = nullptr;
-        if (!utils)
+        // cached because creation is expensive and the interface is reentrant
+        static IDxcUtils* dxc_utils = nullptr;
+        if (!dxc_utils)
         {
-            if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils))))
+            if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxc_utils))))
             {
                 SP_LOG_ERROR("Failed to create IDxcUtils for shader reflection");
                 return;
@@ -308,7 +308,7 @@ namespace spartan
         {
             // ray tracing shaders are compiled as libraries, walk all exported functions
             ID3D12LibraryReflection* lib_reflection = nullptr;
-            if (FAILED(utils->CreateReflection(&buffer, IID_PPV_ARGS(&lib_reflection))))
+            if (FAILED(dxc_utils->CreateReflection(&buffer, IID_PPV_ARGS(&lib_reflection))))
             {
                 SP_LOG_ERROR("Failed to create d3d12 library reflection");
                 return;
@@ -346,7 +346,7 @@ namespace spartan
         else
         {
             ID3D12ShaderReflection* shader_reflection = nullptr;
-            if (FAILED(utils->CreateReflection(&buffer, IID_PPV_ARGS(&shader_reflection))))
+            if (FAILED(dxc_utils->CreateReflection(&buffer, IID_PPV_ARGS(&shader_reflection))))
             {
                 SP_LOG_ERROR("Failed to create d3d12 shader reflection");
                 return;

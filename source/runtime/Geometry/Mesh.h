@@ -104,9 +104,7 @@ namespace spartan
         uint32_t GetMemoryUsage() const;
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);
-        // overload that writes into a pre-reserved sub-mesh slot, used by the model importer so the assignment is deterministic
-        // when ParseMesh runs in parallel, the auto-allocating overload above races on m_sub_meshes.size() and silently swaps which
-        // sub-mesh index ends up on which entity, breaking material assignment for any caller that keys off GetSubMeshIndex()
+        // writes into a pre-reserved slot, the auto-allocating overload races on size() when ParseMesh runs in parallel
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in);
         bool UpdateGeometry(
             std::vector<RHI_Vertex_PosTexNorTan>& vertices,

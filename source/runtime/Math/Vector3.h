@@ -229,9 +229,7 @@ namespace spartan::math
             #else
                 const float mag = sqrt(sqrmag);
 
-                // these intermediate variables force the intermediate result to be
-                // of float precision. without this, the intermediate result can be of higher
-                // precision, which changes behavior.
+                // the temporaries force float precision, a wider intermediate would change behaviour
 
                 const float normalized_x = x / mag;
                 const float normalized_y = y / mag;
@@ -244,24 +242,16 @@ namespace spartan::math
             }
         }
 
-        void FindBestAxisVectors(Vector3& Axis1, Vector3& Axis2) const
+        // builds an orthonormal basis around this vector, seeded from whichever cardinal axis is least parallel to it
+        void FindBestAxisVectors(Vector3& axis_1, Vector3& axis_2) const
         {
-            const float NX = abs(x);
-            const float NY = abs(y);
-            const float NZ = abs(z);
+            const float abs_x = abs(x);
+            const float abs_y = abs(y);
+            const float abs_z = abs(z);
 
-            // find best basis vectors
-            if (NZ > NX && NZ > NY)
-            {
-                Axis1 = Vector3(1, 0, 0);
-            }
-            else
-            {
-                Axis1 = Vector3(0, 0, 1);
-            }
-
-            Axis1 = (Axis1 - *this * (Axis1.Dot(*this))).Normalized();
-            Axis2 = Axis1.Cross(*this);
+            axis_1 = (abs_z > abs_x && abs_z > abs_y) ? Vector3(1, 0, 0) : Vector3(0, 0, 1);
+            axis_1 = (axis_1 - *this * (axis_1.Dot(*this))).Normalized();
+            axis_2 = axis_1.Cross(*this);
         }
 
         // distance
@@ -343,11 +333,9 @@ namespace spartan::math
         {
         #ifdef __AVX2__
             // create an __m128 vector from the components of this vector3, with padding
-            __m128 thisVec = _mm_set_ps(0.0f, z, y, x);
-            // create an __m128 vector from the components of the input vector3, with padding
-            __m128 bVec    = _mm_set_ps(0.0f, b.z, b.y, b.x);
-            // perform element-wise multiplication of the two vectors
-            __m128 result  = _mm_mul_ps(thisVec, bVec);
+            __m128 lhs_packed = _mm_set_ps(0.0f, z, y, x);
+            __m128 rhs_packed = _mm_set_ps(0.0f, b.z, b.y, b.x);
+            __m128 result     = _mm_mul_ps(lhs_packed, rhs_packed);
             
             // extract results directly (faster than storing to memory)
             return Vector3(_mm_cvtss_f32(result),

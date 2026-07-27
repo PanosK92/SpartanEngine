@@ -38,6 +38,7 @@ namespace spartan
     class RHI_Buffer;
     class RHI_CommandList;
 
+    // records gpu markers into a persistent buffer so a device removal can be traced to the pass that caused it
     class Breadcrumbs
     {
     public:
@@ -47,9 +48,7 @@ namespace spartan
         static constexpr uint32_t max_gpu_markers      = 512;
         static constexpr uint32_t gpu_marker_completed = 0xFFFFFFFF;
 
-        // per-queue dedicated buffer count, each queue type owns its own VkBuffer so the vulkan
-        // sync validator never sees two queues writing the same resource without synchronization
-        // which is what triggers WRITE_RACING_WRITE even when the byte ranges do not overlap
+        // one buffer per queue type, sharing one would trip WRITE_RACING_WRITE even on disjoint byte ranges
         static constexpr uint32_t queue_count = 3;
 
         enum class MarkerState : uint8_t

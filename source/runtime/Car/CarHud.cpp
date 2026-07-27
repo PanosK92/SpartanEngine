@@ -84,12 +84,12 @@ namespace spartan::car_hud
                 return;
             }
 
-            float nx = dx / len;
-            float ny = dy / len;
-            float hs = std::min(len * 0.32f, 10.0f);
+            float nx        = dx / len;
+            float ny        = dy / len;
+            float half_size = std::min(len * 0.32f, 10.0f);
             dl->AddTriangleFilled(tip,
-                ImVec2(tip.x - hs * (nx + ny * 0.5f), tip.y - hs * (ny - nx * 0.5f)),
-                ImVec2(tip.x - hs * (nx - ny * 0.5f), tip.y - hs * (ny + nx * 0.5f)),
+                ImVec2(tip.x - half_size * (nx + ny * 0.5f), tip.y - half_size * (ny - nx * 0.5f)),
+                ImVec2(tip.x - half_size * (nx - ny * 0.5f), tip.y - half_size * (ny + nx * 0.5f)),
                 color);
         }
 

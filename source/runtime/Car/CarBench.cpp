@@ -107,37 +107,37 @@ namespace spartan::car_bench
         {
             if (!metric)
             {
-                return "source/runtime/Car/CarSimulationCore.h";
+                return "source/runtime/Car/CarSimulation.cpp";
             }
             if (strcmp(metric, "front_load") == 0)
             {
-                return "source/runtime/Car/CarSimulationCore.h (apply_tire_forces)";
+                return "source/runtime/Car/CarSimulation.cpp (apply_tire_forces)";
             }
             if (strcmp(metric, "axle_drive_torque") == 0
                 || strcmp(metric, "coast_speedup") == 0)
             {
-                return "source/runtime/Car/CarSimulationCore.h (integrate_powertrain)";
+                return "source/runtime/Car/CarSimulation.cpp (integrate_powertrain)";
             }
             if (strcmp(metric, "reverse_engage") == 0)
             {
-                return "source/runtime/Car/CarSimulationCore.h (apply_service_brakes, update_automatic_gearbox)";
+                return "source/runtime/Car/CarSimulation.cpp (apply_service_brakes, update_automatic_gearbox)";
             }
             if (strcmp(metric, "coast_downshift") == 0)
             {
-                return "source/runtime/Car/CarSimulationCore.h (update_automatic_gearbox)";
+                return "source/runtime/Car/CarSimulation.cpp (update_automatic_gearbox)";
             }
             if (strcmp(metric, "yaw_rate") == 0 || strcmp(metric, "rear_slip") == 0)
             {
-                return "source/runtime/Car/CarSimulationCore.h (apply_tire_forces, update_assist_controller)";
+                return "source/runtime/Car/CarSimulation.cpp (apply_tire_forces, update_assist_controller)";
             }
             if (strcmp(metric, "speed") == 0
                 || strcmp(metric, "settle_drift") == 0
                 || strcmp(metric, "settle_awake") == 0
                 || strcmp(metric, "upright") == 0)
             {
-                return "source/runtime/Car/CarSimulationCore.h (integrate_powertrain, vehicle_assembly_is_settled)";
+                return "source/runtime/Car/CarSimulation.cpp (integrate_powertrain, vehicle_assembly_is_settled)";
             }
-            return "source/runtime/Car/CarSimulationCore.h";
+            return "source/runtime/Car/CarSimulation.cpp";
         }
 
         const char* code_for_metric(const char* metric)

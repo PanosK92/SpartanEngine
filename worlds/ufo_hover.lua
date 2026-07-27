@@ -29,7 +29,7 @@ local function refresh_world_bounds(self, entity)
         if not excluded then
             local render =
                 candidate:GetComponent(
-                    ComponentType.Renderable
+                    ComponentType.Render
                 )
 
             if render then

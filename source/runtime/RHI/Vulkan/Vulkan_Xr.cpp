@@ -62,10 +62,7 @@ namespace spartan
         vector<XrSwapchainImageVulkanKHR> swapchain_images;
         vector<VkImageView> swapchain_image_views;
 
-        // tracks whether a swapchain image was acquired/released between the current
-        // xrBeginFrame and xrEndFrame. when it hasn't been (e.g. the renderer was still
-        // loading resources and skipped the blit), xrEndFrame must submit zero layers
-        // or the runtime responds with XR_ERROR_LAYER_INVALID.
+        // xrEndFrame must submit zero layers when no image was released, or the runtime returns XR_ERROR_LAYER_INVALID
         bool swapchain_image_released_this_frame = false;
 
         // views for stereo rendering
@@ -79,9 +76,7 @@ namespace spartan
         PFN_xrGetVulkanInstanceExtensionsKHR xrGetVulkanInstanceExtensionsKHR = nullptr;
         PFN_xrGetVulkanDeviceExtensionsKHR xrGetVulkanDeviceExtensionsKHR = nullptr;
 
-        // background init state
-        // xrCreateInstance with steamvr spawns vrserver.exe and blocks for several seconds
-        // waiting for its pipe, so the whole init runs on a worker to keep engine boot snappy
+        // xrCreateInstance with steamvr spawns vrserver.exe and blocks for seconds, so init runs on a worker
         thread xr_init_thread;
         atomic<bool> xr_init_in_progress   = false;
         atomic<bool> xr_post_init_pending  = false;
@@ -99,12 +94,7 @@ namespace spartan
             return true;
         }
 
-        // build an asymmetric left-handed reverse-z projection matrix from openxr fov angles.
-        // the engine uses row-vector multiplication (clip = view * proj), left-handed view space
-        // (+z forward), and reverse-z (near maps to 1, far maps to 0) to match Camera::ComputeProjection.
-        // openxr fov angles are signed relative to the forward axis (angleLeft/angleDown typically
-        // negative, angleRight/angleUp typically positive); they apply directly in lh since only
-        // the z axis was mirrored during the pose conversion.
+        // asymmetric left-handed reverse-z from openxr fov angles, matching Camera::ComputeProjection
         math::Matrix create_projection_matrix(float fov_left, float fov_right, float fov_up, float fov_down, float near_z, float far_z)
         {
             const float tan_left  = tanf(fov_left);
@@ -600,13 +590,7 @@ namespace spartan
 
     bool Xr::CreateReferenceSpace()
     {
-        // we always request LOCAL reference space.  its origin sits near the user's
-        // initial head pose (runtime-chosen, gravity aligned), so when the user is
-        // still the eye poses we get back are close to the origin.  that makes the
-        // hmd pose a small offset that can be composed on top of the game camera's
-        // world transform, keeping the in-world head at the camera's position (e.g.
-        // on top of the player capsule) rather than at the vr room floor like STAGE
-        // space would.
+        // LOCAL puts the origin near the initial head pose, so the hmd pose composes onto the game camera instead of the room floor
         const XrReferenceSpaceType space_type = XR_REFERENCE_SPACE_TYPE_LOCAL;
         SP_LOG_INFO("openxr: using local reference space (origin near initial head pose)");
 
@@ -622,10 +606,7 @@ namespace spartan
 
     void Xr::ProcessEvents()
     {
-        // track whether stereo rendering was active on the previous pass through this
-        // function. any change in the effective stereo state (session running + stereo
-        // enabled) triggers a render target rebuild so the g-buffer switches between
-        // Type2D and Type2DArray as the user puts on / takes off the headset.
+        // a change in the effective stereo state rebuilds the render targets, the g-buffer switches between Type2D and Type2DArray
         const bool stereo_active_before = m_session_running && m_stereo_3d;
 
         XrEventDataBuffer event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
@@ -657,9 +638,7 @@ namespace spartan
                         }
                         case XR_SESSION_STATE_STOPPING:
                         {
-                            // driven by the runtime when the user removes the headset or
-                            // otherwise stops the session.  the session stays alive and
-                            // can transition back to READY the next time the headset is worn.
+                            // the runtime drives this when the headset comes off, the session stays alive and can return to READY
                             m_session_running = false;
                             m_session_focused = false;
                             xrEndSession(xr_session);
@@ -701,10 +680,7 @@ namespace spartan
             event_buffer = { XR_TYPE_EVENT_DATA_BUFFER };
         }
 
-        // if the effective stereo state flipped during this tick, rebuild the render
-        // targets so they match the new layout (Type2DArray vs Type2D) before the next
-        // frame kicks off.  Xr::Tick runs before Renderer::Tick each frame, so the queue
-        // is idle here and RecreateRenderTargets can safely wait for gpu completion.
+        // Xr::Tick runs before Renderer::Tick, so the queue is idle and RecreateRenderTargets can wait for the gpu
         const bool stereo_active_after = m_session_running && m_stereo_3d;
         if (stereo_active_before != stereo_active_after)
         {
@@ -760,13 +736,7 @@ namespace spartan
             xr_views[0].pose.orientation.w
         );
 
-        // resolve the engine camera's world pose so hmd poses can be anchored to it.
-        // the camera entity defines the "rig root" in the game world (e.g. the head
-        // position on top of the player capsule).  we read position and rotation
-        // directly from the entity and compose per-eye transforms with primitives so
-        // the final view matrix is built via CreateLookAtLH, exactly like the mono
-        // camera path in Camera::UpdateViewMatrix.  that avoids any ambiguity around
-        // matrix composition order between this code and the rest of the engine.
+        // the camera entity is the rig root, per-eye views are built with CreateLookAtLH exactly like the mono path
         math::Vector3    camera_pos = math::Vector3::Zero;
         math::Quaternion camera_rot = math::Quaternion::Identity;
         float            near_z     = 0.1f;
@@ -784,11 +754,7 @@ namespace spartan
         {
             const XrView& view = xr_views[i];
 
-            // convert openxr (right-handed, -z forward) pose into engine space
-            // (left-handed, +z forward) by mirroring the z axis.  the required mapping
-            // for a quaternion (qx, qy, qz, qw) is to negate qx and qy (equivalent to
-            // negating qz and qw, since q and -q represent the same rotation).  we use
-            // the (qz, qw) form below.
+            // openxr is right-handed with -z forward, mirroring z means negating qz and qw
             const math::Vector3 rig_local_pos(
                 view.pose.position.x,
                 view.pose.position.y,
@@ -801,15 +767,11 @@ namespace spartan
                 -view.pose.orientation.w
             );
 
-            // compose rig-local eye pose with camera world pose to get eye world pose.
-            // the rig-local offset is rotated into world space by the camera's rotation
-            // and added to the camera's world position; orientation composes as usual.
+            // the rig-local offset is rotated by the camera rotation and added to its position, orientation composes as usual
             const math::Vector3    world_eye_pos = camera_pos + camera_rot * rig_local_pos;
             const math::Quaternion world_eye_rot = camera_rot * rig_local_rot;
 
-            // derive view basis from the composed orientation and build the view matrix
-            // using the exact same call the mono camera uses, so there is no convention
-            // mismatch between xr and non-xr view matrices.
+            // built with the same call the mono camera uses, so xr and non-xr view matrices share one convention
             const math::Vector3 forward = world_eye_rot * math::Vector3::Forward;
             const math::Vector3 up      = world_eye_rot * math::Vector3::Up;
 
@@ -880,9 +842,7 @@ namespace spartan
             projection_views[i].subImage.imageRect.extent  = { static_cast<int32_t>(swapchain_width), static_cast<int32_t>(swapchain_height) };
             projection_views[i].subImage.imageArrayIndex   = i;
 
-            // submit the pose/fov matching the eye that was actually rendered into array layer i.
-            // this is the correct pairing now that per-eye matrices are used end-to-end; no
-            // runtime-specific swap is required.
+            // submit the pose and fov of the eye actually rendered into array layer i, no runtime specific swap needed
             projection_views[i].pose = xr_views[i].pose;
             projection_views[i].fov  = xr_views[i].fov;
         }
@@ -894,10 +854,7 @@ namespace spartan
 
         const XrCompositionLayerBaseHeader* layers[] = { reinterpret_cast<XrCompositionLayerBaseHeader*>(&projection_layer) };
 
-        // only submit the projection layer if a swapchain image was actually produced
-        // this frame.  if the renderer skipped the blit (e.g. resources were still being
-        // loaded on the background thread right after the session came up), we must
-        // submit zero layers or the runtime returns XR_ERROR_LAYER_INVALID.
+        // the layer is skipped when the renderer produced no image, submitting it would return XR_ERROR_LAYER_INVALID
         const bool submit_layer = xr_frame_state.shouldRender && swapchain_image_released_this_frame;
 
         XrFrameEndInfo end_info = { XR_TYPE_FRAME_END_INFO };

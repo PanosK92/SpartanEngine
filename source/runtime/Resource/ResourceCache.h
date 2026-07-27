@@ -110,9 +110,7 @@ namespace spartan
          static void LoadDefaultResources();
          static void UnloadDefaultResources();
 
-        // get by name
-        // returns by value on purpose, a reference into the resource vector dangles the moment
-        // another thread caches a resource and reallocates it
+        // returns by value, a reference into the resource vector dangles as soon as another thread reallocates it
         static std::shared_ptr<IResource> GetByName(const std::string& name, ResourceType type);
         template <class T>
         static std::shared_ptr<T> GetByName(const std::string& name)

@@ -200,9 +200,9 @@ namespace spartan
             }
         
             // Convert processName to wide-character string for comparison
-            size_t convertedChars = 0;
+            size_t converted_chars = 0;
             wchar_t wProcessName[MAX_PATH];
-            mbstowcs_s(&convertedChars, wProcessName, process_name, strlen(process_name) + 1);
+            mbstowcs_s(&converted_chars, wProcessName, process_name, strlen(process_name) + 1);
         
             // Iterate through all processes
             do {
@@ -226,21 +226,21 @@ namespace spartan
             while ((entry = readdir(dir)) != NULL) {
                 // Check if the directory is a PID (starts with a digit)
                 if (entry->d_type == DT_DIR && isdigit(entry->d_name[0])) {
-                    char commPath[256];
-                    snprintf(commPath, sizeof(commPath), "/proc/%s/comm", entry->d_name);
+                    char comm_path[256];
+                    snprintf(comm_path, sizeof(comm_path), "/proc/%s/comm", entry->d_name);
         
-                    FILE* commFile = fopen(commPath, "r");
-                    if (commFile) {
+                    FILE* comm_file = fopen(comm_path, "r");
+                    if (comm_file) {
                         char comm[256];
-                        if (fgets(comm, sizeof(comm), commFile)) {
+                        if (fgets(comm, sizeof(comm), comm_file)) {
                             comm[strcspn(comm, "\n")] = 0; // Remove newline
                             if (strcmp(comm, processName) == 0) { // Case-sensitive comparison
-                                fclose(commFile);
+                                fclose(comm_file);
                                 closedir(dir);
                                 return true; // Process found
                             }
                         }
-                        fclose(commFile);
+                        fclose(comm_file);
                     }
                 }
             }
@@ -620,9 +620,7 @@ namespace spartan
             new_format = RHI_Format::B8R8G8A8_Unorm;
         }
     
-        // don't update m_format immediately - that would cause pipeline format mismatches
-        // if rendering happens between SetHdr() and Create(). instead, store the pending
-        // format and apply it in Create() when the swapchain is actually recreated
+        // the format is applied in Create, updating it here would mismatch pipelines rendering between SetHdr and Create
         if (new_format != m_format)
         {
             m_format_pending = new_format;

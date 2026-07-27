@@ -51,17 +51,13 @@ namespace
     uint32_t width_previous  = 0;
     uint32_t height_previous = 0;
 
-    // material drag-preview state, while a material asset is being dragged over the viewport,
-    // the mesh under the cursor temporarily wears that material, release commits, drag-away reverts
-    // entity is tracked by id so a deletion mid-drag cannot dereference a dangling pointer on revert
+    // drag preview state, the entity is tracked by id so a deletion mid-drag cannot dangle on revert
     uint64_t             preview_entity_id            = 0;
     shared_ptr<Material> preview_original_material;
     bool                 preview_original_was_default = false;
     bool                 preview_drag_was_active      = false;
 
-    // resolves the renderable under the mouse cursor using triangle precision,
-    // aabb-only was insufficient because parent renderables (eg a gltf scene wrapper)
-    // have aabbs that swallow the whole world so they always win the broadphase
+    // triangle precision picking, aabbs alone fail because a gltf scene wrapper swallows the whole world
     Entity* pick_entity_under_cursor()
     {
         Camera* camera = World::GetCamera();
@@ -269,10 +265,7 @@ void Viewport::OnTickVisible()
         }
         else if (preview_drag_was_active)
         {
-            // drag ended this frame, commit the preview by clearing state without reverting
-            // the imgui drop handler may not always fire on the release frame due to hover
-            // detection edge cases during drag-drop, this preserves the material change so
-            // the save reflects what the user saw
+            // the imgui drop handler can miss the release frame, so commit here instead of reverting
             clear_preview_state();
         }
 
@@ -353,7 +346,7 @@ void Viewport::OnTickVisible()
         // so we only update the properties panel without overwriting the camera's selection
         if (Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right))
         {
-            Properties::Inspect(camera->GetSelectedEntity());
+            Properties::ClearMaterialInspection();
         }
         else
         {

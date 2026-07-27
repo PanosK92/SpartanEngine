@@ -36,17 +36,14 @@ namespace spartan
 {
     class Material;
 
-    enum RenderableFlags : uint32_t
+    enum RenderFlags : uint32_t
     {
         CastsShadows         = 1U << 0,
-        // exclude the renderable from blas builds and tlas registration, lets foliage with millions of instances skip the ray tracing path entirely
-        // grass/flowers don't visibly matter for ray traced reflections/shadows/gi and a per-blade blas would burn gpu memory for no benefit
+        // skips blas builds and tlas registration, a per-blade blas for millions of grass instances buys nothing
         ExcludeFromRayTracing = 1U << 1
     };
 
-    // per-renderable material overrides, currently uv only
-    // each field defaults to nan, which means inherit from the material asset at draw time,
-    // so multiple renderables can share a material and still tweak uv independently
+    // per-render uv overrides, each field defaults to nan meaning inherit from the material asset at draw time
     struct MaterialOverride
     {
         float uv_tiling_x      = std::numeric_limits<float>::quiet_NaN();
@@ -62,6 +59,7 @@ namespace spartan
         static float unset()         { return std::numeric_limits<float>::quiet_NaN(); }
     };
 
+    // makes an entity drawable, it owns the mesh, the material and the per-frame lod and visibility state
     class Render : public Component
     {
     public:
@@ -120,8 +118,7 @@ namespace spartan
         Material* GetMaterial() const           { return m_material; }
         bool IsUsingDefaultMaterial() const     { return m_material_default; }
 
-        // per-renderable material overrides (uv transform)
-        // the override defaults to nan and resolves to the material's value at draw time
+        // per-render uv transform, nan fields resolve to the material's value at draw time
         const MaterialOverride& GetMaterialOverride() const { return m_material_override; }
         MaterialOverride& GetMaterialOverrideMutable()      { return m_material_override; }
         void ClearMaterialOverride()                        { m_material_override = MaterialOverride{}; }
@@ -157,14 +154,16 @@ namespace spartan
         void SetVisible(const bool visible) { m_is_visible = visible; }
 
         // flags
-        bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }
-        void SetFlag(const RenderableFlags flag, const bool enable = true);
+        bool HasFlag(const RenderFlags flag) const { return m_flags & flag; }
+        void SetFlag(const RenderFlags flag, const bool enable = true);
 
         // previous lights tracking
         uint64_t GetPreviousLights() const      { return m_previous_lights; }
         void SetPreviousLights(uint64_t lights) { m_previous_lights = lights; }
 
     private:
+        friend class Renderer;
+
         void UpdateAabb();
         void UpdateFrustumAndDistanceCulling();
         void UpdateLodIndices();
@@ -191,7 +190,7 @@ namespace spartan
 
         // misc
         math::Matrix m_transform_previous = math::Matrix::Identity;
-        uint32_t m_flags                  = RenderableFlags::CastsShadows;
+        uint32_t m_flags                  = RenderFlags::CastsShadows;
 
         // deferred default material assignment (renderer may not be ready during load)
         bool m_needs_default_material = false;
@@ -202,6 +201,6 @@ namespace spartan
         float m_distance_squared    = 0.0f;
         bool m_is_visible           = false;
         uint32_t m_lod_index        = 0;
-        uint64_t m_previous_lights  = 0; // lights whose frustums this renderable was in last frame
+        uint64_t m_previous_lights  = 0; // lights whose frustums this entity was in last frame
     };
 }

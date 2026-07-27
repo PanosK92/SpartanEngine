@@ -38,7 +38,6 @@ namespace spartan
         static std::string RemoveIllegalCharacters(const std::string& text);
         static std::string GetStringBeforeExpression(const std::string& str, const std::string& exp);
         static std::string GetStringAfterExpression(const std::string& str, const std::string& exp);
-        static std::string GetStringBetweenExpressions(const std::string& str, const std::string& exp_a, const std::string& exp_b);
         static std::string ConvertToUppercase(const std::string& lower);
         static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
         static std::wstring StringToWstring(const std::string& str);

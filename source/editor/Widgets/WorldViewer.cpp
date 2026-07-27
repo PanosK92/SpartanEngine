@@ -945,7 +945,7 @@ void WorldViewer::SetSelectedEntity(Entity* entity)
         camera->SetSelectedEntity(entity);
     }
 
-    Properties::Inspect(entity);
+    Properties::ClearMaterialInspection();
 }
 
 void WorldViewer::Popups()
@@ -1269,9 +1269,9 @@ Entity* WorldViewer::ActionEntityCreateEmpty()
 void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Render>();
-    renderable->SetMesh(MeshType::Cube);
-    renderable->SetDefaultMaterial();
+    auto render = entity->AddComponent<Render>();
+    render->SetMesh(MeshType::Cube);
+    render->SetDefaultMaterial();
     entity->AddComponent<Physics>()->SetBodyType(BodyType::Box);
     entity->SetObjectName("Cube");
 }
@@ -1279,9 +1279,9 @@ void WorldViewer::ActionEntityCreateCube()
 void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Render>();
-    renderable->SetMesh(MeshType::Quad);
-    renderable->SetDefaultMaterial();
+    auto render = entity->AddComponent<Render>();
+    render->SetMesh(MeshType::Quad);
+    render->SetDefaultMaterial();
     entity->AddComponent<Physics>()->SetBodyType(BodyType::Plane);
     entity->SetObjectName("Quad");
 }
@@ -1289,9 +1289,9 @@ void WorldViewer::ActionEntityCreateQuad()
 void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Render>();
-    renderable->SetMesh(MeshType::Sphere);
-    renderable->SetDefaultMaterial();
+    auto render = entity->AddComponent<Render>();
+    render->SetMesh(MeshType::Sphere);
+    render->SetDefaultMaterial();
     entity->AddComponent<Physics>()->SetBodyType(BodyType::Sphere);
     entity->SetObjectName("Sphere");
 }
@@ -1299,9 +1299,9 @@ void WorldViewer::ActionEntityCreateSphere()
 void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Render>();
-    renderable->SetMesh(MeshType::Cylinder);
-    renderable->SetDefaultMaterial();
+    auto render = entity->AddComponent<Render>();
+    render->SetMesh(MeshType::Cylinder);
+    render->SetDefaultMaterial();
     entity->AddComponent<Physics>()->SetBodyType(BodyType::Capsule);
     entity->SetObjectName("Cylinder");
 }
@@ -1309,9 +1309,9 @@ void WorldViewer::ActionEntityCreateCylinder()
 void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Render>();
-    renderable->SetMesh(MeshType::Cone);
-    renderable->SetDefaultMaterial();
+    auto render = entity->AddComponent<Render>();
+    render->SetMesh(MeshType::Cone);
+    render->SetDefaultMaterial();
     entity->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
     entity->SetObjectName("Cone");
 }
