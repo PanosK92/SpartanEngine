@@ -326,7 +326,12 @@ namespace spartan
         desc.BlendState            = desc_blend_state;
         desc.DepthStencilState     = desc_depth_stencil_state;
         desc.SampleMask            = UINT_MAX;
-        desc.PrimitiveTopologyType = (state.primitive_topology == RHI_PrimitiveTopology::LineList) ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE : D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        desc.PrimitiveTopologyType =
+            d3d12_primitive_topology[
+                static_cast<uint32_t>(
+                    state.primitive_topology
+                )
+            ];
         desc.SampleDesc.Count      = 1;
 
         // tessellation draws consume control point patches, matches the vulkan patch list topology

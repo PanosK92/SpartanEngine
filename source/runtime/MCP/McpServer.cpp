@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "McpServer.h"
 #include "McpQueue.h"
+#include "Resource/ResourceCache.h"
+#include "World/World.h"
 #include <cctype>
 #include <cstdlib>
 #include <thread>
@@ -381,6 +383,10 @@ namespace spartan
 
     void McpServer::Initialize(const std::vector<std::string>& args)
     {
+        // the library is registered whether or not the server comes up, the editor can start one later
+        // and a world saved in between must still leave these files where they are
+        World::SetGeneratedResourceDirectory(std::string(ResourceCache::GetProjectDirectory()) + "mcp_resources/");
+
         if (!has_argument(args, "--mcp-control"))
         {
             return;

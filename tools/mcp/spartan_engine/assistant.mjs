@@ -7,6 +7,7 @@ import { EngineClient } from "./engine_client.mjs";
 import { run_cursor_fallback, list_models, dispose_cached_agent } from "./cursor_agent.mjs";
 import { run_fast_path } from "./fast_paths.mjs";
 import { route_intent } from "./intent_router.mjs";
+import { beautify_prompt } from "./prompt_beautifier.mjs";
 import { make_run_id, parse_key_payload, parse_line, parse_prompt_payload, send_event, send_line } from "./protocol.mjs";
 
 function read_arg(name, fallback) {
@@ -366,9 +367,48 @@ async function execute_prompt(socket, payload) {
         });
       });
 
+      // a terse build request gets expanded into a design brief before the build starts, the original
+      // wording stays the request and the brief rides along beside it, so nothing the user said is
+      // replaced. this sits after the fast path so deterministic work never pays for a model call
+      let brief = "";
+      if (payload.enrich !== false) {
+        await run.stage(
+          "Enrich",
+          "expanding the request into a design brief",
+          async () => {
+            phase = "enriching the prompt";
+            const enriched = await beautify_prompt({
+              prompt: payload.prompt,
+              intent,
+              api_key: payload.api_key,
+              model_id: payload.model_id,
+              on_note: (text) => run.event("stage_note", { text }),
+            });
+            brief = enriched.brief;
+            run.receipt(
+              enriched.ok ? "prompt enriched" : "prompt kept as written",
+              {
+                reason: enriched.reason,
+                brief: enriched.brief || undefined,
+              },
+            );
+          },
+        );
+        if (brief) {
+          void append_debug_log({
+            type: "assistant_prompt_brief",
+            source: "assistant",
+            run_id: run.id,
+            prompt: payload.prompt,
+            brief,
+          });
+        }
+      }
+
       phase = "using cursor fallback";
       const result = await run_cursor_fallback({
         prompt: payload.prompt,
+        brief,
         api_key: payload.api_key,
         model_id: payload.model_id,
         engine_host,
@@ -455,9 +495,15 @@ const server = net.createServer((socket) => {
         const request = parse_line(line);
         if (request.command === "models") {
           const api_key = parse_key_payload(request.value);
-          list_models(api_key).then((result) => {
-            send_line(socket, result.ok ? "ok" : "error", result.text);
-          });
+          // a rejection here used to leave the editor waiting for a line that never came
+          list_models(api_key).then(
+            (result) => {
+              send_line(socket, result.ok ? "ok" : "error", result.text);
+            },
+            (error) => {
+              send_line(socket, "error", error?.message ?? "failed to list models");
+            },
+          );
         } else if (request.command === "cancel") {
           const cancelled = cancel_active_run("cancelled by user");
           send_line(socket, cancelled ? "ok" : "error", cancelled ? "Cancellation requested." : "No active run.");

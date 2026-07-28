@@ -245,7 +245,12 @@ namespace spartan
 
     float Camera::GetFovVerticalRad() const
     {
-        return 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (Renderer::GetViewport().height / Renderer::GetViewport().width));
+        return
+            2.0f *
+            atan(
+                tan(m_fov_horizontal_rad / 2.0f) /
+                GetAspectRatio()
+            );
     }
 
     void Camera::SetFovHorizontalDeg(const float fov)
@@ -256,7 +261,9 @@ namespace spartan
 
     float Camera::GetAspectRatio() const
     {
-        return Renderer::GetViewport().GetAspectRatio();
+        return m_aspect_ratio_override > 0.0f
+            ? m_aspect_ratio_override
+            : Renderer::GetViewport().GetAspectRatio();
     }
 
     bool Camera::IsInViewFrustum(const BoundingBox& bounding_box) const

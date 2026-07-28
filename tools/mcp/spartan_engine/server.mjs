@@ -40,6 +40,7 @@ import {
 import {
   constrain_generated_resources,
   generated_resource_command,
+  material_file_name,
   world_resource_directory,
 } from "./world_resources.mjs";
 import {
@@ -157,6 +158,40 @@ async function benchmark_baseline_path(benchmark_id) {
 }
 
 let active_resource_directory = null;
+// bumped whenever the loaded world changes, a lookup that was already in flight answers for the world that
+// was loaded when it started and must not install itself over the newer one
+let resource_directory_generation = 0;
+let resource_directory_lookup = null;
+
+// concurrent commands share one lookup instead of each asking the engine, and the caller uses the value it
+// awaited rather than re-reading the shared one, which a world change could have cleared in the meantime
+async function acquire_resource_directory()
+{
+  if (active_resource_directory)
+  {
+    return active_resource_directory;
+  }
+
+  if (!resource_directory_lookup)
+  {
+    const generation = resource_directory_generation;
+    resource_directory_lookup = resolve_active_resource_directory()
+      .then((resolved) =>
+      {
+        if (generation === resource_directory_generation)
+        {
+          active_resource_directory = resolved;
+        }
+        return resolved;
+      })
+      .finally(() =>
+      {
+        resource_directory_lookup = null;
+      });
+  }
+
+  return resource_directory_lookup;
+}
 
 async function resolve_active_resource_directory(world = null)
 {
@@ -174,21 +209,15 @@ async function resolve_active_resource_directory(world = null)
 }
 
 async function send_engine_command(command, args = {}) {
-  if (
-    generated_resource_command(command) &&
-    !active_resource_directory
-  )
-  {
-    active_resource_directory =
-      await resolve_active_resource_directory();
-  }
   if (generated_resource_command(command))
   {
+    const directory =
+      (await acquire_resource_directory()) ??
+      world_resource_directory();
     args = constrain_generated_resources(
       command,
       args,
-      active_resource_directory ??
-        world_resource_directory(),
+      directory,
     );
   }
   const result = await engine.command(
@@ -200,6 +229,7 @@ async function send_engine_command(command, args = {}) {
   {
     active_resource_directory =
       await resolve_active_resource_directory(result);
+    resource_directory_generation++;
   }
   else if (
     command === "context_snapshot" &&
@@ -208,6 +238,7 @@ async function send_engine_command(command, args = {}) {
   {
     active_resource_directory =
       await resolve_active_resource_directory(result.world);
+    resource_directory_generation++;
   }
   else if (
     command === "world_load" ||
@@ -215,6 +246,7 @@ async function send_engine_command(command, args = {}) {
   )
   {
     active_resource_directory = null;
+    resource_directory_generation++;
   }
   if (
     result.ok &&
@@ -231,8 +263,7 @@ async function send_engine_command(command, args = {}) {
     result.asset_registration =
       await auto_register_world_asset(
         project_root,
-        active_resource_directory ??
-          await resolve_active_resource_directory(),
+        await acquire_resource_directory(),
         command,
         args,
         result,
@@ -798,6 +829,39 @@ const compound_part_args = {
   physics_friction: z.number().min(0).optional(),
   physics_restitution: z.number().min(0).max(1).optional(),
 };
+
+function flatten_engine_points(value) {
+  if (!Array.isArray(value))
+  {
+    return value;
+  }
+  return value.flatMap((entry) =>
+    Array.isArray(entry) ? entry : [entry]
+  );
+}
+
+function engine_mesh_args(args) {
+  let profile = args.profile;
+  if (
+    args.shape === "curved_profile" &&
+    Array.isArray(profile) &&
+    profile.length >= 3
+  )
+  {
+    profile = profile.map((point) => [...point]);
+    const first = profile[0];
+    const last = profile.at(-1);
+    if (first[0] !== last[0] || first[1] !== last[1])
+    {
+      profile.push([...first]);
+    }
+  }
+  return {
+    ...args,
+    profile: flatten_engine_points(profile),
+    path_points: flatten_engine_points(args.path_points),
+  };
+}
 
 function safe_asset_name(value) {
   const safe = String(value ?? "part")
@@ -1717,6 +1781,7 @@ const world_asset_register_schema = {
   required_checks: z.array(z.string()).optional(),
   notes: z.string().optional(),
   promote: z.boolean().optional(),
+  keep_history: z.boolean().optional(),
 };
 
 register_local_tool(
@@ -1738,8 +1803,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_search(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
     ),
   ),
@@ -1756,8 +1820,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_inspect(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
     ),
   ),
@@ -1774,8 +1837,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_register(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
     ),
   ),
@@ -1784,7 +1846,7 @@ register_local_tool(
 register_local_tool(
   "world_asset_version",
   {
-    description: "Create a new immutable candidate version for an existing reusable world asset.",
+    description: "Create a new immutable candidate version for an existing reusable world asset. Once a candidate is promoted the earlier versions and their files are deleted, keeping only the final one.",
     inputSchema: world_asset_register_schema,
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
@@ -1792,8 +1854,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_register(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
     ),
   ),
@@ -1810,8 +1871,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_fork(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
     ),
   ),
@@ -1834,8 +1894,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_compare(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
     ),
   ),
@@ -1844,7 +1903,7 @@ register_local_tool(
 register_local_tool(
   "world_asset_promote",
   {
-    description: "Promote a verified candidate only when required checks pass and its quality score exceeds the active version by the threshold.",
+    description: "Promote a verified candidate only when required checks pass and its quality score exceeds the active version by the threshold. Superseded versions and their files are deleted unless keep_history is set.",
     inputSchema: {
       asset_id: z.string().optional(),
       id: z.string().optional(),
@@ -1852,6 +1911,7 @@ register_local_tool(
       candidate_version: z.union([z.string(), z.number().int()]).optional(),
       threshold: z.number().min(0).optional(),
       required_checks: z.array(z.string()).optional(),
+      keep_history: z.boolean().optional(),
     },
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
@@ -1859,8 +1919,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_promote(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
     ),
   ),
@@ -1881,8 +1940,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_asset_load(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
       send_engine_command,
     ),
@@ -1900,8 +1958,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_material_inspect(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
       send_engine_command,
     ),
@@ -1919,8 +1976,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_material_fork(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
       send_engine_command,
     ),
@@ -1949,8 +2005,7 @@ register_local_tool(
   async (args) => catalog_tool_result(
     world_material_publish(
       project_root,
-      active_resource_directory ??
-        await resolve_active_resource_directory(),
+      await acquire_resource_directory(),
       args,
       send_engine_command,
     ),
@@ -3543,7 +3598,10 @@ register_local_tool(
     }
 
     return tool_result(
-      await send_engine_command("mesh_generate", args),
+      await send_engine_command(
+        "mesh_generate",
+        engine_mesh_args(args),
+      ),
     );
   },
 );
@@ -3600,7 +3658,10 @@ register_local_tool(
 
     const result = await send_engine_command(
       "mesh_generate_batch",
-      args,
+      {
+        ...args,
+        items: args.items.map(engine_mesh_args),
+      },
     );
     if (result.ok)
     {
@@ -3619,14 +3680,13 @@ register_local_tool(
           constrain_generated_resources(
             "mesh_generate",
             items[index],
-            active_resource_directory ??
+            (await acquire_resource_directory()) ??
               world_resource_directory(),
           );
         const registration =
           await auto_register_world_asset(
             project_root,
-            active_resource_directory ??
-              await resolve_active_resource_directory(),
+            await acquire_resource_directory(),
             "mesh_generate",
             constrained_item,
             generated_items[index] ?? {
@@ -4632,8 +4692,10 @@ register_tool(
 register_tool(
   server,
   "asset_viewer_open",
-  "Open the Asset Viewer without changing the main scene viewport.",
-  {},
+  "Show or hide the Asset Viewer without changing the main scene viewport.",
+  {
+    visible: z.boolean().optional(),
+  },
   "asset_viewer_open",
   { annotations: edit_tool, outputSchema: output_schemas.generic },
 );
@@ -4650,11 +4712,17 @@ register_tool(
 register_tool(
   server,
   "asset_viewer_select",
-  "Select and load a catalog asset in the Asset Viewer without changing the main scene viewport.",
+  "Select and load a specific catalog asset version in the Asset Viewer without changing the main scene viewport.",
   {
     asset_id: z.string().optional(),
     id: z.string().optional(),
     name: z.string().optional(),
+    version_id:
+      z.union([z.string(), z.number().int()]).optional(),
+    version:
+      z.union([z.string(), z.number().int()]).optional(),
+    candidate_version:
+      z.union([z.string(), z.number().int()]).optional(),
   },
   "asset_viewer_select",
   { annotations: edit_tool, outputSchema: output_schemas.generic },
@@ -4696,11 +4764,15 @@ register_tool(
 register_tool(
   server,
   "asset_viewer_screenshot",
-  "Save a screenshot of the current Asset Viewer preview without capturing or moving the main scene viewport.",
+  "Save a screenshot of the current Asset Viewer preview without capturing or moving the main scene viewport. Captures a shaded render against the sky regardless of what the panel is showing, pass shading to inspect topology instead.",
   {
     path: z.string().optional(),
     width: z.number().int().min(256).max(2048).optional(),
     height: z.number().int().min(256).max(2048).optional(),
+    shading: z.enum(["solid", "wire", "vertices"]).optional(),
+    backdrop: z
+      .enum(["auto", "sky", "charcoal", "slate", "paper"])
+      .optional(),
   },
   "asset_viewer_screenshot",
   { annotations: edit_tool, outputSchema: output_schemas.generic },
@@ -4876,11 +4948,12 @@ register_tool(
 register_tool(
   server,
   "resource_remove",
-  "Remove a cached resource by name or path without deleting the file from disk.",
+  "Remove a cached resource by name or path. Set delete_file to also delete files inside shared project/mcp_resources.",
   {
     name: z.string().optional(),
     path: z.string().optional(),
     type: resource_type.optional(),
+    delete_file: z.boolean().optional(),
   },
   "resource_remove",
   { annotations: destructive_tool, outputSchema: output_schemas.resource_receipt },
@@ -4950,8 +5023,8 @@ const texture_layer_schema = z.object({
     "darken",
     "lighten",
   ]).optional(),
-  color: z.string().optional(),
-  color_b: z.string().optional(),
+  color: z.union([z.string(), vector4]).optional(),
+  color_b: z.union([z.string(), vector4]).optional(),
   opacity: z.number().min(0).max(1).optional(),
   value_as_alpha: z.boolean().optional(),
   invert: z.boolean().optional(),
@@ -5030,9 +5103,9 @@ register_tool(
   server,
   "texture_generate",
   [
-    "Composite a texture from procedural layers and write the color map, plus normal and packed maps when layers carry relief, roughness, metalness or occlusion.",
+    "Composite a texture from procedural layers and always write color and roughness maps, plus normal and packed maps when layers carry relief, varying roughness, metalness or occlusion.",
     "Layers stack bottom to top. Use fill and noise for surfaces, bricks, tiles, stripes and checker for repeating structure, spots and scratches for wear, shape and text for labels and decals.",
-    "Colors accept #rrggbb, #rrggbbaa, or comma separated components. Give a layer color and color_b to tint it by its pattern value.",
+    "Colors accept #rrggbb, #rrggbbaa, or rgba arrays in either zero to one or zero to 255 range. Give a layer color and color_b to tint it by its pattern value.",
     "Set relief for bumps, roughness and roughness_b for surface finish, and metalness for metal. Pass material_path to attach every generated map to that material.",
     "The response reports mean color, contrast and seam_error so a tiling texture can be tuned without looking at it.",
   ].join(" "),
@@ -5044,7 +5117,7 @@ register_tool(
 register_local_tool(
   "material_textured_create",
   {
-    description: "Create a material and generate its textures in one call, attaching color, normal and packed maps and optional uv tiling.",
+    description: "Create a material and generate its textures in one call, attaching color, roughness, normal and packed maps and optional uv tiling.",
     inputSchema: {
       name: z.string(),
       material_path: z.string().optional(),
@@ -5065,7 +5138,7 @@ register_local_tool(
     const material = await send_engine_command(
       "material_create",
       {
-        path: args.material_path ?? `${args.name}.xml`,
+        path: args.material_path ?? material_file_name(args.name),
         name: args.name,
       },
     );
@@ -5078,7 +5151,7 @@ register_local_tool(
       material.resource?.path ??
       material.material?.path ??
       args.material_path ??
-      `${args.name}.xml`;
+      material_file_name(args.name);
     const texture = await send_engine_command(
       "texture_generate",
       {
@@ -5090,7 +5163,9 @@ register_local_tool(
         seed: args.seed,
         seamless: args.seamless,
         normal_strength: args.normal_strength,
-        base_roughness: args.base_roughness,
+        base_roughness:
+          args.base_roughness ??
+          args.roughness,
         base_metalness: args.base_metalness,
         library_asset: args.library_asset,
         material_path,
@@ -5320,6 +5395,19 @@ register_tool(
   },
   "prefab_save",
   { annotations: edit_tool, outputSchema: output_schemas.prefab_receipt },
+);
+
+register_tool(
+  server,
+  "entity_make_game_ready",
+  "Bake every part under an entity that shares a material into one mesh, leaving one render entity per material. Runs automatically when a focused asset is saved, so call it directly only for an entity that represents a single object and was not built through the focused asset flow. Reports what merged and what it left alone, with the reason.",
+  {
+    id: z.string(),
+    path: z.string().optional(),
+    generate_lods: z.boolean().optional(),
+  },
+  "entity_make_game_ready",
+  { annotations: edit_tool },
 );
 
 register_tool(

@@ -55,7 +55,9 @@ namespace spartan
 
         cmd_list->BeginTimeblock("reflections_apply");
         {
-            bool use_ray_traced = cvar_ray_traced_reflections.GetValueAs<bool>();
+            bool use_ray_traced =
+                cvar_ray_traced_reflections.GetValueAs<bool>() &&
+                !IsSecondaryViewActive();
 
             if (!m_pass_state.cleared_reflections && !use_ray_traced)
             {
@@ -103,7 +105,10 @@ namespace spartan
             return;
         }
         // rt reflections owns the whole primary specular lobe, so there is no blend band and no roughness cutoff
-        const bool rt_reflections_active = cvar_ray_traced_reflections.GetValueAs<bool>();
+        // a secondary view is excluded, it is not in the tlas and its denoiser history belongs to the primary
+        const bool rt_reflections_active =
+            cvar_ray_traced_reflections.GetValueAs<bool>() &&
+            !IsSecondaryViewActive();
         if (!rt_reflections_active || !tex_reflections_position)
         {
             if (!m_pass_state.cleared_rt_reflections)
@@ -159,7 +164,7 @@ namespace spartan
     void Renderer::Pass_Reflections_Shade(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         // restir pt is diffuse only at the primary, so the two never double count specular
-        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>() || IsSecondaryViewActive())
         {
             return;
         }
@@ -210,7 +215,11 @@ namespace spartan
 
     void Renderer::Pass_Reflections_Denoise(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        if (Window::IsMinimized() || !cvar_ray_traced_reflections.GetValueAs<bool>())
+        if (
+            Window::IsMinimized() ||
+            !cvar_ray_traced_reflections.GetValueAs<bool>() ||
+            IsSecondaryViewActive()
+        )
         {
             return;
         }
@@ -289,6 +298,14 @@ namespace spartan
     {
         const uint32_t min_rt_dimension = 64;
         if (Window::IsMinimized())
+        {
+            return;
+        }
+
+        // a secondary view is not in the tlas so it has nothing to trace against, it falls back
+        // to the shadow atlas, returning before the clear keeps the primary's mask and denoiser
+        // history intact
+        if (IsSecondaryViewActive())
         {
             return;
         }
@@ -372,7 +389,11 @@ namespace spartan
             return;
         }
 
-        if (!cvar_ray_traced_shadows.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
+        if (
+            !cvar_ray_traced_shadows.GetValueAs<bool>() ||
+            !RHI_Device::IsSupportedRayTracing() ||
+            IsSecondaryViewActive()
+        )
         {
             return;
         }
@@ -793,6 +814,15 @@ namespace spartan
         if (tex_gi->GetWidth() < min_rt_dimension || tex_gi->GetHeight() < min_rt_dimension)
             return;
 
+        // a secondary view is not in the tlas, tracing from it would gather the primary scene's
+        // radiance, so the preview renders with direct lighting only, the reservoirs that hold
+        // the primary's temporal state are left untouched
+        if (IsSecondaryViewActive())
+        {
+            cmd_list->ClearTexture(tex_gi, Color::standard_black);
+            return;
+        }
+
         if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing() || !reservoir0)
         {
             if (!m_pass_state.cleared_restir)
@@ -1009,8 +1039,12 @@ namespace spartan
     {
         RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss);
 
-        // the rt trace already captures exact contact occlusion
-        const bool rt_shadows_active = cvar_ray_traced_shadows.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
+        // the rt trace already captures exact contact occlusion, a secondary view never traces
+        const bool rt_shadows_active =
+            cvar_ray_traced_shadows.GetValueAs<bool>() &&
+            RHI_Device::IsSupportedRayTracing() &&
+            GetTopLevelAccelerationStructure() != nullptr &&
+            !IsSecondaryViewActive();
         if (rt_shadows_active)
         {
             return;
@@ -1323,7 +1357,8 @@ namespace spartan
             );
             const bool restir_enabled =
                 cvar_restir_pt.GetValueAs<bool>() &&
-                tex_gi;
+                tex_gi &&
+                !IsSecondaryViewActive();
             cmd_list->SetTexture(
                 Renderer_BindingsSrv::tex4,
                 tex_gi ? tex_gi : GetStandardTexture(

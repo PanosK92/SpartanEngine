@@ -295,6 +295,7 @@ namespace spartan
         icon_p,
         dithering_c,
         auto_exposure_c,
+        preview_studio_c,
         // reflections
         reflections_ray_generation_r,
         reflections_ray_miss_r,

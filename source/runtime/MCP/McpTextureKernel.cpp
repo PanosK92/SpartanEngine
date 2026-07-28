@@ -1068,6 +1068,61 @@ namespace spartan::mcp_texture_kernel
                 std::lround(saturate(value) * 255.0f)
             );
         }
+
+        bool parse_color_value(
+            const mcp_json::value& source,
+            color4& output
+        )
+        {
+            if (source.type == mcp_json::kind::string)
+            {
+                return parse_color(source.string_value, output);
+            }
+
+            if (
+                !source.is_array() ||
+                source.array_items.size() < 3 ||
+                source.array_items.size() > 4
+            )
+            {
+                return false;
+            }
+
+            const float red = static_cast<float>(
+                source.array_items[0].number_or(0.0)
+            );
+            const float green = static_cast<float>(
+                source.array_items[1].number_or(0.0)
+            );
+            const float blue = static_cast<float>(
+                source.array_items[2].number_or(0.0)
+            );
+            const float color_divisor =
+                red > 1.0f ||
+                green > 1.0f ||
+                blue > 1.0f
+                    ? 255.0f
+                    : 1.0f;
+
+            output.r = red / color_divisor;
+            output.g = green / color_divisor;
+            output.b = blue / color_divisor;
+            if (source.array_items.size() == 4)
+            {
+                const float alpha = static_cast<float>(
+                    source.array_items[3].number_or(1.0)
+                );
+                output.a = alpha > 1.0f
+                    ? alpha / 255.0f
+                    : alpha;
+            }
+            else
+            {
+                output.a = 1.0f;
+            }
+
+            return true;
+        }
     }
 
     bool parse_color(const std::string& text, color4& output)
@@ -1179,7 +1234,25 @@ namespace spartan::mcp_texture_kernel
         const float texel = 1.0f /
             static_cast<float>(std::max(width, height));
 
+        const bool has_color_layer = std::any_of(
+            settings.layers.begin(),
+            settings.layers.end(),
+            [](const layer& source)
+            {
+                return source.contributes_color;
+            }
+        );
         std::vector<float> albedo(pixel_count * 4, 0.0f);
+        if (!has_color_layer)
+        {
+            for (size_t index = 0; index < pixel_count; index++)
+            {
+                albedo[index * 4 + 0] = 1.0f;
+                albedo[index * 4 + 1] = 1.0f;
+                albedo[index * 4 + 2] = 1.0f;
+                albedo[index * 4 + 3] = 1.0f;
+            }
+        }
         std::vector<float> relief(pixel_count, 0.0f);
         std::vector<float> roughness(
             pixel_count,
@@ -1280,72 +1353,75 @@ namespace spartan::mcp_texture_kernel
                         continue;
                     }
 
-                    const color4 tint = source.tint_by_value
-                        ? color4
-                        {
-                            lerp(
-                                source.color_a.r,
-                                source.color_b.r,
-                                sample.value
-                            ),
-                            lerp(
-                                source.color_a.g,
-                                source.color_b.g,
-                                sample.value
-                            ),
-                            lerp(
-                                source.color_a.b,
-                                source.color_b.b,
-                                sample.value
-                            ),
-                            lerp(
-                                source.color_a.a,
-                                source.color_b.a,
-                                sample.value
-                            )
-                        }
-                        : source.color_a;
-
-                    const float source_alpha = alpha * tint.a;
-                    if (source_alpha <= 0.0f)
+                    if (source.contributes_color)
                     {
-                        continue;
+                        const color4 tint = source.tint_by_value
+                            ? color4
+                            {
+                                lerp(
+                                    source.color_a.r,
+                                    source.color_b.r,
+                                    sample.value
+                                ),
+                                lerp(
+                                    source.color_a.g,
+                                    source.color_b.g,
+                                    sample.value
+                                ),
+                                lerp(
+                                    source.color_a.b,
+                                    source.color_b.b,
+                                    sample.value
+                                ),
+                                lerp(
+                                    source.color_a.a,
+                                    source.color_b.a,
+                                    sample.value
+                                )
+                            }
+                            : source.color_a;
+
+                        const float source_alpha = alpha * tint.a;
+                        if (source_alpha <= 0.0f)
+                        {
+                            continue;
+                        }
+
+                        float* pixel = &albedo[index * 4];
+                        const float blended_r = blend_channel(
+                            source.blend,
+                            pixel[0],
+                            tint.r
+                        );
+                        const float blended_g = blend_channel(
+                            source.blend,
+                            pixel[1],
+                            tint.g
+                        );
+                        const float blended_b = blend_channel(
+                            source.blend,
+                            pixel[2],
+                            tint.b
+                        );
+
+                        pixel[0] = lerp(
+                            pixel[0],
+                            blended_r,
+                            source_alpha
+                        );
+                        pixel[1] = lerp(
+                            pixel[1],
+                            blended_g,
+                            source_alpha
+                        );
+                        pixel[2] = lerp(
+                            pixel[2],
+                            blended_b,
+                            source_alpha
+                        );
+                        pixel[3] = source_alpha +
+                            pixel[3] * (1.0f - source_alpha);
                     }
-
-                    float* pixel = &albedo[index * 4];
-                    const float blended_r = blend_channel(
-                        source.blend,
-                        pixel[0],
-                        tint.r
-                    );
-                    const float blended_g = blend_channel(
-                        source.blend,
-                        pixel[1],
-                        tint.g
-                    );
-                    const float blended_b = blend_channel(
-                        source.blend,
-                        pixel[2],
-                        tint.b
-                    );
-
-                    pixel[0] = lerp(
-                        pixel[0],
-                        blended_r,
-                        source_alpha
-                    );
-                    pixel[1] = lerp(
-                        pixel[1],
-                        blended_g,
-                        source_alpha
-                    );
-                    pixel[2] = lerp(
-                        pixel[2],
-                        blended_b,
-                        source_alpha
-                    );
-                    pixel[3] = source_alpha +
-                        pixel[3] * (1.0f - source_alpha);
 
                     if (source.relief != 0.0f)
                     {
@@ -1626,21 +1702,23 @@ namespace spartan::mcp_texture_kernel
         else if (shape == "polygon")                    { output.shape = shape_kind::polygon; }
         else if (shape == "line")                       { output.shape = shape_kind::line; }
 
-        const std::string color_a =
-            source.member_string("color", "");
-        if (!color_a.empty() && !parse_color(color_a, output.color_a))
+        if (const mcp_json::value* color = source.find("color"))
         {
-            error = "invalid color: " + color_a;
-            return false;
+            if (!parse_color_value(*color, output.color_a))
+            {
+                error =
+                    "color must be #rrggbb, #rrggbbaa, or an rgba array";
+                return false;
+            }
+            output.contributes_color = true;
         }
 
-        const std::string color_b =
-            source.member_string("color_b", "");
-        if (!color_b.empty())
+        if (const mcp_json::value* color_b = source.find("color_b"))
         {
-            if (!parse_color(color_b, output.color_b))
+            if (!parse_color_value(*color_b, output.color_b))
             {
-                error = "invalid color_b: " + color_b;
+                error =
+                    "color_b must be #rrggbb, #rrggbbaa, or an rgba array";
                 return false;
             }
         }

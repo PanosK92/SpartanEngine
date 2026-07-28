@@ -22,6 +22,17 @@ export function parse_line(line) {
   };
 }
 
+// absent means enabled, an older editor build that does not send the flag still gets enrichment
+function parse_enrich(params) {
+  const value = params.get("enrich");
+  if (value === null) {
+    return true;
+  }
+  return !["0", "false", "no", "off"].includes(
+    value.trim().toLowerCase(),
+  );
+}
+
 export function parse_prompt_payload(value) {
   const params = new URLSearchParams(value);
   const prompt = params.get("prompt");
@@ -30,6 +41,7 @@ export function parse_prompt_payload(value) {
       prompt,
       api_key: (params.get("api_key") ?? process.env.CURSOR_API_KEY ?? "").trim(),
       model_id: (params.get("model") ?? "auto").trim() || "auto",
+      enrich: parse_enrich(params),
     };
   }
 
@@ -37,6 +49,7 @@ export function parse_prompt_payload(value) {
     prompt: decode_value(value),
     api_key: (process.env.CURSOR_API_KEY ?? "").trim(),
     model_id: "auto",
+    enrich: true,
   };
 }
 

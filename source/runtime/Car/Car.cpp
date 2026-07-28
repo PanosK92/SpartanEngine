@@ -1556,7 +1556,7 @@ namespace spartan
 
     void Car::Enter()
     {
-        if (m_is_occupied || !m_is_drivable || m_mcp_controlled)
+        if (m_is_occupied || !m_is_drivable || m_externally_controlled)
         {
             return;
         }
@@ -1610,7 +1610,7 @@ namespace spartan
         }
 
         m_is_occupied = false;
-        m_mcp_controlled = false;
+        m_externally_controlled = false;
         m_chase_camera.initialized = false;
 
         // restore mouse cursor if orbit was active
@@ -2790,12 +2790,12 @@ namespace spartan
         bool is_gamepad_connected = Input::IsGamepadConnected();
         float dt = static_cast<float>(Timer::GetDeltaTimeSec());
 
-        // mcp owns pedals when flagged so keyboard zeros do not overwrite agent input
+        // an external controller owns the pedals when flagged, so keyboard zeros do not overwrite it
         float throttle  = physics->GetVehicleThrottle();
         float brake     = physics->GetVehicleBrake();
         float steering  = physics->GetVehicleSteering();
         float handbrake = physics->GetVehicleHandbrake();
-        if (!m_mcp_controlled)
+        if (!m_externally_controlled)
         {
             throttle = 0.0f;
             if (is_gamepad_connected)
@@ -2900,7 +2900,7 @@ namespace spartan
         }
 
         // reset to spawn
-        if (!m_mcp_controlled && (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_South)))
+        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_South)))
         {
             ResetToSpawn();
         }
@@ -2912,11 +2912,11 @@ namespace spartan
         }
 
         // manual gear shifting (gran turismo style: L1/pgdn down, R1/pgup up)
-        if (!m_mcp_controlled && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Page_Down)))
+        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Left_Shoulder) || Input::GetKeyDown(KeyCode::Page_Down)))
         {
             physics->ShiftDown();
         }
-        if (!m_mcp_controlled && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Page_Up)))
+        if (!m_externally_controlled && (Input::GetKeyDown(KeyCode::Right_Shoulder) || Input::GetKeyDown(KeyCode::Page_Up)))
         {
             physics->ShiftUp();
         }
@@ -3274,7 +3274,7 @@ namespace spartan
         if (
             !Engine::IsFlagSet(EngineMode::Playing) ||
             !m_is_drivable ||
-            m_mcp_controlled
+            m_externally_controlled
         )
         {
             return;

@@ -48,7 +48,8 @@ inline constexpr D3D12_FILL_MODE d3d12_polygon_mode[] =
 inline constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE d3d12_primitive_topology[] =
 {
     D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT
 };
 
 inline constexpr DXGI_FORMAT d3d12_format[] =
@@ -184,7 +185,8 @@ inline constexpr VkCullModeFlags vulkan_cull_mode[] =
 inline constexpr VkPrimitiveTopology vulkan_primitive_topology[] =
 {
     VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-    VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+    VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+    VK_PRIMITIVE_TOPOLOGY_POINT_LIST
 };
 
 inline constexpr VkFormat vulkan_format[] =

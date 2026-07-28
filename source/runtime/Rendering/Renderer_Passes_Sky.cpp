@@ -46,7 +46,9 @@ namespace spartan
 
         cmd_list->BeginTimeblock("skysphere");
         {
-            if (World::GetDirectionalLight())
+            // the sun always exists in light slot 0, either the world's directional light or the
+            // neutral default UpdateLights writes when the world has no lights, so the panorama is
+            // built unconditionally instead of falling back to black
             {
                 // sky view lut, one small march per texel instead of integrating the atmosphere per panorama pixel
                 {
@@ -111,10 +113,6 @@ namespace spartan
                     const uint32_t dispatch_y        = (quarter_h + thread_group_size - 1) / thread_group_size;
                     cmd_list->Dispatch(dispatch_x, dispatch_y);
                 }
-            }
-            else
-            {
-                cmd_list->ClearTexture(tex_skysphere, Color::standard_black);
             }
 
             // averaging downsampler every fourth frame, the ggx prefilter below is warmup only since clouds mostly drive diffuse ibl
@@ -304,6 +302,14 @@ namespace spartan
         if (!World::GetDirectionalLight())
         {
             m_pass_state.cloud_history_valid = false;
+            return false;
+        }
+
+        // a secondary view has its own camera, reprojecting the cloud history against it would
+        // corrupt the primary camera's clouds, the validity flag is left alone so the primary
+        // keeps accumulating where it left off
+        if (IsSecondaryViewActive())
+        {
             return false;
         }
 

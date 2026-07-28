@@ -287,6 +287,43 @@ namespace spartan::geometry_processing
         meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
     }
 
+    void weld_and_optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
+    {
+        if (vertices.empty() || indices.empty())
+        {
+            return;
+        }
+
+        size_t index_count = indices.size();
+
+        // weld, geometry that was assembled from separate pieces carries a duplicate for every vertex
+        // the pieces had in common
+        {
+            std::vector<unsigned int> remap(vertices.size());
+            const size_t welded_count = meshopt_generateVertexRemap(
+                remap.data(),
+                indices.data(),
+                index_count,
+                vertices.data(),
+                vertices.size(),
+                sizeof(RHI_Vertex_PosTexNorTan)
+            );
+
+            std::vector<uint32_t> indices_remapped(index_count);
+            meshopt_remapIndexBuffer(indices_remapped.data(), indices.data(), index_count, remap.data());
+            indices = std::move(indices_remapped);
+
+            std::vector<RHI_Vertex_PosTexNorTan> vertices_remapped(welded_count);
+            meshopt_remapVertexBuffer(vertices_remapped.data(), vertices.data(), vertices.size(), sizeof(RHI_Vertex_PosTexNorTan), remap.data());
+            vertices = std::move(vertices_remapped);
+        }
+
+        const size_t vertex_count = vertices.size();
+        meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
+        meshopt_optimizeOverdraw(indices.data(), indices.data(), index_count, &vertices[0].pos[0], vertex_count, sizeof(RHI_Vertex_PosTexNorTan), 1.05f);
+        meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
+    }
+
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,

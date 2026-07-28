@@ -312,6 +312,121 @@ function thumbnail_file_path(
   ].join("/");
 }
 
+// once a version is promoted the earlier attempts are dead weight, they are only reachable through
+// compare and fork which both run before promotion, so their files are deleted and their catalog
+// entries dropped rather than kept forever
+async function prune_superseded_versions(
+  project_root,
+  paths,
+  asset,
+)
+{
+  const kept = asset.versions.find(
+    (version) => version.id === asset.active_version,
+  );
+  if (!kept)
+  {
+    return {
+      removed_versions: [],
+      removed_files: [],
+    };
+  }
+
+  // a legacy entry can carry a path this rejects, a bad record must not block a promotion
+  const safe_engine_path = (value) =>
+  {
+    try
+    {
+      return normalize_engine_path(value);
+    }
+    catch
+    {
+      return null;
+    }
+  };
+
+  // a kept prefab can still point at a dependency snapshot taken for an earlier version, so the
+  // paths a kept version actually needs are collected before anything is deleted
+  const protected_paths = new Set(
+    [
+      kept.path,
+      kept.source_path,
+      kept.thumbnail_path,
+      ...(Array.isArray(kept.dependencies) ? kept.dependencies : []),
+    ]
+      .filter(Boolean)
+      .map(safe_engine_path)
+      .filter(Boolean),
+  );
+
+  const removed_versions = [];
+  const removed_files = [];
+  for (const version of asset.versions)
+  {
+    if (version.id === kept.id)
+    {
+      continue;
+    }
+
+    const candidates = [
+      version.path,
+      version.source_path,
+      version.thumbnail_path,
+      ...(
+        Array.isArray(version.dependencies)
+          ? version.dependencies
+          : []
+      ),
+    ].filter(Boolean);
+
+    for (const candidate of candidates)
+    {
+      const engine_path = safe_engine_path(candidate);
+      if (
+        !engine_path ||
+        protected_paths.has(engine_path) ||
+        !engine_path.startsWith(`${paths.engine_root}/`)
+      )
+      {
+        continue;
+      }
+
+      await fs.rm(
+        local_path(project_root, engine_path),
+        { force: true },
+      );
+      removed_files.push(engine_path);
+    }
+
+    // the dependency snapshot directory is per version, dropping it whole also catches copies the
+    // catalog never listed
+    const snapshot =
+      `${paths.engine_root}/dependencies/${asset.id}/${version.id}`;
+    await fs.rm(
+      local_path(project_root, snapshot),
+      {
+        recursive: true,
+        force: true,
+      },
+    );
+    removed_versions.push(version.id);
+  }
+
+  if (removed_versions.length > 0)
+  {
+    asset.versions = asset.versions.filter(
+      (version) => version.id === kept.id,
+    );
+    // the parent chain now dangles, the kept version is the whole history
+    kept.parent_version = null;
+  }
+
+  return {
+    removed_versions,
+    removed_files,
+  };
+}
+
 async function copy_immutable(
   project_root,
   source_path,
@@ -340,9 +455,7 @@ async function copy_immutable(
   await fs.copyFile(source, destination);
 }
 
-// prefabs reference meshes and materials that live outside the library, those
-// files are pruned when the world is saved without them, so every referenced
-// file is copied into the library and the copied prefab is repointed at it
+// snapshot prefab dependencies so every version remains immutable
 async function internalize_prefab_dependencies(
   project_root,
   paths,
@@ -506,6 +619,22 @@ export async function resolve_world_resource_directory(
     }
   }
   return "project/mcp_resources";
+}
+
+// every promoted entry as a flat list, for callers that need to rank the whole library themselves
+// rather than filter it, world_asset_search answers does this match, this answers what is in there
+export async function world_asset_catalog_entries(
+  project_root,
+  resource_directory,
+)
+{
+  const { catalog } = await read_catalog(
+    project_root,
+    resource_directory,
+  );
+  return Object.values(catalog.assets)
+    .filter((asset) => Boolean(asset?.active_version))
+    .map(asset_summary);
 }
 
 export async function world_asset_search(
@@ -749,6 +878,39 @@ async function world_asset_register_unlocked(
       number,
       destination_path,
     );
+    if (
+      dependencies.missing.length > 0 ||
+      dependencies.copied.length === 0
+    )
+    {
+      await fs.rm(
+        local_path(project_root, destination_path),
+        { force: true },
+      );
+      await fs.rm(
+        local_path(
+          project_root,
+          `${paths.engine_root}/dependencies/${asset_id}/v${
+            String(number).padStart(4, "0")
+          }`,
+        ),
+        {
+          recursive: true,
+          force: true,
+        },
+      );
+      if (dependencies.missing.length > 0)
+      {
+        throw new Error(
+          `prefab has missing dependencies: ${
+            dependencies.missing.join(", ")
+          }`,
+        );
+      }
+      throw new Error(
+        "prefab has no versioned mesh or material dependencies",
+      );
+    }
   }
   let immutable_source_path = null;
   if (args.source !== undefined)
@@ -838,6 +1000,10 @@ async function world_asset_register_unlocked(
   asset.versions.push(version);
   const initial_promotion_checks =
     version.quality.required_checks;
+  let pruned = {
+    removed_versions: [],
+    removed_files: [],
+  };
   if (
     !asset.active_version &&
     args.promote === true &&
@@ -848,6 +1014,14 @@ async function world_asset_register_unlocked(
   )
   {
     asset.active_version = version.id;
+    if (args.keep_history !== true)
+    {
+      pruned = await prune_superseded_versions(
+        project_root,
+        paths,
+        asset,
+      );
+    }
   }
   asset.updated_at = new Date().toISOString();
   catalog.assets[asset_id] = asset;
@@ -857,6 +1031,8 @@ async function world_asset_register_unlocked(
     asset: asset_summary(asset),
     version,
     catalog_path: paths.catalog_path,
+    pruned_versions: pruned.removed_versions,
+    pruned_files: pruned.removed_files,
   };
 }
 
@@ -1065,6 +1241,43 @@ async function world_asset_promote_unlocked(
       error: "candidate must be verified before promotion",
     };
   }
+  if (
+    asset.type === "prefab" &&
+    (
+      !Array.isArray(candidate.dependencies) ||
+      candidate.dependencies.length === 0 ||
+      candidate.missing_dependencies?.length > 0
+    )
+  )
+  {
+    return {
+      ok: false,
+      error:
+        "candidate prefab must have a complete dependency snapshot",
+      dependencies: candidate.dependencies ?? [],
+      missing_dependencies:
+        candidate.missing_dependencies ?? [],
+    };
+  }
+  if (
+    required_checks.includes("visual_review") &&
+    (
+      !candidate.thumbnail_path ||
+      !await path_exists(
+        local_path(
+          project_root,
+          candidate.thumbnail_path,
+        ),
+      )
+    )
+  )
+  {
+    return {
+      ok: false,
+      error:
+        "candidate visual review thumbnail is missing",
+    };
+  }
   if (failed_checks.length > 0)
   {
     return {
@@ -1088,12 +1301,28 @@ async function world_asset_promote_unlocked(
     };
   }
   asset.active_version = candidate.id;
+
+  // the promoted version is the answer, the attempts that led to it are not worth the disk, pass
+  // keep_history to opt out
+  const pruned = args.keep_history === true
+    ? {
+        removed_versions: [],
+        removed_files: [],
+      }
+    : await prune_superseded_versions(
+        project_root,
+        paths,
+        asset,
+      );
+
   asset.updated_at = new Date().toISOString();
   await write_json_atomic(paths.catalog_local_path, catalog);
   return {
     ok: true,
     asset: asset_summary(asset),
     promoted: candidate,
+    pruned_versions: pruned.removed_versions,
+    pruned_files: pruned.removed_files,
   };
 }
 

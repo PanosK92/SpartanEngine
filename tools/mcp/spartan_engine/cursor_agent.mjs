@@ -30,8 +30,16 @@ import {
   suggest_scene_plan,
 } from "./design_intelligence.mjs";
 import {
+  names_a_place,
   scene_root_name_from_prompt,
 } from "./intent_router.mjs";
+import {
+  build_reuse_plan,
+  inventory_from_brief,
+  inventory_from_plan,
+  resolve_asset_by_name,
+  reuse_prompt_lines,
+} from "./asset_reuse.mjs";
 import {
   get_project_root,
   get_shared_codebase,
@@ -39,6 +47,7 @@ import {
 import {
   constrain_generated_resources,
   generated_resource_command,
+  material_file_name,
 } from "./world_resources.mjs";
 import {
   auto_register_world_asset,
@@ -239,6 +248,64 @@ async function assistant_resource_directory(context)
   return context.resource_directory;
 }
 
+// collapses the parts that share a material before the prefab is written
+//
+// the geometry stage is told to split a surface off into its own part whenever it needs its own material
+// or its own parameters, which is the only way to author detail, and it leaves a chair sitting at forty
+// draw calls. this runs on the way to disk so the saved prefab is the cheap version and the authoring
+// stage never has to think about the cost
+//
+// the caller decides whether the entity is a single object. collapsing one is the whole point, collapsing
+// a scene root would fuse every wooden thing in a room into one entity and lose the scene's structure
+async function make_game_ready(
+  context,
+  entity_id,
+)
+{
+  if (!entity_id)
+  {
+    return null;
+  }
+
+  const report = await context.run.tool(
+    "entity_make_game_ready",
+    {
+      id: entity_id,
+      generate_lods: true,
+    },
+    120000,
+  );
+
+  // a failure here costs an optimisation, not the asset, so the save carries on either way
+  if (!report?.ok)
+  {
+    context.run.event(
+      "stage_note",
+      {
+        text: `game ready pass skipped: ${
+          report?.error ?? "the engine did not answer"
+        }`,
+      },
+    );
+    return null;
+  }
+
+  if (report.entities_removed > 0)
+  {
+    context.run.event(
+      "stage_note",
+      {
+        text: `game ready: ${
+          report.renderers_before
+        } meshes merged down to ${
+          report.renderers_after
+        } by material`,
+      },
+    );
+  }
+  return report;
+}
+
 async function register_assistant_asset(
   context,
   command,
@@ -257,6 +324,18 @@ async function register_assistant_asset(
   {
     result.asset_registration = registration;
     const asset_id = registration.asset?.id;
+    const candidate_version = registration.version?.id;
+    const candidate_path = registration.version?.path;
+    if (asset_id && candidate_version && candidate_path)
+    {
+      context.asset_viewer_asset_id = asset_id;
+      context.asset_viewer_candidate = {
+        asset_id,
+        version_id: candidate_version,
+        path: candidate_path,
+      };
+      context.visual_review_candidate = null;
+    }
     if (
       command === "prefab_save" &&
       asset_id &&
@@ -267,6 +346,7 @@ async function register_assistant_asset(
         "asset_viewer_select",
         {
           asset_id,
+          version_id: candidate_version,
         },
         10000,
       );
@@ -366,7 +446,7 @@ async function create_textured_material(run, args) {
   const material_path =
     args.material_path ??
     args.path ??
-    `${name}.xml`;
+    material_file_name(name);
   const material = await run.tool(
     "material_create",
     {
@@ -404,7 +484,9 @@ async function create_textured_material(run, args) {
       seed: args.seed,
       seamless: args.seamless,
       normal_strength: args.normal_strength,
-      base_roughness: args.base_roughness,
+      base_roughness:
+        args.base_roughness ??
+        args.roughness,
       base_metalness: args.base_metalness,
       library_asset: args.library_asset,
       material_path: created_path,
@@ -781,6 +863,7 @@ async function review_asset_viewer(
   run,
   args,
   asset_id,
+  candidate = null,
 )
 {
   if (!asset_id)
@@ -793,12 +876,43 @@ async function review_asset_viewer(
   }
   const selected = await run.tool(
     "asset_viewer_select",
-    { asset_id },
+    {
+      asset_id,
+      version_id:
+        candidate?.version_id ??
+        args.version_id ??
+        args.version,
+    },
     10000,
   );
   if (!selected.ok)
   {
     return selected;
+  }
+  if (
+    candidate?.path &&
+    selected.loaded_path !== candidate.path
+  )
+  {
+    return {
+      ok: false,
+      error:
+        "Asset Viewer loaded a different version than the promotion candidate",
+      expected_path: candidate.path,
+      loaded_path: selected.loaded_path,
+    };
+  }
+  if (
+    /\.(mesh|prefab)$/i.test(selected.loaded_path ?? "") &&
+    Number(selected.vertex_count ?? 0) <= 0
+  )
+  {
+    return {
+      ok: false,
+      error:
+        "promotion candidate has no previewable geometry",
+      loaded_path: selected.loaded_path,
+    };
   }
 
   const requested_views = Array.isArray(args.views)
@@ -831,7 +945,9 @@ async function review_asset_viewer(
       "asset_viewer_screenshot",
       {
         path:
-          `asset_${asset_id}_${view}.png`,
+          `asset_${asset_id}_${
+            candidate?.version_id ?? "active"
+          }_${view}.png`,
         width: args.width ?? 768,
         height: args.height ?? 768,
       },
@@ -843,6 +959,14 @@ async function review_asset_viewer(
       screenshot.path
     )
     {
+      const expected_generation =
+        Number(screenshot.generation ?? 0);
+      if (expected_generation <= 0)
+      {
+        screenshot.ok = false;
+        screenshot.error =
+          "Asset Viewer did not return a renderer generation";
+      }
       screenshot.ready = await wait_for_screenshot(
         screenshot.path,
         10000,
@@ -852,6 +976,33 @@ async function review_asset_viewer(
         screenshot.ok = false;
         screenshot.error =
           "Asset Viewer screenshot was not written within 10 seconds";
+      }
+      if (screenshot.ok)
+      {
+        const renderer_status = await run.tool(
+          "asset_viewer_status",
+          {},
+          10000,
+        );
+        if (
+          !renderer_status.ok ||
+          Number(renderer_status.renderer_generation ?? 0) <
+            expected_generation
+        )
+        {
+          screenshot.ok = false;
+          screenshot.error =
+            "Asset Viewer renderer generation was not ready";
+        }
+        else if (
+          candidate?.path &&
+          renderer_status.loaded_path !== candidate.path
+        )
+        {
+          screenshot.ok = false;
+          screenshot.error =
+            "Asset Viewer changed versions during renderer capture";
+        }
       }
     }
     views.push({
@@ -871,6 +1022,10 @@ async function review_asset_viewer(
     ok: true,
     target: "asset_viewer",
     asset_id,
+    version_id:
+      candidate?.version_id ??
+      selected.selected_version_id,
+    loaded_path: selected.loaded_path,
     views,
   };
 }
@@ -882,6 +1037,60 @@ function generated_asset_name(value) {
     .replace(/[^a-z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "") ||
     "generated_mesh";
+}
+
+function flatten_points(value, dimensions) {
+  if (!Array.isArray(value))
+  {
+    return value;
+  }
+  if (value.every((entry) => Number.isFinite(entry)))
+  {
+    return value;
+  }
+  const keys = dimensions === 2
+    ? ["x", "y"]
+    : ["x", "y", "z"];
+  return value.flatMap((entry) => {
+    if (Array.isArray(entry))
+    {
+      return entry.slice(0, dimensions);
+    }
+    if (entry && typeof entry === "object")
+    {
+      return keys.map((key) => entry[key]);
+    }
+    return [entry];
+  });
+}
+
+function normalize_mesh_arguments(args) {
+  const normalized = {
+    ...args,
+    profile: flatten_points(args.profile, 2),
+    path_points: flatten_points(args.path_points, 3),
+  };
+  if (
+    normalized.shape === "curved_profile" &&
+    Array.isArray(normalized.profile) &&
+    normalized.profile.length >= 6
+  )
+  {
+    const profile = normalized.profile;
+    const last = profile.length - 2;
+    if (
+      profile[0] !== profile[last] ||
+      profile[1] !== profile[last + 1]
+    )
+    {
+      normalized.profile = [
+        ...profile,
+        profile[0],
+        profile[1],
+      ];
+    }
+  }
+  return normalized;
 }
 
 function map_batch_items(
@@ -1484,6 +1693,16 @@ async function create_compound(run, args) {
   let prefab = null;
   if (args.prefab_path)
   {
+    // a compound is one object by construction, so its parts are always safe to collapse. the guard is
+    // only that a focused asset run is what asked for it, a scene run saves props it did not isolate
+    let game_ready = null;
+    if (active_assistant_context?.authoring_root_id)
+    {
+      game_ready = await make_game_ready(
+        active_assistant_context,
+        root.entity.id,
+      );
+    }
     prefab = await run.tool(
       "prefab_save",
       {
@@ -1491,6 +1710,10 @@ async function create_compound(run, args) {
         path: args.prefab_path,
       },
     );
+    if (game_ready)
+    {
+      prefab.game_ready = game_ready;
+    }
     if (!prefab.ok)
     {
       return {
@@ -1634,6 +1857,199 @@ async function create_construction_grammar(run, args)
   };
 }
 
+// commands that change what the asset is made of. a transform or a material property changes how a part
+// looks, these change whether the prefab has it at all
+const part_changing_commands = new Set([
+  "mesh_generate",
+  "mesh_generate_batch",
+  "mesh_raw_create",
+  "render_set_mesh",
+  "entity_delete",
+  "entity_create_primitive",
+  "entity_create_primitive_batch",
+  "entity_set_parent",
+  "compound_create",
+]);
+
+// the prefab is rewritten as the asset grows, so the file on disk always holds what has been built so far.
+// a run that dies at part thirty leaves thirty usable parts instead of nothing, and the asset appears in the
+// library while it is being made rather than in one lump at the end
+//
+// throttled, because a build issues dozens of these in a row and the point is a recent file, not every
+// intermediate state. a failure here is not the model's problem and must not surface as a tool error
+async function save_asset_progress(
+  context,
+  command,
+  result,
+)
+{
+  if (
+    !context?.authoring_root_id ||
+    !context?.authoring_prefab_path ||
+    result?.ok !== true ||
+    !part_changing_commands.has(command)
+  )
+  {
+    return;
+  }
+
+  const now = Date.now();
+  if (now - (context.authoring_saved_at ?? 0) < 4000)
+  {
+    return;
+  }
+  context.authoring_saved_at = now;
+
+  try
+  {
+    await context.run.tool(
+      "prefab_save",
+      {
+        id: context.authoring_root_id,
+        path: context.authoring_prefab_path,
+      },
+      60000,
+    );
+  }
+  catch
+  {
+  }
+}
+
+// a budget stated once in the system prompt is a suggestion by the fortieth part. one that answers back in the
+// reply to the call that spent it is a fact the run cannot read past, so the accounting rides along with the
+// geometry commands and speaks up at the moment the limit is crossed
+function track_asset_budget(
+  context,
+  command,
+  args,
+  result,
+)
+{
+  const budget = context?.asset_budget;
+  if (
+    !budget ||
+    result?.ok !== true
+  )
+  {
+    return result;
+  }
+
+  if (
+    command === "material_create" ||
+    command === "material_semantic_create"
+  )
+  {
+    const name = String(
+      result.resource?.path ??
+      result.material?.path ??
+      args?.path ??
+      args?.name ??
+      "",
+    ).toLowerCase();
+    const materials = (context.asset_materials ??= new Set());
+    if (name)
+    {
+      materials.add(name);
+    }
+
+    const count = materials.size;
+    const over_materials = count > budget.materials;
+    if (
+      !over_materials &&
+      count <= budget.materials * 0.7
+    )
+    {
+      return result;
+    }
+
+    return {
+      ...result,
+      asset_budget: {
+        tier: budget.tier,
+        materials_used: count,
+        materials_budget: budget.materials,
+        over_budget: over_materials,
+      },
+      guidance: over_materials
+        ? `this asset is over its ${budget.materials} material limit, stop creating materials and reuse or merge the existing set`
+        : `material budget check: ${count} of ${budget.materials} materials used, reuse these materials for the remaining parts`,
+    };
+  }
+
+  if (
+    command !== "mesh_generate" &&
+    command !== "mesh_raw_create"
+  )
+  {
+    return result;
+  }
+
+  const triangles = Math.round(
+    (Number(result.index_count) || 0) / 3,
+  );
+  const name = String(args?.name ?? args?.path ?? "").toLowerCase();
+
+  // a reused mesh is the same geometry the asset already paid for
+  if (result.reused === true)
+  {
+    return result;
+  }
+
+  const seen = (context.asset_parts ??= new Map());
+  const duplicate = name.length > 0 && seen.has(name);
+  if (name.length > 0)
+  {
+    seen.set(name, triangles);
+  }
+  context.asset_triangles =
+    (context.asset_triangles ?? 0) + triangles;
+
+  const spent = context.asset_triangles;
+  const parts = seen.size;
+  const over_triangles = spent > budget.triangles;
+  const over_parts = parts > budget.parts;
+  const notes = [];
+
+  if (duplicate)
+  {
+    notes.push(
+      `a part named ${name} was already generated for this asset, so this call duplicated geometry that already existed, delete one of the two`,
+    );
+  }
+  if (over_triangles || over_parts)
+  {
+    notes.push(
+      `this asset is over budget at ${spent.toLocaleString("en-US")} triangles across ${parts} parts, against a budget of ${budget.triangles.toLocaleString("en-US")} triangles and ${budget.parts} parts`,
+      "stop adding parts now. finish the asset with what it already has: verify the parts are placed and materialled, then let it be saved. if something essential to recognising the object is genuinely missing, remove or simplify existing geometry to pay for it, starting with anything on a face the viewer never sees",
+    );
+  }
+  else if (spent > budget.triangles * 0.7)
+  {
+    notes.push(
+      `budget check: ${spent.toLocaleString("en-US")} of ${budget.triangles.toLocaleString("en-US")} triangles and ${parts} of ${budget.parts} parts used, so only the parts the object is recognised by are still affordable`,
+    );
+  }
+
+  if (notes.length === 0)
+  {
+    return result;
+  }
+
+  return {
+    ...result,
+    asset_budget: {
+      tier: budget.tier,
+      triangles_used: spent,
+      triangles_budget: budget.triangles,
+      parts_used: parts,
+      parts_budget: budget.parts,
+      over_budget: over_triangles || over_parts,
+    },
+    guidance: notes.join(". "),
+  };
+}
+
 async function dispatch_assistant_command(
   context,
   command,
@@ -1651,6 +2067,64 @@ async function dispatch_assistant_command(
       ...args.arguments,
     };
     delete args.arguments;
+  }
+  if (command === "mesh_generate")
+  {
+    args = normalize_mesh_arguments(args);
+  }
+  if (
+    command === "mesh_generate_batch" &&
+    Array.isArray(args.items)
+  )
+  {
+    args = {
+      ...args,
+      items: args.items.map(normalize_mesh_arguments),
+    };
+  }
+  if (
+    (
+      command === "entity_render_materials" ||
+      command === "entity_get" ||
+      command === "entity_delete"
+    ) &&
+    args.entity_id &&
+    !args.id
+  )
+  {
+    args.id = args.entity_id;
+  }
+  if (
+    command === "entity_find" &&
+    args.query &&
+    !args.name &&
+    !args.tag
+  )
+  {
+    args.name = args.query;
+  }
+  if (
+    command === "component_set_batch" &&
+    args.body_type === "static"
+  )
+  {
+    args = {
+      ...args,
+      body_type: undefined,
+      static: true,
+    };
+  }
+  if (
+    (
+      command === "material_get" ||
+      command === "material_set_property" ||
+      command === "material_set_texture"
+    ) &&
+    typeof args.path === "string" &&
+    args.path.endsWith(".material")
+  )
+  {
+    args.path = `${args.path.slice(0, -9)}.xml`;
   }
   if (
     (
@@ -1797,16 +2271,14 @@ async function dispatch_assistant_command(
       };
     }
   }
+  // the library is shared across worlds, so a generated resource has somewhere to go whether or not a world
+  // is open. this used to refuse the command instead of resolving the directory
   if (
     generated_resource_command(command) &&
     !context.resource_directory
   )
   {
-    return {
-      ok: false,
-      error:
-        "Save or open a world before creating MCP resources.",
-    };
+    await assistant_resource_directory(context);
   }
   args = constrain_generated_resources(
     command,
@@ -1856,20 +2328,31 @@ async function dispatch_assistant_command(
       )
     )
     {
+      const asset_id =
+        result.asset?.id ??
+        args.asset_id;
+      const candidate_version =
+        result.version?.id;
+      const candidate_path =
+        result.version?.path;
       const selection = await run.tool(
         "asset_viewer_select",
         {
-          asset_id:
-            result.asset?.id ??
-            args.asset_id,
+          asset_id,
+          version_id: candidate_version,
         },
         10000,
       );
       if (selection.ok)
       {
         context.asset_viewer_asset_id =
-          result.asset?.id ??
-          args.asset_id;
+          asset_id;
+        context.asset_viewer_candidate = {
+          asset_id,
+          version_id: candidate_version,
+          path: candidate_path,
+        };
+        context.visual_review_candidate = null;
       }
       result.asset_viewer = selection;
     }
@@ -1902,6 +2385,45 @@ async function dispatch_assistant_command(
   }
   if (command === "world_asset_promote")
   {
+    if (is_focused_asset_request(context.prompt))
+    {
+      const asset_id = String(
+        args.asset_id ?? args.id ?? "",
+      );
+      const version_id = String(
+        args.version ??
+        args.candidate_version ??
+        args.version_id ??
+        "",
+      );
+      const evidence = context.visual_review_candidate;
+      if (!version_id)
+      {
+        return {
+          ok: false,
+          error:
+            "focused asset promotion requires an explicit candidate version",
+        };
+      }
+      if (
+        !evidence ||
+        evidence.asset_id !== asset_id ||
+        evidence.version_id !== version_id
+      )
+      {
+        return {
+          ok: false,
+          error:
+            "review the exact candidate version in the Asset Viewer before promotion",
+          candidate: {
+            asset_id,
+            version_id,
+          },
+          reviewed: evidence,
+        };
+      }
+      args.version = version_id;
+    }
     return world_asset_promote(
       catalog_root,
       catalog_directory,
@@ -2556,9 +3078,15 @@ async function dispatch_assistant_command(
         run,
         args,
         context.asset_viewer_asset_id,
+        context.asset_viewer_candidate,
       );
       if (review.ok)
       {
+        context.visual_review_candidate = {
+          asset_id: review.asset_id,
+          version_id: review.version_id,
+          path: review.loaded_path,
+        };
         context.mark_visual_review?.();
       }
       return review;
@@ -2705,11 +3233,23 @@ async function dispatch_assistant_command(
     command === "prefab_save"
   )
   {
+    // only the isolated root a focused asset was built under, anything else being saved is a scene
+    const target_id = args.id ?? args.entity_id;
+    const game_ready =
+      command === "prefab_save" &&
+      context.authoring_root_id &&
+      String(context.authoring_root_id) === String(target_id)
+        ? await make_game_ready(context, target_id)
+        : null;
     const result = await run.tool(
       command,
       args,
       60000,
     );
+    if (game_ready)
+    {
+      result.game_ready = game_ready;
+    }
     return register_assistant_asset(
       context,
       command,
@@ -2759,6 +3299,34 @@ async function dispatch_assistant_command(
         result.selected_asset_id ??
         args.asset_id ??
         args.id;
+    }
+
+    // the engine deletes the target file, queues a render, and answers before the image exists, because it
+    // cannot block the thread that has to draw the frame it is waiting for. scene_visual_review waits for the
+    // file, this path did not, so a direct capture answered ready false and whatever read the path next got
+    // the leftover from an earlier capture instead of the asset as it is now
+    if (
+      command === "asset_viewer_screenshot" &&
+      result.ok &&
+      result.ready !== true
+    )
+    {
+      result.ready = await wait_for_screenshot(
+        result.path ?? args.path,
+        12000,
+      );
+      result.async = false;
+      if (!result.ready)
+      {
+        return {
+          ...result,
+          ok: false,
+          error:
+            "the asset viewer did not finish rendering the screenshot, the file was never written",
+          suggested_action:
+            "confirm an asset is previewing with asset_viewer_status, then capture again",
+        };
+      }
     }
     return result;
   }
@@ -2884,7 +3452,17 @@ const spartan_engine_command_tool = {
             "restart the engine before starting another assistant run",
         };
       }
-      return result;
+      await save_asset_progress(
+        assistant_context,
+        command,
+        result,
+      );
+      return track_asset_budget(
+        assistant_context,
+        command,
+        command_arguments,
+        result,
+      );
     }
     finally
     {
@@ -3316,6 +3894,45 @@ function is_scene_mutation_event(value)
   });
 }
 
+// asks the library, once, for every object this scene is going to need. the agent was already told in
+// prose to search before building and reliably did not, partly because it only ever learns it needs a
+// table halfway through, so the asking happens here where the inventory is already known
+async function prepare_asset_reuse_plan(
+  context,
+  run,
+  brief,
+  prepared_plan,
+)
+{
+  const items = [
+    ...inventory_from_brief(brief),
+    ...inventory_from_plan(prepared_plan?.plan),
+  ];
+  if (items.length === 0)
+  {
+    return null;
+  }
+
+  const plan = await build_reuse_plan({
+    project_root: get_project_root(),
+    resource_directory:
+      await assistant_resource_directory(context),
+    items,
+  });
+
+  run.receipt("asset library checked", {
+    wanted: items.length,
+    reusable: plan.reuse.length,
+    to_build: plan.missing.length,
+    library_size: plan.library_size,
+    reuse: plan.reuse.map((entry) => ({
+      wanted: entry.wanted,
+      asset_id: entry.candidates[0]?.asset_id,
+    })),
+  });
+  return plan;
+}
+
 async function prepare_asset_library_context(
   context,
   prompt,
@@ -3367,21 +3984,155 @@ async function prepare_asset_library_context(
   return matches.slice(0, 20);
 }
 
-function focused_asset_quality_prompt_lines()
+// every asset here is an environment prop for a video game unless the request says otherwise, and only the
+// request can say otherwise. the previous wording made every prompt a hero prop and told the run that part
+// count was never worth quality, which is how a flat screen television for a living room ended up with
+// modelled hdmi ports, screw recesses, speaker perforations and a hundred and nineteen thousand triangles
+//
+// the escalation words are deliberately narrow. detailed, nice and high quality are words people use about
+// ordinary work, so they must not buy a thirty thousand triangle budget
+function asset_detail_budget(prompt)
 {
+  const value = String(prompt ?? "").toLowerCase();
+
+  if (
+    /\b(?:blockout|block[\s-]?out|greybox|grey[\s-]?box|proxy|placeholder|stand[\s-]?in|low[\s-]?poly|rough)\b/
+      .test(value)
+  )
+  {
+    return {
+      tier: "blockout",
+      triangles: 800,
+      parts: 6,
+      materials: 2,
+    };
+  }
+  const explicitly_hero =
+    /\bhero[\s-]+(?:asset|prop|quality)\b/.test(value) &&
+    !/\b(?:not|no|non)[\s-]+(?:a[\s-]+)?hero[\s-]+(?:asset|prop|quality)\b/
+      .test(value);
+  if (explicitly_hero)
+  {
+    return {
+      tier: "hero",
+      triangles: 30000,
+      parts: 40,
+      materials: 8,
+    };
+  }
+  return {
+    tier: "environment_prop",
+    triangles: 6000,
+    parts: 12,
+    materials: 4,
+  };
+}
+
+function focused_asset_quality_prompt_lines(prompt)
+{
+  const budget = asset_detail_budget(prompt);
+  const tier_line =
+    budget.tier === "blockout"
+      ? "This request asked for a blockout, so build the massing and proportions only and stop there."
+      : budget.tier === "hero"
+        ? "This request asked for a hero asset, so it earns close-up detail. Spend it on the silhouette and on the surfaces that face the viewer, never on hidden faces."
+        : "This is an environment prop. That is the default for every asset request and only the explicit words hero asset or hero quality can promote it. Close-up, photorealistic, detailed, premium, flagship and high quality do not change the tier. An environment prop is placed in a game alongside many other objects and seen from a normal viewing distance, so build it recognisable, correctly proportioned, cleanly made and game ready, then stop.";
+
   return [
     "Focused asset quality standard:",
-    "Treat every reusable asset as a production-quality hero prop unless the user explicitly asks for a blockout, greybox, proxy, or intentionally low-poly style. A short prompt reduces unknown design constraints, not the expected craft quality.",
-    "Infer the ordinary real-world construction, proportions, silhouette transitions, wall thickness, joins, seams, rims, bevels, recesses, contact surfaces, manufacturing details, and material boundaries that make the object recognizable and credible. The user should not need to enumerate standard object anatomy.",
-    "Build primary form, secondary construction, and tertiary identity detail as separate deliberate passes. Materials and textures complement geometry; they never excuse a crude silhouette.",
+    "Everything you build here is a real-time asset for a video game. Assume it has to render in a frame alongside hundreds of others, on a budget, from a normal viewing distance. It is not for a render, a film, a turntable, or a portfolio piece. Triangles and draw calls are the currency you are spending and the game is what you are spending them on.",
+    tier_line,
+    `Budget for this asset: about ${budget.triangles.toLocaleString("en-US")} triangles in total, at most ${budget.parts} authored parts and at most ${budget.materials} materials. Treat these as real limits. Reuse materials across parts, merge geometry that shares a material, and spend geometry on the shape the object is recognised by. Coming in well under budget with a clean, readable object is better than using all of it.`,
+    "Model what changes the silhouette or the material. Everything else is the texture's job. Do not model fasteners, screws, screw recesses, ports, sockets, connectors, cables, vents, grilles, perforations, panel seams, embossed text, regulatory markings, badges, or logos as geometry. Those belong in the colour, normal and roughness maps, where they cost nothing.",
+    "Do not model anything the object hides from the viewer. A television, a wardrobe or a fridge stands against a wall, so its back is a flat panel with a material on it. A cabinet has no interior unless it opens. Nothing has internal components. If a surface is never seen in normal use, it is one quad.",
+    "Infer the ordinary real-world construction, proportions, silhouette transitions, wall thickness, joins, rims, bevels, and material boundaries that make the object recognizable and credible. The user should not need to enumerate standard object anatomy.",
+    "Build the primary form first, then add only secondary construction that changes the silhouette, function or material boundary. Put tertiary identity detail into textures and stop when the prop reads clearly at normal gameplay distance.",
     "Do not approximate a continuous manufactured or organic surface by visibly stacking cylinders, boxes, spheres, cones, or capsules. Use mesh_generate, variable lofts, sweeps, profiles, shells, bends, tapers, or mesh_raw_create to produce continuous curved transitions with enough radial and longitudinal resolution for a clean solid silhouette.",
     "Primitives are acceptable only for hidden construction, genuinely primitive parts, or an explicitly requested blockout. If several visible primitive sections merely trace one continuous outline, replace them with one coherent generated surface.",
     "Use physically plausible dimensions and thickness. Avoid coplanar overlaps, open shells, abrupt radius jumps, floating trim, z-fighting, and decorative parts that do not follow the parent surface.",
     "For transparent materials, model the actual outer and inner surfaces or a valid shell and preserve believable thickness at rims and openings. Do not rely on transparency to imply missing geometry.",
     "Build only the reusable object under its prepared root. Do not surround it with a ground pad, route, display structure, studio set, or review lights unless the user explicitly requests those as part of the asset.",
     "Review the candidate in the Asset Viewer using solid mode first, then wire or points only for topology diagnosis. Inspect perspective plus front or side views. A recognizable outline, smooth curvature, clean transitions, and readable secondary details are mandatory before registration.",
-    "Compare against any active version and never promote a candidate that regresses silhouette, construction detail, topology, or material separation. Aim for a verified quality score of at least 80 and perform a correction pass when the candidate is below that standard.",
+    "Compare against any active version and never promote a candidate that regresses silhouette, topology or necessary material separation. Quality scoring never authorizes exceeding the prop budget or adding hero detail. Correction passes should improve proportions, placement, topology and textures before adding geometry.",
+    "Saving the prefab merges every part that shares a material into one mesh, so splitting a surface off for a genuine material change is cheap. That is a reason to split for material and construction, not a reason to ignore the budget above, because merging parts does not remove a single triangle.",
+    "Never generate the same part twice. Before adding a part, check whether you already made it. A regenerated duplicate wastes the budget and leaves two copies of the same geometry in the asset.",
+    "Author repetition as one mesh instead of one mesh per copy. When the same shape repeats in the same material, generate it once with the array and mirror modifiers on that mesh_generate call: radial_count with radial_axis, radial_radius and radial_step_degrees for spokes, castors, legs, bolts, flutes and anything arranged around an axis; linear_count with linear_step for slats, ribs, treads, rungs and rows; mirror_axis with mirror_plane for a symmetric pair such as two armrests. A five-spoke base is one call, not five. This is identical geometry at a fraction of the parts, so prefer it over generating each copy separately.",
+    "Give a part its own entity only when it needs its own material or its own geometry. Do not split one surface across several entities that all end up with the same material, and keep a collider, light, or sound on the functional entity it belongs to rather than on a part that exists only to be drawn.",
+    "Assemble the asset as you go, one part at a time. The prefab root already exists and is already saved and previewing, so every part you make is joined to the asset the moment you make it: generate the part, parent it to the root, give it its material, and place it against the parts that are already there. Do not author a batch of loose meshes and materials with the intention of assembling them later.",
+    "Work outward from the part that fixes the asset's scale and orientation, usually the primary body or the base, because every later part is positioned against what is already standing. Finish and place each part before starting the next one.",
+    "Look at the asset while you build it, not only when it is finished. After each part that changes the silhouette, take one Asset Viewer screenshot and check that the new part sits where you intended, at the right size, touching what it should touch. Fix a part that landed wrong immediately, while it is the only thing that could be wrong. A single review at the end cannot tell you which part is misplaced.",
+    "The Asset Viewer preview follows the root live, so the asset is visible as it grows. Never activate the workspace root or move it into the scene to look at it, and never capture the main viewport for this. Preview and screenshot through the Asset Viewer.",
   ];
+}
+
+function asset_revision_prompt_lines(revision)
+{
+  const aspects = revision.aspects ?? [];
+
+  if (!revision.root_id)
+  {
+    return [
+      `This request continues work on an asset that already exists. It is not a request for a new asset. The name in the request, "${revision.hint}", matches several library assets equally well: ${revision.ambiguous.join(", ")}.`,
+      "Call world_asset_inspect on each of those and decide which one the request actually means. Then load it with world_asset_load, preview it with asset_viewer_preview_entity, and revise that asset in place.",
+      "If you genuinely cannot tell which one is meant, change nothing, and reply naming the candidates and asking which. Do not build a new asset, the library already holds what the request is about, and do not revise all of them.",
+      "Once you have chosen, change only what the request asks for and leave the rest of the asset alone. Publish the result as a new version of that same asset id with world_asset_register plus world_asset_promote. Never register it under a new asset id.",
+    ];
+  }
+
+  const lines = [
+    "This request continues work on an asset that already exists. It is not a request for a new asset.",
+    `The asset is already loaded and previewing in the Asset Viewer as entity id ${revision.root_id} named ${revision.root_name}, taken from ${revision.source}. Work on that entity. Do not create a second root, and do not delete and rebuild the asset from scratch.`,
+    "Change only what the request asks for, and leave the rest of the asset exactly as it is. Everything you find already there was deliberate. If a requested change forces a neighbouring part to change with it, change that part too and say so, but do not take the opportunity to redesign anything else.",
+    "Start by reading what is there before changing it. entity_get on the root with descendants, entity_render_materials for the material on each part, mesh_raw_get when you need the actual geometry of a part, and material_get for the properties and texture slots you are about to alter. A change made without reading the current value first is a guess.",
+    "Prefer the narrowest tool that expresses the change. A property is material_set_property. A map is texture_generate plus material_set_texture. A dimension or profile is a regenerated part via mesh_generate for that part alone. Rebuild a part only when its geometry itself has to differ.",
+  ];
+
+  if (aspects.includes("geometry"))
+  {
+    lines.push(
+      "The geometry has to change. Identify the specific parts involved, keep the rest of the hierarchy and every material assignment intact, and preserve the proportions and detail that were not mentioned. When you replace a part, give it the same name and the same material as the part it replaces so the asset stays consistent.",
+    );
+  }
+  if (aspects.includes("material"))
+  {
+    lines.push(
+      "A material has to change. Edit the existing material with material_set_property rather than creating a replacement, so every part already using it stays in step. Create a new material only when the request is asking for one part to stop matching the others.",
+    );
+  }
+  if (aspects.includes("texture"))
+  {
+    lines.push(
+      "A texture has to change. Regenerate the affected map with texture_generate using layers, keep the resolution, tiling and seamless setting the existing map used unless the request is about those, and reattach it to the same material slot. A label or decal stays non-seamless with alpha.",
+    );
+  }
+
+  lines.push(
+    `Publish the result as a new version of the same catalog asset. Call world_asset_register with type ${revision.asset_type}, asset_id ${revision.asset_id}, and parent_version ${revision.active_version ?? "the active version"}, then world_asset_promote once the Asset Viewer review and checks pass. Never register this as a new asset id, the history of this asset has to stay in one place.`,
+    `Before promoting, compare against the active version with world_asset_compare. Promote only if the requested change is actually visible and nothing else regressed. If your change made the asset worse, say so and keep the active version rather than promoting a regression.`,
+    `Asset being revised: ${safe_json(
+      {
+        asset_id: revision.asset_id,
+        name: revision.asset_name,
+        type: revision.asset_type,
+        active_version: revision.active_version,
+        aliases: revision.aliases,
+        tags: revision.tags,
+        constraints: revision.constraints,
+        root_id: revision.root_id,
+        parts: revision.parts,
+      },
+      6000,
+    )}`,
+  );
+
+  if ((revision.alternatives ?? []).length > 0)
+  {
+    lines.push(
+      `The request matched this asset best, but the library also holds ${revision.alternatives.join(", ")}. If the loaded asset is clearly not the one the user meant, stop and say which you think they meant instead of revising the wrong asset.`,
+    );
+  }
+
+  return lines;
 }
 
 function build_prompt(
@@ -3390,6 +4141,9 @@ function build_prompt(
   intent = null,
   prepared_plan = null,
   prepared_assets = [],
+  brief = "",
+  reuse_plan = null,
+  revision = null,
 ) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
@@ -3403,19 +4157,21 @@ function build_prompt(
     "Use debug_log_read when diagnosing what commands the assistant sent to the engine and what came back.",
     "Use context_snapshot and entity_resolve instead of multiple separate read calls.",
     "For every new build, design directly from the current request and prepared context. Do not search for persisted layouts, build definitions, or prior generated instructions.",
-    "Before creating a reusable object, call world_asset_search with semantic aliases, tags, dimensions, style, and material constraints. Load a suitable promoted asset instead of rebuilding it.",
-    "For a focused single-asset request, build the asset in isolation with detailed geometry and materials, review it, register an immutable version, and promote it only after verified checks and a sufficient quality-score improvement.",
+    "Before you build any recognisable object, ask the library for it first. Call world_asset_search with the plain object name, then with semantic aliases, tags, dimensions, style, and material constraints. If a promoted match fits, load it with world_asset_load and place it, rather than modelling or approximating it again. Primitives are the fallback for objects the library does not have, never the first choice for objects it might.",
+    "For a focused single-asset request, build the asset in isolation as a game-ready environment prop with budgeted geometry and a small reused material set, review it, register an immutable version, and promote it only after verified checks. Only an explicit request for a hero asset or hero quality changes this tier.",
     "For focused asset work, begin editing the prepared asset root immediately. Do not spend multiple minutes narrating, repeating lookups, or redesigning the prepared baseline before the first mutation.",
     "For focused asset work, never move or capture the main scene viewport. Register the candidate, use asset_viewer_select, asset_viewer_set_view, and asset_viewer_screenshot, and perform scene_visual_review through the Asset Viewer.",
     "For an environment build, reuse promoted library assets where they fit. Attempt at most one focused improvement per reused asset during the run; otherwise keep the active version and continue the environment.",
+    "When an environment build makes you model a recognisable standalone object the library did not have, register it as a library prefab once it looks right, and give it plain aliases and tags a later request would search by, meaning the everyday name of the object rather than its role in this scene. A workbench is registered as workbench with the alias table, not as rear_wall_prop. This is how the library grows enough to make the next blockout better than this one.",
     "Every persistent resource created through MCP belongs under the shared project/mcp_resources directory. Put meshes, materials, textures, prefabs, editable sources, thumbnails, and catalog metadata in their matching shared subdirectories. Never write MCP-generated resources into a world-specific resource directory.",
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
     "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
     "Use mesh_geometry_capabilities before deciding that requested procedural geometry is unavailable.",
     "Prefer concave extruded profiles, multi-opening walls, variable lofts or sweeps, shell thickness, and seam-split box UVs when they express the design better than stacked boxes.",
-    "For multiple materials, split semantic surfaces into compound parts because one render entity owns one material.",
-    "Texture every material that represents a real surface. Use material_textured_create so the material and its color, normal and packed maps are made together, and set tiling so the pattern reads at the right scale.",
+    "When one shape repeats in one material, generate it once with the array or mirror modifiers on that mesh_generate call rather than once per copy: radial_count for anything arranged around an axis, linear_count with linear_step for rows, mirror_axis for a symmetric pair. The geometry is identical and the part count collapses.",
+    "For multiple materials, split semantic surfaces into compound parts because one render entity owns one material. Saving a focused asset merges the parts that ended up sharing a material back into one mesh, so split for material and construction reasons rather than counting parts.",
+    "Texture every material that represents a real surface. Use material_textured_create so the material and its color, roughness, normal and packed maps are made together, and set tiling so the pattern reads at the right scale.",
     "Build textures from layers: fill for the base, noise for variation, bricks, tiles, stripes or checker for structure, spots and scratches for wear and dirt, shape and text for labels, signage and decals.",
     "Give layers relief for bumps, roughness and roughness_b for finish, and metalness for metal, otherwise the surface stays flat and uniformly shiny.",
     "Keep environment textures seamless and check seam_error in the response. Labels and decals are not tiled, so set seamless false and use alpha.",
@@ -3443,12 +4199,20 @@ function build_prompt(
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
   ];
 
-  if (is_focused_asset_request(prompt))
+  const focused_asset =
+    is_focused_asset_request(prompt) ||
+    Boolean(revision);
+  if (focused_asset)
   {
-    lines.push(...focused_asset_quality_prompt_lines());
+    lines.push(...focused_asset_quality_prompt_lines(prompt));
   }
 
-  if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
+  // the scene construction block below plans zones, circulation and lighting, which is the wrong shape of
+  // work for changing one part of one object, and its stage list would talk the run into a rebuild
+  if (
+    !focused_asset &&
+    (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
+  )
   {
     lines.push(...scene_quality_prompt_lines(prompt, intent));
     lines.push(
@@ -3477,7 +4241,7 @@ function build_prompt(
     }
   }
 
-  if (intent?.target_name)
+  if (intent?.target_name && !revision)
   {
     lines.push(`Resolved parent entity name from the request: ${intent.target_name}. Call entity_find with exact matching first. If several entities share the name, use the first root-level match by id and never call entity_resolve by ambiguous name. Create the root with entity_create_empty only when no exact match exists, then parent all planned environment content under that entity id.`);
   }
@@ -3489,7 +4253,10 @@ function build_prompt(
       lines.push(`Landmarks mentioned in the prompt: ${intent.landmarks.join(", ")}. Prefer these, but still scan world_landmarks and use their bounding boxes for edge approaches.`);
     }
   }
-  if (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
+  if (
+    !focused_asset &&
+    (intent?.kind === "scene_rebuild" || intent?.live_scene_action)
+  )
   {
     lines.push("This is a live scene construction request. Build a finished, visually reviewed scene under the requested parent. Do not search source code and do not invent Lua APIs.");
   }
@@ -3501,6 +4268,35 @@ function build_prompt(
     "User request:",
     prompt,
   );
+
+  // the brief is what the request implies rather than what it says, so it is advice, the request above
+  // still decides what gets built and wins any disagreement between the two
+  if (String(brief ?? "").trim().length > 0)
+  {
+    lines.push(
+      "",
+      focused_asset
+        ? "Design brief expanded from that request. Use it only to clarify proportions, construction and materials within the environment-prop budget above. It cannot increase the triangle, part or material limits, and it cannot promote the asset to hero quality. Where it conflicts with the request or budget, ignore it."
+        : "Design brief expanded from that request. Treat it as the default specification for anything the request left unsaid, and build to this level of detail. Where the brief and the request disagree, the request wins. Where the brief is wrong about this subject, correct it rather than following it.",
+      String(brief).trim(),
+    );
+  }
+
+  // the library answer goes last, after the request and the brief, because it is the part most likely
+  // to be skipped and the part that decides whether this ends up boxes or a furnished room
+  const reuse_lines = reuse_prompt_lines(reuse_plan);
+  if (reuse_lines.length > 0)
+  {
+    lines.push("", ...reuse_lines);
+  }
+
+  // a revision goes after even that, it is the instruction the rest of this prompt most needs overriding by,
+  // because everything above is written for building something that does not exist yet
+  if (revision)
+  {
+    lines.push("", ...asset_revision_prompt_lines(revision));
+  }
+
   return lines.join("\n");
 }
 
@@ -3681,6 +4477,63 @@ function recover_new_build_intent(prompt, intent, run)
   return recovered;
 }
 
+// a bare request for one object, make a book, is single asset work even though it never says the word asset
+//
+// without this such a request went down the scene path, which planned zones and circulation for a book and
+// skipped the focused asset rules, including the one that says not to build a studio set around the subject
+function is_bare_object_build(value)
+{
+  const match = value.match(
+    /^\s*(?:please\s+)?(?:could\s+you\s+|can\s+you\s+|i\s+want\s+you\s+to\s+)?(?:create|make|build|generate|design|model)\s+(?:me\s+)?(?:a|an)\s+([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s*$|[,.;]|\s+(?:with|that|which|featuring|made\s+of|using|from)\b)/,
+  );
+  if (!match?.[1])
+  {
+    return false;
+  }
+
+  const subject = match[1].trim();
+
+  // only the head noun decides, a place word before it is a modifier. an office chair is a chair, a
+  // warehouse interior is an interior
+  const head = subject
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .pop() ?? "";
+  if (subject.length < 3 || names_a_place(head))
+  {
+    return false;
+  }
+
+  // several subjects make a scene, and a placement phrase means the object is being put somewhere rather
+  // than authored, which is scene work either way
+  if (/\b(?:and|plus|along\s+with|together\s+with)\b/.test(value))
+  {
+    return false;
+  }
+  if (
+    /\b(?:onto|inside|next\s+to|beside|around|near|under|underneath|above|behind|in\s+front\s+of|scattered|arranged|placed|populate|fill)\b/.test(
+      value,
+    ) ||
+    /\bon\s+(?:a|an|the)\b/.test(value)
+  )
+  {
+    return false;
+  }
+
+  return true;
+}
+
+// an entity name becomes a file name, and a prefab whose name came from the user's words has to survive
+// spaces and punctuation without producing a path the engine will reject
+function asset_file_name(value)
+{
+  const safe = String(value ?? "asset")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return safe || "asset";
+}
+
 function is_focused_asset_request(prompt)
 {
   const value = String(prompt ?? "").toLowerCase();
@@ -3689,7 +4542,8 @@ function is_focused_asset_request(prompt)
     /\breusable\s+.+\s+(?:model|asset)\b/.test(value) ||
     /\basset[\s-]+(?:library|catalog|catalogue)\b/.test(value) ||
     /\b(?:standalone|isolated|hero)[\s-]+(?:asset|model|prop)\b/.test(value) ||
-    /\b(?:create|make|build|generate|design|model)\b[^.\n]{0,120}\b(?:asset|prefab|prop|model)\b/.test(value)
+    /\b(?:create|make|build|generate|design|model)\b[^.\n]{0,120}\b(?:asset|prefab|prop|model)\b/.test(value) ||
+    is_bare_object_build(value)
   );
 }
 
@@ -3699,6 +4553,35 @@ async function prepare_focused_asset_root(
   target_name,
 )
 {
+  const prefab_path = `${asset_file_name(target_name)}.prefab`;
+
+  // the prefab exists before the first part does. building every mesh and material first and assembling at
+  // the end asks the model to hold the whole object in its head and hope the pieces fit, and it means a run
+  // that stops early leaves a pile of parts with nothing that joins them
+  const open_workspace = async (root) =>
+  {
+    await run.tool(
+      "asset_viewer_preview_entity",
+      {
+        id: root.id,
+      },
+      10000,
+    );
+    const saved = await run.tool(
+      "prefab_save",
+      {
+        id: root.id,
+        path: prefab_path,
+      },
+      60000,
+    );
+    return {
+      ...root,
+      prefab_path,
+      prefab_ready: saved?.ok === true,
+    };
+  };
+
   const existing = await resolve_quality_root(
     run,
     target_name,
@@ -3715,14 +4598,7 @@ async function prepare_focused_asset_root(
       },
       10000,
     );
-    await run.tool(
-      "asset_viewer_preview_entity",
-      {
-        id: existing.root.id,
-      },
-      10000,
-    );
-    return existing.root;
+    return open_workspace(existing.root);
   }
 
   const created = await run.tool(
@@ -3733,7 +4609,7 @@ async function prepare_focused_asset_root(
       active: false,
       transient: true,
       tags: [
-        "mcp_focused_asset",
+        "authoring_workspace",
         "mcp_generated",
       ],
     },
@@ -3743,14 +4619,192 @@ async function prepare_focused_asset_root(
   {
     return null;
   }
-  await run.tool(
-    "asset_viewer_preview_entity",
+
+  return open_workspace(created.entity);
+}
+
+// puts the asset the user named in front of the agent, already loaded, so the run continues the asset
+// instead of designing a replacement for it
+//
+// the router only recognised the shape of the request, so this is where the claim is tested. if the named
+// asset is not in the library the answer is null and the run carries on as an ordinary build, which is the
+// right outcome, a request to revise something that does not exist is a request to create it
+async function prepare_asset_revision({
+  context,
+  intent,
+  run,
+})
+{
+  const resolved = await resolve_asset_by_name({
+    project_root: get_project_root(),
+    resource_directory:
+      await assistant_resource_directory(context),
+    hint: intent?.asset_hint ?? "",
+  });
+  if (!resolved.ok)
+  {
+    run.receipt("asset revision declined", {
+      hint: intent?.asset_hint ?? "",
+      reason: resolved.reason,
+      ambiguous: resolved.ambiguous ?? [],
+    });
+
+    // several assets answer the name equally well. loading one of them would edit the wrong asset and
+    // loading none of them would quietly build a duplicate of something the library already has, so the
+    // choice goes to the agent, which can read the request and inspect the candidates
+    if ((resolved.ambiguous ?? []).length > 0)
     {
-      id: created.entity.id,
+      return {
+        ambiguous: resolved.ambiguous,
+        hint: intent?.asset_hint ?? "",
+        aspects: intent?.revision_aspects ?? [],
+        root_id: null,
+      };
+    }
+    return null;
+  }
+
+  const asset = resolved.asset;
+
+  // a root already in the world is the copy the user has been looking at, reusing it keeps whatever was
+  // done since the last promotion instead of reverting to the promoted version behind their back
+  const live = await resolve_quality_root(
+    run,
+    asset.name || asset.id,
+    1,
+  );
+  let root = live.ok && live.root?.id ? live.root : null;
+  let source = "live scene";
+
+  if (!root)
+  {
+    const loaded = await world_asset_load(
+      get_project_root(),
+      await assistant_resource_directory(context),
+      { asset_id: asset.id },
+      (command, args) => run.tool(command, args, 30000),
+    );
+    if (!loaded.ok)
+    {
+      run.receipt("asset revision declined", {
+        asset_id: asset.id,
+        reason: `could not load the active version: ${loaded.error ?? "unknown error"}`,
+      });
+      return null;
+    }
+
+    source = `version ${loaded.version?.id ?? "unknown"}`;
+
+    // a prefab spawns its hierarchy, anything else only warms the resource cache, so a mesh needs an
+    // entity built around it before there is something to edit
+    if (asset.type === "prefab")
+    {
+      const spawned = await resolve_quality_root(
+        run,
+        asset.name || asset.id,
+        4,
+      );
+      root = spawned.ok && spawned.root?.id ? spawned.root : null;
+    }
+    else if (asset.type === "mesh")
+    {
+      const created = await run.tool(
+        "entity_create_empty",
+        {
+          name: asset.name || asset.id,
+          position: [0, 0, 0],
+          active: false,
+          transient: true,
+          tags: [
+            "authoring_workspace",
+            "mcp_generated",
+          ],
+        },
+        10000,
+      );
+      if (created.ok && created.entity?.id)
+      {
+        await run.tool(
+          "render_set_mesh",
+          {
+            id: created.entity.id,
+            mesh: loaded.version.path,
+          },
+          20000,
+        );
+        root = created.entity;
+      }
+    }
+  }
+
+  if (!root?.id)
+  {
+    run.receipt("asset revision declined", {
+      asset_id: asset.id,
+      reason:
+        "the active version loaded but produced no entity to edit",
+    });
+    return null;
+  }
+
+  // work happens off the main viewport, the same isolation a focused build gets
+  await run.tool(
+    "entity_update",
+    {
+      id: root.id,
+      active: false,
+      transient: true,
     },
     10000,
   );
-  return created.entity;
+  await run.tool(
+    "asset_viewer_open",
+    {},
+    10000,
+  );
+  await run.tool(
+    "asset_viewer_preview_entity",
+    { id: root.id },
+    10000,
+  );
+
+  // the parts and their materials are what the change has to be aimed at, handing them over saves the
+  // agent from rediscovering the asset before it can touch it, which is where the redesign creeps in
+  const parts = await run.tool(
+    "entity_render_materials",
+    { id: root.id },
+    20000,
+  );
+
+  const revision = {
+    asset_id: asset.id,
+    asset_name: asset.name || asset.id,
+    asset_type: asset.type,
+    active_version: asset.active_version,
+    aliases: asset.aliases ?? [],
+    tags: asset.tags ?? [],
+    constraints: asset.constraints ?? {},
+    root_id: root.id,
+    root_name: root.name ?? asset.name ?? asset.id,
+    source,
+    aspects: intent?.revision_aspects ?? [],
+    parts: parts.ok ? (parts.materials ?? []) : [],
+    matched_on: resolved.matched_on ?? [],
+    alternatives: resolved.alternatives ?? [],
+  };
+
+  run.receipt("asset revision prepared", {
+    asset_id: revision.asset_id,
+    asset_type: revision.asset_type,
+    active_version: revision.active_version,
+    root_id: revision.root_id,
+    source: revision.source,
+    aspects: revision.aspects,
+    part_count: Array.isArray(revision.parts)
+      ? revision.parts.length
+      : 0,
+  });
+  return revision;
 }
 
 async function prepare_scene_build_plan({
@@ -3800,7 +4854,7 @@ async function prepare_scene_build_plan({
   };
 }
 
-async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
+async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_id, engine_host, engine_port, run, timeout_ms, engine_first_timeout_ms, intent = null }) {
   if (!api_key) {
     return {
       ok: false,
@@ -3818,6 +4872,10 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
     engine_host,
     engine_port,
     intent,
+    asset_budget: is_focused_asset_request(prompt)
+      ? asset_detail_budget(prompt)
+      : null,
+    asset_triangles: 0,
     bridge_failure: "",
     cancel_on_bridge_failure: (message) =>
     {
@@ -3834,6 +4892,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
   let activity_flush_timer = null;
   let last_activity_at = Date.now();
   let visual_review_seen = false;
+  let asset_viewer_reviews = 0;
   active_assistant_context.mark_visual_review = () =>
   {
     visual_review_seen = true;
@@ -3950,8 +5009,26 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           review?.screenshot?.ready === true,
         ),
       );
+    // looking at the asset through the viewer directly counts as having looked at it. crediting only
+    // scene_visual_review meant a run that framed and shot the asset six times still failed the gate, which
+    // spent two correction passes re-reviewing work that was already reviewed and then reported a failure
+    // for a build that had passed
+    // the screenshot reply comes back before the image is on disk, so acceptance and a path is the only
+    // signal available at this point, and two of them means the asset was looked at from more than one side
+    if (
+      is_named_tool_event(event, "asset_viewer_screenshot") &&
+      object_contains(event, (value) =>
+        value.ok === true &&
+        typeof value.path === "string" &&
+        value.path.length > 0,
+      )
+    )
+    {
+      asset_viewer_reviews += 1;
+    }
     visual_review_seen ||=
-      successful_visual_review;
+      successful_visual_review ||
+      asset_viewer_reviews >= 2;
     scene_mutation_seen ||=
       is_scene_mutation_event(event);
     if (!engine_tool_seen && is_engine_tool_event(event)) {
@@ -4034,15 +5111,6 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       run,
     );
     active_assistant_context.intent = intent;
-    if (
-      is_focused_asset_request(prompt) &&
-      !snapshot.world?.file_path
-    )
-    {
-      throw new Error(
-        "Focused asset work requires a saved world so its world-local MCP asset library has a valid resource directory. Save or open a world, then retry.",
-      );
-    }
     const prepared_plan = await run.stage(
       "Design Scene",
       "inferring scale, layout, circulation, and functional requirements",
@@ -4064,8 +5132,54 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         prepared_plan,
       ),
     );
+    const reuse_plan = await run.stage(
+      "Match Library To Scene",
+      "checking the library for every object this scene needs",
+      () => prepare_asset_reuse_plan(
+        active_assistant_context,
+        run,
+        brief,
+        prepared_plan,
+      ),
+    );
     let initial_root = null;
+    let revision = null;
+    if (intent?.kind === "asset_revise")
+    {
+      revision = await run.stage(
+        "Open Asset For Revision",
+        "loading the asset the request names",
+        () => prepare_asset_revision({
+          context: active_assistant_context,
+          intent,
+          run,
+        }),
+      );
+      if (revision?.root_id)
+      {
+        initial_root = {
+          id: revision.root_id,
+          name: revision.root_name,
+        };
+        scene_mutation_seen = true;
+        active_assistant_context.authoring_root_id =
+          revision.root_id;
+
+        // the router guessed the root name from the user's words, the catalog knows the real one, and the
+        // quality gate downstream resolves the root by that name
+        if (revision.root_name !== intent.target_name)
+        {
+          intent = {
+            ...intent,
+            target_name: revision.root_name,
+          };
+          active_assistant_context.intent = intent;
+        }
+      }
+    }
+
     if (
+      !revision &&
       intent?.target_name &&
       is_focused_asset_request(prompt)
     )
@@ -4080,6 +5194,12 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         ),
       );
       scene_mutation_seen = Boolean(initial_root?.id);
+      // remembering the root is what lets the save path collapse it, a save of anything else is a scene
+      // and has to be left alone
+      active_assistant_context.authoring_root_id =
+        initial_root?.id ?? null;
+      active_assistant_context.authoring_prefab_path =
+        initial_root?.prefab_path ?? null;
       await run.tool(
         "asset_viewer_open",
         {},
@@ -4158,6 +5278,9 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           intent,
           prepared_plan,
           prepared_assets,
+          brief,
+          reuse_plan,
+          revision,
         ),
       );
     });
@@ -4310,7 +5433,7 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         ? {
             min_entities: 2,
             min_unique_materials: 1,
-            min_advanced_mesh_ratio: 0.35,
+            min_advanced_mesh_ratio: 0.15,
             require_light: false,
             min_collision_ratio: 0,
             max_duplicate_geometry: 2,
@@ -4378,8 +5501,9 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         `Layout audit: ${safe_json(layout_audit, 5000)}`,
         ...(focused_asset
           ? [
-              ...focused_asset_quality_prompt_lines(),
+              ...focused_asset_quality_prompt_lines(prompt),
               "This correction must replace any visibly stacked primitive approximation with coherent generated geometry before re-registration. Review focused assets from perspective, front, and side views in solid mode.",
+              "If the asset is over its triangle budget, this pass reduces it. Delete geometry that does not read at normal viewing distance, starting with anything on a hidden face, and lower the segment counts on curved parts. Do not add parts during a correction pass unless the audit named a missing one.",
             ]
           : []),
         ...(focused_asset
@@ -4473,6 +5597,79 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
       );
     }
 
+    // a focused asset run has to end with an asset on disk, and the orchestration is what has to do it.
+    // asking the model to save the prefab means a run can author forty parts, review them, correct them and
+    // then stop after the last screenshot with nothing usable, which is exactly what happens. the merge is
+    // bolted to the save, so a skipped save also silently skips the merge and leaves every part its own mesh
+    let asset_prefab = null;
+    if (focused_asset && root_id)
+    {
+      asset_prefab = await run.stage(
+        "Finalize Asset",
+        "merging parts by material and saving the prefab",
+        async () =>
+        {
+          // the workspace root is parked inactive and transient while it is built, and the model tends to
+          // switch it live mid run, so the save decides the state rather than inheriting whatever it left
+          await run.tool(
+            "entity_update",
+            {
+              id: root_id,
+              active: true,
+              transient: false,
+            },
+            30000,
+          );
+          const game_ready = await make_game_ready(
+            active_assistant_context,
+            root_id,
+          );
+          // the same file the incremental saves have been writing, so the finished asset replaces the
+          // partial one instead of appearing beside it under a second name
+          const prefab_path =
+            active_assistant_context.authoring_prefab_path ??
+            `${asset_file_name(root_name)}.prefab`;
+          const saved = await run.tool(
+            "prefab_save",
+            {
+              id: root_id,
+              path: prefab_path,
+            },
+            60000,
+          );
+          if (saved?.ok)
+          {
+            await register_assistant_asset(
+              active_assistant_context,
+              "prefab_save",
+              {
+                name: root_name,
+                path: prefab_path,
+              },
+              saved,
+            );
+          }
+
+          // the deliverable is the file, so the world is put back the way it was found rather than left
+          // holding a loose copy of the asset
+          await run.tool(
+            "entity_update",
+            {
+              id: root_id,
+              active: false,
+              transient: true,
+            },
+            30000,
+          );
+          return {
+            ...saved,
+            game_ready,
+            path: prefab_path,
+          };
+        },
+      );
+    }
+
     const resource_cleanup = await run.stage(
       "Clean World Resources",
       "removing unreferenced world assets",
@@ -4481,6 +5678,18 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
         {},
       ),
     );
+    if (focused_asset && !asset_prefab?.ok)
+    {
+      return {
+        ok: false,
+        text: [
+          "The asset was built but could not be saved, so there is no reusable prefab.",
+          `Prefab save error: ${asset_prefab?.error ?? "the save never ran"}`,
+          `Root entity: ${root_name}, id ${root_id}.`,
+          "The generated meshes, materials, and textures are on disk but nothing assembles them.",
+        ].join("\n"),
+      };
+    }
     if (
       !audit.pass ||
       !layout_audit.pass ||
@@ -4509,6 +5718,14 @@ async function run_cursor_fallback_serial({ prompt, api_key, model_id, engine_ho
           cursor_result.result?.trim() ||
           "Done.",
         `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
+        ...(asset_prefab?.ok
+          ? [
+              `Prefab saved to ${asset_prefab.path}.`,
+              asset_prefab.game_ready?.renderers_before > asset_prefab.game_ready?.renderers_after
+                ? `Game ready pass merged ${asset_prefab.game_ready.renderers_before} meshes down to ${asset_prefab.game_ready.renderers_after} by material.`
+                : "Game ready pass found nothing to merge.",
+            ]
+          : []),
         resource_cleanup.ok
           ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed, ${resource_cleanup.orphan_count ?? 0} undeleted orphans.`
           : `World resource cleanup failed for ${(resource_cleanup.failed ?? []).length} files.`,

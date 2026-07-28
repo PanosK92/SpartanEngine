@@ -72,6 +72,9 @@ namespace spartan
         string world_description;
         vector<string> last_resource_cleanup;
         vector<string> last_resource_cleanup_failures;
+        // a tool that authors resources into the project registers its directory here, empty means
+        // nothing outside the world owns any resource
+        string generated_resource_directory;
         vector<string> world_console_variables; // cvar names overridden by this world (preserved across save/load)
         mutex entity_access_mutex;
         // entities created by workers but not yet drained into the live entities vector, the main thread drains this every tick
@@ -1454,21 +1457,29 @@ namespace spartan
         );
     }
 
-    string World::GetMcpResourceDirectory()
+    void World::SetGeneratedResourceDirectory(
+        const string& directory
+    )
     {
-        string directory =
-            ResourceCache::GetProjectDirectory();
+        generated_resource_directory = directory;
         replace(
-            directory.begin(),
-            directory.end(),
+            generated_resource_directory.begin(),
+            generated_resource_directory.end(),
             '\\',
             '/'
         );
-        if (!directory.empty() && directory.back() != '/')
+        if (
+            !generated_resource_directory.empty() &&
+            generated_resource_directory.back() != '/'
+        )
         {
-            directory += '/';
+            generated_resource_directory += '/';
         }
-        return directory + "mcp_resources/";
+    }
+
+    const string& World::GetGeneratedResourceDirectory()
+    {
+        return generated_resource_directory;
     }
 
     const vector<string>& World::GetLastResourceCleanup()
@@ -1546,8 +1557,10 @@ namespace spartan
         {
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
-            const string mcp_resource_directory =
-                World::GetMcpResourceDirectory();
+            // resources authored by a tool live outside the world, they are left alone rather than
+            // pulled in next to the world file or pruned as strays
+            const string generated_directory =
+                World::GetGeneratedResourceDirectory();
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
             set<IResource*> referenced_resources;
@@ -1695,9 +1708,10 @@ namespace spartan
                     resource->GetResourceFilePath();
                 if (
                     !current_path.empty() &&
+                    !generated_directory.empty() &&
                     path_is_within(
                         current_path,
-                        mcp_resource_directory
+                        generated_directory
                     )
                 )
                 {
@@ -1827,9 +1841,10 @@ namespace spartan
             for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
             {
                 if (
+                    !generated_directory.empty() &&
                     path_is_within(
                         existing_file,
-                        mcp_resource_directory
+                        generated_directory
                     )
                 )
                 {
@@ -2545,6 +2560,16 @@ namespace spartan
         lock_guard<mutex> lock(entity_access_mutex);
 
         for (const auto& entity : entities)
+        {
+            if (entity && entity->GetObjectId() == id)
+            {
+                return entity;
+            }
+        }
+
+        // entities created this frame are not drained yet, a lookup that misses them
+        // makes callers think their own freshly created entity died
+        for (const auto& entity : entities_pending)
         {
             if (entity && entity->GetObjectId() == id)
             {

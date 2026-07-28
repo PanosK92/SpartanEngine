@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <algorithm>
 #include <fstream>
+#include <filesystem>
+#include <system_error>
 #include "../Core/Debugging.h"
 //============================
 
@@ -108,7 +110,12 @@ namespace spartan
 
         if (log_to_file || Debugging::IsLoggingToFileEnabled())
         {
-            ofstream file("log.txt", ios::out | ios::trunc);
+            // the log that gets truncated here is the only record of why the last run died, so it is kept as
+            // log_previous.txt. a crash is only diagnosable if its log survives the restart that follows it
+            error_code ignored;
+            filesystem::rename(log_file_name, "log_previous.txt", ignored);
+
+            ofstream file(log_file_name, ios::out | ios::trunc);
             if (file.is_open())
             {
                 file.close();

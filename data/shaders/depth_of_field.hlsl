@@ -39,10 +39,10 @@ static const int   SAMPLE_COUNT       = 48;     // bokeh quality (higher = smoot
 static const float GOLDEN_ANGLE       = 2.39996323f;
 
 // auto-focus parameters
-static const int   FOCUS_SAMPLES      = 16;     // depth samples for focus calculation
+static const int   FOCUS_SAMPLES      = 24;     // depth samples for focus calculation
 static const float FOCUS_REGION       = 0.12f;  // screen fraction for focus area
 static const float CENTER_WEIGHT_BIAS = 2.5f;   // prefer center of screen for focus
-static const float OUTLIER_THRESHOLD  = 0.4f;   // reject depths this far from median
+static const float SUBJECT_TOLERANCE  = 2.0f;   // depths within this multiple of the nearest hit are the same subject
 
 // depth handling
 static const float NEAR_SCALE = 1.2f;           // foreground blur emphasis
@@ -53,8 +53,6 @@ static const float BG_LEAK_PREVENTION = 0.5f;   // reduce background bleeding in
 static const float COC_CLAMP_PIXELS  = MAX_COC_RADIUS * COC_CLAMP_FACTOR;
 static const float INV_SAMPLE_COUNT  = 1.0f / (float)SAMPLE_COUNT;
 static const float INV_SCATTER_NORM  = 1.0f / (MAX_COC_RADIUS * 0.3f);
-static const float INV_OUTLIER_THRES = 1.0f / OUTLIER_THRESHOLD;
-static const float INV_FOCUS_REGION  = 1.0f / FOCUS_REGION;
 
 /*------------------------------------------------------------------------------
     lens constants computed once per group then read by every thread
@@ -83,64 +81,120 @@ float compute_coc_signed(float depth, lens_t lens)
 }
 
 /*------------------------------------------------------------------------------
-    robust auto-focus with weighted sampling
-    
-    uses a spiral pattern centered on screen, weights center samples higher,
-    and rejects outliers to avoid focusing on background through holes
+    auto-focus, locks onto the nearest subject near the screen centre
+
+    a weighted average of the sampled depths is a poor estimator, a thin subject
+    like a bottle or a pole only covers a few of the samples so the far background
+    dominates the average and the subject itself ends up out of focus, which is
+    also why zooming in used to fix it
+
+    instead the sky is discarded, the nearest remaining hit is taken as the
+    subject, and everything within SUBJECT_TOLERANCE of it is averaged, a lone
+    sample is not trusted on its own so it falls back to the next nearest
+    cluster, this is what a camera does when it focuses on what is in front of it
 ------------------------------------------------------------------------------*/
+// the spiral places sample i at radius sqrt(i / (n - 1)) * FOCUS_REGION, so the
+// normalised distance from the centre is just sqrt(t), the weight needs no stored
+// offset and no length()
+float focus_sample_weight(int i)
+{
+    float t = (float)i / (float)(FOCUS_SAMPLES - 1);
+    return exp(-t * CENTER_WEIGHT_BIAS);
+}
+
 float compute_focus_distance(float2 resolution)
 {
-    float2 center = float2(0.5f, 0.5f);
-    
+    const float2 center = float2(0.5f, 0.5f);
+
+    // anything at or past the far plane is sky or an empty background, it must never
+    // pull focus, otherwise a subject against the sky is always defocused
+    const float sky_depth = max(buffer_frame.camera_far * 0.99f, 1.0f);
+
+    // only the depths are kept, the weights are a function of the index, keeping both
+    // arrays live would cost the bokeh gather below a chunk of its occupancy
     float depths[FOCUS_SAMPLES];
-    float weights[FOCUS_SAMPLES];
-    float weight_sum = 0.0f;
-    
+    float nearest  = sky_depth;
+    float any_sum  = 0.0f;
+    float any_wsum = 0.0f;
+
     [unroll]
     for (int i = 0; i < FOCUS_SAMPLES; i++)
     {
         float t      = (float)i / (float)(FOCUS_SAMPLES - 1);
         float angle  = i * GOLDEN_ANGLE;
         float radius = sqrt(t) * FOCUS_REGION;
-        
+
         float sin_a, cos_a;
         sincos(angle, sin_a, cos_a);
-        float2 offset = float2(cos_a, sin_a) * radius;
-        float2 uv     = center + offset;
-        
-        depths[i]    = get_linear_depth(uv * get_render_uv_scale());
-        float dist_n = length(offset) * INV_FOCUS_REGION;
-        weights[i]   = exp(-dist_n * dist_n * CENTER_WEIGHT_BIAS);
-        weight_sum  += weights[i];
+        float2 uv = center + float2(cos_a, sin_a) * radius;
+
+        float depth = get_linear_depth(uv * get_render_uv_scale());
+        depths[i]   = depth;
+
+        if (depth < sky_depth)
+        {
+            float w   = focus_sample_weight(i);
+            nearest   = min(nearest, depth);
+            any_sum  += depth * w;
+            any_wsum += w;
+        }
     }
-    
-    float weighted_avg = 0.0f;
+
+    // the whole focus region is sky, focus far so nothing gets blurred
+    if (any_wsum <= FLT_MIN)
+        return sky_depth;
+
+    // the nearest hit and everything close behind it are one subject, a single isolated
+    // sample is treated as noise instead so a stray thin edge cannot grab focus
+    float near_limit = nearest * SUBJECT_TOLERANCE;
+    float near_sum   = 0.0f;
+    float near_wsum  = 0.0f;
+    int   near_count = 0;
+    float next_near  = sky_depth;
+
     [unroll]
     for (int j = 0; j < FOCUS_SAMPLES; j++)
     {
-        weighted_avg += depths[j] * weights[j];
+        if (depths[j] >= sky_depth)
+            continue;
+
+        if (depths[j] <= near_limit)
+        {
+            float w     = focus_sample_weight(j);
+            near_sum   += depths[j] * w;
+            near_wsum  += w;
+            near_count += 1;
+        }
+        else
+        {
+            next_near = min(next_near, depths[j]);
+        }
     }
-    weighted_avg /= max(weight_sum, FLT_MIN);
-    
-    float refined_sum    = 0.0f;
-    float refined_weight = 0.0f;
-    float inv_avg        = 1.0f / max(weighted_avg, 0.1f);
-    
+
+    if (near_count >= 2)
+        return near_sum / near_wsum;
+
+    // the nearest hit stood alone, fall back to the cluster behind it
+    float second_limit = next_near * SUBJECT_TOLERANCE;
+    float second_sum   = 0.0f;
+    float second_wsum  = 0.0f;
+
     [unroll]
     for (int k = 0; k < FOCUS_SAMPLES; k++)
     {
-        float deviation = abs(depths[k] - weighted_avg) * inv_avg;
-        if (deviation < OUTLIER_THRESHOLD)
-        {
-            float confidence  = 1.0f - deviation * INV_OUTLIER_THRES;
-            confidence       *= confidence;
-            float w           = weights[k] * confidence;
-            refined_sum      += depths[k] * w;
-            refined_weight   += w;
-        }
+        if (depths[k] >= sky_depth || depths[k] <= near_limit || depths[k] > second_limit)
+            continue;
+
+        float w      = focus_sample_weight(k);
+        second_sum  += depths[k] * w;
+        second_wsum += w;
     }
-    
-    return (refined_weight > FLT_MIN) ? (refined_sum / refined_weight) : weighted_avg;
+
+    if (second_wsum > FLT_MIN)
+        return second_sum / second_wsum;
+
+    // a single non sky sample in the whole region, trust it
+    return any_sum / any_wsum;
 }
 
 /*------------------------------------------------------------------------------

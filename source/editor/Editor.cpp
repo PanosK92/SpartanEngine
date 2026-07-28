@@ -45,9 +45,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/ScriptEditor.h"
-#include "Widgets/McpAssistant.h"
 #include "Widgets/AssetViewer.h"
 #include "Widgets/Sequencer.h"
+#include "MCP/EditorMcpCommands.h"
+#include "MCP/McpAssistant.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -115,6 +116,10 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<Sequencer>(this));
     MenuBar::Initialize(this);
 
+    // the widgets that mcp can drive are all up by now, the commands that reach them are registered
+    // from one place so no widget has to know that mcp exists
+    editor_mcp::Register(this);
+
     // allow imgui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 
@@ -123,6 +128,9 @@ Editor::Editor(const vector<string>& args)
 
 Editor::~Editor()
 {
+    // handlers hold the editor, so they go before anything they could reach does
+    editor_mcp::Unregister();
+
     WorldPreviews::Shutdown();
 
     if (ImGui::GetCurrentContext())

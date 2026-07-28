@@ -81,8 +81,12 @@ namespace spartan
             return;
         }
 
-        // shadow atlas is unused when full ray traced shadows own visibility
-        const bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
+        // shadow atlas is unused when full ray traced shadows own visibility, a secondary view
+        // never traces so it needs the atlas
+        const bool tlas_available =
+            RHI_Device::IsSupportedRayTracing() &&
+            GetTopLevelAccelerationStructure() != nullptr &&
+            !IsSecondaryViewActive();
         if (cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available)
         {
             return;
@@ -563,6 +567,11 @@ namespace spartan
                 pso.name                             = "depth_prepass_indirect";
                 pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_indirect_v);
                 pso.rasterizer_state                 = rasterizer_state;
+                pso.primitive_topology               =
+                    GetSecondaryViewMode() ==
+                    Renderer_SecondaryViewMode::Vertices
+                        ? RHI_PrimitiveTopology::PointList
+                        : RHI_PrimitiveTopology::TriangleList;
                 pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
                 pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
                 pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
@@ -678,6 +687,11 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_indirect_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+        pso.primitive_topology               =
+            GetSecondaryViewMode() ==
+            Renderer_SecondaryViewMode::Vertices
+                ? RHI_PrimitiveTopology::PointList
+                : RHI_PrimitiveTopology::TriangleList;
         // equal, not greater-equal, so only prepass survivors draw, otherwise alpha cutouts render as solid quads
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
         pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
@@ -739,6 +753,11 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+        pso.primitive_topology               =
+            GetSecondaryViewMode() ==
+            Renderer_SecondaryViewMode::Vertices
+                ? RHI_PrimitiveTopology::PointList
+                : RHI_PrimitiveTopology::TriangleList;
         // transparent draws own their depth so they keep ReadWrite, opaque/tessellated leans on the depth prepass written through the
         // tessellation_h/d pair so equal-z matches whatever the prepass produced, same alpha-test correctness argument as the indirect path
         pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);

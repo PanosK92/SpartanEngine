@@ -119,6 +119,24 @@ namespace spartan
         double expire_time;
     };
 
+    enum class Renderer_SecondaryViewMode
+    {
+        Solid,
+        Wireframe,
+        Vertices
+    };
+
+    // what fills the pixels the previewed asset does not cover, the sky keeps lighting the asset
+    // either way, this only replaces what is visible so a wireframe has something to read against
+    enum class Renderer_SecondaryViewBackdrop
+    {
+        Sky,
+        Charcoal,
+        Slate,
+        Paper,
+        Max
+    };
+
     // owns the frame, it collects the world's draw calls, records every pass and presents the result
     class Renderer
     {
@@ -163,6 +181,9 @@ namespace spartan
         static RHI_Api_Type GetRhiApiType();
         static bool Screenshot();
         static bool Screenshot(const std::string& file_path);
+        static bool ScreenshotSecondary(
+            const std::string& file_path
+        );
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
@@ -189,10 +210,24 @@ namespace spartan
         static void SetViewport(float width, float height);
         static bool RequestSecondaryView(
             Entity* camera_entity,
-            Entity* render_root
+            Entity* render_root,
+            uint32_t width,
+            uint32_t height,
+            Renderer_SecondaryViewMode mode =
+                Renderer_SecondaryViewMode::Solid,
+            Renderer_SecondaryViewBackdrop backdrop =
+                Renderer_SecondaryViewBackdrop::Sky
         );
         static RHI_Texture* GetSecondaryViewOutput();
         static bool IsSecondaryViewReady();
+        // true only while the frame currently being recorded belongs to a secondary view
+        static bool IsSecondaryViewActive();
+        static void InvalidateSecondaryView();
+        // a capture is waiting on a secondary render, issuing a new request would change what it grabs
+        static bool IsSecondaryScreenshotPending();
+        static uint64_t GetSecondaryViewGeneration();
+        static uint64_t GetSecondaryViewRequestGeneration();
+        static Renderer_SecondaryViewMode GetSecondaryViewMode();
 
         // resolution render
         static const math::Vector2& GetResolutionRender();
@@ -323,6 +358,8 @@ namespace spartan
         static void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        // asset preview backdrop and wireframe recolour, secondary views only
+        static void Pass_PreviewStudio(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         // passes - post-process
         static void Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_PostProcess_Color(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, uint32_t eye_layer);
@@ -359,6 +396,8 @@ namespace spartan
         // tick helpers
         static void TickRecreateOptionalRenderTargetsIfNeeded();
         static void TickUpdateHiZSuppressionState();
+        // must run before UpdateDrawCalls, it assigns the material indices the draw data carries
+        static void TickUploadMaterials(RHI_CommandList* cmd_list);
         static void TickUploadBindlessDependencies(RHI_CommandList* cmd_list);
         static void TickAdvanceFrameConstantBufferRing();
         static void TickLogClusterOverflowRateLimited();

@@ -361,7 +361,10 @@ namespace spartan
             }
 
             const uint64_t upload_size = (size != 0) ? static_cast<uint64_t>(size) : static_cast<uint64_t>(m_stride);
-            SP_ASSERT(static_cast<uint64_t>(m_offset) + upload_size <= m_object_size);
+            SP_ASSERT_MSG(
+                static_cast<uint64_t>(m_offset) + upload_size <= m_object_size,
+                ("buffer \"" + GetObjectName() + "\" was handed more data than it can hold").c_str()
+            );
             memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, upload_size);
 
             // upload-heap writes become visible to the gpu at the next ExecuteCommandLists boundary, no barrier needed

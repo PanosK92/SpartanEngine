@@ -129,6 +129,8 @@ namespace spartan
             bool save_exr = false;
             bool pending  = false;
             bool ready    = false;
+            bool secondary_view = false;
+            uint64_t secondary_generation = 0;
         };
 
         mutex screenshot_mutex;
@@ -137,12 +139,67 @@ namespace spartan
         Entity* secondary_camera_request = nullptr;
         Entity* secondary_render_root_request = nullptr;
         Entity* secondary_render_root_active = nullptr;
+        Renderer_SecondaryViewMode secondary_view_mode_request =
+            Renderer_SecondaryViewMode::Solid;
+        Renderer_SecondaryViewMode secondary_view_mode_active =
+            Renderer_SecondaryViewMode::Solid;
+        Renderer_SecondaryViewBackdrop secondary_view_backdrop_request =
+            Renderer_SecondaryViewBackdrop::Sky;
+        Renderer_SecondaryViewBackdrop secondary_view_backdrop_active =
+            Renderer_SecondaryViewBackdrop::Sky;
+        uint32_t secondary_view_width_request = 1;
+        uint32_t secondary_view_height_request = 1;
+        uint64_t secondary_view_request_generation = 0;
+        uint64_t secondary_view_active_generation = 0;
+        uint64_t secondary_view_ready_generation = 0;
         shared_ptr<RHI_Texture> secondary_view_output;
         shared_ptr<RHI_Texture> secondary_view_primary_backup;
         bool secondary_view_ready = false;
         uint32_t secondary_view_recovery_frames = 0;
 
-        bool ensure_secondary_view_targets()
+        bool is_secondary_view_entity(Entity* entity)
+        {
+            return
+                !secondary_render_root_active ||
+                (
+                    entity &&
+                    (
+                        entity == secondary_render_root_active ||
+                        entity->IsDescendantOf(
+                            secondary_render_root_active
+                        )
+                    )
+                );
+        }
+
+        // a secondary view borrows the frame from the primary camera, the entity history
+        // belongs to that other camera so reusing it writes bogus velocity, which shows up
+        // as motion blur and taa smear on the preview
+        const math::Matrix& matrix_previous_for_velocity(Entity* entity)
+        {
+            return secondary_render_root_active
+                ? entity->GetMatrix()
+                : entity->GetMatrixPrevious();
+        }
+
+        const vector<Entity*>& render_entities()
+        {
+            return secondary_render_root_active
+                ? World::GetEntities()
+                : World::GetEntitiesWithRender();
+        }
+
+        const vector<Entity*>& light_entities()
+        {
+            return secondary_render_root_active
+                ? World::GetEntities()
+                : World::GetEntitiesLights();
+        }
+
+        bool ensure_secondary_view_targets(
+            const uint32_t width,
+            const uint32_t height
+        )
         {
             RHI_Texture* source =
                 Renderer::GetRenderTarget(
@@ -154,41 +211,59 @@ namespace spartan
             }
             const bool recreate =
                 !secondary_view_output ||
-                secondary_view_output->GetWidth() != source->GetWidth() ||
-                secondary_view_output->GetHeight() != source->GetHeight() ||
+                secondary_view_output->GetWidth() != width ||
+                secondary_view_output->GetHeight() != height ||
                 secondary_view_output->GetFormat() != source->GetFormat();
-            if (!recreate)
+            const bool recreate_backup =
+                !secondary_view_primary_backup ||
+                secondary_view_primary_backup->GetWidth() !=
+                    source->GetWidth() ||
+                secondary_view_primary_backup->GetHeight() !=
+                    source->GetHeight() ||
+                secondary_view_primary_backup->GetFormat() !=
+                    source->GetFormat();
+            if (!recreate && !recreate_backup)
             {
                 return true;
             }
 
-            const uint32_t flags =
+            const uint32_t output_flags =
                 RHI_Texture_Srv |
-                RHI_Texture_Rtv |
+                RHI_Texture_Uav |
                 RHI_Texture_ClearBlit;
-            secondary_view_output = make_shared<RHI_Texture>(
-                RHI_Texture_Type::Type2D,
-                source->GetWidth(),
-                source->GetHeight(),
-                1,
-                1,
-                source->GetFormat(),
-                flags,
-                "secondary_view_output"
-            );
-            secondary_view_primary_backup =
-                make_shared<RHI_Texture>(
+            if (recreate)
+            {
+                secondary_view_output =
+                    make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        width,
+                        height,
+                        1,
+                        1,
+                        source->GetFormat(),
+                        output_flags,
+                        "secondary_view_output"
+                    );
+            }
+            if (recreate_backup)
+            {
+                const uint32_t backup_flags =
+                    RHI_Texture_Srv |
+                    RHI_Texture_Rtv |
+                    RHI_Texture_ClearBlit;
+                secondary_view_primary_backup =
+                    make_shared<RHI_Texture>(
                     RHI_Texture_Type::Type2D,
                     source->GetWidth(),
                     source->GetHeight(),
                     1,
                     1,
                     source->GetFormat(),
-                    flags,
+                    backup_flags,
                     "secondary_view_primary_backup"
                 );
+            }
             secondary_view_ready = false;
-            secondary_view_recovery_frames = 0;
             return
                 secondary_view_output->GetRhiResource() &&
                 secondary_view_primary_backup->GetRhiResource();
@@ -285,11 +360,19 @@ namespace spartan
             }
         }
 
-        screenshot_request make_screenshot_request(const string& file_path)
+        screenshot_request make_screenshot_request(
+            const string& file_path,
+            const bool secondary_view = false
+        )
         {
             screenshot_request request;
             request.file_path = file_path;
             request.pending   = true;
+            request.secondary_view = secondary_view;
+            request.secondary_generation =
+                secondary_view
+                    ? secondary_view_request_generation
+                    : 0;
 
             if (!file_path.empty())
             {
@@ -456,6 +539,9 @@ namespace spartan
             secondary_render_root_request = nullptr;
             secondary_render_root_active = nullptr;
             secondary_view_ready = false;
+            secondary_view_request_generation = 0;
+            secondary_view_active_generation = 0;
+            secondary_view_ready_generation = 0;
         }
 
         RHI_VendorTechnology::Shutdown();
@@ -521,6 +607,9 @@ namespace spartan
         Entity* secondary_camera_entity = nullptr;
         Entity* secondary_render_root_entity = nullptr;
         bool render_secondary_view = false;
+        Cb_Frame cb_frame_primary = {};
+        float secondary_wireframe_previous =
+            cvar_wireframe.GetValue();
 
         if (can_render)
         {
@@ -544,17 +633,38 @@ namespace spartan
                 RHI_Device::DeletionQueueParse();
             }
 
-            secondary_camera_entity =
-                secondary_camera_request;
-            secondary_camera_request = nullptr;
-            secondary_render_root_entity =
+            const bool secondary_request_pending =
+                secondary_camera_request ||
                 secondary_render_root_request;
-            secondary_render_root_request = nullptr;
+            const bool secondary_request_consumed =
+                secondary_request_pending;
+            if (secondary_request_consumed)
+            {
+                secondary_camera_entity =
+                    secondary_camera_request;
+                secondary_camera_request = nullptr;
+                secondary_render_root_entity =
+                    secondary_render_root_request;
+                secondary_render_root_request = nullptr;
+            }
+            const uint32_t secondary_width =
+                secondary_view_width_request;
+            const uint32_t secondary_height =
+                secondary_view_height_request;
+            secondary_view_mode_active =
+                secondary_view_mode_request;
+            secondary_view_backdrop_active =
+                secondary_view_backdrop_request;
+            secondary_view_active_generation =
+                secondary_view_request_generation;
             if (
                 secondary_camera_entity &&
                 secondary_render_root_entity &&
                 secondary_camera_entity->GetComponent<Camera>() &&
-                ensure_secondary_view_targets()
+                ensure_secondary_view_targets(
+                    secondary_width,
+                    secondary_height
+                )
             )
             {
                 if (Camera* primary_camera = World::GetCamera())
@@ -569,18 +679,28 @@ namespace spartan
                     secondary_view_primary_backup.get(),
                     false
                 );
+
+                // this frame belongs to the preview camera, the primary never renders it,
+                // so its history is put back once the preview is done, otherwise the next
+                // primary frame measures velocity against the preview camera
+                cb_frame_primary = m_cb_frame_cpu;
                 World::SetActiveCamera(
                     secondary_camera_entity
                 );
-                secondary_camera_entity
-                    ->GetComponent<Camera>()
-                    ->Tick();
+                Camera* secondary_camera =
+                    secondary_camera_entity
+                        ->GetComponent<Camera>();
+                secondary_camera->SetAspectRatioOverride(
+                    static_cast<float>(secondary_width) /
+                    static_cast<float>(secondary_height)
+                );
+                secondary_camera->Tick();
                 secondary_render_root_entity->SetActive(true);
                 secondary_render_root_active =
                     secondary_render_root_entity;
                 for (
                     Entity* entity :
-                    World::GetEntitiesWithRender()
+                    render_entities()
                 )
                 {
                     if (
@@ -606,11 +726,33 @@ namespace spartan
                     }
                 }
                 m_is_hiz_suppressed = true;
-                ResetTaauHistory();
+                cvar_wireframe.SetValue(
+                    secondary_view_mode_active ==
+                    Renderer_SecondaryViewMode::Wireframe
+                        ? 1.0f
+                        : 0.0f
+                );
                 render_secondary_view = true;
+            }
+            else if (secondary_request_consumed)
+            {
+                secondary_view_ready = false;
+                lock_guard<mutex> lock(screenshot_mutex);
+                if (
+                    screenshot.pending &&
+                    screenshot.secondary_view &&
+                    screenshot.secondary_generation <=
+                        secondary_view_active_generation
+                )
+                {
+                    // the generation it waited for came and went without rendering, dropping it here
+                    // matters because a pending request blocks every later screenshot
+                    screenshot = {};
+                }
             }
 
             RotateFrameBuffers();
+            TickUploadMaterials(m_cmd_list_present);
             UpdateDrawCalls(m_cmd_list_present);
 
             // frame based retirement, no gpu stall required
@@ -642,7 +784,16 @@ namespace spartan
             ProduceFrame(m_cmd_list_present, m_cmd_list_compute);
             if (render_secondary_view)
             {
-                m_cmd_list_present->Copy(
+                // runs on the display ready frame, after post process, so the backdrop stays flat
+                // and the wires stay crisp instead of being blurred by depth of field
+                Pass_PreviewStudio(
+                    m_cmd_list_present,
+                    GetRenderTarget(
+                        Renderer_RenderTarget::frame_output
+                    )
+                );
+                Pass_Blit(
+                    m_cmd_list_present,
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
                     ),
@@ -659,11 +810,33 @@ namespace spartan
                 World::SetActiveCamera(
                     primary_camera_entity
                 );
+                m_cb_frame_cpu = cb_frame_primary;
                 secondary_render_root_entity->SetActive(false);
                 secondary_render_root_active = nullptr;
                 secondary_view_ready = true;
-                secondary_view_recovery_frames = 2;
-                ResetTaauHistory();
+                secondary_view_ready_generation =
+                    secondary_view_active_generation;
+                {
+                    lock_guard<mutex> lock(
+                        screenshot_mutex
+                    );
+                    // any render at or after the requested generation satisfies the capture, an exact
+                    // match would strand the request whenever the preview panel refreshed in between
+                    if (
+                        screenshot.pending &&
+                        screenshot.secondary_view &&
+                        screenshot.secondary_generation <=
+                            secondary_view_active_generation
+                    )
+                    {
+                        screenshot.pending = false;
+                        screenshot.ready = true;
+                    }
+                }
+                secondary_view_recovery_frames = 0;
+                cvar_wireframe.SetValue(
+                    secondary_wireframe_previous
+                );
             }
         }
 
@@ -764,6 +937,42 @@ namespace spartan
         }
     }
 
+    void Renderer::TickUploadMaterials(RHI_CommandList* cmd_list)
+    {
+        // the bindless slot a material owns is handed out here and a draw carries that slot as an index,
+        // so this has to run before the draw data is written, doing it afterwards leaves the frame
+        // sampling whatever material now sits where the index used to point, which reads as the wrong
+        // texture and lands on the checkerboard whenever it resolves to the standard material
+
+        // a secondary view assigns the slots over a different entity set than the primary one, so a
+        // layout is only valid for the kind of view that built it, coming back to a view whose materials
+        // happen not to have changed would otherwise reuse indices into a foreign layout
+        static bool uploaded_for_secondary = false;
+        const bool is_secondary = secondary_render_root_active != nullptr;
+        const bool view_changed = is_secondary != uploaded_for_secondary;
+
+        // consume the world side flag unconditionally, it clears its own change tracking on read
+        const bool world_changed =
+            World::HaveMaterialsChangedThisFrame();
+        if (
+            GetFrameNumber() != 0 &&
+            !view_changed &&
+            !world_changed
+        )
+        {
+            return;
+        }
+        uploaded_for_secondary = is_secondary;
+
+        UpdateMaterials(cmd_list);
+        cmd_list->PrepareTexturesForSampling(&m_bindless_textures);
+        RHI_Device::UpdateBindlessMaterials(
+            cmd_list,
+            &m_bindless_textures,
+            GetBuffer(Renderer_Buffer::MaterialParameters)
+        );
+    }
+
     void Renderer::TickUploadBindlessDependencies(RHI_CommandList* cmd_list)
     {
         // run during loading so newly published entities pick up materials and lights as they arrive
@@ -780,14 +989,6 @@ namespace spartan
         if (lights_changed)
         {
             RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
-        }
-
-        const bool materials_changed = initialize || World::HaveMaterialsChangedThisFrame();
-        if (materials_changed)
-        {
-            UpdateMaterials(cmd_list);
-            cmd_list->PrepareTexturesForSampling(&m_bindless_textures);
-            RHI_Device::UpdateBindlessMaterials(cmd_list, &m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters));
         }
 
         if (m_bindless_samplers_dirty)
@@ -925,19 +1126,31 @@ namespace spartan
 
     bool Renderer::RequestSecondaryView(
         Entity* camera_entity,
-        Entity* render_root
+        Entity* render_root,
+        const uint32_t width,
+        const uint32_t height,
+        const Renderer_SecondaryViewMode mode,
+        const Renderer_SecondaryViewBackdrop backdrop
     )
     {
         if (
             !camera_entity ||
             !render_root ||
-            !camera_entity->GetComponent<Camera>()
+            !camera_entity->GetComponent<Camera>() ||
+            width == 0 ||
+            height == 0
         )
         {
             return false;
         }
         secondary_camera_request = camera_entity;
         secondary_render_root_request = render_root;
+        secondary_view_width_request = width;
+        secondary_view_height_request = height;
+        secondary_view_mode_request = mode;
+        secondary_view_backdrop_request = backdrop;
+        secondary_view_request_generation++;
+        secondary_view_ready = false;
         return true;
     }
 
@@ -949,6 +1162,124 @@ namespace spartan
     bool Renderer::IsSecondaryViewReady()
     {
         return secondary_view_ready;
+    }
+
+    bool Renderer::IsSecondaryViewActive()
+    {
+        return secondary_render_root_active != nullptr;
+    }
+
+    bool Renderer::IsSecondaryScreenshotPending()
+    {
+        lock_guard<mutex> lock(screenshot_mutex);
+        return
+            screenshot.secondary_view &&
+            (screenshot.pending || screenshot.ready);
+    }
+
+    void Renderer::InvalidateSecondaryView()
+    {
+        secondary_camera_request = nullptr;
+        secondary_render_root_request = nullptr;
+        secondary_view_ready = false;
+        secondary_view_request_generation++;
+
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (screenshot.secondary_view)
+        {
+            screenshot = {};
+        }
+    }
+
+    uint64_t Renderer::GetSecondaryViewGeneration()
+    {
+        return secondary_view_ready_generation;
+    }
+
+    uint64_t Renderer::GetSecondaryViewRequestGeneration()
+    {
+        return secondary_view_request_generation;
+    }
+
+    Renderer_SecondaryViewMode
+    Renderer::GetSecondaryViewMode()
+    {
+        return secondary_render_root_active
+            ? secondary_view_mode_active
+            : Renderer_SecondaryViewMode::Solid;
+    }
+
+    void Renderer::Pass_PreviewStudio(
+        RHI_CommandList* cmd_list,
+        RHI_Texture* tex_out
+    )
+    {
+        const bool replace_sky =
+            secondary_view_backdrop_active !=
+            Renderer_SecondaryViewBackdrop::Sky;
+        const bool recolour_wires =
+            secondary_view_mode_active !=
+            Renderer_SecondaryViewMode::Solid;
+
+        RHI_Shader* shader_c =
+            GetShader(Renderer_Shader::preview_studio_c);
+        if (
+            !tex_out ||
+            !shader_c ||
+            !shader_c->IsCompiled() ||
+            (!replace_sky && !recolour_wires)
+        )
+        {
+            return;
+        }
+
+        // display referred values, this runs after tonemapping and gamma
+        Vector3 tint = Vector3(0.055f, 0.058f, 0.066f);
+        switch (secondary_view_backdrop_active)
+        {
+            case Renderer_SecondaryViewBackdrop::Slate:
+                tint = Vector3(0.22f, 0.23f, 0.25f);
+                break;
+            case Renderer_SecondaryViewBackdrop::Paper:
+                tint = Vector3(0.86f, 0.86f, 0.88f);
+                break;
+            default:
+                break;
+        }
+
+        // a bright backdrop needs dark wires, a dark one needs bright wires, the sky counts as
+        // bright since it usually is and a dark wire is the safer read against it
+        const bool wires_on_light =
+            !replace_sky ||
+            secondary_view_backdrop_active ==
+            Renderer_SecondaryViewBackdrop::Paper;
+        const float wire_mode =
+            recolour_wires
+                ? (wires_on_light ? 2.0f : 1.0f)
+                : 0.0f;
+
+        cmd_list->BeginTimeblock("preview_studio");
+        {
+            RHI_PipelineState pso;
+            pso.name = "preview_studio";
+            pso.shaders[RHI_Shader_Type::Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+
+            SetCommonTextures(cmd_list);
+            cmd_list->SetTexture(
+                Renderer_BindingsUav::tex,
+                tex_out
+            );
+            m_pcb_pass_cpu.set_f3_value(tint);
+            m_pcb_pass_cpu.set_f3_value2(
+                replace_sky ? 1.0f : 0.0f,
+                wire_mode,
+                0.0f
+            );
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->Dispatch(tex_out);
+        }
+        cmd_list->EndTimeblock();
     }
 
     const Vector2& Renderer::GetResolutionRender()
@@ -1093,6 +1424,14 @@ namespace spartan
         // stereo overwrites the projection with unjittered per eye matrices, keep the advertised jitter at zero
         // so shaders do not unjitter velocities and uvs with an offset that was never applied
         if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        {
+            m_jitter_offset = Vector2::Zero;
+            return;
+        }
+
+        // a secondary view resolves without a temporal upscaler, a sub pixel offset that
+        // nothing resolves away would just shift the preview off centre
+        if (secondary_render_root_active)
         {
             m_jitter_offset = Vector2::Zero;
             return;
@@ -1247,11 +1586,13 @@ namespace spartan
     void Renderer::UpdateFrameCb_FeatureBits()
     {
         // bit positions are shader abi, must match common_resources.hlsl
-        const bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(),               1 << 0);
-        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                 1 << 1);
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available, 1 << 2);
-        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),                            1 << 3);
+        // a secondary view is absent from the tlas, so every ray traced feature is off for it
+        const bool ray_tracing_allowed = !secondary_render_root_active;
+        const bool tlas_available      = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr && ray_tracing_allowed;
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_allowed, 1 << 0);
+        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                          1 << 1);
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available,          1 << 2);
+        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_allowed,              1 << 3);
     }
 
     void Renderer::UpdateFrameCb_StereoXr()
@@ -1326,7 +1667,7 @@ namespace spartan
             return true;
         };
 
-        for (Entity* entity : World::GetEntitiesWithRender())
+        for (Entity* entity : render_entities())
         {
             if (count >= 8)
             {
@@ -1421,6 +1762,19 @@ namespace spartan
         UpdateFrameCb_StereoXr();
         UpdateFrameCb_RadialBlurHubs();
 
+        // a secondary view renders a different camera into the primary frame, keeping the
+        // primary history here means every pixel reports a huge velocity, which reads as
+        // motion blur and taa smear over the whole preview
+        if (secondary_render_root_active)
+        {
+            m_cb_frame_cpu.view_previous                       = m_cb_frame_cpu.view;
+            m_cb_frame_cpu.projection_previous                 = m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.view_projection_previous            = m_cb_frame_cpu.view_projection;
+            m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
+            m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
+            m_cb_frame_cpu.taa_jitter_previous                 = m_cb_frame_cpu.taa_jitter_current;
+        }
+
         // emissive triangle nee pool, must precede the cb upload because it writes the count
         // into m_cb_frame_cpu, the buffer upload itself piggybacks on the same cmd_list
         BuildEmissiveTriangleNeePool(cmd_list);
@@ -1446,8 +1800,12 @@ namespace spartan
         tris.clear();
         bool truncated = false;
 
-        for (Entity* entity : World::GetEntitiesWithRender())
+        for (Entity* entity : render_entities())
         {
+            if (!is_secondary_view_entity(entity))
+            {
+                continue;
+            }
             Render* render = entity->GetComponent<Render>();
             if (!render)
             {
@@ -2018,7 +2376,7 @@ namespace spartan
     
         auto update_entities = [update_material]()
         {
-            for (Entity* entity : World::GetEntitiesWithRender())
+            for (Entity* entity : render_entities())
             {
                 Render* render = entity->GetComponent<Render>();
                 if (!render)
@@ -2124,8 +2482,12 @@ namespace spartan
         };
     
         // directional light always goes in slot 0
-        for (Entity* entity : World::GetEntitiesLights())
+        for (Entity* entity : light_entities())
         {
+            if (!is_secondary_view_entity(entity))
+            {
+                continue;
+            }
             if (Light* light_component = entity->GetComponent<Light>())
             {
                 if (light_component->GetLightType() == LightType::Directional)
@@ -2149,8 +2511,12 @@ namespace spartan
         const float flare_max_distance = cvar_light_flares.GetValueAs<bool>() ? max(cvar_light_flares_max_distance.GetValue(), 0.0f) : 0.0f;
         const float flare_max_distance_sq = flare_max_distance * flare_max_distance;
 
-        for (Entity* entity : World::GetEntitiesLights())
+        for (Entity* entity : light_entities())
         {
+            if (!is_secondary_view_entity(entity))
+            {
+                continue;
+            }
             if (Light* light_component = entity->GetComponent<Light>())
             {
                 if (light_component == first_directional)
@@ -2207,6 +2573,20 @@ namespace spartan
             }
         }
     
+        // the atmosphere is driven entirely by slot 0, so a world with no lights at all leaves the
+        // sky panorama black, a neutral default sun keeps a viewport usable before anything is
+        // loaded, worlds that deliberately light with point lights only are left untouched
+        if (!first_directional && m_count_active_lights == 0)
+        {
+            Sb_Light& sun         = m_bindless_lights[0];
+            sun.color             = Color(1.0f, 1.0f, 1.0f, 1.0f);
+            sun.intensity         = 85000.0f / 683.0f; // lux to radiometric, matches Light::GetIntensityRadiometric
+            sun.direction         = Vector3(0.35f, -0.82f, -0.45f).Normalized();
+            sun.direction_right   = Vector3(0.79f, 0.0f, 0.61f).Normalized();
+            sun.flags             = 1 << 0; // directional, deliberately without shadows or volumetrics
+            m_count_active_lights = 1;
+        }
+
         // gpu upload
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
@@ -2288,7 +2668,7 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
-        for (Entity* entity : World::GetEntitiesWithRender())
+        for (Entity* entity : render_entities())
         {
             if (!entity || !entity->GetActive())
             {
@@ -2330,7 +2710,7 @@ namespace spartan
 
             uint32_t draw_data_index = WriteDrawData(
                 entity->GetMatrix(),
-                entity->GetMatrixPrevious(),
+                matrix_previous_for_velocity(entity),
                 material->GetIndex(),
                 material->IsTransparent() ? 1 : 0,
                 render
@@ -2496,7 +2876,7 @@ namespace spartan
             const uint32_t draw_idx        = m_indirect_draw_count++;
             Sb_DrawData& draw_data         = m_indirect_draw_data[draw_idx];
             draw_data.transform            = entity->GetMatrix();
-            draw_data.transform_previous   = entity->GetMatrixPrevious();
+            draw_data.transform_previous   = matrix_previous_for_velocity(entity);
             draw_data.material_index       = material->GetIndex();
             draw_data.is_transparent       = 0;
             draw_data.aabb_index           = render_aabb_slot;
@@ -2642,6 +3022,14 @@ namespace spartan
             return;
         }
 
+        // a secondary view only sees its own subtree, building the tlas from that would throw
+        // away the primary camera's instances and force a full rebuild on the next frame, the
+        // preview does not ray trace so the primary structures are left untouched instead
+        if (secondary_render_root_active)
+        {
+            return;
+        }
+
         // blas builds are capped per frame, recording thousands onto one command list hits driver tdr
         bool blas_burst_done = false;
         {
@@ -2652,9 +3040,13 @@ namespace spartan
             uint32_t blas_built     = 0;
             uint32_t blas_remaining = 0;
             uint32_t blas_total     = 0;
-            for (Entity* entity : World::GetEntitiesWithRender())
+            for (Entity* entity : render_entities())
             {
                 if (!entity || !entity->GetActive())
+                {
+                    continue;
+                }
+                if (!is_secondary_view_entity(entity))
                 {
                     continue;
                 }
@@ -2733,9 +3125,13 @@ namespace spartan
             instances.clear();
             geometry_infos.clear();
 
-            for (Entity* entity : World::GetEntitiesWithRender())
+            for (Entity* entity : render_entities())
             {
                 if (!entity || !entity->GetActive())
+                {
+                    continue;
+                }
+                if (!is_secondary_view_entity(entity))
                 {
                     continue;
                 }
@@ -2795,6 +3191,24 @@ namespace spartan
                 geometry_infos.push_back(geo_info);
             }
     
+            // the table is written and read in lockstep with the instances, so a scene that outgrows the
+            // buffer drops the tail of both rather than writing past the end of the allocation
+            RHI_Buffer* geometry_info_buffer =
+                GetBuffer(Renderer_Buffer::GeometryInfo);
+            const size_t geometry_capacity =
+                geometry_info_buffer->GetObjectSize() /
+                sizeof(Sb_GeometryInfo);
+            if (geometry_infos.size() > geometry_capacity)
+            {
+                SP_LOG_WARNING(
+                    "Ray tracing: %zu geometries exceed the geometry info buffer's %zu, dropping the rest",
+                    geometry_infos.size(),
+                    geometry_capacity
+                );
+                geometry_infos.resize(geometry_capacity);
+                instances.resize(geometry_capacity);
+            }
+
             static uint32_t last_instance_count = 0;
             if (!instances.empty())
             {
@@ -2805,7 +3219,12 @@ namespace spartan
                 }
                 m_tlas->BuildTopLevel(cmd_list, instances);
 
-                GetBuffer(Renderer_Buffer::GeometryInfo)->Update(cmd_list, geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
+                // this is a full overwrite of the table, not a ring push, and the hit shaders read it at
+                // the offset it was bound with. without the rewind every rebuild walked the offset one
+                // stride further until the write ran off the end of the buffer, and in the meantime the
+                // passes bound at zero and read whatever an earlier rebuild had left there
+                geometry_info_buffer->ResetOffset();
+                geometry_info_buffer->Update(cmd_list, geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
             }
             else if (last_instance_count != 0)
             {
@@ -2832,7 +3251,7 @@ namespace spartan
 
         // every blas holds device addresses into the global buffers about to be freed, dedup by mesh since many renders share one
         std::unordered_set<Mesh*> meshes;
-        for (Entity* entity : World::GetEntitiesWithRender())
+        for (Entity* entity : render_entities())
         {
             if (Render* render = entity->GetComponent<Render>())
             {
@@ -2858,9 +3277,17 @@ namespace spartan
 
         // collect slices
         m_shadow_slices.clear();
-        for (const auto& entity : World::GetEntitiesLights())
+        for (const auto& entity : light_entities())
         {
+            if (!is_secondary_view_entity(entity))
+            {
+                continue;
+            }
             Light* light = entity->GetComponent<Light>();
+            if (!light)
+            {
+                continue;
+            }
             light->ClearAtlasRectangles();
             if (light->GetIndex() == numeric_limits<uint32_t>::max())
             {
@@ -2974,17 +3401,63 @@ namespace spartan
         return true;
     }
 
+    bool Renderer::ScreenshotSecondary(
+        const string& file_path
+    )
+    {
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (secondary_view_request_generation == 0)
+        {
+            SP_LOG_WARNING(
+                "Secondary screenshot requested with no preview to capture"
+            );
+            return false;
+        }
+
+        // a request that has been read back is mid save and its staging buffer is still in use, so it has to
+        // be left alone. one that is only pending has not been touched by the gpu yet and the newer request
+        // is the one the caller wants, superseding it is what stops a single stranded capture from refusing
+        // every screenshot taken afterwards
+        if (screenshot.ready)
+        {
+            SP_LOG_WARNING(
+                "Secondary screenshot is still being written, try again"
+            );
+            return false;
+        }
+        if (screenshot.pending && !screenshot.secondary_view)
+        {
+            SP_LOG_WARNING(
+                "A main view screenshot is pending, try again"
+            );
+            return false;
+        }
+
+        screenshot =
+            make_screenshot_request(file_path, true);
+        return true;
+    }
+
     void Renderer::Pass_Screenshot(RHI_CommandList* cmd_list, RHI_Texture* tex_pre_tonemap)
     {
         {
             lock_guard<mutex> lock(screenshot_mutex);
-            if (!screenshot.pending || screenshot.ready || !tex_pre_tonemap)
+            if (
+                !screenshot.pending ||
+                screenshot.ready ||
+                screenshot.secondary_view ||
+                secondary_render_root_active ||
+                !tex_pre_tonemap
+            )
             {
                 return;
             }
         }
 
-        RHI_Texture* tex_sdr = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        RHI_Texture* tex_sdr =
+            GetRenderTarget(
+                Renderer_RenderTarget::screenshot_sdr
+            );
         RHI_Texture* tex_ping = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr_2);
         if (!tex_sdr || !tex_ping)
         {
@@ -3037,7 +3510,12 @@ namespace spartan
             screenshot = {};
         }
 
-        RHI_Texture* tex_sdr = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        RHI_Texture* tex_sdr =
+            request.secondary_view
+                ? secondary_view_output.get()
+                : GetRenderTarget(
+                    Renderer_RenderTarget::screenshot_sdr
+                );
         if (!tex_sdr)
         {
             return;
@@ -3045,7 +3523,7 @@ namespace spartan
 
         shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
         shared_ptr<RHI_Buffer> exr_staging;
-        if (request.save_exr)
+        if (request.save_exr && !request.secondary_view)
         {
             exr_staging = copy_texture_to_staging(GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
@@ -3133,7 +3611,10 @@ namespace spartan
 
         m_pass_state.sky_first_frame           = false;
         m_pass_state.sky_had_directional_light = has_directional_light;
-        return has_directional_light || light_changed || cloud_state_changed;
+
+        // a world without a directional light still has a sun in light slot 0, the default one
+        // UpdateLights writes, so the panorama keeps refreshing instead of stalling on black
+        return true;
     }
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
@@ -3336,8 +3817,38 @@ namespace spartan
         }
 
         RHI_Texture* rt_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
-        const bool update_skysphere    = UpdateSkysphereConvergenceState();
-        Light* directional_light       = World::GetDirectionalLight();
+        const bool update_skysphere =
+            secondary_render_root_active
+                ? false
+                : UpdateSkysphereConvergenceState();
+        Light* directional_light = nullptr;
+        if (secondary_render_root_active)
+        {
+            for (Entity* entity : light_entities())
+            {
+                if (
+                    !is_secondary_view_entity(entity) ||
+                    !entity
+                )
+                {
+                    continue;
+                }
+                Light* light = entity->GetComponent<Light>();
+                if (
+                    light &&
+                    light->GetLightType() ==
+                        LightType::Directional
+                )
+                {
+                    directional_light = light;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            directional_light = World::GetDirectionalLight();
+        }
         RHI_Queue* queue_graphics      = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
         // submit uploads before compute batch a
@@ -3453,6 +3964,11 @@ namespace spartan
         }
 
         // after this the _previous slots resolve to this frame's data, which is what restir's temporal gate reads next frame
-        Pass_ReSTIR_SwapGBufferHistory();
+        // a secondary view must not publish its gbuffer as the primary camera's history, the gate would
+        // reject everything on the next primary frame and the main viewport flickers
+        if (!secondary_render_root_active)
+        {
+            Pass_ReSTIR_SwapGBufferHistory();
+        }
     }
 }

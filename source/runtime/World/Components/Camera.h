@@ -224,6 +224,11 @@ namespace spartan
         float GetFovHorizontalDeg() const;
         void SetFovHorizontalDeg(float fov);
         float GetAspectRatio() const;
+        void SetAspectRatioOverride(float aspect_ratio)
+        {
+            m_aspect_ratio_override = aspect_ratio;
+            SetFlag(CameraFlags::IsDirty, true);
+        }
   
         // frustum
         bool IsInViewFrustum(const math::BoundingBox& bounding_box) const;
@@ -268,6 +273,7 @@ namespace spartan
         float m_shutter_speed                        = 1.0f / 125.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
         float m_iso                                  = 200.0f;        // sensitivity to light
         float m_fov_horizontal_rad                   = 90.0f * math::deg_to_rad;
+        float m_aspect_ratio_override                = 0.0f;
         float m_near_plane                           = 0.1f;
         float m_far_plane                            = 10'000.0f; // a good maximum for a 32 bit reverse-z depth buffer
         ProjectionType m_projection_type             = Projection_Perspective;

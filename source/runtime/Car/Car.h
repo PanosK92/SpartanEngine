@@ -117,8 +117,8 @@ namespace spartan
         void ResetToSpawn();
 
         // when true, external control owns vehicle input and interaction
-        void SetMcpControlled(bool controlled) { m_mcp_controlled = controlled; }
-        bool IsMcpControlled() const { return m_mcp_controlled; }
+        void SetExternallyControlled(bool controlled) { m_externally_controlled = controlled; }
+        bool IsExternallyControlled() const { return m_externally_controlled; }
 
         // view control
         void CycleView();
@@ -206,7 +206,7 @@ namespace spartan
         bool              m_is_drivable     = false;
         bool              m_camera_follows  = false;    // auto-enter car when play mode starts
         bool              m_was_playing     = false;    // tracks play mode state for auto-enter
-        bool              m_mcp_controlled  = false;    // external control owns vehicle input and interaction
+        bool              m_externally_controlled  = false;    // external control owns vehicle input and interaction
         CarView           m_current_view    = CarView::Chase;
         CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;

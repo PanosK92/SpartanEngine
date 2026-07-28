@@ -74,6 +74,9 @@ namespace
     std::string assistant_response;
     std::string assistant_models;
     std::string assistant_activity;
+    // the design brief waits here until the widget can move it into the chat, the run panel is only
+    // drawn while a run is live so the brief would otherwise vanish the moment the build finishes
+    std::string assistant_brief;
     bool assistant_busy = false;
     bool assistant_scroll_requested = false;
 
@@ -299,6 +302,14 @@ namespace
         std::string response = assistant_response;
         assistant_response.clear();
         return response;
+    }
+
+    std::string take_brief()
+    {
+        std::lock_guard<std::mutex> lock(assistant_mutex);
+        std::string brief = assistant_brief;
+        assistant_brief.clear();
+        return brief;
     }
 
     bool take_assistant_scroll_request()
@@ -550,6 +561,7 @@ namespace
     void start_local_run(const std::string& prompt, const std::string& status)
     {
         std::lock_guard<std::mutex> lock(assistant_mutex);
+        assistant_brief.clear();
         assistant_run = AssistantRunState();
         assistant_run.has_run = true;
         assistant_run.active = true;
@@ -648,6 +660,11 @@ namespace
         }
         else if (type == "receipt")
         {
+            const std::string brief = json_get_string(json, "brief");
+            if (!brief.empty())
+            {
+                assistant_brief = brief;
+            }
             set_run_status_locked(json_get_string(json, "title"));
         }
         else if (type == "heartbeat" || type == "stage_note")
@@ -1298,7 +1315,7 @@ namespace
             response == "assistant returned an invalid model response";
     }
 
-    bool send_prompt_to_assistant(const std::string& prompt, const std::string& api_key, const std::string& model_id, std::string& response)
+    bool send_prompt_to_assistant(const std::string& prompt, const std::string& api_key, const std::string& model_id, const bool enrich, std::string& response)
     {
     #ifdef _WIN32
         WSADATA data = {};
@@ -1336,7 +1353,7 @@ namespace
 
         set_receive_timeout(socket, assistant_prompt_timeout_ms);
 
-        const std::string request = "prompt api_key=" + url_encode(api_key) + "&model=" + url_encode(model_id) + "&prompt=" + url_encode(prompt) + "\n";
+        const std::string request = "prompt api_key=" + url_encode(api_key) + "&model=" + url_encode(model_id) + "&enrich=" + (enrich ? "1" : "0") + "&prompt=" + url_encode(prompt) + "\n";
         if (!send_all(socket, request))
         {
             response = "failed to send prompt to assistant";
@@ -1592,6 +1609,14 @@ void McpAssistant::OnInvisible()
 
 void McpAssistant::DrainAssistantResults()
 {
+    if (std::string brief = take_brief(); !brief.empty())
+    {
+        m_messages.push_back(
+            { false, "Design brief expanded from your request:\n\n" + brief }
+        );
+        m_scroll_to_bottom = true;
+    }
+
     if (std::string response = take_response(); !response.empty())
     {
         m_messages.push_back({ false, response });
@@ -2183,6 +2208,18 @@ void McpAssistant::OnTickVisible()
             ImGui::EndDisabled();
         }
 
+        ImGui::SameLine();
+        ImGui::Checkbox("Enrich", &m_enrich_prompt);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Expands a short request into a detailed design brief before building.\n"
+                "Assets remain game-ready environment props with moderate geometry,\n"
+                "few parts and a small reused material set unless hero quality is explicit.\n"
+                "Skipped when the request is already detailed, asks for a blockout, or is a question."
+            );
+        }
+
         const size_t prompt_length =
             std::strlen(m_prompt.data());
         const std::string composer_status =
@@ -2332,10 +2369,11 @@ void McpAssistant::SubmitPrompt()
     start_local_run(prompt, "sending request to assistant");
     log_info("Sending prompt to assistant with model " + model_id + ".");
 
-    std::thread([prompt, api_key, model_id]()
+    const bool enrich = m_enrich_prompt;
+    std::thread([prompt, api_key, model_id, enrich]()
     {
         std::string response;
-        if (!send_prompt_to_assistant(prompt, api_key, model_id, response))
+        if (!send_prompt_to_assistant(prompt, api_key, model_id, enrich, response))
         {
             if (!should_restart_assistant_after_failure(response))
             {
@@ -2365,7 +2403,7 @@ void McpAssistant::SubmitPrompt()
                 return;
             }
 
-            if (!send_prompt_to_assistant(prompt, api_key, model_id, response))
+            if (!send_prompt_to_assistant(prompt, api_key, model_id, enrich, response))
             {
                 response = response.empty()
                     ? "failed to connect to Cursor assistant. "

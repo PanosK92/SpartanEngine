@@ -45,7 +45,7 @@ namespace spartan::car_bench
             math::Vector3 start_position = math::Vector3::Zero;
             math::Quaternion start_rotation = math::Quaternion::Identity;
             bool was_paused = false;
-            bool was_mcp = false;
+            bool was_externally_controlled = false;
             bool telemetry_was_on = false;
             int phase = 0;
             float phase_time = 0.0f;
@@ -814,10 +814,10 @@ namespace spartan::car_bench
         g_runner.completed_cleanly = false;
 
         g_runner.was_paused = Engine::IsFlagSet(EngineMode::Paused);
-        g_runner.was_mcp = car->IsMcpControlled();
+        g_runner.was_externally_controlled = car->IsExternallyControlled();
         g_runner.telemetry_was_on = sim->get_log_to_file();
         Engine::SetFlag(EngineMode::Paused, true);
-        car->SetMcpControlled(true);
+        car->SetExternallyControlled(true);
         if (g_runner.ui.write_telemetry)
         {
             sim->set_telemetry_path("car_bench_telemetry.csv");
@@ -858,7 +858,7 @@ namespace spartan::car_bench
         }
         if (car)
         {
-            car->SetMcpControlled(g_runner.was_mcp);
+            car->SetExternallyControlled(g_runner.was_externally_controlled);
         }
         Engine::SetFlag(EngineMode::Paused, g_runner.was_paused);
 

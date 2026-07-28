@@ -80,6 +80,9 @@ namespace spartan
         uint32_t meshlet_count;  // number of meshlets covering this lod
     };
     static const uint32_t mesh_lod_count = 5;
+    // a level has to drop at least this much of the previous level to be worth keeping, a level that
+    // only sheds a few triangles costs memory and a draw range while looking identical
+    static constexpr float mesh_lod_min_reduction = 0.9f;
 
     struct SubMesh
     {
@@ -101,6 +104,9 @@ namespace spartan
         // geometry
         void Clear();
         void GetGeometry(uint32_t sub_mesh_index, std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices);
+        // any level of a sub-mesh, the returned indices are local to the returned vertices
+        bool GetGeometryLod(uint32_t sub_mesh_index, uint32_t lod_index, std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices);
+        uint32_t GetLodCount(uint32_t sub_mesh_index) const;
         uint32_t GetMemoryUsage() const;
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);

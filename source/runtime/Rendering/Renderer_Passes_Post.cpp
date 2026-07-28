@@ -134,7 +134,9 @@ namespace spartan
             run_effect("motion_blur", Renderer_Shader::motion_blur_c, [&]()
             {
                 SetCommonTextures(cmd_list, eye_layer);
-                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(m_pass_state.cloud_history_valid ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
+                // a secondary view never runs the cloud passes, its velocity lives in the gbuffer
+                const bool use_cloud_velocity = m_pass_state.cloud_history_valid && !IsSecondaryViewActive();
+                cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(use_cloud_velocity ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
                 // y > 1.5 enables the radial mask debug view (r.motion_blur = 2)
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), cvar_motion_blur.GetValue(), 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -169,9 +171,14 @@ namespace spartan
             Pass_AutoExposure(cmd_list, tex_exposure);
             m_pass_state.exposure_history_reset = false;
         }
-        m_pass_state.exposure_camera          = camera;
-        m_pass_state.exposure_history_texture = tex_exposure_previous;
-        m_pass_state.exposure_was_automatic   = auto_exposure_enabled;
+        // a secondary view must not claim the exposure history, the primary camera would then
+        // look like it changed and auto exposure would reset on every preview frame
+        if (!IsSecondaryViewActive())
+        {
+            m_pass_state.exposure_camera          = camera;
+            m_pass_state.exposure_history_texture = tex_exposure_previous;
+            m_pass_state.exposure_was_automatic   = auto_exposure_enabled;
+        }
 
         if (cvar_bloom.GetValueAs<bool>())
         {
@@ -409,7 +416,7 @@ namespace spartan
     {
         RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::frame_output);
-        RHI_Texture* tex_velocity    = GetRenderTarget(m_pass_state.cloud_history_valid ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity);
+        RHI_Texture* tex_velocity    = GetRenderTarget(m_pass_state.cloud_history_valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         const float resolution_scale = Renderer::GetResolutionScale();
 
@@ -417,6 +424,14 @@ namespace spartan
         {
             bool is_stereo = eye_layer != rhi_all_mips;
             Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+
+            // a secondary view renders a single isolated frame, a temporal upscaler has no
+            // history for it so it resolves as a soft upscale, and its history copy would
+            // overwrite the primary camera's history and make the main viewport flicker
+            if (IsSecondaryViewActive())
+            {
+                method = Renderer_AntiAliasing_Upsampling::AA_Off_Upscale_Linear;
+            }
 
             // taau/xess don't support array textures, fall back to fxaa or blit in stereo
             if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)

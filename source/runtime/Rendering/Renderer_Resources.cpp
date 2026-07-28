@@ -874,6 +874,7 @@ namespace spartan
             { Renderer_Shader::dithering_c,                           RHI_Shader_Type::Compute, "dithering.hlsl"                                                             },
             { Renderer_Shader::reflections_apply_c,                   RHI_Shader_Type::Compute, "reflections_apply.hlsl"                                                     },
             { Renderer_Shader::auto_exposure_c,                       RHI_Shader_Type::Compute, "auto_exposure.hlsl"                                                         },
+            { Renderer_Shader::preview_studio_c,                      RHI_Shader_Type::Compute, "preview_studio.hlsl"                                                        },
 
             // ray tracing, only compiled when supported
             { Renderer_Shader::reflections_ray_generation_r,          RHI_Shader_Type::RayGeneration, "reflections_trace.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },

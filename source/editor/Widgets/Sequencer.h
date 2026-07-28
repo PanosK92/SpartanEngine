@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 #include <vector>
 #include <string>
+#include <optional>
 #include <cstdint>
 //====================
 
@@ -67,6 +68,48 @@ public:
     // restores a snapshot into the widget and persists it, used by the undo/redo command
     void ApplyState(const State& state);
 
+    // plain view of the timeline for drivers outside the panel
+    struct Snapshot
+    {
+        std::vector<CameraEvent> events;
+        std::vector<SplineEvent> spline_events;
+        float duration = 0.0f;
+        float time     = 0.0f;
+        bool playing   = false;
+        bool loop      = false;
+    };
+
+    enum class Playback
+    {
+        Play,
+        Pause,
+        Stop
+    };
+
+    // an unset field keeps whatever the panel already had
+    struct TimelineRequest
+    {
+        std::optional<float> duration;
+        std::optional<float> time;
+        std::optional<bool> loop;
+        std::optional<bool> visible;
+    };
+
+    // control surface for drivers outside the panel, it takes resolved entity ids because naming and
+    // parsing belong to whoever is driving it. an out of range index is reported rather than clamped
+    // so a caller is told it addressed nothing
+    void SetTimeline(const TimelineRequest& request);
+    void SetPlayback(Playback action);
+    void AddCameraEvent(float time, uint64_t camera_entity_id, uint64_t target_entity_id);
+    bool UpdateCameraEvent(int index, std::optional<float> time, std::optional<uint64_t> camera_entity_id, std::optional<uint64_t> target_entity_id);
+    bool RemoveCameraEvent(int index);
+    void ClearCameraEvents();
+    void AddSplineEvent(float start_time, float end_time, uint64_t follower_entity_id);
+    bool UpdateSplineEvent(int index, std::optional<float> start_time, std::optional<float> end_time, std::optional<uint64_t> follower_entity_id);
+    bool RemoveSplineEvent(int index);
+    void ClearSplineEvents();
+    Snapshot GetSnapshot() const;
+
 private:
     void DrawToolbar();
     void DrawTimeline();
@@ -81,8 +124,6 @@ private:
     void DeleteSelectedSpline();
     void DuplicateSelectedCamera();
     void DuplicateSelectedSpline();
-    void RegisterMcpCommands();
-    std::string GetMcpState() const;
     int GetEventIndexAtTime(float time) const;
     std::string GetFilePath() const;
     void Save() const;

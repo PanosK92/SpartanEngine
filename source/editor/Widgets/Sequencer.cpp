@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Entity.h"
 #include "World/Components/Camera.h"
 #include "World/Components/SplineFollower.h"
-#include "MCP/McpCommands.h"
 #include "Commands/Command.h"
 #include "Commands/CommandStack.h"
 #include "../ImGui/ImGui_Extension.h"
@@ -289,94 +288,6 @@ namespace
         return changed;
     }
 
-    const char* mcp_command_names[] = { "sequencer_get", "sequencer_set", "sequencer_playback", "sequencer_event_add", "sequencer_event_update", "sequencer_event_remove", "sequencer_spline_add", "sequencer_spline_update", "sequencer_spline_remove" };
-
-    string json_escape(const string& value)
-    {
-        string out;
-        for (char c : value)
-        {
-            if (c == '"' || c == '\\')
-            {
-                out += '\\';
-            }
-            out += c;
-        }
-        return out;
-    }
-
-    string mcp_error(const string& message)
-    {
-        return "{\"ok\":false,\"error\":\"" + json_escape(message) + "\"}";
-    }
-
-    const string* get_arg(const McpRequest& request, const string& name)
-    {
-        const auto it = request.arguments.find(name);
-        return it != request.arguments.end() ? &it->second : nullptr;
-    }
-
-    // accepts an entity id or an entity name, must have a camera component
-    Entity* resolve_camera(const string& value)
-    {
-        if (!value.empty() && value.find_first_not_of("0123456789") == string::npos)
-        {
-            Entity* entity = World::GetEntityById(strtoull(value.c_str(), nullptr, 10));
-            if (entity && entity->GetComponent<Camera>())
-            {
-                return entity;
-            }
-        }
-        for (Entity* entity : World::GetEntities())
-        {
-            if (entity->GetComponent<Camera>() && entity->GetObjectName() == value)
-            {
-                return entity;
-            }
-        }
-        return nullptr;
-    }
-
-    // accepts an entity id or an entity name, any entity qualifies as a lock target
-    Entity* resolve_entity(const string& value)
-    {
-        if (!value.empty() && value.find_first_not_of("0123456789") == string::npos)
-        {
-            if (Entity* entity = World::GetEntityById(strtoull(value.c_str(), nullptr, 10)))
-            {
-                return entity;
-            }
-        }
-        for (Entity* entity : World::GetEntities())
-        {
-            if (entity->GetObjectName() == value)
-            {
-                return entity;
-            }
-        }
-        return nullptr;
-    }
-
-    // accepts an entity id or an entity name, must have a spline follower component
-    Entity* resolve_follower(const string& value)
-    {
-        if (!value.empty() && value.find_first_not_of("0123456789") == string::npos)
-        {
-            Entity* entity = World::GetEntityById(strtoull(value.c_str(), nullptr, 10));
-            if (entity && entity->GetComponent<SplineFollower>())
-            {
-                return entity;
-            }
-        }
-        for (Entity* entity : World::GetEntities())
-        {
-            if (entity->GetComponent<SplineFollower>() && entity->GetObjectName() == value)
-            {
-                return entity;
-            }
-        }
-        return nullptr;
-    }
 }
 
 namespace
@@ -406,337 +317,206 @@ Sequencer::Sequencer(Editor* editor) : Widget(editor)
     m_visible = false;
 
     m_world_loaded_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoaded, SP_EVENT_HANDLER(Load));
-
-    RegisterMcpCommands();
 }
 
 Sequencer::~Sequencer()
 {
-    for (const char* name : mcp_command_names)
-    {
-        UnregisterMcpCommand(name);
-    }
-
     SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoaded, m_world_loaded_handle);
 }
 
-void Sequencer::RegisterMcpCommands()
+void Sequencer::SetTimeline(const TimelineRequest& request)
 {
-    RegisterMcpCommand("sequencer_get", [this](const McpRequest&)
+    const State before = CaptureState();
+    if (request.duration)
     {
-        return GetMcpState();
-    });
+        m_duration = clamp(*request.duration, 1.0f, 3600.0f);
+        for (CameraEvent& event : m_events)
+        {
+            event.time = min(event.time, m_duration);
+        }
+        for (SplineEvent& event : m_spline_events)
+        {
+            event.start_time = min(event.start_time, m_duration);
+            event.end_time   = min(event.end_time, m_duration);
+        }
+    }
+    if (request.loop)
+    {
+        m_loop = *request.loop;
+    }
+    if (request.time)
+    {
+        m_time = clamp(*request.time, 0.0f, m_duration);
+    }
+    if (request.visible)
+    {
+        SetVisible(*request.visible);
+    }
+    m_time = min(m_time, m_duration);
+    CommitState(before);
+}
 
-    RegisterMcpCommand("sequencer_set", [this](const McpRequest& request)
+void Sequencer::SetPlayback(Playback action)
+{
+    switch (action)
     {
-        const State before = CaptureState();
-        if (const string* duration = get_arg(request, "duration"))
-        {
-            m_duration = clamp(strtof(duration->c_str(), nullptr), 1.0f, 3600.0f);
-            for (CameraEvent& event : m_events)
-            {
-                event.time = min(event.time, m_duration);
-            }
-            for (SplineEvent& event : m_spline_events)
-            {
-                event.start_time = min(event.start_time, m_duration);
-                event.end_time   = min(event.end_time, m_duration);
-            }
-        }
-        if (const string* loop = get_arg(request, "loop"))
-        {
-            m_loop = *loop == "true" || *loop == "1";
-        }
-        if (const string* time = get_arg(request, "time"))
-        {
-            m_time = clamp(strtof(time->c_str(), nullptr), 0.0f, m_duration);
-        }
-        if (const string* visible = get_arg(request, "visible"))
-        {
-            SetVisible(*visible == "true" || *visible == "1");
-        }
-        m_time = min(m_time, m_duration);
-        CommitState(before);
-        return GetMcpState();
-    });
-
-    RegisterMcpCommand("sequencer_playback", [this](const McpRequest& request)
-    {
-        const string* action = get_arg(request, "action");
-        if (!action)
-        {
-            return mcp_error("missing action");
-        }
-        if (*action == "play")
-        {
+        case Playback::Play:
             if (m_time >= m_duration)
             {
                 m_time = 0.0f;
             }
             m_playing = true;
-        }
-        else if (*action == "pause")
-        {
+            break;
+        case Playback::Pause:
             m_playing = false;
-        }
-        else if (*action == "stop")
-        {
+            break;
+        case Playback::Stop:
             m_playing = false;
             m_time    = 0.0f;
-        }
-        else
-        {
-            return mcp_error("action must be play, pause or stop");
-        }
-        return GetMcpState();
-    });
-
-    RegisterMcpCommand("sequencer_event_add", [this](const McpRequest& request)
-    {
-        const string* time   = get_arg(request, "time");
-        const string* camera = get_arg(request, "camera");
-        if (!time || !camera)
-        {
-            return mcp_error("missing time or camera");
-        }
-        Entity* entity = resolve_camera(*camera);
-        if (!entity)
-        {
-            return mcp_error("no camera entity matches '" + *camera + "'");
-        }
-        CameraEvent event;
-        event.time             = clamp(strtof(time->c_str(), nullptr), 0.0f, m_duration);
-        event.camera_entity_id = entity->GetObjectId();
-        if (const string* target = get_arg(request, "target"))
-        {
-            Entity* target_entity = resolve_entity(*target);
-            if (!target_entity)
-            {
-                return mcp_error("no entity matches '" + *target + "'");
-            }
-            event.target_entity_id = target_entity->GetObjectId();
-        }
-        const State before = CaptureState();
-        m_events.push_back(event);
-        sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
-        m_selected = -1;
-        CommitState(before);
-        return GetMcpState();
-    });
-
-    RegisterMcpCommand("sequencer_event_update", [this](const McpRequest& request)
-    {
-        const string* index_arg = get_arg(request, "index");
-        if (!index_arg)
-        {
-            return mcp_error("missing index");
-        }
-        const int index = atoi(index_arg->c_str());
-        if (index < 0 || index >= static_cast<int>(m_events.size()))
-        {
-            return mcp_error("index is out of range");
-        }
-        const State before = CaptureState();
-        if (const string* camera = get_arg(request, "camera"))
-        {
-            Entity* entity = resolve_camera(*camera);
-            if (!entity)
-            {
-                return mcp_error("no camera entity matches '" + *camera + "'");
-            }
-            m_events[index].camera_entity_id = entity->GetObjectId();
-        }
-        if (const string* target = get_arg(request, "target"))
-        {
-            if (target->empty() || *target == "none")
-            {
-                m_events[index].target_entity_id = 0;
-            }
-            else
-            {
-                Entity* target_entity = resolve_entity(*target);
-                if (!target_entity)
-                {
-                    return mcp_error("no entity matches '" + *target + "'");
-                }
-                m_events[index].target_entity_id = target_entity->GetObjectId();
-            }
-        }
-        if (const string* time = get_arg(request, "time"))
-        {
-            m_events[index].time = clamp(strtof(time->c_str(), nullptr), 0.0f, m_duration);
-            sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
-        }
-        m_selected = -1;
-        CommitState(before);
-        return GetMcpState();
-    });
-
-    RegisterMcpCommand("sequencer_event_remove", [this](const McpRequest& request)
-    {
-        if (const string* all = get_arg(request, "all"))
-        {
-            if (*all == "true" || *all == "1")
-            {
-                const State before = CaptureState();
-                m_events.clear();
-                m_selected = -1;
-                CommitState(before);
-                return GetMcpState();
-            }
-        }
-        const string* index_arg = get_arg(request, "index");
-        if (!index_arg)
-        {
-            return mcp_error("missing index, pass all=true to clear every event");
-        }
-        const int index = atoi(index_arg->c_str());
-        if (index < 0 || index >= static_cast<int>(m_events.size()))
-        {
-            return mcp_error("index is out of range");
-        }
-        const State before = CaptureState();
-        m_events.erase(m_events.begin() + index);
-        m_selected = -1;
-        CommitState(before);
-        return GetMcpState();
-    });
-
-    RegisterMcpCommand("sequencer_spline_add", [this](const McpRequest& request)
-    {
-        const string* start    = get_arg(request, "start");
-        const string* end      = get_arg(request, "end");
-        const string* follower = get_arg(request, "follower");
-        if (!start || !end || !follower)
-        {
-            return mcp_error("missing start, end or follower");
-        }
-        Entity* entity = resolve_follower(*follower);
-        if (!entity)
-        {
-            return mcp_error("no spline follower entity matches '" + *follower + "'");
-        }
-        SplineEvent event;
-        event.start_time = clamp(strtof(start->c_str(), nullptr), 0.0f, m_duration);
-        event.end_time   = clamp(strtof(end->c_str(), nullptr), 0.0f, m_duration);
-        if (event.end_time < event.start_time + min_event_gap)
-        {
-            event.end_time = min(event.start_time + min_event_gap, m_duration);
-        }
-        event.follower_entity_id = entity->GetObjectId();
-        const State before = CaptureState();
-        m_spline_events.push_back(event);
-        m_spline_selected = -1;
-        CommitState(before);
-        return GetMcpState();
-    });
-
-    RegisterMcpCommand("sequencer_spline_update", [this](const McpRequest& request)
-    {
-        const string* index_arg = get_arg(request, "index");
-        if (!index_arg)
-        {
-            return mcp_error("missing index");
-        }
-        const int index = atoi(index_arg->c_str());
-        if (index < 0 || index >= static_cast<int>(m_spline_events.size()))
-        {
-            return mcp_error("index is out of range");
-        }
-        const State before = CaptureState();
-        if (const string* follower = get_arg(request, "follower"))
-        {
-            Entity* entity = resolve_follower(*follower);
-            if (!entity)
-            {
-                return mcp_error("no spline follower entity matches '" + *follower + "'");
-            }
-            m_spline_events[index].follower_entity_id = entity->GetObjectId();
-        }
-        if (const string* start = get_arg(request, "start"))
-        {
-            m_spline_events[index].start_time = clamp(strtof(start->c_str(), nullptr), 0.0f, m_duration);
-        }
-        if (const string* end = get_arg(request, "end"))
-        {
-            m_spline_events[index].end_time = clamp(strtof(end->c_str(), nullptr), 0.0f, m_duration);
-        }
-        if (m_spline_events[index].end_time < m_spline_events[index].start_time + min_event_gap)
-        {
-            m_spline_events[index].end_time = min(m_spline_events[index].start_time + min_event_gap, m_duration);
-        }
-        m_spline_selected = -1;
-        CommitState(before);
-        return GetMcpState();
-    });
-
-    RegisterMcpCommand("sequencer_spline_remove", [this](const McpRequest& request)
-    {
-        if (const string* all = get_arg(request, "all"))
-        {
-            if (*all == "true" || *all == "1")
-            {
-                const State before = CaptureState();
-                m_spline_events.clear();
-                m_spline_selected = -1;
-                CommitState(before);
-                return GetMcpState();
-            }
-        }
-        const string* index_arg = get_arg(request, "index");
-        if (!index_arg)
-        {
-            return mcp_error("missing index, pass all=true to clear every spline event");
-        }
-        const int index = atoi(index_arg->c_str());
-        if (index < 0 || index >= static_cast<int>(m_spline_events.size()))
-        {
-            return mcp_error("index is out of range");
-        }
-        const State before = CaptureState();
-        m_spline_events.erase(m_spline_events.begin() + index);
-        m_spline_selected = -1;
-        CommitState(before);
-        return GetMcpState();
-    });
+            break;
+    }
 }
 
-string Sequencer::GetMcpState() const
+void Sequencer::AddCameraEvent(float time, uint64_t camera_entity_id, uint64_t target_entity_id)
 {
-    string json = "{\"ok\":true";
-    json += ",\"duration\":" + to_string(m_duration);
-    json += ",\"time\":" + to_string(m_time);
-    json += string(",\"playing\":") + (m_playing ? "true" : "false");
-    json += string(",\"loop\":") + (m_loop ? "true" : "false");
-    json += ",\"events\":[";
-    for (size_t i = 0; i < m_events.size(); i++)
+    CameraEvent event;
+    event.time             = clamp(time, 0.0f, m_duration);
+    event.camera_entity_id = camera_entity_id;
+    event.target_entity_id = target_entity_id;
+
+    const State before = CaptureState();
+    m_events.push_back(event);
+    sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
+    m_selected = -1;
+    CommitState(before);
+}
+
+bool Sequencer::UpdateCameraEvent(int index, optional<float> time, optional<uint64_t> camera_entity_id, optional<uint64_t> target_entity_id)
+{
+    if (index < 0 || index >= static_cast<int>(m_events.size()))
     {
-        if (i > 0)
-        {
-            json += ",";
-        }
-        json += "{\"index\":" + to_string(i);
-        json += ",\"time\":" + to_string(m_events[i].time);
-        json += ",\"camera_entity_id\":\"" + to_string(m_events[i].camera_entity_id) + "\"";
-        json += ",\"camera_name\":\"" + json_escape(get_entity_name(m_events[i].camera_entity_id)) + "\"";
-        json += ",\"target_entity_id\":\"" + to_string(m_events[i].target_entity_id) + "\"";
-        json += ",\"target_name\":\"" + (m_events[i].target_entity_id != 0 ? json_escape(get_entity_name(m_events[i].target_entity_id)) : "") + "\"}";
+        return false;
     }
-    json += "],\"spline_events\":[";
-    for (size_t i = 0; i < m_spline_events.size(); i++)
+
+    const State before = CaptureState();
+    if (camera_entity_id)
     {
-        if (i > 0)
-        {
-            json += ",";
-        }
-        json += "{\"index\":" + to_string(i);
-        json += ",\"start_time\":" + to_string(m_spline_events[i].start_time);
-        json += ",\"end_time\":" + to_string(m_spline_events[i].end_time);
-        json += ",\"follower_entity_id\":\"" + to_string(m_spline_events[i].follower_entity_id) + "\"";
-        json += ",\"follower_name\":\"" + json_escape(get_entity_name(m_spline_events[i].follower_entity_id)) + "\"}";
+        m_events[index].camera_entity_id = *camera_entity_id;
     }
-    json += "]}";
-    return json;
+    if (target_entity_id)
+    {
+        m_events[index].target_entity_id = *target_entity_id;
+    }
+    if (time)
+    {
+        m_events[index].time = clamp(*time, 0.0f, m_duration);
+        sort(m_events.begin(), m_events.end(), [](const CameraEvent& a, const CameraEvent& b) { return a.time < b.time; });
+    }
+    m_selected = -1;
+    CommitState(before);
+    return true;
+}
+
+bool Sequencer::RemoveCameraEvent(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_events.size()))
+    {
+        return false;
+    }
+
+    const State before = CaptureState();
+    m_events.erase(m_events.begin() + index);
+    m_selected = -1;
+    CommitState(before);
+    return true;
+}
+
+void Sequencer::ClearCameraEvents()
+{
+    const State before = CaptureState();
+    m_events.clear();
+    m_selected = -1;
+    CommitState(before);
+}
+
+void Sequencer::AddSplineEvent(float start_time, float end_time, uint64_t follower_entity_id)
+{
+    SplineEvent event;
+    event.start_time = clamp(start_time, 0.0f, m_duration);
+    event.end_time   = clamp(end_time, 0.0f, m_duration);
+    if (event.end_time < event.start_time + min_event_gap)
+    {
+        event.end_time = min(event.start_time + min_event_gap, m_duration);
+    }
+    event.follower_entity_id = follower_entity_id;
+
+    const State before = CaptureState();
+    m_spline_events.push_back(event);
+    m_spline_selected = -1;
+    CommitState(before);
+}
+
+bool Sequencer::UpdateSplineEvent(int index, optional<float> start_time, optional<float> end_time, optional<uint64_t> follower_entity_id)
+{
+    if (index < 0 || index >= static_cast<int>(m_spline_events.size()))
+    {
+        return false;
+    }
+
+    const State before = CaptureState();
+    if (follower_entity_id)
+    {
+        m_spline_events[index].follower_entity_id = *follower_entity_id;
+    }
+    if (start_time)
+    {
+        m_spline_events[index].start_time = clamp(*start_time, 0.0f, m_duration);
+    }
+    if (end_time)
+    {
+        m_spline_events[index].end_time = clamp(*end_time, 0.0f, m_duration);
+    }
+    if (m_spline_events[index].end_time < m_spline_events[index].start_time + min_event_gap)
+    {
+        m_spline_events[index].end_time = min(m_spline_events[index].start_time + min_event_gap, m_duration);
+    }
+    m_spline_selected = -1;
+    CommitState(before);
+    return true;
+}
+
+bool Sequencer::RemoveSplineEvent(int index)
+{
+    if (index < 0 || index >= static_cast<int>(m_spline_events.size()))
+    {
+        return false;
+    }
+
+    const State before = CaptureState();
+    m_spline_events.erase(m_spline_events.begin() + index);
+    m_spline_selected = -1;
+    CommitState(before);
+    return true;
+}
+
+void Sequencer::ClearSplineEvents()
+{
+    const State before = CaptureState();
+    m_spline_events.clear();
+    m_spline_selected = -1;
+    CommitState(before);
+}
+
+Sequencer::Snapshot Sequencer::GetSnapshot() const
+{
+    Snapshot snapshot;
+    snapshot.events        = m_events;
+    snapshot.spline_events = m_spline_events;
+    snapshot.duration      = m_duration;
+    snapshot.time          = m_time;
+    snapshot.playing       = m_playing;
+    snapshot.loop          = m_loop;
+    return snapshot;
 }
 
 void Sequencer::OnTick()

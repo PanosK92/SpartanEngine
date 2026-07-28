@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========
-#include "Widget.h"
+#include "../Widgets/Widget.h"
 #include <array>
 #include <string>
 #include <vector>
@@ -77,4 +77,6 @@ private:
     bool m_refresh_models_after_key_load = false;
     bool m_mcp_auto_start_attempted = false;
     bool m_show_settings = false;
+    // expands a terse request into a design brief before the build starts
+    bool m_enrich_prompt = true;
 };

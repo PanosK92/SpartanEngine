@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "McpQueue.h"
 #include "McpCommands.h"
 #include <condition_variable>
+#include <cstdio>
 #include <deque>
 #include <exception>
 //===========================
@@ -37,6 +38,9 @@ namespace spartan
             McpRequest request;
             std::string response;
             bool completed = false;
+            // the caller stopped waiting, running the command now would change the world after the
+            // caller was told it had not happened
+            bool abandoned = false;
             std::mutex mutex;
             std::condition_variable completed_condition;
         };
@@ -46,9 +50,40 @@ namespace spartan
         bool shutting_down = false;
         constexpr auto mcp_job_timeout = std::chrono::seconds(30);
 
-        std::string error_response(const char* message)
+        // a message can hold a quote or a newline, an exception's text especially, and an unescaped one
+        // produces a reply the client cannot parse, which reads as the engine having gone silent
+        std::string error_response(const std::string& message)
         {
-            return std::string("{\"ok\":false,\"error\":\"") + message + "\"}";
+            std::string escaped;
+            for (const char character : message)
+            {
+                switch (character)
+                {
+                    case '\"': escaped += "\\\""; break;
+                    case '\\': escaped += "\\\\"; break;
+                    case '\b': escaped += "\\b";  break;
+                    case '\f': escaped += "\\f";  break;
+                    case '\n': escaped += "\\n";  break;
+                    case '\r': escaped += "\\r";  break;
+                    case '\t': escaped += "\\t";  break;
+                    default:
+                    {
+                        if (static_cast<unsigned char>(character) < 0x20)
+                        {
+                            char buffer[7] = {};
+                            snprintf(buffer, sizeof(buffer), "\\u%04x", static_cast<unsigned int>(static_cast<unsigned char>(character)));
+                            escaped += buffer;
+                        }
+                        else
+                        {
+                            escaped += character;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            return "{\"ok\":false,\"error\":\"" + escaped + "\"}";
         }
     }
 
@@ -76,6 +111,10 @@ namespace spartan
         std::unique_lock<std::mutex> lock(job->mutex);
         if (!job->completed_condition.wait_for(lock, mcp_job_timeout, [&job]() { return job->completed; }))
         {
+            // giving up on the answer has to mean giving up on the command, otherwise the engine catches
+            // up later and applies a deletion or a transform the caller was told had failed, and a caller
+            // that reasonably retries after a timeout ends up applying it twice
+            job->abandoned = true;
             return error_response("engine did not answer within 30000ms");
         }
 
@@ -92,6 +131,14 @@ namespace spartan
 
         for (const std::shared_ptr<McpJob>& job : jobs_to_execute)
         {
+            {
+                std::lock_guard<std::mutex> lock(job->mutex);
+                if (job->abandoned)
+                {
+                    continue;
+                }
+            }
+
             std::string response;
             try
             {

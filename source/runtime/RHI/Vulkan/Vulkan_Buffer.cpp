@@ -271,7 +271,10 @@ namespace spartan
 
         // memcpy into the persistent mapping, vkCmdUpdateBuffer records data inline and bloats the command buffer
         const uint32_t upload_size = (size != 0) ? size : m_stride;
-        SP_ASSERT(static_cast<uint64_t>(m_offset) + upload_size <= m_object_size);
+        SP_ASSERT_MSG(
+            static_cast<uint64_t>(m_offset) + upload_size <= m_object_size,
+            ("buffer \"" + GetObjectName() + "\" overflowed, either it is pushed more times than it has slots or a push is missing its ResetOffset").c_str()
+        );
 
         memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, upload_size);
 

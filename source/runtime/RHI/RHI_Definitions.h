@@ -101,6 +101,7 @@ namespace spartan
     {
         TriangleList,
         LineList,
+        PointList,
         Max
     };
 

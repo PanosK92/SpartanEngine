@@ -275,31 +275,52 @@ namespace spartan
     {
         SP_ASSERT_MSG(indices != nullptr || vertices != nullptr, "Indices and vertices vectors can't both be null");
 
+        if (!GetGeometryLod(sub_mesh_index, 0, indices, vertices))
+        {
+            SP_LOG_ERROR("GetGeometry: sub-mesh %u has no LOD 0", sub_mesh_index);
+        }
+    }
+
+    uint32_t Mesh::GetLodCount(uint32_t sub_mesh_index) const
+    {
+        if (sub_mesh_index >= m_sub_meshes.size())
+        {
+            return 0;
+        }
+
+        return static_cast<uint32_t>(m_sub_meshes[sub_mesh_index].lods.size());
+    }
+
+    bool Mesh::GetGeometryLod(uint32_t sub_mesh_index, uint32_t lod_index, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
+    {
         // lock for the duration of the read so concurrent AddGeometry/AddLod calls cannot
         // reallocate m_vertices/m_indices and invalidate the iterators we are reading from
         lock_guard lock(m_mutex);
 
-        // validate sub-mesh index
         if (sub_mesh_index >= m_sub_meshes.size())
         {
-            SP_LOG_ERROR("GetGeometry: sub_mesh_index %u out of bounds (mesh has %zu sub-meshes)", sub_mesh_index, m_sub_meshes.size());
-            return;
+            return false;
         }
 
         const SubMesh& sub_mesh = m_sub_meshes[sub_mesh_index];
-        if (sub_mesh.lods.empty())
+        if (lod_index >= sub_mesh.lods.size())
         {
-            SP_LOG_ERROR("GetGeometry: sub-mesh %u has no LODs", sub_mesh_index);
-            return;
+            return false;
         }
 
-        const MeshLod& lod = sub_mesh.lods[0];
+        const MeshLod& lod = sub_mesh.lods[lod_index];
+        if (
+            lod.index_count == 0 ||
+            lod.vertex_count == 0 ||
+            static_cast<size_t>(lod.index_offset) + lod.index_count > m_indices.size() ||
+            static_cast<size_t>(lod.vertex_offset) + lod.vertex_count > m_vertices.size()
+        )
+        {
+            return false;
+        }
 
         if (indices)
         {
-            SP_ASSERT_MSG(lod.index_count != 0, "Index count can't be 0");
-            SP_ASSERT_MSG(static_cast<size_t>(lod.index_offset) + lod.index_count <= m_indices.size(), "Index range out of bounds");
-
             indices->resize(lod.index_count); // allocate once (caller can reuse buffer)
             copy(m_indices.begin() + lod.index_offset,
                       m_indices.begin() + lod.index_offset + lod.index_count,
@@ -308,14 +329,13 @@ namespace spartan
 
         if (vertices)
         {
-            SP_ASSERT_MSG(lod.vertex_count != 0, "Vertex count can't be 0");
-            SP_ASSERT_MSG(static_cast<size_t>(lod.vertex_offset) + lod.vertex_count <= m_vertices.size(), "Vertex range out of bounds");
-
             vertices->resize(lod.vertex_count); // allocate once (caller can reuse buffer)
             copy(m_vertices.begin() + lod.vertex_offset,
                       m_vertices.begin() + lod.vertex_offset + lod.vertex_count,
                       vertices->begin());
         }
+
+        return true;
     }
 
     void Mesh::AddLod(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t sub_mesh_index)
@@ -440,8 +460,9 @@ namespace spartan
                 bool preserve_edges = m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges);
                 geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges);
 
-                // stop if simplification couldn't reduce complexity further
-                if (lod_indices.size() >= prev_indices.size())
+                // stop unless this level is meaningfully cheaper than the one above it, a level that
+                // sheds a handful of triangles is a duplicate that still costs memory and a draw range
+                if (lod_indices.size() >= static_cast<size_t>(static_cast<float>(prev_indices.size()) * mesh_lod_min_reduction))
                 {
                     break;
                 }

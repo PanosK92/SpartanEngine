@@ -43,6 +43,14 @@ namespace spartan::geometry_processing
         std::vector<uint32_t>& indices
     );
 
+    // welds identical vertices and reorders for the caches, what comes out draws pixel for pixel the
+    // same as what went in. optimize() also simplifies once a mesh passes a size threshold, which is
+    // not wanted when the caller is only trying to make geometry cheaper to draw
+    void weld_and_optimize(
+        std::vector<RHI_Vertex_PosTexNorTan>& vertices,
+        std::vector<uint32_t>& indices
+    );
+
     // builds per-lod meshlets and repacks the indices in meshlet order, the returned bounds match that order
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,

@@ -377,7 +377,7 @@ namespace spartan
         physics->SetBodyTransform(position, rotation);
         physics->SetVehicleSimulationFrequency(m_simulation_frequency);
         physics->SetManualTransmission(false);
-        car->SetMcpControlled(true);
+        car->SetExternallyControlled(true);
 
         Driver driver;
         driver.car = car;

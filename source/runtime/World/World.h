@@ -58,7 +58,13 @@ namespace spartan
         static std::string GetResourceDirectory(
             const std::string& world_file_path
         );
-        static std::string GetMcpResourceDirectory();
+        // where a tool that authors resources into the project keeps them, a world save leaves whatever
+        // lives here alone because the tool owns it, not the world
+        static void SetGeneratedResourceDirectory(
+            const std::string& directory
+        );
+        static const std::string&
+            GetGeneratedResourceDirectory();
         static const std::vector<std::string>&
             GetLastResourceCleanup();
         static const std::vector<std::string>&
@@ -67,6 +73,10 @@ namespace spartan
         // entities
         static sol::state_view GetLuaState();
         static Entity* CreateEntity();
+
+        // drain freshly created entities into the live lists, a caller that must render what it just
+        // built in the same frame has to do this because the renderer only reads the live lists
+        static void ProcessPendingAdditions();
 
         // lua is single threaded, so script init is queued during a bulk load and run in order once every entity exists
         static bool IsDeferringScriptInit();
@@ -114,6 +124,5 @@ namespace spartan
     private:
         static bool SaveToFileInternal(std::string file_path);
         static void ProcessPendingRemovals();
-        static void ProcessPendingAdditions();
     };
 }

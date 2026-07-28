@@ -31,19 +31,31 @@ function file_name(value, fallback, extension)
   return name;
 }
 
-export function world_resource_directory(world)
+// where generated resources live
+//
+// this used to derive a directory per world and refuse to answer without one. the library is shared across
+// worlds now, every path built below goes to project/mcp_resources regardless of what is passed in, so
+// demanding a saved world only blocked work that never needed one
+export function world_resource_directory()
 {
-  const world_name =
-    world?.name ??
-    world?.file_path ??
-    world?.path;
-  if (!world_name)
-  {
-    throw new Error(
-      "Save or open a world before running scene-editing MCP commands.",
-    );
-  }
-  return `project/${safe_name(world_name)}_resources`;
+  return shared_library_directory;
+}
+
+// a material name is not a file name. the model passes a bare word, a file name, or the full path it read
+// back from an earlier reply, and appending an extension to the last of those produced office_chair_nylon
+// .xml.xml, which then became a second material the rest of the run could not find
+export function material_file_name(name)
+{
+  const bare = String(name ?? "material")
+    .replace(/\\/g, "/")
+    .split("/")
+    .pop()
+    .replace(/\.xml$/i, "");
+  const safe = bare
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return `${safe || "material"}.xml`;
 }
 
 export function generated_resource_command(command)
@@ -153,6 +165,7 @@ export function constrain_generated_resources(
     const library_root =
       `${shared_library_directory}/textures/`;
     constrained.library = true;
+    constrained.library_asset = true;
     constrained.path =
       requested_path.startsWith(library_root) &&
       !requested_path.split("/").includes("..")

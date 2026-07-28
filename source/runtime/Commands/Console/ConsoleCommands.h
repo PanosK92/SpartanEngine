@@ -160,6 +160,11 @@ namespace spartan
             return std::get<T>(m_storage);
         }
 
+        void SetValue(const T& value)
+        {
+            m_storage = value;
+        }
+
         /** returns the value cast to a different type (e.g., float to bool) */
         template<typename U>
         U GetValueAs() const

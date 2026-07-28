@@ -96,6 +96,7 @@ namespace spartan::mcp_texture_kernel
 
         color4 color_a;
         color4 color_b;
+        bool contributes_color = false;
         bool tint_by_value  = true;
         bool value_as_alpha = false;
         bool invert         = false;

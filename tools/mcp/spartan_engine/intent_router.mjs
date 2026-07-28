@@ -158,6 +158,38 @@ export function target_name_from_prompt(prompt) {
   return "";
 }
 
+// the place a request is about, with its qualifier when it has one, as in gas station
+//
+// a place word is often a modifier rather than the subject. an office chair is a chair and a garage door is
+// a door, so a place word only names the build when nothing follows that it could be describing
+function place_phrase_from_prompt(value) {
+  const place_heads =
+    "shop|store|station|factory|warehouse|office|house|building|garage|workshop|lounge|bar|airport|hotel|school|hospital|museum|arena|garden|park|plaza";
+  // the qualifier cannot be an article, an office is not a kind of office
+  const pattern = new RegExp(
+    `\\b(?:((?!an?\\b|the\\b|my\\b|some\\b)[a-z0-9-]+)\\s+)?(${place_heads})\\b`,
+    "g",
+  );
+  const connective_follows =
+    /^(?:with|that|which|containing|under|inside|for|and|in|on|at|to|near|around|from|of|by|so|then|please)\b/;
+
+  for (const found of value.matchAll(pattern))
+  {
+    const rest = value
+      .slice(found.index + found[0].length)
+      .trim();
+    if (rest.length > 0 && !connective_follows.test(rest))
+    {
+      continue;
+    }
+
+    return found[1]
+      ? `${found[1]} ${found[2]}`
+      : found[2];
+  }
+  return "";
+}
+
 export function scene_root_name_from_prompt(prompt) {
   const value = normalized(prompt);
   const explicit_target = target_name_from_prompt(prompt);
@@ -182,16 +214,10 @@ export function scene_root_name_from_prompt(prompt) {
     }
   }
 
-  const place_match =
-    value.match(
-      /\b([a-z0-9-]+\s+(?:shop|store|station|factory|warehouse|office|house|building|garage|workshop|lounge|bar|airport|hotel|school|hospital|museum|arena|garden|park|plaza))\b/,
-    ) ??
-    value.match(
-      /\b(factory|warehouse|office|house|building|garage|workshop|lounge|bar|airport|hotel|school|hospital|museum|arena|garden|park|plaza)\b/,
-    );
-  if (place_match?.[1])
+  const place_phrase = place_phrase_from_prompt(value);
+  if (place_phrase)
   {
-    const place_name = clean_target_name(place_match[1]);
+    const place_name = clean_target_name(place_phrase);
     if (place_name)
     {
       return place_name;
@@ -206,7 +232,9 @@ export function scene_root_name_from_prompt(prompt) {
     return "generated_environment";
   }
 
-  const cleaned = clean_target_name(match[1]);
+  const cleaned = clean_target_name(
+    strip_deliverable_words(match[1]),
+  );
   return cleaned || "generated_environment";
 }
 
@@ -248,6 +276,218 @@ function is_scene_construction_request(value) {
     constructive &&
     (scene_target || generic_build) &&
     !code_context
+  );
+}
+
+// nouns that name a place or a whole scene, a change aimed at one of those is scene work however it is
+// phrased, so they are what keeps make the garage bigger away from the asset revision path
+const scene_subject_pattern =
+  /\b(scene|level|map|world|environment|city|district|downtown|street|road|neighbourhood|neighborhood|blockout|greybox|room|rooms|interior|exterior|area|zone|hallway|corridor|building|house|apartment|tower|skyscraper|garage|workshop|warehouse|factory|office|station|airport|playground|park|garden|plaza|square|courtyard|market|shop|store|bar|cafe|restaurant|hotel|school|hospital|museum|arena|stadium|yard|dockyard|lounge|terrain|landscape|island|layout|circulation)\b/;
+
+// a place is somewhere you stand, an object is something you pick up, and almost every decision about how
+// to build one differs from the other, so both the router and the build stages ask this same question
+export function names_a_place(text) {
+  return scene_subject_pattern.test(normalized(text));
+}
+
+// words that say what kind of deliverable is wanted rather than what the thing is, a book asset is still
+// a book and should not end up in the catalog called book_asset
+const deliverable_word_pattern =
+  /\b(?:asset|assets|prefab|prefabs|model|prop|props|mesh|object|item|reusable|standalone|isolated|focused|hero)\b/g;
+
+function strip_deliverable_words(phrase) {
+  let stripped = String(phrase ?? "")
+    .replace(deliverable_word_pattern, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // removing the deliverable leaves the words that introduced it dangling, as in hardback book as a, and
+  // they come off one at a time because there can be several
+  let previous = "";
+  while (stripped !== previous)
+  {
+    previous = stripped;
+    stripped = stripped
+      .replace(/\s+(?:as|for|to|in|of|into|a|an|the)$/, "")
+      .trim();
+  }
+
+  // a request for nothing but the word asset still has to name something, so the original phrase stands
+  return stripped.length > 0 ? stripped : String(phrase ?? "");
+}
+
+// verbs that continue work on something that already exists rather than starting something new
+const revision_verb_pattern =
+  /\b(revise|revisit|rework|redo|tweak|adjust|modify|change|alter|update|edit|iterate|improve|refine|polish|enhance|upgrade|fix|correct|continue)\b/;
+
+// comparative and finish words, these are how a change to an existing thing actually gets phrased, as in
+// make its glass thicker or make the label more worn
+const revision_quality_pattern =
+  /\b(thicker|thinner|taller|shorter|wider|narrower|longer|bigger|larger|smaller|rounder|smoother|sharper|softer|flatter|deeper|shallower|heavier|lighter|darker|brighter|glossier|shinier|rougher|cleaner|dirtier|worn|weathered|scratched|rusted|aged|crisper|denser|simpler|detailed|less|more)\b/;
+
+function revision_aspects_from_prompt(value) {
+  const aspects = [];
+  if (
+    /\b(geometry|mesh|shape|silhouette|form|profile|proportion|topology|thickness|thick|thicker|thinner|bevel|chamfer|fillet|radius|rim|seam|vertices|vertex|polygons?|tris|triangles|indices|lods?)\b/.test(
+      value,
+    )
+  )
+  {
+    aspects.push("geometry");
+  }
+  if (
+    /\b(material|materials|shader|roughness|metalness|metallic|gloss|glossy|matte|shiny|specular|reflective|reflection|transparen\w*|opaque|opacity|colour|color|tint|emissive)\b/.test(
+      value,
+    )
+  )
+  {
+    aspects.push("material");
+  }
+  if (
+    /\b(texture|textures|map|maps|label|decal|print|sticker|logo|worn|wear|scratch\w*|dirt|grime|grunge|weather\w*|rust\w*|patina|stain\w*|pattern|tiling)\b/.test(
+      value,
+    )
+  )
+  {
+    aspects.push("texture");
+  }
+  return aspects;
+}
+
+// the words naming which asset is being revised, the catalog decides later whether this actually names
+// anything, so this only has to find the noun phrase the user pointed at
+export function asset_hint_from_prompt(prompt) {
+  const value = normalized(prompt);
+
+  const patterns = [
+    // asset called beer_bottle, prefab named x
+    /\b(?:asset|prefab|model|prop)\s+(?:called|named|id)\s+["']?([a-z0-9][a-z0-9 _-]{0,50}?)["']?(?=[,.;]|\s+(?:and|so|then|to|with)\b|$)/,
+    // the beer bottle asset
+    /\b(?:the|that|this|my)\s+([a-z0-9][a-z0-9 _-]{0,40}?)\s+(?:asset|prefab|model|prop)\b/,
+    // the beer bottle's glass
+    /\b(?:the|that|this|my)\s+([a-z0-9][a-z0-9 _-]{0,40}?)['’]s\b/,
+    // revise the beer bottle, continue working on the beer bottle
+    /\b(?:revise|revisit|rework|redo|tweak|adjust|modify|change|alter|update|edit|improve|refine|polish|enhance|upgrade|iterate\s+on|continue(?:\s+working)?(?:\s+on|\s+with)?)\s+(?:the\s+|my\s+|that\s+|this\s+)?([a-z0-9][a-z0-9 _-]{0,40}?)(?=[,.;]|\s+(?:so|to|and|then|by|with|for|make|but|geometry|mesh|material|texture)\b|$)/,
+    // go to the beer bottle and ...
+    /\b(?:go\s+to|open|load|pull\s+up)\s+(?:the\s+|my\s+)?([a-z0-9][a-z0-9 _-]{0,40}?)(?=[,.;]|\s+(?:and|then|so|to)\b|$)/,
+  ];
+
+  for (const pattern of patterns)
+  {
+    const match = value.match(pattern);
+    if (!match?.[1])
+    {
+      continue;
+    }
+
+    // an aspect word is a part of the asset, not its name, and a word like existing says which one is
+    // meant rather than what it is called, so the phrase is trimmed back to the subject
+    const hint = match[1]
+      .replace(
+        /\b(geometry|mesh|meshes|material|materials|texture|textures|shape|silhouette|colour|color|finish|surface|label|version|thing)\b/g,
+        " ",
+      )
+      .replace(
+        /^(?:existing|current|previous|last|earlier|same|new|old|my|the|that|this|an|a)\s+/g,
+        "",
+      )
+      .replace(/\s+/g, " ")
+      .trim();
+    if (hint.length < 3 || scene_subject_pattern.test(hint))
+    {
+      continue;
+    }
+
+    return hint;
+  }
+
+  return "";
+}
+
+// a request to keep working on an asset that already exists, rather than to design a new one
+//
+// the router cannot see the catalog, so this only recognises the shape of the request. whether the named
+// asset is really in the library is settled later, and a miss there falls back to the normal build path
+function is_asset_revision_request(value) {
+  const code_context =
+    /\b(source|code|file|files|cpp|c\+\+|javascript|compile|build error|git|diff|commit|function|class)\b/.test(
+      value,
+    );
+  if (code_context)
+  {
+    return false;
+  }
+
+  // a place is a scene even when the phrasing is identical, and a scene already has its own refinement path
+  if (scene_subject_pattern.test(value))
+  {
+    return false;
+  }
+
+  const hint = asset_hint_from_prompt(value);
+  if (!hint)
+  {
+    return false;
+  }
+
+  const names_the_library =
+    /\b(asset|assets|prefab|library|catalog|catalogue)\b/.test(value);
+
+  // engine level nouns are live scene edits with their own path, a cube is not a library asset. the
+  // library words override this, an asset can legitimately be described as having a light or a collider
+  if (
+    !names_the_library &&
+    /\b(cube|sphere|quad|plane|cylinder|cone|camera|light|lights|entity|entities|component|rigidbody|collider|primitive|spline|selection)\b/.test(
+      value,
+    )
+  )
+  {
+    return false;
+  }
+
+  // a possessive presupposes its subject, the bottle's glass only means something if a bottle exists
+  const possessive_reference =
+    /\b(?:the|that|this|my)\s+[a-z0-9][a-z0-9 _-]{0,40}?['’]s\b/.test(value);
+  const points_at_existing =
+    /\b(existing|already|current|previous|last|earlier|that|this|its|it's)\b/.test(
+      value,
+    ) ||
+    names_the_library ||
+    possessive_reference;
+  const aspects = revision_aspects_from_prompt(value);
+  const wants_change =
+    revision_verb_pattern.test(value) ||
+    revision_quality_pattern.test(value) ||
+    aspects.length > 0;
+  if (!wants_change)
+  {
+    return false;
+  }
+
+  // starting a fresh design says create, and says nothing about an existing one
+  const starts_new_build =
+    /\b(create|make|build|generate|construct|design|model)\s+(?:me\s+)?(?:a|an)\s+/.test(
+      value,
+    ) &&
+    !points_at_existing &&
+    !revision_verb_pattern.test(value);
+  if (starts_new_build)
+  {
+    return false;
+  }
+
+  // an explicit revision verb is signal enough on its own, otherwise the request has to both point at
+  // something existing and say what about it should differ, which is what make its glass thicker does
+  return (
+    revision_verb_pattern.test(value) ||
+    names_the_library ||
+    (
+      points_at_existing &&
+      (
+        aspects.length > 0 ||
+        revision_quality_pattern.test(value)
+      )
+    )
   );
 }
 
@@ -536,6 +776,23 @@ export function route_intent(prompt) {
       allow_cursor_fallback: false,
       target_name: target_name_from_prompt(prompt),
       use_selected: should_use_selected_entity(prompt),
+    };
+  }
+
+  // ahead of the scene paths, they read a change to a named thing as a scene refinement and would rebuild
+  // the asset from nothing instead of continuing it
+  if (is_asset_revision_request(value))
+  {
+    const asset_hint = asset_hint_from_prompt(prompt);
+    return {
+      kind: "asset_revise",
+      confidence: 0.86,
+      live_scene_action: true,
+      allow_cursor_fallback: true,
+      asset_hint,
+      target_name: clean_target_name(asset_hint),
+      revision_aspects: revision_aspects_from_prompt(value),
+      use_selected: false,
     };
   }
 
