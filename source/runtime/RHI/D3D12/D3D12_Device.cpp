@@ -529,6 +529,126 @@ namespace spartan
         }
     }
 
+    namespace caps
+    {
+        uint32_t                    loaded_sdk_version         = 0;
+        bool                        enhanced_barriers          = false;
+        bool                        gpu_upload_heap            = false;
+        bool                        relaxed_format_casting     = false;
+        D3D12_MESH_SHADER_TIER      mesh_shader_tier           = D3D12_MESH_SHADER_TIER_NOT_SUPPORTED;
+        D3D12_RESOURCE_BINDING_TIER resource_binding_tier      = D3D12_RESOURCE_BINDING_TIER_1;
+        D3D_ROOT_SIGNATURE_VERSION  highest_root_signature     = D3D_ROOT_SIGNATURE_VERSION_1_0;
+        D3D_SHADER_MODEL            highest_shader_model       = D3D_SHADER_MODEL_6_0;
+
+        void detect()
+        {
+            ID3D12Device* device = RHI_Context::device;
+
+            // the loaded redist version, this is the ground truth for whether the agility exports took effect
+            Microsoft::WRL::ComPtr<ID3D12DeviceConfiguration> device_configuration;
+            if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&device_configuration))))
+            {
+                loaded_sdk_version = device_configuration->GetDesc().SDKVersion;
+            }
+
+            D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
+            if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options))))
+            {
+                resource_binding_tier = options.ResourceBindingTier;
+            }
+
+            D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
+            if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7))))
+            {
+                mesh_shader_tier = options7.MeshShaderTier;
+            }
+
+            D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12 = {};
+            if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12))))
+            {
+                enhanced_barriers      = options12.EnhancedBarriersSupported == TRUE;
+                relaxed_format_casting = options12.RelaxedFormatCastingSupported == TRUE;
+            }
+
+            D3D12_FEATURE_DATA_D3D12_OPTIONS16 options16 = {};
+            if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS16, &options16, sizeof(options16))))
+            {
+                gpu_upload_heap = options16.GPUUploadHeapSupported == TRUE;
+            }
+
+            // clamps the requested version down to the highest supported one
+            D3D12_FEATURE_DATA_ROOT_SIGNATURE root_signature = { D3D_ROOT_SIGNATURE_VERSION_1_2 };
+            if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &root_signature, sizeof(root_signature))))
+            {
+                highest_root_signature = root_signature.HighestVersion;
+            }
+
+            // a runtime that predates the requested model rejects the query outright, so probe downwards
+            const D3D_SHADER_MODEL shader_models[] =
+            {
+                D3D_SHADER_MODEL_6_8, D3D_SHADER_MODEL_6_7, D3D_SHADER_MODEL_6_6, D3D_SHADER_MODEL_6_5,
+                D3D_SHADER_MODEL_6_4, D3D_SHADER_MODEL_6_3, D3D_SHADER_MODEL_6_2, D3D_SHADER_MODEL_6_1
+            };
+            for (const D3D_SHADER_MODEL model : shader_models)
+            {
+                D3D12_FEATURE_DATA_SHADER_MODEL shader_model = { model };
+                if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shader_model, sizeof(shader_model))))
+                {
+                    highest_shader_model = shader_model.HighestShaderModel;
+                    break;
+                }
+            }
+        }
+
+        void log()
+        {
+            const uint32_t requested = d3d12_agility::requested_sdk_version();
+
+            if (requested == 0)
+            {
+                SP_LOG_INFO("D3D12 runtime: in-box (agility sdk not compiled in), loaded sdk version %u", loaded_sdk_version);
+            }
+            else if (loaded_sdk_version >= requested)
+            {
+                SP_LOG_INFO("D3D12 runtime: agility sdk %u (requested %u)", loaded_sdk_version, requested);
+            }
+            else
+            {
+                SP_LOG_WARNING(
+                    "D3D12 runtime: agility sdk %u requested but %u loaded, check that D3D12/D3D12Core.dll sits next to the exe",
+                    requested, loaded_sdk_version);
+            }
+
+            // D3D_ROOT_SIGNATURE_VERSION_1_0 is 1, so the minor number is the enum value minus one
+            SP_LOG_INFO("D3D12 shader model %u.%u, root signature 1.%u, resource binding tier %d",
+                (static_cast<uint32_t>(highest_shader_model) >> 4) & 0xf,
+                static_cast<uint32_t>(highest_shader_model) & 0xf,
+                static_cast<uint32_t>(highest_root_signature) - 1,
+                static_cast<int>(resource_binding_tier));
+
+            const char* barrier_state = d3d12_barriers::IsEnabled() ? "active"
+                                      : (enhanced_barriers ? "supported but disabled" : "unsupported");
+
+            SP_LOG_INFO("D3D12 enhanced barriers: %s, gpu upload heap: %s, relaxed format casting: %s, mesh shader tier: %d",
+                barrier_state,
+                gpu_upload_heap        ? "yes" : "no",
+                relaxed_format_casting ? "yes" : "no",
+                static_cast<int>(mesh_shader_tier));
+        }
+    }
+
+    namespace d3d12_caps
+    {
+        uint32_t                    GetLoadedSdkVersion()              { return caps::loaded_sdk_version; }
+        bool                        IsEnhancedBarriersSupported()      { return caps::enhanced_barriers; }
+        bool                        IsGpuUploadHeapSupported()         { return caps::gpu_upload_heap; }
+        bool                        IsRelaxedFormatCastingSupported()  { return caps::relaxed_format_casting; }
+        D3D12_MESH_SHADER_TIER      GetMeshShaderTier()                { return caps::mesh_shader_tier; }
+        D3D12_RESOURCE_BINDING_TIER GetResourceBindingTier()           { return caps::resource_binding_tier; }
+        D3D_ROOT_SIGNATURE_VERSION  GetHighestRootSignatureVersion()   { return caps::highest_root_signature; }
+        D3D_SHADER_MODEL            GetHighestShaderModel()            { return caps::highest_shader_model; }
+    }
+
     void RHI_Device::Initialize()
     {
         // detect device limits, the rt and vrs caps below are queried from the d3d12 device
@@ -610,6 +730,14 @@ namespace spartan
         // hook up the info queue so debug layer messages flow into the engine log
         validation::initialize();
 
+        // resolve the agility sdk version actually in use plus the d3d12 only capability tiers
+        caps::detect();
+
+        // decides between enhanced and legacy barrier submission, needs the caps above, logged below
+        d3d12_barriers::Initialize();
+
+        caps::log();
+
         // query feature support for ray tracing, vrs, and timestamp period
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
@@ -635,16 +763,8 @@ namespace spartan
                 }
             }
 
-            // xess requires shader model 6.4 or newer, probe the highest supported model and gate on it
-            D3D12_FEATURE_DATA_SHADER_MODEL shader_model = { D3D_SHADER_MODEL_6_6 };
-            if (SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shader_model, sizeof(shader_model))))
-            {
-                m_xess_supported = shader_model.HighestShaderModel >= D3D_SHADER_MODEL_6_4;
-            }
-            else
-            {
-                m_xess_supported = false;
-            }
+            // xess requires shader model 6.4 or newer
+            m_xess_supported = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;
         }
 
         // queue timestamp period: d3d12 uses GetTimestampFrequency on the queue (ticks/second)
@@ -802,7 +922,6 @@ namespace spartan
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Present)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Present,  "present");
 
         SP_LOG_INFO("DirectX 12.0 initialized successfully");
-        SP_LOG_INFO("Dedicated present queue created");
     }
 
     void RHI_Device::Tick(const uint64_t frame_count)

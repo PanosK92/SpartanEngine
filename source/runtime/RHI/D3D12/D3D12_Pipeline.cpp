@@ -485,12 +485,26 @@ namespace spartan
         }
 
         constexpr uint32_t param_count = 11;
-        D3D12_ROOT_PARAMETER params[param_count] = {};
+        D3D12_ROOT_PARAMETER1 params[param_count] = {};
+
+        // root signature 1.1 lets each range declare how volatile its descriptors and data are
+        // everything here stays fully volatile, which is exactly what 1.0 implied, because the engine
+        // rewrites descriptors into the heap zones and mutates buffer contents while recording
+        // tightening an individual range to DATA_STATIC_WHILE_SET_AT_EXECUTE is a per range decision
+        // and lets the driver hoist loads, so it can only be done once that range is known to be stable
+        constexpr D3D12_DESCRIPTOR_RANGE_FLAGS range_flags_volatile =
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE |
+            D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
+
+        // samplers carry no data, so the data flags are invalid on a sampler range
+        constexpr D3D12_DESCRIPTOR_RANGE_FLAGS sampler_range_flags =
+            D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
 
         // 0: CBV b0 (buffer_frame)
         params[0].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;
         params[0].Descriptor.ShaderRegister = 0;
         params[0].Descriptor.RegisterSpace  = 0;
+        params[0].Descriptor.Flags          = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE;
         params[0].ShaderVisibility          = D3D12_SHADER_VISIBILITY_ALL;
 
         // 1: 32-bit constants b1 (buffer_pass)
@@ -500,14 +514,15 @@ namespace spartan
         params[1].Constants.Num32BitValues = 16; // PassBufferData = 64 bytes
         params[1].ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 2: SRV table t0..t31 space0
-        // highest srv used is t31 (tex_ocean_normal) in common_resources.hlsl, must cover the full range or graphics psos that bind it fail validation
-        static D3D12_DESCRIPTOR_RANGE srv0_range = {};
+        // 2: SRV table t0..t56 space0
+        // highest srv used is t43 (meshlet_bounds), the range is padded to the uav count so read only buffer slots stay covered
+        static D3D12_DESCRIPTOR_RANGE1 srv0_range = {};
         srv0_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         srv0_range.NumDescriptors                    = d3d12_root_slot::srv_space0_count;
         srv0_range.BaseShaderRegister                = 0;
         srv0_range.RegisterSpace                     = 0;
         srv0_range.OffsetInDescriptorsFromTableStart = 0;
+        srv0_range.Flags                             = range_flags_volatile;
         params[2].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[2].DescriptorTable.NumDescriptorRanges = 1;
         params[2].DescriptorTable.pDescriptorRanges   = &srv0_range;
@@ -515,126 +530,147 @@ namespace spartan
 
         // 3: UAV table u0..u56 space0
         // highest uav used is u56 (ocean_heights) in common_resources.hlsl, must cover the full range or compute psos that bind it fail validation
-        static D3D12_DESCRIPTOR_RANGE uav0_range = {};
+        static D3D12_DESCRIPTOR_RANGE1 uav0_range = {};
         uav0_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
         uav0_range.NumDescriptors                    = d3d12_root_slot::uav_space0_count;
         uav0_range.BaseShaderRegister                = 0;
         uav0_range.RegisterSpace                     = 0;
         uav0_range.OffsetInDescriptorsFromTableStart = 0;
+        uav0_range.Flags                             = range_flags_volatile;
         params[3].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[3].DescriptorTable.NumDescriptorRanges = 1;
         params[3].DescriptorTable.pDescriptorRanges   = &uav0_range;
         params[3].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
         // 4: SRV table t15 space1 (material_textures[], unbounded)
-        static D3D12_DESCRIPTOR_RANGE mat_tex_range = {};
+        static D3D12_DESCRIPTOR_RANGE1 mat_tex_range = {};
         mat_tex_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         mat_tex_range.NumDescriptors                    = UINT_MAX; // unbounded
         mat_tex_range.BaseShaderRegister                = 15;
         mat_tex_range.RegisterSpace                     = 1;
         mat_tex_range.OffsetInDescriptorsFromTableStart = 0;
+        mat_tex_range.Flags                             = range_flags_volatile;
         params[4].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[4].DescriptorTable.NumDescriptorRanges = 1;
         params[4].DescriptorTable.pDescriptorRanges   = &mat_tex_range;
         params[4].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
         // 5: SRV table t16 space2 (material_parameters)
-        static D3D12_DESCRIPTOR_RANGE mat_param_range = {};
+        static D3D12_DESCRIPTOR_RANGE1 mat_param_range = {};
         mat_param_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         mat_param_range.NumDescriptors                    = 1;
         mat_param_range.BaseShaderRegister                = 16;
         mat_param_range.RegisterSpace                     = 2;
         mat_param_range.OffsetInDescriptorsFromTableStart = 0;
+        mat_param_range.Flags                             = range_flags_volatile;
         params[5].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[5].DescriptorTable.NumDescriptorRanges = 1;
         params[5].DescriptorTable.pDescriptorRanges   = &mat_param_range;
         params[5].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
         // 6: SRV table t17 space3 (light_parameters)
-        static D3D12_DESCRIPTOR_RANGE light_range = {};
+        static D3D12_DESCRIPTOR_RANGE1 light_range = {};
         light_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         light_range.NumDescriptors                    = 1;
         light_range.BaseShaderRegister                = 17;
         light_range.RegisterSpace                     = 3;
         light_range.OffsetInDescriptorsFromTableStart = 0;
+        light_range.Flags                             = range_flags_volatile;
         params[6].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[6].DescriptorTable.NumDescriptorRanges = 1;
         params[6].DescriptorTable.pDescriptorRanges   = &light_range;
         params[6].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
         // 7: SRV table t18 space4 (aabbs)
-        static D3D12_DESCRIPTOR_RANGE aabb_range = {};
+        static D3D12_DESCRIPTOR_RANGE1 aabb_range = {};
         aabb_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         aabb_range.NumDescriptors                    = 1;
         aabb_range.BaseShaderRegister                = 18;
         aabb_range.RegisterSpace                     = 4;
         aabb_range.OffsetInDescriptorsFromTableStart = 0;
+        aabb_range.Flags                             = range_flags_volatile;
         params[7].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[7].DescriptorTable.NumDescriptorRanges = 1;
         params[7].DescriptorTable.pDescriptorRanges   = &aabb_range;
         params[7].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
         // 8: SRV table t19 space5 (draw_data)
-        static D3D12_DESCRIPTOR_RANGE draw_range = {};
+        static D3D12_DESCRIPTOR_RANGE1 draw_range = {};
         draw_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         draw_range.NumDescriptors                    = 1;
         draw_range.BaseShaderRegister                = 19;
         draw_range.RegisterSpace                     = 5;
         draw_range.OffsetInDescriptorsFromTableStart = 0;
+        draw_range.Flags                             = range_flags_volatile;
         params[8].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[8].DescriptorTable.NumDescriptorRanges = 1;
         params[8].DescriptorTable.pDescriptorRanges   = &draw_range;
         params[8].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
         // 9: SRV table - geometry vertices/indices/instances in separate spaces (3 ranges)
-        static D3D12_DESCRIPTOR_RANGE geo_ranges[3] = {};
+        static D3D12_DESCRIPTOR_RANGE1 geo_ranges[3] = {};
         geo_ranges[0].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         geo_ranges[0].NumDescriptors                    = 1;
         geo_ranges[0].BaseShaderRegister                = 20;
         geo_ranges[0].RegisterSpace                     = 8;
         geo_ranges[0].OffsetInDescriptorsFromTableStart = 0;
+        geo_ranges[0].Flags                             = range_flags_volatile;
         geo_ranges[1].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         geo_ranges[1].NumDescriptors                    = 1;
         geo_ranges[1].BaseShaderRegister                = 22;
         geo_ranges[1].RegisterSpace                     = 9;
         geo_ranges[1].OffsetInDescriptorsFromTableStart = 1;
+        geo_ranges[1].Flags                             = range_flags_volatile;
         geo_ranges[2].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         geo_ranges[2].NumDescriptors                    = 1;
         geo_ranges[2].BaseShaderRegister                = 23;
         geo_ranges[2].RegisterSpace                     = 10;
         geo_ranges[2].OffsetInDescriptorsFromTableStart = 2;
+        geo_ranges[2].Flags                             = range_flags_volatile;
         params[9].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[9].DescriptorTable.NumDescriptorRanges = 3;
         params[9].DescriptorTable.pDescriptorRanges   = geo_ranges;
         params[9].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
         // d3d12 forbids anything after an unbounded range, so use bounded counts matching the heap zones, compare 0..63 and regular 64..127
-        static D3D12_DESCRIPTOR_RANGE sampler_ranges[2] = {};
+        static D3D12_DESCRIPTOR_RANGE1 sampler_ranges[2] = {};
         sampler_ranges[0].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         sampler_ranges[0].NumDescriptors                    = d3d12_descriptors::GetSamplersCompareCount();
         sampler_ranges[0].BaseShaderRegister                = 0;
         sampler_ranges[0].RegisterSpace                     = 6;
         sampler_ranges[0].OffsetInDescriptorsFromTableStart = 0;
+        sampler_ranges[0].Flags                             = sampler_range_flags;
         sampler_ranges[1].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         sampler_ranges[1].NumDescriptors                    = d3d12_descriptors::GetSamplersCount();
         sampler_ranges[1].BaseShaderRegister                = 1;
         sampler_ranges[1].RegisterSpace                     = 7;
         sampler_ranges[1].OffsetInDescriptorsFromTableStart = d3d12_descriptors::GetSamplersCompareCount();
+        sampler_ranges[1].Flags                             = sampler_range_flags;
         params[10].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[10].DescriptorTable.NumDescriptorRanges = 2;
         params[10].DescriptorTable.pDescriptorRanges   = sampler_ranges;
         params[10].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
-        D3D12_ROOT_SIGNATURE_DESC root_sig_desc = {};
-        root_sig_desc.NumParameters     = param_count;
-        root_sig_desc.pParameters       = params;
-        root_sig_desc.NumStaticSamplers = 0;
-        root_sig_desc.pStaticSamplers   = nullptr;
-        root_sig_desc.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        // 1.1 has shipped in every windows release since 2016 and the agility redist guarantees it,
+        // so this only trips on a runtime far older than the feature level the engine already requires
+        if (d3d12_caps::GetHighestRootSignatureVersion() < D3D_ROOT_SIGNATURE_VERSION_1_1)
+        {
+            SP_LOG_ERROR("Root signature 1.1 is unavailable, the bindless root signature cannot be built");
+            return nullptr;
+        }
+
+        D3D12_VERSIONED_ROOT_SIGNATURE_DESC root_sig_desc = {};
+        root_sig_desc.Version                    = D3D_ROOT_SIGNATURE_VERSION_1_1;
+        root_sig_desc.Desc_1_1.NumParameters     = param_count;
+        root_sig_desc.Desc_1_1.pParameters       = params;
+        root_sig_desc.Desc_1_1.NumStaticSamplers = 0;
+        root_sig_desc.Desc_1_1.pStaticSamplers   = nullptr;
+        root_sig_desc.Desc_1_1.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
         ID3DBlob* signature_blob = nullptr;
         ID3DBlob* error_blob     = nullptr;
-        HRESULT hr = D3D12SerializeRootSignature(&root_sig_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature_blob, &error_blob);
+
+        HRESULT hr = D3D12SerializeVersionedRootSignature(&root_sig_desc, &signature_blob, &error_blob);
         if (FAILED(hr))
         {
             if (error_blob)

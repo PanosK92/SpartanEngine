@@ -261,6 +261,12 @@ ModelManifest.xml
 # sky catalog bake download cache
 tools/sky/_cache/
 /third_party/libraries/libraries.7z
+
+# d3d12 agility sdk, downloaded by tools/setup.lua
+/third_party/d3d12_agility/
+/third_party/d3d12_agility_extract/
+/third_party/d3d12_agility.nupkg
+
 /assets
 /spartan.slnx
 /nul

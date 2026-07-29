@@ -363,6 +363,13 @@ namespace ImGui::RHI
             window_data->cmd_list->Begin();
         }
 
+        // the main window draws straight into the back buffer, so bail out when there is no acquired image
+        // recording against a stale index would submit a write to a buffer that is not the one being presented
+        if (is_main_window && !swapchain->IsImageAcquired())
+        {
+            return;
+        }
+
         // when the engine splash screen is shown, the command list is not valid as the renderer is initializing
         if (!cmd_list || cmd_list->GetState() != RHI_CommandListState::Recording)
         {

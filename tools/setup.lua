@@ -35,6 +35,21 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "libxess.dll"),
 }
 
+-- d3d12 agility sdk, downloaded on demand into third_party/d3d12_agility
+-- the middle number of the nuget version is the D3D12SDKVersion exported by the exe
+local AGILITY_VERSION     = "1.619.4"
+local AGILITY_SDK_VERSION = "619"
+local AGILITY_DIR         = path.join(PROJECT_ROOT, "third_party", "d3d12_agility")
+local AGILITY_INCLUDE_DIR = path.join(AGILITY_DIR, "include")
+local AGILITY_BIN_DIR     = path.join(AGILITY_DIR, "bin", "x64")
+local AGILITY_STAMP       = path.join(AGILITY_DIR, "version.txt")
+local AGILITY_URL         = "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/" .. AGILITY_VERSION
+local AGILITY_NUPKG       = path.join(PROJECT_ROOT, "third_party", "d3d12_agility.nupkg")
+
+-- d3d12core.dll must sit in a subfolder next to the exe, matching the exported D3D12SDKPath
+local AGILITY_RUNTIME_SUBDIR = "D3D12"
+local AGILITY_RUNTIME_DLLS   = { "D3D12Core.dll", "d3d12SDKLayers.dll" }
+
 -- steamworks sdk, downloaded on demand into third_party/steamworks
 local STEAMWORKS_DIR   = path.join(PROJECT_ROOT, "third_party", "steamworks")
 local STEAM_DLL        = path.join(STEAMWORKS_DIR, "redistributable_bin", "win64", "steam_api64.dll")
@@ -69,6 +84,32 @@ local function run(cmd)
         cmd = '"' .. cmd .. '"'
     end
     return os.execute(cmd)
+end
+
+local function read_text(p)
+    local f = io.open(p, "rb")
+    if not f then return nil end
+    local contents = f:read("*a") or ""
+    f:close()
+    return (contents:gsub("%s+", ""))
+end
+
+local function download_with_progress(url, destination)
+    local last_percent = -1
+    local result, code = http.download(url, destination, {
+        progress = function(total, current)
+            if total and total > 0 then
+                local percent = math.floor((current / total) * 100)
+                if percent ~= last_percent and percent % 5 == 0 then
+                    io.write(string.format("\r  progress: %3d%%", percent))
+                    io.flush()
+                    last_percent = percent
+                end
+            end
+        end
+    })
+    io.write("\n")
+    return result, code
 end
 
 local function compute_sha256(p)
@@ -128,20 +169,7 @@ local function download_archive()
     print("downloading " .. LIBRARY_URL)
     print("  -> " .. ARCHIVE_PATH)
 
-    local last_percent = -1
-    local result, code = http.download(LIBRARY_URL, ARCHIVE_PATH, {
-        progress = function(total, current)
-            if total and total > 0 then
-                local percent = math.floor((current / total) * 100)
-                if percent ~= last_percent and percent % 5 == 0 then
-                    io.write(string.format("\r  progress: %3d%%", percent))
-                    io.flush()
-                    last_percent = percent
-                end
-            end
-        end
-    })
-    io.write("\n")
+    local result, code = download_with_progress(LIBRARY_URL, ARCHIVE_PATH)
 
     if result ~= "OK" then
         error(string.format("download failed: %s (http %s)", tostring(result), tostring(code)))
@@ -183,6 +211,92 @@ local function ensure_archive()
     end
 end
 
+local function ensure_agility_sdk()
+    if not is_windows() then
+        print("  not windows, skipping agility sdk")
+        return
+    end
+
+    if read_text(AGILITY_STAMP) == AGILITY_VERSION and file_exists(path.join(AGILITY_BIN_DIR, "D3D12Core.dll")) then
+        print("agility sdk " .. AGILITY_VERSION .. " present, skipping download")
+        return
+    end
+
+    if not file_exists(SEVEN_ZIP) then
+        print("  7z missing, cannot install agility sdk")
+        return
+    end
+
+    print("downloading agility sdk " .. AGILITY_VERSION .. "...")
+    os.mkdir(path.getdirectory(AGILITY_NUPKG))
+
+    local result, code = download_with_progress(AGILITY_URL, AGILITY_NUPKG)
+    if result ~= "OK" then
+        error(string.format("agility sdk download failed: %s (http %s)", tostring(result), tostring(code)))
+    end
+
+    local extract_root = path.join(PROJECT_ROOT, "third_party", "d3d12_agility_extract")
+    if os.isdir(extract_root) then
+        os.rmdir(extract_root)
+    end
+    os.mkdir(extract_root)
+
+    -- the nupkg is a plain zip, only build/native is needed
+    local extract_cmd = string.format('%s x %s -o%s -aoa -bso0 -bsp1 build\\native\\*',
+        quote(SEVEN_ZIP), quote(AGILITY_NUPKG), quote(extract_root))
+    print("extracting agility sdk...")
+    local ok = run(extract_cmd)
+    if ok ~= true and ok ~= 0 then
+        error("agility sdk extraction failed")
+    end
+
+    local native_root = path.join(extract_root, "build", "native")
+    if not os.isdir(native_root) then
+        error("unexpected agility sdk archive layout")
+    end
+
+    if os.isdir(AGILITY_DIR) then
+        os.rmdir(AGILITY_DIR)
+    end
+    os.mkdir(AGILITY_DIR)
+
+    -- headers must shadow the windows sdk copies, so they live on their own include root
+    copy_dir(path.join(native_root, "include"), AGILITY_INCLUDE_DIR)
+    copy_dir(path.join(native_root, "bin", "x64"), AGILITY_BIN_DIR)
+
+    os.rmdir(extract_root)
+    os.remove(AGILITY_NUPKG)
+
+    local f = io.open(AGILITY_STAMP, "wb")
+    f:write(AGILITY_VERSION)
+    f:close()
+
+    print("agility sdk " .. AGILITY_VERSION .. " installed (D3D12SDKVersion " .. AGILITY_SDK_VERSION .. ")")
+end
+
+local function stage_agility_runtime()
+    if not is_windows() then
+        return
+    end
+
+    local destination = path.join(BINARIES_DIR, AGILITY_RUNTIME_SUBDIR)
+    local staged      = 0
+
+    for _, dll in ipairs(AGILITY_RUNTIME_DLLS) do
+        local source = path.join(AGILITY_BIN_DIR, dll)
+        if file_exists(source) then
+            copy_file(source, path.join(destination, dll))
+            staged = staged + 1
+        end
+    end
+
+    if staged > 0 then
+        print(string.format("  staged %d agility dll(s) into binaries/%s", staged, AGILITY_RUNTIME_SUBDIR))
+    else
+        print("  agility sdk not found, skipping agility staging")
+    end
+end
+
 local function ensure_steamworks()
     if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
         print("steamworks sdk present, skipping download")
@@ -197,20 +311,7 @@ local function ensure_steamworks()
     print("downloading steamworks sdk...")
     os.mkdir(path.getdirectory(STEAMWORKS_ZIP))
 
-    local last_percent = -1
-    local result, code = http.download(STEAMWORKS_URL, STEAMWORKS_ZIP, {
-        progress = function(total, current)
-            if total and total > 0 then
-                local percent = math.floor((current / total) * 100)
-                if percent ~= last_percent and percent % 5 == 0 then
-                    io.write(string.format("\r  progress: %3d%%", percent))
-                    io.flush()
-                    last_percent = percent
-                end
-            end
-        end
-    })
-    io.write("\n")
+    local result, code = download_with_progress(STEAMWORKS_URL, STEAMWORKS_ZIP)
 
     if result ~= "OK" then
         print(string.format("  steamworks download failed: %s (http %s)", tostring(result), tostring(code)))
@@ -257,24 +358,29 @@ local function ensure_steamworks()
 end
 
 function setup.run()
-    print("\n[1/5] copying data files into binaries...")
+    print("\n[1/6] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
     copy_file(path.join(TOOLS_DIR, "7z.exe"), path.join(BINARIES_DIR, "7z.exe"))
     copy_file(path.join(TOOLS_DIR, "7z.dll"), path.join(BINARIES_DIR, "7z.dll"))
 
-    print("\n[2/5] ensuring libraries archive is present...")
+    print("\n[2/6] ensuring libraries archive is present...")
     ensure_archive()
 
-    print("\n[3/5] extracting archive...")
+    print("\n[3/6] extracting archive...")
     extract_archive()
 
-    print("\n[4/5] ensuring steamworks sdk...")
+    print("\n[4/6] ensuring d3d12 agility sdk...")
+    ensure_agility_sdk()
+
+    print("\n[5/6] ensuring steamworks sdk...")
     ensure_steamworks()
 
-    print("\n[5/5] copying runtime dlls into binaries...")
+    print("\n[6/6] copying runtime dlls into binaries...")
     for _, dll in ipairs(RUNTIME_DLLS) do
         copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
     end
+
+    stage_agility_runtime()
 
     if file_exists(STEAM_DLL) then
         copy_file(STEAM_DLL, path.join(BINARIES_DIR, path.getname(STEAM_DLL)))
@@ -292,5 +398,8 @@ function setup.run()
 
     print("\nsetup complete")
 end
+
+setup.agility_sdk_version = AGILITY_SDK_VERSION
+setup.agility_stamp_path  = AGILITY_STAMP
 
 return setup

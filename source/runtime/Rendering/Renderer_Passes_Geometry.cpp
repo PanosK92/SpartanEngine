@@ -574,7 +574,13 @@ namespace spartan
                         : RHI_PrimitiveTopology::TriangleList;
                 pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
                 pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-                pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+                pso.vrs_input_texture                =
+                    cvar_variable_rate_shading.GetValueAs<bool>() &&
+                    !IsSecondaryViewActive()
+                        ? GetRenderTarget(
+                            Renderer_RenderTarget::shading_rate
+                        )
+                        : nullptr;
                 pso.render_target_depth_texture      = tex_depth;
                 pso.resolution_scale                 = true;
                 pso.is_multiview                     = xr_multiview;
@@ -621,7 +627,13 @@ namespace spartan
                 pso.rasterizer_state                 = rasterizer_state;
                 pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
                 pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-                pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+                pso.vrs_input_texture                =
+                    cvar_variable_rate_shading.GetValueAs<bool>() &&
+                    !IsSecondaryViewActive()
+                        ? GetRenderTarget(
+                            Renderer_RenderTarget::shading_rate
+                        )
+                        : nullptr;
                 pso.render_target_depth_texture      = tex_depth;
                 pso.resolution_scale                 = true;
                 pso.is_multiview                     = xr_multiview;
@@ -694,7 +706,13 @@ namespace spartan
                 : RHI_PrimitiveTopology::TriangleList;
         // equal, not greater-equal, so only prepass survivors draw, otherwise alpha cutouts render as solid quads
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
-        pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+        pso.vrs_input_texture                =
+            cvar_variable_rate_shading.GetValueAs<bool>() &&
+            !IsSecondaryViewActive()
+                ? GetRenderTarget(
+                    Renderer_RenderTarget::shading_rate
+                )
+                : nullptr;
         pso.resolution_scale                 = true;
         pso.render_target_color_textures[0]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
         pso.render_target_color_textures[1]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
@@ -761,7 +779,13 @@ namespace spartan
         // transparent draws own their depth so they keep ReadWrite, opaque/tessellated leans on the depth prepass written through the
         // tessellation_h/d pair so equal-z matches whatever the prepass produced, same alpha-test correctness argument as the indirect path
         pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
-        pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+        pso.vrs_input_texture                =
+            cvar_variable_rate_shading.GetValueAs<bool>() &&
+            !IsSecondaryViewActive()
+                ? GetRenderTarget(
+                    Renderer_RenderTarget::shading_rate
+                )
+                : nullptr;
         pso.resolution_scale                 = true;
         pso.render_target_color_textures[0]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
         pso.render_target_color_textures[1]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);

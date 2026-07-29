@@ -801,6 +801,16 @@ async function world_asset_register_unlocked(
     project_root,
     resource_directory,
   );
+  if (
+    args.parent_version &&
+    !args.asset_id &&
+    !args.id
+  )
+  {
+    throw new Error(
+      "parent_version requires an explicit asset_id",
+    );
+  }
   const asset_id = safe_name(
     args.asset_id ?? args.id ?? args.name,
   );
@@ -827,7 +837,21 @@ async function world_asset_register_unlocked(
     versions: [],
     created_at: new Date().toISOString(),
   };
-  const number = version_number(asset);
+  const parent_version =
+    args.parent_version ??
+    asset.active_version;
+  const replaceable_candidate =
+    args.replace_candidate === true
+      ? [...asset.versions]
+        .reverse()
+        .find((version) =>
+          version.id !== asset.active_version &&
+          version.parent_version === parent_version
+        )
+      : null;
+  const number =
+    replaceable_candidate?.number ??
+    version_number(asset);
   const extension =
     path.posix.extname(source_path) ||
     type_extensions[type];
@@ -861,6 +885,45 @@ async function world_asset_register_unlocked(
   {
     throw new Error(
       `asset thumbnail does not exist: ${args.thumbnail_path}`,
+    );
+  }
+  if (replaceable_candidate)
+  {
+    const candidate_files = [
+      replaceable_candidate.path,
+      replaceable_candidate.source_path,
+      replaceable_candidate.thumbnail_path,
+      ...(
+        Array.isArray(replaceable_candidate.dependencies)
+          ? replaceable_candidate.dependencies
+          : []
+      ),
+    ].filter(Boolean);
+    for (const candidate of candidate_files)
+    {
+      const engine_path = normalize_engine_path(candidate);
+      if (engine_path.startsWith(`${paths.engine_root}/`))
+      {
+        await fs.rm(
+          local_path(project_root, engine_path),
+          { force: true },
+        );
+      }
+    }
+    await fs.rm(
+      local_path(
+        project_root,
+        `${paths.engine_root}/dependencies/${
+          asset.id
+        }/${replaceable_candidate.id}`,
+      ),
+      {
+        recursive: true,
+        force: true,
+      },
+    );
+    asset.versions = asset.versions.filter(
+      (version) => version.id !== replaceable_candidate.id,
     );
   }
   await copy_immutable(
@@ -953,9 +1016,7 @@ async function world_asset_register_unlocked(
     thumbnail_path: immutable_thumbnail_path,
     dependencies: dependencies?.copied ?? [],
     missing_dependencies: dependencies?.missing ?? [],
-    parent_version:
-      args.parent_version ??
-      asset.active_version,
+    parent_version,
     created_at: new Date().toISOString(),
     quality: {
       score: Math.min(
@@ -1031,6 +1092,9 @@ async function world_asset_register_unlocked(
     asset: asset_summary(asset),
     version,
     catalog_path: paths.catalog_path,
+    replaced_candidate:
+      replaceable_candidate?.id ??
+      null,
     pruned_versions: pruned.removed_versions,
     pruned_files: pruned.removed_files,
   };
@@ -1615,6 +1679,13 @@ export async function auto_register_world_asset(
     return null;
   }
   if (args.skip_catalog_registration === true)
+  {
+    return null;
+  }
+  if (
+    command === "texture_generate" &&
+    args.material_path
+  )
   {
     return null;
   }

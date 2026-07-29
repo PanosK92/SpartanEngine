@@ -98,8 +98,12 @@ namespace spartan
         // create or grow an upload-heap buffer used to stage tlas instance descriptors
         ID3D12Resource* create_upload_buffer(uint64_t size, const char* name)
         {
+            // the gpu reads these descriptors directly during the tlas build, so vram resident and
+            // cpu writable beats a pcie read, see the same reasoning in D3D12_Buffer.cpp
+            const bool use_gpu_upload = d3d12_caps::IsGpuUploadHeapSupported();
+
             D3D12_HEAP_PROPERTIES heap_props = {};
-            heap_props.Type                  = D3D12_HEAP_TYPE_UPLOAD;
+            heap_props.Type                  = use_gpu_upload ? D3D12_HEAP_TYPE_GPU_UPLOAD : D3D12_HEAP_TYPE_UPLOAD;
             heap_props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
             heap_props.MemoryPoolPreference  = D3D12_MEMORY_POOL_UNKNOWN;
             heap_props.CreationNodeMask      = 1;
@@ -127,6 +131,21 @@ namespace spartan
                 nullptr,
                 IID_PPV_ARGS(&resource)
             );
+
+            // retry on the regular upload heap once the resizable bar window is exhausted
+            if (FAILED(hr) && use_gpu_upload)
+            {
+                heap_props.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+                hr = RHI_Context::device->CreateCommittedResource(
+                    &heap_props,
+                    D3D12_HEAP_FLAG_NONE,
+                    &desc,
+                    D3D12_RESOURCE_STATE_GENERIC_READ,
+                    nullptr,
+                    IID_PPV_ARGS(&resource)
+                );
+            }
 
             if (FAILED(hr))
             {

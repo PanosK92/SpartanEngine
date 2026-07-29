@@ -122,6 +122,20 @@ namespace spartan
             initial_state = D3D12_RESOURCE_STATE_GENERIC_READ;
         }
 
+        // a gpu upload heap lives in vram but stays cpu writable over resizable bar, so the shader reads it at
+        // vram bandwidth instead of over pcie, which is the win for buffers the cpu rewrites and the gpu reads directly
+        // staging buffers are excluded, the copy engine reads them once so vram would only burn the limited bar budget
+        const bool is_staging = m_type == RHI_Buffer_Type::Upload;
+        const bool use_gpu_upload =
+            heap_type == D3D12_HEAP_TYPE_UPLOAD &&
+            !is_staging                         &&
+            d3d12_caps::IsGpuUploadHeapSupported();
+
+        if (use_gpu_upload)
+        {
+            heap_type = D3D12_HEAP_TYPE_GPU_UPLOAD;
+        }
+
         D3D12_HEAP_PROPERTIES heap_props = {};
         heap_props.Type                  = heap_type;
         heap_props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -156,6 +170,23 @@ namespace spartan
             nullptr,
             IID_PPV_ARGS(&buffer)
         );
+
+        // the gpu upload heap draws from the resizable bar window, which is far smaller than vram,
+        // so retry on the regular upload heap rather than losing the buffer once that window is full
+        if (FAILED(hr) && use_gpu_upload)
+        {
+            heap_type       = D3D12_HEAP_TYPE_UPLOAD;
+            heap_props.Type = heap_type;
+
+            hr = RHI_Context::device->CreateCommittedResource(
+                &heap_props,
+                D3D12_HEAP_FLAG_NONE,
+                &resource_desc,
+                initial_state,
+                nullptr,
+                IID_PPV_ARGS(&buffer)
+            );
+        }
 
         if (FAILED(hr))
         {
@@ -192,7 +223,7 @@ namespace spartan
             d3d12_utility::debug::set_name(buffer, m_object_name.c_str());
         }
 
-        if (heap_type == D3D12_HEAP_TYPE_UPLOAD || heap_type == D3D12_HEAP_TYPE_READBACK)
+        if (heap_type == D3D12_HEAP_TYPE_UPLOAD || heap_type == D3D12_HEAP_TYPE_GPU_UPLOAD || heap_type == D3D12_HEAP_TYPE_READBACK)
         {
             hr = buffer->Map(0, nullptr, &m_data_gpu);
             if (FAILED(hr))
@@ -236,13 +267,13 @@ namespace spartan
                             b.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
                             b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
                             b.Transition.Subresource = 0;
-                            list->ResourceBarrier(1, &b);
+                            d3d12_barriers::Submit(list, &b, 1);
 
                             list->CopyBufferRegion(buffer, 0, staging, 0, m_object_size);
 
                             b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
                             b.Transition.StateAfter  = D3D12_RESOURCE_STATE_COMMON;
-                            list->ResourceBarrier(1, &b);
+                            d3d12_barriers::Submit(list, &b, 1);
                             list->Close();
 
                             ID3D12CommandQueue* q = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Graphics));
@@ -314,7 +345,7 @@ namespace spartan
                 barrier.Transition.Subresource = 0;
                 barrier.Transition.StateBefore = state_before;
                 barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
-                cmd_list->ResourceBarrier(1, &barrier);
+                d3d12_barriers::Submit(cmd_list, &barrier, 1);
             }
 
             cmd_list->CopyBufferRegion(dst, offset_bytes, staging, 0, size_bytes);
@@ -327,7 +358,7 @@ namespace spartan
                 barrier.Transition.Subresource = 0;
                 barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
                 barrier.Transition.StateAfter  = state_before;
-                cmd_list->ResourceBarrier(1, &barrier);
+                d3d12_barriers::Submit(cmd_list, &barrier, 1);
             }
 
             RHI_CommandList::ImmediateExecutionEnd(cmd_list_rhi);

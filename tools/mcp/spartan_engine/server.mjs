@@ -1782,6 +1782,7 @@ const world_asset_register_schema = {
   notes: z.string().optional(),
   promote: z.boolean().optional(),
   keep_history: z.boolean().optional(),
+  replace_candidate: z.boolean().optional(),
 };
 
 register_local_tool(
@@ -5107,6 +5108,7 @@ register_tool(
     "Layers stack bottom to top. Use fill and noise for surfaces, bricks, tiles, stripes and checker for repeating structure, spots and scratches for wear, shape and text for labels and decals.",
     "Colors accept #rrggbb, #rrggbbaa, or rgba arrays in either zero to one or zero to 255 range. Give a layer color and color_b to tint it by its pattern value.",
     "Set relief for bumps, roughness and roughness_b for surface finish, and metalness for metal. Pass material_path to attach every generated map to that material.",
+    "For cloth, paper, leather and other continuous surfaces, relief must come from smooth noise. Never put relief on checker, tiles, bricks or stripes unless visible seams or grooves are explicitly required, because their periodic boundaries become grid lines in the normal map.",
     "The response reports mean color, contrast and seam_error so a tiling texture can be tuned without looking at it.",
   ].join(" "),
   texture_generate_args,

@@ -36,6 +36,7 @@ SP_WARNINGS_ON
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Device.h"
+#include "../RHI_Queue.h"
 #include "../RHI_Texture.h"
 #include "../../Rendering/Renderer.h"
 #include "../../World/World.h"
@@ -196,7 +197,10 @@ namespace spartan
 
     namespace nvidia
     {
-        // gi is restir sized, screen is render sized for reflections and shadows
+        // gi is restir sized, reflections and shadows are render sized
+        // every preset owns its own instance, CommandBufferD3D12Desc carries no queue type so nri derives it from the
+        // command list it is handed, and an instance fed from two list types would see its internal textures left in
+        // non pixel only by one dispatch and claimed as non pixel plus pixel by the next
         struct nrd_pool
         {
             nrd::Integration integration;
@@ -206,12 +210,13 @@ namespace spartan
             bool reset_history           = false;
             uint32_t last_frame_index    = UINT32_MAX;
             uint32_t last_settings_frame = UINT32_MAX;
-            bool is_screen               = false;
+            RHI_Queue_Type queue_type    = RHI_Queue_Type::Max;
             ID3D12CommandQueue* queue    = nullptr;
         };
 
         nrd_pool pool_gi;
-        nrd_pool pool_screen;
+        nrd_pool pool_reflections;
+        nrd_pool pool_shadows;
 
         nrd::Resource make_resource(RHI_Texture* texture, bool storage)
         {
@@ -239,30 +244,34 @@ namespace spartan
         void context_destroy()
         {
             pool_destroy(pool_gi);
-            pool_destroy(pool_screen);
+            pool_destroy(pool_reflections);
+            pool_destroy(pool_shadows);
         }
 
         void request_history_reset()
         {
-            pool_gi.reset_history     = true;
-            pool_screen.reset_history = true;
+            pool_gi.reset_history          = true;
+            pool_reflections.reset_history = true;
+            pool_shadows.reset_history     = true;
         }
 
-        bool pool_create(nrd_pool& pool, uint32_t resource_width, uint32_t resource_height, bool is_screen)
+        bool pool_create(nrd_pool& pool, uint32_t resource_width, uint32_t resource_height, Nrd_Preset preset, RHI_Queue_Type queue_type)
         {
             pool_destroy(pool);
-            pool.is_screen = is_screen;
+            pool.queue_type = queue_type;
 
-            pool.queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Compute));
+            pool.queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(queue_type));
             if (!RHI_Context::device || !pool.queue || resource_width == 0 || resource_height == 0)
             {
                 return false;
             }
 
+            // the family has to describe the queue this preset is actually dispatched from, nri uses it for its own
+            // idle waits and for turning access bits into legacy resource states
             nri::QueueFamilyD3D12Desc queue_family = {};
             queue_family.d3d12Queues = &pool.queue;
             queue_family.queueNum    = 1;
-            queue_family.queueType   = nri::QueueType::COMPUTE;
+            queue_family.queueType   = queue_type == RHI_Queue_Type::Graphics ? nri::QueueType::GRAPHICS : nri::QueueType::COMPUTE;
 
             nri::DeviceCreationD3D12Desc device_desc = {};
             device_desc.d3d12Device                  = RHI_Context::device;
@@ -270,30 +279,25 @@ namespace spartan
             device_desc.queueFamilyNum               = 1;
             device_desc.disableD3D12EnhancedBarriers = true;
 
-            nrd::DenoiserDesc denoisers_gi[] =
+            nrd::DenoiserDesc denoiser = { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE };
+            const char* pool_name      = "NRD_GI";
+            if (preset == Nrd_Preset::Reflections)
             {
-                { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE }
-            };
-            nrd::DenoiserDesc denoisers_screen[] =
+                denoiser  = { nrd_common::id_reflections, nrd::Denoiser::REBLUR_SPECULAR };
+                pool_name = "NRD_Reflections";
+            }
+            else if (preset == Nrd_Preset::Shadows)
             {
-                { nrd_common::id_reflections, nrd::Denoiser::REBLUR_SPECULAR },
-                { nrd_common::id_shadows,     nrd::Denoiser::SIGMA_SHADOW }
-            };
+                denoiser  = { nrd_common::id_shadows, nrd::Denoiser::SIGMA_SHADOW };
+                pool_name = "NRD_Shadows";
+            }
 
             nrd::InstanceCreationDesc instance_desc = {};
-            if (pool.is_screen)
-            {
-                instance_desc.denoisers    = denoisers_screen;
-                instance_desc.denoisersNum = 2;
-            }
-            else
-            {
-                instance_desc.denoisers    = denoisers_gi;
-                instance_desc.denoisersNum = 1;
-            }
+            instance_desc.denoisers                 = &denoiser;
+            instance_desc.denoisersNum              = 1;
 
             nrd::IntegrationCreationDesc integration_desc = {};
-            strncpy_s(integration_desc.name, pool.is_screen ? "NRD_Screen" : "NRD_GI", _TRUNCATE);
+            strncpy_s(integration_desc.name, pool_name, _TRUNCATE);
             integration_desc.queuedFrameNum                       = 3;
             integration_desc.enableWholeLifetimeDescriptorCaching = false;
             integration_desc.autoWaitForIdle                      = true;
@@ -314,7 +318,12 @@ namespace spartan
 
         nrd_pool& pool_for_preset(Nrd_Preset preset)
         {
-            return preset == Nrd_Preset::Gi ? pool_gi : pool_screen;
+            if (preset == Nrd_Preset::Gi)
+            {
+                return pool_gi;
+            }
+
+            return preset == Nrd_Preset::Reflections ? pool_reflections : pool_shadows;
         }
     }
     #endif
@@ -520,23 +529,27 @@ namespace spartan
             return false;
         }
 
-        nvidia::nrd_pool& pool = nvidia::pool_for_preset(preset);
-        const uint32_t width  = tex_mv->GetWidth();
-        const uint32_t height = tex_mv->GetHeight();
-        if (!pool.initialized || pool.width != width || pool.height != height)
+        nvidia::nrd_pool& pool          = nvidia::pool_for_preset(preset);
+        const RHI_Queue_Type queue_type = cmd_list->GetQueue()->GetType();
+        const uint32_t width            = tex_mv->GetWidth();
+        const uint32_t height           = tex_mv->GetHeight();
+        if (!pool.initialized || pool.width != width || pool.height != height || pool.queue_type != queue_type)
         {
             RHI_Device::QueueWaitAll();
-            if (!nvidia::pool_create(pool, width, height, preset != Nrd_Preset::Gi))
+            if (!nvidia::pool_create(pool, width, height, preset, queue_type))
             {
                 return false;
             }
             pool.reset_history = true;
         }
 
-        cmd_list->EnsureComputeShaderResource(tex_mv);
-        cmd_list->EnsureComputeShaderResource(tex_normal_roughness);
-        cmd_list->EnsureComputeShaderResource(tex_view_z);
-        cmd_list->EnsureComputeShaderResource(tex_signal_in);
+        // make_resource declares these to nri as AccessBits::SHADER_RESOURCE, which nri expands to non pixel plus pixel
+        // on a direct list and to non pixel only on a compute one, so the inputs must carry whichever set matches
+        const bool include_pixel_stage = queue_type == RHI_Queue_Type::Graphics;
+        cmd_list->EnsureComputeShaderResource(tex_mv, include_pixel_stage);
+        cmd_list->EnsureComputeShaderResource(tex_normal_roughness, include_pixel_stage);
+        cmd_list->EnsureComputeShaderResource(tex_view_z, include_pixel_stage);
+        cmd_list->EnsureComputeShaderResource(tex_signal_in, include_pixel_stage);
         cmd_list->PrepareForExternalWrite(tex_signal_out);
         cmd_list->FlushBarriers();
 
@@ -619,10 +632,11 @@ namespace spartan
         const nrd::Identifier denoisers[] = { denoiser_id };
         pool.integration.DenoiseD3D12(denoisers, 1, cmd_desc, snapshot);
 
-        cmd_list->AdoptComputeShaderResource(tex_mv);
-        cmd_list->AdoptComputeShaderResource(tex_normal_roughness);
-        cmd_list->AdoptComputeShaderResource(tex_view_z);
-        cmd_list->AdoptComputeShaderResource(tex_signal_in);
+        // restoreInitialState puts them back into the state declared above, so adopt that same set of bits
+        cmd_list->AdoptComputeShaderResource(tex_mv, include_pixel_stage);
+        cmd_list->AdoptComputeShaderResource(tex_normal_roughness, include_pixel_stage);
+        cmd_list->AdoptComputeShaderResource(tex_view_z, include_pixel_stage);
+        cmd_list->AdoptComputeShaderResource(tex_signal_in, include_pixel_stage);
         cmd_list->AdoptUnorderedAccess(tex_signal_out);
         cmd_list->RestoreAfterExternalPass();
         return true;

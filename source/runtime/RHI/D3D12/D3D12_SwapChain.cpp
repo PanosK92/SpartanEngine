@@ -291,11 +291,13 @@ namespace spartan
         swap_chain_desc.AlphaMode             = DXGI_ALPHA_MODE_IGNORE; // tell dwm not to use the alpha channel for compositing, matches vulkan's composite_alpha_opaque
         swap_chain_desc.Flags                 = (m_present_mode == RHI_Present_Mode::Immediate) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
-        // get the present queue, dedicated so vsync wait does not stall graphics
-        ID3D12CommandQueue* command_queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Present));
+        // d3d12 requires that any command list writing a back buffer executes on the queue the swapchain
+        // was created with, and the renderer records the back buffer pass on the graphics queue, so bind
+        // that one here, a vulkan style dedicated present queue would trip EXECUTECOMMANDLISTS_WRONGSWAPCHAINBUFFERREFERENCE
+        ID3D12CommandQueue* command_queue = static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueueRhiResource(RHI_Queue_Type::Graphics));
         if (!command_queue)
         {
-            SP_LOG_ERROR("Present command queue is null");
+            SP_LOG_ERROR("Graphics command queue is null");
             return;
         }
 
@@ -533,8 +535,9 @@ namespace spartan
             return;
         }
 
-        // present queue waits for graphics to finish the backbuffer, then dxgi presents
-        RHI_Device::GetQueue(RHI_Queue_Type::Present)->Present(m_rhi_swapchain, m_image_index, GetRenderingCompleteSemaphore());
+        // must be the queue the swapchain was created with, see the creation site
+        // the wait is already satisfied since the same queue signalled it, it keeps the vulkan shaped contract explicit
+        RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Present(m_rhi_swapchain, m_image_index, GetRenderingCompleteSemaphore());
 
         // present parameters, tearing can bypass dwm hdr composition so keep it off for hdr
         const bool hdr             = m_format == format_hdr;

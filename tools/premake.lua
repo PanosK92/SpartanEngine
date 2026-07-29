@@ -48,6 +48,14 @@ else
     print("steamworks: disabled (sdk not found)")
 end
 
+AGILITY_SDK_VERSION = setup.agility_sdk_version
+AGILITY_ENABLED     = os.isfile(setup.agility_stamp_path)
+if AGILITY_ENABLED then
+    print("d3d12 agility sdk: enabled (D3D12SDKVersion " .. AGILITY_SDK_VERSION .. ")")
+else
+    print("d3d12 agility sdk: disabled (sdk not found, falling back to the in-box d3d12 runtime)")
+end
+
 function configure_graphics_api()
     if ARG_API_GRAPHICS == "d3d12" then
         API_CPP_DEFINE = "API_GRAPHICS_D3D12"
@@ -172,6 +180,12 @@ function spartan_project_configuration()
                 includedirs {
                     "../third_party/xess"
                 }
+
+                -- agility sdk headers must precede the windows sdk copies of d3d12.h and dxgiformat.h
+                if AGILITY_ENABLED then
+                    includedirs { "../third_party/d3d12_agility/include" }
+                    defines { "SP_D3D12_AGILITY_SDK_VERSION=" .. AGILITY_SDK_VERSION }
+                end
             end
 
         -- Release configuration

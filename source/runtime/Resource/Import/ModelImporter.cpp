@@ -984,12 +984,20 @@ namespace spartan
             import_flags |= aiProcess_CalcTangentSpace;
             import_flags |= aiProcess_GenUVCoords;
 
-            // smooth normal generation stays behind an import flag, gltf must ship normals so the regeneration is skipped
-            const string extension      = FileSystem::GetExtensionFromFilePath(file_path);
+            // generate missing normals, gltf/glb must ship them so regeneration is skipped
+            // smooth stays behind a flag, otherwise use flat normals to keep hard edges
+            const string extension        = FileSystem::GetExtensionFromFilePath(file_path);
             const bool source_has_normals = (extension == ".gltf") || (extension == ".glb");
-            if (!source_has_normals && (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportGenerateSmoothNormals)))
+            if (!source_has_normals)
             {
-                import_flags |= aiProcess_GenSmoothNormals;
+                if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportGenerateSmoothNormals))
+                {
+                    import_flags |= aiProcess_GenSmoothNormals;
+                }
+                else
+                {
+                    import_flags |= aiProcess_GenNormals;
+                }
             }
 
             // limit bone weights to 4 per vertex

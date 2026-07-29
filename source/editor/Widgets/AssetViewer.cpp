@@ -3018,7 +3018,7 @@ void AssetViewer::CreatePreviewRig(Entity* root)
     Camera* camera = camera_entity->AddComponent<Camera>();
     camera->SetFovHorizontalDeg(50.0f);
     camera->SetExposureMode(
-        CameraExposureMode::manual
+        CameraExposureMode::automatic
     );
     m_preview_camera_id = camera_entity->GetObjectId();
 
@@ -3035,7 +3035,7 @@ void AssetViewer::CreatePreviewRig(Entity* root)
     Light* key_light = key_entity->AddComponent<Light>();
     key_light->SetLightType(LightType::Directional);
     key_light->SetIntensity(85000.0f);
-    key_light->SetColor(Color(1.0f, 0.92f, 0.82f, 1.0f));
+    key_light->SetColor(Color::standard_white);
 
     Entity* fill_entity = World::CreateEntity();
     fill_entity->SetObjectName("asset_viewer_fill_light");
@@ -3053,7 +3053,7 @@ void AssetViewer::CreatePreviewRig(Entity* root)
     fill_light->SetLightType(LightType::Point);
     fill_light->SetIntensity(5000.0f);
     fill_light->SetRange(m_preview_radius * 8.0f);
-    fill_light->SetColor(Color(0.62f, 0.76f, 1.0f, 1.0f));
+    fill_light->SetColor(Color::standard_white);
 
     UpdatePreviewCamera();
 

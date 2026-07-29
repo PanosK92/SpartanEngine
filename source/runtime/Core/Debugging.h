@@ -36,6 +36,7 @@ namespace spartan
         static bool IsLoggingToFileEnabled()         { return m_logging_to_file_enabled; }
         static bool IsBreadcrumbsEnabled()           { return m_breadcrumbs_enabled; }
         static bool IsSteamEnabled()                 { return m_steam_enabled; }
+        static bool IsD3D12EnhancedBarriersEnabled() { return m_d3d12_enhanced_barriers_enabled; }
 
     private:
         inline static bool m_validation_layer_enabled        = false; // enables debug/validation layer for api error detection and debug message reporting
@@ -47,5 +48,6 @@ namespace spartan
         inline static bool m_gpu_timing_enabled              = true;  // measures gpu execution times for profiling and performance analysis
         inline static bool m_shader_optimization_enabled     = true;  // enables shader compiler optimizations to improve performance and efficiency
         inline static bool m_steam_enabled                   = true;  // initializes steamworks, tick only runs cheap callback pumping when active
+        inline static bool m_d3d12_enhanced_barriers_enabled = false; // d3d12 only, submits barriers through ID3D12GraphicsCommandList7 instead of legacy ResourceBarrier, see D3D12_Barriers.cpp for the two interop prerequisites before enabling
     };
 }

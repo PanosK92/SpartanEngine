@@ -350,12 +350,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // compute specular reflection using fresnel and brdf split sum
     float3 reflection = tex[thread_id.xy].rgb;
 
-    // glass reflections follow the clearcoat lobe when present, matching the rt tracer's source roughness blend
-    float reflection_roughness = surface.roughness;
-    if (surface.is_transparent() && !surface.is_water())
-    {
-        reflection_roughness = lerp(surface.roughness, surface.clearcoat_roughness, saturate(surface.clearcoat));
-    }
+    // the tracer blends toward the clearcoat lobe on every surface, weigh the result with the same
+    // roughness or the split sum integrates a lobe that was never sampled, car paint loses most of
+    // its coat reflection that way
+    float reflection_roughness = lerp(surface.roughness, surface.clearcoat_roughness, saturate(surface.clearcoat));
     float2 brdf = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, reflection_roughness), 0.0f).rg;
 
     // pick the right F0, transparent surfaces use the ior derived dielectric F0, opaque surfaces use the actual surface F0 which is colored for metals
@@ -383,11 +381,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 transmission      = refraction * kT * transmission_tint * coverage;
         tex_uav[thread_id.xy]    = validate_output(float4(reflection_total + transmission, 1.0f));
     }
-    else
+    else if (surface.is_water())
     {
+        // water has no diffuse layer, light_composition zeroed it, so the column below the surface
+        // has to be transmitted in here, the frame only holds its analytic specular and fog
         float3 kT            = float3(1.0f, 1.0f, 1.0f) - F;
         float3 surface_color = specular_reflection + refraction * kT;
         tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
+    }
+    else
+    {
+        // an opaque pixel already holds its complete shading, so the traced lobe is the only thing
+        // missing, ibl zeroes its specular when rt reflections are on, adding the frame back in as a
+        // transmission term counted every opaque surface twice, auto exposure then halved the whole
+        // image and the reflection read as a faint tint on top of a washed out base
+        tex_uav[thread_id.xy] += float4(specular_reflection, 0.0f);
     }
 
     // overlay lit foam on top of the composited water, whitewater is a bright near-white lambertian cap so it

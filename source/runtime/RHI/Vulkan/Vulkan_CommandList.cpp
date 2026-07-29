@@ -568,7 +568,8 @@ namespace spartan
         m_pipeline_state_dirty     = true;
     }
 
-    void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture)
+    // include_pixel_stage is a d3d12 only concern, shader_read is stage agnostic here
+    void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture, bool)
     {
         if (!texture)
         {
@@ -577,7 +578,7 @@ namespace spartan
         texture->SetLayout(RHI_Image_Layout::Shader_Read, this);
     }
 
-    void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture)
+    void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture, bool)
     {
         if (!texture)
         {

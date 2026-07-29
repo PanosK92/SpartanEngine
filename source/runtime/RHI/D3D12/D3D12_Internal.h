@@ -24,6 +24,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <d3d12.h>
 
+// agility sdk redist, returns 0 when the build falls back to the in-box d3d12 runtime
+namespace spartan::d3d12_agility
+{
+    uint32_t requested_sdk_version();
+}
+
+// d3d12 only capabilities, queried once during device creation
+// features with a vulkan counterpart live on RHI_Device instead, these have no vulkan analogue
+namespace spartan::d3d12_caps
+{
+    uint32_t                  GetLoadedSdkVersion();       // 0 when the in-box runtime is in use
+    bool                      IsEnhancedBarriersSupported();
+    bool                      IsGpuUploadHeapSupported();
+    bool                      IsRelaxedFormatCastingSupported();
+    D3D12_MESH_SHADER_TIER    GetMeshShaderTier();
+    D3D12_RESOURCE_BINDING_TIER GetResourceBindingTier();
+    D3D_ROOT_SIGNATURE_VERSION GetHighestRootSignatureVersion();
+    D3D_SHADER_MODEL          GetHighestShaderModel();
+}
+
+// barrier submission, translates the legacy barrier descriptions the command list builds into
+// enhanced barriers when the runtime supports them, otherwise submits them as-is
+namespace spartan::d3d12_barriers
+{
+    void Initialize();
+    bool IsEnabled();
+    void Submit(ID3D12GraphicsCommandList* cmd_list, const D3D12_RESOURCE_BARRIER* barriers, uint32_t count);
+}
+
 // shared descriptor-heap + queue access used by the various D3D12_*.cpp files
 namespace spartan::d3d12_descriptors
 {
@@ -81,12 +110,12 @@ namespace spartan::d3d12_descriptors
 // root parameter slots for the unified bindless root signature
 namespace spartan::d3d12_root_slot
 {
-    // must cover the highest register in common_resources.hlsl / Renderer_BindingsSrv (ocean_normal = t31) and Renderer_BindingsUav (ocean_heights = u56)
-    constexpr uint32_t srv_space0_count   = 32; // t0..t31
+    // buffers bound through Renderer_BindingsUav are declared as t registers in the stages that only read them, so the srv table must span the same index range as the uav table
+    constexpr uint32_t srv_space0_count   = 57; // t0..t56
     constexpr uint32_t uav_space0_count   = 57; // u0..u56
     constexpr uint32_t cbv_frame          = 0;  // CBV b0 space0
     constexpr uint32_t push_constants     = 1;  // 32-bit root constants b1 space0
-    constexpr uint32_t srv_table_space0   = 2;  // t0..t31 space0
+    constexpr uint32_t srv_table_space0   = 2;  // t0..t56 space0
     constexpr uint32_t uav_table_space0   = 3;  // u0..u56 space0
     constexpr uint32_t srv_material_tex   = 4;  // t15 space1 unbounded
     constexpr uint32_t srv_material_param = 5;  // t16 space2

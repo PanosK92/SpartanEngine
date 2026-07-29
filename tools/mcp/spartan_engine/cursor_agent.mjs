@@ -917,12 +917,7 @@ async function review_asset_viewer(
 
   const requested_views = Array.isArray(args.views)
     ? args.views
-    : [
-        "perspective",
-        "front",
-        "right",
-        "top",
-      ];
+    : ["perspective"];
   const views = [];
   for (const view of requested_views.slice(0, 4))
   {
@@ -2311,11 +2306,36 @@ async function dispatch_assistant_command(
     command === "world_asset_version"
   )
   {
+    const revision =
+      context.asset_revision?.asset_id
+        ? context.asset_revision
+        : null;
+    if (revision)
+    {
+      args = {
+        ...args,
+        type: revision.asset_type,
+        asset_id: revision.asset_id,
+        name: revision.asset_name,
+        path:
+          context.asset_revision_path ??
+          args.path,
+        parent_version: revision.active_version,
+        promote: false,
+        replace_candidate: true,
+      };
+    }
     const result = await world_asset_register(
       catalog_root,
       catalog_directory,
       args,
     );
+    if (result.ok && revision)
+    {
+      context.asset_revision_candidate =
+        result.version?.id ??
+        null;
+    }
     if (
       result.ok &&
       (
@@ -2385,6 +2405,24 @@ async function dispatch_assistant_command(
   }
   if (command === "world_asset_promote")
   {
+    const revision =
+      context.asset_revision?.asset_id
+        ? context.asset_revision
+        : null;
+    if (revision)
+    {
+      const candidate_version =
+        context.asset_revision_candidate ??
+        args.candidate_version ??
+        args.version;
+      args = {
+        ...args,
+        asset_id: revision.asset_id,
+        version: candidate_version,
+        candidate_version,
+        threshold: 0,
+      };
+    }
     if (is_focused_asset_request(context.prompt))
     {
       const asset_id = String(
@@ -3233,6 +3271,27 @@ async function dispatch_assistant_command(
     command === "prefab_save"
   )
   {
+    const revision =
+      context.asset_revision?.asset_id
+        ? context.asset_revision
+        : null;
+    if (revision)
+    {
+      args = {
+        ...args,
+        skip_catalog_registration: true,
+        library_asset: false,
+        catalog_register: false,
+      };
+      if (command === "prefab_save")
+      {
+        args.name = revision.asset_name;
+        args.path =
+          `project/mcp_resources/prefabs/${
+            revision.asset_id
+          }.prefab`;
+      }
+    }
     // only the isolated root a focused asset was built under, anything else being saved is a scene
     const target_id = args.id ?? args.entity_id;
     const game_ready =
@@ -3249,6 +3308,16 @@ async function dispatch_assistant_command(
     if (game_ready)
     {
       result.game_ready = game_ready;
+    }
+    if (
+      revision &&
+      command === "prefab_save" &&
+      result.ok
+    )
+    {
+      context.asset_revision_path =
+        result.path ??
+        args.path;
     }
     return register_assistant_asset(
       context,
@@ -4052,7 +4121,7 @@ function focused_asset_quality_prompt_lines(prompt)
     "Use physically plausible dimensions and thickness. Avoid coplanar overlaps, open shells, abrupt radius jumps, floating trim, z-fighting, and decorative parts that do not follow the parent surface.",
     "For transparent materials, model the actual outer and inner surfaces or a valid shell and preserve believable thickness at rims and openings. Do not rely on transparency to imply missing geometry.",
     "Build only the reusable object under its prepared root. Do not surround it with a ground pad, route, display structure, studio set, or review lights unless the user explicitly requests those as part of the asset.",
-    "Review the candidate in the Asset Viewer using solid mode first, then wire or points only for topology diagnosis. Inspect perspective plus front or side views. A recognizable outline, smooth curvature, clean transitions, and readable secondary details are mandatory before registration.",
+    "After registration, review the exact candidate once in solid perspective mode. Add a front or side view only for an explicit hero asset or when the audit identifies a silhouette problem. Use wireframe or vertices only for a specific topology diagnosis.",
     "Compare against any active version and never promote a candidate that regresses silhouette, topology or necessary material separation. Quality scoring never authorizes exceeding the prop budget or adding hero detail. Correction passes should improve proportions, placement, topology and textures before adding geometry.",
     "Saving the prefab merges every part that shares a material into one mesh, so splitting a surface off for a genuine material change is cheap. That is a reason to split for material and construction, not a reason to ignore the budget above, because merging parts does not remove a single triangle.",
     "Never generate the same part twice. Before adding a part, check whether you already made it. A regenerated duplicate wastes the budget and leaves two copies of the same geometry in the asset.",
@@ -4060,7 +4129,7 @@ function focused_asset_quality_prompt_lines(prompt)
     "Give a part its own entity only when it needs its own material or its own geometry. Do not split one surface across several entities that all end up with the same material, and keep a collider, light, or sound on the functional entity it belongs to rather than on a part that exists only to be drawn.",
     "Assemble the asset as you go, one part at a time. The prefab root already exists and is already saved and previewing, so every part you make is joined to the asset the moment you make it: generate the part, parent it to the root, give it its material, and place it against the parts that are already there. Do not author a batch of loose meshes and materials with the intention of assembling them later.",
     "Work outward from the part that fixes the asset's scale and orientation, usually the primary body or the base, because every later part is positioned against what is already standing. Finish and place each part before starting the next one.",
-    "Look at the asset while you build it, not only when it is finished. After each part that changes the silhouette, take one Asset Viewer screenshot and check that the new part sits where you intended, at the right size, touching what it should touch. Fix a part that landed wrong immediately, while it is the only thing that could be wrong. A single review at the end cannot tell you which part is misplaced.",
+    "Do not rotate or screenshot after every part. Finish and register the candidate first, then review that exact version once from perspective, adding a front view only when the silhouette is ambiguous.",
     "The Asset Viewer preview follows the root live, so the asset is visible as it grows. Never activate the workspace root or move it into the scene to look at it, and never capture the main viewport for this. Preview and screenshot through the Asset Viewer.",
   ];
 }
@@ -4102,7 +4171,7 @@ function asset_revision_prompt_lines(revision)
   if (aspects.includes("texture"))
   {
     lines.push(
-      "A texture has to change. Regenerate the affected map with texture_generate using layers, keep the resolution, tiling and seamless setting the existing map used unless the request is about those, and reattach it to the same material slot. A label or decal stays non-seamless with alpha.",
+      "A texture has to change. Regenerate the affected map with texture_generate using layers and overwrite its existing texture path. Keep the resolution, tiling and seamless setting unless the request is about those, then reattach it to the same material slot. Do not create a replacement material, a differently named texture set, or an alternate prefab. A label or decal stays non-seamless with alpha.",
     );
   }
 
@@ -4174,6 +4243,7 @@ function build_prompt(
     "Texture every material that represents a real surface. Use material_textured_create so the material and its color, roughness, normal and packed maps are made together, and set tiling so the pattern reads at the right scale.",
     "Build textures from layers: fill for the base, noise for variation, bricks, tiles, stripes or checker for structure, spots and scratches for wear and dirt, shape and text for labels, signage and decals.",
     "Give layers relief for bumps, roughness and roughness_b for finish, and metalness for metal, otherwise the surface stays flat and uniformly shiny.",
+    "For cloth, paper, leather and other continuous surfaces, generate relief only from smooth noise. Never give checker, tiles, bricks or stripes relief unless the requested surface has visible seams or grooves, because periodic relief boundaries render as grid lines in the normal map.",
     "Keep environment textures seamless and check seam_error in the response. Labels and decals are not tiled, so set seamless false and use alpha.",
     "Skip textures only for glass, pure emitters, and placeholder greybox volumes.",
     "Add collision only where gameplay needs it. For focused assets, use one simplified collider on the functional root or primary body; never add mesh_convex physics to decorative shells, threads, labels, liners, trim, or repeated details. For environments, cover structural and traversable surfaces without giving every visual detail its own body.",
@@ -5026,9 +5096,13 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     {
       asset_viewer_reviews += 1;
     }
+    const required_asset_viewer_reviews =
+      active_assistant_context?.asset_budget?.tier === "hero"
+        ? 2
+        : 1;
     visual_review_seen ||=
       successful_visual_review ||
-      asset_viewer_reviews >= 2;
+      asset_viewer_reviews >= required_asset_viewer_reviews;
     scene_mutation_seen ||=
       is_scene_mutation_event(event);
     if (!engine_tool_seen && is_engine_tool_event(event)) {
@@ -5155,8 +5229,14 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           run,
         }),
       );
+      active_assistant_context.asset_revision =
+        revision;
       if (revision?.root_id)
       {
+        active_assistant_context.authoring_prefab_path =
+          `project/mcp_resources/prefabs/${
+            revision.asset_id
+          }.prefab`;
         initial_root = {
           id: revision.root_id,
           name: revision.root_name,
@@ -5431,14 +5511,15 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       ],
       ...(focused_asset
         ? {
-            min_entities: 2,
+            min_entities: 1,
             min_unique_materials: 1,
-            min_advanced_mesh_ratio: 0.15,
+            min_advanced_mesh_ratio: 0,
             require_light: false,
             min_collision_ratio: 0,
             max_duplicate_geometry: 2,
             max_repetition_ratio: 0.5,
-            max_dominant_geometry_ratio: 0.96,
+            max_dominant_geometry_ratio: 1,
+            max_default_material_ratio: 1,
           }
         : {}),
     };
@@ -5480,43 +5561,78 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
         "checking scale, support, relationships, and lighting",
         audit_current_layout,
       );
+    if (focused_asset && !visual_review_seen)
+    {
+      const preview = await run.tool(
+        "asset_viewer_preview_entity",
+        { id: root_id },
+        10000,
+      );
+      if (preview.ok)
+      {
+        await run.tool(
+          "asset_viewer_set_view",
+          {
+            view: "perspective",
+            zoom: 1,
+          },
+          10000,
+        );
+        const screenshot = await run.tool(
+          "asset_viewer_screenshot",
+          {
+            path: `asset_${root_id}_final.png`,
+            width: 768,
+            height: 768,
+          },
+          10000,
+        );
+        visual_review_seen =
+          screenshot.ok === true &&
+          typeof screenshot.path === "string" &&
+          screenshot.path.length > 0;
+      }
+    }
     let final_result = cursor_result;
 
+    const correction_attempts = focused_asset ? 1 : 2;
     for (
       let attempt = 1;
-      attempt <= 2 &&
+      attempt <= correction_attempts &&
       (
         !audit.pass ||
         !layout_audit.pass ||
-        !visual_review_seen
+        (!focused_asset && !visual_review_seen)
       );
       attempt++
     )
     {
       const correction_prompt = [
-        "Perform a mandatory quality correction pass on the live Spartan Engine scene.",
+        focused_asset
+          ? "Perform one targeted correction pass on the focused asset."
+          : "Perform a quality correction pass on the live Spartan Engine scene.",
         `Original request: ${prompt}`,
         `Root entity: ${root_name}, id ${root_id}.`,
         `Quality audit: ${safe_json(audit, 3500)}`,
         `Layout audit: ${safe_json(layout_audit, 5000)}`,
         ...(focused_asset
           ? [
-              ...focused_asset_quality_prompt_lines(prompt),
-              "This correction must replace any visibly stacked primitive approximation with coherent generated geometry before re-registration. Review focused assets from perspective, front, and side views in solid mode.",
+              "This is a correction pass, not a rebuild. Fix only the checks that failed in the audit.",
+              "Do not add parts, rotate through multiple views, or polish surfaces that the audit did not flag.",
               "If the asset is over its triangle budget, this pass reduces it. Delete geometry that does not read at normal viewing distance, starting with anything on a hidden face, and lower the segment counts on curved parts. Do not add parts during a correction pass unless the audit named a missing one.",
             ]
           : []),
         ...(focused_asset
           ? [
               "Do not create an environment plan, ground pad, route, display structure, or studio lights around the asset. The reusable object itself is the complete deliverable.",
-              "Call scene_visual_review on the root with perspective, front, and side Asset Viewer views, then inspect the images.",
+              "After the correction, take one perspective Asset Viewer screenshot and stop.",
             ]
           : [
               "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
               "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
             ]),
         focused_asset
-          ? "Fix every failed scene_quality_audit check, including every render component listed by collision_coverage, plus the most visible weakness in the image."
+          ? "Fix every failed scene_quality_audit check only."
           : "Fix every failed scene_layout_audit and scene_quality_audit check, including every render component listed by collision_coverage, plus the most visible weakness in the image.",
         ...(!focused_asset
           ? [
@@ -5620,10 +5736,16 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
             },
             30000,
           );
-          const game_ready = await make_game_ready(
-            active_assistant_context,
-            root_id,
-          );
+          const texture_only_revision =
+            revision &&
+            revision.aspects.includes("texture") &&
+            !revision.aspects.includes("geometry");
+          const game_ready = texture_only_revision
+            ? null
+            : await make_game_ready(
+              active_assistant_context,
+              root_id,
+            );
           // the same file the incremental saves have been writing, so the finished asset replaces the
           // partial one instead of appearing beside it under a second name
           const prefab_path =

@@ -154,6 +154,10 @@ namespace spartan
         uint64_t secondary_view_ready_generation = 0;
         shared_ptr<RHI_Texture> secondary_view_output;
         shared_ptr<RHI_Texture> secondary_view_primary_backup;
+        shared_ptr<RHI_Texture> secondary_view_exposure;
+        shared_ptr<RHI_Texture> secondary_view_exposure_primary;
+        shared_ptr<RHI_Texture> secondary_view_exposure_primary_previous;
+        bool secondary_view_exposure_valid = false;
         bool secondary_view_ready = false;
         uint32_t secondary_view_recovery_frames = 0;
 
@@ -205,7 +209,15 @@ namespace spartan
                 Renderer::GetRenderTarget(
                     Renderer_RenderTarget::frame_output
                 );
-            if (!source)
+            RHI_Texture* exposure =
+                Renderer::GetRenderTarget(
+                    Renderer_RenderTarget::auto_exposure
+                );
+            RHI_Texture* exposure_previous =
+                Renderer::GetRenderTarget(
+                    Renderer_RenderTarget::auto_exposure_previous
+                );
+            if (!source || !exposure || !exposure_previous)
             {
                 return false;
             }
@@ -222,7 +234,21 @@ namespace spartan
                     source->GetHeight() ||
                 secondary_view_primary_backup->GetFormat() !=
                     source->GetFormat();
-            if (!recreate && !recreate_backup)
+            const bool recreate_exposure =
+                !secondary_view_exposure ||
+                secondary_view_exposure->GetFormat() !=
+                    exposure_previous->GetFormat() ||
+                !secondary_view_exposure_primary ||
+                secondary_view_exposure_primary->GetFormat() !=
+                    exposure->GetFormat() ||
+                !secondary_view_exposure_primary_previous ||
+                secondary_view_exposure_primary_previous->GetFormat() !=
+                    exposure_previous->GetFormat();
+            if (
+                !recreate &&
+                !recreate_backup &&
+                !recreate_exposure
+            )
             {
                 return true;
             }
@@ -263,10 +289,54 @@ namespace spartan
                     "secondary_view_primary_backup"
                 );
             }
+            if (recreate_exposure)
+            {
+                const uint32_t exposure_flags =
+                    RHI_Texture_Srv |
+                    RHI_Texture_Uav |
+                    RHI_Texture_ClearBlit;
+                secondary_view_exposure =
+                    make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        1,
+                        1,
+                        1,
+                        1,
+                        exposure_previous->GetFormat(),
+                        exposure_flags,
+                        "secondary_view_exposure"
+                    );
+                secondary_view_exposure_primary =
+                    make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        1,
+                        1,
+                        1,
+                        1,
+                        exposure->GetFormat(),
+                        exposure_flags,
+                        "secondary_view_exposure_primary"
+                    );
+                secondary_view_exposure_primary_previous =
+                    make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        1,
+                        1,
+                        1,
+                        1,
+                        exposure_previous->GetFormat(),
+                        exposure_flags,
+                        "secondary_view_exposure_primary_previous"
+                    );
+                secondary_view_exposure_valid = false;
+            }
             secondary_view_ready = false;
             return
                 secondary_view_output->GetRhiResource() &&
-                secondary_view_primary_backup->GetRhiResource();
+                secondary_view_primary_backup->GetRhiResource() &&
+                secondary_view_exposure->GetRhiResource() &&
+                secondary_view_exposure_primary->GetRhiResource() &&
+                secondary_view_exposure_primary_previous->GetRhiResource();
         }
 
         float sanitize_resolution_scale(float scale)
@@ -535,6 +605,10 @@ namespace spartan
             m_tlas                = nullptr;
             secondary_view_output.reset();
             secondary_view_primary_backup.reset();
+            secondary_view_exposure.reset();
+            secondary_view_exposure_primary.reset();
+            secondary_view_exposure_primary_previous.reset();
+            secondary_view_exposure_valid = false;
             secondary_camera_request = nullptr;
             secondary_render_root_request = nullptr;
             secondary_render_root_active = nullptr;
@@ -679,6 +753,38 @@ namespace spartan
                     secondary_view_primary_backup.get(),
                     false
                 );
+                RHI_Texture* exposure =
+                    GetRenderTarget(
+                        Renderer_RenderTarget::auto_exposure
+                    );
+                RHI_Texture* exposure_previous =
+                    GetRenderTarget(
+                        Renderer_RenderTarget::auto_exposure_previous
+                    );
+                m_cmd_list_present->Copy(
+                    exposure,
+                    secondary_view_exposure_primary.get(),
+                    false
+                );
+                m_cmd_list_present->Copy(
+                    exposure_previous,
+                    secondary_view_exposure_primary_previous.get(),
+                    false
+                );
+                if (!secondary_view_exposure_valid)
+                {
+                    m_cmd_list_present->Copy(
+                        exposure_previous,
+                        secondary_view_exposure.get(),
+                        false
+                    );
+                    secondary_view_exposure_valid = true;
+                }
+                m_cmd_list_present->Copy(
+                    secondary_view_exposure.get(),
+                    exposure_previous,
+                    false
+                );
 
                 // this frame belongs to the preview camera, the primary never renders it,
                 // so its history is put back once the preview is done, otherwise the next
@@ -805,6 +911,29 @@ namespace spartan
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
                     ),
+                    false
+                );
+                RHI_Texture* exposure =
+                    GetRenderTarget(
+                        Renderer_RenderTarget::auto_exposure
+                    );
+                RHI_Texture* exposure_previous =
+                    GetRenderTarget(
+                        Renderer_RenderTarget::auto_exposure_previous
+                    );
+                m_cmd_list_present->Copy(
+                    exposure_previous,
+                    secondary_view_exposure.get(),
+                    false
+                );
+                m_cmd_list_present->Copy(
+                    secondary_view_exposure_primary.get(),
+                    exposure,
+                    false
+                );
+                m_cmd_list_present->Copy(
+                    secondary_view_exposure_primary_previous.get(),
+                    exposure_previous,
                     false
                 );
                 World::SetActiveCamera(
@@ -1182,6 +1311,7 @@ namespace spartan
         secondary_camera_request = nullptr;
         secondary_render_root_request = nullptr;
         secondary_view_ready = false;
+        secondary_view_exposure_valid = false;
         secondary_view_request_generation++;
 
         lock_guard<mutex> lock(screenshot_mutex);
@@ -1214,12 +1344,13 @@ namespace spartan
         RHI_Texture* tex_out
     )
     {
+        const bool non_solid =
+            secondary_view_mode_active !=
+            Renderer_SecondaryViewMode::Solid;
         const bool replace_sky =
             secondary_view_backdrop_active !=
             Renderer_SecondaryViewBackdrop::Sky;
-        const bool recolour_wires =
-            secondary_view_mode_active !=
-            Renderer_SecondaryViewMode::Solid;
+        const bool recolour_wires = non_solid;
 
         RHI_Shader* shader_c =
             GetShader(Renderer_Shader::preview_studio_c);
@@ -1522,6 +1653,30 @@ namespace spartan
         }
         m_cb_frame_cpu.hdr_max_nits       = Display::GetLuminanceMax();
         m_cb_frame_cpu.hdr_sdr_white_nits = Display::GetSdrWhiteNits();
+
+        // the whole hdr encode hangs off these three, log them once per change so a washed out image can be told
+        // apart from a wrong nits level without a gpu capture
+        {
+            static float logged_mode       = -1.0f;
+            static float logged_max_nits   = -1.0f;
+            static float logged_white_nits = -1.0f;
+            if (m_cb_frame_cpu.hdr_enabled        != logged_mode      ||
+                m_cb_frame_cpu.hdr_max_nits       != logged_max_nits  ||
+                m_cb_frame_cpu.hdr_sdr_white_nits != logged_white_nits)
+            {
+                logged_mode       = m_cb_frame_cpu.hdr_enabled;
+                logged_max_nits   = m_cb_frame_cpu.hdr_max_nits;
+                logged_white_nits = m_cb_frame_cpu.hdr_sdr_white_nits;
+                SP_LOG_INFO(
+                    "hdr encode: mode %.0f (0 sdr, 1 pq, 2 scrgb), max %.0f nits, sdr white %.0f nits, tonemapper %.0f",
+                    logged_mode,
+                    logged_max_nits,
+                    logged_white_nits,
+                    cvar_tonemapping.GetValue()
+                );
+            }
+        }
+
         m_cb_frame_cpu.gamma              = cvar_gamma.GetValue();
         Camera* camera                    = World::GetCamera();
         m_cb_frame_cpu.camera_exposure    =
@@ -3649,8 +3804,13 @@ namespace spartan
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
     {
-        if (!cvar_variable_rate_shading.GetValueAs<bool>())
+        if (
+            !cvar_variable_rate_shading.GetValueAs<bool>() ||
+            IsSecondaryViewActive()
+        )
+        {
             return;
+        }
 
         RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c);
         RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_output);
@@ -3913,6 +4073,7 @@ namespace spartan
             const bool auto_exposure_enabled =
                 camera->GetExposureMode() == CameraExposureMode::automatic;
             m_pass_state.exposure_history_reset =
+                !secondary_render_root_active &&
                 auto_exposure_enabled &&
                 (
                     camera != m_pass_state.exposure_camera ||

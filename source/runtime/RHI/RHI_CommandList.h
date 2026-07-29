@@ -228,8 +228,9 @@ namespace spartan
         friend class RHI_VendorTechnology;
         friend class RHI_Device;
 
-        void EnsureComputeShaderResource(RHI_Texture* texture);
-        void AdoptComputeShaderResource(RHI_Texture* texture);
+        // include_pixel_stage widens the d3d12 state to pixel and non pixel, nri barriers on a direct list expect both
+        void EnsureComputeShaderResource(RHI_Texture* texture, bool include_pixel_stage = false);
+        void AdoptComputeShaderResource(RHI_Texture* texture, bool include_pixel_stage = false);
         void AdoptUnorderedAccess(RHI_Texture* texture);
         void PrepareTextureForSampling(RHI_Texture* texture);
         static void RemoveLayout(void* image);

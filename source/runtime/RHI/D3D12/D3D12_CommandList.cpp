@@ -360,7 +360,7 @@ namespace spartan
                     {
                         continue;
                     }
-                    cmd_list->ResourceBarrier(1, &barrier);
+                    d3d12_barriers::Submit(cmd_list, &barrier, 1);
                 }
             }
         }
@@ -553,17 +553,36 @@ namespace spartan
             {
                 return;
             }
+
+            // mirror push_transition, a compute queue can never have produced graphics only bits so recording them
+            // would leave the tracker claiming a state the resource was never actually in
+            if (b.is_compute_queue)
+            {
+                state &= ~compute_invalid_states;
+            }
+
             ResourceStateInfo& state_info = get_or_init_state(b, resource);
             state_info.per_subresource.clear();
             state_info.uniform_state = state;
             d3d12_state::SetState(resource, state);
         }
 
-        static D3D12_RESOURCE_STATES compute_shader_resource_state(bool is_depth)
+        static D3D12_RESOURCE_STATES compute_shader_resource_state(bool is_depth, bool include_pixel_stage)
         {
-            return is_depth
-                ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
-                : D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+            // on a compute queue both push_transition and adopt_state drop this bit again, so it stays legal there
+            if (include_pixel_stage)
+            {
+                state |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            }
+
+            if (is_depth)
+            {
+                state |= D3D12_RESOURCE_STATE_DEPTH_READ;
+            }
+
+            return state;
         }
 
         void flush(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
@@ -658,11 +677,13 @@ namespace spartan
                 }
                 if (!fixed.empty())
                 {
-                    // submit one barrier at a time, batched resourcebarrier with a bad entry avs some
-                    // debug layer and driver combinations without identifying the offender
-                    for (size_t i = 0; i < fixed.size(); i++)
+                    // drop the entries the driver cannot survive, then hand the whole batch to the
+                    // barrier layer which either issues one enhanced Barrier call or falls back to
+                    // one legacy ResourceBarrier per entry
+                    std::vector<D3D12_RESOURCE_BARRIER> validated;
+                    validated.reserve(fixed.size());
+                    for (const D3D12_RESOURCE_BARRIER& barrier : fixed)
                     {
-                        const D3D12_RESOURCE_BARRIER& barrier = fixed[i];
                         if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
                         {
                             if (!barrier.Transition.pResource ||
@@ -688,7 +709,12 @@ namespace spartan
                                 continue;
                             }
                         }
-                        cmd_list->ResourceBarrier(1, &barrier);
+                        validated.push_back(barrier);
+                    }
+
+                    if (!validated.empty())
+                    {
+                        d3d12_barriers::Submit(cmd_list, validated.data(), static_cast<uint32_t>(validated.size()));
                     }
                 }
             }
@@ -2401,7 +2427,7 @@ namespace spartan
             D3D12_RESOURCE_BARRIER uav_barrier = {};
             uav_barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             uav_barrier.UAV.pResource = nullptr;
-            cmd_list->ResourceBarrier(1, &uav_barrier);
+            d3d12_barriers::Submit(cmd_list, &uav_barrier, 1);
         }
 
         cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -3549,7 +3575,7 @@ namespace spartan
         m_pipeline_state_dirty = true;
     }
 
-    void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture)
+    void RHI_CommandList::EnsureComputeShaderResource(RHI_Texture* texture, bool include_pixel_stage)
     {
         if (!texture || m_state != RHI_CommandListState::Recording)
         {
@@ -3563,12 +3589,12 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat());
+        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat(), include_pixel_stage);
         cmd_state::push_transition(b, resource, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, true);
         SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
     }
 
-    void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture)
+    void RHI_CommandList::AdoptComputeShaderResource(RHI_Texture* texture, bool include_pixel_stage)
     {
         if (!texture || m_state != RHI_CommandListState::Recording)
         {
@@ -3582,7 +3608,7 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat());
+        const D3D12_RESOURCE_STATES state = cmd_state::compute_shader_resource_state(texture->IsDepthStencilFormat(), include_pixel_stage);
         cmd_state::adopt_state(b, resource, state);
         SetTrackedTextureLayout(texture, 0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
         TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::Shader_Read, RHI_Barrier_Scope::Compute);

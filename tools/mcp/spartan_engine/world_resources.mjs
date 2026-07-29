@@ -165,7 +165,13 @@ export function constrain_generated_resources(
     const library_root =
       `${shared_library_directory}/textures/`;
     constrained.library = true;
-    constrained.library_asset = true;
+    constrained.library_asset =
+      args.library_asset === true &&
+      !args.material_path;
+    if (args.material_path)
+    {
+      constrained.skip_catalog_registration = true;
+    }
     constrained.path =
       requested_path.startsWith(library_root) &&
       !requested_path.split("/").includes("..")

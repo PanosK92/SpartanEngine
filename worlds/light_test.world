@@ -2,6 +2,7 @@
 <World name="light_test" description="Material ball and a Cornell box lit by an emissive panel">
  <ConsoleVariables>
   <Variable name="r.grid" value="0.000000" />
+  <Variable name="r.restir_pt" value="1.000000" />
  </ConsoleVariables>
  <Entities>
   <Entity name="physics_body_camera" id="1002000000000000001" active="true" position="0 1.2 -8" rotation="0 0 0 1" scale="1 1 1">
