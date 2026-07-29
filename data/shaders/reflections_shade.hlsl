@@ -28,6 +28,65 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // small shadow ray budget, the reflection ray already spreads noise and the denoiser handles the rest
 static const uint k_shadow_spp = 4;
+
+// area lights are analytical only, never in the tlas, so a mirror ray that should see a tube
+// would otherwise miss and sample the sky, hard test the reflection ray against each rectangle,
+// no roughness cone, that treated every ground texel as seeing a sky sized emitter
+bool reflections_sample_area_lights(
+    float3 ray_origin,
+    float3 ray_dir,
+    float  t_max,
+    out float t_hit,
+    out float3 radiance)
+{
+    t_hit    = t_max;
+    radiance = 0.0f;
+    bool hit = false;
+
+    uint light_count = uint(pass_get_f3_value().x);
+    for (uint i = 0; i < light_count; i++)
+    {
+        LightParameters light_p = light_parameters[i];
+        if ((light_p.flags & uint(1U << 6)) == 0)
+        {
+            continue;
+        }
+
+        float3 light_forward = normalize(light_p.direction.xyz);
+        float3 light_right   = normalize(light_p.direction_right.xyz);
+        float3 light_up      = normalize(cross(light_forward, light_right));
+        float3 light_pos     = light_p.position.xyz;
+
+        float denom = dot(ray_dir, light_forward);
+        // front face only, emitter radiates along +forward
+        if (denom >= -1e-5f)
+        {
+            continue;
+        }
+
+        float t = dot(light_pos - ray_origin, light_forward) / denom;
+        if (t <= 0.001f || t >= t_hit)
+        {
+            continue;
+        }
+
+        float3 point_on_plane = ray_origin + ray_dir * t - light_pos;
+        float  half_w        = light_p.area_width * 0.5f;
+        float  half_h        = light_p.area_height * 0.5f;
+        float  u             = abs(dot(point_on_plane, light_right));
+        float  v             = abs(dot(point_on_plane, light_up));
+        if (u > half_w || v > half_h)
+        {
+            continue;
+        }
+
+        t_hit    = t;
+        radiance = light_p.color.rgb * light_p.intensity;
+        hit      = true;
+    }
+
+    return hit;
+}
 static const float2 k_halton_2_3[4] =
 {
     float2(0.500000f, 0.333333f),
@@ -249,13 +308,27 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         tex_uav[thread_id.xy] = float4(0, 0, 0, 0);
         return;
     }
+
+    float3 source_pos = get_position(uv_source);
+    float3 ray_dir    = hit_distance == 0.0f
+        ? position
+        : normalize(position - source_pos);
+    float  t_geom     = hit_distance == 0.0f ? 1e6f : max(hit_distance, 0.001f);
+
+    // tubes win over geometry and sky when the reflection ray strikes the rectangle first
+    float  t_light        = t_geom;
+    float3 light_radiance = 0.0f;
+    if (reflections_sample_area_lights(source_pos, ray_dir, t_geom, t_light, light_radiance))
+    {
+        tex_uav[thread_id.xy] = validate_output(float4(light_radiance, max(t_light, 0.0f)));
+        return;
+    }
     
     // miss returns sky color, prefiltered by source surface roughness so smooth metals get sharp sky
     if (hit_distance == 0.0f)
     {
         float mip_count        = pass_get_f3_value().y;
         float sky_mip          = source_roughness * source_roughness * (mip_count - 1.0f);
-        float3 ray_dir         = position; // direction stored in position for misses
         float2 sky_uv          = direction_sphere_uv(ray_dir);
         float3 sky_color       = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, sky_mip).rgb;
         tex_uav[thread_id.xy]  = float4(sky_color, 1000.0f);
@@ -268,7 +341,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 F0              = lerp(0.04f, albedo, metallic);
     
     // view direction at the hit points back toward the source pixel
-    float3 source_pos    = get_position(uv_source);
     float3 view_dir      = source_pos - position;
     float  view_dist     = length(view_dir);
     view_dir             = view_dist > 0.0001f ? view_dir / view_dist : -normal;

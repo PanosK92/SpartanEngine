@@ -461,6 +461,7 @@ namespace spartan
         {
             // one-shot initialization (run once, never again unless reset)
             bool brdf_lut_produced       = false;
+            uint64_t brdf_lut_shader_hash = 0;
             bool atmosphere_lut_produced = false;
             bool cloud_noise_produced    = false;
 

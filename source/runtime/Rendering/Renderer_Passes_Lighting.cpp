@@ -75,7 +75,6 @@ namespace spartan
                 SetCommonTextures(cmd_list, eye_layer);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections);        // in - reflection
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);             // out
                 // shader uses buffer_pass via world_to_view so push constants must be set

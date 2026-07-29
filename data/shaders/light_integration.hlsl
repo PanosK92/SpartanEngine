@@ -66,15 +66,19 @@ float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
 {
     const uint sample_count = 1024;
-    
+
     float3 v;
     v.x = sqrt(1.0f - n_dot_v * n_dot_v);
     v.y = 0.0f;
     v.z = n_dot_v;
     float3 n = float3(0.0f, 0.0f, 1.0f);
-    
+
+    float  alpha  = D_GGX_Alpha(roughness);
+    float  alpha2 = alpha * alpha;
+    float3 f0     = float3(f0_val, f0_val, f0_val);
+
     float integral = 0.0f;
-    for(uint i = 0; i < sample_count; ++i)
+    for (uint i = 0; i < sample_count; ++i)
     {
         float2 Xi     = hammersley(i, sample_count);
         float3 h      = importance_sample_ggx(Xi, n, roughness);
@@ -82,30 +86,18 @@ float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
         float n_dot_l = saturate(l.z);
         float n_dot_h = saturate(h.z);
         float v_dot_h = saturate(dot(v, h));
-        
-        if(n_dot_l > 0.0f)
+
+        if (n_dot_l > 0.0f)
         {
-            Surface surface;
-            surface.roughness      = roughness;
-            surface.F0             = float3(f0_val, f0_val, f0_val);
-            surface.metallic       = 0.0f;
-            surface.diffuse_energy = float3(1.0f, 1.0f, 1.0f);
-            
-            AngularInfo angular_info;
-            angular_info.n_dot_l = n_dot_l;
-            angular_info.n_dot_v = n_dot_v;
-            angular_info.n_dot_h = n_dot_h;
-            angular_info.v_dot_h = v_dot_h;
-            
-            float3 fs  = BRDF_Specular_Isotropic(surface, angular_info);
-            float brdf = fs.r;
-            
-            float alpha  = D_GGX_Alpha(roughness);
-            float alpha2 = alpha * alpha;
-            float d      = D_GGX(n_dot_h, alpha2);
-            float pdf    = (d * n_dot_h / (4.0f * v_dot_h)) + 1e-5f;
-            
-            integral     += brdf * n_dot_l / pdf;
+            // f90 must be 1, compute_f90(0) is 0 and wipes the split sum bias term so dielectrics
+            // never pick up grazing fresnel and rt/ibl specular stays a faint 4 percent tint
+            float  d    = D_GGX(n_dot_h, alpha2);
+            float  vis  = V_SmithGGX(n_dot_v, n_dot_l, alpha2);
+            float3 f    = F_Schlick(f0, 1.0f, v_dot_h);
+            float  brdf = (d * vis * f).r;
+            float  pdf  = (d * n_dot_h / (4.0f * v_dot_h)) + 1e-5f;
+
+            integral += brdf * n_dot_l / pdf;
         }
     }
     return integral / float(sample_count);

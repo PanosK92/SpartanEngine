@@ -56,7 +56,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     float3 normal_ws = get_normal(uv);
-    float roughness  = max(tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r, 0.04f);
+    // guide with the same clearcoat blended roughness the tracer used, base roughness alone
+    // over blurs car paint and kills the sharp tube reflections the coat lobe traced
+    float roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    uint  mat_index = uint(tex_normal.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).a);
+    MaterialParameters mat = material_parameters[mat_index];
+    roughness = lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat));
+    roughness = max(roughness, 0.04f);
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
     float2 mv = velocity_ndc * float2(-0.5f, 0.5f);
 

@@ -3849,10 +3849,16 @@ namespace spartan
         // only needs the camera frustum and the light list, so it overlaps the gbuffer pass instead of waiting in batch b
         Pass_LightClusterAssign(cmd_list);
 
-        if (!m_pass_state.brdf_lut_produced)
         {
-            Pass_Lut_BrdfSpecular(cmd_list);
-            m_pass_state.brdf_lut_produced = true;
+            RHI_Shader* lut_shader = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
+            const uint64_t lut_hash = lut_shader ? lut_shader->GetHash() : 0;
+            if (lut_shader && lut_shader->IsCompiled() &&
+                (!m_pass_state.brdf_lut_produced || m_pass_state.brdf_lut_shader_hash != lut_hash))
+            {
+                Pass_Lut_BrdfSpecular(cmd_list);
+                m_pass_state.brdf_lut_produced    = true;
+                m_pass_state.brdf_lut_shader_hash = lut_hash;
+            }
         }
 
         if (update_skysphere)

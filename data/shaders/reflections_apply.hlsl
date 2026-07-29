@@ -42,6 +42,17 @@ static const float glass_absorption_scale     = 50.0f;  // maps authored absorpt
 static const float reflection_roughness_fade_start = 0.85f; // full reflection at or below this
 static const float reflection_roughness_fade_end   = 1.0f;  // no reflection at or above this
 
+// karis 2014 analytic split sum, same as reflections_shade, f90 is baked in as 1 so the bias
+// term carries grazing fresnel, the gpu lut was built with compute_f90(0)=0 which wiped that term
+float2 reflection_env_brdf(float roughness, float n_dot_v)
+{
+    const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f);
+    const float4 c1 = float4(1.0f, 0.0425f, 1.04f, -0.04f);
+    float4 r        = roughness * c0 + c1;
+    float  a004     = min(r.x * r.x, exp2(-9.28f * n_dot_v)) * r.x + r.y;
+    return float2(-1.04f, 1.04f) * a004 + r.zw;
+}
+
 // screen-space raymarching constants
 static const uint  g_refraction_max_steps     = 16;     // max ray steps for refraction
 static const float g_refraction_max_distance  = 2.0f;   // max refraction distance
@@ -350,22 +361,22 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // compute specular reflection using fresnel and brdf split sum
     float3 reflection = tex[thread_id.xy].rgb;
 
-    // the tracer blends toward the clearcoat lobe on every surface, weigh the result with the same
-    // roughness or the split sum integrates a lobe that was never sampled, car paint loses most of
-    // its coat reflection that way
-    float reflection_roughness = lerp(surface.roughness, surface.clearcoat_roughness, saturate(surface.clearcoat));
-    float2 brdf = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, reflection_roughness), 0.0f).rg;
+    // the tracer blends toward the clearcoat lobe on every surface, weigh with the same roughness
+    // and coat f0 or the split sum integrates a lobe that was never sampled
+    float  coat               = saturate(surface.clearcoat);
+    float  reflection_roughness = lerp(surface.roughness, surface.clearcoat_roughness, coat);
+    float2 brdf               = reflection_env_brdf(reflection_roughness, n_dot_v);
 
-    // pick the right F0, transparent surfaces use the ior derived dielectric F0, opaque surfaces use the actual surface F0 which is colored for metals
-    float  f0_dielectric  = pow((ior_air - ior_material) / (ior_air + ior_material), 2.0f);
-    float3 F0_dielectric  = float3(f0_dielectric, f0_dielectric, f0_dielectric);
-    float3 F0_brdf        = (surface.is_water() || surface.is_transparent()) ? F0_dielectric : surface.F0;
+    // transparent uses ior f0, opaque with clearcoat uses coat f0 0.04 because that is the lobe we traced
+    float  f0_dielectric = pow((ior_air - ior_material) / (ior_air + ior_material), 2.0f);
+    float3 F0_dielectric = float3(f0_dielectric, f0_dielectric, f0_dielectric);
+    float3 F0_opaque     = lerp(surface.F0, float3(0.04f, 0.04f, 0.04f), coat);
+    float3 F0_brdf       = (surface.is_water() || surface.is_transparent()) ? F0_dielectric : F0_opaque;
 
     // fade out the mirror sharp reflection on rough surfaces, see band comment at top of file
     float roughness_fade = 1.0f - smoothstep(reflection_roughness_fade_start, reflection_roughness_fade_end, reflection_roughness);
     reflection          *= roughness_fade;
 
-    // brdf.x is fresnel dependent and brdf.y is fresnel independent, this matches the split sum used in light_image_based.hlsl
     float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y);
 
     if (surface.is_transparent() && !surface.is_water())
