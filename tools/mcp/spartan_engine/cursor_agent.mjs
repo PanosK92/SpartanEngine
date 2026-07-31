@@ -19,11 +19,16 @@ import {
   advanced_scene_tool_names,
   audit_scene_quality,
   infer_required_features,
+  prop_quality_profile,
   scene_quality_prompt_lines,
 } from "./scene_quality.mjs";
 import {
   audit_scene_layout,
 } from "./scene_planning.mjs";
+import {
+  calculate_benchmark_metrics,
+  compare_benchmark_results,
+} from "./scene_benchmarks.mjs";
 import {
   create_design_brief,
   infer_design_template,
@@ -50,13 +55,15 @@ import {
   material_file_name,
 } from "./world_resources.mjs";
 import {
+  cleanup_run_resources,
+  snapshot_run_resources,
+} from "./run_cleanup.mjs";
+import {
   auto_register_world_asset,
   resolve_world_resource_directory,
-  world_asset_compare,
   world_asset_fork,
   world_asset_inspect,
   world_asset_load,
-  world_asset_promote,
   world_asset_register,
   world_asset_search,
   world_material_fork,
@@ -126,6 +133,19 @@ const engine_tool_names = new Set([
   "asset_viewer_preview_entity",
   "asset_viewer_set_view",
   "asset_viewer_screenshot",
+  "asset_viewer_refresh",
+  "asset_viewer_list",
+  "asset_viewer_inspect",
+  "asset_viewer_set_selection",
+  "asset_viewer_set_display",
+  "asset_viewer_preview_path",
+  "asset_viewer_reload",
+  "asset_viewer_mesh",
+  "asset_viewer_mesh_save",
+  "asset_viewer_rename",
+  "asset_viewer_delete",
+  "asset_viewer_cleanup_scan",
+  "asset_viewer_cleanup_apply",
   "entity_render_materials",
   "component_types",
   "primitive_types",
@@ -141,14 +161,17 @@ const engine_tool_names = new Set([
   "world_asset_search",
   "world_asset_inspect",
   "world_asset_register",
-  "world_asset_version",
   "world_asset_fork",
-  "world_asset_compare",
-  "world_asset_promote",
   "world_asset_load",
   "world_material_inspect",
   "world_material_fork",
   "world_material_publish",
+  "resource_read",
+  "prefab_create",
+  "scene_benchmark_score",
+  "async_task_start",
+  "async_task_get",
+  "async_task_list",
 ]);
 const scene_mutating_tool_names = new Set([
   "entity_create_empty",
@@ -188,12 +211,12 @@ const scene_mutating_tool_names = new Set([
   "district_blockout",
   "city_blockout",
   "prefab_load",
+  "prefab_save",
+  "prefab_create",
   "world_set_environment",
   "execute_lua",
   "world_asset_register",
-  "world_asset_version",
   "world_asset_fork",
-  "world_asset_promote",
   "world_asset_load",
   "world_material_fork",
   "world_material_publish",
@@ -208,11 +231,20 @@ let cached_agent_key = "";
 let agent_run_queue = Promise.resolve();
 let active_assistant_context = null;
 let assistant_command_queue = Promise.resolve();
+const assistant_async_tasks = new Map();
+const maximum_assistant_async_tasks = 100;
+let next_assistant_async_task_id = 1;
 const maximum_cursor_run_ms = Number.parseInt(
   process.env.SPARTAN_CURSOR_MAX_RUN_MS ??
   "360000",
   10,
 );
+const maximum_focused_asset_run_ms = Number.parseInt(
+  process.env.SPARTAN_FOCUSED_ASSET_MAX_RUN_MS ??
+  "240000",
+  10,
+);
+const focused_finalization_reserve_ms = 45000;
 
 function is_engine_bridge_failure(result)
 {
@@ -228,6 +260,116 @@ function is_engine_bridge_failure(result)
       error.includes("timed out") ||
     error.includes("engine connection") &&
       error.includes("timed out")
+  );
+}
+
+function assistant_async_task_receipt(task)
+{
+  return {
+    id: task.id,
+    tool: task.tool,
+    status: task.status,
+    started_at: task.started_at,
+    completed_at: task.completed_at,
+    duration_ms: task.completed_at_ms
+      ? task.completed_at_ms - task.started_at_ms
+      : Date.now() - task.started_at_ms,
+    is_error: task.status === "failed",
+    result: task.result,
+    error: task.error,
+  };
+}
+
+function prune_assistant_async_tasks(required_slots = 0)
+{
+  const target_size =
+    maximum_assistant_async_tasks - required_slots;
+  for (const [id, task] of assistant_async_tasks)
+  {
+    if (assistant_async_tasks.size <= target_size)
+    {
+      break;
+    }
+    if (
+      task.status === "completed" ||
+      task.status === "failed"
+    )
+    {
+      assistant_async_tasks.delete(id);
+    }
+  }
+}
+
+async function run_assistant_async_task(
+  task,
+  context,
+  command,
+  args,
+)
+{
+  task.status = "running";
+  try
+  {
+    const result = await dispatch_assistant_command(
+      context,
+      command,
+      args,
+    );
+    task.result = result;
+    task.error =
+      result?.ok === false
+        ? result.error ?? "command failed"
+        : null;
+    task.status =
+      result?.ok === false
+        ? "failed"
+        : "completed";
+  }
+  catch (error)
+  {
+    task.result = null;
+    task.error = error.message;
+    task.status = "failed";
+  }
+  finally
+  {
+    task.completed_at_ms = Date.now();
+    task.completed_at =
+      new Date(task.completed_at_ms).toISOString();
+    prune_assistant_async_tasks();
+  }
+}
+
+function focused_command_timeout(
+  context,
+  requested_timeout,
+)
+{
+  if (!context?.focused_deadline_at)
+  {
+    return requested_timeout;
+  }
+  const restoration_reserve =
+    context.finalizing_asset &&
+    !context.restoring_asset_state
+      ? context.finalization_restore_reserve_ms ?? 0
+      : 0;
+  const remaining =
+    context.focused_deadline_at -
+    Date.now() -
+    restoration_reserve;
+  if (remaining <= 0)
+  {
+    throw new Error(
+      "focused asset run exceeded its deadline",
+    );
+  }
+  return Math.max(
+    1,
+    Math.min(
+      requested_timeout,
+      remaining,
+    ),
   );
 }
 
@@ -252,7 +394,7 @@ async function assistant_resource_directory(context)
 //
 // the geometry stage is told to split a surface off into its own part whenever it needs its own material
 // or its own parameters, which is the only way to author detail, and it leaves a chair sitting at forty
-// draw calls. this runs on the way to disk so the saved prefab is the cheap version and the authoring
+// draw calls. this runs on the way to disk so the saved prefab is cheap and the authoring
 // stage never has to think about the cost
 //
 // the caller decides whether the entity is a single object. collapsing one is the whole point, collapsing
@@ -273,7 +415,7 @@ async function make_game_ready(
       id: entity_id,
       generate_lods: true,
     },
-    120000,
+    focused_command_timeout(context, 120000),
   );
 
   // a failure here costs an optimisation, not the asset, so the save carries on either way
@@ -303,6 +445,14 @@ async function make_game_ready(
       },
     );
   }
+  track_owned_resource_paths(
+    context,
+    "entity_make_game_ready",
+    {
+      id: entity_id,
+    },
+    report,
+  );
   return report;
 }
 
@@ -313,6 +463,13 @@ async function register_assistant_asset(
   result,
 )
 {
+  if (
+    context.focused_asset_run &&
+    !context.finalizing_asset
+  )
+  {
+    return result;
+  }
   const registration = await auto_register_world_asset(
     get_project_root(),
     await assistant_resource_directory(context),
@@ -324,32 +481,15 @@ async function register_assistant_asset(
   {
     result.asset_registration = registration;
     const asset_id = registration.asset?.id;
-    const candidate_version = registration.version?.id;
-    const candidate_path = registration.version?.path;
-    if (asset_id && candidate_version && candidate_path)
+    const current_path = registration.asset?.path;
+    if (asset_id && current_path)
     {
       context.asset_viewer_asset_id = asset_id;
-      context.asset_viewer_candidate = {
+      context.asset_viewer_current = {
         asset_id,
-        version_id: candidate_version,
-        path: candidate_path,
+        path: current_path,
       };
-      context.visual_review_candidate = null;
-    }
-    if (
-      command === "prefab_save" &&
-      asset_id &&
-      is_focused_asset_request(context.prompt)
-    )
-    {
-      result.asset_viewer = await context.run.tool(
-        "asset_viewer_select",
-        {
-          asset_id,
-          version_id: candidate_version,
-        },
-        10000,
-      );
+      context.latest_prefab_path = current_path;
     }
   }
   return result;
@@ -756,7 +896,7 @@ async function calibrate_lights(run, args) {
 async function wait_for_screenshot(file_path, wait_ms = 5000) {
   const requested_path = String(file_path ?? "")
     .replaceAll("\\", "/");
-  const candidates = path.isAbsolute(requested_path)
+  const possible_paths = path.isAbsolute(requested_path)
     ? [requested_path]
     : [
         path.resolve(
@@ -772,11 +912,11 @@ async function wait_for_screenshot(file_path, wait_ms = 5000) {
   const deadline = Date.now() + wait_ms;
   while (Date.now() < deadline)
   {
-    for (const candidate of candidates)
+    for (const possible_path of possible_paths)
     {
       try
       {
-        const stats = await fs.stat(candidate);
+        const stats = await fs.stat(possible_path);
         if (stats.size > 0)
         {
           return true;
@@ -863,7 +1003,7 @@ async function review_asset_viewer(
   run,
   args,
   asset_id,
-  candidate = null,
+  current = null,
 )
 {
   if (!asset_id)
@@ -878,10 +1018,6 @@ async function review_asset_viewer(
     "asset_viewer_select",
     {
       asset_id,
-      version_id:
-        candidate?.version_id ??
-        args.version_id ??
-        args.version,
     },
     10000,
   );
@@ -890,15 +1026,15 @@ async function review_asset_viewer(
     return selected;
   }
   if (
-    candidate?.path &&
-    selected.loaded_path !== candidate.path
+    current?.path &&
+    selected.loaded_path !== current.path
   )
   {
     return {
       ok: false,
       error:
-        "Asset Viewer loaded a different version than the promotion candidate",
-      expected_path: candidate.path,
+        "Asset Viewer loaded a different asset file",
+      expected_path: current.path,
       loaded_path: selected.loaded_path,
     };
   }
@@ -910,7 +1046,7 @@ async function review_asset_viewer(
     return {
       ok: false,
       error:
-        "promotion candidate has no previewable geometry",
+        "current asset has no previewable geometry",
       loaded_path: selected.loaded_path,
     };
   }
@@ -940,9 +1076,7 @@ async function review_asset_viewer(
       "asset_viewer_screenshot",
       {
         path:
-          `asset_${asset_id}_${
-            candidate?.version_id ?? "active"
-          }_${view}.png`,
+          `asset_${asset_id}_current_${view}.png`,
         width: args.width ?? 768,
         height: args.height ?? 768,
       },
@@ -990,13 +1124,13 @@ async function review_asset_viewer(
             "Asset Viewer renderer generation was not ready";
         }
         else if (
-          candidate?.path &&
-          renderer_status.loaded_path !== candidate.path
+          current?.path &&
+          renderer_status.loaded_path !== current.path
         )
         {
           screenshot.ok = false;
           screenshot.error =
-            "Asset Viewer changed versions during renderer capture";
+            "Asset Viewer changed assets during renderer capture";
         }
       }
     }
@@ -1017,9 +1151,6 @@ async function review_asset_viewer(
     ok: true,
     target: "asset_viewer",
     asset_id,
-    version_id:
-      candidate?.version_id ??
-      selected.selected_version_id,
     loaded_path: selected.loaded_path,
     views,
   };
@@ -1688,16 +1819,6 @@ async function create_compound(run, args) {
   let prefab = null;
   if (args.prefab_path)
   {
-    // a compound is one object by construction, so its parts are always safe to collapse. the guard is
-    // only that a focused asset run is what asked for it, a scene run saves props it did not isolate
-    let game_ready = null;
-    if (active_assistant_context?.authoring_root_id)
-    {
-      game_ready = await make_game_ready(
-        active_assistant_context,
-        root.entity.id,
-      );
-    }
     prefab = await run.tool(
       "prefab_save",
       {
@@ -1705,10 +1826,6 @@ async function create_compound(run, args) {
         path: args.prefab_path,
       },
     );
-    if (game_ready)
-    {
-      prefab.game_ready = game_ready;
-    }
     if (!prefab.ok)
     {
       return {
@@ -1717,7 +1834,10 @@ async function create_compound(run, args) {
         completed_parts,
       };
     }
-    if (active_assistant_context)
+    if (
+      active_assistant_context &&
+      !active_assistant_context.authoring_root_id
+    )
     {
       await register_assistant_asset(
         active_assistant_context,
@@ -1866,6 +1986,84 @@ const part_changing_commands = new Set([
   "compound_create",
 ]);
 
+const resource_writing_commands = new Set([
+  "material_create",
+  "material_semantic_create",
+  "material_palette_create",
+  "material_textured_create",
+  "textured_material_create",
+  "mesh_generate",
+  "mesh_generate_batch",
+  "mesh_raw_create",
+  "entity_make_game_ready",
+  "texture_generate",
+  "prefab_save",
+  "compound_create",
+  "construction_grammar_create",
+  "detail_pattern_create",
+  "screenshot_take",
+  "asset_viewer_screenshot",
+  "world_asset_register",
+]);
+
+function collect_owned_resource_paths(
+  value,
+  paths,
+)
+{
+  if (typeof value === "string")
+  {
+    const normalized = value.replaceAll("\\", "/");
+    if (
+      normalized.toLowerCase().includes(
+        "mcp_resources/",
+      ) &&
+      path.posix.extname(normalized)
+    )
+    {
+      paths.add(normalized);
+    }
+    return;
+  }
+  if (Array.isArray(value))
+  {
+    for (const item of value)
+    {
+      collect_owned_resource_paths(item, paths);
+    }
+    return;
+  }
+  if (!value || typeof value !== "object")
+  {
+    return;
+  }
+  for (const item of Object.values(value))
+  {
+    collect_owned_resource_paths(item, paths);
+  }
+}
+
+function track_owned_resource_paths(
+  context,
+  command,
+  args,
+  result,
+)
+{
+  if (
+    !context?.focused_asset_run ||
+    result?.ok !== true ||
+    !resource_writing_commands.has(command)
+  )
+  {
+    return;
+  }
+  const owned_paths =
+    context.owned_resource_paths ??= new Set();
+  collect_owned_resource_paths(args, owned_paths);
+  collect_owned_resource_paths(result, owned_paths);
+}
+
 // the prefab is rewritten as the asset grows, so the file on disk always holds what has been built so far.
 // a run that dies at part thirty leaves thirty usable parts instead of nothing, and the asset appears in the
 // library while it is being made rather than in one lump at the end
@@ -1879,6 +2077,7 @@ async function save_asset_progress(
 )
 {
   if (
+    context?.focused_asset_run ||
     !context?.authoring_root_id ||
     !context?.authoring_prefab_path ||
     result?.ok !== true ||
@@ -1889,7 +2088,7 @@ async function save_asset_progress(
   }
 
   const now = Date.now();
-  if (now - (context.authoring_saved_at ?? 0) < 4000)
+  if (now - (context.authoring_saved_at ?? 0) < 10000)
   {
     return;
   }
@@ -1897,13 +2096,21 @@ async function save_asset_progress(
 
   try
   {
-    await context.run.tool(
+    const result = await context.run.tool(
       "prefab_save",
       {
         id: context.authoring_root_id,
         path: context.authoring_prefab_path,
       },
-      60000,
+      25000,
+    );
+    track_owned_resource_paths(
+      context,
+      "prefab_save",
+      {
+        path: context.authoring_prefab_path,
+      },
+      result,
     );
   }
   catch
@@ -2062,6 +2269,276 @@ async function dispatch_assistant_command(
       ...args.arguments,
     };
     delete args.arguments;
+  }
+  if (command === "prefab_create")
+  {
+    command = "prefab_save";
+  }
+  if (command === "resource_read")
+  {
+    const has_name =
+      typeof args.name === "string" &&
+      args.name.trim().length > 0;
+    const has_path =
+      typeof args.path === "string" &&
+      args.path.trim().length > 0;
+    const has_list_query =
+      args.type !== undefined ||
+      args.limit !== undefined ||
+      args.offset !== undefined;
+    const unsupported_fields = Object.keys(args).filter(
+      (key) =>
+        ![
+          "name",
+          "path",
+          "type",
+          "limit",
+          "offset",
+        ].includes(key),
+    );
+    if (unsupported_fields.length > 0)
+    {
+      return {
+        ok: false,
+        error:
+          `resource_read does not accept ${unsupported_fields.join(", ")}`,
+        code: "invalid_arguments",
+      };
+    }
+    if (
+      (
+        has_name &&
+        has_path
+      ) ||
+      (
+        (has_name || has_path) &&
+        has_list_query
+      )
+    )
+    {
+      return {
+        ok: false,
+        error:
+          "resource_read is ambiguous, pass exactly one material name or path for material_get, or pass only type, limit, and offset for resource_list",
+        code: "invalid_arguments",
+      };
+    }
+    if (has_name || has_path)
+    {
+      command = "material_get";
+      args = has_name
+        ? { name: args.name }
+        : { path: args.path };
+    }
+    else
+    {
+      command = "resource_list";
+      args = {
+        type: args.type,
+        limit: args.limit,
+        offset: args.offset,
+      };
+    }
+  }
+  if (command === "scene_benchmark_score")
+  {
+    if (
+      !args.result ||
+      typeof args.result !== "object" ||
+      Array.isArray(args.result)
+    )
+    {
+      return {
+        ok: false,
+        error:
+          "scene_benchmark_score requires result as an object",
+        code: "invalid_arguments",
+      };
+    }
+    if (
+      args.baseline !== undefined &&
+      (
+        !args.baseline ||
+        typeof args.baseline !== "object" ||
+        Array.isArray(args.baseline)
+      )
+    )
+    {
+      return {
+        ok: false,
+        error:
+          "scene_benchmark_score baseline must be an object",
+        code: "invalid_arguments",
+      };
+    }
+    const score =
+      calculate_benchmark_metrics(args.result);
+    const comparison =
+      args.baseline
+        ? compare_benchmark_results(
+            args.result,
+            args.baseline,
+          )
+        : undefined;
+    return {
+      ...score,
+      comparison,
+    };
+  }
+  if (command === "async_task_start")
+  {
+    const target = String(args.tool ?? "").trim();
+    if (!target)
+    {
+      return {
+        ok: false,
+        error:
+          "async_task_start requires tool and optional args",
+        code: "invalid_arguments",
+      };
+    }
+    if (
+      [
+        "async_task_start",
+        "async_task_get",
+        "async_task_list",
+      ].includes(target)
+    )
+    {
+      return {
+        ok: false,
+        error:
+          "async task commands cannot start async task commands",
+        code: "invalid_arguments",
+      };
+    }
+    if (!engine_tool_names.has(target))
+    {
+      return {
+        ok: false,
+        error: `unknown async task tool ${target}`,
+        code: "target_resolution_failed",
+      };
+    }
+    const target_args = args.args ?? {};
+    if (
+      !target_args ||
+      typeof target_args !== "object" ||
+      Array.isArray(target_args)
+    )
+    {
+      return {
+        ok: false,
+        error: "async_task_start args must be an object",
+        code: "invalid_arguments",
+      };
+    }
+    prune_assistant_async_tasks(1);
+    if (
+      assistant_async_tasks.size >=
+      maximum_assistant_async_tasks
+    )
+    {
+      return {
+        ok: false,
+        error:
+          "async task registry is full, wait for a running task to finish",
+        code: "async_task_capacity_reached",
+      };
+    }
+    const started_at_ms = Date.now();
+    const task = {
+      id: `cursor_task_${
+        started_at_ms
+      }_${
+        next_assistant_async_task_id++
+      }`,
+      tool: target,
+      status: "queued",
+      started_at_ms,
+      started_at:
+        new Date(started_at_ms).toISOString(),
+      completed_at_ms: null,
+      completed_at: null,
+      result: null,
+      error: null,
+    };
+    assistant_async_tasks.set(task.id, task);
+    if (scene_mutating_tool_names.has(target))
+    {
+      context.mark_scene_mutation?.();
+    }
+    const task_promise = run_assistant_async_task(
+      task,
+      context,
+      target,
+      target_args,
+    );
+    context.assistant_async_task_promises ??=
+      new Set();
+    context.assistant_async_task_promises.add(
+      task_promise,
+    );
+    void task_promise.finally(() =>
+    {
+      context.assistant_async_task_promises?.delete(
+        task_promise,
+      );
+    });
+    return {
+      ok: true,
+      task: assistant_async_task_receipt(task),
+    };
+  }
+  if (command === "async_task_get")
+  {
+    const id = String(args.id ?? "").trim();
+    const task = assistant_async_tasks.get(id);
+    if (!task)
+    {
+      return {
+        ok: false,
+        error: "async task not found",
+        code: "target_resolution_failed",
+      };
+    }
+    return {
+      ok: true,
+      task: assistant_async_task_receipt(task),
+    };
+  }
+  if (command === "async_task_list")
+  {
+    return {
+      ok: true,
+      tasks: [...assistant_async_tasks.values()]
+        .map(assistant_async_task_receipt),
+    };
+  }
+  if (
+    context.focused_asset_run &&
+    !context.finalizing_asset &&
+    command === "prefab_save"
+  )
+  {
+    return {
+      ok: false,
+      deferred: true,
+      error:
+        "focused asset prefab save runs once during finalization",
+    };
+  }
+  if (
+    context.focused_asset_run &&
+    !context.finalizing_asset &&
+    command === "compound_create" &&
+    args.prefab_path
+  )
+  {
+    args = {
+      ...args,
+      prefab_path: undefined,
+    };
   }
   if (command === "mesh_generate")
   {
@@ -2301,11 +2778,20 @@ async function dispatch_assistant_command(
       args,
     );
   }
-  if (
-    command === "world_asset_register" ||
-    command === "world_asset_version"
-  )
+  if (command === "world_asset_register")
   {
+    if (
+      context.focused_asset_run &&
+      !context.finalizing_asset
+    )
+    {
+      return {
+        ok: false,
+        deferred: true,
+        error:
+          "focused asset registration runs once after final save",
+      };
+    }
     const revision =
       context.asset_revision?.asset_id
         ? context.asset_revision
@@ -2320,9 +2806,6 @@ async function dispatch_assistant_command(
         path:
           context.asset_revision_path ??
           args.path,
-        parent_version: revision.active_version,
-        promote: false,
-        replace_candidate: true,
       };
     }
     const result = await world_asset_register(
@@ -2330,36 +2813,24 @@ async function dispatch_assistant_command(
       catalog_directory,
       args,
     );
-    if (result.ok && revision)
-    {
-      context.asset_revision_candidate =
-        result.version?.id ??
-        null;
-    }
     if (
       result.ok &&
       (
         args.type === "mesh" ||
         args.type === "prefab"
       ) &&
-      is_focused_asset_request(
-        context.prompt ??
-        context.intent?.prompt
-      )
+      context.focused_asset_run
     )
     {
       const asset_id =
         result.asset?.id ??
         args.asset_id;
-      const candidate_version =
-        result.version?.id;
-      const candidate_path =
-        result.version?.path;
+      const current_path =
+        result.asset?.path;
       const selection = await run.tool(
         "asset_viewer_select",
         {
           asset_id,
-          version_id: candidate_version,
         },
         10000,
       );
@@ -2367,12 +2838,11 @@ async function dispatch_assistant_command(
       {
         context.asset_viewer_asset_id =
           asset_id;
-        context.asset_viewer_candidate = {
+        context.asset_viewer_current = {
           asset_id,
-          version_id: candidate_version,
-          path: candidate_path,
+          path: current_path,
         };
-        context.visual_review_candidate = null;
+        context.latest_prefab_path = current_path;
       }
       result.asset_viewer = selection;
     }
@@ -2393,79 +2863,6 @@ async function dispatch_assistant_command(
       catalog_directory,
       args,
       catalog_send,
-    );
-  }
-  if (command === "world_asset_compare")
-  {
-    return world_asset_compare(
-      catalog_root,
-      catalog_directory,
-      args,
-    );
-  }
-  if (command === "world_asset_promote")
-  {
-    const revision =
-      context.asset_revision?.asset_id
-        ? context.asset_revision
-        : null;
-    if (revision)
-    {
-      const candidate_version =
-        context.asset_revision_candidate ??
-        args.candidate_version ??
-        args.version;
-      args = {
-        ...args,
-        asset_id: revision.asset_id,
-        version: candidate_version,
-        candidate_version,
-        threshold: 0,
-      };
-    }
-    if (is_focused_asset_request(context.prompt))
-    {
-      const asset_id = String(
-        args.asset_id ?? args.id ?? "",
-      );
-      const version_id = String(
-        args.version ??
-        args.candidate_version ??
-        args.version_id ??
-        "",
-      );
-      const evidence = context.visual_review_candidate;
-      if (!version_id)
-      {
-        return {
-          ok: false,
-          error:
-            "focused asset promotion requires an explicit candidate version",
-        };
-      }
-      if (
-        !evidence ||
-        evidence.asset_id !== asset_id ||
-        evidence.version_id !== version_id
-      )
-      {
-        return {
-          ok: false,
-          error:
-            "review the exact candidate version in the Asset Viewer before promotion",
-          candidate: {
-            asset_id,
-            version_id,
-          },
-          reviewed: evidence,
-        };
-      }
-      args.version = version_id;
-    }
-    return world_asset_promote(
-      catalog_root,
-      catalog_directory,
-      args,
     );
   }
   if (command === "world_asset_load")
@@ -2584,6 +2981,41 @@ async function dispatch_assistant_command(
       },
       compound_create: {
         required: ["name", "parts"],
+      },
+      resource_read: {
+        material_read: {
+          required_one_of: ["name", "path"],
+          note:
+            "pass exactly one material name or path, this dispatches to material_get",
+        },
+        resource_list: {
+          optional: ["type", "limit", "offset"],
+          note:
+            "pass no name or path, empty arguments list all resources",
+        },
+      },
+      prefab_create: {
+        alias_for: "prefab_save",
+        note:
+          "uses prefab_save arguments, focused runs defer this alias because the finalizer owns the only prefab save",
+      },
+      scene_benchmark_score: {
+        required: ["result"],
+        optional: ["baseline"],
+        note:
+          "result and baseline are benchmark result objects scored locally",
+      },
+      async_task_start: {
+        required: ["tool"],
+        optional: ["args"],
+        note:
+          "args must be an object, async_task_start, async_task_get, and async_task_list cannot be nested",
+      },
+      async_task_get: {
+        required: ["id"],
+      },
+      async_task_list: {
+        required: [],
       },
     };
     return {
@@ -3086,6 +3518,14 @@ async function dispatch_assistant_command(
       {
         ...args,
         id: args.id ?? args.root_id,
+        ...(context.focused_asset_run
+          ? {
+              ...prop_quality_profile,
+              required_features: [],
+              required_roles: [],
+              profile: "prop",
+            }
+          : {}),
       },
     );
   }
@@ -3110,24 +3550,14 @@ async function dispatch_assistant_command(
   }
   if (command === "scene_visual_review")
   {
-    if (is_focused_asset_request(context.prompt))
+    if (context.focused_asset_run)
     {
-      const review = await review_asset_viewer(
-        run,
-        args,
-        context.asset_viewer_asset_id,
-        context.asset_viewer_candidate,
-      );
-      if (review.ok)
-      {
-        context.visual_review_candidate = {
-          asset_id: review.asset_id,
-          version_id: review.version_id,
-          path: review.loaded_path,
-        };
-        context.mark_visual_review?.();
-      }
-      return review;
+      return {
+        ok: false,
+        deferred: true,
+        error:
+          "focused asset review runs once after final save",
+      };
     }
     const review = await review_scene(run, args);
     if (review.ok)
@@ -3138,49 +3568,15 @@ async function dispatch_assistant_command(
   }
   if (
     command === "screenshot_take" &&
-    is_focused_asset_request(context.prompt)
+    context.focused_asset_run
   )
   {
-    if (!context.asset_viewer_asset_id)
-    {
-      return {
-        ok: false,
-        error:
-          "register or select the reusable asset before taking an Asset Viewer screenshot",
-      };
-    }
-    const screenshot = await run.tool(
-      "asset_viewer_screenshot",
-      {
-        path:
-          args.path ??
-          `asset_${context.asset_viewer_asset_id}.png`,
-        width: args.width ?? 768,
-        height: args.height ?? 768,
-      },
-      10000,
-    );
-    if (
-      screenshot.ok &&
-      screenshot.async &&
-      screenshot.path
-    )
-    {
-      screenshot.ready = await wait_for_screenshot(
-        screenshot.path,
-        10000,
-      );
-      if (!screenshot.ready)
-      {
-        return {
-          ...screenshot,
-          ok: false,
-          error:
-            "Asset Viewer screenshot was not written within 10 seconds",
-        };
-      }
-    }
-    return screenshot;
+    return {
+      ok: false,
+      deferred: true,
+      error:
+        "focused asset review runs once after final save",
+    };
   }
   if (command === "screenshot_take" && args.path)
   {
@@ -3206,7 +3602,7 @@ async function dispatch_assistant_command(
   }
   if (command === "viewport_frame")
   {
-    if (is_focused_asset_request(context.prompt))
+    if (context.focused_asset_run)
     {
       const result = await run.tool(
         context.asset_viewer_asset_id
@@ -3292,23 +3688,11 @@ async function dispatch_assistant_command(
           }.prefab`;
       }
     }
-    // only the isolated root a focused asset was built under, anything else being saved is a scene
-    const target_id = args.id ?? args.entity_id;
-    const game_ready =
-      command === "prefab_save" &&
-      context.authoring_root_id &&
-      String(context.authoring_root_id) === String(target_id)
-        ? await make_game_ready(context, target_id)
-        : null;
     const result = await run.tool(
       command,
       args,
       60000,
     );
-    if (game_ready)
-    {
-      result.game_ready = game_ready;
-    }
     if (
       revision &&
       command === "prefab_save" &&
@@ -3335,6 +3719,19 @@ async function dispatch_assistant_command(
     command === "asset_viewer_screenshot"
   )
   {
+    if (
+      command === "asset_viewer_screenshot" &&
+      context.focused_asset_run &&
+      !context.finalizing_asset
+    )
+    {
+      return {
+        ok: false,
+        deferred: true,
+        error:
+          "focused asset review runs once after final save",
+      };
+    }
     if (command === "asset_viewer_screenshot")
     {
       args = {
@@ -3424,6 +3821,9 @@ const spartan_engine_command_tool = {
   description: [
     "Execute one Spartan Engine command against the live editor.",
     "This bridge supports native commands and composite helpers.",
+    "Local helpers include resource_read, prefab_create, scene_benchmark_score, async_task_start, async_task_get, and async_task_list.",
+    "resource_read accepts exactly one material name or path, or a resource list query; empty arguments list all resources.",
+    "async_task_start accepts tool and optional args, then returns an id for async_task_get polling.",
     "Use this as the primary tool for all scene reads and edits.",
     "Input command examples include context_snapshot, entity_find, entity_create_empty, entity_create_primitive_batch, entity_create_light_batch, mesh_generate, material_create, component_set_batch, screenshot_take, and viewport_frame.",
   ].join(" "),
@@ -3467,6 +3867,24 @@ const spartan_engine_command_tool = {
         : {};
     const assistant_context =
       active_assistant_context;
+    if (
+      assistant_context.focused_asset_run &&
+      (
+        assistant_context.construction_gate_closed ||
+        Date.now() >=
+          assistant_context
+            .focused_construction_deadline_at
+      )
+    )
+    {
+      assistant_context.construction_gate_closed = true;
+      return {
+        ok: false,
+        error: "focused asset construction is closed",
+        code: "focused_construction_closed",
+        retryable: false,
+      };
+    }
     if (assistant_context.bridge_failure)
     {
       return {
@@ -3488,6 +3906,25 @@ const spartan_engine_command_tool = {
       },
     );
     await previous_command;
+    if (
+      assistant_context.focused_asset_run &&
+      (
+        assistant_context.construction_gate_closed ||
+        Date.now() >=
+          assistant_context
+            .focused_construction_deadline_at
+      )
+    )
+    {
+      assistant_context.construction_gate_closed = true;
+      release_command();
+      return {
+        ok: false,
+        error: "focused asset construction is closed",
+        code: "focused_construction_closed",
+        retryable: false,
+      };
+    }
     if (assistant_context.bridge_failure)
     {
       release_command();
@@ -3502,8 +3939,63 @@ const spartan_engine_command_tool = {
     }
     try
     {
+      const dispatch_context =
+        assistant_context.focused_asset_run
+          ? new Proxy(
+              assistant_context,
+              {
+                get(target, property, receiver)
+                {
+                  if (property !== "run")
+                  {
+                    return Reflect.get(
+                      target,
+                      property,
+                      receiver,
+                    );
+                  }
+                  return new Proxy(
+                    target.run,
+                    {
+                      get(run_target, run_property)
+                      {
+                        if (run_property !== "tool")
+                        {
+                          const value =
+                            run_target[run_property];
+                          return typeof value === "function"
+                            ? value.bind(run_target)
+                            : value;
+                        }
+                        return (
+                          command_name,
+                          command_args,
+                          requested_timeout = 60000,
+                        ) => run_target.tool(
+                          command_name,
+                          command_args,
+                          focused_command_timeout(
+                            target,
+                            Math.min(
+                              requested_timeout,
+                              Math.max(
+                                1,
+                                target
+                                  .focused_construction_deadline_at -
+                                  Date.now(),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    },
+                  );
+                },
+              },
+            )
+          : assistant_context;
       const result = await dispatch_assistant_command(
-        assistant_context,
+        dispatch_context,
         command,
         command_arguments,
       );
@@ -3521,6 +4013,12 @@ const spartan_engine_command_tool = {
             "restart the engine before starting another assistant run",
         };
       }
+      track_owned_resource_paths(
+        assistant_context,
+        command,
+        command_arguments,
+        result,
+      );
       await save_asset_progress(
         assistant_context,
         command,
@@ -3953,6 +4451,10 @@ function is_scene_mutation_event(value)
   {
     return false;
   }
+  if (is_named_tool_event(value, "async_task_start"))
+  {
+    return false;
+  }
   return value_contains(value, (text) => {
     const normalized = text
       .toLowerCase()
@@ -3996,7 +4498,7 @@ async function prepare_asset_reuse_plan(
     library_size: plan.library_size,
     reuse: plan.reuse.map((entry) => ({
       wanted: entry.wanted,
-      asset_id: entry.candidates[0]?.asset_id,
+      asset_id: entry.asset?.asset_id,
     })),
   });
   return plan;
@@ -4040,7 +4542,7 @@ async function prepare_asset_library_context(
     for (const asset of result.matches ?? [])
     {
       if (
-        !asset.active_version ||
+        !asset.path ||
         seen.has(asset.id)
       )
       {
@@ -4065,7 +4567,7 @@ function asset_detail_budget(prompt)
   const value = String(prompt ?? "").toLowerCase();
 
   if (
-    /\b(?:blockout|block[\s-]?out|greybox|grey[\s-]?box|proxy|placeholder|stand[\s-]?in|low[\s-]?poly|rough)\b/
+    /\b(?:blockout|block[\s-]?out|greybox|grey[\s-]?box|proxy|placeholder|stand[\s-]?in|low[\s-]?poly|rough|simple|basic|minimal)\b/
       .test(value)
   )
   {
@@ -4105,7 +4607,7 @@ function focused_asset_quality_prompt_lines(prompt)
       ? "This request asked for a blockout, so build the massing and proportions only and stop there."
       : budget.tier === "hero"
         ? "This request asked for a hero asset, so it earns close-up detail. Spend it on the silhouette and on the surfaces that face the viewer, never on hidden faces."
-        : "This is an environment prop. That is the default for every asset request and only the explicit words hero asset or hero quality can promote it. Close-up, photorealistic, detailed, premium, flagship and high quality do not change the tier. An environment prop is placed in a game alongside many other objects and seen from a normal viewing distance, so build it recognisable, correctly proportioned, cleanly made and game ready, then stop.";
+        : "This is an environment prop. That is the default for every asset request and only the explicit words hero asset or hero quality can elevate it. Close-up, photorealistic, detailed, premium, flagship and high quality do not change the tier. An environment prop is placed in a game alongside many other objects and seen from a normal viewing distance, so build it recognisable, correctly proportioned, cleanly made and game ready, then stop.";
 
   return [
     "Focused asset quality standard:",
@@ -4121,16 +4623,21 @@ function focused_asset_quality_prompt_lines(prompt)
     "Use physically plausible dimensions and thickness. Avoid coplanar overlaps, open shells, abrupt radius jumps, floating trim, z-fighting, and decorative parts that do not follow the parent surface.",
     "For transparent materials, model the actual outer and inner surfaces or a valid shell and preserve believable thickness at rims and openings. Do not rely on transparency to imply missing geometry.",
     "Build only the reusable object under its prepared root. Do not surround it with a ground pad, route, display structure, studio set, or review lights unless the user explicitly requests those as part of the asset.",
-    "After registration, review the exact candidate once in solid perspective mode. Add a front or side view only for an explicit hero asset or when the audit identifies a silhouette problem. Use wireframe or vertices only for a specific topology diagnosis.",
-    "Compare against any active version and never promote a candidate that regresses silhouette, topology or necessary material separation. Quality scoring never authorizes exceeding the prop budget or adding hero detail. Correction passes should improve proportions, placement, topology and textures before adding geometry.",
+    "Use one construction pass. Build the current asset completely, then stop authoring. There are no automatic correction, polish, comparison, or alternate passes.",
+    "Do not call prefab_save, world_asset_register, scene_visual_review, screenshot_take, or asset_viewer_screenshot. The run finalizer performs one game-ready pass, one final prefab save, one current-asset catalog registration, and one perspective Asset Viewer screenshot review.",
     "Saving the prefab merges every part that shares a material into one mesh, so splitting a surface off for a genuine material change is cheap. That is a reason to split for material and construction, not a reason to ignore the budget above, because merging parts does not remove a single triangle.",
     "Never generate the same part twice. Before adding a part, check whether you already made it. A regenerated duplicate wastes the budget and leaves two copies of the same geometry in the asset.",
     "Author repetition as one mesh instead of one mesh per copy. When the same shape repeats in the same material, generate it once with the array and mirror modifiers on that mesh_generate call: radial_count with radial_axis, radial_radius and radial_step_degrees for spokes, castors, legs, bolts, flutes and anything arranged around an axis; linear_count with linear_step for slats, ribs, treads, rungs and rows; mirror_axis with mirror_plane for a symmetric pair such as two armrests. A five-spoke base is one call, not five. This is identical geometry at a fraction of the parts, so prefer it over generating each copy separately.",
     "Give a part its own entity only when it needs its own material or its own geometry. Do not split one surface across several entities that all end up with the same material, and keep a collider, light, or sound on the functional entity it belongs to rather than on a part that exists only to be drawn.",
-    "Assemble the asset as you go, one part at a time. The prefab root already exists and is already saved and previewing, so every part you make is joined to the asset the moment you make it: generate the part, parent it to the root, give it its material, and place it against the parts that are already there. Do not author a batch of loose meshes and materials with the intention of assembling them later.",
+    "Assemble the asset as you go, one part at a time. The prepared root already exists and is previewing, so every part you make is joined to the asset the moment you make it: generate the part, parent it to the root, give it its material, and place it against the parts that are already there. Do not author a batch of loose meshes and materials with the intention of assembling them later.",
     "Work outward from the part that fixes the asset's scale and orientation, usually the primary body or the base, because every later part is positioned against what is already standing. Finish and place each part before starting the next one.",
-    "Do not rotate or screenshot after every part. Finish and register the candidate first, then review that exact version once from perspective, adding a front view only when the silhouette is ambiguous.",
+    "Do not rotate or screenshot while constructing. Finish the current asset in one pass and leave finalization and review to the run finalizer.",
     "The Asset Viewer preview follows the root live, so the asset is visible as it grows. Never activate the workspace root or move it into the scene to look at it, and never capture the main viewport for this. Preview and screenshot through the Asset Viewer.",
+    ...(budget.tier === "blockout"
+      ? [
+          "For this blockout, stop after the construction pass. The run finalizer performs the single perspective review.",
+        ]
+      : []),
   ];
 }
 
@@ -4142,15 +4649,15 @@ function asset_revision_prompt_lines(revision)
   {
     return [
       `This request continues work on an asset that already exists. It is not a request for a new asset. The name in the request, "${revision.hint}", matches several library assets equally well: ${revision.ambiguous.join(", ")}.`,
-      "Call world_asset_inspect on each of those and decide which one the request actually means. Then load it with world_asset_load, preview it with asset_viewer_preview_entity, and revise that asset in place.",
-      "If you genuinely cannot tell which one is meant, change nothing, and reply naming the candidates and asking which. Do not build a new asset, the library already holds what the request is about, and do not revise all of them.",
-      "Once you have chosen, change only what the request asks for and leave the rest of the asset alone. Publish the result as a new version of that same asset id with world_asset_register plus world_asset_promote. Never register it under a new asset id.",
+      "Call world_asset_inspect on each match and decide which current asset the request means. Then load it with world_asset_load, preview it with asset_viewer_preview_entity, and revise that asset in place.",
+      "If you genuinely cannot tell which one is meant, change nothing and ask which asset to use. Do not build a duplicate or revise all matches.",
+      "Once chosen, change only what the request asks for. The run finalizer replaces the same catalog asset id once.",
     ];
   }
 
   const lines = [
     "This request continues work on an asset that already exists. It is not a request for a new asset.",
-    `The asset is already loaded and previewing in the Asset Viewer as entity id ${revision.root_id} named ${revision.root_name}, taken from ${revision.source}. Work on that entity. Do not create a second root, and do not delete and rebuild the asset from scratch.`,
+    `The current asset is already loaded and previewing in the Asset Viewer as entity id ${revision.root_id} named ${revision.root_name}, taken from ${revision.source}. Work on that entity. Do not create a second root, and do not delete and rebuild the asset from scratch.`,
     "Change only what the request asks for, and leave the rest of the asset exactly as it is. Everything you find already there was deliberate. If a requested change forces a neighbouring part to change with it, change that part too and say so, but do not take the opportunity to redesign anything else.",
     "Start by reading what is there before changing it. entity_get on the root with descendants, entity_render_materials for the material on each part, mesh_raw_get when you need the actual geometry of a part, and material_get for the properties and texture slots you are about to alter. A change made without reading the current value first is a guess.",
     "Prefer the narrowest tool that expresses the change. A property is material_set_property. A map is texture_generate plus material_set_texture. A dimension or profile is a regenerated part via mesh_generate for that part alone. Rebuild a part only when its geometry itself has to differ.",
@@ -4176,14 +4683,12 @@ function asset_revision_prompt_lines(revision)
   }
 
   lines.push(
-    `Publish the result as a new version of the same catalog asset. Call world_asset_register with type ${revision.asset_type}, asset_id ${revision.asset_id}, and parent_version ${revision.active_version ?? "the active version"}, then world_asset_promote once the Asset Viewer review and checks pass. Never register this as a new asset id, the history of this asset has to stay in one place.`,
-    `Before promoting, compare against the active version with world_asset_compare. Promote only if the requested change is actually visible and nothing else regressed. If your change made the asset worse, say so and keep the active version rather than promoting a regression.`,
+    `Keep the same catalog asset id ${revision.asset_id}. Do not register it yourself. The run finalizer replaces the current catalog asset after the final save.`,
     `Asset being revised: ${safe_json(
       {
         asset_id: revision.asset_id,
         name: revision.asset_name,
         type: revision.asset_type,
-        active_version: revision.active_version,
         aliases: revision.aliases,
         tags: revision.tags,
         constraints: revision.constraints,
@@ -4197,7 +4702,7 @@ function asset_revision_prompt_lines(revision)
   if ((revision.alternatives ?? []).length > 0)
   {
     lines.push(
-      `The request matched this asset best, but the library also holds ${revision.alternatives.join(", ")}. If the loaded asset is clearly not the one the user meant, stop and say which you think they meant instead of revising the wrong asset.`,
+      `The request matched this asset best, but the library also holds ${revision.alternatives.join(", ")}. If the loaded asset is clearly wrong, stop and name the better match instead of revising the wrong asset.`,
     );
   }
 
@@ -4213,6 +4718,7 @@ function build_prompt(
   brief = "",
   reuse_plan = null,
   revision = null,
+  prepared_root = null,
 ) {
   const lines = [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
@@ -4226,11 +4732,11 @@ function build_prompt(
     "Use debug_log_read when diagnosing what commands the assistant sent to the engine and what came back.",
     "Use context_snapshot and entity_resolve instead of multiple separate read calls.",
     "For every new build, design directly from the current request and prepared context. Do not search for persisted layouts, build definitions, or prior generated instructions.",
-    "Before you build any recognisable object, ask the library for it first. Call world_asset_search with the plain object name, then with semantic aliases, tags, dimensions, style, and material constraints. If a promoted match fits, load it with world_asset_load and place it, rather than modelling or approximating it again. Primitives are the fallback for objects the library does not have, never the first choice for objects it might.",
-    "For a focused single-asset request, build the asset in isolation as a game-ready environment prop with budgeted geometry and a small reused material set, review it, register an immutable version, and promote it only after verified checks. Only an explicit request for a hero asset or hero quality changes this tier.",
+    "Before you build any recognisable object, ask the library for it first. Call world_asset_search with the plain object name, then with semantic aliases, tags, dimensions, style, and material constraints. If the current match fits, load it with world_asset_load and place it, rather than modelling or approximating it again. Primitives are the fallback for objects the library does not have, never the first choice for objects it might.",
+    "For a focused single-asset request, build one current asset in isolation as a game-ready environment prop with budgeted geometry and a small reused material set. Only an explicit request for a hero asset or hero quality changes this tier.",
     "For focused asset work, begin editing the prepared asset root immediately. Do not spend multiple minutes narrating, repeating lookups, or redesigning the prepared baseline before the first mutation.",
-    "For focused asset work, never move or capture the main scene viewport. Register the candidate, use asset_viewer_select, asset_viewer_set_view, and asset_viewer_screenshot, and perform scene_visual_review through the Asset Viewer.",
-    "For an environment build, reuse promoted library assets where they fit. Attempt at most one focused improvement per reused asset during the run; otherwise keep the active version and continue the environment.",
+    "For focused asset work, never move or capture the main scene viewport. The run finalizer performs the one Asset Viewer review.",
+    "For an environment build, reuse current library assets where they fit. Attempt at most one focused improvement per reused asset during the run; otherwise keep the current asset and continue the environment.",
     "When an environment build makes you model a recognisable standalone object the library did not have, register it as a library prefab once it looks right, and give it plain aliases and tags a later request would search by, meaning the everyday name of the object rather than its role in this scene. A workbench is registered as workbench with the alias table, not as rear_wall_prop. This is how the library grows enough to make the next blockout better than this one.",
     "Every persistent resource created through MCP belongs under the shared project/mcp_resources directory. Put meshes, materials, textures, prefabs, editable sources, thumbnails, and catalog metadata in their matching shared subdirectories. Never write MCP-generated resources into a world-specific resource directory.",
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
@@ -4275,6 +4781,19 @@ function build_prompt(
   if (focused_asset)
   {
     lines.push(...focused_asset_quality_prompt_lines(prompt));
+    lines.push(
+      "For entity_add_component pass exactly id and a valid component type, for example {id, type: \"physics\"}; call component_types when the exact type is unknown.",
+      "For material commands, pass the .material resource path returned by material creation or inspection as path, never an entity id or display name.",
+      "material_set_texture requires {path, texture_type, texture_path}; slot is optional.",
+    );
+    if (prepared_root?.id && !revision)
+    {
+      lines.push(
+        `The focused asset root already exists as entity id ${prepared_root.id}, named ${prepared_root.name}, with prefab path ${prepared_root.prefab_path}. Use this exact root.`,
+        "Do not call entity_find or entity_create_empty for the prepared root. Its prefab is intentionally not saved while empty; progress saving starts after the first successful part-changing command.",
+        "Your first mutation must be mesh_generate or another direct geometry creation command for the primary form, parented to the prepared root. Do not mutate the root merely to begin.",
+      );
+    }
   }
 
   // the scene construction block below plans zones, circulation and lighting, which is the wrong shape of
@@ -4305,13 +4824,17 @@ function build_prompt(
     if (prepared_assets.length > 0)
     {
       lines.push(
-        "Promoted reusable asset matches were searched before this run. Reuse suitable entries with world_asset_load; inspect or improve only when their constraints do not fit.",
+        "Reusable asset matches were searched before this run. Reuse suitable entries with world_asset_load; inspect or improve only when their constraints do not fit.",
         `Prepared asset matches: ${safe_json(prepared_assets, 5000)}`,
       );
     }
   }
 
-  if (intent?.target_name && !revision)
+  if (
+    intent?.target_name &&
+    !revision &&
+    !focused_asset
+  )
   {
     lines.push(`Resolved parent entity name from the request: ${intent.target_name}. Call entity_find with exact matching first. If several entities share the name, use the first root-level match by id and never call entity_resolve by ambiguous name. Create the root with entity_create_empty only when no exact match exists, then parent all planned environment content under that entity id.`);
   }
@@ -4346,7 +4869,7 @@ function build_prompt(
     lines.push(
       "",
       focused_asset
-        ? "Design brief expanded from that request. Use it only to clarify proportions, construction and materials within the environment-prop budget above. It cannot increase the triangle, part or material limits, and it cannot promote the asset to hero quality. Where it conflicts with the request or budget, ignore it."
+        ? "Design brief expanded from that request. Use it only to clarify proportions, construction and materials within the environment-prop budget above. It cannot increase the triangle, part or material limits, and it cannot elevate the asset to hero quality. Where it conflicts with the request or budget, ignore it."
         : "Design brief expanded from that request. Treat it as the default specification for anything the request left unsaid, and build to this level of detail. Where the brief and the request disagree, the request wins. Where the brief is wrong about this subject, correct it rather than following it.",
       String(brief).trim(),
     );
@@ -4561,7 +5084,13 @@ function is_bare_object_build(value)
     return false;
   }
 
-  const subject = match[1].trim();
+  const subject = match[1]
+    .replace(
+      /\b(?:asset|prefab|model|prop|object|item)\b/g,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
 
   // only the head noun decides, a place word before it is a modifier. an office chair is a chair, a
   // warehouse interior is an interior
@@ -4607,6 +5136,13 @@ function asset_file_name(value)
 function is_focused_asset_request(prompt)
 {
   const value = String(prompt ?? "").toLowerCase();
+  if (
+    names_a_place(value) &&
+    !is_bare_object_build(value)
+  )
+  {
+    return false;
+  }
   return (
     /\bfocused[\s-]+(?:hero[\s-]+)?asset\b/.test(value) ||
     /\breusable\s+.+\s+(?:model|asset)\b/.test(value) ||
@@ -4625,9 +5161,6 @@ async function prepare_focused_asset_root(
 {
   const prefab_path = `${asset_file_name(target_name)}.prefab`;
 
-  // the prefab exists before the first part does. building every mesh and material first and assembling at
-  // the end asks the model to hold the whole object in its head and hope the pieces fit, and it means a run
-  // that stops early leaves a pile of parts with nothing that joins them
   const open_workspace = async (root) =>
   {
     await run.tool(
@@ -4637,18 +5170,10 @@ async function prepare_focused_asset_root(
       },
       10000,
     );
-    const saved = await run.tool(
-      "prefab_save",
-      {
-        id: root.id,
-        path: prefab_path,
-      },
-      60000,
-    );
     return {
       ...root,
       prefab_path,
-      prefab_ready: saved?.ok === true,
+      prefab_ready: false,
     };
   };
 
@@ -4721,7 +5246,7 @@ async function prepare_asset_revision({
 
     // several assets answer the name equally well. loading one of them would edit the wrong asset and
     // loading none of them would quietly build a duplicate of something the library already has, so the
-    // choice goes to the agent, which can read the request and inspect the candidates
+    // choice goes to the agent, which can read the request and inspect the matches
     if ((resolved.ambiguous ?? []).length > 0)
     {
       return {
@@ -4737,7 +5262,7 @@ async function prepare_asset_revision({
   const asset = resolved.asset;
 
   // a root already in the world is the copy the user has been looking at, reusing it keeps whatever was
-  // done since the last promotion instead of reverting to the promoted version behind their back
+  // done in the current workspace instead of replacing it from the catalog
   const live = await resolve_quality_root(
     run,
     asset.name || asset.id,
@@ -4758,12 +5283,12 @@ async function prepare_asset_revision({
     {
       run.receipt("asset revision declined", {
         asset_id: asset.id,
-        reason: `could not load the active version: ${loaded.error ?? "unknown error"}`,
+        reason: `could not load the current asset: ${loaded.error ?? "unknown error"}`,
       });
       return null;
     }
 
-    source = `version ${loaded.version?.id ?? "unknown"}`;
+    source = "the current catalog asset";
 
     // a prefab spawns its hierarchy, anything else only warms the resource cache, so a mesh needs an
     // entity built around it before there is something to edit
@@ -4798,7 +5323,7 @@ async function prepare_asset_revision({
           "render_set_mesh",
           {
             id: created.entity.id,
-            mesh: loaded.version.path,
+            mesh: loaded.asset.path,
           },
           20000,
         );
@@ -4812,7 +5337,7 @@ async function prepare_asset_revision({
     run.receipt("asset revision declined", {
       asset_id: asset.id,
       reason:
-        "the active version loaded but produced no entity to edit",
+        "the current asset loaded but produced no entity to edit",
     });
     return null;
   }
@@ -4850,7 +5375,6 @@ async function prepare_asset_revision({
     asset_id: asset.id,
     asset_name: asset.name || asset.id,
     asset_type: asset.type,
-    active_version: asset.active_version,
     aliases: asset.aliases ?? [],
     tags: asset.tags ?? [],
     constraints: asset.constraints ?? {},
@@ -4866,7 +5390,6 @@ async function prepare_asset_revision({
   run.receipt("asset revision prepared", {
     asset_id: revision.asset_id,
     asset_type: revision.asset_type,
-    active_version: revision.active_version,
     root_id: revision.root_id,
     source: revision.source,
     aspects: revision.aspects,
@@ -4933,6 +5456,11 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
   }
 
   let cursor_run = null;
+  const focused_asset_run =
+    is_focused_asset_request(prompt) ||
+    intent?.kind === "asset_revise";
+  let focused_deadline_at = null;
+  let focused_construction_deadline_at = null;
   let engine_tool_seen = false;
   let scene_mutation_seen = false;
   let cancel_message = "";
@@ -4942,27 +5470,209 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     engine_host,
     engine_port,
     intent,
-    asset_budget: is_focused_asset_request(prompt)
+    asset_budget: focused_asset_run
       ? asset_detail_budget(prompt)
       : null,
     asset_triangles: 0,
+    focused_asset_run,
+    owned_resource_paths: new Set(),
+    focused_deadline_at,
+    focused_construction_deadline_at,
+    construction_gate_closed: false,
     bridge_failure: "",
+    mark_scene_mutation: () =>
+    {
+      scene_mutation_seen = true;
+    },
     cancel_on_bridge_failure: (message) =>
     {
       cancel_message = message;
+      if (focused_asset_run)
+      {
+        active_assistant_context
+          .construction_gate_closed = true;
+      }
       run.event("stage_note", { text: message });
       if (cursor_run?.supports?.("cancel"))
       {
-        void cursor_run.cancel();
+        void cursor_run.cancel().catch(() => {});
       }
     },
   };
   let guard_timer = null;
+  let wall_timer = null;
   let idle_timer = null;
   let activity_flush_timer = null;
   let last_activity_at = Date.now();
   let visual_review_seen = false;
-  let asset_viewer_reviews = 0;
+  let cleanup_receipt = null;
+  let cleanup_snapshot = null;
+  const ensure_focused_time = (reserve_ms = 0) =>
+  {
+    if (
+      focused_asset_run &&
+      focused_deadline_at &&
+      Date.now() + reserve_ms >=
+        focused_deadline_at
+    )
+    {
+      throw new Error(
+        `focused asset run exceeded ${maximum_focused_asset_run_ms}ms`,
+      );
+    }
+  };
+  const close_construction_gate = () =>
+  {
+    if (!focused_asset_run)
+    {
+      return;
+    }
+    active_assistant_context.construction_gate_closed =
+      true;
+  };
+  const start_focused_deadline = () =>
+  {
+    if (!focused_asset_run)
+    {
+      return;
+    }
+    focused_deadline_at =
+      Date.now() + maximum_focused_asset_run_ms;
+    focused_construction_deadline_at =
+      focused_deadline_at -
+      focused_finalization_reserve_ms;
+    active_assistant_context.focused_deadline_at =
+      focused_deadline_at;
+    active_assistant_context
+      .focused_construction_deadline_at =
+      focused_construction_deadline_at;
+    active_assistant_context.construction_gate_closed =
+      false;
+  };
+  const wait_for_assistant_tasks = async () =>
+  {
+    while (true)
+    {
+      await assistant_command_queue;
+      const pending_tasks = [
+        ...(
+          active_assistant_context
+            .assistant_async_task_promises ??
+          []
+        ),
+      ];
+      if (pending_tasks.length === 0)
+      {
+        ensure_focused_time();
+        return;
+      }
+      const pending = Promise.all(pending_tasks);
+      if (!focused_asset_run)
+      {
+        await pending;
+        continue;
+      }
+      const remaining =
+        focused_deadline_at - Date.now();
+      if (remaining <= 0)
+      {
+        throw new Error(
+          "focused asset run exceeded its deadline",
+        );
+      }
+      const settled = await Promise.race([
+        pending.then(() => true),
+        new Promise((resolve) =>
+        {
+          const timer = setTimeout(
+            () => resolve(false),
+            remaining,
+          );
+          timer.unref?.();
+        }),
+      ]);
+      if (!settled)
+      {
+        throw new Error(
+          "assistant tasks did not settle before finalization",
+        );
+      }
+    }
+  };
+  const clean_focused_run = async (outcome) =>
+  {
+    if (!focused_asset_run || cleanup_receipt)
+    {
+      return cleanup_receipt;
+    }
+    try
+    {
+      cleanup_receipt = await cleanup_run_resources({
+        snapshot: cleanup_snapshot,
+        final_prefab_path:
+          active_assistant_context?.final_prefab_path ??
+          "",
+        latest_prefab_path:
+          active_assistant_context?.latest_prefab_path ??
+          "",
+        protected_paths: [
+          "project/mcp_resources/catalog.json",
+          active_assistant_context?.catalog_path ?? "",
+        ].filter(Boolean),
+        owned_paths: [
+          ...(
+            active_assistant_context
+              ?.owned_resource_paths ??
+            []
+          ),
+        ],
+        outcome,
+      });
+    }
+    catch (error)
+    {
+      cleanup_receipt = {
+        ok: false,
+        outcome,
+        error: `focused asset cleanup failed: ${error.message}`,
+        removed: [],
+        failed: [],
+      };
+    }
+    try
+    {
+      run.receipt(
+        "focused asset cleanup",
+        cleanup_receipt,
+      );
+    }
+    catch
+    {
+    }
+    return cleanup_receipt;
+  };
+  const finalize_response = async (response) =>
+  {
+    const outcome = response.ok
+      ? "success"
+      : (
+          cancel_message ||
+          String(response.text ?? "")
+            .toLowerCase()
+            .includes("cancelled")
+        )
+        ? "cancelled"
+        : "failure";
+    const receipt = await clean_focused_run(
+      outcome,
+    );
+    return receipt
+      ? {
+          ...response,
+          cleanup_receipt: receipt,
+        }
+      : response;
+  };
   active_assistant_context.mark_visual_review = () =>
   {
     visual_review_seen = true;
@@ -5067,42 +5777,22 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       event,
       "scene_visual_review",
     );
+    const required_asset_viewer_reviews =
+      2;
     const successful_visual_review =
       is_visual_review &&
       object_contains(event, (value) =>
         value.ok === true &&
         Array.isArray(value.views) &&
-        value.views.length >= 2 &&
+        value.views.length >= required_asset_viewer_reviews &&
         value.views.every((review) =>
           review?.camera?.ok === true &&
           review?.screenshot?.ok === true &&
           review?.screenshot?.ready === true,
         ),
       );
-    // looking at the asset through the viewer directly counts as having looked at it. crediting only
-    // scene_visual_review meant a run that framed and shot the asset six times still failed the gate, which
-    // spent two correction passes re-reviewing work that was already reviewed and then reported a failure
-    // for a build that had passed
-    // the screenshot reply comes back before the image is on disk, so acceptance and a path is the only
-    // signal available at this point, and two of them means the asset was looked at from more than one side
-    if (
-      is_named_tool_event(event, "asset_viewer_screenshot") &&
-      object_contains(event, (value) =>
-        value.ok === true &&
-        typeof value.path === "string" &&
-        value.path.length > 0,
-      )
-    )
-    {
-      asset_viewer_reviews += 1;
-    }
-    const required_asset_viewer_reviews =
-      active_assistant_context?.asset_budget?.tier === "hero"
-        ? 2
-        : 1;
     visual_review_seen ||=
-      successful_visual_review ||
-      asset_viewer_reviews >= required_asset_viewer_reviews;
+      successful_visual_review;
     scene_mutation_seen ||=
       is_scene_mutation_event(event);
     if (!engine_tool_seen && is_engine_tool_event(event)) {
@@ -5116,6 +5806,8 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     }
   };
   const execute_agent_prompt = async (agent, prompt_text) => {
+    start_focused_deadline();
+    ensure_focused_time();
     last_activity_at = Date.now();
     cursor_run = await agent.send(prompt_text, {
       onStep: ({ step }) => {
@@ -5131,7 +5823,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       }
     })().catch(() => {}) : Promise.resolve();
 
-    const result = await Promise.race([
+    const wait_tasks = [
       cursor_run.wait(),
       new Promise((_, reject) => {
         idle_timer = setInterval(() => {
@@ -5146,12 +5838,61 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
         }, 1000);
         idle_timer.unref?.();
       }),
-    ]);
+    ];
+    if (focused_asset_run)
+    {
+      wait_tasks.push(
+        new Promise((resolve) =>
+        {
+          const remaining = Math.max(
+            1,
+            focused_construction_deadline_at -
+              Date.now(),
+          );
+          wall_timer = setTimeout(
+            () =>
+            {
+              close_construction_gate();
+              resolve({
+                status: "completed",
+                result:
+                  "Focused construction window ended; finalizing the current asset.",
+                focused_construction_timeout: true,
+              });
+              if (cursor_run?.supports?.("cancel"))
+              {
+                void cursor_run.cancel().catch(() => {});
+              }
+            },
+            remaining,
+          );
+          wall_timer.unref?.();
+        }),
+      );
+    }
+    const result = await Promise.race(wait_tasks);
+    if (wall_timer)
+    {
+      clearTimeout(wall_timer);
+      wall_timer = null;
+    }
     if (idle_timer)
     {
       clearInterval(idle_timer);
       idle_timer = null;
     }
+    if (focused_asset_run)
+    {
+      close_construction_gate();
+      if (
+        result.focused_construction_timeout &&
+        cursor_run?.supports?.("cancel")
+      )
+      {
+        void cursor_run.cancel().catch(() => {});
+      }
+    }
+    await wait_for_assistant_tasks();
     await Promise.race([
       stream_task,
       new Promise((resolve) => setTimeout(resolve, 1000)),
@@ -5179,6 +5920,14 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
         ),
         snapshot.world,
       );
+    if (focused_asset_run)
+    {
+      cleanup_snapshot = await snapshot_run_resources({
+        project_root: get_project_root(),
+        resource_directory:
+          active_assistant_context.resource_directory,
+      });
+    }
     intent = recover_new_build_intent(
       prompt,
       intent,
@@ -5199,7 +5948,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       null;
     const prepared_assets = await run.stage(
       "Search Asset Library",
-      "finding promoted reusable assets for this request",
+      "finding current reusable assets for this request",
       () => prepare_asset_library_context(
         active_assistant_context,
         prompt,
@@ -5312,7 +6061,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       if (
         resolved_initial_root.ok &&
         resolved_initial_root.root?.id &&
-        !is_focused_asset_request(prompt)
+        !focused_asset_run
       )
       {
         await run.stage(
@@ -5343,9 +6092,10 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
 
         cancel_message =
           `cancelled, no Spartan engine tool was used within ${engine_first_timeout_ms}ms`;
+        close_construction_gate();
         run.event("stage_note", { text: cancel_message });
         if (cursor_run?.supports?.("cancel")) {
-          void cursor_run.cancel();
+          void cursor_run.cancel().catch(() => {});
         }
       }, 1000);
       guard_timer.unref?.();
@@ -5361,6 +6111,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           brief,
           reuse_plan,
           revision,
+          initial_root,
         ),
       );
     });
@@ -5368,6 +6119,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     if (
       cursor_result.status !== "error" &&
       cursor_result.status !== "cancelled" &&
+      !focused_asset_run &&
       !scene_mutation_seen &&
       (
         intent?.kind === "scene_rebuild" ||
@@ -5406,11 +6158,19 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
         detail: compact_line(failure_message),
       });
       await dispose_cached_agent();
-      return { ok: false, text: failure_message };
+      return finalize_response({
+        ok: false,
+        text: failure_message,
+      });
     }
 
     if (cursor_result.status === "cancelled" || cancel_message) {
-      return { ok: false, text: cancel_message || "Cursor run was cancelled." };
+      return finalize_response({
+        ok: false,
+        text:
+          cancel_message ||
+          "Cursor run was cancelled.",
+      });
     }
     if (
       !scene_mutation_seen &&
@@ -5420,16 +6180,17 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       )
     )
     {
-      return {
+      return finalize_response({
         ok: false,
         text:
           "Cursor completed twice without using a Spartan engine tool. No scene changes were made.",
-      };
+      });
     }
 
     const is_scene_construction =
       intent?.kind === "scene_rebuild" ||
-      intent?.live_scene_action;
+      intent?.live_scene_action ||
+      focused_asset_run;
     if (
       !is_scene_construction ||
       (
@@ -5438,10 +6199,10 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       )
     )
     {
-      return {
+      return finalize_response({
         ok: true,
         text: cursor_result.result?.trim() || "Done.",
-      };
+      });
     }
 
     const found = await run.stage(
@@ -5461,14 +6222,14 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
     );
     if (!found.ok || !root_id)
     {
-      return {
+      return finalize_response({
         ok: false,
         text:
           `Scene quality gate could not resolve root entity ${root_name}.`,
-      };
+      });
     }
 
-    if (!is_focused_asset_request(prompt))
+    if (!focused_asset_run)
     {
       await run.stage(
         "Focus Completed Build",
@@ -5491,41 +6252,40 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       null;
     const planned_elements = plan?.elements ?? [];
     const focused_asset =
-      is_focused_asset_request(prompt);
-    const audit_args = {
-      id: root_id,
-      required_features: infer_required_features(prompt),
-      scene_type: infer_design_template(prompt),
-      planned_element_count: planned_elements.reduce(
-        (total, element) =>
-          total + (element.count ?? 1),
-        0,
-      ),
-      required_roles: [
-        ...new Set(
-          planned_elements.flatMap(
-            (element) =>
-              element.semantic_tags ?? [],
-          ),
-        ),
-      ],
-      ...(focused_asset
-        ? {
-            min_entities: 1,
-            min_unique_materials: 1,
-            min_advanced_mesh_ratio: 0,
-            require_light: false,
-            min_collision_ratio: 0,
-            max_duplicate_geometry: 2,
-            max_repetition_ratio: 0.5,
-            max_dominant_geometry_ratio: 1,
-            max_default_material_ratio: 1,
-          }
-        : {}),
-    };
+      focused_asset_run;
+    const audit_args = focused_asset
+      ? {
+          id: root_id,
+          ...prop_quality_profile,
+          profile: "prop",
+        }
+      : {
+          id: root_id,
+          required_features:
+            infer_required_features(prompt),
+          scene_type: infer_design_template(prompt),
+          planned_element_count:
+            planned_elements.reduce(
+              (total, element) =>
+                total + (element.count ?? 1),
+              0,
+            ),
+          required_roles: [
+            ...new Set(
+              planned_elements.flatMap(
+                (element) =>
+                  element.semantic_tags ?? [],
+              ),
+            ),
+          ],
+        };
     let audit = await run.stage(
-      "Audit Scene Quality",
-      "checking geometry, materials, features, and lighting",
+      focused_asset
+        ? "Audit Prop Quality"
+        : "Audit Scene Quality",
+      focused_asset
+        ? "checking for renderable material content"
+        : "checking geometry, materials, features, and lighting",
       () => audit_scene_quality(
         send_command,
         audit_args,
@@ -5561,97 +6321,37 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
         "checking scale, support, relationships, and lighting",
         audit_current_layout,
       );
-    if (focused_asset && !visual_review_seen)
-    {
-      const preview = await run.tool(
-        "asset_viewer_preview_entity",
-        { id: root_id },
-        10000,
-      );
-      if (preview.ok)
-      {
-        await run.tool(
-          "asset_viewer_set_view",
-          {
-            view: "perspective",
-            zoom: 1,
-          },
-          10000,
-        );
-        const screenshot = await run.tool(
-          "asset_viewer_screenshot",
-          {
-            path: `asset_${root_id}_final.png`,
-            width: 768,
-            height: 768,
-          },
-          10000,
-        );
-        visual_review_seen =
-          screenshot.ok === true &&
-          typeof screenshot.path === "string" &&
-          screenshot.path.length > 0;
-      }
-    }
     let final_result = cursor_result;
 
-    const correction_attempts = focused_asset ? 1 : 2;
+    const correction_attempts = focused_asset
+      ? 0
+      : 2;
     for (
       let attempt = 1;
       attempt <= correction_attempts &&
       (
         !audit.pass ||
         !layout_audit.pass ||
-        (!focused_asset && !visual_review_seen)
+        !visual_review_seen
       );
       attempt++
     )
     {
       const correction_prompt = [
-        focused_asset
-          ? "Perform one targeted correction pass on the focused asset."
-          : "Perform a quality correction pass on the live Spartan Engine scene.",
+        "Perform a quality correction pass on the live Spartan Engine scene.",
         `Original request: ${prompt}`,
         `Root entity: ${root_name}, id ${root_id}.`,
         `Quality audit: ${safe_json(audit, 3500)}`,
         `Layout audit: ${safe_json(layout_audit, 5000)}`,
-        ...(focused_asset
-          ? [
-              "This is a correction pass, not a rebuild. Fix only the checks that failed in the audit.",
-              "Do not add parts, rotate through multiple views, or polish surfaces that the audit did not flag.",
-              "If the asset is over its triangle budget, this pass reduces it. Delete geometry that does not read at normal viewing distance, starting with anything on a hidden face, and lower the segment counts on curved parts. Do not add parts during a correction pass unless the audit named a missing one.",
-            ]
-          : []),
-        ...(focused_asset
-          ? [
-              "Do not create an environment plan, ground pad, route, display structure, or studio lights around the asset. The reusable object itself is the complete deliverable.",
-              "After the correction, take one perspective Asset Viewer screenshot and stop.",
-            ]
-          : [
-              "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
-              "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
-            ]),
-        focused_asset
-          ? "Fix every failed scene_quality_audit check only."
-          : "Fix every failed scene_layout_audit and scene_quality_audit check, including every render component listed by collision_coverage, plus the most visible weakness in the image.",
-        ...(!focused_asset
-          ? [
-              "Keep entities aligned with plan element names, plan_element values, semantic_tags, and repeated instances so the layout audit can verify the authored result.",
-            ]
-          : []),
+        "If the generic scene plan is missing or invalid, call scene_plan_create first with realistic expected dimensions, zones, support modes, relationships, and lighting intent inferred from the original request.",
+        "Call scene_visual_review on the root with perspective and top views, then inspect both images.",
+        "Fix every failed scene_layout_audit and scene_quality_audit check, including every render component listed by collision_coverage, plus the most visible weakness in the image.",
+        "Keep entities aligned with plan element names, plan_element values, semantic_tags, and repeated instances so the layout audit can verify the authored result.",
         "Use generated or compound geometry, semantic palette materials, descriptive feature names, snapping, and calibrated lighting as needed.",
-        ...(focused_asset
-          ? [
-              "Use mesh_physics_bind or compound_create for collidable generated geometry. Do not add lighting unless the asset itself is a functional light.",
-            ]
-          : [
-              "Use entity_create_light for lights and mesh_physics_bind or compound_create for collidable generated geometry. Do not expand these atomic tools into probe and component-setting sequences.",
-            ]),
+        "Use entity_create_light for lights and mesh_physics_bind or compound_create for collidable generated geometry. Do not expand these atomic tools into probe and component-setting sequences.",
         "Resolve every correction parent from the current scene and use the returned id. Never retry a missing parent with another guessed id.",
         "Preserve all good existing work and keep every addition under the root.",
-        focused_asset
-          ? "Call scene_quality_audit after corrections and do not report completion unless it passes."
-          : "Call scene_layout_audit and scene_quality_audit after corrections and do not report completion unless both pass.",
+        "Call scene_layout_audit and scene_quality_audit after corrections and do not report completion unless both pass.",
       ].join("\n");
 
       final_result = await run.stage(
@@ -5671,10 +6371,10 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           cursor_run,
           final_result,
         );
-        return {
+        return finalize_response({
           ok: false,
           text: `Scene was edited, but quality correction failed: ${failure_message}`,
-        };
+        });
       }
 
       const corrected_root = intent?.use_selected
@@ -5713,104 +6413,365 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       );
     }
 
-    // a focused asset run has to end with an asset on disk, and the orchestration is what has to do it.
-    // asking the model to save the prefab means a run can author forty parts, review them, correct them and
-    // then stop after the last screenshot with nothing usable, which is exactly what happens. the merge is
-    // bolted to the save, so a skipped save also silently skips the merge and leaves every part its own mesh
     let asset_prefab = null;
     if (focused_asset && root_id)
     {
+      ensure_focused_time();
       asset_prefab = await run.stage(
         "Finalize Asset",
-        "merging parts by material and saving the prefab",
+        "optimizing, saving, registering, and reviewing the asset",
         async () =>
         {
-          // the workspace root is parked inactive and transient while it is built, and the model tends to
-          // switch it live mid run, so the save decides the state rather than inheriting whatever it left
-          await run.tool(
-            "entity_update",
+          active_assistant_context.finalizing_asset = true;
+          active_assistant_context
+            .finalization_restore_reserve_ms = 5000;
+          let root_state_changed = false;
+          try
+          {
+            ensure_focused_time(5000);
+            const activated = await run.tool(
+              "entity_update",
+              {
+                id: root_id,
+                active: true,
+                transient: false,
+              },
+              focused_command_timeout(
+                active_assistant_context,
+                30000,
+              ),
+            );
+            if (!activated?.ok)
             {
-              id: root_id,
-              active: true,
-              transient: false,
-            },
-            30000,
-          );
-          const texture_only_revision =
-            revision &&
-            revision.aspects.includes("texture") &&
-            !revision.aspects.includes("geometry");
-          const game_ready = texture_only_revision
-            ? null
-            : await make_game_ready(
+              throw new Error(
+                activated?.error ??
+                "failed to activate asset root",
+              );
+            }
+            root_state_changed = true;
+            ensure_focused_time(5000);
+            const game_ready = await make_game_ready(
               active_assistant_context,
               root_id,
             );
-          // the same file the incremental saves have been writing, so the finished asset replaces the
-          // partial one instead of appearing beside it under a second name
-          const prefab_path =
-            active_assistant_context.authoring_prefab_path ??
-            `${asset_file_name(root_name)}.prefab`;
-          const saved = await run.tool(
-            "prefab_save",
+            ensure_focused_time(5000);
+            const asset_type =
+              revision?.asset_type ??
+              "prefab";
+            let revision_mesh_path = "";
+            if (asset_type === "mesh")
             {
-              id: root_id,
-              path: prefab_path,
-            },
-            60000,
-          );
-          if (saved?.ok)
-          {
-            await register_assistant_asset(
+              ensure_focused_time(5000);
+              const render_materials = await run.tool(
+                "entity_render_materials",
+                {
+                  id: root_id,
+                  include_descendants: true,
+                },
+                focused_command_timeout(
+                  active_assistant_context,
+                  30000,
+                ),
+              );
+              if (!render_materials?.ok)
+              {
+                throw new Error(
+                  render_materials?.error ??
+                  "failed to query the finalized mesh",
+                );
+              }
+              const mesh_paths = [
+                ...new Set(
+                  (render_materials.materials ?? [])
+                    .map((entry) =>
+                      String(
+                        entry.mesh_path ??
+                        entry.mesh ??
+                        "",
+                      ).trim(),
+                    )
+                    .filter(Boolean),
+                ),
+              ];
+              if (mesh_paths.length === 0)
+              {
+                throw new Error(
+                  "finalized mesh revision has no mesh path",
+                );
+              }
+              if (mesh_paths.length > 1)
+              {
+                throw new Error(
+                  "finalized mesh revision has multiple mesh paths",
+                );
+              }
+              revision_mesh_path = mesh_paths[0];
+            }
+            const prefab_path =
+              active_assistant_context.authoring_prefab_path ??
+              `${asset_file_name(root_name)}.prefab`;
+            const saved = await run.tool(
+              "prefab_save",
+              {
+                id: root_id,
+                path: prefab_path,
+              },
+              focused_command_timeout(
+                active_assistant_context,
+                60000,
+              ),
+            );
+            active_assistant_context.final_prefab_path =
+              saved?.ok && asset_type === "prefab"
+                ? saved.path ?? prefab_path
+                : "";
+            track_owned_resource_paths(
               active_assistant_context,
               "prefab_save",
               {
-                name: root_name,
                 path: prefab_path,
               },
               saved,
             );
-          }
-
-          // the deliverable is the file, so the world is put back the way it was found rather than left
-          // holding a loose copy of the asset
-          await run.tool(
-            "entity_update",
+            let registration = null;
+            if (saved?.ok)
             {
-              id: root_id,
-              active: false,
-              transient: true,
-            },
-            30000,
-          );
-          return {
-            ...saved,
-            game_ready,
-            path: prefab_path,
-          };
+              try
+              {
+                ensure_focused_time(5000);
+                const registration_path =
+                  asset_type === "mesh"
+                    ? revision_mesh_path
+                    : revision
+                      ? saved.path
+                      : saved.path ?? prefab_path;
+                if (!registration_path)
+                {
+                  throw new Error(
+                    "final prefab save returned no path",
+                  );
+                }
+                registration = await world_asset_register(
+                  get_project_root(),
+                  await assistant_resource_directory(
+                    active_assistant_context,
+                  ),
+                  {
+                    type: asset_type,
+                    asset_id:
+                      revision?.asset_id ??
+                      asset_file_name(root_name),
+                    name: root_name,
+                    path: registration_path,
+                    aliases: revision?.aliases ?? [],
+                    tags: revision?.tags ?? [],
+                    constraints:
+                      revision?.constraints ?? {},
+                  },
+                );
+                ensure_focused_time(5000);
+                track_owned_resource_paths(
+                  active_assistant_context,
+                  "world_asset_register",
+                  {
+                    path: registration_path,
+                  },
+                  registration,
+                );
+              }
+              catch (error)
+              {
+                registration = {
+                  ok: false,
+                  error: error.message,
+                };
+              }
+              active_assistant_context.latest_prefab_path =
+                registration?.asset?.path ??
+                "";
+              active_assistant_context.catalog_path =
+                registration?.catalog_path ??
+                "";
+            }
+            ensure_focused_time(5000);
+            const preview = await run.tool(
+              "asset_viewer_preview_entity",
+              {
+                id: root_id,
+              },
+              focused_command_timeout(
+                active_assistant_context,
+                10000,
+              ),
+            );
+            let camera = {
+              ok: false,
+              error:
+                "asset preview was not ready for framing",
+            };
+            if (preview.ok)
+            {
+              camera = await run.tool(
+                "asset_viewer_set_view",
+                {
+                  view: "perspective",
+                  zoom: 1,
+                },
+                focused_command_timeout(
+                  active_assistant_context,
+                  10000,
+                ),
+              );
+            }
+            let screenshot = {
+              ok: false,
+              ready: false,
+              error:
+                preview.ok
+                  ? "asset viewer camera was not ready"
+                  : "asset preview was not ready",
+            };
+            if (preview.ok && camera.ok)
+            {
+              ensure_focused_time(5000);
+              screenshot = await run.tool(
+                "asset_viewer_screenshot",
+                {
+                  path:
+                    `asset_${root_id}_final.png`,
+                  width: 768,
+                  height: 768,
+                },
+                focused_command_timeout(
+                  active_assistant_context,
+                  10000,
+                ),
+              );
+              if (
+                screenshot.ok &&
+                screenshot.path &&
+                screenshot.ready !== true
+              )
+              {
+                screenshot.ready = await wait_for_screenshot(
+                  screenshot.path,
+                  focused_command_timeout(
+                    active_assistant_context,
+                    12000,
+                  ),
+                );
+              }
+            }
+            visual_review_seen =
+              preview.ok === true &&
+              camera.ok === true &&
+              screenshot.ok === true &&
+              screenshot.ready === true;
+            if (visual_review_seen)
+            {
+              active_assistant_context.mark_visual_review?.();
+            }
+            return {
+              ...saved,
+              game_ready,
+              registration,
+              visual_review: {
+                preview,
+                camera,
+                screenshot,
+              },
+              path:
+                asset_type === "mesh"
+                  ? revision_mesh_path
+                  : saved.path ?? prefab_path,
+            };
+          }
+          finally
+          {
+            active_assistant_context
+              .restoring_asset_state = true;
+            try
+            {
+              if (root_state_changed)
+              {
+                const restored = await run.tool(
+                  "entity_update",
+                  {
+                    id: root_id,
+                    active: false,
+                    transient: true,
+                  },
+                  focused_command_timeout(
+                    active_assistant_context,
+                    5000,
+                  ),
+                );
+                if (!restored?.ok)
+                {
+                  throw new Error(
+                    restored?.error ??
+                    "asset root state was not restored",
+                  );
+                }
+              }
+            }
+            catch (error)
+            {
+              run.event(
+                "stage_note",
+                {
+                  text:
+                    `asset root restoration failed: ${
+                      error.message
+                    }`,
+                },
+              );
+            }
+            finally
+            {
+              active_assistant_context
+                .restoring_asset_state = false;
+              active_assistant_context
+                .finalizing_asset = false;
+            }
+          }
         },
       );
     }
 
-    const resource_cleanup = await run.stage(
-      "Clean World Resources",
-      "removing unreferenced world assets",
-      () => run.tool(
-        "world_resources_clean",
-        {},
-      ),
-    );
-    if (focused_asset && !asset_prefab?.ok)
+    const resource_cleanup = focused_asset
+      ? {
+          ok: true,
+          removed: [],
+          orphan_count: 0,
+          scoped: true,
+        }
+      : await run.stage(
+          "Clean World Resources",
+          "removing unreferenced world assets",
+          () => run.tool(
+            "world_resources_clean",
+            {},
+          ),
+        );
+    if (
+      focused_asset &&
+      (
+        !asset_prefab?.ok ||
+        !asset_prefab.registration?.ok
+      )
+    )
     {
-      return {
+      return finalize_response({
         ok: false,
         text: [
           "The asset was built but could not be saved, so there is no reusable prefab.",
-          `Prefab save error: ${asset_prefab?.error ?? "the save never ran"}`,
+          `Prefab save error: ${asset_prefab?.error ?? "none"}`,
+          `Catalog registration error: ${asset_prefab?.registration?.error ?? "the registration never ran"}`,
           `Root entity: ${root_name}, id ${root_id}.`,
-          "The generated meshes, materials, and textures are on disk but nothing assembles them.",
+          "Run-scoped cleanup removes generated files that the final prefab does not reach.",
         ].join("\n"),
-      };
+      });
     }
     if (
       !audit.pass ||
@@ -5818,28 +6779,40 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       !visual_review_seen
     )
     {
-      return {
+      return finalize_response({
         ok: false,
         text: [
           "Scene was edited, but the quality gate remains incomplete.",
           `Quality audit: ${safe_json(audit, 2500)}`,
           `Layout audit: ${safe_json(layout_audit, 3500)}`,
           `Visual review completed: ${visual_review_seen}.`,
-          resource_cleanup.ok
-            ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed, ${resource_cleanup.orphan_count ?? 0} undeleted orphans.`
-            : `World resource cleanup failed for ${(resource_cleanup.failed ?? []).length} files.`,
-          "Final-state audits are authoritative for plan and correction completion.",
+          focused_asset
+            ? "Run-scoped cleanup receipt attached."
+            : (
+                resource_cleanup.ok
+                  ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed, ${resource_cleanup.orphan_count ?? 0} undeleted orphans.`
+                  : `World resource cleanup failed for ${(resource_cleanup.failed ?? []).length} files.`
+              ),
+          focused_asset
+            ? "Final-state audits are authoritative."
+            : "Final-state audits are authoritative for plan and correction completion.",
         ].join("\n"),
-      };
+      });
     }
 
-    return {
+    return finalize_response({
       ok: true,
       text: [
-        final_result.result?.trim() ||
-          cursor_result.result?.trim() ||
-          "Done.",
-        `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
+        focused_asset
+          ? `Focused asset ${root_name} completed.`
+          : (
+              final_result.result?.trim() ||
+              cursor_result.result?.trim() ||
+              "Done."
+            ),
+        focused_asset
+          ? "Prop quality passed: renderable material content and perspective review are complete."
+          : `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
         ...(asset_prefab?.ok
           ? [
               `Prefab saved to ${asset_prefab.path}.`,
@@ -5848,35 +6821,82 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
                 : "Game ready pass found nothing to merge.",
             ]
           : []),
-        resource_cleanup.ok
-          ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed, ${resource_cleanup.orphan_count ?? 0} undeleted orphans.`
-          : `World resource cleanup failed for ${(resource_cleanup.failed ?? []).length} files.`,
+        focused_asset
+          ? "Run-scoped cleanup receipt attached."
+          : (
+              resource_cleanup.ok
+                ? `World resources cleaned: ${(resource_cleanup.removed ?? []).length} unused files removed, ${resource_cleanup.orphan_count ?? 0} undeleted orphans.`
+                : `World resource cleanup failed for ${(resource_cleanup.failed ?? []).length} files.`
+            ),
       ].join("\n"),
-    };
+    });
   } catch (error) {
-    if (cursor_run?.supports?.("cancel") && error.message?.includes("within")) {
-      await cursor_run.cancel();
+    if (focused_asset_run)
+    {
+      close_construction_gate();
+      if (cursor_run?.supports?.("cancel"))
+      {
+        void cursor_run.cancel().catch(() => {});
+      }
+    }
+    try
+    {
+      await wait_for_assistant_tasks();
+    }
+    catch
+    {
+    }
+    if (
+      cursor_run?.supports?.("cancel") &&
+      (
+        error.message?.includes("within") ||
+        error.message?.includes("focused asset run exceeded")
+      )
+    ) {
+      void cursor_run.cancel().catch(() => {});
     }
 
     if (error instanceof CursorAgentError) {
-      return { ok: false, text: `Cursor startup failed: ${error.message}` };
+      return finalize_response({
+        ok: false,
+        text: `Cursor startup failed: ${error.message}`,
+      });
     }
 
-    return { ok: false, text: `Assistant failed: ${error.message}` };
+    return finalize_response({
+      ok: false,
+      text: `Assistant failed: ${error.message}`,
+    });
   } finally {
-    if (active_assistant_context?.run === run)
+    try
     {
-      active_assistant_context = null;
+      await clean_focused_run(
+        cancel_message ? "cancelled" : "failure",
+      );
     }
-    if (guard_timer) {
-      clearTimeout(guard_timer);
-    }
-    if (idle_timer) {
-      clearInterval(idle_timer);
-    }
-    if (activity_flush_timer)
+    catch
     {
-      clearTimeout(activity_flush_timer);
+    }
+    finally
+    {
+      if (active_assistant_context?.run === run)
+      {
+        active_assistant_context = null;
+      }
+      if (guard_timer) {
+        clearTimeout(guard_timer);
+      }
+      if (idle_timer) {
+        clearInterval(idle_timer);
+      }
+      if (wall_timer)
+      {
+        clearTimeout(wall_timer);
+      }
+      if (activity_flush_timer)
+      {
+        clearTimeout(activity_flush_timer);
+      }
     }
   }
 }

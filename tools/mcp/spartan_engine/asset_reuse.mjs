@@ -66,7 +66,7 @@ const GENERIC_HEADS = new Set([
 ]);
 
 const MAX_ITEMS = 24;
-const MAX_CANDIDATES_PER_ITEM = 3;
+const MAX_MATCHES_PER_ITEM = 1;
 
 // the minimum score worth showing the agent, below this the match is a coincidence and suggesting it
 // would be worse than saying nothing
@@ -156,11 +156,11 @@ export function inventory_from_plan(plan) {
   );
 }
 
-function dedupe_items(candidates) {
+function dedupe_items(options) {
   const items = [];
   const seen = new Set();
-  for (const candidate of candidates) {
-    const item = candidate.trim();
+  for (const option of options) {
+    const item = option.trim();
     if (item.length < 3 || item.length > 40) {
       continue;
     }
@@ -217,11 +217,11 @@ export function score_asset(item, asset) {
 
   const weigh = (word) => {
     let best = 0;
-    for (const candidate of expand(word)) {
-      const exact = candidate === word;
-      if (identity.has(candidate)) {
+    for (const synonym of expand(word)) {
+      const exact = synonym === word;
+      if (identity.has(synonym)) {
         best = Math.max(best, exact ? 6 : 4);
-      } else if (descriptive.has(candidate)) {
+      } else if (descriptive.has(synonym)) {
         best = Math.max(best, exact ? 3 : 2);
       }
     }
@@ -233,7 +233,7 @@ export function score_asset(item, asset) {
   // car with a pile of tyres
   const subject = subject_of(wanted);
   const subject_matches = [...expand(subject)].some(
-    (candidate) => identity_subjects.has(candidate),
+    (synonym) => identity_subjects.has(synonym),
   );
   if (!subject_matches) {
     return { score: 0, matched: [] };
@@ -260,7 +260,7 @@ export function score_asset(item, asset) {
 //
 // this is the other direction to build_reuse_plan. that one asks what could stand in for a thing the scene
 // needs and is happy with a near miss, this one is deciding whether the thing the user named exists at all,
-// so it reports the runner up too and lets the caller refuse to guess when two candidates are level
+// so it reports the runner up too and lets the caller refuse to guess when two matches are level
 export async function resolve_asset_by_name({
   project_root,
   resource_directory,
@@ -292,7 +292,7 @@ export async function resolve_asset_by_name({
 
   const scored = entries
     .map((asset) => ({ asset, ...score_asset(wanted, asset) }))
-    .filter((candidate) => candidate.score >= SCORE_FLOOR)
+    .filter((entry) => entry.score >= SCORE_FLOOR)
     .sort((left, right) => right.score - left.score);
 
   if (scored.length === 0) {
@@ -307,15 +307,15 @@ export async function resolve_asset_by_name({
   // ambiguity and picking one of them silently would edit the wrong asset
   const normalised_wanted = normalise(wanted);
   const exact = scored.find(
-    (candidate) =>
-      normalise(candidate.asset.id) === normalised_wanted ||
-      normalise(candidate.asset.name) === normalised_wanted,
+    (entry) =>
+      normalise(entry.asset.id) === normalised_wanted ||
+      normalise(entry.asset.name) === normalised_wanted,
   );
   if (!exact && scored.length > 1 && scored[0].score === scored[1].score) {
     return {
       ok: false,
       reason: `"${wanted}" matches several library assets equally well`,
-      ambiguous: scored.slice(0, 3).map((candidate) => candidate.asset.id),
+      ambiguous: scored.slice(0, 3).map((entry) => entry.asset.id),
       library_size: entries.length,
     };
   }
@@ -328,9 +328,9 @@ export async function resolve_asset_by_name({
     matched_on: chosen.matched,
     exact: Boolean(exact),
     alternatives: scored
-      .filter((candidate) => candidate.asset.id !== chosen.asset.id)
+      .filter((entry) => entry.asset.id !== chosen.asset.id)
       .slice(0, 3)
-      .map((candidate) => candidate.asset.id),
+      .map((entry) => entry.asset.id),
     library_size: entries.length,
   };
 }
@@ -364,25 +364,25 @@ export async function build_reuse_plan({
   for (const item of items) {
     const scored = entries
       .map((asset) => ({ asset, ...score_asset(item, asset) }))
-      .filter((candidate) => candidate.score >= SCORE_FLOOR)
+      .filter((entry) => entry.score >= SCORE_FLOOR)
       .sort((left, right) => right.score - left.score)
-      .slice(0, MAX_CANDIDATES_PER_ITEM);
+      .slice(0, MAX_MATCHES_PER_ITEM);
 
     if (scored.length === 0) {
       missing.push(item);
       continue;
     }
 
+    const current = scored[0];
     reuse.push({
       wanted: item,
-      candidates: scored.map((candidate) => ({
-        asset_id: candidate.asset.id,
-        name: candidate.asset.name,
-        type: candidate.asset.type,
-        version: candidate.asset.active_version,
-        tags: candidate.asset.tags ?? [],
-        matched_on: candidate.matched,
-      })),
+      asset: {
+        asset_id: current.asset.id,
+        name: current.asset.name,
+        type: current.asset.type,
+        tags: current.asset.tags ?? [],
+        matched_on: current.matched,
+      },
     });
   }
 
@@ -400,7 +400,7 @@ export function reuse_prompt_lines(plan) {
 
   if (plan.reuse.length > 0) {
     lines.push(
-      "These objects already exist in the library as promoted assets. Load them with world_asset_load instead of approximating them with primitives, then position each one with entity_set_transform or entity_set_transform_batch. Confirm the candidate actually is the object you need before using it, and prefer the first candidate when several fit.",
+      "These objects already exist in the library. Load each current asset with world_asset_load instead of approximating it with primitives, then position it with entity_set_transform or entity_set_transform_batch.",
       JSON.stringify(plan.reuse),
     );
   }
@@ -412,7 +412,7 @@ export function reuse_prompt_lines(plan) {
   }
 
   lines.push(
-    "That check covered the objects known before the build started. Whenever you decide to place a recognisable object that is not in the lists above, call world_asset_search for it first and reuse a promoted match if one exists. Only fall back to primitives once the library has been asked and has nothing.",
+    "That check covered the objects known before the build started. Whenever you decide to place a recognisable object that is not in the lists above, call world_asset_search for it first and reuse the current match if one exists. Only fall back to primitives once the library has been asked and has nothing.",
   );
 
   if (plan.library_size === 0) {

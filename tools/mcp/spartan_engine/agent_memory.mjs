@@ -5,6 +5,14 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export const agent_memory_path = path.join(__dirname, "AGENT_MEMORY.md");
+const agent_memory_lock_path = `${agent_memory_path}.lock`;
+const agent_memory_lock_owner_path = path.join(
+  agent_memory_lock_path,
+  "owner",
+);
+const lock_retry_ms = 50;
+const lock_stale_ms = 10000;
+const lock_timeout_ms = 12000;
 
 const initial_memory = `# Spartan Agent Memory
 
@@ -87,25 +95,159 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Add specific unresolved friction here, with the file or tool involved and why it matters.
 `;
 
-export async function ensure_agent_memory() {
-  try {
-    await fs.access(agent_memory_path);
-  } catch {
-    await fs.writeFile(agent_memory_path, initial_memory, "utf8");
+function wait(delay_ms)
+{
+  return new Promise((resolve) =>
+  {
+    setTimeout(resolve, delay_ms);
+  });
+}
+
+async function with_agent_memory_lock(operation)
+{
+  const started_at = Date.now();
+  const owner =
+    `${process.pid}.${Date.now()}.` +
+    Math.random().toString(16).slice(2);
+
+  while (true)
+  {
+    try
+    {
+      await fs.mkdir(agent_memory_lock_path);
+      try
+      {
+        await fs.writeFile(
+          agent_memory_lock_owner_path,
+          owner,
+          "utf8",
+        );
+      }
+      catch (error)
+      {
+        await fs.rm(
+          agent_memory_lock_path,
+          {
+            recursive: true,
+            force: true,
+          },
+        );
+        throw error;
+      }
+      break;
+    }
+    catch (error)
+    {
+      if (error.code !== "EEXIST")
+      {
+        throw error;
+      }
+
+      try
+      {
+        const stats = await fs.stat(agent_memory_lock_path);
+        if (Date.now() - stats.mtimeMs >= lock_stale_ms)
+        {
+          await fs.rm(
+            agent_memory_lock_path,
+            {
+              recursive: true,
+              force: true,
+            },
+          );
+          continue;
+        }
+      }
+      catch (stat_error)
+      {
+        if (stat_error.code !== "ENOENT")
+        {
+          throw stat_error;
+        }
+        continue;
+      }
+
+      if (Date.now() - started_at >= lock_timeout_ms)
+      {
+        throw new Error("timed out waiting for agent memory lock");
+      }
+      await wait(lock_retry_ms);
+    }
+  }
+
+  try
+  {
+    return await operation();
+  }
+  finally
+  {
+    try
+    {
+      const active_owner = await fs.readFile(
+        agent_memory_lock_owner_path,
+        "utf8",
+      );
+      if (active_owner === owner)
+      {
+        await fs.rm(
+          agent_memory_lock_path,
+          {
+            recursive: true,
+            force: true,
+          },
+        );
+      }
+    }
+    catch
+    {
+    }
   }
 }
 
-export async function read_agent_memory() {
+export async function ensure_agent_memory()
+{
+  try
+  {
+    await fs.access(agent_memory_path);
+  }
+  catch
+  {
+    try
+    {
+      await fs.writeFile(
+        agent_memory_path,
+        initial_memory,
+        {
+          encoding: "utf8",
+          flag: "wx",
+        },
+      );
+    }
+    catch (error)
+    {
+      if (error.code !== "EEXIST")
+      {
+        throw error;
+      }
+    }
+  }
+}
+
+export async function read_agent_memory()
+{
   await ensure_agent_memory();
   return fs.readFile(agent_memory_path, "utf8");
 }
 
-export async function write_agent_memory(text) {
+async function write_agent_memory_unlocked(text)
+{
   const value = String(text ?? "").trimEnd();
-  if (!value.startsWith("# Spartan Agent Memory")) {
+  if (!value.startsWith("# Spartan Agent Memory"))
+  {
     throw new Error("memory must start with # Spartan Agent Memory");
   }
-  if (value.length > 32000) {
+  if (value.length > 32000)
+  {
     throw new Error("memory is too large, prune stale notes before saving");
   }
 
@@ -113,31 +255,57 @@ export async function write_agent_memory(text) {
   return read_agent_memory();
 }
 
-export async function append_agent_memory(section, note) {
+export async function write_agent_memory(text)
+{
+  return with_agent_memory_lock(
+    () => write_agent_memory_unlocked(text),
+  );
+}
+
+export async function append_agent_memory(section, note)
+{
   const section_name = String(section ?? "").trim();
   const note_text = String(note ?? "").trim();
-  if (!section_name || !note_text) {
+  if (!section_name || !note_text)
+  {
     throw new Error("section and note are required");
   }
 
-  const memory = await read_agent_memory();
-  const heading = `## ${section_name}`;
-  const bullet = note_text.startsWith("- ") ? note_text : `- ${note_text}`;
-  if (memory.includes(bullet)) {
-    return memory;
-  }
+  return with_agent_memory_lock(async () =>
+  {
+    const memory = await read_agent_memory();
+    const heading = `## ${section_name}`;
+    const bullet = note_text.startsWith("- ")
+      ? note_text
+      : `- ${note_text}`;
+    if (memory.includes(bullet))
+    {
+      return memory;
+    }
 
-  const heading_index = memory.indexOf(heading);
-  if (heading_index === -1) {
-    return write_agent_memory(`${memory.trimEnd()}\n\n${heading}\n${bullet}\n`);
-  }
+    const heading_index = memory.indexOf(heading);
+    if (heading_index === -1)
+    {
+      return write_agent_memory_unlocked(
+        `${memory.trimEnd()}\n\n${heading}\n${bullet}\n`,
+      );
+    }
 
-  const next_heading_index = memory.indexOf("\n## ", heading_index + heading.length);
-  if (next_heading_index === -1) {
-    return write_agent_memory(`${memory.trimEnd()}\n${bullet}\n`);
-  }
+    const next_heading_index = memory.indexOf(
+      "\n## ",
+      heading_index + heading.length,
+    );
+    if (next_heading_index === -1)
+    {
+      return write_agent_memory_unlocked(
+        `${memory.trimEnd()}\n${bullet}\n`,
+      );
+    }
 
-  const before = memory.slice(0, next_heading_index).trimEnd();
-  const after = memory.slice(next_heading_index);
-  return write_agent_memory(`${before}\n${bullet}\n${after.trimEnd()}\n`);
+    const before = memory.slice(0, next_heading_index).trimEnd();
+    const after = memory.slice(next_heading_index);
+    return write_agent_memory_unlocked(
+      `${before}\n${bullet}\n${after.trimEnd()}\n`,
+    );
+  });
 }

@@ -98,7 +98,7 @@ public:
         uint32_t width = 768;
         uint32_t height = 768;
         PreviewShading shading = PreviewShading::Solid;
-        PreviewBackdrop backdrop = PreviewBackdrop::Slate;
+        PreviewBackdrop backdrop = PreviewBackdrop::Sky;
     };
 
     struct CaptureResult
@@ -114,16 +114,136 @@ public:
     {
         std::string selected_asset_id;
         std::string selected_asset_name;
-        std::string selected_version_id;
+        std::vector<std::string> selected_asset_ids;
         std::string loaded_path;
+        std::string dependency_path;
+        std::string catalog_path;
+        std::string status_message;
         // the entity a caller asked to preview, zero while the panel owns the root it built itself
         uint64_t previewed_entity_id = 0;
         uint64_t vertex_count = 0;
         uint64_t index_count = 0;
+        uint64_t catalog_count = 0;
+        uint64_t mesh_source_vertices = 0;
+        uint64_t mesh_source_indices = 0;
+        uint64_t mesh_working_vertices = 0;
+        uint64_t mesh_working_indices = 0;
         float yaw = 0.0f;
         float pitch = 0.0f;
         float zoom = 1.0f;
+        float mesh_target_ratio = 0.5f;
+        int preview_lod = 0;
+        int lod_count = 0;
+        PreviewShading shading = PreviewShading::Solid;
+        PreviewBackdrop backdrop = PreviewBackdrop::Slate;
         bool visible = false;
+        bool show_stats = true;
+        bool auto_rotate = false;
+        bool mesh_editable = false;
+        bool mesh_modified = false;
+        bool mesh_lods_built = false;
+        bool mesh_lods_attempted = false;
+        bool mesh_generate_lods = true;
+        bool has_preview_content = false;
+    };
+
+    struct AssetSummary
+    {
+        std::string id;
+        std::string name;
+        std::string type;
+        std::string path;
+        std::string source_path;
+        std::string thumbnail_path;
+        float quality_score = 0.0f;
+        bool quality_verified = false;
+        bool disk_only = false;
+    };
+
+    struct ListRequest
+    {
+        std::string query;
+        std::string type;
+        std::string sort = "name";
+        uint64_t offset = 0;
+        uint64_t limit = 100;
+        bool include_disk_only = true;
+    };
+
+    struct ListResult
+    {
+        std::vector<AssetSummary> assets;
+        uint64_t total = 0;
+        uint64_t offset = 0;
+        uint64_t limit = 0;
+    };
+
+    struct AssetInspection
+    {
+        AssetSummary asset;
+        std::vector<std::string> aliases;
+        std::vector<std::string> tags;
+        std::vector<std::string> dependencies;
+        std::vector<std::string> missing_dependencies;
+        uint64_t vertex_count = 0;
+        uint64_t index_count = 0;
+        uint32_t texture_width = 0;
+        uint32_t texture_height = 0;
+        uint32_t texture_channels = 0;
+        uint64_t source_bytes = 0;
+        int prefab_entity_count = 0;
+        bool source_exists = false;
+    };
+
+    enum class SelectionMode
+    {
+        Replace,
+        Add,
+        Remove,
+        Toggle
+    };
+
+    struct SelectionRequest
+    {
+        std::vector<std::string> asset_ids;
+        std::optional<std::string> focus_id;
+        SelectionMode mode = SelectionMode::Replace;
+    };
+
+    struct DisplayRequest
+    {
+        std::optional<PreviewShading> shading;
+        std::optional<PreviewBackdrop> backdrop;
+        std::optional<bool> show_stats;
+        std::optional<bool> auto_rotate;
+        std::optional<int> preview_lod;
+        bool frame = false;
+        bool reset = false;
+    };
+
+    enum class MeshAction
+    {
+        Simplify,
+        Optimize,
+        BuildLods,
+        Revert,
+        SetOptions
+    };
+
+    struct MeshRequest
+    {
+        MeshAction action = MeshAction::SetOptions;
+        std::optional<float> target_ratio;
+        std::optional<bool> generate_lods;
+        std::optional<int> preview_lod;
+        bool confirm = false;
+    };
+
+    struct CleanupSummary
+    {
+        std::vector<std::string> orphan_files;
+        uint64_t bytes = 0;
+        uint64_t generation = 0;
     };
 
     // control surface for drivers outside the panel, a failure is reported through error rather than
@@ -131,7 +251,6 @@ public:
     void SetPanelVisible(bool visible);
     bool SelectAsset(
         const std::string& query,
-        const std::string& version,
         std::string& error
     );
     bool PreviewEntityById(
@@ -146,19 +265,61 @@ public:
         std::string& error
     );
     PreviewStatus GetPreviewStatus() const;
+    bool Refresh(std::string& error);
+    bool ListAssets(
+        const ListRequest& request,
+        ListResult& result,
+        std::string& error
+    );
+    bool InspectAsset(
+        const std::string& asset_id,
+        AssetInspection& result,
+        std::string& error
+    ) const;
+    bool SetSelection(
+        const SelectionRequest& request,
+        std::string& error
+    );
+    bool SetDisplay(
+        const DisplayRequest& request,
+        std::string& error
+    );
+    bool PreviewPath(
+        const std::string& path,
+        std::string& error
+    );
+    bool Reload(std::string& error);
+    bool EditMesh(
+        const MeshRequest& request,
+        std::string& error
+    );
+    bool SaveMesh(
+        bool confirm,
+        std::string& error
+    );
+    bool Rename(
+        const std::string& asset_id,
+        const std::string& linked_path,
+        const std::string& new_name,
+        std::string& error
+    );
+    bool Delete(
+        const std::vector<std::string>& asset_ids,
+        const std::string& linked_path,
+        bool confirm,
+        std::string& error
+    );
+    bool ScanCleanup(
+        CleanupSummary& result,
+        std::string& error
+    );
+    bool ApplyCleanup(
+        uint64_t generation,
+        bool confirm,
+        std::string& error
+    );
 
 private:
-    struct AssetVersion
-    {
-        std::string id;
-        std::string path;
-        std::string notes;
-        std::vector<std::string> dependencies;
-        int number = 0;
-        float quality_score = 0.0f;
-        bool quality_verified = false;
-    };
-
     // one editable copy per sub mesh, sub meshes cannot be merged into a single buffer and
     // simplified as one blob because each carries its own material
     struct WorkingSubMesh
@@ -172,14 +333,12 @@ private:
         uint32_t source_index_count = 0;
     };
 
-    // what a library cleanup would remove, built before anything is touched so the confirmation can
-    // list it, superseded versions and orphans are kept apart because one is safe and one is a guess
+    // what a library cleanup would remove, built before anything is touched
     struct CleanupPlan
     {
-        std::vector<std::string> superseded_labels;
-        std::vector<std::string> superseded_files;
         std::vector<std::string> orphan_files;
-        std::vector<std::string> directories;
+        std::vector<std::string> reference_files;
+        std::vector<std::string> file_signatures;
         uint64_t bytes = 0;
         bool scanned = false;
         std::string error;
@@ -190,10 +349,15 @@ private:
         std::string id;
         std::string name;
         std::string type;
-        std::string active_version;
+        std::string path;
+        std::string source_path;
+        std::string thumbnail_path;
         std::vector<std::string> aliases;
         std::vector<std::string> tags;
-        std::vector<AssetVersion> versions;
+        std::vector<std::string> dependencies;
+        float quality_score = 0.0f;
+        bool quality_verified = false;
+        bool disk_only = false;
     };
 
     void RefreshCatalog(bool force);
@@ -203,7 +367,8 @@ private:
         bool force_reload = false
     );
     void LoadDependencyPreview(const std::string& path);
-    void DrawToolbar();
+    void DrawLibraryToolbar(float width);
+    void DrawSelectionBar();
     void DrawStatusBar();
     void DrawAssetList(float width, float height);
     void DrawDetails(float height);
@@ -233,6 +398,7 @@ private:
     );
     void DrawDeleteConfirmation();
     void ScanLibraryCleanup();
+    std::vector<std::string> CleanupFileSignatures() const;
     bool ApplyLibraryCleanup();
     void DrawCleanupConfirmation();
     void LoadWorkingGeometry();
@@ -269,9 +435,6 @@ private:
         const ImVec2& maximum
     );
     bool AssetMatchesFilter(const AssetEntry& asset) const;
-    const AssetVersion* GetActiveVersion(
-        const AssetEntry& asset
-    ) const;
     bool SavePreviewScreenshot(
         const std::string& path,
         uint32_t width,
@@ -303,7 +466,7 @@ private:
     // anybody would sit through
     bool m_pending_delete_selection = false;
     CleanupPlan m_cleanup;
-    bool m_cleanup_include_orphans = true;
+    uint64_t m_cleanup_generation = 0;
     bool m_rename_request_focus = false;
     std::unordered_set<std::string> m_expanded_assets;
     std::string m_loaded_write_time;
@@ -371,6 +534,7 @@ private:
     int m_prefab_entity_count = 0;
     float m_library_width = 280.0f;
     float m_inspector_width = 340.0f;
+    float m_compact_preview_height = 420.0f;
     float m_preview_yaw = 0.65f;
     float m_preview_pitch = 0.35f;
     float m_preview_zoom = 1.0f;

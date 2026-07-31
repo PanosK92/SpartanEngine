@@ -62,6 +62,21 @@ const primitive_mesh_names = new Set([
   "triangle",
 ]);
 
+export const prop_quality_profile = Object.freeze({
+  min_entities: 0,
+  min_renderables: 1,
+  min_unique_materials: 0,
+  min_advanced_mesh_ratio: null,
+  require_light: false,
+  min_collision_ratio: null,
+  max_duplicate_geometry: null,
+  max_repetition_ratio: null,
+  max_dominant_geometry_ratio: null,
+  max_default_material_ratio: 1,
+  use_world_hierarchy: false,
+  use_spatial_snapshot: false,
+});
+
 const quality_profiles = {
   generic: {
     min_entities: 12,
@@ -98,6 +113,7 @@ const quality_profiles = {
     min_unique_materials: 3,
     min_advanced_mesh_ratio: 0.08,
   },
+  prop: prop_quality_profile,
 };
 
 function normalized(value) {
@@ -232,12 +248,17 @@ function repetition_metrics(spatial_entities, materials) {
 }
 
 function resolved_quality_options(options) {
+  const profile_name = normalized(
+    options.profile ??
+    options.scene_type,
+  );
   const profile =
-    quality_profiles[normalized(options.scene_type)] ??
+    quality_profiles[profile_name] ??
     quality_profiles.generic;
-  const planned_min = Number.isInteger(
-    options.planned_element_count,
-  )
+  const selected_options = options;
+  const planned_min =
+    profile_name !== "prop" &&
+    Number.isInteger(options.planned_element_count)
     ? Math.ceil(options.planned_element_count * 1.5)
     : 0;
   return {
@@ -249,11 +270,17 @@ function resolved_quality_options(options) {
     min_collision_ratio: 1,
     max_repetition_ratio: 0.4,
     max_dominant_geometry_ratio: 0.8,
+    use_world_hierarchy: true,
+    use_spatial_snapshot: true,
     ...profile,
-    ...options,
+    ...selected_options,
+    profile: profile_name || "generic",
     min_entities:
-      options.min_entities ??
+      selected_options.min_entities ??
       Math.max(profile.min_entities, planned_min),
+    min_renderables:
+      selected_options.min_renderables ??
+      profile.min_renderables,
   };
 }
 
@@ -367,8 +394,8 @@ export function scene_quality_prompt_lines(prompt, intent) {
     "Scale the work into bounded internal passes by zone or discipline, preserving good existing work during refinement. Finish each pass coherently instead of scattering shallow edits across the whole scene.",
     "Use context-sensitive design judgment rather than a fixed prop checklist. Details must explain how the place is built, used, accessed, maintained, and lit.",
     "Before creating entities, use the fresh prepared design context when present. Otherwise call scene_plan_suggest from the current request. Never search for or reuse a stored design.",
-    "Search the world asset library before building reusable objects. Match semantic aliases, tags, dimensions, style, and material constraints, then load a suitable promoted version.",
-    "Environment builds may make at most one focused improvement attempt per reused asset in a run. Preserve the active version when that candidate does not pass verification and promotion thresholds.",
+    "Search the world asset library before building reusable objects. Match semantic aliases, tags, dimensions, style, and material constraints, then load the suitable current asset.",
+    "Environment builds may make at most one focused improvement attempt per reused asset in a run. Preserve the current asset when that attempt does not pass verification.",
     "Reusable objects authored during a scene build default to game-ready environment props with moderate geometry, few parts and a small reused material set.",
     "Do not store layouts or build instructions as resource files. Every persistent MCP-generated mesh, material, texture, prefab, editable source, thumbnail, and catalog record belongs under shared project/mcp_resources, never under a world-specific resource directory.",
     "Complete layout and circulation before structure, complete structure before functional objects, and complete functional objects before decoration. Do not hide an incoherent layout under detail.",
@@ -488,6 +515,7 @@ export async function audit_scene_quality(
     required_features,
     required_roles,
     min_entities,
+    min_renderables,
     max_default_material_ratio,
     min_unique_materials,
     min_advanced_mesh_ratio,
@@ -496,7 +524,12 @@ export async function audit_scene_quality(
     min_collision_ratio,
     max_repetition_ratio,
     max_dominant_geometry_ratio,
+    use_world_hierarchy,
+    use_spatial_snapshot,
+    profile: quality_profile,
   } = resolved_quality_options(options);
+  const is_prop_profile =
+    quality_profile === "prop";
   const hierarchy = await send_command("entity_get", { id });
   if (!hierarchy.ok || !hierarchy.entity)
   {
@@ -507,7 +540,12 @@ export async function audit_scene_quality(
     };
   }
 
-  const world_entities = await list_all_entities(send_command);
+  const world_entities = use_world_hierarchy
+    ? await list_all_entities(send_command)
+    : {
+        ok: true,
+        entities: [hierarchy.entity],
+      };
   if (!world_entities.ok)
   {
     return {
@@ -533,10 +571,16 @@ export async function audit_scene_quality(
         "material audit failed",
     };
   }
-  const spatial_snapshot = await list_spatial_entities(
-    send_command,
-    id,
-  );
+  const spatial_snapshot = use_spatial_snapshot
+    ? await list_spatial_entities(
+        send_command,
+        id,
+      )
+    : {
+        ok: false,
+        skipped: true,
+        entities: [],
+      };
 
   const entities = hierarchy_entities(
     world_entities.entities,
@@ -654,18 +698,25 @@ export async function audit_scene_quality(
     ? largest_entity_volume / scene_volume
     : 0;
 
-  const checks = [
-    {
+  const required_renderables =
+    min_renderables ??
+    Math.ceil(min_entities * 0.6);
+  const checks = [];
+  if (!is_prop_profile || min_entities > 0)
+  {
+    checks.push({
       name: "entity_count",
       pass: descendants.length >= min_entities,
       actual: descendants.length,
       required: min_entities,
-    },
+    });
+  }
+  checks.push(
     {
       name: "renderable_detail_count",
-      pass: materials.length >= Math.ceil(min_entities * 0.6),
+      pass: materials.length >= required_renderables,
       actual: materials.length,
-      required: Math.ceil(min_entities * 0.6),
+      required: required_renderables,
     },
     {
       name: "default_material_ratio",
@@ -675,25 +726,43 @@ export async function audit_scene_quality(
       actual: default_material_ratio,
       required_max: max_default_material_ratio,
     },
-    {
+  );
+  if (!is_prop_profile || min_unique_materials > 0)
+  {
+    checks.push({
       name: "unique_materials",
       pass: unique_materials.size >= min_unique_materials,
       actual: unique_materials.size,
       required: min_unique_materials,
-    },
-    {
+    });
+  }
+  if (
+    !is_prop_profile ||
+    Number.isFinite(min_advanced_mesh_ratio)
+  )
+  {
+    checks.push({
       name: "advanced_mesh_ratio",
       pass: advanced_mesh_ratio >= min_advanced_mesh_ratio,
       actual: advanced_mesh_ratio,
       required: min_advanced_mesh_ratio,
-    },
-    {
+    });
+  }
+  if (!is_prop_profile || require_light)
+  {
+    checks.push({
       name: "lighting",
       pass: !require_light || light_count > 0,
       actual: light_count,
       required: require_light ? 1 : 0,
-    },
-    {
+    });
+  }
+  if (
+    !is_prop_profile ||
+    Number.isFinite(min_collision_ratio)
+  )
+  {
+    checks.push({
       name: "collision_coverage",
       pass:
         materials.length > 0 &&
@@ -707,8 +776,14 @@ export async function audit_scene_quality(
           mesh: entry.mesh,
         }),
       ),
-    },
-    {
+    });
+  }
+  if (
+    !is_prop_profile ||
+    Number.isFinite(max_duplicate_geometry)
+  )
+  {
+    checks.push({
       name: "duplicate_geometry",
       pass:
         spatial_snapshot.ok &&
@@ -716,8 +791,14 @@ export async function audit_scene_quality(
         duplicates.length <= max_duplicate_geometry,
       actual: duplicates.length,
       required_max: max_duplicate_geometry,
-    },
-    {
+    });
+  }
+  if (
+    !is_prop_profile ||
+    Number.isFinite(max_repetition_ratio)
+  )
+  {
+    checks.push({
       name: "repetition_ratio",
       pass:
         materials.length < 8 ||
@@ -727,8 +808,14 @@ export async function audit_scene_quality(
       required_max: max_repetition_ratio,
       largest_group:
         repetition.largest_repeated_group,
-    },
-    {
+    });
+  }
+  if (
+    !is_prop_profile ||
+    Number.isFinite(max_dominant_geometry_ratio)
+  )
+  {
+    checks.push({
       name: "dominant_geometry_ratio",
       pass:
         scene_volume > 0 &&
@@ -736,7 +823,9 @@ export async function audit_scene_quality(
           max_dominant_geometry_ratio,
       actual: dominant_geometry_ratio,
       required_max: max_dominant_geometry_ratio,
-    },
+    });
+  }
+  checks.push(
     ...feature_results.map((entry) => ({
       name: `feature_${entry.feature}`,
       pass: entry.pass,
@@ -748,7 +837,7 @@ export async function audit_scene_quality(
       pass: entry.pass,
       required: 1,
     })),
-  ];
+  );
   const failed_checks = checks.filter((check) => !check.pass);
   const default_material_semantic_ids = materials
     .filter((entry) => entry.default_material)

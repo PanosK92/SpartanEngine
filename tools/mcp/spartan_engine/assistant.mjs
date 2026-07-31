@@ -20,12 +20,26 @@ const assistant_port = Number.parseInt(read_arg("port", process.env.SPARTAN_ASSI
 const engine_port = Number.parseInt(read_arg("engine-port", process.env.SPARTAN_ENGINE_PORT ?? "47777"), 10);
 const engine_host = read_arg("engine-host", process.env.SPARTAN_ENGINE_HOST ?? "127.0.0.1");
 const run_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_RUN_TIMEOUT_MS ?? "180000", 10);
-const context_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_CONTEXT_TIMEOUT_MS ?? "2500", 10);
+const context_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_CONTEXT_TIMEOUT_MS ?? "10000", 10);
 const engine_first_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_ENGINE_FIRST_TIMEOUT_MS ?? "60000", 10);
 const read_only_mode = process.argv.includes("--read-only") || ["1", "true", "yes", "on"].includes(String(process.env.SPARTAN_ASSISTANT_READ_ONLY ?? process.env.SPARTAN_MCP_READ_ONLY ?? "").toLowerCase());
 const mutating_tools = new Set([
   "engine_set_mode",
   "cvar_set",
+  "asset_viewer_open",
+  "asset_viewer_select",
+  "asset_viewer_preview_entity",
+  "asset_viewer_set_view",
+  "asset_viewer_screenshot",
+  "asset_viewer_set_selection",
+  "asset_viewer_set_display",
+  "asset_viewer_preview_path",
+  "asset_viewer_reload",
+  "asset_viewer_mesh",
+  "asset_viewer_mesh_save",
+  "asset_viewer_rename",
+  "asset_viewer_delete",
+  "asset_viewer_cleanup_apply",
   "world_load",
   "world_save",
   "world_set_environment",
@@ -238,11 +252,13 @@ class AssistantRun {
       duration_ms: Date.now() - started_at,
       result: summarize_tool_result(result),
     });
-    if (!result.ok && String(result.error ?? "").toLowerCase().includes("unknown command")) {
-      await this.report_capability_gap(`Native MCP command or tool \`${name}\` is missing from the engine bridge or Node registry.`);
-    }
-    if (!result.ok && (String(result.code ?? "") === "engine_timeout" || String(result.error ?? "").toLowerCase().includes("timed out"))) {
-      await this.report_capability_gap(`Native MCP command \`${name}\` timed out. Error: ${result.error ?? "timeout"}`);
+    const error_text = String(result.error ?? "").toLowerCase();
+    if (!result.ok && error_text.includes("unknown command"))
+    {
+      await this.report_capability_gap(
+        `Native MCP command or tool \`${name}\` is missing from ` +
+        "the engine bridge or Node registry.",
+      );
     }
     this.throw_if_cancelled();
     return result;
@@ -356,7 +372,6 @@ async function execute_prompt(socket, payload) {
 
     if (summary === null) {
       if (intent.allow_cursor_fallback === false) {
-        await run.report_capability_gap(`No deterministic scene operation matched intent ${intent.kind}. Add a native MCP tool or generic operation instead of using Cursor fallback.`);
         throw new Error("No deterministic Spartan scene operation matched this request, and live scene edits are not allowed to fall back to Cursor.");
       }
 

@@ -46,11 +46,9 @@ import {
 import {
   auto_register_world_asset,
   resolve_world_resource_directory,
-  world_asset_compare,
   world_asset_fork,
   world_asset_inspect,
   world_asset_load,
-  world_asset_promote,
   world_asset_register,
   world_asset_search,
   world_material_fork,
@@ -441,6 +439,7 @@ function async_task_receipt(task) {
     started_at: task.started_at,
     completed_at: task.completed_at,
     duration_ms: task.completed_at ? task.completed_at_ms - task.started_at_ms : Date.now() - task.started_at_ms,
+    is_mutating: task.is_mutating,
     is_error: task.is_error,
     result: task.result,
   };
@@ -470,8 +469,16 @@ async function run_async_task(task, tool, args) {
   try
   {
     const result = await tool.handler(args);
-    task.result = normalize_result(result?.structuredContent ?? { ok: false, error: "tool returned no structured result" });
-    task.is_error = Boolean(result?.isError);
+    task.result = normalize_result(
+      result?.structuredContent ??
+      {
+        ok: false,
+        error: "tool returned no structured result",
+      },
+    );
+    task.is_error =
+      Boolean(result?.isError) ||
+      task.result.ok === false;
     task.status = task.is_error ? "failed" : "completed";
   }
   catch (error)
@@ -1356,17 +1363,48 @@ register_local_tool("async_task_start", {
     args: z.record(z.string(), z.any()).optional(),
   },
   outputSchema: output_schemas.async_task,
-  annotations: destructive_tool,
-}, async ({ tool, args = {} }) => {
-  if (["async_task_start", "async_task_get", "async_task_list"].includes(tool))
+}, async ({ tool: requested_tool, args = {} }) => {
+  const tool = requested_tool.trim();
+  if (!tool)
   {
-    return tool_result(structured_error("async task tools cannot start themselves", { code: "invalid_arguments" }));
+    return tool_result(
+      structured_error(
+        "async task tool is required",
+        {
+          code: "invalid_arguments",
+        },
+      ),
+    );
+  }
+  if (
+    [
+      "async_task_start",
+      "async_task_get",
+      "async_task_list",
+    ].includes(tool)
+  )
+  {
+    return tool_result(
+      structured_error(
+        "async task tools cannot start themselves",
+        {
+          code: "invalid_arguments",
+        },
+      ),
+    );
   }
 
   const target = tool_registry.get(tool);
   if (!target)
   {
-    return tool_result(structured_error("unknown tool", { code: "target_resolution_failed" }));
+    return tool_result(
+      structured_error(
+        `unknown async task tool ${tool}`,
+        {
+          code: "target_resolution_failed",
+        },
+      ),
+    );
   }
 
   const parsed = parse_raw_shape(target.inputSchema, args);
@@ -1384,6 +1422,8 @@ register_local_tool("async_task_start", {
     started_at: new Date(started_at_ms).toISOString(),
     completed_at_ms: null,
     completed_at: null,
+    is_mutating:
+      target.annotations?.readOnlyHint !== true,
     is_error: false,
     result: null,
   };
@@ -1762,27 +1802,22 @@ register_tool(server, "context_snapshot", "Read engine status, world summary, an
 const world_asset_identity_schema = {
   asset_id: z.string().optional(),
   id: z.string().optional(),
-  version: z.union([z.string(), z.number().int()]).optional(),
 };
 const world_asset_register_schema = {
   type: z.enum(["mesh", "material", "prefab", "texture"]),
   name: z.string().min(1),
   asset_id: z.string().optional(),
   path: z.string(),
-  thumbnail_path: z.string().optional(),
+  thumbnail_path: z.string().nullable().optional(),
   aliases: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   constraints: z.record(z.string(), z.any()).optional(),
   source: z.any().optional(),
-  parent_version: z.string().optional(),
   quality_score: z.number().min(0).max(100).optional(),
   verified: z.boolean().optional(),
   checks: z.record(z.string(), z.boolean()).optional(),
   required_checks: z.array(z.string()).optional(),
   notes: z.string().optional(),
-  promote: z.boolean().optional(),
-  keep_history: z.boolean().optional(),
-  replace_candidate: z.boolean().optional(),
 };
 
 register_local_tool(
@@ -1813,7 +1848,7 @@ register_local_tool(
 register_local_tool(
   "world_asset_inspect",
   {
-    description: "Inspect one reusable world asset, its immutable versions, metadata, and active promoted version.",
+    description: "Inspect one reusable world asset and its current metadata, paths, dependencies, and quality.",
     inputSchema: world_asset_identity_schema,
     outputSchema: output_schemas.generic,
     annotations: read_only,
@@ -1830,24 +1865,7 @@ register_local_tool(
 register_local_tool(
   "world_asset_register",
   {
-    description: "Copy a mesh, material, or prefab into an immutable shared project asset version and register its semantic metadata.",
-    inputSchema: world_asset_register_schema,
-    outputSchema: output_schemas.generic,
-    annotations: edit_tool,
-  },
-  async (args) => catalog_tool_result(
-    world_asset_register(
-      project_root,
-      await acquire_resource_directory(),
-      args,
-    ),
-  ),
-);
-
-register_local_tool(
-  "world_asset_version",
-  {
-    description: "Create a new immutable candidate version for an existing reusable world asset. Once a candidate is promoted the earlier versions and their files are deleted, keeping only the final one.",
+    description: "Atomically create or replace a reusable world asset and its semantic metadata at stable shared project paths.",
     inputSchema: world_asset_register_schema,
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
@@ -1864,7 +1882,7 @@ register_local_tool(
 register_local_tool(
   "world_asset_fork",
   {
-    description: "Fork an immutable asset version into an editable source draft without changing the promoted version.",
+    description: "Fork the current asset into an editable source draft without changing the cataloged asset.",
     inputSchema: world_asset_identity_schema,
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
@@ -1879,57 +1897,9 @@ register_local_tool(
 );
 
 register_local_tool(
-  "world_asset_compare",
-  {
-    description: "Compare two immutable versions of one reusable world asset, including quality score and verification differences.",
-    inputSchema: {
-      asset_id: z.string().optional(),
-      id: z.string().optional(),
-      left_version: z.union([z.string(), z.number().int()]).optional(),
-      right_version: z.union([z.string(), z.number().int()]).optional(),
-      candidate_version: z.union([z.string(), z.number().int()]).optional(),
-    },
-    outputSchema: output_schemas.generic,
-    annotations: read_only,
-  },
-  async (args) => catalog_tool_result(
-    world_asset_compare(
-      project_root,
-      await acquire_resource_directory(),
-      args,
-    ),
-  ),
-);
-
-register_local_tool(
-  "world_asset_promote",
-  {
-    description: "Promote a verified candidate only when required checks pass and its quality score exceeds the active version by the threshold. Superseded versions and their files are deleted unless keep_history is set.",
-    inputSchema: {
-      asset_id: z.string().optional(),
-      id: z.string().optional(),
-      version: z.union([z.string(), z.number().int()]).optional(),
-      candidate_version: z.union([z.string(), z.number().int()]).optional(),
-      threshold: z.number().min(0).optional(),
-      required_checks: z.array(z.string()).optional(),
-      keep_history: z.boolean().optional(),
-    },
-    outputSchema: output_schemas.generic,
-    annotations: edit_tool,
-  },
-  async (args) => catalog_tool_result(
-    world_asset_promote(
-      project_root,
-      await acquire_resource_directory(),
-      args,
-    ),
-  ),
-);
-
-register_local_tool(
   "world_asset_load",
   {
-    description: "Load the active or requested immutable asset version into the engine, instantiating prefabs when applicable.",
+    description: "Load the current cataloged asset into the engine, instantiating prefabs when applicable.",
     inputSchema: {
       ...world_asset_identity_schema,
       parent_id: z.string().optional(),
@@ -1951,7 +1921,7 @@ register_local_tool(
 register_local_tool(
   "world_material_inspect",
   {
-    description: "Inspect a cataloged material version and its live native material properties and texture slots.",
+    description: "Inspect a cataloged material and its live native material properties and texture slots.",
     inputSchema: world_asset_identity_schema,
     outputSchema: output_schemas.generic,
     annotations: read_only,
@@ -1969,7 +1939,7 @@ register_local_tool(
 register_local_tool(
   "world_material_fork",
   {
-    description: "Fork a cataloged material version into editable source JSON without mutating its immutable XML.",
+    description: "Fork a cataloged material into editable source JSON without mutating its current XML.",
     inputSchema: world_asset_identity_schema,
     outputSchema: output_schemas.generic,
     annotations: edit_tool,
@@ -1987,7 +1957,7 @@ register_local_tool(
 register_local_tool(
   "world_material_publish",
   {
-    description: "Publish editable material source JSON through native material commands as a new immutable XML candidate version.",
+    description: "Publish editable material source JSON through native material commands and replace the current catalog asset.",
     inputSchema: {
       ...world_asset_identity_schema,
       source: z.record(z.string(), z.any()).optional(),
@@ -3040,9 +3010,19 @@ register_local_tool(
   "scene_quality_audit",
   {
     title: "scene quality audit",
-    description: "Deterministically audit a completed scene hierarchy for requested features, materials, geometry, collision coverage, detail density, and lighting. A false pass means the scene needs another correction pass.",
+    description: "Deterministically audit a completed scene or focused prop. Use profile prop for a cheap renderable and material gate without scene-scale, lighting, advanced-mesh, spatial, or per-part collision requirements.",
     inputSchema: {
       id: z.string(),
+      profile: z.enum([
+        "generic",
+        "room",
+        "storefront",
+        "gas_station",
+        "airport",
+        "warehouse",
+        "road",
+        "prop",
+      ]).optional(),
       required_features: z.array(z.string()).max(20).optional(),
       min_entities: z.number().int().min(1).max(5000).optional(),
       max_default_material_ratio: z.number().min(0).max(1).optional(),
@@ -3057,6 +3037,7 @@ register_local_tool(
         "airport",
         "warehouse",
         "road",
+        "prop",
       ]).optional(),
       planned_element_count:
         z.number().int().min(1).max(1000).optional(),
@@ -4713,17 +4694,11 @@ register_tool(
 register_tool(
   server,
   "asset_viewer_select",
-  "Select and load a specific catalog asset version in the Asset Viewer without changing the main scene viewport.",
+  "Select and load a catalog asset in the Asset Viewer without changing the main scene viewport.",
   {
     asset_id: z.string().optional(),
     id: z.string().optional(),
     name: z.string().optional(),
-    version_id:
-      z.union([z.string(), z.number().int()]).optional(),
-    version:
-      z.union([z.string(), z.number().int()]).optional(),
-    candidate_version:
-      z.union([z.string(), z.number().int()]).optional(),
   },
   "asset_viewer_select",
   { annotations: edit_tool, outputSchema: output_schemas.generic },
@@ -4734,7 +4709,7 @@ register_tool(
   "asset_viewer_preview_entity",
   "Open the Asset Viewer and preview an isolated entity hierarchy without changing the main viewport.",
   {
-    id: z.string(),
+    id: z.union([z.string(), z.number().int()]),
   },
   "asset_viewer_preview_entity",
   { annotations: edit_tool, outputSchema: output_schemas.generic },
@@ -4765,7 +4740,7 @@ register_tool(
 register_tool(
   server,
   "asset_viewer_screenshot",
-  "Save a screenshot of the current Asset Viewer preview without capturing or moving the main scene viewport. Captures a shaded render against the sky regardless of what the panel is showing, pass shading to inspect topology instead.",
+  "Save a screenshot of the current Asset Viewer preview without capturing or moving the main scene viewport. Captures default to a solid render against the sky regardless of the panel display; pass shading or backdrop to override either.",
   {
     path: z.string().optional(),
     width: z.number().int().min(256).max(2048).optional(),
@@ -4777,6 +4752,175 @@ register_tool(
   },
   "asset_viewer_screenshot",
   { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_refresh",
+  "Refresh the Asset Viewer catalog and disk-only asset index.",
+  {},
+  "asset_viewer_refresh",
+  { annotations: read_only, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_list",
+  "List Asset Viewer catalog and disk-only assets with optional filtering, sorting, and pagination.",
+  {
+    query: z.string().optional(),
+    type: z
+      .enum(["all", "mesh", "material", "prefab", "texture"])
+      .optional(),
+    sort: z.enum(["name", "quality", "type"]).optional(),
+    offset: z.number().int().min(0).optional(),
+    limit: z.number().int().min(1).max(500).optional(),
+    include_disk_only: z.boolean().optional(),
+  },
+  "asset_viewer_list",
+  { annotations: read_only, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_inspect",
+  "Inspect an Asset Viewer catalog asset, dependencies, and technical data.",
+  {
+    asset_id: z.string(),
+  },
+  "asset_viewer_inspect",
+  { annotations: read_only, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_set_selection",
+  "Replace or modify the Asset Viewer multi-selection and optionally focus one selected asset.",
+  {
+    asset_ids: z.array(z.string()),
+    mode: z.enum(["replace", "add", "remove", "toggle"]),
+    focus_asset_id: z.string().optional(),
+  },
+  "asset_viewer_set_selection",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_set_display",
+  "Set Asset Viewer shading, backdrop, statistics, turntable, LOD, and framing options.",
+  {
+    shading: z.enum(["solid", "wire", "vertices"]).optional(),
+    backdrop: z
+      .enum(["auto", "sky", "charcoal", "slate", "paper"])
+      .optional(),
+    show_stats: z.boolean().optional(),
+    auto_rotate: z.boolean().optional(),
+    preview_lod: z.number().int().min(0).optional(),
+    frame: z.boolean().optional(),
+    reset_camera: z.boolean().optional(),
+  },
+  "asset_viewer_set_display",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_preview_path",
+  "Preview a linked asset file by path in the Asset Viewer.",
+  {
+    path: z.string(),
+  },
+  "asset_viewer_preview_path",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_reload",
+  "Reload the selected catalog asset or linked file preview from disk.",
+  {},
+  "asset_viewer_reload",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_mesh",
+  "Edit the loaded mesh in memory by simplifying, optimizing, building LODs, reverting, or changing options.",
+  {
+    action: z.enum([
+      "simplify",
+      "optimize",
+      "build_lods",
+      "revert",
+      "set_options",
+    ]),
+    target_ratio: z.number().min(0.01).max(1).optional(),
+    generate_lods_on_save: z.boolean().optional(),
+    preview_lod: z.number().int().min(0).optional(),
+    confirm: z.boolean().optional(),
+  },
+  "asset_viewer_mesh",
+  { annotations: destructive_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_mesh_save",
+  "Overwrite the loaded mesh file with the current Asset Viewer mesh edits.",
+  {
+    confirm: z.boolean(),
+  },
+  "asset_viewer_mesh_save",
+  { annotations: destructive_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_rename",
+  "Rename one Asset Viewer catalog asset or linked file.",
+  {
+    asset_id: z.string().optional(),
+    path: z.string().optional(),
+    new_name: z.string(),
+  },
+  "asset_viewer_rename",
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_delete",
+  "Permanently delete Asset Viewer catalog assets or one linked file. Prefabs include their owned dependency copies and always require confirm true.",
+  {
+    asset_ids: z.array(z.string()).optional(),
+    path: z.string().optional(),
+    confirm: z.boolean(),
+  },
+  "asset_viewer_delete",
+  { annotations: destructive_tool, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_cleanup_scan",
+  "Scan the Asset Viewer library for orphaned files without deleting anything.",
+  {},
+  "asset_viewer_cleanup_scan",
+  { annotations: read_only, outputSchema: output_schemas.generic },
+);
+
+register_tool(
+  server,
+  "asset_viewer_cleanup_apply",
+  "Delete the orphan files in the latest Asset Viewer cleanup scan.",
+  {
+    confirm: z.boolean(),
+    generation: z.number().int().min(1),
+  },
+  "asset_viewer_cleanup_apply",
+  { annotations: destructive_tool, outputSchema: output_schemas.generic },
 );
 
 register_tool(

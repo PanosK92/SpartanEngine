@@ -107,22 +107,20 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Update this file only when a durable lesson was learned.
 - Prefer replacing stale bullets over appending duplicates.
 - Keep entries concise and tied to observed behavior.
+- Rounded-box generators map each face across the full 0-1 UV range; use a dedicated raw mesh UV island for unique non-tiled cover art or labels.
 
 ## Advice To Maintainers
 - Add native engine tools when agents repeatedly need the same multi-step command sequence.
 - Keep MCP schemas close to engine component metadata so tool descriptions do not drift.
-- Scene construction prompts should keep steering agents toward `entity_create_primitive_batch` rather than open-ended Lua discovery.
-- Log unresolved capability gaps here with the failing tool, observed error, and required engine improvement.
+- Log only unknown commands as capability gaps. Treat connection and command timeouts as bridge-health failures, and never store prompt snippets here.
 - Rebuild the engine and restart the assistant bridge when deploying new native MCP commands.
-- `scene_quality_audit` feature evidence includes the quality root, descendants, and render-material entity names so semantic hierarchies remain auditable.
-- Capability gap: Native MCP command or tool `resource_read` is missing from the engine bridge or Node registry. Prompt: "Build a cozy, fully drivable Japanese tuning shop inspired by Gran Turismo 4 and Sega GT 2002, designed as a physical open-world location like Test Drive Unlimited 2. Create a p..."
-- Capability gap: Native MCP command or tool `async_task_start` is missing from the engine bridge or Node registry. Prompt: "Build a fully explorable Japanese tuning shop inspired by Gran Turismo 4 and Sega GT 2002, with a nostalgic, cozy, slightly bittersweet early-2000s atmosphere. Make it a believa..."
-- Glass materials use color_a, ior, absorption, and thickness. gltf style names transmission and transparency are accepted and stored as inverted color_a.
-- A focused asset is only the reusable object. Do not add environment plans, staging geometry, routes, review lights, or render components on light entities. Stop the run after the first engine bridge timeout.
-- Capability gap: Native MCP command or tool `prefab_create` is missing from the engine bridge or Node registry. Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."
-- Capability gap: Native MCP command `context_snapshot` timed out. Error: engine connection for context_snapshot timed out after 2500ms Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."
-- Capability gap: Native MCP command `world_resource_directory_get` timed out. Error: engine connection for world_resource_directory_get timed out after 60000ms Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."
-- Capability gap: Native MCP command `world_summary` timed out. Error: engine connection for world_summary timed out after 60000ms Prompt: "Create a reusable scene prop: a 500 ml green glass beer bottle for the world asset library. Name the root entity beer_bottle_prop. Prop quality, not hero quality. Keep it cheap:..."
-- Capability gap: Native MCP command `entity_find` timed out. Error: engine command entity_find timed out after 2500ms Prompt: "Create an office chair asset"
-- Capability gap: Native MCP command or tool `prefab_create` is missing from the engine bridge or Node registry. Prompt: "create an office chair asset"
-- Focused-asset audits use the prop profile with no scene-light requirement and low advanced-mesh pressure. Budget, game-ready merge, visual review and world asset verification remain the promotion gates.
+- `resource_read` is an assistant alias: material path or name reads use `material_get`; list queries use `resource_list`.
+- `prefab_create` is an assistant alias for `prefab_save`. Focused assets still allow only the finalizer to save the prefab.
+- `async_task_start`, `async_task_get`, and `async_task_list` are available through both the MCP server and Cursor custom bridge; nested async tasks are rejected.
+- `scene_benchmark_score` executes locally in the Cursor bridge and must not be forwarded to C++.
+- `scene_quality_audit` supports the canonical `prop` profile. It requires one renderable material and skips scene lights, scene-scale counts, advanced-mesh pressure, per-part collision, and spatial-layout checks.
+- Focused assets use one construction pass, one game-ready pass, one stable catalog upsert, and one Asset Viewer screenshot. There is no version or promotion stage.
+- Focused runs stop after the first bridge failure and never automatically retry a timed-out mutation.
+- Engine clients use separate connection and command timeouts. A command timeout closes the socket and rejects pending requests. Queued MCP jobs expire after 25 seconds, but an executing main-thread handler cannot be preempted.
+- Catalog writes use process-local serialization, a cross-process lock, staged files, backups, and rollback.
+- Glass materials use `color_a`, `ior`, `absorption`, and `thickness`. `transmission` and `transparency` alias inverted `color_a`.

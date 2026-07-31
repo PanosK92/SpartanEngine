@@ -90,7 +90,7 @@ export const engine_overview = [
   "Use scene_visual_review for visual verification. It captures perspective and top views by default; add a front or side view when checking facades, support, or alignment.",
   "Before destructive rebuilds that should preserve appearance, call entity_render_materials and reuse the returned material names on new render geometry.",
   "Use entity_create_light for every light; it fully initializes type, color, temperature, intensity, range, angle, area size, shadows, and distances. Never hand-roll lights with empty + add component + component_set.",
-  "Every render component receives static collision by default. Standard primitives use matching convex compatible colliders; generated and imported meshes use mesh_convex. Collision coverage must reach 100 percent before scene completion.",
+  "Add collision where gameplay needs it. Prefer simplified colliders on functional roots, structural surfaces, and traversable geometry instead of attaching physics to every decorative render part.",
   "Light intensity is lux for directional and lumens otherwise. Visible blockout defaults: point/spot 8500, area 12000, directional 120000. Values like 25-100 are invisible and get replaced by calibrated defaults.",
   "Use lights_calibrate to fix existing scene lights in one call; it keeps specialty car lights dim and lifts weak blockout lights.",
   "For city development: massing first with city_blockout / district_blockout, roads second. Never hand-place hundreds of cubes for a city.",

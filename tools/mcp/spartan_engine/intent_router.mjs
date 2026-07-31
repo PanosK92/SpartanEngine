@@ -290,6 +290,91 @@ export function names_a_place(text) {
   return scene_subject_pattern.test(normalized(text));
 }
 
+function bare_object_subject(value) {
+  const match = value.match(
+    /^\s*(?:please\s+)?(?:could\s+you\s+|can\s+you\s+|i\s+want\s+you\s+to\s+)?(?:create|make|build|generate|design|model)\s+(?:me\s+)?(?:a|an)\s+([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s*$|[,.;]|\s+(?:with|that|which|featuring|made\s+of|using|from)\b)/,
+  );
+  if (!match?.[1])
+  {
+    return "";
+  }
+
+  const subject = match[1].trim();
+  const asset_subject =
+    strip_deliverable_words(subject);
+  const head = asset_subject
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .pop() ?? "";
+  if (
+    subject.length < 3 ||
+    names_a_place(head) ||
+    /^(?:cube|sphere|quad|plane|cylinder|cone|camera|light|entity|component|mesh|primitive)$/.test(
+      head,
+    ) ||
+    /\b(?:and|plus|along\s+with|together\s+with)\b/.test(value)
+  )
+  {
+    return "";
+  }
+  if (
+    /\b(?:onto|inside|next\s+to|beside|around|near|under|underneath|above|behind|in\s+front\s+of|scattered|arranged|placed|populate|fill)\b/.test(
+      value,
+    ) ||
+    /\bon\s+(?:a|an|the)\b/.test(value)
+  )
+  {
+    return "";
+  }
+
+  return subject;
+}
+
+function focused_asset_subject(value) {
+  const explicit_3d =
+    /\b(?:3d|asset|prefab|prop|mesh)\b/.test(value);
+  if (
+    !explicit_3d &&
+    (
+      /\b(?:data|domain|database|software|code|language|machine[\s-]+learning|ml|ai)\s+model\b/.test(
+        value,
+      ) ||
+      /\b(?:database|schema|neural[\s-]+network|data[\s-]+structure|api|class|source[\s-]+code|simulation|financial|forecast|economic|statistical|mathematical|conceptual|business[\s-]+model)\b/.test(
+        value,
+      )
+    )
+  )
+  {
+    return "";
+  }
+
+  const explicit_patterns = [
+    /\b(?:create|make|build|generate|design|model)\s+(?:me\s+)?(?:an?\s+)?(?:3d\s+)?(?:asset|model|prefab|prop)\s+(?:of|for)\s+(?:an?\s+|the\s+)?([a-z0-9][a-z0-9 _-]{0,60}?)(?=\s*$|[,.;]|\s+(?:with|that|which|featuring|made\s+of|using|from)\b)/,
+    /\b(?:create|make|build|generate|design|model)\s+(?:me\s+)?(?:an?\s+)?(?:3d\s+)?(?:asset|model|prefab|prop)\s+(?:an?\s+|the\s+)?((?!(?:of|for|with|that|which|featuring|using|from)\b)[a-z0-9][a-z0-9 _-]{0,60}?)(?=\s*$|[,.;]|\s+(?:with|that|which|featuring|made\s+of|using|from)\b)/,
+    /\b(?:create|make|build|generate|design|model)\s+(?:me\s+)?(?:an?\s+|the\s+)?([a-z0-9][a-z0-9 _-]{0,60}?)\s+(?:asset|model|prefab|prop)\b/,
+  ];
+  for (const pattern of explicit_patterns)
+  {
+    const match = value.match(pattern);
+    if (!match?.[1])
+    {
+      continue;
+    }
+
+    const subject = match[1].trim();
+    const head = subject
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .pop() ?? "";
+    if (!names_a_place(head))
+    {
+      return subject;
+    }
+  }
+
+  return bare_object_subject(value);
+}
+
 // words that say what kind of deliverable is wanted rather than what the thing is, a book asset is still
 // a book and should not end up in the catalog called book_asset
 const deliverable_word_pattern =
@@ -840,6 +925,28 @@ export function route_intent(prompt) {
     };
   }
 
+  if (is_terse && is_source_code_request(value)) {
+    return { kind: "source_code", confidence: 0.9 };
+  }
+
+  const focused_asset_subject_name =
+    focused_asset_subject(value);
+  if (focused_asset_subject_name)
+  {
+    return {
+      kind: "focused_asset",
+      confidence: 0.9,
+      live_scene_action: true,
+      allow_cursor_fallback: true,
+      target_name: clean_target_name(
+        strip_deliverable_words(
+          focused_asset_subject_name,
+        ),
+      ),
+      use_selected: false,
+    };
+  }
+
   if (is_scene_construction_request(value))
   {
     return {
@@ -894,10 +1001,6 @@ export function route_intent(prompt) {
       target_name: target_name_from_prompt(prompt),
       use_selected: should_use_selected_entity(prompt),
     };
-  }
-
-  if (is_terse && is_source_code_request(value)) {
-    return { kind: "source_code", confidence: 0.9 };
   }
 
   if (is_live_scene_edit_request(value)) {

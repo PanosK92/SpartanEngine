@@ -25,9 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "McpQueue.h"
 #include "Resource/ResourceCache.h"
 #include "World/World.h"
+#include <algorithm>
 #include <cctype>
+#include <condition_variable>
 #include <cstdlib>
 #include <thread>
+#include <vector>
 //====================
 
 #ifdef _WIN32
@@ -56,8 +59,11 @@ namespace spartan
         std::atomic<bool> is_running = false;
         std::thread server_thread;
         socket_t listen_socket = invalid_socket;
-        socket_t active_client_socket = invalid_socket;
+        std::vector<socket_t> active_client_sockets;
         std::mutex client_mutex;
+        std::condition_variable clients_finished;
+        uint32_t active_client_count = 0;
+        constexpr uint32_t maximum_client_count = 8;
         uint16_t mcp_port = 47777;
     #ifdef _WIN32
         bool winsock_initialized = false;
@@ -360,23 +366,75 @@ namespace spartan
                     continue;
                 }
 
+                bool capacity_available = false;
                 {
                     std::lock_guard<std::mutex> lock(client_mutex);
-                    active_client_socket = client_socket;
-                }
-
-                handle_client(client_socket);
-
-                {
-                    std::lock_guard<std::mutex> lock(client_mutex);
-                    if (active_client_socket == client_socket)
+                    capacity_available =
+                        active_client_count <
+                        maximum_client_count;
+                    if (capacity_available)
                     {
-                        active_client_socket = invalid_socket;
+                        active_client_sockets.push_back(
+                            client_socket
+                        );
+                        active_client_count++;
                     }
                 }
+                if (!capacity_available)
+                {
+                    send_all(
+                        client_socket,
+                        "{\"ok\":false,\"error\":\"MCP client limit reached\"}\n"
+                    );
+                    shutdown_socket(client_socket);
+                    close_socket(client_socket);
+                    continue;
+                }
+                try
+                {
+                    std::thread(
+                        [client_socket]()
+                        {
+                            handle_client(client_socket);
+                            shutdown_socket(client_socket);
+                            close_socket(client_socket);
 
-                shutdown_socket(client_socket);
-                close_socket(client_socket);
+                            {
+                                std::lock_guard<std::mutex> lock(
+                                    client_mutex
+                                );
+                                active_client_sockets.erase(
+                                    std::remove(
+                                        active_client_sockets.begin(),
+                                        active_client_sockets.end(),
+                                        client_socket
+                                    ),
+                                    active_client_sockets.end()
+                                );
+                                active_client_count--;
+                            }
+                            clients_finished.notify_all();
+                        }
+                    ).detach();
+                }
+                catch (...)
+                {
+                    {
+                        std::lock_guard<std::mutex> lock(client_mutex);
+                        active_client_sockets.erase(
+                            std::remove(
+                                active_client_sockets.begin(),
+                                active_client_sockets.end(),
+                                client_socket
+                            ),
+                            active_client_sockets.end()
+                        );
+                        active_client_count--;
+                    }
+                    shutdown_socket(client_socket);
+                    close_socket(client_socket);
+                    SP_LOG_ERROR("Failed to create MCP client worker");
+                }
             }
         }
     }
@@ -462,13 +520,30 @@ namespace spartan
 
         {
             std::lock_guard<std::mutex> lock(client_mutex);
-            shutdown_socket(active_client_socket);
+            for (
+                const socket_t client_socket :
+                active_client_sockets
+            )
+            {
+                shutdown_socket(client_socket);
+            }
         }
 
         if (server_thread.joinable())
         {
             server_thread.join();
         }
+        {
+            std::unique_lock<std::mutex> lock(client_mutex);
+            clients_finished.wait(
+                lock,
+                []()
+                {
+                    return active_client_count == 0;
+                }
+            );
+        }
+        active_client_sockets.clear();
 
     #ifdef _WIN32
         if (winsock_initialized)

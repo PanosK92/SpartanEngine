@@ -827,6 +827,40 @@ namespace
         }
     }
 
+    bool resolved_path_is_within(
+        const string& value,
+        const string& directory
+    )
+    {
+        error_code value_error;
+        error_code directory_error;
+        const filesystem::path resolved_value =
+            filesystem::weakly_canonical(
+                filesystem::path(value),
+                value_error
+            );
+        const filesystem::path resolved_directory =
+            filesystem::weakly_canonical(
+                filesystem::path(directory),
+                directory_error
+            );
+        if (
+            value_error ||
+            directory_error ||
+            resolved_directory.empty()
+        )
+        {
+            return false;
+        }
+        const auto mismatch = std::mismatch(
+            resolved_directory.begin(),
+            resolved_directory.end(),
+            resolved_value.begin(),
+            resolved_value.end()
+        );
+        return mismatch.first == resolved_directory.end();
+    }
+
     // strips whatever a user typed into an inline rename down to something safe to put on disk
     // and into the catalog, empty means the input was unusable
     string sanitize_asset_name(const string& value)
@@ -1169,6 +1203,45 @@ namespace
         );
     }
 
+    void vertical_splitter(
+        const char* id,
+        float& height,
+        const float minimum,
+        const float maximum,
+        const float width
+    )
+    {
+        const float thickness = 5.0f * ui_scale();
+        const ImVec2 position = ImGui::GetCursorScreenPos();
+        ImGui::InvisibleButton(id, ImVec2(width, thickness));
+        const bool active = ImGui::IsItemActive();
+        const bool hovered = ImGui::IsItemHovered();
+        if (active || hovered)
+        {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+        }
+        if (active)
+        {
+            height = clamp(
+                height + ImGui::GetIO().MouseDelta.y,
+                minimum,
+                maximum
+            );
+        }
+        const ImU32 color = ImGui::GetColorU32(
+            active
+                ? ImGuiCol_SeparatorActive
+                : hovered
+                    ? ImGuiCol_SeparatorHovered
+                    : ImGuiCol_Separator
+        );
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            position,
+            ImVec2(position.x + width, position.y + thickness),
+            color
+        );
+    }
+
     string compact_count(const uint64_t value)
     {
         char buffer[32] = {};
@@ -1207,6 +1280,53 @@ namespace
         ImGui::TextDisabled("%s", label);
         ImGui::SameLine(104.0f * ui_scale());
         ImGui::TextWrapped("%s", value.c_str());
+    }
+
+    void draw_asset_identity(
+        const string& name,
+        const string& type,
+        const char* context
+    )
+    {
+        const float scale = ui_scale();
+        const ImVec4 background =
+            ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+        ImGui::PushStyleColor(
+            ImGuiCol_ChildBg,
+            ImVec4(
+                background.x,
+                background.y,
+                background.z,
+                0.42f
+            )
+        );
+        ImGui::BeginChild(
+            "##asset_identity",
+            ImVec2(0.0f, 72.0f * scale),
+            ImGuiChildFlags_None
+        );
+        ImGui::SetCursorPos(
+            ImVec2(12.0f * scale, 16.0f * scale)
+        );
+        ImGuiSp::image(
+            asset_type_icon(type),
+            30.0f * scale,
+            ImVec4(0.82f, 0.9f, 1.0f, 1.0f)
+        );
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        ImGui::TextUnformatted(name.c_str());
+        ImGui::TextColored(
+            ImGui::ColorConvertU32ToFloat4(
+                asset_type_color(type)
+            ),
+            "%s  %s",
+            type.c_str(),
+            context
+        );
+        ImGui::EndGroup();
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
     }
 }
 
@@ -1290,6 +1410,7 @@ void AssetViewer::OnTickVisible()
         if (
             !m_loaded_path.empty() &&
             !m_working_modified &&
+            !m_working_lods_built &&
             FileSystem::Exists(m_loaded_path)
         )
         {
@@ -1369,14 +1490,14 @@ void AssetViewer::OnTickVisible()
         m_rename_dependency_path.clear();
     }
 
-    DrawToolbar();
-    ImGui::Spacing();
+    const float available_width =
+        ImGui::GetContentRegionAvail().x;
+    const bool compact_layout =
+        available_width < 1040.0f * ui_scale();
 
     const float status_height =
         ImGui::GetTextLineHeightWithSpacing() +
         8.0f * ui_scale();
-    const float available_width =
-        ImGui::GetContentRegionAvail().x;
     const float available_height =
         max(
             1.0f,
@@ -1384,62 +1505,134 @@ void AssetViewer::OnTickVisible()
             status_height
         );
     const float splitter_width = 5.0f * ui_scale();
-    const bool compact_layout =
-        available_width < 1040.0f * ui_scale();
-
-    m_library_width = clamp(
-        m_library_width,
-        220.0f * ui_scale(),
-        min(
-            360.0f * ui_scale(),
-            available_width * 0.42f
-        )
-    );
-    DrawAssetList(m_library_width, available_height);
-    ImGui::SameLine(0.0f, 0.0f);
-    horizontal_splitter(
-        "##asset_library_splitter",
-        m_library_width,
-        220.0f * ui_scale(),
-        360.0f * ui_scale(),
-        available_height,
-        1.0f
-    );
-    ImGui::SameLine(0.0f, 0.0f);
 
     if (compact_layout)
     {
-        ImGui::BeginGroup();
-        const float details_height = clamp(
-            available_height * 0.38f,
-            190.0f * ui_scale(),
-            330.0f * ui_scale()
+        const float minimum_preview = min(
+            240.0f * ui_scale(),
+            available_height * 0.55f
         );
+        const float minimum_lower = min(
+            220.0f * ui_scale(),
+            available_height -
+                minimum_preview -
+                splitter_width
+        );
+        const float maximum_preview = max(
+            minimum_preview,
+            available_height -
+                minimum_lower -
+                splitter_width
+        );
+        m_compact_preview_height = clamp(
+            m_compact_preview_height,
+            minimum_preview,
+            maximum_preview
+        );
+        const float lower_height = max(
+            1.0f,
+            available_height -
+                m_compact_preview_height -
+                splitter_width
+        );
+
         DrawPreview(
-            0.0f,
-            max(
-                170.0f * ui_scale(),
-                available_height - details_height
-            )
+            available_width,
+            m_compact_preview_height
         );
-        DrawDetails(details_height);
+        vertical_splitter(
+            "##asset_preview_splitter",
+            m_compact_preview_height,
+            minimum_preview,
+            maximum_preview,
+            available_width
+        );
+
+        const float minimum_library = min(
+            230.0f * ui_scale(),
+            available_width * 0.4f
+        );
+        const float minimum_inspector = min(
+            320.0f * ui_scale(),
+            available_width * 0.45f
+        );
+        const float maximum_library = max(
+            minimum_library,
+            available_width -
+                minimum_inspector -
+                splitter_width
+        );
+        m_library_width = clamp(
+            m_library_width,
+            minimum_library,
+            maximum_library
+        );
+
+        DrawAssetList(
+            m_library_width,
+            lower_height
+        );
+        ImGui::SameLine(0.0f, 0.0f);
+        horizontal_splitter(
+            "##asset_compact_library_splitter",
+            m_library_width,
+            minimum_library,
+            maximum_library,
+            lower_height,
+            1.0f
+        );
+        ImGui::SameLine(0.0f, 0.0f);
+        ImGui::BeginGroup();
+        DrawDetails(lower_height);
         ImGui::EndGroup();
     }
     else
     {
+        const float minimum_library = 230.0f * ui_scale();
+        const float minimum_preview = 360.0f * ui_scale();
+        const float minimum_inspector = 320.0f * ui_scale();
+        const float maximum_library = min(
+            340.0f * ui_scale(),
+            available_width -
+                minimum_preview -
+                minimum_inspector -
+                splitter_width * 2.0f
+        );
+        m_library_width = clamp(
+            m_library_width,
+            minimum_library,
+            max(minimum_library, maximum_library)
+        );
+
+        const float maximum_inspector = min(
+            400.0f * ui_scale(),
+            available_width -
+                minimum_preview -
+                m_library_width -
+                splitter_width * 2.0f
+        );
         m_inspector_width = clamp(
             m_inspector_width,
-            300.0f * ui_scale(),
-            min(
-                420.0f * ui_scale(),
-                available_width * 0.36f
-            )
+            minimum_inspector,
+            max(minimum_inspector, maximum_inspector)
         );
         const float preview_width =
             available_width -
             m_library_width -
             m_inspector_width -
             splitter_width * 2.0f;
+
+        DrawAssetList(m_library_width, available_height);
+        ImGui::SameLine(0.0f, 0.0f);
+        horizontal_splitter(
+            "##asset_library_splitter",
+            m_library_width,
+            minimum_library,
+            max(minimum_library, maximum_library),
+            available_height,
+            1.0f
+        );
+        ImGui::SameLine(0.0f, 0.0f);
         ImGui::BeginGroup();
         DrawPreview(preview_width, available_height);
         ImGui::EndGroup();
@@ -1447,8 +1640,8 @@ void AssetViewer::OnTickVisible()
         horizontal_splitter(
             "##asset_inspector_splitter",
             m_inspector_width,
-            300.0f * ui_scale(),
-            420.0f * ui_scale(),
+            minimum_inspector,
+            max(minimum_inspector, maximum_inspector),
             available_height,
             -1.0f
         );
@@ -1567,6 +1760,16 @@ void AssetViewer::RefreshCatalog(bool force)
         return;
     }
 
+    const bool library_changed =
+        world_file_path != m_world_file_path ||
+        catalog_path != m_catalog_path ||
+        write_time != m_catalog_write_time;
+    if (library_changed)
+    {
+        m_cleanup_generation++;
+        m_cleanup.scanned = false;
+    }
+
     const string previous_id =
         (
             m_selected_asset >= 0 &&
@@ -1616,7 +1819,7 @@ void AssetViewer::RefreshCatalog(bool force)
             if (
                 root.type != JsonValue::Type::Object ||
                 !schema_version ||
-                static_cast<int>(schema_version->Number()) != 1 ||
+                static_cast<int>(schema_version->Number()) != 2 ||
                 !assets ||
                 assets->type != JsonValue::Type::Object
             )
@@ -1652,144 +1855,104 @@ void AssetViewer::RefreshCatalog(bool force)
             value.Find("type") ?
             lower_copy(value.Find("type")->String()) :
             "";
-        asset.active_version =
-            value.Find("active_version") ?
-            value.Find("active_version")->String() :
+        asset.path =
+            value.Find("path") ?
+            value.Find("path")->String() :
+            "";
+        asset.source_path =
+            value.Find("source_path") ?
+            value.Find("source_path")->String() :
+            "";
+        asset.thumbnail_path =
+            value.Find("thumbnail_path") ?
+            value.Find("thumbnail_path")->String() :
             "";
         asset.aliases = json_strings(value.Find("aliases"));
         asset.tags = json_strings(value.Find("tags"));
-
-        const JsonValue* versions = value.Find("versions");
-        if (
-            versions &&
-            versions->type == JsonValue::Type::Array
-        )
+        asset.dependencies = json_strings(
+            value.Find("dependencies")
+        );
+        if (asset.type == "prefab")
         {
-            for (const JsonValue& version_value : versions->array)
+            for (
+                const char* attribute :
+                {
+                    "mesh_path",
+                    "material_path"
+                }
+            )
             {
-                if (version_value.type != JsonValue::Type::Object)
-                {
-                    continue;
-                }
-
-                AssetVersion version;
-                version.id =
-                    version_value.Find("id") ?
-                    version_value.Find("id")->String() :
-                    "";
-                version.path =
-                    version_value.Find("path") ?
-                    version_value.Find("path")->String() :
-                    "";
-                version.notes =
-                    version_value.Find("notes") ?
-                    version_value.Find("notes")->String() :
-                    "";
-                version.dependencies = json_strings(
-                    version_value.Find("dependencies")
-                );
-                if (asset.type == "prefab")
-                {
-                    for (
-                        const char* attribute :
-                        {
-                            "mesh_path",
-                            "material_path"
-                        }
-                    )
-                    {
-                        for (
-                            const string& dependency :
-                            collect_xml_references(
-                                version.path,
-                                attribute
-                            )
-                        )
-                        {
-                            if (
-                                find(
-                                    version.dependencies.begin(),
-                                    version.dependencies.end(),
-                                    dependency
-                                ) ==
-                                version.dependencies.end()
-                            )
-                            {
-                                version.dependencies.push_back(
-                                    dependency
-                                );
-                            }
-                        }
-                    }
-                }
-                const vector<string> direct_dependencies =
-                    version.dependencies;
                 for (
                     const string& dependency :
-                    direct_dependencies
+                    collect_xml_references(
+                        asset.path,
+                        attribute
+                    )
                 )
                 {
                     if (
-                        lower_copy(
-                            FileSystem::
-                                GetExtensionFromFilePath(
-                                    dependency
-                                )
-                        ) != ".xml"
+                        find(
+                            asset.dependencies.begin(),
+                            asset.dependencies.end(),
+                            dependency
+                        ) == asset.dependencies.end()
                     )
                     {
-                        continue;
-                    }
-                    for (
-                        const string& texture_path :
-                        collect_xml_references(
-                            dependency,
-                            "texture_path"
-                        )
-                    )
-                    {
-                        if (
-                            find(
-                                version.dependencies.begin(),
-                                version.dependencies.end(),
-                                texture_path
-                            ) == version.dependencies.end()
-                        )
-                        {
-                            version.dependencies.push_back(
-                                texture_path
-                            );
-                        }
+                        asset.dependencies.push_back(dependency);
                     }
                 }
-                version.number =
-                    version_value.Find("number") ?
-                    static_cast<int>(
-                        version_value.Find("number")->Number()
-                    ) :
-                    0;
-
-                const JsonValue* quality =
-                    version_value.Find("quality");
+            }
+        }
+        const vector<string> direct_dependencies =
+            asset.dependencies;
+        for (const string& dependency : direct_dependencies)
+        {
+            if (
+                lower_copy(
+                    FileSystem::GetExtensionFromFilePath(
+                        dependency
+                    )
+                ) != ".xml"
+            )
+            {
+                continue;
+            }
+            for (
+                const string& texture_path :
+                collect_xml_references(
+                    dependency,
+                    "texture_path"
+                )
+            )
+            {
                 if (
-                    quality &&
-                    quality->type == JsonValue::Type::Object
+                    find(
+                        asset.dependencies.begin(),
+                        asset.dependencies.end(),
+                        texture_path
+                    ) == asset.dependencies.end()
                 )
                 {
-                    version.quality_score =
-                        quality->Find("score") ?
-                        static_cast<float>(
-                            quality->Find("score")->Number()
-                        ) :
-                        0.0f;
-                    version.quality_verified =
-                        quality->Find("verified") ?
-                        quality->Find("verified")->Boolean() :
-                        false;
+                    asset.dependencies.push_back(texture_path);
                 }
-
-                asset.versions.emplace_back(move(version));
             }
+        }
+        const JsonValue* quality = value.Find("quality");
+        if (
+            quality &&
+            quality->type == JsonValue::Type::Object
+        )
+        {
+            asset.quality_score =
+                quality->Find("score") ?
+                static_cast<float>(
+                    quality->Find("score")->Number()
+                ) :
+                0.0f;
+            asset.quality_verified =
+                quality->Find("verified") ?
+                quality->Find("verified")->Boolean() :
+                false;
         }
 
         if (
@@ -1811,12 +1974,9 @@ void AssetViewer::RefreshCatalog(bool force)
         {
             known.insert(entry.type + ":" + lower_copy(entry.id));
             known.insert(entry.type + ":" + lower_copy(entry.name));
-            for (const AssetVersion& version : entry.versions)
-            {
-                known.insert(
-                    "path:" + normalized_path(version.path)
-                );
-            }
+            known.insert(
+                "path:" + normalized_path(entry.path)
+            );
         }
 
         const string root =
@@ -1884,14 +2044,8 @@ void AssetViewer::RefreshCatalog(bool force)
                 entry.id = id;
                 entry.name = stem;
                 entry.type = type;
-                entry.active_version = "disk";
-
-                AssetVersion version;
-                version.id = "disk";
-                version.number = 1;
-                version.path = path;
-                version.notes = "unregistered file found on disk";
-                entry.versions.emplace_back(move(version));
+                entry.path = path;
+                entry.disk_only = true;
 
                 known.insert(type + string(":") + lower_copy(stem));
                 known.insert("path:" + normalized_path(path));
@@ -1914,16 +2068,8 @@ void AssetViewer::RefreshCatalog(bool force)
         {
             if (m_sort_mode == 1)
             {
-                const AssetVersion* first_version =
-                    GetActiveVersion(first);
-                const AssetVersion* second_version =
-                    GetActiveVersion(second);
-                const float first_quality = first_version
-                    ? first_version->quality_score
-                    : -1.0f;
-                const float second_quality = second_version
-                    ? second_version->quality_score
-                    : -1.0f;
+                const float first_quality = first.quality_score;
+                const float second_quality = second.quality_score;
                 if (first_quality != second_quality)
                 {
                     return first_quality > second_quality;
@@ -2010,37 +2156,37 @@ void AssetViewer::LoadSelectedAsset(
 
     m_selected_dependency_path.clear();
     const AssetEntry& asset = m_assets[m_selected_asset];
-    const AssetVersion* version = GetActiveVersion(asset);
-    if (!version || version->path.empty())
+    if (asset.path.empty())
     {
-        m_status = "The selected asset has no active version.";
+        m_status = "The selected asset has no path.";
         return;
     }
     string expected_root =
         FileSystem::GetDirectoryFromFilePath(m_catalog_path);
     if (
-        version->path.find("..") != string::npos ||
+        asset.path.find("..") != string::npos ||
         expected_root.empty() ||
-        !path_is_within(version->path, expected_root)
+        !path_is_within(asset.path, expected_root) ||
+        !resolved_path_is_within(asset.path, expected_root)
     )
     {
-        m_status = "The selected version has an unsafe catalog path.";
+        m_status = "The selected asset has an unsafe catalog path.";
         return;
     }
-    if (!FileSystem::Exists(version->path))
+    if (!FileSystem::Exists(asset.path))
     {
         m_status =
             "Asset file not found: " +
-            version->path;
+            asset.path;
         return;
     }
 
     if (asset.type == "mesh")
     {
-        m_mesh = ResourceCache::Load<Mesh>(version->path);
+        m_mesh = ResourceCache::Load<Mesh>(asset.path);
         if (m_mesh && force_reload)
         {
-            m_mesh->LoadFromFile(version->path);
+            m_mesh->LoadFromFile(asset.path);
         }
         if (!m_mesh || m_mesh->GetVertexCount() == 0)
         {
@@ -2049,7 +2195,7 @@ void AssetViewer::LoadSelectedAsset(
             m_preview_meshes_source = nullptr;
             m_status =
                 "Mesh could not be loaded: " +
-                version->path;
+                asset.path;
             return;
         }
         LoadWorkingGeometry();
@@ -2057,28 +2203,28 @@ void AssetViewer::LoadSelectedAsset(
     else if (asset.type == "material")
     {
         m_material =
-            ResourceCache::Load<Material>(version->path);
+            ResourceCache::Load<Material>(asset.path);
         if (m_material && force_reload)
         {
-            m_material->LoadFromFile(version->path);
+            m_material->LoadFromFile(asset.path);
         }
         if (!m_material)
         {
             m_status =
                 "Material could not be loaded: " +
-                version->path;
+                asset.path;
             return;
         }
     }
     else if (asset.type == "texture")
     {
         m_texture =
-            ResourceCache::Load<RHI_Texture>(version->path);
+            ResourceCache::Load<RHI_Texture>(asset.path);
         if (!m_texture)
         {
             m_status =
                 "Texture could not be loaded: " +
-                version->path;
+                asset.path;
             return;
         }
         // load only produces a cpu texture, the preview needs it on the gpu
@@ -2088,7 +2234,7 @@ void AssetViewer::LoadSelectedAsset(
             m_texture.reset();
             m_status =
                 "Texture could not be uploaded: " +
-                version->path;
+                asset.path;
             return;
         }
     }
@@ -2096,23 +2242,23 @@ void AssetViewer::LoadSelectedAsset(
     {
         pugi::xml_document document;
         const pugi::xml_parse_result result =
-            document.load_file(version->path.c_str());
+            document.load_file(asset.path.c_str());
         const pugi::xml_node prefab =
             document.child("Prefab");
         if (!result || !prefab)
         {
             m_status =
                 "Prefab could not be parsed: " +
-                version->path;
+                asset.path;
             return;
         }
         m_prefab_entity_count =
             1 +
             count_prefab_entities(prefab);
-        CollectPrefabDependencies(version->path);
+        CollectPrefabDependencies(asset.path);
     }
 
-    m_loaded_path = version->path;
+    m_loaded_path = asset.path;
     m_loaded_write_time =
         FileSystem::GetLastWriteTime(m_loaded_path);
     if (reset_view)
@@ -2847,7 +2993,6 @@ bool AssetViewer::SaveWorkingGeometry()
         " vertices";
     return true;
 }
-
 Entity* AssetViewer::PreviewRoot() const
 {
     if (m_preview_root_id == 0)
@@ -3219,7 +3364,7 @@ bool AssetViewer::RequestPreviewRender(
         m_preview_dirty = false;
         m_next_preview_request =
             chrono::steady_clock::now() +
-            chrono::milliseconds(66);
+            chrono::milliseconds(16);
         return true;
     }
     return false;
@@ -3448,7 +3593,7 @@ uint64_t AssetViewer::PreviewSceneSignature() const
     return signature;
 }
 
-void AssetViewer::DrawToolbar()
+void AssetViewer::DrawLibraryToolbar(const float width)
 {
     const float scale = ui_scale();
     ImGui::PushStyleVar(
@@ -3460,15 +3605,7 @@ void AssetViewer::DrawToolbar()
         ImVec2(9.0f * scale, 5.0f * scale)
     );
 
-    ImGui::SetNextItemWidth(
-        min(
-            420.0f * scale,
-            max(
-                180.0f * scale,
-                ImGui::GetContentRegionAvail().x * 0.36f
-            )
-        )
-    );
+    ImGui::SetNextItemWidth(-1.0f);
     ImGui::SetNextItemShortcut(
         ImGuiMod_Ctrl | ImGuiKey_F,
         ImGuiInputFlags_Tooltip
@@ -3480,58 +3617,33 @@ void AssetViewer::DrawToolbar()
         m_search.size(),
         ImGuiInputTextFlags_EscapeClearsAll
     );
-    ImGui::SameLine();
 
-    // one type at a time, a dropdown instead of five toggles so the toolbar keeps room for the
-    // search field on narrow layouts
     const char* filters =
         "All types\0"
         "Meshes\0"
         "Materials\0"
         "Prefabs\0"
         "Textures\0";
-    ImGui::SetNextItemWidth(126.0f * scale);
+    const float action_width = 28.0f * scale;
+    const float gap = 4.0f * scale;
+    const float combo_width = max(
+        76.0f * scale,
+        (
+            width -
+            action_width -
+            gap * 4.0f -
+            16.0f * scale
+        ) *
+        0.52f
+    );
+    ImGui::SetNextItemWidth(combo_width);
     ImGui::Combo(
         "##asset_type_filter",
         &m_type_filter,
         filters
     );
     ImGuiSp::tooltip("Filter by asset type");
-
-    const float actions_width = 210.0f * scale;
-    const float right =
-        ImGui::GetCursorPosX() +
-        ImGui::GetContentRegionAvail().x;
-    if (ImGui::GetCursorPosX() + actions_width < right)
-    {
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(right - actions_width);
-    }
-    if (
-        ImGuiSp::button(
-            "Clean up",
-            ImVec2(76.0f * scale, 0.0f)
-        )
-    )
-    {
-        ScanLibraryCleanup();
-    }
-    ImGuiSp::tooltip(
-        "Delete superseded asset versions and unreferenced leftovers"
-    );
-    ImGui::SameLine();
-    if (
-        ImGuiSp::image_button(
-            IconType::Refresh,
-            math::Vector2(17.0f * scale, 17.0f * scale),
-            false
-        )
-    )
-    {
-        RefreshCatalog(true);
-    }
-    ImGuiSp::tooltip("Refresh catalog");
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, gap);
 
     const char* sort_labels[] =
     {
@@ -3539,7 +3651,16 @@ void AssetViewer::DrawToolbar()
         "Quality",
         "Type"
     };
-    ImGui::SetNextItemWidth(92.0f * scale);
+    ImGui::SetNextItemWidth(
+        max(
+            70.0f * scale,
+            width -
+                combo_width -
+                action_width -
+                gap * 4.0f -
+                16.0f * scale
+        )
+    );
     if (
         ImGui::Combo(
             "##asset_sort",
@@ -3566,16 +3687,10 @@ void AssetViewer::DrawToolbar()
             {
                 if (m_sort_mode == 1)
                 {
-                    const AssetVersion* first_version =
-                        GetActiveVersion(first);
-                    const AssetVersion* second_version =
-                        GetActiveVersion(second);
-                    const float first_quality = first_version
-                        ? first_version->quality_score
-                        : -1.0f;
-                    const float second_quality = second_version
-                        ? second_version->quality_score
-                        : -1.0f;
+                    const float first_quality =
+                        first.quality_score;
+                    const float second_quality =
+                        second.quality_score;
                     if (first_quality != second_quality)
                     {
                         return first_quality > second_quality;
@@ -3607,7 +3722,106 @@ void AssetViewer::DrawToolbar()
         }
     }
     ImGuiSp::tooltip("Sort asset library");
+
+    ImGui::SameLine(0.0f, gap);
+    if (
+        ImGuiSp::image_button(
+            IconType::Refresh,
+            math::Vector2(17.0f * scale, 17.0f * scale),
+            false
+        )
+    )
+    {
+        RefreshCatalog(true);
+    }
+    ImGuiSp::tooltip("Refresh catalog");
+
+    if (ImGui::Button("Library actions", ImVec2(-1.0f, 0.0f)))
+    {
+        ImGui::OpenPopup("##asset_library_actions");
+    }
+    if (ImGui::BeginPopup("##asset_library_actions"))
+    {
+        if (ImGui::MenuItem("Clean up library"))
+        {
+            ScanLibraryCleanup();
+        }
+        ImGui::Separator();
+        ImGui::TextDisabled(
+            "Removes files not referenced by the catalog or worlds"
+        );
+        ImGui::EndPopup();
+    }
     ImGui::PopStyleVar(2);
+}
+
+void AssetViewer::DrawSelectionBar()
+{
+    if (m_selected_assets.size() <= 1)
+    {
+        return;
+    }
+
+    const float scale = ui_scale();
+    const ImVec4 accent = ImGui::Style::color_accent_1;
+    ImGui::PushStyleColor(
+        ImGuiCol_ChildBg,
+        ImVec4(accent.x, accent.y, accent.z, 0.1f)
+    );
+    ImGui::BeginChild(
+        "##asset_selection_actions",
+        ImVec2(0.0f, 42.0f * scale),
+        ImGuiChildFlags_Borders
+    );
+    ImGui::SetCursorPos(
+        ImVec2(8.0f * scale, 8.0f * scale)
+    );
+    ImGui::Text(
+        "%zu selected",
+        m_selected_assets.size()
+    );
+
+    const bool has_focus =
+        m_selected_asset >= 0 &&
+        m_selected_asset < static_cast<int>(m_assets.size()) &&
+        m_selected_assets.find(
+            m_assets[m_selected_asset].id
+        ) != m_selected_assets.end();
+    const float actions_width = 112.0f * scale;
+    const float right =
+        ImGui::GetCursorPosX() +
+        ImGui::GetContentRegionAvail().x;
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(
+        max(
+            ImGui::GetCursorPosX(),
+            right - actions_width
+        )
+    );
+    if (!has_focus)
+    {
+        ImGui::BeginDisabled();
+    }
+    if (ImGui::SmallButton("Focus only"))
+    {
+        m_selected_assets.clear();
+        m_selected_assets.insert(
+            m_assets[m_selected_asset].id
+        );
+        m_status = "Focused selection only";
+    }
+    if (!has_focus)
+    {
+        ImGui::EndDisabled();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Delete"))
+    {
+        m_pending_delete_selection = true;
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+    ImGui::Spacing();
 }
 
 void AssetViewer::DrawStatusBar()
@@ -3627,23 +3841,65 @@ void AssetViewer::DrawStatusBar()
         2.0f * scale
     );
     ImGui::TextDisabled(
-        "%d of %zu catalog resources",
+        "%d / %zu assets",
         visible_count,
         m_assets.size()
     );
+    if (!m_catalog_path.empty())
+    {
+        ImGuiSp::tooltip(m_catalog_path.c_str());
+    }
     if (m_selected_assets.size() > 1)
     {
         ImGui::SameLine();
         ImGui::TextDisabled(
-            "  |  %zu selected",
+            "|  %zu selected",
             m_selected_assets.size()
         );
     }
-    ImGui::SameLine();
-    ImGui::TextDisabled("  |  %s", m_status.c_str());
-    if (!m_catalog_path.empty())
+    if (!m_status.empty())
     {
-        ImGuiSp::tooltip(m_catalog_path.c_str());
+        const string status_lower = lower_copy(m_status);
+        ImVec4 color = ImGui::Style::color_info;
+        if (
+            status_lower.find("fail") != string::npos ||
+            status_lower.find("error") != string::npos ||
+            status_lower.find("unsafe") != string::npos ||
+            status_lower.find("not found") != string::npos ||
+            status_lower.find("could not") != string::npos
+        )
+        {
+            color = ImGui::Style::color_error;
+        }
+        else if (
+            status_lower.find("missing") != string::npos ||
+            status_lower.find("warning") != string::npos
+        )
+        {
+            color = ImGui::Style::color_warning;
+        }
+
+        const float status_width =
+            ImGui::CalcTextSize(m_status.c_str()).x;
+        const float right =
+            ImGui::GetCursorPosX() +
+            ImGui::GetContentRegionAvail().x;
+        ImGui::SameLine();
+        if (
+            ImGui::GetCursorPosX() +
+                status_width <
+            right
+        )
+        {
+            ImGui::SetCursorPosX(
+                right - status_width
+            );
+        }
+        ImGui::TextColored(
+            color,
+            "%s",
+            m_status.c_str()
+        );
     }
 }
 
@@ -3664,6 +3920,11 @@ void AssetViewer::DrawAssetList(float width, float height)
         )
     );
     ImGui::TextUnformatted("LIBRARY");
+    ImGui::SameLine();
+    ImGui::TextDisabled("%zu assets", m_assets.size());
+    ImGui::Spacing();
+    DrawLibraryToolbar(width);
+    ImGui::Spacing();
     vector<vector<int>> prefab_children(m_assets.size());
     vector<vector<string>> direct_dependencies(m_assets.size());
     vector<bool> nested_assets(m_assets.size(), false);
@@ -3679,12 +3940,11 @@ void AssetViewer::DrawAssetList(float width, float height)
             continue;
         }
 
-        const AssetVersion* version = GetActiveVersion(prefab);
-        if (!version)
+        if (prefab.path.empty())
         {
             continue;
         }
-        for (const string& dependency : version->dependencies)
+        for (const string& dependency : prefab.dependencies)
         {
             const string dependency_name = lower_copy(
                 FileSystem::GetFileNameWithoutExtensionFromFilePath(
@@ -3709,11 +3969,9 @@ void AssetViewer::DrawAssetList(float width, float height)
                 {
                     continue;
                 }
-                const AssetVersion* child_version =
-                    GetActiveVersion(m_assets[index]);
                 if (
-                    child_version &&
-                    normalized_path(child_version->path) ==
+                    !m_assets[index].path.empty() &&
+                    normalized_path(m_assets[index].path) ==
                         dependency_path
                 )
                 {
@@ -3735,13 +3993,12 @@ void AssetViewer::DrawAssetList(float width, float height)
                 {
                     continue;
                 }
-                const AssetVersion* child_version =
-                    GetActiveVersion(m_assets[index]);
-                const string child_file = child_version
+                const string child_file =
+                    !m_assets[index].path.empty()
                     ? lower_copy(
                         FileSystem::
                             GetFileNameWithoutExtensionFromFilePath(
-                                child_version->path
+                                m_assets[index].path
                             )
                     )
                     : "";
@@ -3860,9 +4117,12 @@ void AssetViewer::DrawAssetList(float width, float height)
         }
     }
 
-    ImGui::SameLine();
-    ImGui::TextDisabled("%zu", visible_roots.size());
+    ImGui::TextDisabled(
+        "%zu shown",
+        visible_roots.size()
+    );
     ImGui::Separator();
+    DrawSelectionBar();
 
     // rebuilt every frame in draw order, select all and shift ranges both operate on what is on screen
     // rather than on m_assets, which is sorted differently and includes collapsed and filtered rows
@@ -3883,7 +4143,6 @@ void AssetViewer::DrawAssetList(float width, float height)
         {
             drawn_rows.push_back(index);
             const AssetEntry& asset = m_assets[index];
-            const AssetVersion* version = GetActiveVersion(asset);
             const float row_height =
                 (nested ? 44.0f : 58.0f) * scale;
             const bool has_children = child_count > 0;
@@ -4150,19 +4409,19 @@ void AssetViewer::DrawAssetList(float width, float height)
                             : " resources"
                     );
             }
-            else if (version && version->id == "disk")
+            else if (asset.disk_only)
             {
                 metadata += "  unregistered";
             }
-            else if (version)
+            else if (!asset.path.empty())
             {
                 char quality[32] = {};
                 snprintf(
                     quality,
                     sizeof(quality),
                     "  q %.1f%s",
-                    version->quality_score,
-                    version->quality_verified
+                    asset.quality_score,
+                    asset.quality_verified
                         ? "  verified"
                         : ""
                 );
@@ -4396,8 +4655,8 @@ void AssetViewer::DrawAssetList(float width, float height)
             offset
         );
         const char* message = m_assets.empty()
-            ? "No catalog assets"
-            : "No matching assets";
+            ? "No generated assets yet"
+            : "No assets match these filters";
         const float message_width =
             ImGui::CalcTextSize(message).x;
         ImGui::SetCursorPosX(
@@ -4410,6 +4669,18 @@ void AssetViewer::DrawAssetList(float width, float height)
             "%s",
             message
         );
+        const char* hint = m_assets.empty()
+            ? "Generate world resources, then refresh the library."
+            : "Try another name or asset type.";
+        const float hint_width =
+            ImGui::CalcTextSize(hint).x;
+        ImGui::SetCursorPosX(
+            max(
+                8.0f * scale,
+                (width - hint_width) * 0.5f
+            )
+        );
+        ImGui::TextDisabled("%s", hint);
         if (!m_assets.empty())
         {
             ImGui::SetCursorPosX(
@@ -4644,7 +4915,6 @@ void AssetViewer::DrawAssetContextMenu(const int index)
     }
 
     const AssetEntry& asset = m_assets[index];
-    const AssetVersion* version = GetActiveVersion(asset);
 
     // right clicking inside a selection acts on the selection, right clicking outside one replaces it, which
     // is what stops a menu from quietly deleting rows the user had stopped looking at
@@ -4719,18 +4989,18 @@ void AssetViewer::DrawAssetContextMenu(const int index)
     }
 
     ImGui::Separator();
-    const bool has_path = version && !version->path.empty();
+    const bool has_path = !asset.path.empty();
     if (ImGui::MenuItem("Copy path", nullptr, false, has_path))
     {
-        ImGui::SetClipboardText(version->path.c_str());
-        m_status = "Copied " + version->path;
+        ImGui::SetClipboardText(asset.path.c_str());
+        m_status = "Copied " + asset.path;
     }
     if (ImGui::MenuItem("Show in explorer", nullptr, false, has_path))
     {
         error_code error;
         const filesystem::path absolute = filesystem::absolute(
             filesystem::path(
-                FileSystem::GetDirectoryFromFilePath(version->path)
+                FileSystem::GetDirectoryFromFilePath(asset.path)
             ),
             error
         );
@@ -4863,14 +5133,37 @@ void AssetViewer::DrawDeleteConfirmation()
             )
         )
         {
+            size_t prefab_count = 0;
+            for (const string& id : ids)
+            {
+                for (const AssetEntry& asset : m_assets)
+                {
+                    if (
+                        asset.id == id &&
+                        asset.type == "prefab"
+                    )
+                    {
+                        prefab_count++;
+                        break;
+                    }
+                }
+            }
             ImGui::Text(
                 "Permanently delete %zu %s?",
                 ids.size(),
                 ids.size() == 1 ? "asset" : "assets"
             );
             ImGui::TextDisabled(
-                "Every version, source and thumbnail they own goes with them."
+                "The asset path, source and thumbnail go with them."
             );
+            if (prefab_count > 0)
+            {
+                ImGui::TextDisabled(
+                    "%zu selected prefab%s will also lose owned dependency copies.",
+                    prefab_count,
+                    prefab_count == 1 ? "" : "s"
+                );
+            }
             ImGui::Spacing();
 
             // a scrolling list rather than a wall of text, a full library selection is hundreds of rows and
@@ -4898,24 +5191,15 @@ void AssetViewer::DrawDeleteConfirmation()
                         continue;
                     }
 
-                    const AssetVersion* version =
-                        GetActiveVersion(asset);
                     ImGui::TextDisabled(
                         "%s",
                         (
                             asset_display_name(asset.name) +
                             "  -  " +
                             (
-                                version && version->id == "disk"
+                                asset.disk_only
                                 ? asset.type + ", file only"
-                                : asset.type +
-                                    ", " +
-                                    to_string(asset.versions.size()) +
-                                    (
-                                        asset.versions.size() == 1
-                                        ? " version"
-                                        : " versions"
-                                    )
+                                : asset.type
                             )
                         ).c_str()
                     );
@@ -5042,17 +5326,24 @@ void AssetViewer::DrawDeleteConfirmation()
             "Permanently delete %s?",
             asset_display_name(asset.name).c_str()
         );
-        const AssetVersion* version = GetActiveVersion(asset);
-        if (version && version->id == "disk")
+        if (asset.disk_only)
         {
-            ImGui::TextDisabled("%s", version->path.c_str());
+            ImGui::TextDisabled("%s", asset.path.c_str());
         }
         else
         {
-            ImGui::TextDisabled(
-                "This removes all %zu versions, sources and thumbnails.",
-                asset.versions.size()
-            );
+            if (asset.type == "prefab")
+            {
+                ImGui::TextDisabled(
+                    "This removes the prefab, source, thumbnail and owned dependency copies."
+                );
+            }
+            else
+            {
+                ImGui::TextDisabled(
+                    "This removes the asset path, source and thumbnail."
+                );
+            }
         }
         ImGui::Spacing();
         if (ImGuiSp::button("Delete permanently"))
@@ -5078,8 +5369,54 @@ void AssetViewer::DrawDeleteConfirmation()
     }
 }
 
+vector<string> AssetViewer::CleanupFileSignatures() const
+{
+    vector<string> paths = m_cleanup.orphan_files;
+    paths.insert(
+        paths.end(),
+        m_cleanup.reference_files.begin(),
+        m_cleanup.reference_files.end()
+    );
+    sort(paths.begin(), paths.end());
+    paths.erase(unique(paths.begin(), paths.end()), paths.end());
+
+    vector<string> signatures;
+    signatures.reserve(paths.size());
+    for (const string& path : paths)
+    {
+        error_code error;
+        const filesystem::path resolved =
+            filesystem::weakly_canonical(path, error);
+        error_code size_error;
+        const uintmax_t size =
+            filesystem::file_size(path, size_error);
+        error_code time_error;
+        const auto write_time =
+            filesystem::last_write_time(path, time_error);
+        signatures.push_back(
+            (
+                error
+                    ? normalized_path(path)
+                    : normalized_path(resolved.generic_string())
+            ) +
+            "|" +
+            to_string(size_error ? 0 : size) +
+            "|" +
+            (
+                time_error
+                    ? "missing"
+                    : to_string(
+                        write_time.time_since_epoch().count()
+                    )
+            )
+        );
+    }
+    return signatures;
+}
+
 void AssetViewer::ScanLibraryCleanup()
 {
+    m_cleanup_generation++;
     m_cleanup = CleanupPlan();
     if (m_catalog_path.empty())
     {
@@ -5098,27 +5435,33 @@ void AssetViewer::ScanLibraryCleanup()
         m_cleanup.scanned = true;
         return;
     }
+    m_cleanup.reference_files.push_back(m_catalog_path);
 
     string parse_error;
     JsonValue root;
     JsonParser parser(source);
     const bool parsed = parser.Parse(root, parse_error);
+    const JsonValue* schema_version =
+        root.Find("schema_version");
     const JsonValue* assets = root.Find("assets");
     if (
         !parsed ||
+        root.type != JsonValue::Type::Object ||
+        !schema_version ||
+        static_cast<int>(schema_version->Number()) != 2 ||
         !assets ||
         assets->type != JsonValue::Type::Object
     )
     {
         m_cleanup.error =
-            "The catalog could not be parsed, cleanup aborted.";
+            "The asset catalog schema is unsupported or invalid, cleanup aborted.";
         m_cleanup.scanned = true;
         return;
     }
 
     // the reachable set starts from what the project still needs, everything else in the library is
     // a leftover, references are followed because a kept prefab pulls in meshes, materials and
-    // textures that live outside the versioned folders
+    // textures stored outside the primary asset folders
     unordered_set<string> reachable;
     vector<string> frontier;
     const auto mark =
@@ -5148,6 +5491,9 @@ void AssetViewer::ScanLibraryCleanup()
 
         const string project_root =
             FileSystem::GetDirectoryFromFilePath(trimmed);
+        m_cleanup.reference_files.push_back(
+            project_root.empty() ? "." : project_root
+        );
         error_code error;
         filesystem::recursive_directory_iterator iterator(
             filesystem::path(
@@ -5163,6 +5509,13 @@ void AssetViewer::ScanLibraryCleanup()
         )
         {
             const filesystem::directory_entry& item = *iterator;
+            if (item.is_directory(error) && !error)
+            {
+                m_cleanup.reference_files.push_back(
+                    item.path().generic_string()
+                );
+                continue;
+            }
             if (!item.is_regular_file(error) || error)
             {
                 error.clear();
@@ -5185,119 +5538,36 @@ void AssetViewer::ScanLibraryCleanup()
         }
     }
 
-    // collect the versions that stay and the ones that go, an asset without an active version keeps
-    // its highest numbered one so an unfinished asset is never wiped out entirely
-    vector<pair<string, string>> superseded;
+    // catalog assets are roots, including their source, thumbnail and dependencies
     for (const auto& [asset_id, entry] : assets->object)
     {
-        const JsonValue* versions = entry.Find("versions");
-        if (!versions || versions->type != JsonValue::Type::Array)
-        {
-            continue;
-        }
-
-        const JsonValue* active = entry.Find("active_version");
-        const string active_id = active ? active->String() : "";
-        const JsonValue* kept = nullptr;
-        double highest = -1.0;
-        for (const JsonValue& version : versions->array)
-        {
-            const JsonValue* id = version.Find("id");
-            if (!active_id.empty() && id && id->String() == active_id)
+        for (
+            const char* key :
             {
-                kept = &version;
-                break;
+                "path",
+                "source_path",
+                "thumbnail_path"
             }
-
-            const JsonValue* number = version.Find("number");
-            const double value = number ? number->Number(-1.0) : -1.0;
-            if (value > highest)
+        )
+        {
+            if (const JsonValue* value = entry.Find(key))
             {
-                highest = value;
-                kept = &version;
+                mark(value->String());
             }
         }
-
-        for (const JsonValue& version : versions->array)
+        if (
+            const JsonValue* dependencies =
+                entry.Find("dependencies");
+            dependencies &&
+            dependencies->type == JsonValue::Type::Array
+        )
         {
-            const bool is_kept = &version == kept;
-            const JsonValue* id = version.Find("id");
-            vector<string> owned;
-            for (
-                const char* key :
-                {
-                    "path",
-                    "source_path",
-                    "thumbnail_path"
-                }
-            )
+            for (const JsonValue& dependency : dependencies->array)
             {
-                if (const JsonValue* value = version.Find(key))
-                {
-                    if (!value->String().empty())
-                    {
-                        owned.push_back(value->String());
-                    }
-                }
-            }
-            if (
-                const JsonValue* dependencies =
-                    version.Find("dependencies");
-                dependencies &&
-                dependencies->type == JsonValue::Type::Array
-            )
-            {
-                for (const JsonValue& dependency : dependencies->array)
-                {
-                    if (!dependency.String().empty())
-                    {
-                        owned.push_back(dependency.String());
-                    }
-                }
-            }
-
-            if (is_kept)
-            {
-                for (const string& path : owned)
-                {
-                    mark(path);
-                }
-                continue;
-            }
-
-            for (const string& path : owned)
-            {
-                superseded.emplace_back(
-                    asset_id + " " + (id ? id->String() : "?"),
-                    path
-                );
-            }
-            if (id && !id->String().empty())
-            {
-                m_cleanup.directories.push_back(
-                    library_root +
-                    "dependencies/" +
-                    asset_id +
-                    "/" +
-                    id->String()
-                );
+                mark(dependency.String());
             }
         }
     }
-
-    // disk only assets were never versioned, they are the working files the catalog entries point at
-    // and the tool itself lists them, so they are roots as well
-    for (const AssetEntry& entry : m_assets)
-    {
-        for (const AssetVersion& version : entry.versions)
-        {
-            if (version.id == "disk")
-            {
-                mark(version.path);
-            }
-        }
-    }
-
     // follow references out of everything reachable so far
     while (!frontier.empty())
     {
@@ -5315,6 +5585,7 @@ void AssetViewer::ScanLibraryCleanup()
             continue;
         }
 
+        m_cleanup.reference_files.push_back(path);
         pugi::xml_document document;
         if (!document.load_file(path.c_str()))
         {
@@ -5420,24 +5691,8 @@ void AssetViewer::ScanLibraryCleanup()
         return error ? 0ull : static_cast<uint64_t>(size);
     };
 
-    for (const auto& [label, path] : superseded)
     {
-        if (
-            reachable.count(normalized_path(path)) ||
-            !path_is_within(path, library_root) ||
-            !FileSystem::Exists(path) ||
-            !planned.insert(normalized_path(path)).second
-        )
-        {
-            continue;
-        }
-
-        m_cleanup.superseded_labels.push_back(label);
-        m_cleanup.superseded_files.push_back(path);
-        m_cleanup.bytes += file_size(path);
-    }
-
-    {
+        m_cleanup.reference_files.push_back(library_root);
         error_code error;
         filesystem::recursive_directory_iterator iterator(
             filesystem::path(library_root),
@@ -5451,6 +5706,13 @@ void AssetViewer::ScanLibraryCleanup()
         )
         {
             const filesystem::directory_entry& item = *iterator;
+            if (item.is_directory(error) && !error)
+            {
+                m_cleanup.reference_files.push_back(
+                    item.path().generic_string()
+                );
+                continue;
+            }
             if (!item.is_regular_file(error) || error)
             {
                 error.clear();
@@ -5473,6 +5735,7 @@ void AssetViewer::ScanLibraryCleanup()
         }
     }
 
+    m_cleanup.file_signatures = CleanupFileSignatures();
     m_cleanup.scanned = true;
 }
 
@@ -5490,7 +5753,10 @@ bool AssetViewer::ApplyLibraryCleanup()
     const auto remove_file =
         [&](const string& path)
     {
-        if (!path_is_within(path, library_root))
+        if (
+            !path_is_within(path, library_root) ||
+            !resolved_path_is_within(path, library_root)
+        )
         {
             return;
         }
@@ -5509,109 +5775,9 @@ bool AssetViewer::ApplyLibraryCleanup()
         }
     };
 
-    for (const string& path : m_cleanup.superseded_files)
+    for (const string& path : m_cleanup.orphan_files)
     {
         remove_file(path);
-    }
-    if (m_cleanup_include_orphans)
-    {
-        for (const string& path : m_cleanup.orphan_files)
-        {
-            remove_file(path);
-        }
-    }
-    for (const string& directory : m_cleanup.directories)
-    {
-        if (
-            !path_is_within(directory, library_root) ||
-            !FileSystem::Exists(directory)
-        )
-        {
-            continue;
-        }
-
-        error_code error;
-        filesystem::remove_all(
-            filesystem::path(directory),
-            error
-        );
-        if (error)
-        {
-            failed++;
-        }
-    }
-
-    // drop the superseded records so the catalog stops advertising files that are gone
-    string source;
-    if (FileSystem::ReadFile(m_catalog_path, source))
-    {
-        string parse_error;
-        JsonValue root;
-        JsonParser parser(source);
-        const bool parsed = parser.Parse(root, parse_error);
-        auto assets = root.object.find("assets");
-        if (
-            parsed &&
-            assets != root.object.end() &&
-            assets->second.type == JsonValue::Type::Object
-        )
-        {
-            for (auto& [asset_id, entry] : assets->second.object)
-            {
-                auto versions = entry.object.find("versions");
-                if (
-                    versions == entry.object.end() ||
-                    versions->second.type != JsonValue::Type::Array
-                )
-                {
-                    continue;
-                }
-
-                vector<JsonValue> surviving;
-                for (const JsonValue& version : versions->second.array)
-                {
-                    const JsonValue* path = version.Find("path");
-                    if (
-                        path &&
-                        !path->String().empty() &&
-                        !FileSystem::Exists(path->String())
-                    )
-                    {
-                        continue;
-                    }
-                    surviving.push_back(version);
-                }
-
-                // never leave an asset with no versions at all, that reads as corruption rather than
-                // as a cleanup
-                if (!surviving.empty())
-                {
-                    versions->second.array = move(surviving);
-                }
-            }
-
-            const string temporary_path =
-                m_catalog_path + ".cleanup.tmp";
-            FileSystem::Delete(temporary_path);
-            if (
-                FileSystem::WriteFile(
-                    temporary_path,
-                    serialize_json(root) + "\n"
-                )
-            )
-            {
-                error_code error;
-                filesystem::rename(
-                    temporary_path,
-                    m_catalog_path,
-                    error
-                );
-                if (error)
-                {
-                    FileSystem::Delete(temporary_path);
-                }
-            }
-        }
     }
 
     m_cleanup = CleanupPlan();
@@ -5663,20 +5829,14 @@ void AssetViewer::DrawCleanupConfirmation()
             return;
         }
 
-        const size_t total =
-            m_cleanup.superseded_files.size() +
-            (
-                m_cleanup_include_orphans
-                    ? m_cleanup.orphan_files.size()
-                    : 0
-            );
+        const size_t total = m_cleanup.orphan_files.size();
         if (total == 0)
         {
             ImGui::TextUnformatted(
                 "The asset library is already clean."
             );
             ImGui::TextDisabled(
-                "Every file is reachable from a world or an active version."
+                "Every file is reachable from a world or catalog asset."
             );
             ImGui::Spacing();
             if (ImGuiSp::button("Close"))
@@ -5695,47 +5855,16 @@ void AssetViewer::DrawCleanupConfirmation()
                 (1024.0 * 1024.0)
         );
         ImGui::TextDisabled(
-            "Active versions, and anything a world or an active version "
-            "references, are kept."
+            "Catalog assets and anything referenced by a world are kept."
         );
         ImGui::Spacing();
 
-        ImGui::Checkbox(
-            "Also delete unreferenced leftovers",
-            &m_cleanup_include_orphans
-        );
-        ImGuiSp::tooltip(
-            "Staging copies and stale thumbnails that nothing points at"
-        );
-
-        ImGui::Spacing();
         ImGui::BeginChild(
             "##cleanup_list",
             ImVec2(560.0f * ui_scale(), 240.0f * ui_scale()),
             ImGuiChildFlags_Borders
         );
-        if (!m_cleanup.superseded_files.empty())
-        {
-            ImGui::TextUnformatted("SUPERSEDED VERSIONS");
-            ImGui::Separator();
-            for (
-                size_t index = 0;
-                index < m_cleanup.superseded_files.size();
-                index++
-            )
-            {
-                ImGui::TextDisabled(
-                    "%s  %s",
-                    m_cleanup.superseded_labels[index].c_str(),
-                    m_cleanup.superseded_files[index].c_str()
-                );
-            }
-            ImGui::Spacing();
-        }
-        if (
-            m_cleanup_include_orphans &&
-            !m_cleanup.orphan_files.empty()
-        )
+        if (!m_cleanup.orphan_files.empty())
         {
             ImGui::TextUnformatted("UNREFERENCED LEFTOVERS");
             ImGui::Separator();
@@ -5848,10 +5977,9 @@ bool AssetViewer::RenameAsset(
 
     // an unregistered file has no catalog record, its file name is the only name it has, so the
     // rename has to happen on disk and every xml reference to it has to follow
-    const AssetVersion* version = GetActiveVersion(asset);
-    if (version && version->id == "disk")
+    if (asset.disk_only)
     {
-        const string old_path = version->path;
+        const string old_path = asset.path;
         const string new_path =
             FileSystem::GetDirectoryFromFilePath(old_path) +
             name +
@@ -5870,8 +5998,10 @@ bool AssetViewer::RenameAsset(
         const string wanted = normalized_path(new_path);
         for (int i = 0; i < static_cast<int>(m_assets.size()); i++)
         {
-            const AssetVersion* renamed = GetActiveVersion(m_assets[i]);
-            if (renamed && normalized_path(renamed->path) == wanted)
+            if (
+                normalized_path(m_assets[i].path) ==
+                wanted
+            )
             {
                 m_selected_asset = i;
                 m_selected_dependency_path.clear();
@@ -6026,10 +6156,9 @@ bool AssetViewer::DeleteAssets(const vector<string>& ids)
             continue;
         }
 
-        const AssetVersion* version = GetActiveVersion(*entry);
-        if (version && version->id == "disk")
+        if (entry->disk_only)
         {
-            disk_paths.push_back(version->path);
+            disk_paths.push_back(entry->path);
         }
         else
         {
@@ -6119,31 +6248,23 @@ bool AssetViewer::DeleteAssets(const vector<string>& ids)
             continue;
         }
 
-        if (
-            const JsonValue* versions =
-                asset_iterator->second.Find("versions");
-            versions &&
-            versions->type == JsonValue::Type::Array
+        for (
+            const char* key :
+            {
+                "path",
+                "source_path",
+                "thumbnail_path"
+            }
         )
         {
-            for (const JsonValue& version : versions->array)
+            if (
+                const JsonValue* path =
+                    asset_iterator->second.Find(key)
+            )
             {
-                for (
-                    const char* key :
-                    {
-                        "path",
-                        "source_path",
-                        "thumbnail_path"
-                    }
-                )
+                if (!path->String().empty())
                 {
-                    if (const JsonValue* path = version.Find(key))
-                    {
-                        if (!path->String().empty())
-                        {
-                            owned_paths.push_back(path->String());
-                        }
-                    }
+                    owned_paths.push_back(path->String());
                 }
             }
         }
@@ -6309,22 +6430,18 @@ void AssetViewer::DrawDetails(float height)
     {
         const string type =
             asset_type_from_path(m_selected_dependency_path);
-        ImGui::TextUnformatted(
-            asset_display_name(
-                FileSystem::
-                    GetFileNameWithoutExtensionFromFilePath(
-                        m_selected_dependency_path
-                    )
-            ).c_str()
+        const string dependency_name = asset_display_name(
+            FileSystem::
+                GetFileNameWithoutExtensionFromFilePath(
+                    m_selected_dependency_path
+                )
         );
-        ImGui::TextColored(
-            ImGui::ColorConvertU32ToFloat4(
-                asset_type_color(type)
-            ),
-            "%s  linked file",
-            type.c_str()
+        draw_asset_identity(
+            dependency_name,
+            type,
+            "linked resource"
         );
-        ImGui::Separator();
+        ImGui::Spacing();
 
         // a mesh reached by expanding a prefab is still a mesh, without this the simplify and lod
         // controls are only reachable when the mesh happens to be a top level catalog entry
@@ -6449,54 +6566,23 @@ void AssetViewer::DrawDetails(float height)
     }
 
     const AssetEntry& asset = m_assets[m_selected_asset];
-    const AssetVersion* version = GetActiveVersion(asset);
 
-    ImGui::PushStyleColor(
-        ImGuiCol_ChildBg,
-        ImVec4(
-            ImGui::GetStyleColorVec4(ImGuiCol_FrameBg).x,
-            ImGui::GetStyleColorVec4(ImGuiCol_FrameBg).y,
-            ImGui::GetStyleColorVec4(ImGuiCol_FrameBg).z,
-            0.42f
-        )
-    );
-    ImGui::BeginChild(
-        "##asset_identity",
-        ImVec2(0.0f, 68.0f * scale),
-        ImGuiChildFlags_None
-    );
-    ImGui::SetCursorPos(
-        ImVec2(12.0f * scale, 15.0f * scale)
-    );
-    ImGuiSp::image(
-        asset_type_icon(asset.type),
-        30.0f * scale,
-        ImVec4(0.82f, 0.9f, 1.0f, 1.0f)
-    );
-    ImGui::SameLine();
-    ImGui::BeginGroup();
     const string display_name =
         asset_display_name(asset.name);
-    ImGui::TextUnformatted(display_name.c_str());
-    ImGui::TextColored(
-        ImGui::ColorConvertU32ToFloat4(
-            asset_type_color(asset.type)
-        ),
-        "%s asset",
-        asset.type.c_str()
+    draw_asset_identity(
+        display_name,
+        asset.type,
+        "catalog asset"
     );
-    ImGui::EndGroup();
-    ImGui::EndChild();
-    ImGui::PopStyleColor();
 
     ImGui::Spacing();
-    const char* tabs[] = { "Overview", "Versions", "Optimize" };
+    const char* tabs[] = { "Overview", "Optimize" };
     const int tab_count =
         m_mesh &&
         m_working_editable &&
         !m_working_vertices.empty()
-            ? 3
-            : 2;
+            ? 2
+            : 1;
 
     // panel sections, a real tab bar rather than toggle buttons, it carries the exclusivity
     // and keeps the selected section attached to the content below it
@@ -6529,11 +6615,6 @@ void AssetViewer::DrawDetails(float height)
                 ? "None"
                 : join_strings(asset.aliases, ", ")
         );
-        detail_row(
-            "Versions",
-            to_string(asset.versions.size())
-        );
-
         ImGui::Spacing();
         ImGui::TextUnformatted("TECHNICAL");
         ImGui::Separator();
@@ -6578,18 +6659,50 @@ void AssetViewer::DrawDetails(float height)
                         " missing"
             );
 
+            if (!m_missing_dependencies.empty())
+            {
+                const ImVec4 warning =
+                    ImGui::Style::color_warning;
+                ImGui::PushStyleColor(
+                    ImGuiCol_ChildBg,
+                    ImVec4(
+                        warning.x,
+                        warning.y,
+                        warning.z,
+                        0.1f
+                    )
+                );
+                ImGui::BeginChild(
+                    "##missing_dependencies",
+                    ImVec2(0.0f, 52.0f * scale),
+                    ImGuiChildFlags_Borders
+                );
+                ImGui::Text(
+                    "%zu missing dependenc%s",
+                    m_missing_dependencies.size(),
+                    m_missing_dependencies.size() == 1
+                        ? "y"
+                        : "ies"
+                );
+                ImGui::TextDisabled(
+                    "The preview may be incomplete"
+                );
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+            }
+
             // a prefab can reference several meshes, so the geometry tools live on the mesh itself
             ImGui::TextDisabled(
                 "Expand this prefab and pick a mesh to simplify it or build LODs"
             );
         }
-        if (version)
+        if (!asset.path.empty())
         {
             detail_row(
                 "Quality",
-                to_string(version->quality_score) +
+                to_string(asset.quality_score) +
                     (
-                        version->quality_verified
+                        asset.quality_verified
                             ? " verified"
                             : " unverified"
                     )
@@ -6599,12 +6712,12 @@ void AssetViewer::DrawDetails(float height)
         ImGui::Spacing();
         ImGui::TextUnformatted("SOURCE");
         ImGui::Separator();
-        if (version)
+        if (!asset.path.empty())
         {
-            ImGui::TextWrapped("%s", version->path.c_str());
+            ImGui::TextWrapped("%s", asset.path.c_str());
             if (ImGuiSp::button("Copy path"))
             {
-                ImGui::SetClipboardText(version->path.c_str());
+                ImGui::SetClipboardText(asset.path.c_str());
                 m_status = "Copied asset path";
             }
             ImGui::SameLine();
@@ -6612,7 +6725,7 @@ void AssetViewer::DrawDetails(float height)
             {
                 FileSystem::OpenUrl(
                     FileSystem::GetDirectoryFromFilePath(
-                        version->path
+                        asset.path
                     )
                 );
             }
@@ -6639,61 +6752,12 @@ void AssetViewer::DrawDetails(float height)
             ImGuiSp::tooltip("Save a 1024 x 1024 preview");
         }
     }
-    else if (m_inspector_tab == 1)
-    {
-        ImGui::TextDisabled(
-            "%zu saved version%s",
-            asset.versions.size(),
-            asset.versions.size() == 1 ? "" : "s"
-        );
-        ImGui::Spacing();
-        for (
-            int index =
-                static_cast<int>(asset.versions.size()) - 1;
-            index >= 0;
-            index--
-        )
-        {
-            const AssetVersion& item = asset.versions[index];
-            const bool active = item.id == asset.active_version;
-            ImGui::PushID(index);
-            ImGui::BeginChild(
-                "##version_card",
-                ImVec2(0.0f, 76.0f * scale),
-                ImGuiChildFlags_Borders
-            );
-            ImGui::Text(
-                "Version %d",
-                item.number
-            );
-            ImGui::SameLine();
-            if (active)
-            {
-                ImGui::TextColored(
-                    ImGui::Style::color_accent_1,
-                    "ACTIVE"
-                );
-            }
-            ImGui::TextDisabled(
-                "%s  |  quality %.1f%s",
-                item.id.c_str(),
-                item.quality_score,
-                item.quality_verified ? " verified" : ""
-            );
-            if (!item.notes.empty())
-            {
-                ImGui::TextWrapped("%s", item.notes.c_str());
-            }
-            ImGui::EndChild();
-            ImGui::PopID();
-        }
-    }
     else
     {
         DrawMeshTools();
     }
 
-    if (m_inspector_tab != 2)
+    if (m_inspector_tab != 1)
     {
         ImGui::Spacing();
         ImGui::Separator();
@@ -6716,8 +6780,9 @@ void AssetViewer::DrawDetails(float height)
             display_name.c_str()
         );
         ImGui::TextDisabled(
-            "This removes all %zu versions, sources and thumbnails.",
-            asset.versions.size()
+            asset.type == "prefab"
+                ? "This removes the prefab, source, thumbnail and owned dependency copies."
+                : "This removes the asset path, source and thumbnail."
         );
         ImGui::Spacing();
         if (ImGuiSp::button("Delete permanently"))
@@ -6778,7 +6843,20 @@ void AssetViewer::DrawMeshTools()
             static_cast<float>(source_triangles)
         : 0.0f;
 
-    if (m_working_modified)
+    const float scale = ui_scale();
+    const float footer_height = 86.0f * scale;
+    const float content_height = max(
+        80.0f * scale,
+        ImGui::GetContentRegionAvail().y -
+            footer_height
+    );
+    ImGui::BeginChild(
+        "##mesh_tools_content",
+        ImVec2(0.0f, content_height),
+        ImGuiChildFlags_None
+    );
+
+    if (m_working_modified || m_working_lods_built)
     {
         const ImVec4 accent = ImGui::Style::color_accent_1;
         ImGui::PushStyleColor(
@@ -6787,7 +6865,7 @@ void AssetViewer::DrawMeshTools()
         );
         ImGui::BeginChild(
             "##mesh_changes",
-            ImVec2(0.0f, 48.0f * ui_scale()),
+            ImVec2(0.0f, 48.0f * scale),
             ImGuiChildFlags_Borders
         );
         ImGui::TextUnformatted("Unsaved mesh changes");
@@ -6825,7 +6903,7 @@ void AssetViewer::DrawMeshTools()
     );
 
     ImGui::Spacing();
-    ImGui::TextUnformatted("SIMPLIFICATION");
+    ImGui::TextUnformatted("1  REDUCE GEOMETRY");
     ImGui::Separator();
     ImGui::TextDisabled(
         "Keep this share of the original triangles"
@@ -6885,18 +6963,8 @@ void AssetViewer::DrawMeshTools()
     {
         OptimizeWorkingGeometry();
     }
-    if (
-        ImGuiSp::button(
-            "Revert to source",
-            ImVec2(-1.0f, 0.0f)
-        )
-    )
-    {
-        LoadWorkingGeometry();
-    }
-
     ImGui::Spacing();
-    ImGui::TextUnformatted("LEVELS OF DETAIL");
+    ImGui::TextUnformatted("2  BUILD LEVELS OF DETAIL");
     ImGui::Separator();
     ImGui::Checkbox(
         "Generate LODs when saving",
@@ -7083,22 +7151,47 @@ void AssetViewer::DrawMeshTools()
         );
     }
 
-    ImGui::Spacing();
+    ImGui::EndChild();
+    ImGui::Separator();
+    ImGui::TextUnformatted("3  REVIEW AND SAVE");
 
-    // a chain built here counts as something worth saving, a mesh that ships without lods is the
-    // one case where nothing about lod 0 has to change for the bake to be useful. the mesh's own saved
-    // chain does not count, it is already in the file
     const bool can_save =
         m_working_modified ||
         m_working_lods_built;
+    ImGui::TextDisabled(
+        can_save
+            ? "Changes are previewed but not saved"
+            : "No pending mesh changes"
+    );
+
+    const float action_gap = 4.0f * scale;
+    const float action_width =
+        (
+            ImGui::GetContentRegionAvail().x -
+            action_gap
+        ) *
+        0.5f;
     if (!can_save)
     {
         ImGui::BeginDisabled();
     }
     if (
         ImGuiSp::button(
+            "Revert",
+            ImVec2(action_width, 0.0f)
+        )
+    )
+    {
+        LoadWorkingGeometry();
+    }
+    ImGuiSp::tooltip(
+        "Discard simplification and rebuilt LOD previews"
+    );
+    ImGui::SameLine(0.0f, action_gap);
+    if (
+        ImGuiSp::button(
             "Save mesh",
-            ImVec2(-1.0f, 0.0f)
+            ImVec2(action_width, 0.0f)
         )
     )
     {
@@ -7119,7 +7212,7 @@ void AssetViewer::DrawMeshTools()
     {
         // the lod picker only changes what is on screen, the bake always writes the working
         // geometry as lod 0 and derives the rest from it
-        ImGui::TextUnformatted("Overwrite the current mesh version?");
+        ImGui::TextUnformatted("Overwrite the current mesh?");
         ImGui::TextDisabled(
             "%llu to %llu triangles, %.1f%% reduction",
             static_cast<unsigned long long>(source_triangles),
@@ -7185,63 +7278,74 @@ void AssetViewer::DrawPreview(float width, float height)
 
     if (!m_texture)
     {
-        // shading and backdrop are both one of many, dropdowns instead of toggle rows so the
-        // exclusivity is visible in the control and the toolbar stays narrow
-        const char* modes =
-            "Solid\0"
-            "Wireframe\0"
-            "Vertices\0";
-        ImGui::SetNextItemWidth(104.0f * scale);
-        if (
-            ImGui::Combo(
-                "##asset_preview_mode",
-                &m_preview_mode,
-                modes
-            )
-        )
+        if (ImGui::SmallButton("Display"))
         {
-            m_preview_dirty = true;
-        }
-        ImGuiSp::tooltip("Shading mode");
-
-        ImGui::SameLine(0.0f, 3.0f * scale);
-        const char* backdrops =
-            "Auto\0"
-            "Sky\0"
-            "Charcoal\0"
-            "Slate\0"
-            "Paper\0";
-        ImGui::SetNextItemWidth(98.0f * scale);
-        if (
-            ImGui::Combo(
-                "##asset_preview_backdrop",
-                &m_preview_backdrop,
-                backdrops
-            )
-        )
-        {
-            m_preview_dirty = true;
+            ImGui::OpenPopup("##asset_preview_display");
         }
         ImGuiSp::tooltip(
-            "Backdrop, auto uses the sky for solid shading and a dark "
-            "studio tone for wireframe and vertices"
+            "Shading and backdrop settings"
         );
+        if (ImGui::BeginPopup("##asset_preview_display"))
+        {
+            const char* modes =
+                "Solid\0"
+                "Wireframe\0"
+                "Vertices\0";
+            ImGui::TextDisabled("Shading");
+            ImGui::SetNextItemWidth(180.0f * scale);
+            if (
+                ImGui::Combo(
+                    "##asset_preview_mode",
+                    &m_preview_mode,
+                    modes
+                )
+            )
+            {
+                m_preview_dirty = true;
+            }
+
+            const char* backdrops =
+                "Auto\0"
+                "Sky\0"
+                "Charcoal\0"
+                "Slate\0"
+                "Paper\0";
+            ImGui::TextDisabled("Backdrop");
+            ImGui::SetNextItemWidth(180.0f * scale);
+            if (
+                ImGui::Combo(
+                    "##asset_preview_backdrop",
+                    &m_preview_backdrop,
+                    backdrops
+                )
+            )
+            {
+                m_preview_dirty = true;
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::SameLine(0.0f, 4.0f * scale);
+        if (
+            toolbar_toggle(
+                "Turntable",
+                m_preview_auto_rotate
+            )
+        )
+        {
+            m_preview_auto_rotate = !m_preview_auto_rotate;
+        }
     }
     else
     {
-        ImGui::TextDisabled("Texture");
+        ImGui::TextDisabled("Texture preview");
     }
-    ImGui::SameLine(0.0f, 3.0f * scale);
+
+    ImGui::SameLine(0.0f, 4.0f * scale);
     if (toolbar_toggle("Stats", m_preview_show_stats))
     {
         m_preview_show_stats = !m_preview_show_stats;
     }
-    ImGui::SameLine(0.0f, 3.0f * scale);
-    if (toolbar_toggle("Orbit", m_preview_auto_rotate))
-    {
-        m_preview_auto_rotate = !m_preview_auto_rotate;
-    }
-
     ImGui::SameLine(0.0f, 8.0f * scale);
     if (ImGui::SmallButton("Frame"))
     {
@@ -7443,15 +7547,35 @@ void AssetViewer::DrawPreview(float width, float height)
             maximum,
             IM_COL32(15, 18, 24, 255)
         );
+        const char* title = PreviewRoot()
+            ? "Preparing preview"
+            : "No asset selected";
+        const char* hint = PreviewRoot()
+            ? "Loading geometry and materials"
+            : "Choose an asset from the Library";
+        const ImVec2 title_size =
+            ImGui::CalcTextSize(title);
+        const ImVec2 hint_size =
+            ImGui::CalcTextSize(hint);
+        const float center_y =
+            (minimum.y + maximum.y) * 0.5f;
         ImGui::GetWindowDrawList()->AddText(
             ImVec2(
-                minimum.x + 12.0f,
-                minimum.y + 12.0f
+                (minimum.x + maximum.x - title_size.x) *
+                    0.5f,
+                center_y - 16.0f * scale
+            ),
+            ImGui::GetColorU32(ImGuiCol_Text),
+            title
+        );
+        ImGui::GetWindowDrawList()->AddText(
+            ImVec2(
+                (minimum.x + maximum.x - hint_size.x) *
+                    0.5f,
+                center_y + 6.0f * scale
             ),
             ImGui::GetColorU32(ImGuiCol_TextDisabled),
-            PreviewRoot()
-                ? "Rendering preview"
-                : "Select an asset"
+            hint
         );
     }
     if (
@@ -7460,10 +7584,28 @@ void AssetViewer::DrawPreview(float width, float height)
         Renderer::IsSecondaryViewReady()
     )
     {
+        const ImVec2 text_size =
+            ImGui::CalcTextSize(summary.c_str());
+        const ImVec2 card_min(
+            minimum.x + 10.0f * scale,
+            maximum.y -
+                text_size.y -
+                22.0f * scale
+        );
+        const ImVec2 card_max(
+            card_min.x + text_size.x + 16.0f * scale,
+            maximum.y - 8.0f * scale
+        );
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            card_min,
+            card_max,
+            IM_COL32(10, 13, 18, 190),
+            4.0f * scale
+        );
         ImGui::GetWindowDrawList()->AddText(
             ImVec2(
-                minimum.x + 10.0f,
-                maximum.y - 26.0f
+                card_min.x + 8.0f * scale,
+                card_min.y + 7.0f * scale
             ),
             IM_COL32(225, 230, 235, 220),
             summary.c_str()
@@ -7586,6 +7728,1031 @@ void AssetViewer::DrawTexturePreview(
     draw_list->PopClipRect();
 }
 
+bool AssetViewer::Refresh(string& error)
+{
+    if (m_working_modified || m_working_lods_built)
+    {
+        error =
+            "save or revert unsaved mesh changes before refreshing";
+        return false;
+    }
+    RefreshCatalog(true);
+    return true;
+}
+
+bool AssetViewer::ListAssets(
+    const ListRequest& request,
+    ListResult& result,
+    string& error
+)
+{
+    if (
+        !m_working_modified &&
+        !m_working_lods_built
+    )
+    {
+        RefreshCatalog(false);
+    }
+    string type = lower_copy(request.type);
+    if (type == "all")
+    {
+        type.clear();
+    }
+    if (
+        !type.empty() &&
+        type != "mesh" &&
+        type != "material" &&
+        type != "prefab" &&
+        type != "texture"
+    )
+    {
+        error = "type must be mesh, material, prefab or texture";
+        return false;
+    }
+
+    const string sort_mode = lower_copy(request.sort);
+    if (
+        sort_mode != "name" &&
+        sort_mode != "quality" &&
+        sort_mode != "type"
+    )
+    {
+        error = "sort must be name, quality or type";
+        return false;
+    }
+    if (
+        request.limit == 0 ||
+        request.limit > 500
+    )
+    {
+        error = "limit must be between 1 and 500";
+        return false;
+    }
+
+    const string query = lower_copy(request.query);
+    vector<const AssetEntry*> matches;
+    for (const AssetEntry& asset : m_assets)
+    {
+        if (
+            (!type.empty() && asset.type != type) ||
+            (!request.include_disk_only && asset.disk_only)
+        )
+        {
+            continue;
+        }
+
+        string searchable =
+            asset.id + " " +
+            asset.name + " " +
+            asset.type + " " +
+            join_strings(asset.aliases, " ") + " " +
+            join_strings(asset.tags, " ");
+        searchable = lower_copy(move(searchable));
+        istringstream terms(query);
+        string term;
+        bool found = true;
+        while (terms >> term)
+        {
+            if (searchable.find(term) == string::npos)
+            {
+                found = false;
+                break;
+            }
+        }
+        if (found)
+        {
+            matches.push_back(&asset);
+        }
+    }
+
+    sort(
+        matches.begin(),
+        matches.end(),
+        [this, &sort_mode](
+            const AssetEntry* first,
+            const AssetEntry* second
+        )
+        {
+            if (sort_mode == "quality")
+            {
+                const float first_quality =
+                    first->quality_score;
+                const float second_quality =
+                    second->quality_score;
+                if (first_quality != second_quality)
+                {
+                    return first_quality > second_quality;
+                }
+            }
+            else if (
+                sort_mode == "type" &&
+                first->type != second->type
+            )
+            {
+                return first->type < second->type;
+            }
+            return lower_copy(first->name) <
+                lower_copy(second->name);
+        }
+    );
+
+    result = ListResult();
+    result.total = matches.size();
+    result.offset = min<uint64_t>(
+        request.offset,
+        result.total
+    );
+    result.limit = request.limit;
+    const uint64_t end = min<uint64_t>(
+        result.total,
+        result.offset + result.limit
+    );
+    for (uint64_t index = result.offset; index < end; index++)
+    {
+        const AssetEntry& asset = *matches[index];
+        AssetSummary summary;
+        summary.id = asset.id;
+        summary.name = asset.name;
+        summary.type = asset.type;
+        summary.path = asset.path;
+        summary.source_path = asset.source_path;
+        summary.thumbnail_path = asset.thumbnail_path;
+        summary.quality_score = asset.quality_score;
+        summary.quality_verified = asset.quality_verified;
+        summary.disk_only = asset.disk_only;
+        result.assets.emplace_back(move(summary));
+    }
+    return true;
+}
+bool AssetViewer::InspectAsset(
+    const string& asset_id,
+    AssetInspection& result,
+    string& error
+) const
+{
+    if (asset_id.empty())
+    {
+        error = "asset_id is required";
+        return false;
+    }
+
+    const AssetEntry* asset = nullptr;
+    for (const AssetEntry& candidate : m_assets)
+    {
+        if (candidate.id == asset_id)
+        {
+            asset = &candidate;
+            break;
+        }
+    }
+    if (!asset)
+    {
+        error = "asset was not found in the active catalog";
+        return false;
+    }
+
+    result = AssetInspection();
+    result.asset.id = asset->id;
+    result.asset.name = asset->name;
+    result.asset.type = asset->type;
+    result.asset.path = asset->path;
+    result.asset.source_path = asset->source_path;
+    result.asset.thumbnail_path = asset->thumbnail_path;
+    result.asset.quality_score = asset->quality_score;
+    result.asset.quality_verified = asset->quality_verified;
+    result.asset.disk_only = asset->disk_only;
+    result.aliases = asset->aliases;
+    result.tags = asset->tags;
+    result.dependencies = asset->dependencies;
+    result.source_exists = FileSystem::Exists(asset->path);
+    if (result.source_exists)
+    {
+        error_code size_error;
+        result.source_bytes = static_cast<uint64_t>(
+            filesystem::file_size(
+                filesystem::path(asset->path),
+                size_error
+            )
+        );
+        if (size_error)
+        {
+            result.source_bytes = 0;
+        }
+    }
+
+    const bool inspecting_loaded =
+        normalized_path(asset->path) ==
+            normalized_path(m_loaded_path);
+    if (inspecting_loaded)
+    {
+        const auto [vertex_count, index_count] =
+            GetPreviewGeometryCounts();
+        result.vertex_count = vertex_count;
+        result.index_count = index_count;
+        result.prefab_entity_count = m_prefab_entity_count;
+        result.missing_dependencies = m_missing_dependencies;
+        if (m_texture)
+        {
+            result.texture_width = m_texture->GetWidth();
+            result.texture_height = m_texture->GetHeight();
+            result.texture_channels = m_texture->GetChannelCount();
+        }
+    }
+    return true;
+}
+
+bool AssetViewer::SetSelection(
+    const SelectionRequest& request,
+    string& error
+)
+{
+    vector<int> indices;
+    indices.reserve(request.asset_ids.size());
+    for (const string& id : request.asset_ids)
+    {
+        int found = -1;
+        for (size_t index = 0; index < m_assets.size(); index++)
+        {
+            if (m_assets[index].id == id)
+            {
+                found = static_cast<int>(index);
+                break;
+            }
+        }
+        if (found < 0)
+        {
+            error = "asset was not found: " + id;
+            return false;
+        }
+        indices.push_back(found);
+    }
+
+    int focus = -1;
+    if (request.focus_id)
+    {
+        for (size_t index = 0; index < m_assets.size(); index++)
+        {
+            if (m_assets[index].id == *request.focus_id)
+            {
+                focus = static_cast<int>(index);
+                break;
+            }
+        }
+        if (focus < 0)
+        {
+            error = "focus asset was not found";
+            return false;
+        }
+    }
+    else if (
+        request.mode == SelectionMode::Replace &&
+        !indices.empty()
+    )
+    {
+        focus = indices.front();
+    }
+
+    unordered_set<string> next_selection =
+        request.mode == SelectionMode::Replace
+            ? unordered_set<string>()
+            : m_selected_assets;
+    for (const int index : indices)
+    {
+        const string& id = m_assets[index].id;
+        if (request.mode == SelectionMode::Remove)
+        {
+            next_selection.erase(id);
+        }
+        else if (request.mode == SelectionMode::Toggle)
+        {
+            if (!next_selection.erase(id))
+            {
+                next_selection.insert(id);
+            }
+        }
+        else
+        {
+            next_selection.insert(id);
+        }
+    }
+
+    if (focus < 0)
+    {
+        const bool keeps_current =
+            m_selected_asset >= 0 &&
+            m_selected_asset < static_cast<int>(m_assets.size()) &&
+            next_selection.count(
+                m_assets[m_selected_asset].id
+            );
+        if (keeps_current)
+        {
+            focus = m_selected_asset;
+        }
+        else if (!next_selection.empty())
+        {
+            for (size_t index = 0; index < m_assets.size(); index++)
+            {
+                if (next_selection.count(m_assets[index].id))
+                {
+                    focus = static_cast<int>(index);
+                    break;
+                }
+            }
+        }
+    }
+    if (
+        focus >= 0 &&
+        (
+            request.mode == SelectionMode::Remove ||
+            request.mode == SelectionMode::Toggle
+        ) &&
+        !next_selection.count(m_assets[focus].id)
+    )
+    {
+        error = "focus_id must remain selected";
+        return false;
+    }
+    const bool changes_focus = focus != m_selected_asset;
+    if (
+        changes_focus &&
+        (m_working_modified || m_working_lods_built)
+    )
+    {
+        error =
+            "save or revert unsaved mesh changes before changing focus";
+        return false;
+    }
+    if (focus >= 0)
+    {
+        next_selection.insert(m_assets[focus].id);
+    }
+
+    m_selected_assets = move(next_selection);
+
+    if (focus >= 0)
+    {
+        m_selected_asset = focus;
+        m_selection_anchor = focus;
+        m_selected_dependency_path.clear();
+        if (changes_focus)
+        {
+            LoadSelectedAsset();
+            if (m_loaded_path.empty())
+            {
+                error = m_status;
+                return false;
+            }
+        }
+    }
+    else
+    {
+        m_selected_asset = -1;
+        m_selection_anchor = -1;
+        m_selected_dependency_path.clear();
+        ClearLoadedAsset();
+    }
+
+    m_status =
+        to_string(m_selected_assets.size()) +
+        (
+            m_selected_assets.size() == 1
+                ? " asset selected"
+                : " assets selected"
+        );
+    return true;
+}
+
+bool AssetViewer::SetDisplay(
+    const DisplayRequest& request,
+    string& error
+)
+{
+    if (request.preview_lod)
+    {
+        if (!m_mesh || !m_working_editable)
+        {
+            error = "a previewed editable mesh is required";
+            return false;
+        }
+        if (!m_working_lods_scanned)
+        {
+            m_working_lods_scanned = true;
+            LoadExistingLods();
+        }
+        const int lod_count = max(
+            1,
+            static_cast<int>(m_working_lods.size())
+        );
+        if (
+            *request.preview_lod < 0 ||
+            *request.preview_lod >= lod_count
+        )
+        {
+            error = "preview_lod is out of range";
+            return false;
+        }
+    }
+    if (request.frame && !HasPreviewContent())
+    {
+        error = "load a preview before framing it";
+        return false;
+    }
+
+    if (request.reset)
+    {
+        m_preview_mode = 0;
+        m_preview_backdrop = 3;
+        m_preview_show_stats = true;
+        m_preview_auto_rotate = false;
+        m_preview_yaw = 0.65f;
+        m_preview_pitch = 0.35f;
+        m_preview_zoom = 1.0f;
+        m_preview_lod = 0;
+        m_texture_pan = math::Vector2::Zero;
+    }
+    if (request.shading)
+    {
+        m_preview_mode = static_cast<int>(*request.shading);
+    }
+    if (request.backdrop)
+    {
+        m_preview_backdrop = static_cast<int>(*request.backdrop);
+    }
+    if (request.show_stats)
+    {
+        m_preview_show_stats = *request.show_stats;
+    }
+    if (request.auto_rotate)
+    {
+        m_preview_auto_rotate = *request.auto_rotate;
+    }
+    if (request.preview_lod)
+    {
+        m_preview_lod = *request.preview_lod;
+        FlattenWorkingGeometry();
+        RefreshPreviewMeshGeometry();
+    }
+    if (request.frame)
+    {
+        RefreshPreviewBounds();
+        m_preview_zoom = 1.0f;
+    }
+
+    m_visible = true;
+    m_preview_dirty = true;
+    m_status = "Updated asset preview display";
+    return true;
+}
+
+bool AssetViewer::PreviewPath(
+    const string& path,
+    string& error
+)
+{
+    if (path.empty())
+    {
+        error = "path is required";
+        return false;
+    }
+    const string library_root =
+        FileSystem::GetDirectoryFromFilePath(m_catalog_path);
+    if (
+        path.find("..") != string::npos ||
+        library_root.empty() ||
+        !path_is_within(path, library_root) ||
+        !resolved_path_is_within(path, library_root)
+    )
+    {
+        error = "path must be inside the active asset library";
+        return false;
+    }
+    if (!FileSystem::Exists(path))
+    {
+        error = "linked resource was not found";
+        return false;
+    }
+    if (m_working_modified || m_working_lods_built)
+    {
+        if (
+            normalized_path(path) ==
+            normalized_path(m_loaded_path)
+        )
+        {
+            m_visible = true;
+            m_status =
+                "Preview already loaded with unsaved mesh changes";
+            return true;
+        }
+        error =
+            "save or revert unsaved mesh changes before changing preview";
+        return false;
+    }
+    for (size_t index = 0; index < m_assets.size(); index++)
+    {
+        AssetEntry& asset = m_assets[index];
+        if (
+            normalized_path(asset.path) !=
+            normalized_path(path)
+        )
+        {
+            continue;
+        }
+        m_selected_asset = static_cast<int>(index);
+        m_selected_assets.clear();
+        m_selected_assets.insert(asset.id);
+        m_selection_anchor = m_selected_asset;
+        LoadSelectedAsset();
+        if (m_loaded_path.empty())
+        {
+            error = m_status;
+            return false;
+        }
+        m_visible = true;
+        return true;
+    }
+    const string type = asset_type_from_path(path);
+    if (
+        type != "mesh" &&
+        type != "material" &&
+        type != "texture"
+    )
+    {
+        error = "linked resource type is not previewable";
+        return false;
+    }
+    LoadDependencyPreview(path);
+    if (m_loaded_path.empty())
+    {
+        error = m_status;
+        return false;
+    }
+    m_visible = true;
+    return true;
+}
+
+bool AssetViewer::Reload(string& error)
+{
+    if (m_working_modified || m_working_lods_built)
+    {
+        error =
+            "save or revert unsaved mesh changes before reloading";
+        return false;
+    }
+    if (!m_selected_dependency_path.empty())
+    {
+        const string path = m_selected_dependency_path;
+        LoadDependencyPreview(path);
+    }
+    else if (
+        m_selected_asset >= 0 &&
+        m_selected_asset < static_cast<int>(m_assets.size())
+    )
+    {
+        LoadSelectedAsset(false, true);
+    }
+    else
+    {
+        error = "select an asset or linked path before reloading";
+        return false;
+    }
+    if (m_loaded_path.empty())
+    {
+        error = m_status;
+        return false;
+    }
+    return true;
+}
+
+bool AssetViewer::EditMesh(
+    const MeshRequest& request,
+    string& error
+)
+{
+    if (
+        !m_mesh ||
+        !m_working_editable ||
+        m_working_sub_meshes.empty()
+    )
+    {
+        error = "a previewed editable mesh is required";
+        return false;
+    }
+    if (
+        request.target_ratio &&
+        (
+            *request.target_ratio < 0.01f ||
+            *request.target_ratio > 1.0f
+        )
+    )
+    {
+        error = "target_ratio must be between 0.01 and 1";
+        return false;
+    }
+    if (
+        request.target_ratio &&
+        request.action != MeshAction::Simplify &&
+        request.action != MeshAction::SetOptions
+    )
+    {
+        error =
+            "target_ratio is only valid for simplify or set_options";
+        return false;
+    }
+    if (
+        request.generate_lods &&
+        request.action != MeshAction::SetOptions
+    )
+    {
+        error =
+            "generate_lods_on_save is only valid for set_options";
+        return false;
+    }
+    if (
+        request.preview_lod &&
+        request.action != MeshAction::SetOptions
+    )
+    {
+        error =
+            "preview_lod is only valid for set_options";
+        return false;
+    }
+    if (
+        request.action == MeshAction::Revert &&
+        !request.confirm
+    )
+    {
+        error =
+            "confirm=true is required to discard mesh changes";
+        return false;
+    }
+    if (request.preview_lod)
+    {
+        DisplayRequest display;
+        display.preview_lod = request.preview_lod;
+        if (!SetDisplay(display, error))
+        {
+            return false;
+        }
+    }
+    if (request.target_ratio)
+    {
+        m_target_ratio = *request.target_ratio;
+    }
+    if (request.generate_lods)
+    {
+        m_working_generate_lods = *request.generate_lods;
+    }
+
+    switch (request.action)
+    {
+        case MeshAction::Simplify:
+            SimplifyWorkingGeometry(m_target_ratio);
+            m_status = "Simplified working mesh geometry";
+            break;
+        case MeshAction::Optimize:
+            OptimizeWorkingGeometry();
+            m_status = "Optimized working mesh geometry";
+            break;
+        case MeshAction::BuildLods:
+            BuildWorkingLods();
+            if (m_working_lods.empty())
+            {
+                error = "the mesh could not produce a reduced lod level";
+                return false;
+            }
+            m_status = "Built working mesh lods";
+            break;
+        case MeshAction::Revert:
+            LoadWorkingGeometry();
+            m_status = "Reverted unsaved mesh changes";
+            break;
+        case MeshAction::SetOptions:
+            m_status = "Updated mesh edit options";
+            break;
+    }
+
+    return true;
+}
+
+bool AssetViewer::SaveMesh(
+    const bool confirm,
+    string& error
+)
+{
+    if (!confirm)
+    {
+        error = "confirm=true is required to overwrite the mesh";
+        return false;
+    }
+    if (
+        !m_working_modified &&
+        !m_working_lods_built
+    )
+    {
+        error = "there are no unsaved mesh changes";
+        return false;
+    }
+    if (!SaveWorkingGeometry())
+    {
+        error =
+            m_status.empty()
+                ? "mesh changes could not be saved"
+                : m_status;
+        return false;
+    }
+    return true;
+}
+
+bool AssetViewer::Rename(
+    const string& asset_id,
+    const string& linked_path,
+    const string& new_name,
+    string& error
+)
+{
+    if (m_working_modified || m_working_lods_built)
+    {
+        error =
+            "save or revert unsaved mesh changes before renaming";
+        return false;
+    }
+    if (new_name.empty())
+    {
+        error = "new_name is required";
+        return false;
+    }
+    if (asset_id.empty() == linked_path.empty())
+    {
+        error = "provide exactly one of asset_id or linked_path";
+        return false;
+    }
+
+    if (!linked_path.empty())
+    {
+        const string library_root =
+            FileSystem::GetDirectoryFromFilePath(m_catalog_path);
+        if (
+            linked_path.find("..") != string::npos ||
+            library_root.empty() ||
+            !path_is_within(linked_path, library_root) ||
+            !resolved_path_is_within(
+                linked_path,
+                library_root
+            )
+        )
+        {
+            error = "linked_path must be inside the active asset library";
+            return false;
+        }
+        if (
+            (m_working_modified || m_working_lods_built) &&
+            normalized_path(linked_path) ==
+                normalized_path(m_loaded_path)
+        )
+        {
+            error =
+                "save or revert unsaved mesh changes before renaming it";
+            return false;
+        }
+        const string renamed_path =
+            FileSystem::GetDirectoryFromFilePath(linked_path) +
+            sanitize_asset_name(new_name) +
+            FileSystem::GetExtensionFromFilePath(linked_path);
+        const bool previewing =
+            normalized_path(linked_path) ==
+            normalized_path(m_loaded_path);
+        if (!RenameAssetFile(linked_path, new_name))
+        {
+            error = m_status;
+            return false;
+        }
+        const string status = m_status;
+        RefreshCatalog(true);
+        if (previewing && FileSystem::Exists(renamed_path))
+        {
+            LoadDependencyPreview(renamed_path);
+        }
+        m_status = status;
+        return true;
+    }
+
+    int index = -1;
+    for (size_t candidate = 0; candidate < m_assets.size(); candidate++)
+    {
+        if (m_assets[candidate].id == asset_id)
+        {
+            index = static_cast<int>(candidate);
+            break;
+        }
+    }
+    if (index < 0)
+    {
+        error = "asset was not found in the active catalog";
+        return false;
+    }
+    if (
+        (m_working_modified || m_working_lods_built) &&
+        m_selected_asset == index
+    )
+    {
+        error =
+            "save or revert unsaved mesh changes before renaming it";
+        return false;
+    }
+    if (!RenameAsset(index, new_name))
+    {
+        error = m_status;
+        return false;
+    }
+    return true;
+}
+
+bool AssetViewer::Delete(
+    const vector<string>& asset_ids,
+    const string& linked_path,
+    const bool confirm,
+    string& error
+)
+{
+    if (!confirm)
+    {
+        error = "confirm=true is required to delete assets";
+        return false;
+    }
+    if (m_working_modified || m_working_lods_built)
+    {
+        error =
+            "save or revert unsaved mesh changes before deleting";
+        return false;
+    }
+    if (asset_ids.empty() == linked_path.empty())
+    {
+        error = "provide asset_ids or linked_path, but not both";
+        return false;
+    }
+
+    if (!linked_path.empty())
+    {
+        const string library_root =
+            FileSystem::GetDirectoryFromFilePath(m_catalog_path);
+        if (
+            linked_path.find("..") != string::npos ||
+            library_root.empty() ||
+            !path_is_within(linked_path, library_root) ||
+            !resolved_path_is_within(
+                linked_path,
+                library_root
+            )
+        )
+        {
+            error = "linked_path must be inside the active asset library";
+            return false;
+        }
+        if (!FileSystem::Exists(linked_path))
+        {
+            error = "linked file was not found";
+            return false;
+        }
+        if (
+            (m_working_modified || m_working_lods_built) &&
+            normalized_path(linked_path) ==
+                normalized_path(m_loaded_path)
+        )
+        {
+            error =
+                "save or revert unsaved mesh changes before deleting it";
+            return false;
+        }
+        FileSystem::Delete(linked_path);
+        if (FileSystem::Exists(linked_path))
+        {
+            error = "failed to delete linked file";
+            return false;
+        }
+        if (
+            normalized_path(m_loaded_path) ==
+            normalized_path(linked_path)
+        )
+        {
+            ClearLoadedAsset();
+        }
+        RefreshCatalog(true);
+        m_status = "Deleted " + linked_path;
+        return true;
+    }
+
+    for (const string& id : asset_ids)
+    {
+        const auto found = find_if(
+            m_assets.begin(),
+            m_assets.end(),
+            [&id](const AssetEntry& asset)
+            {
+                return asset.id == id;
+            }
+        );
+        if (found == m_assets.end())
+        {
+            error = "asset was not found: " + id;
+            return false;
+        }
+        if (
+            (m_working_modified || m_working_lods_built) &&
+            normalized_path(found->path) ==
+                normalized_path(m_loaded_path)
+        )
+        {
+            error =
+                "save or revert unsaved mesh changes before deleting it";
+            return false;
+        }
+    }
+    if (!DeleteAssets(asset_ids))
+    {
+        error = m_status;
+        return false;
+    }
+    return true;
+}
+
+bool AssetViewer::ScanCleanup(
+    CleanupSummary& result,
+    string& error
+)
+{
+    ScanLibraryCleanup();
+    if (!m_cleanup.error.empty())
+    {
+        error = m_cleanup.error;
+        return false;
+    }
+
+    result = CleanupSummary();
+    result.orphan_files = m_cleanup.orphan_files;
+    result.bytes = m_cleanup.bytes;
+    result.generation = m_cleanup_generation;
+    return true;
+}
+
+bool AssetViewer::ApplyCleanup(
+    const uint64_t generation,
+    const bool confirm,
+    string& error
+)
+{
+    if (!confirm)
+    {
+        error = "confirm=true is required to apply cleanup";
+        return false;
+    }
+    if (
+        generation == 0 ||
+        generation != m_cleanup_generation
+    )
+    {
+        error =
+            "cleanup generation is stale, scan again before applying";
+        return false;
+    }
+    if (m_working_modified || m_working_lods_built)
+    {
+        error =
+            "save or revert unsaved mesh changes before applying cleanup";
+        return false;
+    }
+    RefreshCatalog(false);
+    if (!m_cleanup.scanned)
+    {
+        error = "run asset_viewer_cleanup_scan before applying cleanup";
+        return false;
+    }
+    if (generation != m_cleanup_generation)
+    {
+        error =
+            "cleanup generation is stale, scan again before applying";
+        return false;
+    }
+    if (
+        CleanupFileSignatures() !=
+        m_cleanup.file_signatures
+    )
+    {
+        error =
+            "cleanup files changed since the scan, scan again";
+        return false;
+    }
+    if (!ApplyLibraryCleanup())
+    {
+        error =
+            m_cleanup.error.empty()
+                ? m_status
+                : m_cleanup.error;
+        return false;
+    }
+    m_cleanup_generation++;
+    return true;
+}
+
 void AssetViewer::SetPanelVisible(bool visible)
 {
     m_visible = visible;
@@ -7595,15 +8762,36 @@ void AssetViewer::SetPanelVisible(bool visible)
         // not saying it is finished with the asset it was reviewing
         Renderer::InvalidateSecondaryView();
     }
-    RefreshCatalog(m_visible);
+    if (!m_working_modified && !m_working_lods_built)
+    {
+        RefreshCatalog(m_visible);
+    }
 }
 
 bool AssetViewer::SelectAsset(
     const string& query,
-    const string& version,
     string& error
 )
 {
+    if (m_working_modified || m_working_lods_built)
+    {
+        const bool same_asset =
+            m_selected_asset >= 0 &&
+            m_selected_asset < static_cast<int>(m_assets.size()) &&
+            (
+                m_assets[m_selected_asset].id == query ||
+                m_assets[m_selected_asset].name == query
+            );
+        if (same_asset)
+        {
+            m_visible = true;
+            return true;
+        }
+        error =
+            "save or revert unsaved mesh changes before selecting another asset";
+        return false;
+    }
+
     m_visible = true;
     RefreshCatalog(true);
     if (query.empty())
@@ -7631,27 +8819,11 @@ bool AssetViewer::SelectAsset(
         return false;
     }
 
-    if (!version.empty())
-    {
-        AssetEntry& asset = m_assets[m_selected_asset];
-        const auto match = find_if(
-            asset.versions.begin(),
-            asset.versions.end(),
-            [&version](const AssetVersion& candidate)
-            {
-                return
-                    candidate.id == version ||
-                    to_string(candidate.number) == version;
-            }
-        );
-        if (match == asset.versions.end())
-        {
-            error = "asset version was not found";
-            return false;
-        }
-        asset.active_version = match->id;
-    }
-
+    m_selected_assets.clear();
+    m_selected_assets.insert(
+        m_assets[m_selected_asset].id
+    );
+    m_selection_anchor = m_selected_asset;
     LoadSelectedAsset(true, true);
     if (m_loaded_path.empty())
     {
@@ -7666,6 +8838,12 @@ bool AssetViewer::PreviewEntityById(
     string& error
 )
 {
+    if (m_working_modified || m_working_lods_built)
+    {
+        error =
+            "save or revert unsaved mesh changes before previewing an entity";
+        return false;
+    }
     Entity* entity = World::GetEntityById(entity_id);
     if (!entity)
     {
@@ -7821,9 +8999,48 @@ AssetViewer::PreviewStatus AssetViewer::GetPreviewStatus() const
     PreviewStatus status;
     status.visible = m_visible;
     status.loaded_path = m_loaded_path;
+    status.dependency_path = m_selected_dependency_path;
+    status.catalog_path = m_catalog_path;
+    status.catalog_count = m_assets.size();
+    status.status_message = m_status;
     status.yaw = m_preview_yaw;
     status.pitch = m_preview_pitch;
     status.zoom = m_preview_zoom;
+    status.shading =
+        static_cast<PreviewShading>(m_preview_mode);
+    status.backdrop =
+        static_cast<PreviewBackdrop>(m_preview_backdrop);
+    status.show_stats = m_preview_show_stats;
+    status.auto_rotate = m_preview_auto_rotate;
+    status.preview_lod = m_preview_lod;
+    status.lod_count = max(
+        1,
+        static_cast<int>(m_working_lods.size())
+    );
+    status.mesh_target_ratio = m_target_ratio;
+    status.mesh_editable = m_working_editable;
+    status.mesh_modified = m_working_modified;
+    status.mesh_lods_built = m_working_lods_built;
+    status.mesh_lods_attempted = m_working_lods_attempted;
+    status.mesh_generate_lods = m_working_generate_lods;
+    status.has_preview_content = HasPreviewContent();
+    status.selected_asset_ids.assign(
+        m_selected_assets.begin(),
+        m_selected_assets.end()
+    );
+    sort(
+        status.selected_asset_ids.begin(),
+        status.selected_asset_ids.end()
+    );
+    for (const WorkingSubMesh& working : m_working_sub_meshes)
+    {
+        status.mesh_source_vertices +=
+            working.source_vertex_count;
+        status.mesh_source_indices +=
+            working.source_index_count;
+        status.mesh_working_vertices += working.vertices.size();
+        status.mesh_working_indices += working.indices.size();
+    }
 
     if (
         m_selected_asset >= 0 &&
@@ -7834,11 +9051,18 @@ AssetViewer::PreviewStatus AssetViewer::GetPreviewStatus() const
         status.selected_asset_id = asset.id;
         status.selected_asset_name = asset.name;
         if (
-            const AssetVersion* version =
-                GetActiveVersion(asset)
+            find(
+                status.selected_asset_ids.begin(),
+                status.selected_asset_ids.end(),
+                asset.id
+            ) == status.selected_asset_ids.end()
         )
         {
-            status.selected_version_id = version->id;
+            status.selected_asset_ids.push_back(asset.id);
+            sort(
+                status.selected_asset_ids.begin(),
+                status.selected_asset_ids.end()
+            );
         }
     }
 
@@ -7942,11 +9166,10 @@ bool AssetViewer::AssetMatchesFilter(
     // on disk is checked as well because a catalog entry can carry any display name it likes
     if (query.find("packed") == string::npos)
     {
-        const AssetVersion* version = GetActiveVersion(asset);
         if (
             is_packed_texture(asset.id) ||
             is_packed_texture(asset.name) ||
-            (version && is_packed_texture(version->path))
+            is_packed_texture(asset.path)
         )
         {
             return false;
@@ -7980,26 +9203,4 @@ bool AssetViewer::AssetMatchesFilter(
         }
     }
     return true;
-}
-
-const AssetViewer::AssetVersion* AssetViewer::GetActiveVersion(
-    const AssetEntry& asset
-) const
-{
-    if (asset.active_version.empty())
-    {
-        return asset.versions.empty() ?
-            nullptr :
-            &asset.versions.back();
-    }
-
-    for (const AssetVersion& version : asset.versions)
-    {
-        if (version.id == asset.active_version)
-        {
-            return &version;
-        }
-    }
-
-    return nullptr;
 }

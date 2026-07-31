@@ -46,12 +46,14 @@ export class EngineClient {
     host,
     port,
     timeout_ms,
+    connect_timeout_ms = 5000,
     source = "engine_client",
     idle_close_ms = 250,
   }) {
     this.host = host;
     this.port = port;
     this.timeout_ms = timeout_ms;
+    this.connect_timeout_ms = connect_timeout_ms;
     this.source = source;
     this.socket = null;
     this.buffer = "";
@@ -85,12 +87,14 @@ export class EngineClient {
       return result;
     };
 
-    const connected = await this.ensure_connected(timeout_ms);
+    const connected = await this.ensure_connected();
     if (!connected)
     {
       return finish({
         ok: false,
-        error: `engine connection for ${command} timed out after ${timeout_ms}ms`,
+        error:
+          `engine connection for ${command} timed out after ` +
+          `${this.connect_timeout_ms}ms`,
         code: "engine_connect_timeout",
         retryable: true,
         suggested_action: "restart the engine MCP bridge or close the client currently holding the bridge connection",
@@ -99,7 +103,7 @@ export class EngineClient {
     if (!this.socket || this.socket.destroyed)
     {
       this.close();
-      const reconnected = await this.ensure_connected(timeout_ms);
+      const reconnected = await this.ensure_connected();
       if (!reconnected || !this.socket || this.socket.destroyed)
       {
         return finish({ ok: false, error: "engine connection is not available" }, "connect");
@@ -112,18 +116,19 @@ export class EngineClient {
         resolve,
         finish,
         completed: false,
-        timed_out: false,
         timer: setTimeout(() => {
-          request.timed_out = true;
           this.finish_request(request, request.finish({
             ok: false,
             error: `engine command ${command} timed out after ${timeout_ms}ms`,
             code: "engine_timeout",
             command,
             request_id,
-            retryable: true,
-            suggested_action: "retry once, then use a smaller operation or a native batch command",
+            retryable: false,
+            suggested_action: "reconnect and inspect state before retrying, never retry mutations automatically",
           }, "timeout"));
+          this.fail_all(
+            `engine connection closed after ${command} timed out`,
+          );
           this.close();
         }, timeout_ms),
       };
@@ -142,7 +147,7 @@ export class EngineClient {
     });
   }
 
-  async ensure_connected(timeout_ms = this.timeout_ms) {
+  async ensure_connected(timeout_ms = this.connect_timeout_ms) {
     this.cancel_idle_close();
     if (this.socket && !this.socket.destroyed && !this.socket.writableEnded)
     {
@@ -224,7 +229,16 @@ export class EngineClient {
         if (request)
         {
           this.pending_by_request_id.delete(request.request_id);
-          this.resolve_request(request, request.finish({ ok: false, error: `invalid engine response, ${error.message}` }, "parse"));
+          this.resolve_request(
+            request,
+            request.finish(
+              {
+                ok: false,
+                error: `invalid engine response, ${error.message}`,
+              },
+              "parse",
+            ),
+          );
         }
         newline = this.buffer.indexOf("\n");
         continue;
@@ -252,13 +266,6 @@ export class EngineClient {
 
       if (request)
       {
-        if (request.timed_out)
-        {
-          clearTimeout(request.timer);
-          newline = this.buffer.indexOf("\n");
-          continue;
-        }
-
         this.resolve_request(request, request.finish(parsed));
       }
 

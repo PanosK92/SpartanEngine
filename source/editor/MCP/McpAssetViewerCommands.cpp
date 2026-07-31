@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Rendering/Renderer.h"
 #include "World/World.h"
+#include <limits>
 //=====================================
 
 //= NAMESPACES =========
@@ -151,6 +152,183 @@ namespace editor_mcp
             }
         }
 
+        const char* backdrop_name(AssetViewer::PreviewBackdrop backdrop)
+        {
+            switch (backdrop)
+            {
+                case AssetViewer::PreviewBackdrop::Auto:
+                    return "auto";
+                case AssetViewer::PreviewBackdrop::Sky:
+                    return "sky";
+                case AssetViewer::PreviewBackdrop::Charcoal:
+                    return "charcoal";
+                case AssetViewer::PreviewBackdrop::Paper:
+                    return "paper";
+                default:
+                    return "slate";
+            }
+        }
+
+        string string_array(const vector<string>& values)
+        {
+            string json = "[";
+            for (size_t index = 0; index < values.size(); index++)
+            {
+                if (index > 0)
+                {
+                    json += ",";
+                }
+                json += quote(values[index]);
+            }
+            return json + "]";
+        }
+
+        vector<string> string_list(const string* value)
+        {
+            vector<string> values;
+            if (!value)
+            {
+                return values;
+            }
+
+            string current;
+            bool quoted = false;
+            bool escaped = false;
+            const auto append =
+                [&values](string item)
+            {
+                const size_t first =
+                    item.find_first_not_of(" \t\r\n");
+                const size_t last =
+                    item.find_last_not_of(" \t\r\n");
+                if (first != string::npos)
+                {
+                    values.push_back(
+                        item.substr(first, last - first + 1)
+                    );
+                }
+            };
+            for (const char character : *value)
+            {
+                if (escaped)
+                {
+                    current += character;
+                    escaped = false;
+                    continue;
+                }
+                if (quoted && character == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+                if (character == '"')
+                {
+                    quoted = !quoted;
+                    continue;
+                }
+                if (
+                    !quoted &&
+                    (
+                        character == ',' ||
+                        character == '[' ||
+                        character == ']'
+                    )
+                )
+                {
+                    append(current);
+                    current.clear();
+                    continue;
+                }
+                current += character;
+            }
+            append(current);
+            return values;
+        }
+
+        optional<bool> strict_bool(const string* value)
+        {
+            if (!value)
+            {
+                return nullopt;
+            }
+            const string normalized = to_lower(*value);
+            if (
+                normalized == "true" ||
+                normalized == "1" ||
+                normalized == "yes" ||
+                normalized == "on"
+            )
+            {
+                return true;
+            }
+            if (
+                normalized == "false" ||
+                normalized == "0" ||
+                normalized == "no" ||
+                normalized == "off"
+            )
+            {
+                return false;
+            }
+            return nullopt;
+        }
+
+        bool read_bool_value(
+            const string* value,
+            const char* name,
+            optional<bool>& result,
+            string& error
+        )
+        {
+            if (!value)
+            {
+                return true;
+            }
+            result = strict_bool(value);
+            if (!result)
+            {
+                error = string(name) + " must be true or false";
+                return false;
+            }
+            return true;
+        }
+
+        bool read_bool(
+            const McpRequest& request,
+            const char* name,
+            optional<bool>& result,
+            string& error
+        )
+        {
+            return read_bool_value(
+                find(request, name),
+                name,
+                result,
+                error
+            );
+        }
+
+        string asset_summary_json(
+            const AssetViewer::AssetSummary& asset
+        )
+        {
+            return
+                "{\"id\":" + quote(asset.id) +
+                ",\"name\":" + quote(asset.name) +
+                ",\"type\":" + quote(asset.type) +
+                ",\"path\":" + quote(asset.path) +
+                ",\"source_path\":" + quote(asset.source_path) +
+                ",\"thumbnail_path\":" +
+                quote(asset.thumbnail_path) +
+                ",\"quality_score\":" +
+                to_string(asset.quality_score) +
+                ",\"quality_verified\":" +
+                boolean(asset.quality_verified) +
+                ",\"disk_only\":" +
+                boolean(asset.disk_only) +
+                "}";
+        }
+
         // every command that changes the panel answers with the same picture of it, so a caller never
         // has to follow a change with a status call
         string status_reply(const AssetViewer* viewer)
@@ -164,10 +342,18 @@ namespace editor_mcp
                 quote(status.selected_asset_id) +
                 ",\"selected_asset_name\":" +
                 quote(status.selected_asset_name) +
-                ",\"selected_version_id\":" +
-                quote(status.selected_version_id) +
                 ",\"loaded_path\":" +
                 quote(status.loaded_path) +
+                ",\"status_message\":" +
+                quote(status.status_message) +
+                ",\"catalog_path\":" +
+                quote(status.catalog_path) +
+                ",\"catalog_count\":" +
+                to_string(status.catalog_count) +
+                ",\"selected_asset_ids\":" +
+                string_array(status.selected_asset_ids) +
+                ",\"dependency_path\":" +
+                quote(status.dependency_path) +
                 ",\"preview_entity_id\":" +
                 quote(
                     status.previewed_entity_id != 0
@@ -180,6 +366,16 @@ namespace editor_mcp
                 to_string(status.pitch) +
                 ",\"zoom\":" +
                 to_string(status.zoom) +
+                ",\"shading\":" +
+                quote(shading_name(status.shading)) +
+                ",\"backdrop\":" +
+                quote(backdrop_name(status.backdrop)) +
+                ",\"show_stats\":" +
+                boolean(status.show_stats) +
+                ",\"auto_rotate\":" +
+                boolean(status.auto_rotate) +
+                ",\"preview_lod\":" +
+                to_string(status.preview_lod) +
                 ",\"renderer_ready\":" +
                 string(boolean(Renderer::IsSecondaryViewReady())) +
                 ",\"renderer_generation\":" +
@@ -188,6 +384,30 @@ namespace editor_mcp
                 to_string(status.vertex_count) +
                 ",\"index_count\":" +
                 to_string(status.index_count) +
+                ",\"mesh_editable\":" +
+                boolean(status.mesh_editable) +
+                ",\"mesh_modified\":" +
+                boolean(status.mesh_modified) +
+                ",\"mesh_lods_built\":" +
+                boolean(status.mesh_lods_built) +
+                ",\"mesh_lods_attempted\":" +
+                boolean(status.mesh_lods_attempted) +
+                ",\"mesh_source_vertex_count\":" +
+                to_string(status.mesh_source_vertices) +
+                ",\"mesh_source_index_count\":" +
+                to_string(status.mesh_source_indices) +
+                ",\"mesh_working_vertex_count\":" +
+                to_string(status.mesh_working_vertices) +
+                ",\"mesh_working_index_count\":" +
+                to_string(status.mesh_working_indices) +
+                ",\"mesh_target_ratio\":" +
+                to_string(status.mesh_target_ratio) +
+                ",\"mesh_generate_lods\":" +
+                boolean(status.mesh_generate_lods) +
+                ",\"lod_count\":" +
+                to_string(status.lod_count) +
+                ",\"has_preview_content\":" +
+                boolean(status.has_preview_content) +
                 "}";
         }
     }
@@ -226,6 +446,683 @@ namespace editor_mcp
         );
 
         add(
+            "asset_viewer_refresh",
+            [editor](const McpRequest&) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                string error;
+                if (!viewer->Refresh(error))
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_list",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+
+                AssetViewer::ListRequest list;
+                if (const string* value = find(request, "query"))
+                {
+                    list.query = *value;
+                }
+                if (const string* value = find(request, "type"))
+                {
+                    list.type = *value;
+                }
+                if (const string* value = find(request, "sort"))
+                {
+                    list.sort = *value;
+                }
+                if (const string* value = find(request, "offset"))
+                {
+                    const optional<uint64_t> parsed = as_uint(value);
+                    if (!parsed)
+                    {
+                        return failure(
+                            "offset must be a non-negative integer"
+                        );
+                    }
+                    list.offset = *parsed;
+                }
+                if (const string* value = find(request, "limit"))
+                {
+                    const optional<uint64_t> parsed = as_uint(value);
+                    if (!parsed)
+                    {
+                        return failure(
+                            "limit must be a non-negative integer"
+                        );
+                    }
+                    list.limit = *parsed;
+                }
+                optional<bool> include_disk_only;
+                string error;
+                if (
+                    !read_bool(
+                        request,
+                        "include_disk_only",
+                        include_disk_only,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                if (include_disk_only)
+                {
+                    list.include_disk_only = *include_disk_only;
+                }
+
+                AssetViewer::ListResult result;
+                if (!viewer->ListAssets(list, result, error))
+                {
+                    return failure(error);
+                }
+
+                string json =
+                    "{\"ok\":true,\"total\":" +
+                    to_string(result.total) +
+                    ",\"offset\":" +
+                    to_string(result.offset) +
+                    ",\"limit\":" +
+                    to_string(result.limit) +
+                    ",\"assets\":[";
+                for (
+                    size_t index = 0;
+                    index < result.assets.size();
+                    index++
+                )
+                {
+                    if (index > 0)
+                    {
+                        json += ",";
+                    }
+                    json += asset_summary_json(result.assets[index]);
+                }
+                return json + "]}";
+            }
+        );
+
+        add(
+            "asset_viewer_inspect",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                const string* asset_id = find(request, "asset_id");
+                if (!asset_id || asset_id->empty())
+                {
+                    return failure("asset_id is required");
+                }
+                AssetViewer::AssetInspection result;
+                string error;
+                if (
+                    !viewer->InspectAsset(
+                        *asset_id,
+                        result,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+
+                string json =
+                    "{\"ok\":true,\"asset\":" +
+                    asset_summary_json(result.asset) +
+                    ",\"aliases\":" +
+                    string_array(result.aliases) +
+                    ",\"tags\":" +
+                    string_array(result.tags) +
+                    ",\"dependencies\":" +
+                    string_array(result.dependencies) +
+                    ",\"missing_dependencies\":" +
+                    string_array(result.missing_dependencies);
+                json +=
+                    ",\"technical\":{\"vertex_count\":" +
+                    to_string(result.vertex_count) +
+                    ",\"index_count\":" +
+                    to_string(result.index_count) +
+                    ",\"triangle_count\":" +
+                    to_string(result.index_count / 3) +
+                    ",\"texture_width\":" +
+                    to_string(result.texture_width) +
+                    ",\"texture_height\":" +
+                    to_string(result.texture_height) +
+                    ",\"texture_channels\":" +
+                    to_string(result.texture_channels) +
+                    ",\"source_exists\":" +
+                    boolean(result.source_exists) +
+                    ",\"source_bytes\":" +
+                    to_string(result.source_bytes) +
+                    ",\"prefab_entity_count\":" +
+                    to_string(result.prefab_entity_count) +
+                    "}}";
+                return json;
+            }
+        );
+
+        add(
+            "asset_viewer_set_selection",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+
+                AssetViewer::SelectionRequest selection;
+                selection.asset_ids = string_list(
+                    find_any(
+                        request,
+                        { "asset_ids", "ids", "asset_id" }
+                    )
+                );
+                const string* mode = find(request, "mode");
+                const string normalized =
+                    mode ? to_lower(*mode) : "replace";
+                if (normalized == "replace")
+                {
+                    selection.mode =
+                        AssetViewer::SelectionMode::Replace;
+                }
+                else if (normalized == "add")
+                {
+                    selection.mode =
+                        AssetViewer::SelectionMode::Add;
+                }
+                else if (normalized == "remove")
+                {
+                    selection.mode =
+                        AssetViewer::SelectionMode::Remove;
+                }
+                else if (normalized == "toggle")
+                {
+                    selection.mode =
+                        AssetViewer::SelectionMode::Toggle;
+                }
+                else
+                {
+                    return failure(
+                        "mode must be replace, add, remove or toggle"
+                    );
+                }
+                if (
+                    const string* focus = find_any(
+                        request,
+                        { "focus_asset_id", "focus_id" }
+                    )
+                )
+                {
+                    if (focus->empty())
+                    {
+                        return failure("focus_id cannot be empty");
+                    }
+                    selection.focus_id = *focus;
+                }
+
+                string error;
+                if (!viewer->SetSelection(selection, error))
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_set_display",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+
+                AssetViewer::DisplayRequest display;
+                if (const string* value = find(request, "shading"))
+                {
+                    display.shading = as_shading(*value);
+                    if (!display.shading)
+                    {
+                        return failure(
+                            "shading must be solid, wire or vertices"
+                        );
+                    }
+                }
+                if (const string* value = find(request, "backdrop"))
+                {
+                    display.backdrop = as_backdrop(*value);
+                    if (!display.backdrop)
+                    {
+                        return failure(
+                            "backdrop must be auto, sky, charcoal, slate or paper"
+                        );
+                    }
+                }
+
+                string error;
+                if (
+                    !read_bool_value(
+                        find_any(
+                            request,
+                            { "show_stats", "stats" }
+                        ),
+                        "show_stats",
+                        display.show_stats,
+                        error
+                    ) ||
+                    !read_bool(
+                        request,
+                        "auto_rotate",
+                        display.auto_rotate,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                optional<bool> frame;
+                optional<bool> reset;
+                if (
+                    !read_bool(request, "frame", frame, error) ||
+                    !read_bool_value(
+                        find_any(
+                            request,
+                            { "reset_camera", "reset" }
+                        ),
+                        "reset_camera",
+                        reset,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                display.frame = frame.value_or(false);
+                display.reset = reset.value_or(false);
+                if (const string* value = find(request, "preview_lod"))
+                {
+                    const optional<uint64_t> parsed = as_uint(value);
+                    if (
+                        !parsed ||
+                        *parsed >
+                            static_cast<uint64_t>(
+                                numeric_limits<int>::max()
+                            )
+                    )
+                    {
+                        return failure(
+                            "preview_lod must be a non-negative integer"
+                        );
+                    }
+                    display.preview_lod =
+                        static_cast<int>(*parsed);
+                }
+
+                if (!viewer->SetDisplay(display, error))
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_preview_path",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                const string* path = find(request, "path");
+                if (!path || path->empty())
+                {
+                    return failure("path is required");
+                }
+
+                string error;
+                if (!viewer->PreviewPath(*path, error))
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_reload",
+            [editor](const McpRequest&) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                string error;
+                if (!viewer->Reload(error))
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_mesh",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                const string* action = find(request, "action");
+                if (!action)
+                {
+                    return failure("action is required");
+                }
+
+                AssetViewer::MeshRequest mesh;
+                const string normalized = to_lower(*action);
+                if (normalized == "simplify")
+                {
+                    mesh.action = AssetViewer::MeshAction::Simplify;
+                }
+                else if (normalized == "optimize")
+                {
+                    mesh.action = AssetViewer::MeshAction::Optimize;
+                }
+                else if (normalized == "build_lods")
+                {
+                    mesh.action = AssetViewer::MeshAction::BuildLods;
+                }
+                else if (normalized == "revert")
+                {
+                    mesh.action = AssetViewer::MeshAction::Revert;
+                }
+                else if (normalized == "set_options")
+                {
+                    mesh.action = AssetViewer::MeshAction::SetOptions;
+                }
+                else
+                {
+                    return failure(
+                        "action must be simplify, optimize, build_lods, revert or set_options"
+                    );
+                }
+
+                if (const string* value = find(request, "target_ratio"))
+                {
+                    mesh.target_ratio = as_float(value);
+                    if (!mesh.target_ratio)
+                    {
+                        return failure(
+                            "target_ratio must be a finite number"
+                        );
+                    }
+                }
+                string error;
+                if (
+                    !read_bool_value(
+                        find_any(
+                            request,
+                            {
+                                "generate_lods_on_save",
+                                "generate_lods"
+                            }
+                        ),
+                        "generate_lods_on_save",
+                        mesh.generate_lods,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                if (const string* value = find(request, "preview_lod"))
+                {
+                    const optional<uint64_t> parsed = as_uint(value);
+                    if (
+                        !parsed ||
+                        *parsed >
+                            static_cast<uint64_t>(
+                                numeric_limits<int>::max()
+                            )
+                    )
+                    {
+                        return failure(
+                            "preview_lod must be a non-negative integer"
+                        );
+                    }
+                    mesh.preview_lod = static_cast<int>(*parsed);
+                }
+                optional<bool> confirm;
+                if (
+                    !read_bool(
+                        request,
+                        "confirm",
+                        confirm,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                mesh.confirm = confirm.value_or(false);
+
+                if (!viewer->EditMesh(mesh, error))
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_mesh_save",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                const optional<bool> confirm =
+                    strict_bool(find(request, "confirm"));
+                if (!confirm || !*confirm)
+                {
+                    return failure(
+                        "confirm=true is required to overwrite the mesh"
+                    );
+                }
+
+                string error;
+                if (!viewer->SaveMesh(true, error))
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_rename",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                const string* asset_id = find(request, "asset_id");
+                const string* linked_path = find_any(
+                    request,
+                    { "path", "linked_path" }
+                );
+                const string* new_name = find(request, "new_name");
+                if (!new_name || new_name->empty())
+                {
+                    return failure("new_name is required");
+                }
+
+                string error;
+                if (
+                    !viewer->Rename(
+                        asset_id ? *asset_id : "",
+                        linked_path ? *linked_path : "",
+                        *new_name,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_delete",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                const optional<bool> confirm =
+                    strict_bool(find(request, "confirm"));
+                if (!confirm || !*confirm)
+                {
+                    return failure(
+                        "confirm=true is required to delete assets"
+                    );
+                }
+
+                const vector<string> asset_ids = string_list(
+                    find_any(
+                        request,
+                        { "asset_ids", "ids", "asset_id" }
+                    )
+                );
+                const string* linked_path = find_any(
+                    request,
+                    { "path", "linked_path" }
+                );
+                string error;
+                if (
+                    !viewer->Delete(
+                        asset_ids,
+                        linked_path ? *linked_path : "",
+                        true,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
+            "asset_viewer_cleanup_scan",
+            [editor](const McpRequest&) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                string error;
+                AssetViewer::CleanupSummary result;
+                if (
+                    !viewer->ScanCleanup(
+                        result,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                const uint64_t total = result.orphan_files.size();
+                return
+                    "{\"ok\":true,\"total\":" +
+                    to_string(total) +
+                    ",\"generation\":" +
+                    to_string(result.generation) +
+                    ",\"bytes\":" +
+                    to_string(result.bytes) +
+                    ",\"orphan_files\":" +
+                    string_array(result.orphan_files) +
+                    "}";
+            }
+        );
+
+        add(
+            "asset_viewer_cleanup_apply",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+                const optional<bool> confirm =
+                    strict_bool(find(request, "confirm"));
+                if (!confirm || !*confirm)
+                {
+                    return failure(
+                        "confirm=true is required to apply cleanup"
+                    );
+                }
+
+                string error;
+                const optional<uint64_t> generation = as_uint(
+                    find(request, "generation")
+                );
+                if (!generation || *generation == 0)
+                {
+                    return failure(
+                        "generation from cleanup_scan is required"
+                    );
+                }
+                if (
+                    !viewer->ApplyCleanup(
+                        *generation,
+                        true,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                return status_reply(viewer);
+            }
+        );
+
+        add(
             "asset_viewer_select",
             [editor](const McpRequest& request) -> string
             {
@@ -239,16 +1136,10 @@ namespace editor_mcp
                     request,
                     { "asset_id", "id", "name" }
                 );
-                const string* version = find_any(
-                    request,
-                    { "version_id", "version", "candidate_version" }
-                );
-
                 string error;
                 if (
                     !viewer->SelectAsset(
                         query ? *query : "",
-                        version ? *version : "",
                         error
                     )
                 )
@@ -388,8 +1279,7 @@ namespace editor_mcp
                     capture.height = static_cast<uint32_t>(*parsed);
                 }
 
-                // a capture is a design review, so it defaults to a shaded render on the neutral
-                // backdrop no matter what the panel is showing, the sky still lights the asset either way
+                // a capture defaults to a shaded sky render regardless of the panel display
                 if (const string* value = find(request, "shading"))
                 {
                     const optional<AssetViewer::PreviewShading> shading =

@@ -1,7 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
+import os from "node:os";
 
-const catalog_version = 1;
+const catalog_version = 2;
 const asset_types = new Set([
   "mesh",
   "material",
@@ -21,6 +24,12 @@ const type_extensions = {
   texture: ".png",
 };
 const catalog_queues = new Map();
+const catalog_lock_context = new AsyncLocalStorage();
+const catalog_lock_timeout_ms = 15000;
+const catalog_lock_stale_ms = 300000;
+const catalog_lock_unreadable_stale_ms = 3600000;
+const catalog_lock_retry_min_ms = 20;
+const catalog_lock_retry_max_ms = 250;
 
 function semantic_asset_name(value, fallback = "asset")
 {
@@ -137,7 +146,31 @@ async function path_exists(value)
   }
   catch
   {
-    return false;
+    try
+    {
+      const unreadable_status = await fs.stat(lock_path);
+      if (
+        Date.now() - unreadable_status.mtimeMs <
+        catalog_lock_unreadable_stale_ms
+      )
+      {
+        return false;
+      }
+      const current_status = await fs.stat(lock_path);
+      if (
+        current_status.mtimeMs !== unreadable_status.mtimeMs ||
+        current_status.size !== unreadable_status.size
+      )
+      {
+        return false;
+      }
+      await fs.rm(lock_path);
+      return true;
+    }
+    catch
+    {
+      return false;
+    }
   }
 }
 
@@ -154,8 +187,265 @@ async function write_json_atomic(file_path, value)
   await fs.rename(temporary_path, file_path);
 }
 
+function transaction_token()
+{
+  return (
+    `${process.pid}.${Date.now()}.` +
+    Math.random().toString(16).slice(2)
+  );
+}
+
+async function remove_path(value)
+{
+  await fs.rm(
+    value,
+    {
+      recursive: true,
+      force: true,
+    },
+  );
+}
+
+async function commit_staged_paths(entries, token)
+{
+  const committed = [];
+  try
+  {
+    for (const entry of entries)
+    {
+      const backup = `${entry.target}.${token}.backup`;
+      const had_target = await path_exists(entry.target);
+      if (had_target)
+      {
+        await fs.rename(entry.target, backup);
+      }
+      const state = {
+        ...entry,
+        backup,
+        had_target,
+        installed: false,
+      };
+      committed.push(state);
+      if (entry.staged)
+      {
+        await fs.rename(entry.staged, entry.target);
+        state.installed = true;
+      }
+    }
+  }
+  catch (error)
+  {
+    const rollback_errors = [];
+    for (const entry of [...committed].reverse())
+    {
+      try
+      {
+        if (entry.installed)
+        {
+          await remove_path(entry.target);
+        }
+        if (entry.had_target && await path_exists(entry.backup))
+        {
+          await fs.rename(entry.backup, entry.target);
+        }
+      }
+      catch (rollback_error)
+      {
+        rollback_errors.push(rollback_error.message);
+      }
+    }
+    if (rollback_errors.length > 0)
+    {
+      error.message +=
+        `, rollback failed: ${rollback_errors.join(", ")}`;
+    }
+    throw error;
+  }
+
+  const cleanup_errors = [];
+  for (const entry of committed)
+  {
+    if (!entry.had_target)
+    {
+      continue;
+    }
+    try
+    {
+      await remove_path(entry.backup);
+    }
+    catch (error)
+    {
+      cleanup_errors.push(error.message);
+    }
+  }
+  return cleanup_errors;
+}
+
+function wait(milliseconds)
+{
+  return new Promise((resolve) =>
+  {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+function process_is_alive(pid)
+{
+  if (!Number.isInteger(pid) || pid <= 0)
+  {
+    return false;
+  }
+  try
+  {
+    process.kill(pid, 0);
+    return true;
+  }
+  catch (error)
+  {
+    return error.code !== "ESRCH";
+  }
+}
+
+async function recover_stale_catalog_lock(lock_path)
+{
+  let text;
+  let metadata;
+  let status;
+  try
+  {
+    [text, status] = await Promise.all([
+      fs.readFile(lock_path, "utf8"),
+      fs.stat(lock_path),
+    ]);
+    metadata = JSON.parse(text);
+  }
+  catch
+  {
+    return false;
+  }
+  const created_at = Number(metadata.created_at_ms);
+  if (
+    !metadata.owner ||
+    metadata.hostname !== os.hostname() ||
+    !Number.isFinite(created_at)
+  )
+  {
+    return false;
+  }
+  const age = Date.now() - Math.max(
+    created_at,
+    status.mtimeMs,
+  );
+  if (
+    age < catalog_lock_stale_ms ||
+    process_is_alive(Number(metadata.pid))
+  )
+  {
+    return false;
+  }
+  try
+  {
+    const current = await fs.readFile(lock_path, "utf8");
+    if (current !== text)
+    {
+      return false;
+    }
+    await fs.rm(lock_path);
+    return true;
+  }
+  catch
+  {
+    return false;
+  }
+}
+
+async function acquire_catalog_file_lock(catalog_path)
+{
+  const lock_path = `${catalog_path}.lock`;
+  const owner = transaction_token();
+  const started_at = Date.now();
+  let retry_delay = catalog_lock_retry_min_ms;
+  await fs.mkdir(path.dirname(lock_path), { recursive: true });
+  while (true)
+  {
+    let handle = null;
+    try
+    {
+      handle = await fs.open(lock_path, "wx");
+      const metadata = {
+        owner,
+        pid: process.pid,
+        hostname: os.hostname(),
+        created_at_ms: Date.now(),
+        created_at: new Date().toISOString(),
+      };
+      await handle.writeFile(
+        `${JSON.stringify(metadata, null, 2)}\n`,
+        "utf8",
+      );
+      await handle.sync();
+      await handle.close();
+      handle = null;
+      return async () =>
+      {
+        try
+        {
+          const current = JSON.parse(
+            await fs.readFile(lock_path, "utf8"),
+          );
+          if (current.owner === owner)
+          {
+            await fs.rm(lock_path);
+          }
+        }
+        catch
+        {
+        }
+      };
+    }
+    catch (error)
+    {
+      if (handle)
+      {
+        await handle.close();
+        await fs.rm(lock_path, { force: true });
+      }
+      if (error.code !== "EEXIST")
+      {
+        throw error;
+      }
+      if (await recover_stale_catalog_lock(lock_path))
+      {
+        continue;
+      }
+      const elapsed = Date.now() - started_at;
+      if (elapsed >= catalog_lock_timeout_ms)
+      {
+        throw new Error(
+          "timed out waiting for the world asset catalog lock",
+        );
+      }
+      await wait(
+        Math.min(
+          retry_delay,
+          catalog_lock_timeout_ms - elapsed,
+        ),
+      );
+      retry_delay = Math.min(
+        catalog_lock_retry_max_ms,
+        Math.ceil(retry_delay * 1.5),
+      );
+    }
+  }
+}
+
 async function with_catalog_lock(key, operation)
 {
+  const held_locks = catalog_lock_context.getStore();
+  if (held_locks?.has(key))
+  {
+    return operation();
+  }
   const previous = catalog_queues.get(key) ?? Promise.resolve();
   let release;
   const current = new Promise((resolve) =>
@@ -164,16 +454,33 @@ async function with_catalog_lock(key, operation)
   });
   catalog_queues.set(key, current);
   await previous;
+  let release_file_lock = null;
   try
   {
-    return await operation();
+    release_file_lock = await acquire_catalog_file_lock(key);
+    const next_locks = new Set(held_locks ?? []);
+    next_locks.add(key);
+    return await catalog_lock_context.run(
+      next_locks,
+      operation,
+    );
   }
   finally
   {
-    release();
-    if (catalog_queues.get(key) === current)
+    try
     {
-      catalog_queues.delete(key);
+      if (release_file_lock)
+      {
+        await release_file_lock();
+      }
+    }
+    finally
+    {
+      release();
+      if (catalog_queues.get(key) === current)
+      {
+        catalog_queues.delete(key);
+      }
     }
   }
 }
@@ -216,7 +523,7 @@ async function ensure_catalog(
   return paths;
 }
 
-async function read_catalog(
+async function read_catalog_unlocked(
   project_root,
   resource_directory,
 )
@@ -225,13 +532,34 @@ async function read_catalog(
     project_root,
     resource_directory,
   );
-  const catalog = JSON.parse(
+  let catalog = JSON.parse(
     await fs.readFile(paths.catalog_local_path, "utf8"),
   );
+  const assets_are_empty =
+    catalog.assets &&
+    typeof catalog.assets === "object" &&
+    !Array.isArray(catalog.assets) &&
+    Object.keys(catalog.assets).length === 0;
+  if (
+    catalog.schema_version !== catalog_version &&
+    assets_are_empty
+  )
+  {
+    catalog = {
+      schema_version: catalog_version,
+      project_resource_directory: paths.directory,
+      assets: {},
+    };
+    await write_json_atomic(
+      paths.catalog_local_path,
+      catalog,
+    );
+  }
   if (
     catalog.schema_version !== catalog_version ||
     !catalog.assets ||
-    typeof catalog.assets !== "object"
+    typeof catalog.assets !== "object" ||
+    Array.isArray(catalog.assets)
   )
   {
     throw new Error("unsupported or invalid world asset catalog");
@@ -242,232 +570,89 @@ async function read_catalog(
   };
 }
 
-function version_number(asset)
+async function read_catalog(
+  project_root,
+  resource_directory,
+)
 {
-  return (
-    Math.max(
-      0,
-      ...(asset?.versions ?? []).map(
-        (version) => Number(version.number) || 0,
-      ),
-    ) + 1
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => read_catalog_unlocked(
+      project_root,
+      resource_directory,
+    ),
   );
 }
 
-function find_version(asset, requested)
-{
-  const version_id =
-    requested ??
-    asset.active_version ??
-    asset.versions.at(-1)?.id;
-  return asset.versions.find(
-    (version) =>
-      version.id === version_id ||
-      version.number === Number(version_id),
-  );
-}
-
-function version_file_path(
+function asset_file_path(
   paths,
   type,
   asset_id,
-  number,
   extension,
 )
 {
-  const version = `v${String(number).padStart(4, "0")}`;
   const suffix = extension || type_extensions[type];
   return [
     paths.engine_root,
     type_folders[type],
-    asset_id,
-    `${version}${suffix}`,
+    `${asset_id}${suffix}`,
   ].join("/");
 }
 
-function source_file_path(paths, asset_id, number)
+function source_file_path(paths, asset_id)
 {
-  const version = `v${String(number).padStart(4, "0")}`;
   return [
     paths.engine_root,
     "sources",
-    asset_id,
-    `${version}.json`,
+    `${asset_id}.json`,
   ].join("/");
 }
 
 function thumbnail_file_path(
   paths,
   asset_id,
-  number,
   extension,
 )
 {
-  const version = `v${String(number).padStart(4, "0")}`;
   return [
     paths.engine_root,
     "thumbnails",
-    asset_id,
-    `${version}${extension || ".png"}`,
+    `${asset_id}${extension || ".png"}`,
   ].join("/");
 }
 
-// once a version is promoted the earlier attempts are dead weight, they are only reachable through
-// compare and fork which both run before promotion, so their files are deleted and their catalog
-// entries dropped rather than kept forever
-async function prune_superseded_versions(
-  project_root,
-  paths,
-  asset,
-)
+function dependency_file_name(reference, dependency_root)
 {
-  const kept = asset.versions.find(
-    (version) => version.id === asset.active_version,
+  const normalized = normalize_engine_path(reference);
+  if (normalized.startsWith(`${dependency_root}/`))
+  {
+    return path.posix.basename(normalized);
+  }
+  const basename = path.posix.basename(normalized);
+  const extension = path.posix.extname(basename);
+  const stem = basename.slice(
+    0,
+    basename.length - extension.length,
   );
-  if (!kept)
-  {
-    return {
-      removed_versions: [],
-      removed_files: [],
-    };
-  }
-
-  // a legacy entry can carry a path this rejects, a bad record must not block a promotion
-  const safe_engine_path = (value) =>
-  {
-    try
-    {
-      return normalize_engine_path(value);
-    }
-    catch
-    {
-      return null;
-    }
-  };
-
-  // a kept prefab can still point at a dependency snapshot taken for an earlier version, so the
-  // paths a kept version actually needs are collected before anything is deleted
-  const protected_paths = new Set(
-    [
-      kept.path,
-      kept.source_path,
-      kept.thumbnail_path,
-      ...(Array.isArray(kept.dependencies) ? kept.dependencies : []),
-    ]
-      .filter(Boolean)
-      .map(safe_engine_path)
-      .filter(Boolean),
-  );
-
-  const removed_versions = [];
-  const removed_files = [];
-  for (const version of asset.versions)
-  {
-    if (version.id === kept.id)
-    {
-      continue;
-    }
-
-    const candidates = [
-      version.path,
-      version.source_path,
-      version.thumbnail_path,
-      ...(
-        Array.isArray(version.dependencies)
-          ? version.dependencies
-          : []
-      ),
-    ].filter(Boolean);
-
-    for (const candidate of candidates)
-    {
-      const engine_path = safe_engine_path(candidate);
-      if (
-        !engine_path ||
-        protected_paths.has(engine_path) ||
-        !engine_path.startsWith(`${paths.engine_root}/`)
-      )
-      {
-        continue;
-      }
-
-      await fs.rm(
-        local_path(project_root, engine_path),
-        { force: true },
-      );
-      removed_files.push(engine_path);
-    }
-
-    // the dependency snapshot directory is per version, dropping it whole also catches copies the
-    // catalog never listed
-    const snapshot =
-      `${paths.engine_root}/dependencies/${asset.id}/${version.id}`;
-    await fs.rm(
-      local_path(project_root, snapshot),
-      {
-        recursive: true,
-        force: true,
-      },
-    );
-    removed_versions.push(version.id);
-  }
-
-  if (removed_versions.length > 0)
-  {
-    asset.versions = asset.versions.filter(
-      (version) => version.id === kept.id,
-    );
-    // the parent chain now dangles, the kept version is the whole history
-    kept.parent_version = null;
-  }
-
-  return {
-    removed_versions,
-    removed_files,
-  };
+  const hash = createHash("sha256")
+    .update(normalized)
+    .digest("hex")
+    .slice(0, 12);
+  return `${safe_name(stem)}_${hash}${extension.toLowerCase()}`;
 }
 
-async function copy_immutable(
-  project_root,
-  source_path,
-  destination_path,
-)
-{
-  const source = local_path(project_root, source_path);
-  const destination = local_path(project_root, destination_path);
-  if (source === destination)
-  {
-    if (!(await path_exists(source)))
-    {
-      throw new Error(`asset source file does not exist: ${source_path}`);
-    }
-    return;
-  }
-  if (await path_exists(destination))
-  {
-    throw new Error("asset version file already exists");
-  }
-  if (!(await path_exists(source)))
-  {
-    throw new Error(`asset source file does not exist: ${source_path}`);
-  }
-  await fs.mkdir(path.dirname(destination), { recursive: true });
-  await fs.copyFile(source, destination);
-}
-
-// snapshot prefab dependencies so every version remains immutable
 async function internalize_prefab_dependencies(
   project_root,
   paths,
   asset_id,
-  number,
   prefab_path,
+  dependency_local_root,
 )
 {
   const prefab_local = local_path(project_root, prefab_path);
-  const version = `v${String(number).padStart(4, "0")}`;
   const dependency_root =
-    `${paths.engine_root}/dependencies/${asset_id}/${version}`;
+    `${paths.engine_root}/dependencies/${asset_id}`;
   let text = await fs.readFile(prefab_local, "utf8");
   const copied = [];
   const missing = [];
@@ -488,6 +673,7 @@ async function internalize_prefab_dependencies(
       }
       catch
       {
+        missing.push(String(reference));
         continue;
       }
       const source_local = local_path(project_root, normalized);
@@ -497,9 +683,16 @@ async function internalize_prefab_dependencies(
         continue;
       }
 
+      const dependency_name = dependency_file_name(
+        normalized,
+        dependency_root,
+      );
       const destination =
-        `${dependency_root}/${path.posix.basename(normalized)}`;
-      const destination_local = local_path(project_root, destination);
+        `${dependency_root}/${dependency_name}`;
+      const destination_local = path.join(
+        dependency_local_root,
+        dependency_name,
+      );
       await fs.mkdir(
         path.dirname(destination_local),
         { recursive: true },
@@ -529,13 +722,9 @@ async function internalize_prefab_dependencies(
           }
           catch
           {
+            missing.push(String(texture_reference));
             continue;
           }
-          if (texture_path.startsWith(`${dependency_root}/`))
-          {
-            continue;
-          }
-
           const texture_local = local_path(
             project_root,
             texture_path,
@@ -546,11 +735,15 @@ async function internalize_prefab_dependencies(
             continue;
           }
 
+          const texture_name = dependency_file_name(
+            texture_path,
+            dependency_root,
+          );
           const texture_destination =
-            `${dependency_root}/${path.posix.basename(texture_path)}`;
-          const texture_destination_local = local_path(
-            project_root,
-            texture_destination,
+            `${dependency_root}/${texture_name}`;
+          const texture_destination_local = path.join(
+            dependency_local_root,
+            texture_name,
           );
           await fs.copyFile(
             texture_local,
@@ -584,7 +777,6 @@ async function internalize_prefab_dependencies(
 
 function asset_summary(asset)
 {
-  const active = find_version(asset, asset.active_version);
   return {
     id: asset.id,
     name: asset.name,
@@ -592,37 +784,65 @@ function asset_summary(asset)
     aliases: asset.aliases,
     tags: asset.tags,
     constraints: asset.constraints,
-    active_version: asset.active_version,
-    active_path: active?.path,
-    version_count: asset.versions.length,
+    path: asset.path,
+    source_path: asset.source_path,
+    thumbnail_path: asset.thumbnail_path,
+    dependencies: asset.dependencies,
+    quality: asset.quality,
   };
 }
 
-export async function resolve_world_resource_directory(
-  send_command,
-  _world = null,
+function owned_sidecar_path(
+  paths,
+  asset_id,
+  folder,
+  candidate,
 )
 {
-  const native = await send_command(
-    "world_resource_directory_get",
-    {},
-  );
-  if (native?.ok)
+  if (!candidate)
   {
-    const directory = normalize_engine_path(
-      native.mcp_resources?.root ??
-      "project/mcp_resources",
-    ).replace(/\/+$/g, "");
-    if (directory === "project/mcp_resources")
-    {
-      return directory;
-    }
+    return null;
   }
+  let normalized;
+  try
+  {
+    normalized = normalize_engine_path(candidate);
+  }
+  catch
+  {
+    return null;
+  }
+  const expected_directory =
+    `${paths.engine_root}/${folder}`;
+  if (
+    path.posix.dirname(normalized) !== expected_directory ||
+    !path.posix.basename(normalized).startsWith(`${asset_id}.`)
+  )
+  {
+    return null;
+  }
+  return normalized;
+}
+
+export async function resolve_world_resource_directory(
+  _send_command,
+  world = null,
+)
+{
+  const provided_directory =
+    world?.mcp_resources?.root ??
+    world?.mcp_resource_directory ??
+    world?.resource_directory;
+  if (provided_directory)
+  {
+    return normalize_engine_path(
+      provided_directory,
+    ).replace(/\/+$/g, "");
+  }
+
   return "project/mcp_resources";
 }
 
-// every promoted entry as a flat list, for callers that need to rank the whole library themselves
-// rather than filter it, world_asset_search answers does this match, this answers what is in there
 export async function world_asset_catalog_entries(
   project_root,
   resource_directory,
@@ -632,9 +852,7 @@ export async function world_asset_catalog_entries(
     project_root,
     resource_directory,
   );
-  return Object.values(catalog.assets)
-    .filter((asset) => Boolean(asset?.active_version))
-    .map(asset_summary);
+  return Object.values(catalog.assets).map(asset_summary);
 }
 
 export async function world_asset_search(
@@ -767,19 +985,10 @@ export async function world_asset_inspect(
       error: "asset not found",
     };
   }
-  const version = find_version(asset, args.version);
-  if (!version)
-  {
-    return {
-      ok: false,
-      error: "asset version not found",
-    };
-  }
   return {
     ok: true,
     catalog_path: paths.catalog_path,
     asset,
-    version,
   };
 }
 
@@ -792,7 +1001,9 @@ async function world_asset_register_unlocked(
   const type = String(args.type ?? "").toLowerCase();
   if (!asset_types.has(type))
   {
-    throw new Error("asset type must be mesh, material, or prefab");
+    throw new Error(
+      "asset type must be mesh, material, prefab, or texture",
+    );
   }
   const source_path = normalize_engine_path(
     args.path ?? args.resource_path,
@@ -801,16 +1012,6 @@ async function world_asset_register_unlocked(
     project_root,
     resource_directory,
   );
-  if (
-    args.parent_version &&
-    !args.asset_id &&
-    !args.id
-  )
-  {
-    throw new Error(
-      "parent_version requires an explicit asset_id",
-    );
-  }
   const asset_id = safe_name(
     args.asset_id ?? args.id ?? args.name,
   );
@@ -819,39 +1020,6 @@ async function world_asset_register_unlocked(
   {
     throw new Error("asset id is already registered with another type");
   }
-  const asset = existing ?? {
-    id: asset_id,
-    name: semantic_asset_name(
-      args.name,
-      asset_id,
-    ),
-    type,
-    aliases: [],
-    tags: [],
-    constraints: {
-      dimensions: {},
-      style: [],
-      materials: [],
-    },
-    active_version: null,
-    versions: [],
-    created_at: new Date().toISOString(),
-  };
-  const parent_version =
-    args.parent_version ??
-    asset.active_version;
-  const replaceable_candidate =
-    args.replace_candidate === true
-      ? [...asset.versions]
-        .reverse()
-        .find((version) =>
-          version.id !== asset.active_version &&
-          version.parent_version === parent_version
-        )
-      : null;
-  const number =
-    replaceable_candidate?.number ??
-    version_number(asset);
   const extension =
     path.posix.extname(source_path) ||
     type_extensions[type];
@@ -861,11 +1029,10 @@ async function world_asset_register_unlocked(
       `${type} assets must use ${type_extensions[type]} files`,
     );
   }
-  const destination_path = version_file_path(
+  const destination_path = asset_file_path(
     paths,
     type,
     asset_id,
-    number,
     extension,
   );
   if (!(await path_exists(local_path(project_root, source_path))))
@@ -874,229 +1041,339 @@ async function world_asset_register_unlocked(
       `asset source file does not exist: ${source_path}`,
     );
   }
-  if (
-    args.thumbnail_path &&
-    !(
-      await path_exists(
-        local_path(project_root, args.thumbnail_path),
-      )
-    )
-  )
+  const source_supplied = args.source !== undefined;
+  const source_cleared =
+    source_supplied &&
+    args.source === null;
+  const thumbnail_supplied =
+    args.thumbnail_path !== undefined;
+  const thumbnail_cleared =
+    thumbnail_supplied &&
+    args.thumbnail_path === null;
+  let thumbnail_source = null;
+  if (thumbnail_supplied && !thumbnail_cleared)
   {
-    throw new Error(
-      `asset thumbnail does not exist: ${args.thumbnail_path}`,
-    );
-  }
-  if (replaceable_candidate)
-  {
-    const candidate_files = [
-      replaceable_candidate.path,
-      replaceable_candidate.source_path,
-      replaceable_candidate.thumbnail_path,
-      ...(
-        Array.isArray(replaceable_candidate.dependencies)
-          ? replaceable_candidate.dependencies
-          : []
-      ),
-    ].filter(Boolean);
-    for (const candidate of candidate_files)
-    {
-      const engine_path = normalize_engine_path(candidate);
-      if (engine_path.startsWith(`${paths.engine_root}/`))
-      {
-        await fs.rm(
-          local_path(project_root, engine_path),
-          { force: true },
-        );
-      }
-    }
-    await fs.rm(
-      local_path(
-        project_root,
-        `${paths.engine_root}/dependencies/${
-          asset.id
-        }/${replaceable_candidate.id}`,
-      ),
-      {
-        recursive: true,
-        force: true,
-      },
-    );
-    asset.versions = asset.versions.filter(
-      (version) => version.id !== replaceable_candidate.id,
-    );
-  }
-  await copy_immutable(
-    project_root,
-    source_path,
-    destination_path,
-  );
-  let dependencies = null;
-  if (type === "prefab")
-  {
-    dependencies = await internalize_prefab_dependencies(
-      project_root,
-      paths,
-      asset_id,
-      number,
-      destination_path,
+    thumbnail_source = normalize_engine_path(
+      args.thumbnail_path,
     );
     if (
-      dependencies.missing.length > 0 ||
-      dependencies.copied.length === 0
+      !await path_exists(
+        local_path(project_root, thumbnail_source),
+      )
     )
     {
-      await fs.rm(
-        local_path(project_root, destination_path),
-        { force: true },
-      );
-      await fs.rm(
-        local_path(
-          project_root,
-          `${paths.engine_root}/dependencies/${asset_id}/v${
-            String(number).padStart(4, "0")
-          }`,
-        ),
-        {
-          recursive: true,
-          force: true,
-        },
-      );
-      if (dependencies.missing.length > 0)
-      {
-        throw new Error(
-          `prefab has missing dependencies: ${
-            dependencies.missing.join(", ")
-          }`,
-        );
-      }
       throw new Error(
-        "prefab has no versioned mesh or material dependencies",
+        `asset thumbnail does not exist: ${thumbnail_source}`,
       );
     }
   }
-  let immutable_source_path = null;
-  if (args.source !== undefined)
+  const token = transaction_token();
+  const destination_local = local_path(
+    project_root,
+    destination_path,
+  );
+  const staged_asset_path =
+    `${destination_path}.${token}.stage`;
+  const staged_asset_local = local_path(
+    project_root,
+    staged_asset_path,
+  );
+  const dependency_path =
+    `${paths.engine_root}/dependencies/${asset_id}`;
+  const dependency_local = local_path(
+    project_root,
+    dependency_path,
+  );
+  const staged_dependency_local =
+    `${dependency_local}.${token}.stage`;
+  const staged_paths = [
+    staged_asset_local,
+    staged_dependency_local,
+  ];
+  let dependencies = null;
+  let immutable_source_path =
+    source_supplied
+      ? null
+      : existing?.source_path ?? null;
+  let staged_source_local = null;
+  if (source_supplied && !source_cleared)
   {
     immutable_source_path = source_file_path(
       paths,
       asset_id,
-      number,
     );
     const source_local = local_path(
       project_root,
       immutable_source_path,
     );
     await fs.mkdir(path.dirname(source_local), { recursive: true });
-    await write_json_atomic(source_local, args.source);
+    staged_source_local = `${source_local}.${token}.stage`;
+    staged_paths.push(staged_source_local);
   }
-  let immutable_thumbnail_path = null;
-  if (args.thumbnail_path)
+  let immutable_thumbnail_path =
+    thumbnail_supplied
+      ? null
+      : existing?.thumbnail_path ?? null;
+  let staged_thumbnail_local = null;
+  if (thumbnail_source)
   {
-    const thumbnail_source = normalize_engine_path(
-      args.thumbnail_path,
-    );
     immutable_thumbnail_path = thumbnail_file_path(
       paths,
       asset_id,
-      number,
       path.posix.extname(thumbnail_source),
     );
-    await copy_immutable(
+    const thumbnail_local = local_path(
       project_root,
-      thumbnail_source,
       immutable_thumbnail_path,
     );
+    staged_thumbnail_local =
+      `${thumbnail_local}.${token}.stage`;
+    staged_paths.push(staged_thumbnail_local);
   }
-  const version = {
-    id: `v${String(number).padStart(4, "0")}`,
-    number,
+  const default_required_checks =
+    type === "material"
+      ? [
+          "material_valid",
+          "visual_review",
+        ]
+      : [
+          "geometry_valid",
+          "collision_coverage",
+          "material_coverage",
+          "visual_review",
+        ];
+  const required_checks =
+    args.required_checks !== undefined
+      ? unique_strings(args.required_checks)
+      : existing?.quality?.required_checks ??
+        default_required_checks;
+  const now = new Date().toISOString();
+  const asset = {
+    id: asset_id,
+    name: String(
+      args.name ??
+      existing?.name ??
+      semantic_asset_name(args.name, asset_id),
+    ),
+    type,
+    aliases: unique_strings([
+      ...(existing?.aliases ?? []),
+      ...(args.aliases ?? []),
+    ]),
+    tags: unique_strings([
+      ...(existing?.tags ?? []),
+      ...(args.tags ?? []),
+    ]),
+    constraints: {
+      ...(
+        existing?.constraints ??
+        {
+          dimensions: {},
+          style: [],
+          materials: [],
+        }
+      ),
+      ...normalize_constraints(args.constraints),
+    },
     path: destination_path,
     source_path: immutable_source_path,
     thumbnail_path: immutable_thumbnail_path,
     dependencies: dependencies?.copied ?? [],
-    missing_dependencies: dependencies?.missing ?? [],
-    parent_version,
-    created_at: new Date().toISOString(),
     quality: {
-      score: Math.min(
-        100,
-        Math.max(
-          0,
-          finite_number(args.quality_score),
-        ),
-      ),
-      verified: Boolean(args.verified),
-      checks: args.checks ?? {},
-      required_checks:
-        unique_strings(args.required_checks).length > 0
-          ? unique_strings(args.required_checks)
-          : type === "material"
-            ? [
-                "material_valid",
-                "visual_review",
-              ]
-            : [
-                "geometry_valid",
-                "collision_coverage",
-                "material_coverage",
-                "visual_review",
-              ],
+      score:
+        args.quality_score !== undefined
+          ? Math.min(
+              100,
+              Math.max(
+                0,
+                finite_number(args.quality_score),
+              ),
+            )
+          : existing?.quality?.score ?? 0,
+      verified:
+        args.verified !== undefined
+          ? Boolean(args.verified)
+          : existing?.quality?.verified ?? false,
+      checks:
+        args.checks !== undefined
+          ? args.checks
+          : existing?.quality?.checks ?? {},
+      required_checks,
     },
-    notes: String(args.notes ?? ""),
+    notes:
+      args.notes !== undefined
+        ? String(args.notes)
+        : existing?.notes ?? "",
+    created_at: existing?.created_at ?? now,
+    updated_at: now,
   };
-  asset.name = String(args.name ?? asset.name);
-  asset.aliases = unique_strings([
-    ...asset.aliases,
-    ...(args.aliases ?? []),
-  ]);
-  asset.tags = unique_strings([
-    ...asset.tags,
-    ...(args.tags ?? []),
-  ]);
-  asset.constraints = {
-    ...asset.constraints,
-    ...normalize_constraints(args.constraints),
-  };
-  asset.versions.push(version);
-  const initial_promotion_checks =
-    version.quality.required_checks;
-  let pruned = {
-    removed_versions: [],
-    removed_files: [],
-  };
-  if (
-    !asset.active_version &&
-    args.promote === true &&
-    version.quality.verified &&
-    initial_promotion_checks.every(
-      (check) => version.quality.checks[check] === true,
-    )
-  )
+  catalog.assets[asset_id] = asset;
+  const staged_catalog_local =
+    `${paths.catalog_local_path}.${token}.stage`;
+  staged_paths.push(staged_catalog_local);
+  let cleanup_warnings = [];
+  try
   {
-    asset.active_version = version.id;
-    if (args.keep_history !== true)
+    await fs.mkdir(
+      path.dirname(staged_asset_local),
+      { recursive: true },
+    );
+    await fs.copyFile(
+      local_path(project_root, source_path),
+      staged_asset_local,
+    );
+    if (type === "prefab")
     {
-      pruned = await prune_superseded_versions(
+      dependencies = await internalize_prefab_dependencies(
         project_root,
         paths,
-        asset,
+        asset_id,
+        staged_asset_path,
+        staged_dependency_local,
+      );
+      if (
+        dependencies.missing.length > 0 ||
+        dependencies.copied.length === 0
+      )
+      {
+        if (dependencies.missing.length > 0)
+        {
+          throw new Error(
+            `prefab has missing dependencies: ${
+              dependencies.missing.join(", ")
+            }`,
+          );
+        }
+        throw new Error(
+          "prefab has no mesh or material dependencies",
+        );
+      }
+      asset.dependencies = dependencies.copied;
+    }
+    if (staged_source_local)
+    {
+      await fs.writeFile(
+        staged_source_local,
+        `${JSON.stringify(args.source, null, 2)}\n`,
+        "utf8",
       );
     }
+    if (staged_thumbnail_local)
+    {
+      await fs.copyFile(
+        local_path(project_root, thumbnail_source),
+        staged_thumbnail_local,
+      );
+    }
+    await fs.writeFile(
+      staged_catalog_local,
+      `${JSON.stringify(catalog, null, 2)}\n`,
+      "utf8",
+    );
+
+    const entries = [
+      {
+        target: destination_local,
+        staged: staged_asset_local,
+      },
+      {
+        target: dependency_local,
+        staged:
+          type === "prefab"
+            ? staged_dependency_local
+            : null,
+      },
+    ];
+    if (source_supplied)
+    {
+      const source_local = local_path(
+        project_root,
+        source_file_path(paths, asset_id),
+      );
+      entries.push({
+        target: source_local,
+        staged: staged_source_local,
+      });
+      const old_source_path = owned_sidecar_path(
+        paths,
+        asset_id,
+        "sources",
+        existing?.source_path,
+      );
+      const next_source_path =
+        source_cleared
+          ? null
+          : immutable_source_path;
+      if (
+        old_source_path &&
+        old_source_path !== next_source_path &&
+        old_source_path !== source_file_path(paths, asset_id)
+      )
+      {
+        entries.push({
+          target: local_path(
+            project_root,
+            old_source_path,
+          ),
+          staged: null,
+        });
+      }
+    }
+    if (thumbnail_supplied && immutable_thumbnail_path)
+    {
+      entries.push({
+        target: local_path(
+          project_root,
+          immutable_thumbnail_path,
+        ),
+        staged: staged_thumbnail_local,
+      });
+    }
+    if (thumbnail_supplied)
+    {
+      const old_thumbnail_path = owned_sidecar_path(
+        paths,
+        asset_id,
+        "thumbnails",
+        existing?.thumbnail_path,
+      );
+      if (
+        old_thumbnail_path &&
+        old_thumbnail_path !== immutable_thumbnail_path
+      )
+      {
+        entries.push({
+          target: local_path(
+            project_root,
+            old_thumbnail_path,
+          ),
+          staged: null,
+        });
+      }
+    }
+    entries.push({
+      target: paths.catalog_local_path,
+      staged: staged_catalog_local,
+    });
+    cleanup_warnings = await commit_staged_paths(
+      entries,
+      token,
+    );
   }
-  asset.updated_at = new Date().toISOString();
-  catalog.assets[asset_id] = asset;
-  await write_json_atomic(paths.catalog_local_path, catalog);
+  finally
+  {
+    await Promise.all(
+      staged_paths.map(async (staged_path) =>
+      {
+        await remove_path(staged_path);
+      }),
+    );
+  }
   return {
     ok: true,
     asset: asset_summary(asset),
-    version,
     catalog_path: paths.catalog_path,
-    replaced_candidate:
-      replaceable_candidate?.id ??
-      null,
-    pruned_versions: pruned.removed_versions,
-    pruned_files: pruned.removed_files,
+    cleanup_warnings,
   };
 }
 
@@ -1120,7 +1397,7 @@ export async function world_asset_register(
   );
 }
 
-export async function world_asset_fork(
+async function world_asset_fork_unlocked(
   project_root,
   resource_directory,
   args,
@@ -1140,14 +1417,6 @@ export async function world_asset_fork(
     resource_directory,
   );
   const asset = inspected.asset;
-  const version = inspected.version;
-  if (!version)
-  {
-    return {
-      ok: false,
-      error: "source asset version not found",
-    };
-  }
   const token =
     `${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
   const draft_path = [
@@ -1159,15 +1428,14 @@ export async function world_asset_fork(
   const draft = {
     asset_id: asset.id,
     type: asset.type,
-    parent_version: version.id,
-    resource_path: version.path,
+    resource_path: asset.path,
     source:
       args.draft_source ??
       (
-        version.source_path
+        asset.source_path
         ? JSON.parse(
           await fs.readFile(
-            local_path(project_root, version.source_path),
+            local_path(project_root, asset.source_path),
             "utf8",
           ),
         )
@@ -1181,228 +1449,21 @@ export async function world_asset_fork(
   return {
     ok: true,
     asset: asset_summary(asset),
-    parent_version: version,
     draft_path,
     draft,
   };
 }
 
-export async function world_asset_compare(
+export async function world_asset_fork(
   project_root,
   resource_directory,
   args,
 )
 {
-  const inspected = await world_asset_inspect(
-    project_root,
-    resource_directory,
-    args,
-  );
-  if (!inspected.ok)
-  {
-    return inspected;
-  }
-  const asset = inspected.asset;
-  const left = find_version(
-    asset,
-    args.left_version ?? asset.active_version,
-  );
-  const right = find_version(
-    asset,
-    args.right_version ?? args.candidate_version,
-  );
-  if (!left || !right)
-  {
-    return {
-      ok: false,
-      error: "both asset versions must exist",
-    };
-  }
-  return {
-    ok: true,
-    asset: asset_summary(asset),
-    left,
-    right,
-    quality_score_delta:
-      right.quality.score - left.quality.score,
-    changed: {
-      path: left.path !== right.path,
-      source: left.source_path !== right.source_path,
-      checks:
-        JSON.stringify(left.quality.checks) !==
-        JSON.stringify(right.quality.checks),
-    },
-  };
-}
-
-async function world_asset_promote_unlocked(
-  project_root,
-  resource_directory,
-  args,
-)
-{
-  const { paths, catalog } = await read_catalog(
-    project_root,
-    resource_directory,
-  );
-  const asset_id = safe_name(args.asset_id ?? args.id);
-  const asset = catalog.assets[asset_id];
-  if (!asset)
-  {
-    return {
-      ok: false,
-      error: "asset not found",
-    };
-  }
-  const candidate = find_version(
-    asset,
-    args.version ?? args.candidate_version,
-  );
-  const current = find_version(asset, asset.active_version);
-  if (!candidate)
-  {
-    return {
-      ok: false,
-      error: "candidate version not found",
-    };
-  }
-  const requested_checks = unique_strings(args.required_checks);
-  const candidate_checks = unique_strings(
-    candidate.quality.required_checks,
-  );
-  const required_checks = unique_strings([
-    ...(
-      candidate_checks.length > 0
-        ? candidate_checks
-        : asset.type === "material"
-          ? [
-              "material_valid",
-              "visual_review",
-            ]
-          : [
-              "geometry_valid",
-              "collision_coverage",
-              "material_coverage",
-              "visual_review",
-            ]
-    ),
-    ...requested_checks,
-  ]);
-  const failed_checks = required_checks.filter(
-    (check) => candidate.quality.checks?.[check] !== true,
-  );
-  const threshold = Math.max(
-    0,
-    finite_number(args.threshold, 1),
-  );
-  const current_score = finite_number(
-    current?.quality?.score,
-  );
-  if (!candidate.quality.verified)
-  {
-    return {
-      ok: false,
-      error: "candidate must be verified before promotion",
-    };
-  }
-  if (
-    asset.type === "prefab" &&
-    (
-      !Array.isArray(candidate.dependencies) ||
-      candidate.dependencies.length === 0 ||
-      candidate.missing_dependencies?.length > 0
-    )
-  )
-  {
-    return {
-      ok: false,
-      error:
-        "candidate prefab must have a complete dependency snapshot",
-      dependencies: candidate.dependencies ?? [],
-      missing_dependencies:
-        candidate.missing_dependencies ?? [],
-    };
-  }
-  if (
-    required_checks.includes("visual_review") &&
-    (
-      !candidate.thumbnail_path ||
-      !await path_exists(
-        local_path(
-          project_root,
-          candidate.thumbnail_path,
-        ),
-      )
-    )
-  )
-  {
-    return {
-      ok: false,
-      error:
-        "candidate visual review thumbnail is missing",
-    };
-  }
-  if (failed_checks.length > 0)
-  {
-    return {
-      ok: false,
-      error: "candidate failed required checks",
-      failed_checks,
-    };
-  }
-  if (
-    current &&
-    candidate.id !== current.id &&
-    candidate.quality.score < current_score + threshold
-  )
-  {
-    return {
-      ok: false,
-      error: "candidate quality score does not exceed threshold",
-      current_score,
-      candidate_score: candidate.quality.score,
-      threshold,
-    };
-  }
-  asset.active_version = candidate.id;
-
-  // the promoted version is the answer, the attempts that led to it are not worth the disk, pass
-  // keep_history to opt out
-  const pruned = args.keep_history === true
-    ? {
-        removed_versions: [],
-        removed_files: [],
-      }
-    : await prune_superseded_versions(
-        project_root,
-        paths,
-        asset,
-      );
-
-  asset.updated_at = new Date().toISOString();
-  await write_json_atomic(paths.catalog_local_path, catalog);
-  return {
-    ok: true,
-    asset: asset_summary(asset),
-    promoted: candidate,
-    pruned_versions: pruned.removed_versions,
-    pruned_files: pruned.removed_files,
-  };
-}
-
-export async function world_asset_promote(
-  project_root,
-  resource_directory,
-  args,
-)
-{
-  const paths = library_paths(
-    project_root,
-    resource_directory,
-  );
+  const paths = library_paths(project_root);
   return with_catalog_lock(
     paths.catalog_local_path,
-    () => world_asset_promote_unlocked(
+    () => world_asset_fork_unlocked(
       project_root,
       resource_directory,
       args,
@@ -1410,7 +1471,7 @@ export async function world_asset_promote(
   );
 }
 
-export async function world_asset_load(
+async function world_asset_load_unlocked(
   project_root,
   resource_directory,
   args,
@@ -1427,26 +1488,11 @@ export async function world_asset_load(
     return inspected;
   }
   const asset = inspected.asset;
-  const version = inspected.version;
-  if (!args.version && !asset.active_version)
-  {
-    return {
-      ok: false,
-      error: "asset has no active promoted version",
-    };
-  }
-  if (!version)
-  {
-    return {
-      ok: false,
-      error: "asset version not found",
-    };
-  }
   const loaded = asset.type === "prefab"
     ? await send_command(
       "prefab_load",
       {
-        path: version.path,
+        path: asset.path,
         parent_id: args.parent_id,
         name: args.name,
       },
@@ -1455,13 +1501,64 @@ export async function world_asset_load(
       "resource_load",
       {
         type: asset.type,
-        path: version.path,
+        path: asset.path,
       },
     );
   return {
     ...loaded,
     asset: asset_summary(asset),
-    version,
+  };
+}
+
+export async function world_asset_load(
+  project_root,
+  resource_directory,
+  args,
+  send_command,
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_asset_load_unlocked(
+      project_root,
+      resource_directory,
+      args,
+      send_command,
+    ),
+  );
+}
+
+async function world_material_inspect_unlocked(
+  project_root,
+  resource_directory,
+  args,
+  send_command,
+)
+{
+  const inspected = await world_asset_inspect(
+    project_root,
+    resource_directory,
+    args,
+  );
+  if (!inspected.ok)
+  {
+    return inspected;
+  }
+  if (inspected.asset.type !== "material")
+  {
+    return {
+      ok: false,
+      error: "asset is not a material",
+    };
+  }
+  const material = await send_command(
+    "material_get",
+    { path: inspected.asset.path },
+  );
+  return {
+    ...inspected,
+    material,
   };
 }
 
@@ -1472,33 +1569,112 @@ export async function world_material_inspect(
   send_command,
 )
 {
-  const inspected = await world_asset_inspect(
-    project_root,
-    resource_directory,
-    args,
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_material_inspect_unlocked(
+      project_root,
+      resource_directory,
+      args,
+      send_command,
+    ),
   );
-  if (!inspected.ok)
+}
+
+function material_draft_source(material)
+{
+  const textures = {};
+  for (const [texture_type, slots] of Object.entries(
+    material?.textures ?? {},
+  ))
   {
-    return inspected;
+    const assigned = [];
+    if (Array.isArray(slots))
+    {
+      slots.forEach((texture_path, slot) =>
+      {
+        if (typeof texture_path === "string" && texture_path)
+        {
+          assigned.push({
+            texture_path,
+            slot,
+          });
+        }
+      });
+    }
+    else if (typeof slots === "string" && slots)
+    {
+      assigned.push({
+        texture_path: slots,
+        slot: 0,
+      });
+    }
+    if (assigned.length > 0)
+    {
+      textures[texture_type] = assigned;
+    }
   }
-  if (inspected.asset.type !== "material")
-  {
-    return {
-      ok: false,
-      error: "asset is not a material",
-    };
-  }
-  const material = await send_command(
-    "material_get",
-    { path: inspected.version.path },
-  );
   return {
-    ...inspected,
-    material,
+    properties: {
+      ...(material?.properties ?? {}),
+    },
+    textures,
   };
 }
 
-export async function world_material_fork(
+function material_texture_assignments(textures)
+{
+  const assignments = [];
+  const append = (
+    texture_type,
+    value,
+    fallback_slot,
+  ) =>
+  {
+    const texture_path =
+      typeof value === "string"
+        ? value
+        : value?.texture_path;
+    if (
+      typeof texture_path !== "string" ||
+      texture_path.length === 0
+    )
+    {
+      return;
+    }
+    const requested_slot =
+      typeof value === "object"
+        ? value.slot
+        : fallback_slot;
+    const slot = Number.isInteger(requested_slot)
+      ? requested_slot
+      : fallback_slot;
+    assignments.push({
+      texture_type,
+      texture_path,
+      slot,
+    });
+  };
+  for (const [texture_type, value] of Object.entries(
+    textures ?? {},
+  ))
+  {
+    if (Array.isArray(value))
+    {
+      value.forEach((entry, slot) =>
+      {
+        append(texture_type, entry, slot);
+      });
+    }
+    else
+    {
+      append(texture_type, value, 0);
+    }
+  }
+  return assignments;
+}
+
+async function world_material_fork_unlocked(
   project_root,
   resource_directory,
   args,
@@ -1523,7 +1699,7 @@ export async function world_material_fork(
   }
   const material = await send_command(
     "material_get",
-    { path: inspected.version.path },
+    { path: inspected.asset.path },
   );
   if (!material.ok)
   {
@@ -1535,13 +1711,34 @@ export async function world_material_fork(
     {
       ...args,
       draft_source:
-        material.material ??
-        material,
+        material_draft_source(
+          material.material ??
+          material,
+        ),
     },
   );
 }
 
-export async function world_material_publish(
+export async function world_material_fork(
+  project_root,
+  resource_directory,
+  args,
+  send_command,
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_material_fork_unlocked(
+      project_root,
+      resource_directory,
+      args,
+      send_command,
+    ),
+  );
+}
+
+async function world_material_publish_unlocked(
   project_root,
   resource_directory,
   args,
@@ -1568,13 +1765,22 @@ export async function world_material_publish(
     project_root,
     resource_directory,
   );
-  const number = version_number(inspected.asset);
-  const material_path = version_file_path(
+  const material_path = asset_file_path(
     paths,
     "material",
     inspected.asset.id,
-    number,
     ".xml",
+  );
+  const token = transaction_token()
+    .replaceAll(".", "_");
+  const staged_material_path = [
+    paths.engine_root,
+    "materials",
+    `${inspected.asset.id}_stage_${token}.xml`,
+  ].join("/");
+  const staged_material_local = local_path(
+    project_root,
+    staged_material_path,
   );
   let source = args.source;
   if (!source && args.draft_path)
@@ -1597,72 +1803,117 @@ export async function world_material_publish(
       properties: args.properties ?? {},
       textures: args.textures ?? {},
     };
-  const created = await send_command(
-    "material_create",
-    {
-      path: material_path,
-      name: args.name ?? inspected.asset.name,
-      library_asset: true,
-      skip_catalog_registration: true,
-    },
-  );
-  if (!created.ok)
+  try
   {
-    return created;
-  }
-  for (const [property, value] of Object.entries(
-    source.properties ?? {},
-  ))
-  {
-    const updated = await send_command(
-      "material_set_property",
+    const created = await send_command(
+      "material_create",
       {
-        path: material_path,
-        property,
-        value,
+        path: staged_material_path,
+        name: args.name ?? inspected.asset.name,
+        library_asset: true,
+        skip_catalog_registration: true,
       },
     );
-    if (!updated.ok)
+    if (!created.ok)
     {
-      return updated;
+      return created;
     }
-  }
-  for (const [texture_type, texture] of Object.entries(
-    source.textures ?? {},
-  ))
-  {
-    const texture_value =
-      typeof texture === "string"
-        ? { texture_path: texture }
-        : texture;
-    const updated = await send_command(
-      "material_set_texture",
+    for (const [property, value] of Object.entries(
+      source.properties ?? {},
+    ))
+    {
+      const updated = await send_command(
+        "material_set_property",
+        {
+          path: staged_material_path,
+          property,
+          value,
+        },
+      );
+      if (!updated.ok)
       {
-        path: material_path,
-        texture_type,
-        ...texture_value,
+        return updated;
+      }
+    }
+    for (const texture of material_texture_assignments(
+      source.textures,
+    ))
+    {
+      const updated = await send_command(
+        "material_set_texture",
+        {
+          path: staged_material_path,
+          ...texture,
+        },
+      );
+      if (!updated.ok)
+      {
+        return updated;
+      }
+    }
+    const registered = await world_asset_register(
+      project_root,
+      resource_directory,
+      {
+        ...args,
+        type: "material",
+        asset_id: inspected.asset.id,
+        name: inspected.asset.name,
+        path: staged_material_path,
+        source,
       },
     );
-    if (!updated.ok)
+    if (!registered.ok)
     {
-      return updated;
+      return registered;
     }
+    const reloaded = await send_command(
+      "resource_reload",
+      {
+        path: material_path,
+        type: "material",
+      },
+    );
+    return {
+      ...registered,
+      resource_reload: reloaded,
+    };
   }
-  return world_asset_register(
-    project_root,
-    resource_directory,
+  finally
+  {
+    try
     {
-      ...args,
-      type: "material",
-      asset_id: inspected.asset.id,
-      name: inspected.asset.name,
-      path: material_path,
-      source,
-      parent_version:
-        args.parent_version ??
-        inspected.asset.active_version,
-      promote: false,
-    },
+      await send_command(
+        "resource_remove",
+        {
+          path: staged_material_path,
+          type: "material",
+        },
+      );
+    }
+    catch
+    {
+    }
+    await remove_path(staged_material_local);
+  }
+}
+
+export async function world_material_publish(
+  project_root,
+  resource_directory,
+  args,
+  send_command,
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_material_publish_unlocked(
+      project_root,
+      resource_directory,
+      args,
+      send_command,
+    ),
   );
 }
 
@@ -1740,7 +1991,7 @@ export async function auto_register_world_asset(
   const normalized_resource_path = String(resource_path)
     .replaceAll("\\", "/");
   if (
-    /\/mcp_resources\/(?:meshes|materials|prefabs|textures)\/[^/]+\/v\d+\.[^/]+$/i.test(
+    /\/mcp_resources\/(?:meshes|materials|prefabs|textures)\/[^/]+\.[^/]+$/i.test(
       normalized_resource_path,
     )
   )
@@ -1765,7 +2016,6 @@ export async function auto_register_world_asset(
         tags: args.tags,
         constraints: args.constraints,
         source: args.source ?? args,
-        promote: false,
         notes: `automatically registered from ${command}`,
       },
     );

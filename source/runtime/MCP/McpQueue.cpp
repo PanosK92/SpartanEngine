@@ -38,8 +38,7 @@ namespace spartan
             McpRequest request;
             std::string response;
             bool completed = false;
-            // the caller stopped waiting, running the command now would change the world after the
-            // caller was told it had not happened
+            // queued work is skipped after timeout, executing handlers cannot be preempted
             bool abandoned = false;
             std::mutex mutex;
             std::condition_variable completed_condition;
@@ -48,7 +47,7 @@ namespace spartan
         std::mutex queue_mutex;
         std::deque<std::shared_ptr<McpJob>> jobs;
         bool shutting_down = false;
-        constexpr auto mcp_job_timeout = std::chrono::seconds(30);
+        constexpr auto mcp_job_timeout = std::chrono::seconds(25);
 
         // a message can hold a quote or a newline, an exception's text especially, and an unescaped one
         // produces a reply the client cannot parse, which reads as the engine having gone silent
@@ -111,11 +110,9 @@ namespace spartan
         std::unique_lock<std::mutex> lock(job->mutex);
         if (!job->completed_condition.wait_for(lock, mcp_job_timeout, [&job]() { return job->completed; }))
         {
-            // giving up on the answer has to mean giving up on the command, otherwise the engine catches
-            // up later and applies a deletion or a transform the caller was told had failed, and a caller
-            // that reasonably retries after a timeout ends up applying it twice
+            // callers must inspect state before retrying mutations because executing handlers may still finish
             job->abandoned = true;
-            return error_response("engine did not answer within 30000ms");
+            return error_response("engine did not answer within 25000ms");
         }
 
         return job->response;
