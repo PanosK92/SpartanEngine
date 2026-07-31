@@ -8016,12 +8016,12 @@ void AssetViewer::DrawRevisionBanner()
     }
 
     const float scale = ui_scale();
+    ImVec4 revision_background =
+        ImGui::Style::color_accent_1;
+    revision_background.w = 0.12f;
     ImGui::PushStyleColor(
         ImGuiCol_ChildBg,
-        ImGui::GetColorU32(
-            ImGui::Style::color_accent_1,
-            0.12f
-        )
+        revision_background
     );
     ImGui::BeginChild(
         "##asset_revision_banner",
