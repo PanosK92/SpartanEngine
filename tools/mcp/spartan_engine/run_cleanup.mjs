@@ -443,6 +443,16 @@ function resolve_exact_paths(
   return resolved;
 }
 
+function is_candidate_package_path(relative_path)
+{
+  const normalized = safe_relative_path(relative_path)
+    .toLowerCase();
+  return (
+    normalized === "candidates" ||
+    normalized.startsWith("candidates/")
+  );
+}
+
 async function contained_file_path(
   root,
   real_root,
@@ -600,6 +610,7 @@ export async function cleanup_run_resources({
   for (const relative_path of owned_created)
   {
     if (
+      is_candidate_package_path(relative_path) ||
       reachable.has(relative_path) ||
       protected_resources.has(relative_path)
     )

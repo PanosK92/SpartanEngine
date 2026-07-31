@@ -61,6 +61,10 @@ import {
 import {
   auto_register_world_asset,
   resolve_world_resource_directory,
+  world_asset_candidate_apply,
+  world_asset_candidate_create,
+  world_asset_candidate_discard,
+  world_asset_candidate_status,
   world_asset_fork,
   world_asset_inspect,
   world_asset_load,
@@ -146,6 +150,10 @@ const engine_tool_names = new Set([
   "asset_viewer_delete",
   "asset_viewer_cleanup_scan",
   "asset_viewer_cleanup_apply",
+  "asset_viewer_revision_status",
+  "asset_viewer_revision_preview",
+  "asset_viewer_revision_apply",
+  "asset_viewer_revision_discard",
   "entity_render_materials",
   "component_types",
   "primitive_types",
@@ -414,6 +422,17 @@ async function make_game_ready(
     {
       id: entity_id,
       generate_lods: true,
+      ...(context.asset_revision?.candidate_path
+        ? {
+            path: `${
+              path.posix.dirname(
+                context.asset_revision.candidate_path,
+              )
+            }/work/meshes/${
+              context.asset_revision.asset_id
+            }_merged.mesh`,
+          }
+        : {}),
     },
     focused_command_timeout(context, 120000),
   );
@@ -2006,6 +2025,18 @@ const resource_writing_commands = new Set([
   "world_asset_register",
 ]);
 
+const revision_blocked_commands = new Set([
+  "world_asset_load",
+  "world_asset_fork",
+  "world_material_fork",
+  "world_material_publish",
+  "asset_viewer_mesh_save",
+  "asset_viewer_rename",
+  "asset_viewer_delete",
+  "asset_viewer_cleanup_apply",
+  "execute_lua",
+]);
+
 function collect_owned_resource_paths(
   value,
   paths,
@@ -2062,6 +2093,54 @@ function track_owned_resource_paths(
     context.owned_resource_paths ??= new Set();
   collect_owned_resource_paths(args, owned_paths);
   collect_owned_resource_paths(result, owned_paths);
+}
+
+function route_revision_resource_paths(
+  value,
+  candidate_root,
+)
+{
+  if (typeof value === "string")
+  {
+    const normalized = value.replaceAll("\\", "/");
+    if (
+      normalized === candidate_root ||
+      normalized.startsWith(`${candidate_root}/`)
+    )
+    {
+      return normalized;
+    }
+    const library_root = "project/mcp_resources/";
+    if (normalized.startsWith(library_root))
+    {
+      return `${candidate_root}/work/${
+        normalized.slice(library_root.length)
+      }`;
+    }
+    return value;
+  }
+  if (Array.isArray(value))
+  {
+    return value.map((entry) =>
+      route_revision_resource_paths(
+        entry,
+        candidate_root,
+      ),
+    );
+  }
+  if (value && typeof value === "object")
+  {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        route_revision_resource_paths(
+          entry,
+          candidate_root,
+        ),
+      ]),
+    );
+  }
+  return value;
 }
 
 // the prefab is rewritten as the asset grows, so the file on disk always holds what has been built so far.
@@ -2757,11 +2836,241 @@ async function dispatch_assistant_command(
     args,
     context.resource_directory ?? "",
   );
+  if (
+    context.asset_revision?.candidate_path &&
+    (
+      generated_resource_command(command) ||
+      resource_writing_commands.has(command)
+    )
+  )
+  {
+    args = route_revision_resource_paths(
+      args,
+      path.posix.dirname(
+        context.asset_revision.candidate_path,
+      ),
+    );
+  }
+  if (
+    context.asset_revision?.candidate_path &&
+    (
+      command === "material_set_property" ||
+      command === "material_set_texture"
+    )
+  )
+  {
+    const candidate_root = path.posix.dirname(
+      context.asset_revision.candidate_path,
+    );
+    const material_path = String(
+      args.path ?? "",
+    ).replaceAll("\\", "/");
+    if (
+      !material_path.startsWith(
+        `${candidate_root}/`,
+      )
+    )
+    {
+      return {
+        ok: false,
+        error:
+          "asset revisions can mutate only candidate material paths",
+      };
+    }
+  }
   const catalog_directory =
     await assistant_resource_directory(context);
   const catalog_root = get_project_root();
   const catalog_send = (name, value) =>
     run.tool(name, value, 60000);
+  if (
+    context.asset_revision?.asset_id &&
+    revision_blocked_commands.has(command)
+  )
+  {
+    return {
+      ok: false,
+      error:
+        "this command is blocked while editing a copy-on-write asset revision candidate",
+    };
+  }
+  if (
+    command === "asset_viewer_revision_status" ||
+    command === "asset_viewer_revision_preview" ||
+    command === "asset_viewer_revision_apply" ||
+    command === "asset_viewer_revision_discard"
+  )
+  {
+    if (
+      context.asset_revision?.asset_id &&
+      (
+        command === "asset_viewer_revision_apply" ||
+        command === "asset_viewer_revision_discard"
+      )
+    )
+    {
+      return {
+        ok: false,
+        deferred: true,
+        error:
+          "finish the revision run before the user can apply or discard its candidate",
+      };
+    }
+    let asset_id =
+      args.asset_id ??
+      args.id ??
+      context.asset_revision?.asset_id ??
+      context.asset_viewer_asset_id;
+    if (!asset_id)
+    {
+      const viewer_status = await run.tool(
+        "asset_viewer_status",
+        {},
+        10000,
+      );
+      asset_id = viewer_status.selected_asset_id;
+    }
+    if (!asset_id)
+    {
+      return {
+        ok: false,
+        error:
+          "select an asset or pass asset_id",
+      };
+    }
+    const candidate_args = {
+      ...args,
+      asset_id,
+    };
+    if (command === "asset_viewer_revision_status")
+    {
+      return world_asset_candidate_status(
+        catalog_root,
+        catalog_directory,
+        candidate_args,
+      );
+    }
+    if (command === "asset_viewer_revision_apply")
+    {
+      const applied = await world_asset_candidate_apply(
+        catalog_root,
+        catalog_directory,
+        candidate_args,
+      );
+      if (applied.ok)
+      {
+        await run.tool(
+          "asset_viewer_refresh",
+          {},
+          10000,
+        );
+        applied.asset_viewer = await run.tool(
+          "asset_viewer_select",
+          { asset_id },
+          10000,
+        );
+      }
+      return applied;
+    }
+    if (command === "asset_viewer_revision_discard")
+    {
+      const discarded =
+        await world_asset_candidate_discard(
+          catalog_root,
+          catalog_directory,
+          candidate_args,
+        );
+      if (discarded.ok)
+      {
+        discarded.asset_viewer = await run.tool(
+          "asset_viewer_select",
+          { asset_id },
+          10000,
+        );
+      }
+      return discarded;
+    }
+    const status = await world_asset_candidate_status(
+      catalog_root,
+      catalog_directory,
+      candidate_args,
+    );
+    if (!status.ok || !status.candidate_active)
+    {
+      return {
+        ...status,
+        ok: false,
+        error:
+          status.error ??
+          "asset has no pending revision candidate",
+      };
+    }
+    const candidate_type =
+      status.candidate?.candidate_catalog_asset?.type;
+    if (
+      candidate_type === "material" ||
+      candidate_type === "texture"
+    )
+    {
+      const preview = await run.tool(
+        "asset_viewer_preview_path",
+        { path: status.candidate_path },
+        10000,
+      );
+      return {
+        ...status,
+        ok: preview.ok,
+        preview,
+      };
+    }
+    const created = await run.tool(
+      "entity_create_empty",
+      {
+        name: `${asset_id}_candidate_preview`,
+        active: false,
+        transient: true,
+        tags: ["revision_candidate_preview"],
+      },
+      10000,
+    );
+    if (!created.ok)
+    {
+      return created;
+    }
+    const loaded = candidate_type === "mesh"
+      ? await run.tool(
+          "render_set_mesh",
+          {
+            id: created.entity.id,
+            mesh: status.candidate_path,
+          },
+          20000,
+        )
+      : await run.tool(
+          "prefab_load",
+          {
+            path: status.candidate_path,
+            parent_id: created.entity.id,
+            name: `${asset_id}_candidate_preview`,
+          },
+          30000,
+        );
+    if (!loaded.ok)
+    {
+      return loaded;
+    }
+    const preview = await run.tool(
+      "asset_viewer_preview_entity",
+      { id: created.entity.id },
+      10000,
+    );
+    return {
+      ...status,
+      ok: preview.ok,
+      preview,
+      preview_entity_id: created.entity.id,
+    };
+  }
   if (command === "world_asset_search")
   {
     return world_asset_search(
@@ -4649,15 +4958,16 @@ function asset_revision_prompt_lines(revision)
   {
     return [
       `This request continues work on an asset that already exists. It is not a request for a new asset. The name in the request, "${revision.hint}", matches several library assets equally well: ${revision.ambiguous.join(", ")}.`,
-      "Call world_asset_inspect on each match and decide which current asset the request means. Then load it with world_asset_load, preview it with asset_viewer_preview_entity, and revise that asset in place.",
+      "Inspect each match and ask the user which registered asset to copy into a revision candidate. Do not load or mutate any match.",
       "If you genuinely cannot tell which one is meant, change nothing and ask which asset to use. Do not build a duplicate or revise all matches.",
-      "Once chosen, change only what the request asks for. The run finalizer replaces the same catalog asset id once.",
+      "Once chosen, a new run must create a copy-on-write candidate before making changes.",
     ];
   }
 
   const lines = [
     "This request continues work on an asset that already exists. It is not a request for a new asset.",
-    `The current asset is already loaded and previewing in the Asset Viewer as entity id ${revision.root_id} named ${revision.root_name}, taken from ${revision.source}. Work on that entity. Do not create a second root, and do not delete and rebuild the asset from scratch.`,
+    `A copy-on-write candidate is loaded and previewing in the Asset Viewer as entity id ${revision.root_id} named ${revision.root_name}, copied from ${revision.source}. Work only on that candidate root. Do not create a second root, and do not delete and rebuild the asset from scratch.`,
+    "The registered asset is read only during this run. Use the exact candidate mesh, material, and texture paths returned by inspection. Never address a resource by display name because that can resolve the registered resource instead of the candidate copy.",
     "Change only what the request asks for, and leave the rest of the asset exactly as it is. Everything you find already there was deliberate. If a requested change forces a neighbouring part to change with it, change that part too and say so, but do not take the opportunity to redesign anything else.",
     "Start by reading what is there before changing it. entity_get on the root with descendants, entity_render_materials for the material on each part, mesh_raw_get when you need the actual geometry of a part, and material_get for the properties and texture slots you are about to alter. A change made without reading the current value first is a guess.",
     "Prefer the narrowest tool that expresses the change. A property is material_set_property. A map is texture_generate plus material_set_texture. A dimension or profile is a regenerated part via mesh_generate for that part alone. Rebuild a part only when its geometry itself has to differ.",
@@ -4683,7 +4993,8 @@ function asset_revision_prompt_lines(revision)
   }
 
   lines.push(
-    `Keep the same catalog asset id ${revision.asset_id}. Do not register it yourself. The run finalizer replaces the current catalog asset after the final save.`,
+    `Keep the same catalog asset id ${revision.asset_id}. Do not register it yourself. The run finalizer saves one persistent candidate and leaves the registered asset untouched.`,
+    "After the candidate is ready, stop. Only the user can apply or discard it through the Asset Viewer or a confirmed MCP command.",
     `Asset being revised: ${safe_json(
       {
         asset_id: revision.asset_id,
@@ -5230,16 +5541,29 @@ async function prepare_asset_revision({
   run,
 })
 {
+  let asset_hint = intent?.asset_hint ?? "";
+  if (!asset_hint && intent?.use_selected)
+  {
+    const status = await run.tool(
+      "asset_viewer_status",
+      {},
+      10000,
+    );
+    asset_hint = status.ok
+      ? status.selected_asset_id ?? ""
+      : "";
+  }
+
   const resolved = await resolve_asset_by_name({
     project_root: get_project_root(),
     resource_directory:
       await assistant_resource_directory(context),
-    hint: intent?.asset_hint ?? "",
+    hint: asset_hint,
   });
   if (!resolved.ok)
   {
     run.receipt("asset revision declined", {
-      hint: intent?.asset_hint ?? "",
+      hint: asset_hint,
       reason: resolved.reason,
       ambiguous: resolved.ambiguous ?? [],
     });
@@ -5251,7 +5575,7 @@ async function prepare_asset_revision({
     {
       return {
         ambiguous: resolved.ambiguous,
-        hint: intent?.asset_hint ?? "",
+        hint: asset_hint,
         aspects: intent?.revision_aspects ?? [],
         root_id: null,
       };
@@ -5260,84 +5584,109 @@ async function prepare_asset_revision({
   }
 
   const asset = resolved.asset;
-
-  // a root already in the world is the copy the user has been looking at, reusing it keeps whatever was
-  // done in the current workspace instead of replacing it from the catalog
-  const live = await resolve_quality_root(
-    run,
-    asset.name || asset.id,
-    1,
-  );
-  let root = live.ok && live.root?.id ? live.root : null;
-  let source = "live scene";
-
-  if (!root)
+  if (
+    asset.type !== "prefab" &&
+    asset.type !== "mesh"
+  )
   {
-    const loaded = await world_asset_load(
+    return {
+      root_id: null,
+      asset_id: asset.id,
+      candidate_error:
+        "automatic revisions require a prefab or mesh asset, revise standalone materials and textures through their owning prefab",
+    };
+  }
+  const resource_directory =
+    await assistant_resource_directory(context);
+  const candidate =
+    await world_asset_candidate_create(
       get_project_root(),
-      await assistant_resource_directory(context),
-      { asset_id: asset.id },
-      (command, args) => run.tool(command, args, 30000),
+      resource_directory,
+      {
+        asset_id: asset.id,
+        candidate_path: asset.path,
+      },
+    );
+  if (!candidate.ok)
+  {
+    run.receipt("asset revision declined", {
+      asset_id: asset.id,
+      reason:
+        candidate.error ??
+        "could not create a copy-on-write candidate",
+      pending_candidate:
+        candidate.candidate_active === true,
+      generation: candidate.generation ?? null,
+    });
+    return {
+      root_id: null,
+      asset_id: asset.id,
+      candidate_error:
+        candidate.error ??
+        "could not create a copy-on-write candidate",
+      candidate_generation:
+        candidate.generation ?? null,
+    };
+  }
+  const created = await run.tool(
+    "entity_create_empty",
+    {
+      name: asset.name || asset.id,
+      position: [0, 0, 0],
+      active: false,
+      transient: true,
+      tags: [
+        "authoring_workspace",
+        "revision_candidate",
+        "mcp_generated",
+      ],
+    },
+    10000,
+  );
+  let root =
+    created.ok && created.entity?.id
+      ? created.entity
+      : null;
+  if (root && asset.type === "prefab")
+  {
+    const loaded = await run.tool(
+      "prefab_load",
+      {
+        path: candidate.candidate_path,
+        parent_id: root.id,
+        name: asset.name || asset.id,
+      },
+      30000,
     );
     if (!loaded.ok)
     {
-      run.receipt("asset revision declined", {
-        asset_id: asset.id,
-        reason: `could not load the current asset: ${loaded.error ?? "unknown error"}`,
-      });
-      return null;
-    }
-
-    source = "the current catalog asset";
-
-    // a prefab spawns its hierarchy, anything else only warms the resource cache, so a mesh needs an
-    // entity built around it before there is something to edit
-    if (asset.type === "prefab")
-    {
-      const spawned = await resolve_quality_root(
-        run,
-        asset.name || asset.id,
-        4,
-      );
-      root = spawned.ok && spawned.root?.id ? spawned.root : null;
-    }
-    else if (asset.type === "mesh")
-    {
-      const created = await run.tool(
-        "entity_create_empty",
-        {
-          name: asset.name || asset.id,
-          position: [0, 0, 0],
-          active: false,
-          transient: true,
-          tags: [
-            "authoring_workspace",
-            "mcp_generated",
-          ],
-        },
-        10000,
-      );
-      if (created.ok && created.entity?.id)
-      {
-        await run.tool(
-          "render_set_mesh",
-          {
-            id: created.entity.id,
-            mesh: loaded.asset.path,
-          },
-          20000,
-        );
-        root = created.entity;
-      }
+      root = null;
     }
   }
+  else if (root && asset.type === "mesh")
+  {
+    const assigned = await run.tool(
+      "render_set_mesh",
+      {
+        id: root.id,
+        mesh: candidate.candidate_path,
+      },
+      20000,
+    );
+    if (!assigned.ok)
+    {
+      root = null;
+    }
+  }
+  const source =
+    `candidate copy of ${asset.path}`;
 
   if (!root?.id)
   {
     run.receipt("asset revision declined", {
       asset_id: asset.id,
       reason:
-        "the current asset loaded but produced no entity to edit",
+        "the candidate loaded but produced no entity to edit",
     });
     return null;
   }
@@ -5378,6 +5727,9 @@ async function prepare_asset_revision({
     aliases: asset.aliases ?? [],
     tags: asset.tags ?? [],
     constraints: asset.constraints ?? {},
+    candidate_path: candidate.candidate_path,
+    candidate_generation: candidate.generation,
+    candidate_manifest_path: candidate.manifest_path,
     root_id: root.id,
     root_name: root.name ?? asset.name ?? asset.id,
     source,
@@ -5392,6 +5744,9 @@ async function prepare_asset_revision({
     asset_type: revision.asset_type,
     root_id: revision.root_id,
     source: revision.source,
+    candidate_path: revision.candidate_path,
+    candidate_generation:
+      revision.candidate_generation,
     aspects: revision.aspects,
     part_count: Array.isArray(revision.parts)
       ? revision.parts.length
@@ -5980,12 +6335,24 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       );
       active_assistant_context.asset_revision =
         revision;
+      if (!revision?.root_id)
+      {
+        const reason = revision?.ambiguous?.length > 0
+          ? "the revision target is ambiguous"
+          : (
+              revision?.candidate_error ??
+              "the revision target is not a registered asset"
+            );
+        throw new Error(
+          `${reason}, select the asset in the Asset Viewer or name it explicitly`,
+        );
+      }
       if (revision?.root_id)
       {
         active_assistant_context.authoring_prefab_path =
-          `project/mcp_resources/prefabs/${
-            revision.asset_id
-          }.prefab`;
+          revision.candidate_path;
+        active_assistant_context.candidate_generation =
+          revision.candidate_generation;
         initial_root = {
           id: revision.root_id,
           name: revision.root_name,
@@ -6510,29 +6877,37 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
             const prefab_path =
               active_assistant_context.authoring_prefab_path ??
               `${asset_file_name(root_name)}.prefab`;
-            const saved = await run.tool(
-              "prefab_save",
-              {
-                id: root_id,
-                path: prefab_path,
-              },
-              focused_command_timeout(
-                active_assistant_context,
-                60000,
-              ),
-            );
+            const saved = asset_type === "mesh"
+              ? {
+                  ok: Boolean(revision_mesh_path),
+                  path: revision_mesh_path,
+                }
+              : await run.tool(
+                  "prefab_save",
+                  {
+                    id: root_id,
+                    path: prefab_path,
+                  },
+                  focused_command_timeout(
+                    active_assistant_context,
+                    60000,
+                  ),
+                );
             active_assistant_context.final_prefab_path =
               saved?.ok && asset_type === "prefab"
                 ? saved.path ?? prefab_path
                 : "";
-            track_owned_resource_paths(
-              active_assistant_context,
-              "prefab_save",
-              {
-                path: prefab_path,
-              },
-              saved,
-            );
+            if (asset_type === "prefab")
+            {
+              track_owned_resource_paths(
+                active_assistant_context,
+                "prefab_save",
+                {
+                  path: prefab_path,
+                },
+                saved,
+              );
+            }
             let registration = null;
             if (saved?.ok)
             {
@@ -6551,24 +6926,48 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
                     "final prefab save returned no path",
                   );
                 }
-                registration = await world_asset_register(
-                  get_project_root(),
-                  await assistant_resource_directory(
-                    active_assistant_context,
-                  ),
-                  {
-                    type: asset_type,
-                    asset_id:
-                      revision?.asset_id ??
-                      asset_file_name(root_name),
-                    name: root_name,
-                    path: registration_path,
-                    aliases: revision?.aliases ?? [],
-                    tags: revision?.tags ?? [],
-                    constraints:
-                      revision?.constraints ?? {},
-                  },
-                );
+                registration = revision
+                  ? await world_asset_candidate_create(
+                      get_project_root(),
+                      await assistant_resource_directory(
+                        active_assistant_context,
+                      ),
+                      {
+                        asset_id: revision.asset_id,
+                        candidate_path:
+                          registration_path,
+                        generation:
+                          revision.candidate_generation,
+                        replace_existing: true,
+                        entity_count:
+                          game_ready?.renderers_after ??
+                          null,
+                        asset: {
+                          name: revision.asset_name,
+                          aliases:
+                            revision.aliases ?? [],
+                          tags: revision.tags ?? [],
+                          constraints:
+                            revision.constraints ?? {},
+                        },
+                      },
+                    )
+                  : await world_asset_register(
+                      get_project_root(),
+                      await assistant_resource_directory(
+                        active_assistant_context,
+                      ),
+                      {
+                        type: asset_type,
+                        asset_id:
+                          asset_file_name(root_name),
+                        name: root_name,
+                        path: registration_path,
+                        aliases: [],
+                        tags: [],
+                        constraints: {},
+                      },
+                    );
                 ensure_focused_time(5000);
                 track_owned_resource_paths(
                   active_assistant_context,
@@ -6587,10 +6986,18 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
                 };
               }
               active_assistant_context.latest_prefab_path =
-                registration?.asset?.path ??
+                (
+                  revision
+                    ? registration?.candidate_path
+                    : registration?.asset?.path
+                ) ??
                 "";
               active_assistant_context.catalog_path =
-                registration?.catalog_path ??
+                (
+                  revision
+                    ? registration?.manifest_path
+                    : registration?.catalog_path
+                ) ??
                 "";
             }
             ensure_focused_time(5000);
@@ -6765,9 +7172,13 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       return finalize_response({
         ok: false,
         text: [
-          "The asset was built but could not be saved, so there is no reusable prefab.",
+          revision
+            ? "The revision could not be packaged as a review candidate. The registered asset was not changed."
+            : "The asset was built but could not be saved, so there is no reusable prefab.",
           `Prefab save error: ${asset_prefab?.error ?? "none"}`,
-          `Catalog registration error: ${asset_prefab?.registration?.error ?? "the registration never ran"}`,
+          revision
+            ? `Candidate packaging error: ${asset_prefab?.registration?.error ?? "candidate packaging never ran"}`
+            : `Catalog registration error: ${asset_prefab?.registration?.error ?? "the registration never ran"}`,
           `Root entity: ${root_name}, id ${root_id}.`,
           "Run-scoped cleanup removes generated files that the final prefab does not reach.",
         ].join("\n"),
@@ -6804,7 +7215,11 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
       ok: true,
       text: [
         focused_asset
-          ? `Focused asset ${root_name} completed.`
+          ? (
+              revision
+                ? `Revision candidate for ${revision.asset_name} is ready for review.`
+                : `Focused asset ${root_name} completed.`
+            )
           : (
               final_result.result?.trim() ||
               cursor_result.result?.trim() ||
@@ -6815,10 +7230,17 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           : `Quality gates passed: content ${audit.score}/100, layout ${layout_audit.score}/100, visual review complete.`,
         ...(asset_prefab?.ok
           ? [
-              `Prefab saved to ${asset_prefab.path}.`,
+              revision
+                ? `Candidate saved to ${asset_prefab.path}. The registered asset is unchanged.`
+                : `Prefab saved to ${asset_prefab.path}.`,
               asset_prefab.game_ready?.renderers_before > asset_prefab.game_ready?.renderers_after
                 ? `Game ready pass merged ${asset_prefab.game_ready.renderers_before} meshes down to ${asset_prefab.game_ready.renderers_after} by material.`
                 : "Game ready pass found nothing to merge.",
+            ]
+          : []),
+        ...(revision && asset_prefab?.registration?.ok
+          ? [
+              `Apply or discard candidate generation ${asset_prefab.registration.generation} in the Asset Viewer.`,
             ]
           : []),
         focused_asset

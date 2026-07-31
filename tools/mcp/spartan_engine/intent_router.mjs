@@ -429,7 +429,7 @@ function revision_aspects_from_prompt(value) {
     aspects.push("material");
   }
   if (
-    /\b(texture|textures|map|maps|label|decal|print|sticker|logo|worn|wear|scratch\w*|dirt|grime|grunge|weather\w*|rust\w*|patina|stain\w*|pattern|tiling)\b/.test(
+    /\b(texture|textures|uv|uvs|mapping|map|maps|label|decal|print|sticker|logo|worn|wear|scratch\w*|dirt|grime|grunge|weather\w*|rust\w*|patina|stain\w*|pattern|tiling)\b/.test(
       value,
     )
   )
@@ -447,8 +447,8 @@ export function asset_hint_from_prompt(prompt) {
   const patterns = [
     // asset called beer_bottle, prefab named x
     /\b(?:asset|prefab|model|prop)\s+(?:called|named|id)\s+["']?([a-z0-9][a-z0-9 _-]{0,50}?)["']?(?=[,.;]|\s+(?:and|so|then|to|with)\b|$)/,
-    // the beer bottle asset
-    /\b(?:the|that|this|my)\s+([a-z0-9][a-z0-9 _-]{0,40}?)\s+(?:asset|prefab|model|prop)\b/,
+    // the beer bottle asset, a beer bottle asset
+    /\b(?:the|that|this|my|a|an)\s+([a-z0-9][a-z0-9 _-]{0,40}?)\s+(?:asset|prefab|model|prop)\b/,
     // the beer bottle's glass
     /\b(?:the|that|this|my)\s+([a-z0-9][a-z0-9 _-]{0,40}?)['’]s\b/,
     // revise the beer bottle, continue working on the beer bottle
@@ -469,7 +469,7 @@ export function asset_hint_from_prompt(prompt) {
     // meant rather than what it is called, so the phrase is trimmed back to the subject
     const hint = match[1]
       .replace(
-        /\b(geometry|mesh|meshes|material|materials|texture|textures|shape|silhouette|colour|color|finish|surface|label|version|thing)\b/g,
+        /\b(geometry|mesh|meshes|material|materials|texture|textures|uv|uvs|mapping|shape|silhouette|colour|color|finish|surface|label|version|thing)\b/g,
         " ",
       )
       .replace(
@@ -510,7 +510,15 @@ function is_asset_revision_request(value) {
   }
 
   const hint = asset_hint_from_prompt(value);
-  if (!hint)
+  const selected_asset_reference =
+    revision_verb_pattern.test(value) &&
+    (
+      revision_aspects_from_prompt(value).length > 0 ||
+      /\b(it|this|that|current|selected|front|back|cover|spine|pages?)\b/.test(
+        value,
+      )
+    );
+  if (!hint && !selected_asset_reference)
   {
     return false;
   }
@@ -877,7 +885,7 @@ export function route_intent(prompt) {
       asset_hint,
       target_name: clean_target_name(asset_hint),
       revision_aspects: revision_aspects_from_prompt(value),
-      use_selected: false,
+      use_selected: asset_hint.length === 0,
     };
   }
 

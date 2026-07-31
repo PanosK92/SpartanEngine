@@ -246,6 +246,24 @@ public:
         uint64_t generation = 0;
     };
 
+    struct RevisionStatus
+    {
+        std::string base_asset_id;
+        std::string candidate_path;
+        std::string manifest_path;
+        std::string request_path;
+        std::string request_action;
+        std::string request_error;
+        uint64_t generation = 0;
+        uint64_t base_entity_count = 0;
+        uint64_t candidate_entity_count = 0;
+        uint64_t base_dependency_count = 0;
+        uint64_t candidate_dependency_count = 0;
+        bool candidate_active = false;
+        bool candidate_previewed = false;
+        bool request_pending = false;
+    };
+
     // control surface for drivers outside the panel, a failure is reported through error rather than
     // formatted into a reply so the panel carries no knowledge of who is calling it
     void SetPanelVisible(bool visible);
@@ -318,6 +336,26 @@ public:
         bool confirm,
         std::string& error
     );
+    RevisionStatus GetRevisionStatus(
+        const std::string& asset_id = ""
+    );
+    bool PreviewRevision(
+        const std::string& asset_id,
+        uint64_t generation,
+        std::string& error
+    );
+    bool RequestRevisionApply(
+        const std::string& asset_id,
+        uint64_t generation,
+        bool confirm,
+        std::string& error
+    );
+    bool RequestRevisionDiscard(
+        const std::string& asset_id,
+        uint64_t generation,
+        bool confirm,
+        std::string& error
+    );
 
 private:
     // one editable copy per sub mesh, sub meshes cannot be merged into a single buffer and
@@ -360,6 +398,11 @@ private:
         bool disk_only = false;
     };
 
+    struct RevisionCandidate
+    {
+        RevisionStatus status;
+    };
+
     void RefreshCatalog(bool force);
     void ClearLoadedAsset();
     void LoadSelectedAsset(
@@ -374,6 +417,21 @@ private:
     void DrawDetails(float height);
     void DrawPreview(float width, float height);
     void DrawMeshTools();
+    void DrawRevisionBanner();
+    void DrawRevisionConfirmation();
+    void ScanRevisionCandidates(bool force);
+    bool SelectRevisionCandidate(
+        const std::string& asset_id,
+        uint64_t generation,
+        std::string& error
+    );
+    bool LoadRevisionCandidate(std::string& error);
+    bool RequestRevision(
+        const char* action,
+        uint64_t generation,
+        bool confirm,
+        std::string& error
+    );
     bool DeleteSelectedAsset();
     bool DeleteAssets(const std::vector<std::string>& ids);
     bool IsAssetSelected(int index) const;
@@ -467,6 +525,12 @@ private:
     bool m_pending_delete_selection = false;
     CleanupPlan m_cleanup;
     uint64_t m_cleanup_generation = 0;
+    std::vector<RevisionCandidate> m_revision_candidates;
+    RevisionStatus m_revision;
+    std::string m_revision_scan_signature;
+    std::string m_revision_confirmation_action;
+    uint64_t m_revision_confirmation_generation = 0;
+    bool m_revision_previewing = false;
     bool m_rename_request_focus = false;
     std::unordered_set<std::string> m_expanded_assets;
     std::string m_loaded_write_time;

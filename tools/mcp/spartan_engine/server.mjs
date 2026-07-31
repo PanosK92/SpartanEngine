@@ -46,6 +46,10 @@ import {
 import {
   auto_register_world_asset,
   resolve_world_resource_directory,
+  world_asset_candidate_apply,
+  world_asset_candidate_discard,
+  world_asset_candidate_process_requests,
+  world_asset_candidate_status,
   world_asset_fork,
   world_asset_inspect,
   world_asset_load,
@@ -269,6 +273,59 @@ async function send_engine_command(command, args = {}) {
   }
   return result;
 }
+
+let revision_request_processing = false;
+const revision_request_timer = setInterval(
+  async () =>
+  {
+    if (revision_request_processing || read_only_mode)
+    {
+      return;
+    }
+    revision_request_processing = true;
+    try
+    {
+      const receipt =
+        await world_asset_candidate_process_requests(
+          project_root,
+          await acquire_resource_directory(),
+        );
+      for (const processed of receipt.processed ?? [])
+      {
+        if (!processed.ok)
+        {
+          await append_debug_log({
+            type: "asset_revision_request",
+            ...processed,
+          });
+          continue;
+        }
+        await send_engine_command(
+          "asset_viewer_refresh",
+          {},
+        );
+        await send_engine_command(
+          "asset_viewer_select",
+          { asset_id: processed.asset_id },
+        );
+      }
+    }
+    catch (error)
+    {
+      await append_debug_log({
+        type: "asset_revision_request",
+        ok: false,
+        error: error.message,
+      });
+    }
+    finally
+    {
+      revision_request_processing = false;
+    }
+  },
+  500,
+);
+revision_request_timer.unref?.();
 
 function tool_result(result) {
   const normalized = normalize_result(result);
@@ -1914,6 +1971,175 @@ register_local_tool(
       await acquire_resource_directory(),
       args,
       send_engine_command,
+    ),
+  ),
+);
+
+register_local_tool(
+  "asset_viewer_revision_status",
+  {
+    description:
+      "Read the persistent revision candidate for one registered asset without changing either copy.",
+    inputSchema: world_asset_identity_schema,
+    outputSchema: output_schemas.generic,
+    annotations: read_only,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_candidate_status(
+      project_root,
+      await acquire_resource_directory(),
+      args,
+    ),
+  ),
+);
+
+register_local_tool(
+  "asset_viewer_revision_preview",
+  {
+    description:
+      "Load and preview a persistent revision candidate without changing the registered asset.",
+    inputSchema: world_asset_identity_schema,
+    outputSchema: output_schemas.generic,
+    annotations: edit_tool,
+  },
+  async (args) => catalog_tool_result(
+    (async () =>
+    {
+      const status = await world_asset_candidate_status(
+        project_root,
+        await acquire_resource_directory(),
+        args,
+      );
+      if (!status.ok || !status.candidate_active)
+      {
+        return {
+          ...status,
+          ok: false,
+          error:
+            status.error ??
+            "asset has no pending revision candidate",
+        };
+      }
+      const asset_id = status.base_asset_id;
+      const type =
+        status.candidate?.candidate_catalog_asset?.type;
+      if (
+        type === "material" ||
+        type === "texture"
+      )
+      {
+        const preview = await send_engine_command(
+          "asset_viewer_preview_path",
+          { path: status.candidate_path },
+        );
+        return {
+          ...status,
+          ok: preview.ok,
+          preview,
+        };
+      }
+      const created = await send_engine_command(
+        "entity_create_empty",
+        {
+          name: `${asset_id}_candidate_preview`,
+          active: false,
+          transient: true,
+          tags: ["revision_candidate_preview"],
+        },
+      );
+      if (!created.ok)
+      {
+        return created;
+      }
+      const loaded = type === "mesh"
+        ? await send_engine_command(
+            "render_set_mesh",
+            {
+              id: created.entity.id,
+              mesh: status.candidate_path,
+            },
+          )
+        : await send_engine_command(
+            "prefab_load",
+            {
+              path: status.candidate_path,
+              parent_id: created.entity.id,
+              name: `${asset_id}_candidate_preview`,
+            },
+          );
+      if (!loaded.ok)
+      {
+        return loaded;
+      }
+      const preview = await send_engine_command(
+        "asset_viewer_preview_entity",
+        { id: created.entity.id },
+      );
+      return {
+        ...status,
+        ok: preview.ok,
+        preview,
+        preview_entity_id: created.entity.id,
+      };
+    })(),
+  ),
+);
+
+register_local_tool(
+  "asset_viewer_revision_apply",
+  {
+    description:
+      "Atomically replace a registered asset with its reviewed candidate. Requires the current generation and explicit confirmation.",
+    inputSchema: {
+      ...world_asset_identity_schema,
+      generation: z.number().int().min(1),
+      confirm: z.literal(true),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: destructive_tool,
+  },
+  async (args) => catalog_tool_result(
+    (async () =>
+    {
+      const result = await world_asset_candidate_apply(
+        project_root,
+        await acquire_resource_directory(),
+        args,
+      );
+      if (result.ok)
+      {
+        await send_engine_command(
+          "asset_viewer_refresh",
+          {},
+        );
+        result.asset_viewer = await send_engine_command(
+          "asset_viewer_select",
+          { asset_id: result.asset.id },
+        );
+      }
+      return result;
+    })(),
+  ),
+);
+
+register_local_tool(
+  "asset_viewer_revision_discard",
+  {
+    description:
+      "Delete only a pending revision candidate and keep the registered asset unchanged. Requires the current generation and explicit confirmation.",
+    inputSchema: {
+      ...world_asset_identity_schema,
+      generation: z.number().int().min(1),
+      confirm: z.literal(true),
+    },
+    outputSchema: output_schemas.generic,
+    annotations: destructive_tool,
+  },
+  async (args) => catalog_tool_result(
+    world_asset_candidate_discard(
+      project_root,
+      await acquire_resource_directory(),
+      args,
     ),
   ),
 );

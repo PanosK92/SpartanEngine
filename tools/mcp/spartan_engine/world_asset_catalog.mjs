@@ -30,6 +30,7 @@ const catalog_lock_stale_ms = 300000;
 const catalog_lock_unreadable_stale_ms = 3600000;
 const catalog_lock_retry_min_ms = 20;
 const catalog_lock_retry_max_ms = 250;
+const candidate_schema_version = 1;
 
 function semantic_asset_name(value, fallback = "asset")
 {
@@ -141,36 +142,12 @@ async function path_exists(value)
 {
   try
   {
-    await fs.access(value);
+    await fs.lstat(value);
     return true;
   }
   catch
   {
-    try
-    {
-      const unreadable_status = await fs.stat(lock_path);
-      if (
-        Date.now() - unreadable_status.mtimeMs <
-        catalog_lock_unreadable_stale_ms
-      )
-      {
-        return false;
-      }
-      const current_status = await fs.stat(lock_path);
-      if (
-        current_status.mtimeMs !== unreadable_status.mtimeMs ||
-        current_status.size !== unreadable_status.size
-      )
-      {
-        return false;
-      }
-      await fs.rm(lock_path);
-      return true;
-    }
-    catch
-    {
-      return false;
-    }
+    return false;
   }
 }
 
@@ -206,29 +183,113 @@ async function remove_path(value)
   );
 }
 
-async function commit_staged_paths(entries, token)
+async function recover_staged_transaction(
+  journal_path,
+  allowed_root,
+)
 {
+  if (!journal_path || !(await path_exists(journal_path)))
+  {
+    return;
+  }
+  const journal = JSON.parse(
+    await fs.readFile(journal_path, "utf8"),
+  );
+  if (
+    journal.schema_version !== 1 ||
+    !journal.token ||
+    !Array.isArray(journal.entries)
+  )
+  {
+    throw new Error("invalid asset transaction journal");
+  }
+  for (const entry of [...journal.entries].reverse())
+  {
+    const root = path.resolve(allowed_root);
+    const target = path.resolve(entry.target);
+    const staged = entry.staged
+      ? path.resolve(entry.staged)
+      : "";
+    const backup = path.resolve(entry.backup);
+    if (
+      !target.startsWith(`${root}${path.sep}`) ||
+      (
+        staged &&
+        !staged.startsWith(`${root}${path.sep}`)
+      ) ||
+      !backup.startsWith(`${root}${path.sep}`) ||
+      backup !==
+        path.resolve(
+          `${entry.target}.${journal.token}.backup`,
+        )
+    )
+    {
+      throw new Error(
+        "asset transaction journal escapes the library root",
+      );
+    }
+    if (await path_exists(entry.backup))
+    {
+      await remove_path(entry.target);
+      await fs.rename(entry.backup, entry.target);
+    }
+    else if (!entry.had_target)
+    {
+      await remove_path(entry.target);
+    }
+    if (entry.staged)
+    {
+      await remove_path(entry.staged);
+    }
+  }
+  await remove_path(journal_path);
+}
+
+async function commit_staged_paths(
+  entries,
+  token,
+  journal_path = "",
+)
+{
+  const states = [];
+  for (const entry of entries)
+  {
+    states.push({
+      ...entry,
+      backup: `${entry.target}.${token}.backup`,
+      had_target: await path_exists(entry.target),
+      installed: false,
+    });
+  }
+  if (journal_path)
+  {
+    await write_json_atomic(
+      journal_path,
+      {
+        schema_version: 1,
+        token,
+        entries: states.map((entry) => ({
+          target: entry.target,
+          staged: entry.staged,
+          backup: entry.backup,
+          had_target: entry.had_target,
+        })),
+      },
+    );
+  }
   const committed = [];
   try
   {
-    for (const entry of entries)
+    for (const state of states)
     {
-      const backup = `${entry.target}.${token}.backup`;
-      const had_target = await path_exists(entry.target);
-      if (had_target)
+      if (state.had_target)
       {
-        await fs.rename(entry.target, backup);
+        await fs.rename(state.target, state.backup);
       }
-      const state = {
-        ...entry,
-        backup,
-        had_target,
-        installed: false,
-      };
       committed.push(state);
-      if (entry.staged)
+      if (state.staged)
       {
-        await fs.rename(entry.staged, entry.target);
+        await fs.rename(state.staged, state.target);
         state.installed = true;
       }
     }
@@ -259,10 +320,21 @@ async function commit_staged_paths(entries, token)
       error.message +=
         `, rollback failed: ${rollback_errors.join(", ")}`;
     }
+    if (
+      journal_path &&
+      rollback_errors.length === 0
+    )
+    {
+      await remove_path(journal_path);
+    }
     throw error;
   }
 
   const cleanup_errors = [];
+  if (journal_path)
+  {
+    await remove_path(journal_path);
+  }
   for (const entry of committed)
   {
     if (!entry.had_target)
@@ -500,6 +572,7 @@ async function ensure_catalog(
       "meshes",
       "materials",
       "prefabs",
+      "candidates",
       "sources",
       "thumbnails",
     ].map((folder) =>
@@ -528,6 +601,11 @@ async function read_catalog_unlocked(
   resource_directory,
 )
 {
+  const unresolved_paths = library_paths(project_root);
+  await recover_staged_transaction(
+    `${unresolved_paths.catalog_local_path}.candidate_apply.transaction.json`,
+    unresolved_paths.local_root,
+  );
   const paths = await ensure_catalog(
     project_root,
     resource_directory,
@@ -822,6 +900,1442 @@ function owned_sidecar_path(
     return null;
   }
   return normalized;
+}
+
+function candidate_engine_root(paths, asset_id)
+{
+  return `${paths.engine_root}/candidates/${asset_id}`;
+}
+
+function requested_candidate_asset_id(args)
+{
+  const value =
+    args?.asset_id ??
+    args?.id ??
+    args?.name;
+  if (!String(value ?? "").trim())
+  {
+    throw new Error("asset candidate requires an asset id");
+  }
+  return safe_name(value);
+}
+
+function candidate_manifest_path(paths, asset_id)
+{
+  return `${candidate_engine_root(paths, asset_id)}/manifest.json`;
+}
+
+function canonical_dependency_root(paths, asset_id)
+{
+  return `${paths.engine_root}/dependencies/${asset_id}`;
+}
+
+function candidate_dependency_root(paths, asset_id)
+{
+  return `${candidate_engine_root(paths, asset_id)}/dependencies`;
+}
+
+async function assert_safe_existing_path(
+  root,
+  target,
+  expected_type,
+)
+{
+  const resolved_root = path.resolve(root);
+  const resolved_target = path.resolve(target);
+  if (
+    resolved_target === resolved_root ||
+    !resolved_target.startsWith(`${resolved_root}${path.sep}`)
+  )
+  {
+    throw new Error("candidate path escapes its allowed root");
+  }
+  const root_status = await fs.lstat(resolved_root);
+  if (root_status.isSymbolicLink())
+  {
+    throw new Error("candidate root must not be a symbolic link");
+  }
+  let current = resolved_root;
+  const relative = path.relative(
+    resolved_root,
+    resolved_target,
+  );
+  for (const part of relative.split(path.sep))
+  {
+    current = path.join(current, part);
+    const status = await fs.lstat(current);
+    if (status.isSymbolicLink())
+    {
+      throw new Error("candidate path crosses a symbolic link");
+    }
+  }
+  const status = await fs.lstat(resolved_target);
+  if (
+    expected_type === "file" &&
+    !status.isFile()
+  )
+  {
+    throw new Error("candidate path is not a file");
+  }
+  if (
+    expected_type === "directory" &&
+    !status.isDirectory()
+  )
+  {
+    throw new Error("candidate path is not a directory");
+  }
+  return resolved_target;
+}
+
+async function safe_candidate_package(
+  project_root,
+  paths,
+  asset_id,
+)
+{
+  const candidates_local = local_path(
+    project_root,
+    `${paths.engine_root}/candidates`,
+  );
+  const package_local = local_path(
+    project_root,
+    candidate_engine_root(paths, asset_id),
+  );
+  await assert_safe_existing_path(
+    paths.local_root,
+    candidates_local,
+    "directory",
+  );
+  return assert_safe_existing_path(
+    candidates_local,
+    package_local,
+    "directory",
+  );
+}
+
+async function safe_candidates_root(
+  project_root,
+  paths,
+)
+{
+  const candidates_local = local_path(
+    project_root,
+    `${paths.engine_root}/candidates`,
+  );
+  return assert_safe_existing_path(
+    paths.local_root,
+    candidates_local,
+    "directory",
+  );
+}
+
+async function file_signature(file_path)
+{
+  try
+  {
+    const status = await fs.lstat(file_path);
+    if (
+      status.isSymbolicLink() ||
+      !status.isFile()
+    )
+    {
+      throw new Error("signature target is not a regular file");
+    }
+    const content = await fs.readFile(file_path);
+    return {
+      exists: true,
+      size: status.size,
+      sha256: createHash("sha256")
+        .update(content)
+        .digest("hex"),
+    };
+  }
+  catch (error)
+  {
+    if (error.code === "ENOENT")
+    {
+      return {
+        exists: false,
+        size: 0,
+        sha256: null,
+      };
+    }
+    throw error;
+  }
+}
+
+function signatures_match(left, right)
+{
+  return (
+    Boolean(left?.exists) === Boolean(right?.exists) &&
+    Number(left?.size ?? 0) === Number(right?.size ?? 0) &&
+    (left?.sha256 ?? null) === (right?.sha256 ?? null)
+  );
+}
+
+function value_signature(value)
+{
+  return createHash("sha256")
+    .update(JSON.stringify(value))
+    .digest("hex");
+}
+
+async function catalog_signature(paths)
+{
+  return file_signature(paths.catalog_local_path);
+}
+
+async function asset_file_signatures(
+  project_root,
+  asset,
+)
+{
+  const file_paths = [
+    asset.path,
+    ...(asset.dependencies ?? []),
+  ];
+  const signatures = [];
+  for (const file_path of file_paths)
+  {
+    const normalized = normalize_engine_path(file_path);
+    signatures.push({
+      path: normalized,
+      signature: await file_signature(
+        local_path(project_root, normalized),
+      ),
+    });
+  }
+  return signatures;
+}
+
+function summary_count(value)
+{
+  const count =
+    value?.entity_count ??
+    value?.count;
+  return Number.isInteger(count)
+    ? count
+    : null;
+}
+
+function candidate_status_result(
+  manifest = null,
+  asset_id = null,
+)
+{
+  if (!manifest)
+  {
+    return {
+      ok: true,
+      candidate_active: false,
+      base_asset_id: asset_id,
+      candidate: null,
+    };
+  }
+  return {
+    ok: true,
+    candidate_active: true,
+    base_asset_id: manifest.base_asset_id,
+    candidate_path: manifest.candidate_asset?.path ?? null,
+    generation: manifest.candidate_generation,
+    candidate_token: manifest.candidate_token,
+    base_entity_count: manifest.summary?.base_entity_count ?? null,
+    candidate_entity_count:
+      manifest.summary?.candidate_entity_count ?? null,
+    base_dependency_count:
+      manifest.summary?.base_dependency_count ?? 0,
+    candidate_dependency_count:
+      manifest.summary?.candidate_dependency_count ?? 0,
+    created_at: manifest.created_at,
+    updated_at: manifest.updated_at,
+    candidate: manifest,
+  };
+}
+
+async function read_candidate_manifest_unlocked(
+  project_root,
+  paths,
+  asset_id,
+)
+{
+  const manifest_local = local_path(
+    project_root,
+    candidate_manifest_path(paths, asset_id),
+  );
+  if (!(await path_exists(manifest_local)))
+  {
+    return null;
+  }
+  await safe_candidate_package(
+    project_root,
+    paths,
+    asset_id,
+  );
+  await assert_safe_existing_path(
+    local_path(
+      project_root,
+      candidate_engine_root(paths, asset_id),
+    ),
+    manifest_local,
+    "file",
+  );
+  const manifest = JSON.parse(
+    await fs.readFile(manifest_local, "utf8"),
+  );
+  if (
+    manifest.schema_version !== candidate_schema_version ||
+    manifest.base_asset_id !== asset_id ||
+    !Number.isInteger(manifest.candidate_generation) ||
+    !manifest.candidate_token ||
+    !manifest.base_asset_signature ||
+    !manifest.candidate_asset?.path
+  )
+  {
+    throw new Error("invalid asset candidate manifest");
+  }
+  const package_root = candidate_engine_root(paths, asset_id);
+  const dependency_root =
+    candidate_dependency_root(paths, asset_id);
+  const canonical_root =
+    canonical_dependency_root(paths, asset_id);
+  if (!Array.isArray(manifest.candidate_dependencies))
+  {
+    throw new Error("invalid asset candidate dependencies");
+  }
+  for (const dependency of manifest.candidate_dependencies)
+  {
+    const candidate_path = normalize_engine_path(
+      dependency.candidate_path,
+    );
+    const canonical_path = normalize_engine_path(
+      dependency.canonical_path,
+    );
+    if (
+      path.posix.dirname(candidate_path) !== dependency_root ||
+      path.posix.dirname(canonical_path) !== canonical_root ||
+      path.posix.basename(candidate_path) !==
+        path.posix.basename(canonical_path)
+    )
+    {
+      throw new Error("invalid asset candidate dependency path");
+    }
+  }
+  const package_paths = [
+    manifest.candidate_asset.path,
+    ...manifest.candidate_dependencies
+      .map((entry) => entry.candidate_path),
+  ];
+  for (const engine_path of package_paths)
+  {
+    const normalized = normalize_engine_path(engine_path);
+    if (!normalized.startsWith(`${package_root}/`))
+    {
+      throw new Error("candidate manifest path escapes its package");
+    }
+    await assert_safe_existing_path(
+      local_path(project_root, package_root),
+      local_path(project_root, normalized),
+      "file",
+    );
+  }
+  return manifest;
+}
+
+async function copy_candidate_prefab_dependencies(
+  project_root,
+  paths,
+  asset_id,
+  staged_asset_local,
+  staged_dependency_local,
+)
+{
+  const candidate_root =
+    candidate_dependency_root(paths, asset_id);
+  const canonical_root =
+    canonical_dependency_root(paths, asset_id);
+  let prefab_text = await fs.readFile(
+    staged_asset_local,
+    "utf8",
+  );
+  const dependencies = [];
+  const missing = [];
+  const copied_sources = new Map();
+
+  const copy_dependency = async (reference, kind) =>
+  {
+    let normalized;
+    try
+    {
+      normalized = normalize_engine_path(reference);
+    }
+    catch
+    {
+      missing.push(String(reference));
+      return null;
+    }
+    const source_local = local_path(project_root, normalized);
+    if (!(await path_exists(source_local)))
+    {
+      missing.push(normalized);
+      return null;
+    }
+    await assert_safe_existing_path(
+      path.resolve(project_root, "binaries"),
+      source_local,
+      "file",
+    );
+    if (copied_sources.has(normalized))
+    {
+      return copied_sources.get(normalized);
+    }
+    const dependency_name = dependency_file_name(
+      normalized,
+      candidate_root,
+    );
+    const candidate_path =
+      `${candidate_root}/${dependency_name}`;
+    const canonical_path =
+      `${canonical_root}/${dependency_name}`;
+    const destination_local = path.join(
+      staged_dependency_local,
+      dependency_name,
+    );
+    await fs.mkdir(
+      path.dirname(destination_local),
+      { recursive: true },
+    );
+    await fs.copyFile(source_local, destination_local);
+    const entry = {
+      source_path: normalized,
+      candidate_path,
+      canonical_path,
+      kind,
+    };
+    copied_sources.set(normalized, entry);
+    dependencies.push(entry);
+    return entry;
+  };
+
+  for (const attribute of ["mesh_path", "material_path"])
+  {
+    const references = new Set(
+      [...prefab_text.matchAll(
+        new RegExp(`${attribute}="([^"]+)"`, "g"),
+      )].map((match) => match[1]),
+    );
+    for (const reference of references)
+    {
+      const dependency = await copy_dependency(
+        reference,
+        attribute === "mesh_path"
+          ? "mesh"
+          : "material",
+      );
+      if (!dependency)
+      {
+        continue;
+      }
+      if (attribute === "material_path")
+      {
+        const material_local = path.join(
+          staged_dependency_local,
+          path.posix.basename(dependency.candidate_path),
+        );
+        let material_text = await fs.readFile(
+          material_local,
+          "utf8",
+        );
+        const texture_references = new Set(
+          [...material_text.matchAll(
+            /texture_path="([^"]+)"/g,
+          )].map((match) => match[1]).filter(Boolean),
+        );
+        for (const texture_reference of texture_references)
+        {
+          const texture = await copy_dependency(
+            texture_reference,
+            "texture",
+          );
+          if (texture)
+          {
+            material_text = material_text
+              .split(`"${texture_reference}"`)
+              .join(`"${texture.candidate_path}"`);
+          }
+        }
+        await fs.writeFile(
+          material_local,
+          material_text,
+          "utf8",
+        );
+      }
+      prefab_text = prefab_text
+        .split(`"${reference}"`)
+        .join(`"${dependency.candidate_path}"`);
+    }
+  }
+  if (missing.length > 0)
+  {
+    throw new Error(
+      `candidate prefab has missing dependencies: ${
+        [...new Set(missing)].join(", ")
+      }`,
+    );
+  }
+  if (dependencies.length === 0)
+  {
+    throw new Error(
+      "candidate prefab has no mesh or material dependencies",
+    );
+  }
+  await fs.writeFile(
+    staged_asset_local,
+    prefab_text,
+    "utf8",
+  );
+  return dependencies;
+}
+
+function candidate_catalog_asset(base_asset, args, dependencies)
+{
+  const patch =
+    args.asset &&
+    typeof args.asset === "object" &&
+    !Array.isArray(args.asset)
+      ? args.asset
+      : {};
+  return {
+    ...base_asset,
+    id: base_asset.id,
+    name:
+      patch.name !== undefined
+        ? String(patch.name)
+        : base_asset.name,
+    type: base_asset.type,
+    path: base_asset.path,
+    dependencies:
+      base_asset.type === "prefab"
+        ? dependencies.map(
+          (entry) => entry.canonical_path,
+        )
+        : base_asset.dependencies ?? [],
+    aliases:
+      patch.aliases !== undefined
+        ? unique_strings(patch.aliases)
+        : base_asset.aliases,
+    tags:
+      patch.tags !== undefined
+        ? unique_strings(patch.tags)
+        : base_asset.tags,
+    constraints:
+      patch.constraints !== undefined
+        ? {
+            ...base_asset.constraints,
+            ...normalize_constraints(patch.constraints),
+          }
+        : base_asset.constraints,
+    quality:
+      patch.quality &&
+      typeof patch.quality === "object" &&
+      !Array.isArray(patch.quality)
+        ? {
+            ...base_asset.quality,
+            ...patch.quality,
+          }
+        : base_asset.quality,
+    notes:
+      patch.notes !== undefined
+        ? String(patch.notes)
+        : base_asset.notes,
+  };
+}
+
+export async function world_asset_candidate_status(
+  project_root,
+  resource_directory,
+  args = {},
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    async () =>
+    {
+      const { catalog } = await read_catalog_unlocked(
+        project_root,
+        resource_directory,
+      );
+      const asset_id = requested_candidate_asset_id(args);
+      if (!catalog.assets[asset_id])
+      {
+        return {
+          ok: false,
+          error: "asset not found",
+        };
+      }
+      const manifest = await read_candidate_manifest_unlocked(
+        project_root,
+        paths,
+        asset_id,
+      );
+      return candidate_status_result(
+        manifest,
+        asset_id,
+      );
+    },
+  );
+}
+
+async function world_asset_candidate_create_unlocked(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  const { paths, catalog } = await read_catalog_unlocked(
+    project_root,
+    resource_directory,
+  );
+  const asset_id = requested_candidate_asset_id(args);
+  const base_asset = catalog.assets[asset_id];
+  if (!base_asset)
+  {
+    return {
+      ok: false,
+      error: "asset not found",
+    };
+  }
+  const source_path = normalize_engine_path(
+    args.candidate_path ??
+    args.path ??
+    args.resource_path,
+  );
+  const source_local = local_path(
+    project_root,
+    source_path,
+  );
+  await assert_safe_existing_path(
+    path.resolve(project_root, "binaries"),
+    source_local,
+    "file",
+  );
+  await safe_candidates_root(
+    project_root,
+    paths,
+  );
+  const extension = path.posix.extname(base_asset.path);
+  if (
+    path.posix.extname(source_path).toLowerCase() !==
+    extension.toLowerCase()
+  )
+  {
+    throw new Error(
+      `candidate asset must use the canonical ${extension} extension`,
+    );
+  }
+  const existing_manifest =
+    await read_candidate_manifest_unlocked(
+      project_root,
+      paths,
+      asset_id,
+    );
+  const replace_existing =
+    args.replace_existing === true;
+  if (existing_manifest && !replace_existing)
+  {
+    return {
+      ...candidate_status_result(
+        existing_manifest,
+        asset_id,
+      ),
+      ok: false,
+      error: "asset already has a pending candidate",
+    };
+  }
+  if (existing_manifest)
+  {
+    if (
+      Number(
+        args.generation ??
+        args.candidate_generation,
+      ) !== existing_manifest.candidate_generation
+    )
+    {
+      return {
+        ok: false,
+        error: "candidate generation does not match",
+        generation:
+          existing_manifest.candidate_generation,
+      };
+    }
+    if (
+      !source_path.startsWith(
+        `${
+          candidate_engine_root(paths, asset_id)
+        }/`,
+      )
+    )
+    {
+      return {
+        ok: false,
+        error:
+          "candidate replacement source must stay inside its package",
+      };
+    }
+  }
+  const package_local = local_path(
+    project_root,
+    candidate_engine_root(paths, asset_id),
+  );
+  if (
+    await path_exists(package_local) &&
+    !existing_manifest
+  )
+  {
+    await safe_candidate_package(
+      project_root,
+      paths,
+      asset_id,
+    );
+    return {
+      ok: false,
+      error: "asset candidate package has no valid manifest",
+    };
+  }
+  const generation =
+    existing_manifest
+      ? Math.max(
+          Date.now(),
+          existing_manifest.candidate_generation + 1,
+        )
+      : Math.max(Date.now(), 1);
+  const token = transaction_token().replaceAll(".", "_");
+  const package_path =
+    candidate_engine_root(paths, asset_id);
+  const staged_package_local =
+    `${package_local}.${token}.stage`;
+  const candidate_asset_path =
+    `${package_path}/asset${extension}`;
+  const staged_asset_local = path.join(
+    staged_package_local,
+    `asset${extension}`,
+  );
+  const staged_dependency_local = path.join(
+    staged_package_local,
+    "dependencies",
+  );
+  const created_at =
+    existing_manifest?.created_at ??
+    new Date().toISOString();
+  try
+  {
+    await fs.mkdir(
+      staged_package_local,
+      { recursive: true },
+    );
+    await fs.copyFile(
+      source_local,
+      staged_asset_local,
+    );
+    let dependencies = [];
+    if (base_asset.type === "prefab")
+    {
+      dependencies = await copy_candidate_prefab_dependencies(
+        project_root,
+        paths,
+        asset_id,
+        staged_asset_local,
+        staged_dependency_local,
+      );
+    }
+    for (const dependency of dependencies)
+    {
+      dependency.signature = await file_signature(
+        path.join(
+          staged_package_local,
+          path.posix.relative(
+            package_path,
+            dependency.candidate_path,
+          ),
+        ),
+      );
+    }
+    const base_signatures =
+      existing_manifest?.base_file_signatures ??
+      await asset_file_signatures(
+        project_root,
+        base_asset,
+      );
+    const entity_summary =
+      args.entity_summary ??
+      args.summary?.entities ??
+      null;
+    const base_entity_summary =
+      args.base_entity_summary ??
+      args.summary?.base_entities ??
+      null;
+    const manifest = {
+      schema_version: candidate_schema_version,
+      candidate_generation: generation,
+      candidate_token: token,
+      generation,
+      token,
+      status: "pending",
+      active: true,
+      base_asset_id: asset_id,
+      base_path: base_asset.path,
+      base_catalog_signature:
+        existing_manifest?.base_catalog_signature ??
+        await catalog_signature(paths),
+      base_asset_signature:
+        existing_manifest?.base_asset_signature ??
+        value_signature(base_asset),
+      base_file_signatures: base_signatures,
+      candidate_path: `asset${extension}`,
+      candidate_asset: {
+        path: candidate_asset_path,
+        signature: await file_signature(staged_asset_local),
+      },
+      candidate_dependencies: dependencies,
+      candidate_catalog_asset: candidate_catalog_asset(
+        base_asset,
+        args,
+        dependencies,
+      ),
+      entity_summary,
+      dependency_summary:
+        args.dependency_summary ??
+        {
+          count: dependencies.length,
+          paths: dependencies.map(
+            (entry) => entry.candidate_path,
+          ),
+        },
+      summary: {
+        base_entity_count:
+          args.base_entity_count ??
+          summary_count(base_entity_summary),
+        candidate_entity_count:
+          args.entity_count ??
+          summary_count(entity_summary),
+        base_dependency_count:
+          (base_asset.dependencies ?? []).length,
+        candidate_dependency_count: dependencies.length,
+      },
+      base_entity_count:
+        args.base_entity_count ??
+        summary_count(base_entity_summary),
+      candidate_entity_count:
+        args.entity_count ??
+        summary_count(entity_summary),
+      base_dependency_count:
+        (base_asset.dependencies ?? []).length,
+      candidate_dependency_count: dependencies.length,
+      created_at,
+      updated_at: new Date().toISOString(),
+    };
+    await fs.writeFile(
+      path.join(staged_package_local, "manifest.json"),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+      "utf8",
+    );
+    const cleanup_warnings = await commit_staged_paths(
+      [
+        {
+          target: package_local,
+          staged: staged_package_local,
+        },
+      ],
+      token,
+      `${paths.catalog_local_path}.candidate_apply.transaction.json`,
+    );
+    return {
+      ...candidate_status_result(manifest, asset_id),
+      replaced_existing: Boolean(existing_manifest),
+      manifest_path:
+        candidate_manifest_path(paths, asset_id),
+      cleanup_warnings,
+    };
+  }
+  finally
+  {
+    await remove_path(staged_package_local);
+  }
+}
+
+export async function world_asset_candidate_create(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_asset_candidate_create_unlocked(
+      project_root,
+      resource_directory,
+      args,
+    ),
+  );
+}
+
+async function verify_candidate_base(
+  project_root,
+  manifest,
+  base_asset,
+)
+{
+  if (
+    manifest.base_asset_signature !==
+    value_signature(base_asset)
+  )
+  {
+    return "canonical asset metadata changed after candidate creation";
+  }
+  for (const expected of manifest.base_file_signatures ?? [])
+  {
+    const current = await file_signature(
+      local_path(project_root, expected.path),
+    );
+    if (!signatures_match(current, expected.signature))
+    {
+      return `canonical base file changed: ${expected.path}`;
+    }
+  }
+  return null;
+}
+
+async function stage_candidate_dependency(
+  project_root,
+  staged_dependency_local,
+  dependency,
+  replacements,
+)
+{
+  const source_local = local_path(
+    project_root,
+    dependency.candidate_path,
+  );
+  const current_signature = await file_signature(source_local);
+  if (
+    !signatures_match(
+      current_signature,
+      dependency.signature,
+    )
+  )
+  {
+    throw new Error(
+      `candidate dependency changed: ${dependency.candidate_path}`,
+    );
+  }
+  const destination_local = path.join(
+    staged_dependency_local,
+    path.posix.basename(dependency.canonical_path),
+  );
+  await fs.mkdir(
+    path.dirname(destination_local),
+    { recursive: true },
+  );
+  await fs.copyFile(source_local, destination_local);
+  if (
+    [".xml", ".prefab"].includes(
+      path.extname(destination_local).toLowerCase(),
+    )
+  )
+  {
+    let text = await fs.readFile(destination_local, "utf8");
+    for (const [candidate_path, canonical_path] of replacements)
+    {
+      text = text
+        .split(`"${candidate_path}"`)
+        .join(`"${canonical_path}"`);
+    }
+    await fs.writeFile(destination_local, text, "utf8");
+  }
+}
+
+async function world_asset_candidate_apply_unlocked(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  if (args.confirm !== true)
+  {
+    return {
+      ok: false,
+      error: "candidate apply requires confirm true",
+    };
+  }
+  const { paths, catalog } = await read_catalog_unlocked(
+    project_root,
+    resource_directory,
+  );
+  const asset_id = requested_candidate_asset_id(args);
+  const base_asset = catalog.assets[asset_id];
+  if (!base_asset)
+  {
+    return {
+      ok: false,
+      error: "asset not found",
+    };
+  }
+  const manifest = await read_candidate_manifest_unlocked(
+    project_root,
+    paths,
+    asset_id,
+  );
+  if (!manifest)
+  {
+    return {
+      ok: false,
+      error: "asset candidate not found",
+    };
+  }
+  if (
+    Number(
+      args.generation ??
+      args.candidate_generation,
+    ) !==
+    manifest.candidate_generation
+  )
+  {
+    return {
+      ok: false,
+      error: "candidate generation does not match",
+      generation: manifest.candidate_generation,
+    };
+  }
+  const stale_reason = await verify_candidate_base(
+    project_root,
+    manifest,
+    base_asset,
+  );
+  if (stale_reason)
+  {
+    return {
+      ok: false,
+      stale: true,
+      error: stale_reason,
+      generation: manifest.candidate_generation,
+    };
+  }
+  const candidate_asset_local = local_path(
+    project_root,
+    manifest.candidate_asset.path,
+  );
+  const candidate_signature = await file_signature(
+    candidate_asset_local,
+  );
+  if (
+    !signatures_match(
+      candidate_signature,
+      manifest.candidate_asset.signature,
+    )
+  )
+  {
+    return {
+      ok: false,
+      error: "candidate asset changed after creation",
+      generation: manifest.candidate_generation,
+    };
+  }
+  const token = transaction_token();
+  const canonical_asset_local = local_path(
+    project_root,
+    base_asset.path,
+  );
+  const staged_asset_local =
+    `${canonical_asset_local}.${token}.stage`;
+  const canonical_dependencies_local = local_path(
+    project_root,
+    canonical_dependency_root(paths, asset_id),
+  );
+  const staged_dependency_local =
+    `${canonical_dependencies_local}.${token}.stage`;
+  const staged_catalog_local =
+    `${paths.catalog_local_path}.${token}.stage`;
+  const staged_paths = [
+    staged_asset_local,
+    staged_dependency_local,
+    staged_catalog_local,
+  ];
+  try
+  {
+    await fs.copyFile(
+      candidate_asset_local,
+      staged_asset_local,
+    );
+    const replacements = (
+      manifest.candidate_dependencies ?? []
+    ).map((entry) => [
+      entry.candidate_path,
+      entry.canonical_path,
+    ]);
+    if (base_asset.type === "prefab")
+    {
+      await fs.mkdir(
+        staged_dependency_local,
+        { recursive: true },
+      );
+      for (
+        const dependency of
+        manifest.candidate_dependencies ?? []
+      )
+      {
+        await stage_candidate_dependency(
+          project_root,
+          staged_dependency_local,
+          dependency,
+          replacements,
+        );
+      }
+      let prefab_text = await fs.readFile(
+        staged_asset_local,
+        "utf8",
+      );
+      for (const [candidate_path, canonical_path] of replacements)
+      {
+        prefab_text = prefab_text
+          .split(`"${candidate_path}"`)
+          .join(`"${canonical_path}"`);
+      }
+      await fs.writeFile(
+        staged_asset_local,
+        prefab_text,
+        "utf8",
+      );
+    }
+    const now = new Date().toISOString();
+    const next_asset = {
+      ...candidate_catalog_asset(
+        base_asset,
+        {
+          asset: manifest.candidate_catalog_asset,
+        },
+        manifest.candidate_dependencies,
+      ),
+      created_at: base_asset.created_at,
+      updated_at: now,
+    };
+    catalog.assets[asset_id] = next_asset;
+    await fs.writeFile(
+      staged_catalog_local,
+      `${JSON.stringify(catalog, null, 2)}\n`,
+      "utf8",
+    );
+    const package_local = await safe_candidate_package(
+      project_root,
+      paths,
+      asset_id,
+    );
+    const entries = [
+      {
+        target: canonical_asset_local,
+        staged: staged_asset_local,
+      },
+      {
+        target: canonical_dependencies_local,
+        staged:
+          base_asset.type === "prefab"
+            ? staged_dependency_local
+            : null,
+      },
+      {
+        target: paths.catalog_local_path,
+        staged: staged_catalog_local,
+      },
+      {
+        target: package_local,
+        staged: null,
+      },
+    ];
+    const cleanup_warnings = await commit_staged_paths(
+      entries,
+      token,
+      `${paths.catalog_local_path}.candidate_apply.transaction.json`,
+    );
+    return {
+      ok: true,
+      applied: true,
+      generation: manifest.candidate_generation,
+      asset: asset_summary(next_asset),
+      catalog_path: paths.catalog_path,
+      cleanup_warnings,
+    };
+  }
+  finally
+  {
+    await Promise.all(
+      staged_paths.map((staged_path) =>
+        remove_path(staged_path),
+      ),
+    );
+  }
+}
+
+export async function world_asset_candidate_apply(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_asset_candidate_apply_unlocked(
+      project_root,
+      resource_directory,
+      args,
+    ),
+  );
+}
+
+async function world_asset_candidate_discard_unlocked(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  if (args.confirm !== true)
+  {
+    return {
+      ok: false,
+      error: "candidate discard requires confirm true",
+    };
+  }
+  const { paths, catalog } = await read_catalog_unlocked(
+    project_root,
+    resource_directory,
+  );
+  const asset_id = requested_candidate_asset_id(args);
+  if (!catalog.assets[asset_id])
+  {
+    return {
+      ok: false,
+      error: "asset not found",
+    };
+  }
+  const manifest = await read_candidate_manifest_unlocked(
+    project_root,
+    paths,
+    asset_id,
+  );
+  if (!manifest)
+  {
+    return {
+      ok: false,
+      error: "asset candidate not found",
+    };
+  }
+  if (
+    Number(
+      args.generation ??
+      args.candidate_generation,
+    ) !==
+    manifest.candidate_generation
+  )
+  {
+    return {
+      ok: false,
+      error: "candidate generation does not match",
+      generation: manifest.candidate_generation,
+    };
+  }
+  const package_local = await safe_candidate_package(
+    project_root,
+    paths,
+    asset_id,
+  );
+  const cleanup_warnings = await commit_staged_paths(
+    [
+      {
+        target: package_local,
+        staged: null,
+      },
+    ],
+    transaction_token(),
+    `${paths.catalog_local_path}.candidate_apply.transaction.json`,
+  );
+  return {
+    ok: true,
+    discarded: true,
+    asset_id,
+    generation: manifest.candidate_generation,
+    cleanup_warnings,
+  };
+}
+
+export async function world_asset_candidate_discard(
+  project_root,
+  resource_directory,
+  args,
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    () => world_asset_candidate_discard_unlocked(
+      project_root,
+      resource_directory,
+      args,
+    ),
+  );
+}
+
+export async function world_asset_candidate_process_requests(
+  project_root,
+  resource_directory,
+)
+{
+  const paths = library_paths(project_root);
+  return with_catalog_lock(
+    paths.catalog_local_path,
+    async () =>
+    {
+      await read_catalog_unlocked(
+        project_root,
+        resource_directory,
+      );
+      const candidates_local = await safe_candidates_root(
+        project_root,
+        paths,
+      );
+      const processed = [];
+      const entries = await fs.readdir(
+        candidates_local,
+        { withFileTypes: true },
+      );
+      for (const entry of entries)
+      {
+        if (
+          !entry.isDirectory() ||
+          entry.isSymbolicLink()
+        )
+        {
+          continue;
+        }
+        const asset_id = safe_name(entry.name);
+        if (asset_id !== entry.name)
+        {
+          continue;
+        }
+        const package_local = await safe_candidate_package(
+          project_root,
+          paths,
+          asset_id,
+        );
+        const request_local = path.join(
+          package_local,
+          "revision_request.json",
+        );
+        if (!(await path_exists(request_local)))
+        {
+          continue;
+        }
+        await assert_safe_existing_path(
+          package_local,
+          request_local,
+          "file",
+        );
+        let request;
+        let result;
+        try
+        {
+          request = JSON.parse(
+            await fs.readFile(request_local, "utf8"),
+          );
+          if (
+            request.schema_version !== 1 ||
+            request.base_asset_id !== asset_id ||
+            request.confirm !== true
+          )
+          {
+            throw new Error(
+              "invalid asset revision request",
+            );
+          }
+          if (request.action === "apply")
+          {
+            result =
+              await world_asset_candidate_apply_unlocked(
+                project_root,
+                resource_directory,
+                {
+                  asset_id,
+                  generation: request.generation,
+                  confirm: true,
+                },
+              );
+          }
+          else if (request.action === "discard")
+          {
+            result =
+              await world_asset_candidate_discard_unlocked(
+                project_root,
+                resource_directory,
+                {
+                  asset_id,
+                  generation: request.generation,
+                  confirm: true,
+                },
+              );
+          }
+          else
+          {
+            throw new Error(
+              "invalid asset revision request action",
+            );
+          }
+        }
+        catch (error)
+        {
+          result = {
+            ok: false,
+            error: error.message,
+          };
+        }
+        if (!result.ok && await path_exists(package_local))
+        {
+          const response_local = path.join(
+            package_local,
+            "revision_response.json",
+          );
+          await fs.writeFile(
+            response_local,
+            `${JSON.stringify(
+              {
+                schema_version: 1,
+                action: request?.action ?? null,
+                generation:
+                  request?.generation ?? null,
+                ok: false,
+                error:
+                  result.error ??
+                  "asset revision request failed",
+                completed_at:
+                  new Date().toISOString(),
+              },
+              null,
+              2,
+            )}\n`,
+            "utf8",
+          );
+          await remove_path(request_local);
+        }
+        processed.push({
+          asset_id,
+          action: request?.action ?? null,
+          ...result,
+        });
+      }
+      return {
+        ok: processed.every((entry) => entry.ok),
+        processed,
+      };
+    },
+  );
 }
 
 export async function resolve_world_resource_directory(

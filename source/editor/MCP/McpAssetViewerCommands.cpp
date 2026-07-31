@@ -410,6 +410,42 @@ namespace editor_mcp
                 boolean(status.has_preview_content) +
                 "}";
         }
+
+        string revision_status_reply(
+            const AssetViewer::RevisionStatus& status
+        )
+        {
+            return
+                "{\"ok\":true,\"candidate_active\":" +
+                string(boolean(status.candidate_active)) +
+                ",\"base_asset_id\":" +
+                quote(status.base_asset_id) +
+                ",\"candidate_path\":" +
+                quote(status.candidate_path) +
+                ",\"manifest_path\":" +
+                quote(status.manifest_path) +
+                ",\"generation\":" +
+                to_string(status.generation) +
+                ",\"base_entity_count\":" +
+                to_string(status.base_entity_count) +
+                ",\"candidate_entity_count\":" +
+                to_string(status.candidate_entity_count) +
+                ",\"base_dependency_count\":" +
+                to_string(status.base_dependency_count) +
+                ",\"candidate_dependency_count\":" +
+                to_string(status.candidate_dependency_count) +
+                ",\"candidate_previewed\":" +
+                boolean(status.candidate_previewed) +
+                ",\"request_pending\":" +
+                boolean(status.request_pending) +
+                ",\"request_action\":" +
+                quote(status.request_action) +
+                ",\"request_error\":" +
+                quote(status.request_error) +
+                ",\"request_path\":" +
+                quote(status.request_path) +
+                "}";
+        }
     }
 
     void register_asset_viewer(Editor* editor)
@@ -443,6 +479,140 @@ namespace editor_mcp
 
                 return status_reply(viewer);
             }
+        );
+
+        add(
+            "asset_viewer_revision_status",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+
+                const string* asset_id = find(request, "asset_id");
+                return revision_status_reply(
+                    viewer->GetRevisionStatus(
+                        asset_id ? *asset_id : ""
+                    )
+                );
+            }
+        );
+
+        add(
+            "asset_viewer_revision_preview",
+            [editor](const McpRequest& request) -> string
+            {
+                AssetViewer* viewer = editor->GetWidget<AssetViewer>();
+                if (!viewer)
+                {
+                    return failure("the asset viewer is not available");
+                }
+
+                uint64_t generation = 0;
+                if (const string* value = find(request, "generation"))
+                {
+                    const optional<uint64_t> parsed = as_uint(value);
+                    if (!parsed || *parsed == 0)
+                    {
+                        return failure(
+                            "generation must be a positive integer"
+                        );
+                    }
+                    generation = *parsed;
+                }
+
+                const string* asset_id = find(request, "asset_id");
+                string error;
+                if (
+                    !viewer->PreviewRevision(
+                        asset_id ? *asset_id : "",
+                        generation,
+                        error
+                    )
+                )
+                {
+                    return failure(error);
+                }
+                return revision_status_reply(
+                    viewer->GetRevisionStatus()
+                );
+            }
+        );
+
+        const auto register_revision_request =
+            [editor](
+                const char* command,
+                const bool apply
+            )
+        {
+            add(
+                command,
+                [editor, apply](const McpRequest& request) -> string
+                {
+                    AssetViewer* viewer =
+                        editor->GetWidget<AssetViewer>();
+                    if (!viewer)
+                    {
+                        return failure(
+                            "the asset viewer is not available"
+                        );
+                    }
+
+                    const optional<bool> confirm =
+                        strict_bool(find(request, "confirm"));
+                    if (!confirm || !*confirm)
+                    {
+                        return failure(
+                            apply
+                                ? "confirm=true is required to apply an asset revision"
+                                : "confirm=true is required to discard an asset revision"
+                        );
+                    }
+                    const optional<uint64_t> generation = as_uint(
+                        find(request, "generation")
+                    );
+                    if (!generation || *generation == 0)
+                    {
+                        return failure(
+                            "generation from asset_viewer_revision_status is required"
+                        );
+                    }
+
+                    const string* asset_id =
+                        find(request, "asset_id");
+                    string error;
+                    const bool requested = apply
+                        ? viewer->RequestRevisionApply(
+                            asset_id ? *asset_id : "",
+                            *generation,
+                            true,
+                            error
+                        )
+                        : viewer->RequestRevisionDiscard(
+                            asset_id ? *asset_id : "",
+                            *generation,
+                            true,
+                            error
+                        );
+                    if (!requested)
+                    {
+                        return failure(error);
+                    }
+                    return revision_status_reply(
+                        viewer->GetRevisionStatus()
+                    );
+                }
+            );
+        };
+        register_revision_request(
+            "asset_viewer_revision_apply",
+            true
+        );
+        register_revision_request(
+            "asset_viewer_revision_discard",
+            false
         );
 
         add(
