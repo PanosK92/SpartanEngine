@@ -54,11 +54,15 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float3 displacement            = float3(dx * chop, height, dz * chop) * disp_scale;
     tex_ocean_displacement_uav[id] = float4(displacement, 0.0);
 
-    // mirror the vertical displacement into a host visible buffer at quarter resolution, the cpu samples it for buoyancy
+    // mirror displacement for cpu buoyancy
     if ((id.x & 3u) == 0u && (id.y & 3u) == 0u)
     {
         const uint hn = OCEAN_N / 4u;
-        ocean_heights[cascade * hn * hn + (id.y >> 2u) * hn + (id.x >> 2u)] = displacement.y;
+        ocean_heights[
+            cascade * hn * hn +
+            (id.y >> 2u) * hn +
+            (id.x >> 2u)
+        ] = float4(displacement, 0.0f);
     }
 
     // analytic surface slope carried through the ifft, full spectral detail unlike a finite difference of the height
@@ -106,10 +110,31 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     // so foam starts once the jacobian dips below the bias and saturates as it approaches zero
     // the result is accumulated over time so it trails behind the crests as fading streaks instead of single-frame sparkle,
     // the previous value is read back from the persistent normal target whose slope channels are overwritten below
-    float inject    = saturate((OCEAN_FOAM_BIAS - jacobian) * OCEAN_FOAM_GAIN);
-    float prev_foam = saturate(tex_ocean_normal_uav[id].z);
-    float decay     = exp(-buffer_frame.delta_time * OCEAN_FOAM_DECAY);
-    float foam      = max(inject, prev_foam * decay);
+    bool reset_history = pass_get_f2_value().y > 0.5;
+    float inject       = saturate(
+        (OCEAN_FOAM_BIAS - jacobian) *
+        OCEAN_FOAM_GAIN
+    );
+    float prev_foam =
+        reset_history ?
+        0.0 :
+        saturate(tex_ocean_normal_uav[id].z);
+    float decay = exp(
+        -buffer_frame.delta_time *
+        OCEAN_FOAM_DECAY
+    );
+    float rise = 1.0f - exp(
+        -buffer_frame.delta_time *
+        10.0f
+    );
+    float foam = max(
+        prev_foam * decay,
+        lerp(
+            prev_foam,
+            inject,
+            rise
+        )
+    );
 
     tex_ocean_normal_uav[id] = float4(slope_x * normal_str, slope_z * normal_str, foam, 0.0);
 }

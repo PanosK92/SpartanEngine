@@ -236,13 +236,18 @@ namespace spartan
             rhi_max_array_size, nullptr, true, "volumetric_light_indices"
         );
 
-        // host visible so the cpu can sample wave height without a fence stall, it may lag a frame on discrete gpus
+        // gpu displacement cache for buoyancy
         at(buffers, Renderer_Buffer::OceanHeights) = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(float)),
-            renderer_ocean_heights_resolution * renderer_ocean_heights_resolution * renderer_ocean_max_cascades, nullptr, true, "ocean_heights"
+            RHI_Buffer_Type::Storage,
+            static_cast<uint32_t>(sizeof(Vector4)),
+            renderer_ocean_heights_resolution *
+            renderer_ocean_heights_resolution *
+            renderer_ocean_max_cascades,
+            nullptr,
+            false,
+            "ocean_heights"
         );
-        // zero so cpu samples taken before the first gpu write read a flat sea instead of garbage
-        // d3d12 storage buffers are default-heap uavs so GetMappedData is null, upload zeros instead
+        // zero before the first gpu write
         {
             RHI_Buffer* ocean_heights = at(buffers, Renderer_Buffer::OceanHeights).get();
             if (void* mapped = ocean_heights->GetMappedData())
@@ -253,6 +258,40 @@ namespace spartan
             {
                 vector<uint8_t> zeros(ocean_heights->GetObjectSize(), 0);
                 ocean_heights->UploadSubRegion(zeros.data(), 0, zeros.size());
+            }
+        }
+        static_assert(
+            renderer_draw_data_buffer_count == 4
+        );
+        for (
+            uint32_t i = 0;
+            i < renderer_draw_data_buffer_count;
+            i++
+        )
+        {
+            Renderer_Buffer type = static_cast<Renderer_Buffer>(
+                static_cast<uint32_t>(
+                    Renderer_Buffer::OceanHeightsReadback0
+                ) +
+                i
+            );
+            at(buffers, type) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Readback,
+                static_cast<uint32_t>(sizeof(Vector4)),
+                renderer_ocean_heights_resolution *
+                renderer_ocean_heights_resolution *
+                renderer_ocean_max_cascades,
+                nullptr,
+                true,
+                "ocean_heights_readback"
+            );
+            if (void* mapped = at(buffers, type)->GetMappedData())
+            {
+                memset(
+                    mapped,
+                    0,
+                    at(buffers, type)->GetObjectSize()
+                );
             }
         }
 
@@ -701,11 +740,30 @@ namespace spartan
             const uint32_t slices = renderer_ocean_max_cascades;
             const uint32_t flags  = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing;
 
-            at(render_targets, Renderer_RenderTarget::ocean_spectrum)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R32G32B32A32_Float, flags, "ocean_spectrum");
-            at(render_targets, Renderer_RenderTarget::ocean_fft_a)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R32G32B32A32_Float, flags, "ocean_fft_a");
-            at(render_targets, Renderer_RenderTarget::ocean_fft_b)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R32G32B32A32_Float, flags, "ocean_fft_b");
-            at(render_targets, Renderer_RenderTarget::ocean_displacement) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement");
-            at(render_targets, Renderer_RenderTarget::ocean_normal)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, n, n, slices, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_normal");
+            at(render_targets, Renderer_RenderTarget::ocean_spectrum) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2DArray, n, n, slices, 1,
+                RHI_Format::R32G32B32A32_Float, flags, "ocean_spectrum"
+            );
+            at(render_targets, Renderer_RenderTarget::ocean_fft_a) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2DArray, n, n, slices, 1,
+                RHI_Format::R32G32B32A32_Float, flags, "ocean_fft_a"
+            );
+            at(render_targets, Renderer_RenderTarget::ocean_fft_b) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2DArray, n, n, slices, 1,
+                RHI_Format::R32G32B32A32_Float, flags, "ocean_fft_b"
+            );
+            at(render_targets, Renderer_RenderTarget::ocean_displacement) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2DArray, n, n, slices, 1,
+                RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement"
+            );
+            at(render_targets, Renderer_RenderTarget::ocean_displacement_previous) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2DArray, n, n, slices, 1,
+                RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement_previous"
+            );
+            at(render_targets, Renderer_RenderTarget::ocean_normal) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2DArray, n, n, slices, 1,
+                RHI_Format::R16G16B16A16_Float, flags, "ocean_normal"
+            );
         };
 
         if (create_render)

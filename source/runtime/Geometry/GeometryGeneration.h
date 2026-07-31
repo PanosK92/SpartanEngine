@@ -177,8 +177,23 @@ namespace spartan::geometry_generation
             {
                 for (uint32_t j = 0; j < verts_per_side; ++j)
                 {
-                    const float x = static_cast<float>(i) * cell - half;
-                    const float z = static_cast<float>(j) * cell - half;
+                    float x = static_cast<float>(i) * cell - half;
+                    float z = static_cast<float>(j) * cell - half;
+
+                    // collapse fine ring edges onto the next coarser grid
+                    if (level + 1 < levels)
+                    {
+                        const float coarse_cell = cell * 2.0f;
+                        if (i == 0 || i == resolution)
+                        {
+                            z = round(z / coarse_cell) * coarse_cell;
+                        }
+                        if (j == 0 || j == resolution)
+                        {
+                            x = round(x / coarse_cell) * coarse_cell;
+                        }
+                    }
+
                     const Vector2 uv(static_cast<float>(i) / resolution, static_cast<float>(j) / resolution);
                     vertices->emplace_back(Vector3(x, 0.0f, z), uv, normal, tangent);
                 }

@@ -45,32 +45,114 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
-        // simulation parameters, the renderer reads these directly each frame, setters re-seed the spectrum
-        uint32_t GetCascadeCount() const          { return m_cascade_count; }
-        void SetCascadeCount(uint32_t count)      { m_cascade_count = count; PushToRenderer(); }
-        const float* GetCascadeLengths() const    { return m_cascade_length; }
-        float GetAmplitude() const                { return m_amplitude; }
-        void SetAmplitude(float amplitude)        { m_amplitude = amplitude; PushToRenderer(); }
-        float GetChoppiness() const               { return m_choppiness; }
-        void SetChoppiness(float choppiness)      { m_choppiness = choppiness; PushToRenderer(); }
-        float GetDisplacementScale() const        { return m_displacement_scale; }
-        void SetDisplacementScale(float scale)    { m_displacement_scale = scale; PushToRenderer(); }
-        float GetNormalStrength() const           { return m_normal_strength; }
-        void SetNormalStrength(float strength)    { m_normal_strength = strength; PushToRenderer(); }
-        float GetSeaLevel() const                 { return m_sea_level; }
-        void SetSeaLevel(float level)             { m_sea_level = level; PushToRenderer(); }
-        float GetTurbidity() const                { return m_turbidity; }
-        void SetTurbidity(float turbidity)        { m_turbidity = turbidity; }
-        float GetCausticsIntensity() const        { return m_caustics_intensity; }
-        void SetCausticsIntensity(float intensity) { m_caustics_intensity = intensity; }
+        // simulation parameters
+        uint32_t GetCascadeCount() const
+        {
+            return m_cascade_count;
+        }
+
+        void SetCascadeCount(uint32_t count)
+        {
+            m_cascade_count =
+                count < 1 ?
+                1 :
+                (
+                    count > cascade_max ?
+                    cascade_max :
+                    count
+                );
+            PushToRenderer(true);
+        }
+
+        const float* GetCascadeLengths() const
+        {
+            return m_cascade_length;
+        }
+
+        float GetAmplitude() const
+        {
+            return m_amplitude;
+        }
+
+        void SetAmplitude(float amplitude)
+        {
+            m_amplitude = amplitude;
+            PushToRenderer(true);
+        }
+
+        float GetChoppiness() const
+        {
+            return m_choppiness;
+        }
+
+        void SetChoppiness(float choppiness)
+        {
+            m_choppiness = choppiness;
+            PushToRenderer(false);
+        }
+
+        float GetDisplacementScale() const
+        {
+            return m_displacement_scale;
+        }
+
+        void SetDisplacementScale(float scale)
+        {
+            m_displacement_scale = scale;
+            PushToRenderer(false);
+        }
+
+        float GetNormalStrength() const
+        {
+            return m_normal_strength;
+        }
+
+        void SetNormalStrength(float strength)
+        {
+            m_normal_strength = strength;
+            PushToRenderer(false);
+        }
+
+        float GetSeaLevel() const
+        {
+            return m_sea_level;
+        }
+
+        void SetSeaLevel(float level)
+        {
+            m_sea_level = level;
+            PushToRenderer(false);
+        }
+
+        float GetTurbidity() const
+        {
+            return m_turbidity;
+        }
+
+        void SetTurbidity(float turbidity)
+        {
+            m_turbidity = turbidity;
+        }
+
+        float GetCausticsIntensity() const
+        {
+            return m_caustics_intensity;
+        }
+
+        void SetCausticsIntensity(float intensity)
+        {
+            m_caustics_intensity = intensity;
+        }
 
     private:
+        static constexpr uint32_t cascade_max = 4;
+
         void BuildSurface();
-        void PushToRenderer();
+        void PushToRenderer(bool spectrum_dirty);
 
         // four cascades from swells to microwaves, the spectrum is normalized so wind speed alone dictates the sea state
-        uint32_t m_cascade_count    = 4;
-        float m_cascade_length[4]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
+        uint32_t m_cascade_count              = cascade_max;
+        float m_cascade_length[cascade_max]   = { 1000.0f, 250.0f, 60.0f, 15.0f };
         float m_amplitude           = 1.0f;
         float m_choppiness          = 1.5f; // sharpens crests without tipping into stormy breaking peaks
         float m_displacement_scale  = 1.0f;

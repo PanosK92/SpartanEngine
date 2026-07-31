@@ -196,17 +196,27 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float2 uv = world_xz / buffer_frame.ocean_cascade_length[c];
             foam += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f).z;
         }
-        // the jacobian mask is 512 texels per cascade so up close it magnifies into soft blobs, use it as
-        // coverage that erodes a fine world locked fbm instead of multiplying it, the visible edges then
-        // come from the noise frequency rather than the map resolution, dense coverage reads as near solid
-        // whitewater with small holes and decaying coverage breaks apart into sparse lacy flecks
+        // noise shapes foam inside the compression mask
         float coverage = saturate(foam);
-        float lace     = ocean_value_noise(world_xz * 4.0f) * 0.45f + ocean_value_noise(world_xz * 13.0f) * 0.35f + ocean_value_noise(world_xz * 41.0f) * 0.2f;
-        float eroded   = saturate((lace + coverage - 1.0f) * 3.0f);
+        float lace =
+            ocean_value_noise(world_xz * 4.0f) * 0.45f +
+            ocean_value_noise(world_xz * 13.0f) * 0.35f +
+            ocean_value_noise(world_xz * 41.0f) * 0.2f;
+        float body     = smoothstep(0.04f, 0.42f, coverage);
+        float detail   = lerp(0.65f, 1.0f, lace);
+        float dense    = smoothstep(0.45f, 0.85f, coverage);
+        float shaped   = lerp(body * detail, 1.0f, dense);
 
         // the fine octaves go subpixel with distance and would alias, ease back to the plain
         // coverage mask out there, the cascade resolution is adequate at that magnification anyway
-        foam = lerp(eroded, coverage, saturate(surface.camera_to_pixel_length / 100.0f));
+        foam = lerp(
+            shaped,
+            coverage,
+            saturate(
+                surface.camera_to_pixel_length /
+                100.0f
+            )
+        );
 
         // contact foam, the opaque point behind this water pixel must sit right at the surface point in
         // full 3d, a submerged wall seen through the water lies meters along the ray so it stays clean
@@ -218,7 +228,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             float3 opaque_pos = get_position(depth_opaque_raw, render_uv_to_screen_uv(uv_foam));
             float  contact    = saturate(1.0f - length(opaque_pos - surface.position) / contact_foam_radius);
-            float  contact_foam = saturate((lace + contact - 1.0f) * 3.5f) * 0.7f;
+            float contact_foam =
+                contact *
+                lerp(0.6f, 1.0f, lace) *
+                0.7f;
             foam = saturate(max(foam, contact_foam));
         }
     }

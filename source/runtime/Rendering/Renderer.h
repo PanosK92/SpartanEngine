@@ -199,8 +199,11 @@ namespace spartan
         static bool IsProceduralGrassEnabled();
 
         // fft ocean, the water component stays the owner of the simulation parameters and must outlive its use
-        static void EnableOcean(Water* water);
-        static void DisableOcean();
+        static void EnableOcean(
+            Water* water,
+            bool spectrum_dirty
+        );
+        static void DisableOcean(Water* water);
         static bool IsOceanEnabled();
         // world space wave height at (x, z) from the readback of the gpu displacement, false when no ocean is active
         static bool GetOceanHeight(const float x, const float z, float& height);
@@ -352,6 +355,10 @@ namespace spartan
         static void Pass_WindField(RHI_CommandList* cmd_list);
         // passes - fft ocean
         static void Pass_Ocean(RHI_CommandList* cmd_list);
+        static void ResolveOceanHeightReadback(
+            uint32_t readback_index
+        );
+        static void ResetOceanHeightReadback();
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -510,9 +517,12 @@ namespace spartan
             bool                  grass_args_baked = false;
 
             // fft ocean, the registered water component owns the parameters, null means disabled
-            Water*        ocean                = nullptr;
-            bool          ocean_spectrum_dirty = true;
-            math::Vector3 ocean_wind           = math::Vector3::Zero; // last world wind used, re-seeds the spectrum on change
+            Water*        ocean                              = nullptr;
+            bool          ocean_spectrum_dirty               = true;
+            bool          ocean_displacement_produced        = false;
+            bool          ocean_displacement_history_valid   = false;
+            uint32_t      ocean_displacement_index           = 0;
+            math::Vector3 ocean_wind                         = math::Vector3::Zero; // last world wind used, re-seeds the spectrum on change
 
             void Reset()
             {

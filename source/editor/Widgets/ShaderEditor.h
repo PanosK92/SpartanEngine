@@ -44,15 +44,29 @@ private:
     void ShowShaderSource(float width, float height);
     void ShowShaderList(float width, float height);
     void ShowControls();
+    void ShowUnsavedChangesDialog();
     void GetShaderInstances();
-    void SelectShader(spartan::RHI_Shader* shader, const std::string& name);
-    void SaveAndCompile();
+    void RequestShaderSelection(
+        spartan::RHI_Shader* shader,
+        const std::string& name
+    );
+    void SelectShader(
+        spartan::RHI_Shader* shader,
+        const std::string& name
+    );
+    void ReloadShader();
+    bool SaveAndCompile();
 
     spartan::RHI_Shader* m_shader = nullptr;
+    spartan::RHI_Shader* m_pending_shader = nullptr;
     std::string m_shader_name     = "N/A";
+    std::string m_pending_shader_name;
     int32_t m_index_displayed     = -1;
+    int32_t m_stage_filter        = 0;
     bool m_first_run              = true;
     bool m_source_dirty           = false;
+    bool m_open_unsaved_dialog    = false;
+    float m_shader_list_width     = 290.0f;
     ImGuiTextFilter m_shader_filter;
     TextEditor m_text_editor;
     std::vector<spartan::RHI_Shader*> m_shaders;

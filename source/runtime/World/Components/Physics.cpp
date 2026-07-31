@@ -738,16 +738,27 @@ namespace spartan
             // archimedes capped so light bodies stay stable, split across the sample points
             const float force_per_point = min(buoyancy::water_density * gravity * volume, dynamic->getMass() * buoyancy::max_accel) * 0.25f;
 
-            float submersion = 0.0f;
             float heights[4] = {};
+            bool heights_valid = true;
             for (uint32_t i = 0; i < 4; i++)
             {
                 const PxVec3 point = center + offsets[i];
                 if (!Renderer::GetOceanHeight(point.x, point.z, heights[i]))
                 {
-                    return;
+                    heights_valid = false;
+                    break;
                 }
+            }
 
+            if (!heights_valid)
+            {
+                continue;
+            }
+
+            float submersion = 0.0f;
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                const PxVec3 point = center + offsets[i];
                 const float depth = heights[i] - bounds.minimum.y;
                 if (depth <= 0.0f)
                 {

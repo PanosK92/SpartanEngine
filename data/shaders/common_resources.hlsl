@@ -64,6 +64,9 @@ Texture2D<float4> tex_reservoir_prev2 : register(t24);
 Texture2D<float4> tex_reservoir_prev3 : register(t25);
 Texture2D<float4> tex_reservoir_prev4 : register(t26);
 
+// fft ocean displacement history
+Texture2DArray<float4> tex_ocean_displacement_previous : register(t27);
+
 // exposure resolved by the camera on the previous frame
 Texture2D<float> tex_effective_exposure : register(t28);
 
@@ -222,8 +225,8 @@ RWStructuredBuffer<uint> cluster_stats : register(u47);
 // declared rw for binding uniformity with the other indirect/cluster buffers, treated as read only inside the shader
 RWStructuredBuffer<uint> volumetric_light_indices : register(u48);
 
-// fft ocean vertical displacement per texel, one slice per cascade, host visible so the cpu can sample wave height for buoyancy
-RWStructuredBuffer<float> ocean_heights : register(u56);
+// fft ocean displacement per texel, one slice per cascade
+RWStructuredBuffer<float4> ocean_heights : register(u56);
 
 // restir paired spatial reuse tables, lin 2026 3, packed signed deltas to each pixel's partner
 // built once on the cpu, three concatenated tileable tables, treated read-only

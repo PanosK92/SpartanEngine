@@ -151,6 +151,9 @@ namespace spartan
         reservoir_prev3    = 25,
         reservoir_prev4    = 26,
 
+        // fft ocean displacement history
+        ocean_displacement_previous = 27,
+
         // camera exposure history
         tex_effective_exposure = 28,
 
@@ -455,11 +458,12 @@ namespace spartan
         // baked wind field, written each frame, sampled by depth_prepass/g_buffer/depth_light
         wind_field,
         // fft ocean, texture2d arrays with one slice per cascade
-        ocean_spectrum,      // persistent h0 spectrum
-        ocean_fft_a,         // working: height + x displacement
-        ocean_fft_b,         // working: z displacement
-        ocean_displacement,  // assembled displacement, sampled by water vs
-        ocean_normal,        // assembled slope + foam, sampled by water ps
+        ocean_spectrum,              // persistent h0 spectrum
+        ocean_fft_a,                 // working: height + x displacement
+        ocean_fft_b,                 // working: z displacement
+        ocean_displacement,          // assembled displacement, sampled by water vs
+        ocean_displacement_previous, // previous assembled displacement, sampled by water vs
+        ocean_normal,                // assembled slope + foam, sampled by water ps
         // debug
         debug_output,
         // vr stereo
@@ -506,7 +510,11 @@ namespace spartan
         ClusterLightIndices,       // flat list of light indices, sliced by cluster in chunks of CLUSTER_MAX_LIGHTS
         ClusterStats,              // tiny stats buffer for the cluster assign pass (overflow counter)
         VolumetricLightIndices,    // compact list of volumetric light indices, built on cpu each frame
-        OceanHeights,              // fft ocean vertical displacement per cascade texel, host visible for cpu buoyancy queries
+        OceanHeights,              // fft ocean displacement written by the gpu
+        OceanHeightsReadback0,     // frame rotated cpu readback
+        OceanHeightsReadback1,
+        OceanHeightsReadback2,
+        OceanHeightsReadback3,
         EmissiveTriangles,         // restir nee pool, rebuilt each frame from render components with non-zero emission
         RestirPairing,             // restir spatial reuse tables, built once when the reservoirs initialize
         // gpu-driven particles

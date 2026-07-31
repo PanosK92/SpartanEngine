@@ -39,16 +39,79 @@ namespace spartan
 {
     namespace
     {
-        // mapped gpu memory is uncached, buoyancy samples it every substep so it reads this ram copy, refreshed once per frame
-        vector<float> ocean_heights_cache;
-        uint64_t ocean_heights_cache_frame = numeric_limits<uint64_t>::max();
+        // cpu cache from the oldest completed gpu readback
+        vector<Vector4> ocean_heights_cache;
+        uint32_t ocean_readback_written_mask = 0;
+        array<
+            RHI_CommandList*,
+            renderer_draw_data_buffer_count
+        > ocean_readback_command_lists = {};
+
+        Renderer_Buffer ocean_height_readback_type(
+            const uint32_t index
+        )
+        {
+            return static_cast<Renderer_Buffer>(
+                static_cast<uint32_t>(
+                    Renderer_Buffer::OceanHeightsReadback0
+                ) +
+                index
+            );
+        }
+
+        uint32_t ocean_readback_index(
+            RHI_CommandList* cmd_list
+        )
+        {
+            for (
+                uint32_t i = 0;
+                i < renderer_draw_data_buffer_count;
+                i++
+            )
+            {
+                if (ocean_readback_command_lists[i] == cmd_list)
+                {
+                    return i;
+                }
+            }
+
+            for (
+                uint32_t i = 0;
+                i < renderer_draw_data_buffer_count;
+                i++
+            )
+            {
+                if (!ocean_readback_command_lists[i])
+                {
+                    ocean_readback_command_lists[i] = cmd_list;
+                    return i;
+                }
+            }
+
+            return numeric_limits<uint32_t>::max();
+        }
     }
 
     void Renderer::Pass_Ocean(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_displacement = GetRenderTarget(Renderer_RenderTarget::ocean_displacement);
-        RHI_Texture* tex_normal       = GetRenderTarget(Renderer_RenderTarget::ocean_normal);
-        if (!tex_displacement || !tex_normal)
+        RHI_Texture* tex_displacement_a = GetRenderTarget(
+            Renderer_RenderTarget::ocean_displacement
+        );
+        RHI_Texture* tex_displacement_b = GetRenderTarget(
+            Renderer_RenderTarget::ocean_displacement_previous
+        );
+        RHI_Texture* tex_normal = GetRenderTarget(
+            Renderer_RenderTarget::ocean_normal
+        );
+        RHI_Buffer* buffer_heights = GetBuffer(
+            Renderer_Buffer::OceanHeights
+        );
+        if (
+            !tex_displacement_a ||
+            !tex_displacement_b ||
+            !tex_normal ||
+            !buffer_heights
+        )
         {
             return;
         }
@@ -75,6 +138,15 @@ namespace spartan
             return;
         }
 
+        const uint32_t readback_index =
+            ocean_readback_index(cmd_list);
+        if (readback_index != numeric_limits<uint32_t>::max())
+        {
+            ResolveOceanHeightReadback(
+                readback_index
+            );
+        }
+
         RHI_Texture* tex_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_spectrum);
         RHI_Texture* tex_fft_a    = GetRenderTarget(Renderer_RenderTarget::ocean_fft_a);
         RHI_Texture* tex_fft_b    = GetRenderTarget(Renderer_RenderTarget::ocean_fft_b);
@@ -86,22 +158,59 @@ namespace spartan
         cascades             = cascades > renderer_ocean_max_cascades ? renderer_ocean_max_cascades : cascades;
 
         // wind comes from the world, re-seed the spectrum whenever it changes
-        const Vector3 wind     = World::GetWind();
-        const float wind_speed = wind.Length();
-        const float len_xz     = sqrtf(wind.x * wind.x + wind.z * wind.z);
-        const float dir_x      = len_xz > 0.0001f ? wind.x / len_xz : 1.0f;
-        const float dir_z      = len_xz > 0.0001f ? wind.z / len_xz : 0.0f;
+        const Vector3 wind = World::GetWind();
+        const float len_xz = sqrtf(
+            wind.x * wind.x +
+            wind.z * wind.z
+        );
+        const float wind_speed = len_xz;
+        const float dir_x =
+            len_xz > 0.0001f ?
+            wind.x / len_xz :
+            1.0f;
+        const float dir_z =
+            len_xz > 0.0001f ?
+            wind.z / len_xz :
+            0.0f;
         if (wind != m_pass_state.ocean_wind)
         {
             m_pass_state.ocean_spectrum_dirty = true;
             m_pass_state.ocean_wind           = wind;
         }
 
+        const bool reset_history =
+            m_pass_state.ocean_spectrum_dirty;
+        if (reset_history)
+        {
+            m_pass_state.ocean_displacement_index = 0;
+        }
+
+        if (
+            !reset_history &&
+            m_pass_state.ocean_displacement_produced
+        )
+        {
+            m_pass_state.ocean_displacement_index ^= 1;
+            m_pass_state.ocean_displacement_history_valid = true;
+        }
+        else
+        {
+            m_pass_state.ocean_displacement_history_valid = false;
+        }
+
+        RHI_Texture* tex_displacement =
+            m_pass_state.ocean_displacement_index == 0 ?
+            tex_displacement_a :
+            tex_displacement_b;
+
         // shared push constants, the cascade lengths are packed across the value slots
         m_pcb_pass_cpu.set_f3_value(dir_x, dir_z, wind_speed);
         m_pcb_pass_cpu.set_f3_value2(lengths[0], lengths[1], lengths[2]);
         m_pcb_pass_cpu.set_f4_value(water->GetAmplitude(), water->GetChoppiness(), water->GetDisplacementScale(), water->GetNormalStrength());
-        m_pcb_pass_cpu.set_f2_value(lengths[3], 0.0f);
+        m_pcb_pass_cpu.set_f2_value(
+            lengths[3],
+            reset_history ? 1.0f : 0.0f
+        );
 
         cmd_list->BeginTimeblock("ocean");
         {
@@ -169,56 +278,177 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement, tex_displacement);
                 cmd_list->SetTexture(Renderer_BindingsUav::ocean_normal, tex_normal);
-                cmd_list->SetBuffer(Renderer_BindingsUav::ocean_heights, GetBuffer(Renderer_Buffer::OceanHeights));
+                cmd_list->PrepareBufferForCompute(
+                    buffer_heights
+                );
+                cmd_list->SetBuffer(
+                    Renderer_BindingsUav::ocean_heights,
+                    buffer_heights
+                );
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(n / 8, n / 8, cascades);
             }
+
+            RHI_Buffer* buffer_readback =
+                readback_index != numeric_limits<uint32_t>::max() ?
+                GetBuffer(
+                    ocean_height_readback_type(
+                        readback_index
+                    )
+                ) :
+                nullptr;
+            if (buffer_readback)
+            {
+                cmd_list->PrepareBufferForReadback(
+                    buffer_heights
+                );
+                cmd_list->CopyBufferToBuffer(
+                    buffer_heights,
+                    buffer_readback,
+                    buffer_heights->GetObjectSize()
+                );
+                ocean_readback_written_mask |=
+                    1u << readback_index;
+            }
+
+            m_pass_state.ocean_displacement_produced = true;
         }
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::ResolveOceanHeightReadback(
+        const uint32_t readback_index
+    )
+    {
+        if (
+            (
+                ocean_readback_written_mask &
+                (1u << readback_index)
+            ) ==
+            0
+        )
+        {
+            return;
+        }
+
+        RHI_Buffer* buffer = GetBuffer(
+            ocean_height_readback_type(
+                readback_index
+            )
+        );
+        if (!buffer || !buffer->GetMappedData())
+        {
+            return;
+        }
+
+        const size_t element_count =
+            static_cast<size_t>(
+                renderer_ocean_heights_resolution
+            ) *
+            renderer_ocean_heights_resolution *
+            renderer_ocean_max_cascades;
+        ocean_heights_cache.resize(element_count);
+        memcpy(
+            ocean_heights_cache.data(),
+            buffer->GetMappedData(),
+            buffer->GetObjectSize()
+        );
+    }
+
+    void Renderer::ResetOceanHeightReadback()
+    {
+        ocean_heights_cache.clear();
+        ocean_readback_written_mask = 0;
+        ocean_readback_command_lists.fill(nullptr);
     }
 
     bool Renderer::GetOceanHeight(const float x, const float z, float& height)
     {
         const Water* water = m_pass_state.ocean;
-        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::OceanHeights);
-        if (!water || !buffer || !buffer->GetMappedData())
+        if (!water || ocean_heights_cache.empty())
         {
             return false;
         }
 
-        // refresh the cached ram copy once per rendered frame, see comment at the top of the file
         const int n = static_cast<int>(renderer_ocean_heights_resolution);
-        if (ocean_heights_cache_frame != m_frame_num)
-        {
-            ocean_heights_cache.resize(static_cast<size_t>(n) * n * renderer_ocean_max_cascades);
-            memcpy(ocean_heights_cache.data(), buffer->GetMappedData(), ocean_heights_cache.size() * sizeof(float));
-            ocean_heights_cache_frame = m_frame_num;
-        }
-        const float* heights = ocean_heights_cache.data();
 
         // mirror the gpu sampler, uv = world_xz / cascade_length with wrap addressing and bilinear filtering
         const float* lengths = water->GetCascadeLengths();
         uint32_t cascades    = water->GetCascadeCount();
+        cascades             = cascades < 1 ? 1 : cascades;
         cascades             = cascades > renderer_ocean_max_cascades ? renderer_ocean_max_cascades : cascades;
-        height               = water->GetSeaLevel();
-        for (uint32_t c = 0; c < cascades; c++)
+
+        auto sample_displacement =
+            [&](const uint32_t cascade, const float sample_x, const float sample_z)
+            {
+                const Vector4* slice =
+                    ocean_heights_cache.data() +
+                    cascade * n * n;
+                // samples come from full resolution texels zero four eight
+                const float fx =
+                    sample_x / lengths[cascade] * n -
+                    0.125f;
+                const float fz =
+                    sample_z / lengths[cascade] * n -
+                    0.125f;
+                const int x0   = static_cast<int>(floorf(fx));
+                const int z0   = static_cast<int>(floorf(fz));
+                const float tx = fx - x0;
+                const float tz = fz - z0;
+                const int x0w  = x0 & (n - 1);
+                const int x1w  = (x0 + 1) & (n - 1);
+                const int z0w  = z0 & (n - 1);
+                const int z1w  = (z0 + 1) & (n - 1);
+
+                const Vector4& d00 = slice[z0w * n + x0w];
+                const Vector4& d10 = slice[z0w * n + x1w];
+                const Vector4& d01 = slice[z1w * n + x0w];
+                const Vector4& d11 = slice[z1w * n + x1w];
+
+                auto bilinear =
+                    [&](const float v00, const float v10, const float v01, const float v11)
+                    {
+                        return
+                            (v00 * (1.0f - tx) + v10 * tx) *
+                            (1.0f - tz) +
+                            (v01 * (1.0f - tx) + v11 * tx) *
+                            tz;
+                    };
+
+                return Vector3(
+                    bilinear(d00.x, d10.x, d01.x, d11.x),
+                    bilinear(d00.y, d10.y, d01.y, d11.y),
+                    bilinear(d00.z, d10.z, d01.z, d11.z)
+                );
+            };
+
+        Vector2 grid_position(x, z);
+        for (uint32_t iteration = 0; iteration < 3; iteration++)
         {
-            const float* slice = heights + c * n * n;
-            const float fx     = x / lengths[c] * n - 0.5f;
-            const float fz     = z / lengths[c] * n - 0.5f;
-            const int x0       = static_cast<int>(floorf(fx));
-            const int z0       = static_cast<int>(floorf(fz));
-            const float tx     = fx - x0;
-            const float tz     = fz - z0;
-            const int x0w      = x0 & (n - 1);
-            const int x1w      = (x0 + 1) & (n - 1);
-            const int z0w      = z0 & (n - 1);
-            const int z1w      = (z0 + 1) & (n - 1);
-            const float h00    = slice[z0w * n + x0w];
-            const float h10    = slice[z0w * n + x1w];
-            const float h01    = slice[z1w * n + x0w];
-            const float h11    = slice[z1w * n + x1w];
-            height            += (h00 * (1.0f - tx) + h10 * tx) * (1.0f - tz) + (h01 * (1.0f - tx) + h11 * tx) * tz;
+            Vector2 horizontal_displacement = Vector2::Zero;
+            for (uint32_t cascade = 0; cascade < cascades; cascade++)
+            {
+                const Vector3 displacement = sample_displacement(
+                    cascade,
+                    grid_position.x,
+                    grid_position.y
+                );
+                horizontal_displacement.x += displacement.x;
+                horizontal_displacement.y += displacement.z;
+            }
+
+            grid_position.x = x - horizontal_displacement.x;
+            grid_position.y = z - horizontal_displacement.y;
+        }
+
+        height = water->GetSeaLevel();
+        for (uint32_t cascade = 0; cascade < cascades; cascade++)
+        {
+            height += sample_displacement(
+                cascade,
+                grid_position.x,
+                grid_position.y
+            ).y;
         }
 
         return true;

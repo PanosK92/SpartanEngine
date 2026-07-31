@@ -2198,15 +2198,49 @@ namespace spartan
         return m_pass_state.grass_enabled;
     }
 
-    void Renderer::EnableOcean(Water* water)
+    void Renderer::EnableOcean(
+        Water* water,
+        const bool spectrum_dirty
+    )
     {
-        m_pass_state.ocean                = water;
-        m_pass_state.ocean_spectrum_dirty = true; // re-seed the spectrum whenever parameters change
+        if (!water)
+        {
+            return;
+        }
+
+        const bool ocean_changed = m_pass_state.ocean != water;
+        if (ocean_changed)
+        {
+            m_pass_state.ocean_displacement_produced      = false;
+            m_pass_state.ocean_displacement_history_valid = false;
+            m_pass_state.ocean_displacement_index         = 0;
+            ResetOceanHeightReadback();
+        }
+
+        m_pass_state.ocean = water;
+        if (ocean_changed || spectrum_dirty)
+        {
+            m_pass_state.ocean_spectrum_dirty = true;
+            if (!ocean_changed)
+            {
+                ResetOceanHeightReadback();
+            }
+        }
     }
 
-    void Renderer::DisableOcean()
+    void Renderer::DisableOcean(Water* water)
     {
-        m_pass_state.ocean = nullptr;
+        if (m_pass_state.ocean != water)
+        {
+            return;
+        }
+
+        m_pass_state.ocean                              = nullptr;
+        m_pass_state.ocean_spectrum_dirty               = true;
+        m_pass_state.ocean_displacement_produced        = false;
+        m_pass_state.ocean_displacement_history_valid   = false;
+        m_pass_state.ocean_displacement_index           = 0;
+        ResetOceanHeightReadback();
     }
 
     bool Renderer::IsOceanEnabled()
@@ -3790,11 +3824,38 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
         }
 
-        RHI_Texture* tex_ocean_disp = GetRenderTarget(Renderer_RenderTarget::ocean_displacement);
-        RHI_Texture* tex_ocean_norm = GetRenderTarget(Renderer_RenderTarget::ocean_normal);
+        Renderer_RenderTarget ocean_displacement_current =
+            m_pass_state.ocean_displacement_index == 0 ?
+            Renderer_RenderTarget::ocean_displacement :
+            Renderer_RenderTarget::ocean_displacement_previous;
+        Renderer_RenderTarget ocean_displacement_previous =
+            m_pass_state.ocean_displacement_history_valid ?
+            (
+                m_pass_state.ocean_displacement_index == 0 ?
+                Renderer_RenderTarget::ocean_displacement_previous :
+                Renderer_RenderTarget::ocean_displacement
+            ) :
+            ocean_displacement_current;
+
+        RHI_Texture* tex_ocean_disp = GetRenderTarget(
+            ocean_displacement_current
+        );
+        RHI_Texture* tex_ocean_disp_previous = GetRenderTarget(
+            ocean_displacement_previous
+        );
+        RHI_Texture* tex_ocean_norm = GetRenderTarget(
+            Renderer_RenderTarget::ocean_normal
+        );
         if (is_graphics_queue && tex_ocean_disp)
         {
             cmd_list->SetTexture(Renderer_BindingsSrv::ocean_displacement, tex_ocean_disp);
+        }
+        if (is_graphics_queue && tex_ocean_disp_previous)
+        {
+            cmd_list->SetTexture(
+                Renderer_BindingsSrv::ocean_displacement_previous,
+                tex_ocean_disp_previous
+            );
         }
         if (is_graphics_queue && tex_ocean_norm)
         {

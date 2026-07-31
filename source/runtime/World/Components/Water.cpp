@@ -45,14 +45,46 @@ namespace spartan
 {
     Water::Water(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cascade_count,     uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_amplitude,         float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_choppiness,        float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_displacement_scale, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_strength,   float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sea_level,         float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_turbidity,         float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_caustics_intensity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_cascade_count,
+            SetCascadeCount,
+            uint32_t
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_amplitude,
+            SetAmplitude,
+            float
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_choppiness,
+            SetChoppiness,
+            float
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_displacement_scale,
+            SetDisplacementScale,
+            float
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_normal_strength,
+            SetNormalStrength,
+            float
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_sea_level,
+            SetSeaLevel,
+            float
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_turbidity,
+            SetTurbidity,
+            float
+        );
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(
+            m_caustics_intensity,
+            SetCausticsIntensity,
+            float
+        );
     }
 
     Water::~Water()
@@ -63,7 +95,7 @@ namespace spartan
     void Water::Initialize()
     {
         BuildSurface();
-        PushToRenderer();
+        PushToRenderer(true);
     }
 
     void Water::Tick()
@@ -84,7 +116,7 @@ namespace spartan
 
     void Water::Remove()
     {
-        Renderer::DisableOcean();
+        Renderer::DisableOcean(this);
     }
 
     void Water::BuildSurface()
@@ -119,15 +151,14 @@ namespace spartan
         }
     }
 
-    void Water::PushToRenderer()
+    void Water::PushToRenderer(const bool spectrum_dirty)
     {
         if (!m_mesh || !m_material)
         {
             return;
         }
 
-        // the renderer reads the parameters straight from this component, registering marks the spectrum dirty
-        Renderer::EnableOcean(this);
+        Renderer::EnableOcean(this, spectrum_dirty);
     }
 
     void Water::Save(pugi::xml_node& node)
@@ -151,7 +182,18 @@ namespace spartan
             return;
         }
 
-        m_cascade_count      = water.attribute("cascade_count").as_uint(m_cascade_count);
+        const uint32_t cascade_count =
+            water.attribute("cascade_count").as_uint(
+                m_cascade_count
+            );
+        m_cascade_count =
+            cascade_count < 1 ?
+            1 :
+            (
+                cascade_count > cascade_max ?
+                cascade_max :
+                cascade_count
+            );
         m_amplitude          = water.attribute("amplitude").as_float(m_amplitude);
         m_choppiness         = water.attribute("choppiness").as_float(m_choppiness);
         m_displacement_scale = water.attribute("displacement_scale").as_float(m_displacement_scale);
@@ -160,6 +202,6 @@ namespace spartan
         m_turbidity          = water.attribute("turbidity").as_float(m_turbidity);
         m_caustics_intensity = water.attribute("caustics_intensity").as_float(m_caustics_intensity);
 
-        PushToRenderer();
+        PushToRenderer(true);
     }
 }

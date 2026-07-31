@@ -38,13 +38,13 @@ static const float3 cloud_earth_center = planet_earth_center;
 // cumulus layer, the top is high enough for towering congestus, the per-cloud type profile
 // keeps flat stratocumulus topping out in the lower quarter of the layer so the tall ceiling
 // only gets filled where the weather map says a cloud is a tower
-static const float cumulus_bottom_alt     = 500.0;
-static const float cumulus_top_alt        = 9000.0;
+static const float cumulus_bottom_alt     = 1500.0;
+static const float cumulus_top_alt        = 8000.0;
 static const float cumulus_thickness      = cumulus_top_alt - cumulus_bottom_alt;
-static const float cumulus_shape_scale    = 1.0 / 6000.0;   // one tile of the noise volume covers 6 km horizontally, big heroic forms
-static const float cumulus_coverage_scale = 1.0 / 26000.0;  // weather map domain, pushes tile repeats out toward the horizon
-static const float cumulus_density_mul    = 1.15;
-static const float cumulus_top_alt_max    = 8900.0;
+static const float cumulus_shape_scale    = 1.0 / 12000.0;
+static const float cumulus_detail_scale   = 1.0 / 2600.0;
+static const float cumulus_coverage_scale = 1.0 / 60000.0;
+static const float cumulus_density_mul    = 1.30;
 
 // coverage is authored on the directional light component, 0 = clear sky, 1 = overcast,
 // fair weather sits around 0.30 - 0.45, cirrus rides along at a fixed ratio so both layers
@@ -60,32 +60,15 @@ float cloud_coverage_cirrus()
 }
 static const float cumulus_sigma_t        = 0.012;
 
-// domain warp, breaks up the visible grid alignment of the noise volume so cloud puffs
-// do not appear in lanes and neighbouring puffs do not share shapes. the shape warp varies
-// on a scale ~3.5x slower than the shape tile, so whole puffs get translated organically
-// without any internal shearing that would stretch them into strips
-static const float cumulus_warp_scale         = 1.0 / 45000.0;
-static const float cumulus_warp_amplitude     = 7000.0;
-static const float cumulus_shape_warp_scale   = 1.0 / 22000.0;
-static const float cumulus_shape_warp         = 1700.0;
-
-// per-cloud altitude offset, breaks up the visual sense of a uniform invisible dome that
-// all clouds hug. faster noise scale than the weather domain so neighbouring clouds within
-// a single weather region still get different base altitudes, otherwise each cluster reads
-// as a flat plate even when the cluster-to-cluster variation is large
-static const float cumulus_shell_padding      = 1200.0;
-
-// wind shear in meters at the top of the layer, higher samples fetch their noise from upwind
-// so clouds visibly lean downwind with altitude like real convective towers
-static const float cumulus_shear              = 350.0;
+static const float cumulus_shell_padding      = 0.0;
 
 // cirrus layer
 static const float cirrus_bottom_alt      = 7000.0;
 static const float cirrus_top_alt         = 13000.0;
 static const float cirrus_thickness       = cirrus_top_alt - cirrus_bottom_alt;
 static const float cirrus_noise_scale     = 1.0 / 12000.0;
-static const float cirrus_density_mul     = 0.05;
-static const float cirrus_sigma_t         = 0.002;
+static const float cirrus_density_mul     = 0.015;
+static const float cirrus_sigma_t         = 0.001;
 static const float3 cirrus_streak_axis    = float3(1.0, 0.0, 0.0); // direction of the wispy streaks
 
 float cloud_cirrus_weight(float altitude)
@@ -109,16 +92,14 @@ static const float3 cirrus_wind_offset    = float3(4321.0, 0.0, 8765.0);
 static const float cumulus_wind_speed_mul = 1.5;
 static const float cirrus_wind_speed_mul  = 5.0;
 
-// slow evolution moves only low frequency warp fields so fine detail remains coherent
-static const float cumulus_evolve_rate    = 3.0;
 static const float cirrus_evolve_rate     = 1.0;
 
 // lighting, high contrast between shaded bases and lit tops is what makes cumulus read as
 // sculpted volumes instead of uniformly lit fog, the bounce keeps midday undersides grey
 // blue rather than black and fades with height so tops are shaped purely by the sun
-static const float3 cloud_ambient_bottom  = float3(0.10, 0.14, 0.24); // deep cool shaded base
+static const float3 cloud_ambient_bottom  = float3(0.22, 0.25, 0.32); // deep cool shaded base
 static const float3 cloud_ambient_top     = float3(0.95, 0.95, 0.99); // bright lit top
-static const float  cloud_ambient_factor  = 0.12;   // ambient strength relative to sun luminance
+static const float  cloud_ambient_factor  = 0.18;   // ambient strength relative to sun luminance
 static const float3 cloud_ground_bounce   = float3(0.045, 0.038, 0.028); // warm terrain bounce onto the undersides
 static const float  cloud_albedo          = 0.97;   // single scattering albedo, near 1 for water clouds
 
@@ -147,7 +128,6 @@ static const int    cumulus_weather_interval = 3;
 // well inside that range and the border fade hands the rest of the world back to unshadowed
 static const float cloud_shadow_half_extent = 8000.0;
 static const int   cloud_shadow_steps       = 32;
-static const int   cloud_shadow_cirrus_steps = 8;
 static const float cloud_shadow_min_sun_y   = 0.087; // ~5 degrees, keeps the projection bounded at grazing sun
 
 // =====================================================================
@@ -259,14 +239,19 @@ float cloud_perlin_fbm(float3 p, int base_cells)
     return saturate(v / 0.9375);
 }
 
-// schneider remap, expands the range of a value
-float cloud_remap(float v, float old_min, float old_max, float new_min, float new_max)
+float cloud_remap(
+    float value,
+    float old_min,
+    float old_max,
+    float new_min,
+    float new_max)
 {
-    return new_min + saturate((v - old_min) / max(old_max - old_min, 1e-6)) * (new_max - new_min);
+    float range = max(old_max - old_min, 1e-6);
+    float t     = saturate((value - old_min) / range);
+    return lerp(new_min, new_max, t);
 }
 
-// soft remap, same range stretch as cloud_remap but the ends are quintic faded so a density
-// that sits near a threshold does not flip on and off across neighbouring noise texel planes
+// soft remap keeps threshold transitions smooth across neighbouring noise texels
 float cloud_remap_soft(float v, float old_min, float old_max, float new_min, float new_max)
 {
     float t = saturate((v - old_min) / max(old_max - old_min, 1e-6));
@@ -314,31 +299,6 @@ float4 cloud_sample_noise(Texture3D noise, SamplerState samp, float3 uvw)
     return noise.SampleLevel(samp, frac(s), 0);
 }
 
-float4 cloud_sample_noise_vertical_cubic(Texture3D noise, SamplerState samp, float3 uvw)
-{
-    float y = uvw.y * cloud_noise_dims - 0.5;
-    float y_base = floor(y);
-    float f = y - y_base;
-    float f2 = f * f;
-    float f3 = f2 * f;
-    float w0 = (1.0 - 3.0 * f + 3.0 * f2 - f3) / 6.0;
-    float w1 = (4.0 - 6.0 * f2 + 3.0 * f3) / 6.0;
-    float w2 = (1.0 + 3.0 * f + 3.0 * f2 - 3.0 * f3) / 6.0;
-    float w3 = f3 / 6.0;
-    float g0 = w0 + w1;
-    float g1 = w2 + w3;
-    float y0 = (y_base - 0.5 + w1 / g0) / cloud_noise_dims;
-    float y1 = (y_base + 1.5 + w3 / g1) / cloud_noise_dims;
-    float2 xz = uvw.xz * cloud_noise_dims - 0.5;
-    float2 xz_base = floor(xz);
-    float2 xz_fraction = xz - xz_base;
-    xz_fraction = xz_fraction * xz_fraction * xz_fraction * (xz_fraction * (xz_fraction * 6.0 - 15.0) + 10.0);
-    float2 xz_smooth = (xz_base + 0.5 + xz_fraction) / cloud_noise_dims;
-    float3 uvw0 = float3(xz_smooth.x, y0, xz_smooth.y);
-    float3 uvw1 = float3(xz_smooth.x, y1, xz_smooth.y);
-    return noise.SampleLevel(samp, frac(uvw0), 0) * g0 + noise.SampleLevel(samp, frac(uvw1), 0) * g1;
-}
-
 // low-frequency domain warp, returns a meter-space offset that we add to the sample position
 // before reading the cloud noise. the warp itself tiles at a much larger scale than the
 // thing it warps, so the combined pattern has an effective period far beyond the visible horizon
@@ -350,39 +310,32 @@ float3 cloud_domain_warp(Texture3D noise, SamplerState samp, float3 pos, float s
     return v * amplitude;
 }
 
-float2 cloud_altitude_range(Texture3D noise, SamplerState samp, float3 pos, float cloud_type)
-{
-    float3 uvw = pos * (1.0 / 40000.0) + 0.347;
-    uvw.y = 0.5;
-    float4 altitude_noise = cloud_sample_noise(noise, samp, uvw);
-    float base_noise = saturate((altitude_noise.g - 0.15) / 0.65);
-    float class_noise = saturate((altitude_noise.a - 0.30) / 0.40);
-    float development_noise = saturate((altitude_noise.b - 0.15) / 0.65);
-    float tower_weight = smoothstep(0.55, 0.85, cloud_type);
-    float mid_weight = smoothstep(0.64, 0.80, class_noise) * (1.0 - tower_weight);
-    float low_base = lerp(700.0, 2000.0, base_noise);
-    float mid_base = lerp(2400.0, 4300.0, base_noise);
-    float tower_base = lerp(700.0, 1600.0, base_noise);
-    float low_thickness = lerp(900.0, 2500.0, development_noise);
-    float mid_thickness = lerp(1600.0, 3500.0, development_noise);
-    float tower_thickness = lerp(4500.0, 7800.0, saturate(cloud_type * 0.65 + development_noise * 0.35));
-    float base_altitude = lerp(lerp(low_base, mid_base, mid_weight), tower_base, tower_weight);
-    float thickness = lerp(lerp(low_thickness, mid_thickness, mid_weight), tower_thickness, tower_weight);
-    return float2(base_altitude, min(base_altitude + thickness, cumulus_top_alt_max));
-}
-
 // =====================================================================
 // shape / density
 // =====================================================================
 
-// cumulus vertical profile, flat-ish bottom and rounded top, mirrors the schneider cumulus curve
-// bottom stays near the nominal base so forms read as puffy volumes instead of hanging smoke
-// tendrils, the top fades smoothly over the upper half so the silhouette has curving domes
-float cloud_height_profile_cumulus(float h_norm)
+float cloud_height_profile_cumulus(
+    float h_norm,
+    float cloud_type)
 {
-    float bottom = smoothstep(-0.04, 0.22, h_norm);
-    float top    = smoothstep(1.0, 0.56, h_norm);
-    return saturate(bottom * top);
+    float bottom = smoothstep(0.0, 0.10, h_norm);
+    float stratus = bottom *
+        smoothstep(0.32, 0.20, h_norm);
+    float stratocumulus = bottom *
+        smoothstep(0.65, 0.35, h_norm);
+    float cumulus = bottom *
+        smoothstep(1.0, 0.62, h_norm);
+
+    float low_types = lerp(
+        stratus,
+        stratocumulus,
+        saturate(cloud_type * 2.0)
+    );
+    return lerp(
+        low_types,
+        cumulus,
+        saturate(cloud_type * 2.0 - 1.0)
+    );
 }
 
 // cirrus vertical profile, soft hump centered in the layer
@@ -391,46 +344,51 @@ float cloud_height_profile_cirrus(float h_norm)
     return sin(saturate(h_norm) * PI);
 }
 
-// 2d procedural weather term, low-frequency horizontal coverage, drives where cumulus exists
-// the light-authored coverage directly controls the fraction of horizontal area that has cloud, the
-// (1 - coverage) threshold carves large clear regions instead of just biasing toward more cloud
-// the position is domain-warped before sampling so the underlying noise tile grid does not
-// appear as lanes of identical clumps across the sky, and a second much larger octave is
-// blended in so clouds cluster into organic regions instead of an even sprinkle
-// returns coverage in x and cloud type in y, type 0 is a low flat stratocumulus sheet and
-// type 1 is a towering congestus filling the whole layer
 float2 cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
 {
-    // drift the coverage map along the world wind direction so cloud regions translate over
-    // time instead of being parked over the same horizontal patches forever
     float3 pos_d = pos + cloud_wind_drift(cumulus_wind_speed_mul);
     pos_d.y      = 0.0;
-    float3 warp  = cloud_domain_warp(noise, samp, pos_d, cumulus_warp_scale, cumulus_warp_amplitude);
-    float3 wpos  = pos_d + warp;
-    
-    float3 uvw_a = wpos * cumulus_coverage_scale;
+
+    float3 uvw_a = pos_d * cumulus_coverage_scale;
     uvw_a.y      = 0.5;
     float4 na    = cloud_sample_noise(noise, samp, uvw_a + 0.123);
-    float wa     = na.r * 0.7 + na.g * 0.3;
-    
-    // large-scale modulator, pushes some areas toward cloudy, others toward clear, on a scale
-    // much bigger than the weather tile itself so visible repeats fall beyond the horizon
-    float3 uvw_b = wpos * (cumulus_coverage_scale * 0.35) + 0.781;
+
+    float3 uvw_b = pos_d *
+        (cumulus_coverage_scale * 0.37) +
+        0.781;
     uvw_b.y      = 0.5;
     float4 nb    = cloud_sample_noise(noise, samp, uvw_b);
-    float wb     = nb.r;
-    
-    float w        = lerp(wa, wb, 0.35);
-    float cov      = cloud_coverage_cumulus();
-    float thr      = 1.0 - cov;
-    float gain     = 1.0 / max(cov, 0.05);
-    float coverage = saturate((w - thr) * gain);
-    
-    // type rides a decorrelated channel of the large-scale sample and is pulled up by the
-    // coverage, so cloudy cores build into towers while fringe clouds stay low and flat.
-    // worley fbm concentrates around 0.35 - 0.6, the stretch expands that band to the full
-    // 0 - 1 type range, without it every cloud lands mid range and the sky shows one species
-    float type = saturate((nb.g - 0.32) * 2.4 + (coverage - 0.5) * 0.8);
+
+    float weather_signal = saturate(
+        (na.r * 0.70 + nb.r * 0.30) *
+        1.35
+    );
+    float authored_coverage = cloud_coverage_cumulus();
+    float overcast_weight = smoothstep(
+        0.75,
+        1.0,
+        authored_coverage
+    );
+    float overcast_signal =
+        0.55 +
+        weather_signal * 0.45;
+    float shaped_signal = lerp(
+        weather_signal,
+        overcast_signal,
+        overcast_weight
+    );
+    float coverage = cloud_remap_soft(
+        shaped_signal,
+        1.0 - authored_coverage,
+        1.0,
+        0.0,
+        1.0
+    );
+    float type = saturate(
+        0.55 +
+        (nb.b * 0.70 + na.g * 0.30) *
+        0.45
+    );
     return float2(coverage, type);
 }
 
@@ -439,56 +397,80 @@ float3 cloud_rotate_detail(float3 p)
     return float3(dot(p, float3(0.36, 0.48, 0.80)), dot(p, float3(-0.80, 0.60, 0.0)), dot(p, float3(-0.48, -0.64, 0.60)));
 }
 
+float cloud_shape_cumulus(float4 shape_noise)
+{
+    float worley_fbm =
+        shape_noise.g * 0.625 +
+        shape_noise.b * 0.250 +
+        shape_noise.a * 0.125;
+    return cloud_remap(
+        shape_noise.r,
+        -(1.0 - worley_fbm),
+        1.0,
+        0.0,
+        1.0
+    );
+}
+
 float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, float2 weather, out float h_norm)
 {
-    // height uses world space while wind translates only the noise field
-    float h           = length(pos - cloud_earth_center) - cloud_earth_radius;
-    float3 pos_n      = pos + cloud_wind_drift(cumulus_wind_speed_mul);
-    float2 altitude_range = cloud_altitude_range(noise, samp, pos_n, weather.y);
-    h_norm            = (h - altitude_range.x) / max(altitude_range.y - altitude_range.x, 1.0);
-    float profile     = cloud_height_profile_cumulus(h_norm);
+    float altitude = length(pos - cloud_earth_center) -
+        cloud_earth_radius;
+    h_norm = (altitude - cumulus_bottom_alt) /
+        cumulus_thickness;
+    float profile = cloud_height_profile_cumulus(
+        h_norm,
+        weather.y
+    );
     if (profile <= 0.0 || weather.x <= 0.0)
     {
         return 0.0;
     }
-    
-    // wind shear, higher samples fetch their noise from upwind so the cloud leans downwind
-    // with altitude, when the world wind is zero a fixed axis keeps the lean for character
-    float3 wind_h    = float3(buffer_frame.wind.x, 0.0, buffer_frame.wind.z);
-    float  wind_len  = length(wind_h);
-    float3 shear_dir = wind_len > 1e-3 ? wind_h / wind_len : float3(1.0, 0.0, 0.0);
-    pos_n           -= shear_dir * (cumulus_shear * saturate(h_norm));
-    
-    // single-octave domain warp at a scale ~3.5x slower than the shape tile, so whole puffs
-    // get curved as units instead of being internally sheared into smoke trails. enough to
-    // bend worley cell boundaries off the axis grid without dissolving the cumulus character
-    float3 shape_warp = cloud_domain_warp(noise, samp, pos_n + cloud_evolve_offset(cumulus_evolve_rate), cumulus_shape_warp_scale, cumulus_shape_warp);
-    float3 uvw        = (pos_n + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
-    
-    // mild vertical anisotropy, sheets stay a bit flatter than towers without collapsing into
-    // thin smoke pancakes
-    uvw.y            *= lerp(1.12, 1.0, weather.y);
-    float4 shape_n    = cloud_sample_noise_vertical_cubic(noise, samp, uvw);
-    
-    // base shape from low-freq perlin-worley (r), lightly eroded by mid-frequency worley fbm
-    // softer carve keeps rounded cauliflower cells instead of pointy smoke filaments
-    float fbm       = shape_n.g * 0.85 + shape_n.b * 0.15;
-    float base      = cloud_remap_soft(shape_n.r, fbm - 0.82, 1.0, 0.0, 1.0);
-    base            = cloud_remap_soft(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
-    if (base <= 0.0)
+
+    float3 pos_n = pos +
+        cloud_wind_drift(cumulus_wind_speed_mul) +
+        cumulus_wind_offset;
+    float4 shape_noise = cloud_sample_noise(
+        noise,
+        samp,
+        pos_n * cumulus_shape_scale
+    );
+    float base_shape = cloud_shape_cumulus(shape_noise);
+    float dimensional_profile = profile * weather.x;
+    float density = saturate(
+        base_shape -
+        (1.0 - dimensional_profile)
+    );
+    if (density <= 0.0)
     {
         return 0.0;
     }
-    
-    float3 detail_position = cloud_rotate_detail(pos_n + shape_warp * 0.35);
-    float4 detail_a = cloud_sample_noise(noise, samp, detail_position * (1.0 / 1400.0) + 0.217);
-    float detail     = detail_a.g * 0.70 + detail_a.b * 0.30;
-    float detail_amt = lerp(0.04, 0.08, weather.y);
-    float density    = saturate(cloud_remap_soft(base, detail * detail_amt, 1.0, 0.0, 1.0));
-    
-    // soft silhouette, keeps fringe volume so edges read as fluffy instead of razor wisps
-    density = cloud_remap_soft(density, 0.02, 0.78, 0.0, 1.0);
-    return density * cumulus_density_mul;
+
+    float3 detail_position = cloud_rotate_detail(pos_n);
+    float4 detail_noise = cloud_sample_noise(
+        noise,
+        samp,
+        detail_position * cumulus_detail_scale +
+        0.217
+    );
+    float detail_fbm =
+        detail_noise.g * 0.625 +
+        detail_noise.b * 0.250 +
+        detail_noise.a * 0.125;
+    detail_fbm = lerp(
+        1.0 - detail_fbm,
+        detail_fbm,
+        saturate(h_norm * 10.0)
+    );
+    density = cloud_remap(
+        density,
+        detail_fbm * 0.16,
+        1.0,
+        0.0,
+        1.0
+    );
+    return pow(saturate(density), 0.65) *
+        cumulus_density_mul;
 }
 
 // low frequency density for the sun shadow march, the horizon zero dawn trick, shadow rays
@@ -497,30 +479,35 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
 // missing erosion only deepens self-shadow marginally and is visually near lossless
 float cloud_density_cumulus_cheap(float3 pos, Texture3D noise, SamplerState samp, float2 weather)
 {
-    float h           = length(pos - cloud_earth_center) - cloud_earth_radius;
-    float3 pos_n      = pos + cloud_wind_drift(cumulus_wind_speed_mul);
-    float2 altitude_range = cloud_altitude_range(noise, samp, pos_n, weather.y);
-    float h_norm      = (h - altitude_range.x) / max(altitude_range.y - altitude_range.x, 1.0);
-    float profile     = cloud_height_profile_cumulus(h_norm);
+    float altitude = length(pos - cloud_earth_center) -
+        cloud_earth_radius;
+    float h_norm = (altitude - cumulus_bottom_alt) /
+        cumulus_thickness;
+    float profile = cloud_height_profile_cumulus(
+        h_norm,
+        weather.y
+    );
     if (profile <= 0.0 || weather.x <= 0.0)
     {
         return 0.0;
     }
-    
-    // shear kept so the shadow column leans with the cloud body
-    float3 wind_h    = float3(buffer_frame.wind.x, 0.0, buffer_frame.wind.z);
-    float  wind_len  = length(wind_h);
-    float3 shear_dir = wind_len > 1e-3 ? wind_h / wind_len : float3(1.0, 0.0, 0.0);
-    pos_n           -= shear_dir * (cumulus_shear * saturate(h_norm));
-    
-    float3 uvw = (pos_n + cumulus_wind_offset) * cumulus_shape_scale;
-    uvw.y     *= lerp(1.12, 1.0, weather.y);
-    float4 shape_n = cloud_sample_noise_vertical_cubic(noise, samp, uvw);
-    
-    float fbm  = shape_n.g * 0.85 + shape_n.b * 0.15;
-    float base = cloud_remap_soft(shape_n.r, fbm - 0.82, 1.0, 0.0, 1.0);
-    base       = cloud_remap_soft(base * profile, 1.0 - weather.x, 1.0, 0.0, 1.0);
-    return saturate(base) * cumulus_density_mul;
+
+    float3 pos_n = pos +
+        cloud_wind_drift(cumulus_wind_speed_mul) +
+        cumulus_wind_offset;
+    float4 shape_noise = cloud_sample_noise(
+        noise,
+        samp,
+        pos_n * cumulus_shape_scale
+    );
+    float base_shape = cloud_shape_cumulus(shape_noise);
+    float dimensional_profile = profile * weather.x;
+    float density = saturate(
+        base_shape -
+        (1.0 - dimensional_profile)
+    );
+    return pow(density, 0.65) *
+        cumulus_density_mul;
 }
 
 float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
@@ -596,13 +583,13 @@ float cloud_phase(float cos_theta, float g_scale = 1.0)
     return forward * 0.50 + back * 0.35 + halo * 0.15;
 }
 
-// powder term derived from the sun-ray optical depth, thin crevices darken when the sun is
-// behind the viewer while thick interiors stay lit, toward the sun it converges to 1 so the
-// silver lining keeps its full forward-scatter brightness
-float cloud_powder(float sun_od, float cos_theta)
+// powder uses local density so unshadowed edges do not lose their direct light
+float cloud_powder(float density, float cos_theta)
 {
-    float powder = 1.0 - exp(-2.0 * sun_od * cumulus_sigma_t);
-    return lerp(1.0, powder, saturate(0.5 - 0.5 * cos_theta));
+    float powder      = 1.0 - exp(-2.0 * density);
+    float back_weight = saturate(0.5 - 0.5 * cos_theta);
+    float powder_term = lerp(0.75, 1.0, powder);
+    return lerp(1.0, powder_term, back_weight);
 }
 
 // transmittance lut lookup matching the skysphere uv mapping, replicated here so clouds.hlsl
@@ -642,13 +629,27 @@ float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transm
 float cloud_sun_optical_depth_cumulus(
     float3 pos, float3 sun_dir,
     Texture3D noise, SamplerState samp,
-    float2 weather)
+    float2 weather, float jitter)
 {
     float optical_depth = 0.0;
-    optical_depth += cloud_density_cumulus_cheap(pos + sun_dir * 100.0, noise, samp, weather) * 200.0;
-    optical_depth += cloud_density_cumulus_cheap(pos + sun_dir * 400.0, noise, samp, weather) * 500.0;
-    optical_depth += cloud_density_cumulus_cheap(pos + sun_dir * 1000.0, noise, samp, weather) * 1200.0;
-    optical_depth += cloud_density_cumulus_cheap(pos + sun_dir * 2600.0, noise, samp, weather) * 3000.0;
+    float distance = 0.0;
+    static const float step_lengths[4] =
+    {
+        200.0,
+        500.0,
+        1200.0,
+        3000.0
+    };
+
+    [unroll]
+    for (int i = 0; i < 4; i++)
+    {
+        float step_length = step_lengths[i];
+        float offset      = frac(jitter + float(i) * 0.6180339887);
+        float3 p          = pos + sun_dir * (distance + step_length * offset);
+        optical_depth    += cloud_density_cumulus_cheap(p, noise, samp, weather) * step_length;
+        distance         += step_length;
+    }
     return optical_depth;
 }
 
@@ -793,7 +794,7 @@ void cloud_march_cumulus(
     float3 cam_pos, float3 view_dir, float3 sun_dir,
     Texture3D noise_tex, Texture2D transmittance_lut,
     SamplerState samp_noise, SamplerState samp_lut,
-    float max_distance,
+    float jitter, float max_distance,
     inout float3 in_scatter, inout float transmittance,
     inout float distance_weight, inout float opacity_weight)
 {
@@ -836,7 +837,8 @@ void cloud_march_cumulus(
             cumulus_step_max,
             smoothstep(4000.0, 30000.0, t)
         );
-        float t_s = t + step_size * 0.5;
+        float sample_offset = frac(jitter + float(march_i) * 0.6180339887);
+        float t_s = t + step_size * sample_offset;
         if (t_s >= t_max)
         {
             break;
@@ -870,7 +872,8 @@ void cloud_march_cumulus(
             float ext         = density * cumulus_sigma_t;
             float step_trans  = exp(-ext * step_size);
             
-            float sun_od      = cloud_sun_optical_depth_cumulus(pos, sun_dir, noise_tex, samp_noise, weather);
+            float light_jitter = frac(jitter + float(march_i) * 0.7548776662);
+            float sun_od      = cloud_sun_optical_depth_cumulus(pos, sun_dir, noise_tex, samp_noise, weather, light_jitter);
             float3 sun_light  = cloud_sun_illuminance(pos, sun_dir, transmittance_lut, samp_lut);
             float3 sun_scat   = cloud_multiscatter_attenuation(sun_light, sun_od, cos_th);
             
@@ -896,7 +899,9 @@ void cloud_march_cumulus(
             
             float moon_elev_c = dot(moon_dir, float3(0.0, 1.0, 0.0));
             float moon_vis    = smoothstep(-0.05, 0.12, moon_elev_c);
-            float3 direct       = (sun_scat * day_w + moon_scat * night_w * moon_vis) * cloud_powder(sun_od, cos_th);
+            float3 direct =
+                (sun_scat * day_w + moon_scat * night_w * moon_vis) *
+                cloud_powder(density, cos_th);
             float3 luminance_in = direct + ambient;
             float3 s_int        = cloud_albedo * luminance_in * (1.0 - step_trans);
             
@@ -926,7 +931,7 @@ void cloud_march_cirrus(
     float3 cam_pos, float3 view_dir, float3 sun_dir,
     Texture3D noise_tex, Texture2D transmittance_lut,
     SamplerState samp_noise, SamplerState samp_lut,
-    float max_distance,
+    float jitter, float max_distance,
     inout float3 in_scatter, inout float transmittance,
     inout float distance_weight, inout float opacity_weight)
 {
@@ -945,7 +950,7 @@ void cloud_march_cirrus(
         return;
     }
     float dt     = (t_max - shell.x) / cirrus_view_steps;
-    float t      = shell.x + dt * 0.5;
+    float t      = shell.x;
     float cos_th = dot(view_dir, sun_dir);
     float phase  = cloud_phase(cos_th);
     
@@ -957,7 +962,9 @@ void cloud_march_cirrus(
             break;
         }
         
-        float3 pos     = cam_pos + view_dir * t;
+        float sample_offset = frac(jitter + float(i) * 0.6180339887);
+        float t_s            = t + dt * sample_offset;
+        float3 pos           = cam_pos + view_dir * t_s;
         float density  = cloud_density_cirrus(pos, noise_tex, samp_noise);
         
         if (density > 0.001)
@@ -989,14 +996,14 @@ void cloud_march_cirrus(
             // aerial perspective, same model as the cumulus march. cirrus is higher up so the
             // haze along grazing rays is a bit thinner, but the effect is significant enough
             // that distant wisps would otherwise wrap around the camera as a high ring
-            float aerial_t      = exp(-t * cloud_aerial_falloff);
+            float aerial_t      = exp(-t_s * cloud_aerial_falloff);
             float effective_trans = lerp(1.0, step_trans, aerial_t);
             
             float3 s_int   = cloud_albedo * scat * (1.0 - step_trans);
             in_scatter    += transmittance * s_int * aerial_t;
             transmittance *= effective_trans;
             float opacity = trans_before - transmittance;
-            distance_weight += opacity * t;
+            distance_weight += opacity * t_s;
             opacity_weight  += opacity;
         }
         
@@ -1013,7 +1020,7 @@ void clouds_evaluate_detailed(
     float3 cam_pos, float3 view_dir, float3 sun_dir,
     Texture3D noise_tex, Texture2D transmittance_lut,
     SamplerState samp_noise, SamplerState samp_lut,
-    float max_distance,
+    float jitter, float max_distance,
     out float3 in_scatter, out float transmittance, out float representative_distance)
 {
     in_scatter    = float3(0.0, 0.0, 0.0);
@@ -1026,14 +1033,8 @@ void clouds_evaluate_detailed(
     cloud_march_cumulus(cam_pos, view_dir, sun_dir,
         noise_tex, transmittance_lut,
         samp_noise, samp_lut,
-        max_distance, in_scatter, transmittance, distance_weight, opacity_weight);
+        jitter, max_distance, in_scatter, transmittance, distance_weight, opacity_weight);
     
-    // residual transmittance carries through to the cirrus layer
-    cloud_march_cirrus(cam_pos, view_dir, sun_dir,
-        noise_tex, transmittance_lut,
-        samp_noise, samp_lut,
-        max_distance, in_scatter, transmittance, distance_weight, opacity_weight);
-
     representative_distance = opacity_weight > 1e-5 ? distance_weight / opacity_weight : 0.0;
 }
 
@@ -1140,10 +1141,12 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
 
     float3 sun_dir = normalize(-light_parameters[0].direction);
 
+    uint hash    = cloud_hash_uint(pixel.x + cloud_hash_uint(pixel.y + cloud_hash_uint(buffer_frame.frame)));
+    float jitter = float(hash) / 4294967295.0;
     float3 radiance;
     float transmittance;
     float representative_distance;
-    clouds_evaluate_detailed(get_camera_position(), view_dir, sun_dir, tex3d, tex, GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp), max_distance, radiance, transmittance, representative_distance);
+    clouds_evaluate_detailed(get_camera_position(), view_dir, sun_dir, tex3d, tex, GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp), jitter, max_distance, radiance, transmittance, representative_distance);
 
     tex_uav[pixel]  = float4(radiance, transmittance);
     tex_uav2[pixel] = float4(representative_distance, 0.0, 0.0, 0.0);
@@ -1363,10 +1366,12 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 clear_sky = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).rgb;
 
     float3 sun_dir = normalize(-light_parameters[0].direction);
+    uint hash      = cloud_hash_uint(tid.x + cloud_hash_uint(tid.y));
+    float jitter   = float(hash) / 4294967295.0;
     float3 radiance;
     float transmittance;
     float representative_distance;
-    clouds_evaluate_detailed(get_camera_position(), view_dir, sun_dir, tex3d, tex2, GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp), 1e30, radiance, transmittance, representative_distance);
+    clouds_evaluate_detailed(get_camera_position(), view_dir, sun_dir, tex3d, tex2, GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp), jitter, 1e30, radiance, transmittance, representative_distance);
     tex_uav[tid.xy] = float4(clear_sky * transmittance + radiance, 1.0);
 }
 #endif
@@ -1426,19 +1431,23 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     
     float3 uvw = (float3(tid) + 0.5) / float3(dims);
     
-    // r, low-freq perlin-worley, drives the base cumulus blob shape
-    float perlin_low  = cloud_perlin_3d(uvw, 4);
-    float worley_low  = 1.0 - cloud_worley_fbm(uvw, 4);
-    float r           = cloud_remap(perlin_low, worley_low - 1.0, 1.0, 0.0, 1.0);
+    // r, published perlin worley base shape
+    float perlin_low = cloud_perlin_fbm(uvw, 4);
+    float worley_low = cloud_worley_fbm(uvw, 4);
+    float r = cloud_remap(
+        perlin_low,
+        1.0 - worley_low,
+        1.0,
+        0.0,
+        1.0
+    );
     
-    // g, mid-frequency worley fbm, adds rounded sub-blobs
-    float g           = cloud_worley_fbm(uvw, 6);
+    // gba, increasing worley frequencies
+    float g           = cloud_worley_fbm(uvw, 4);
     
-    // b, high-frequency worley fbm, fine cauliflower detail and edge erosion
-    float b           = cloud_worley_fbm(uvw, 12);
+    float b           = cloud_worley_fbm(uvw, 8);
     
-    // a, high-frequency perlin fbm, drives the wispy cirrus streaks
-    float a           = cloud_perlin_fbm(uvw, 8);
+    float a           = cloud_worley_fbm(uvw, 16);
     
     tex3d_uav[tid] = float4(saturate(r), saturate(g), saturate(b), saturate(a));
 }
@@ -1508,17 +1517,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         }
     }
     
-    float cirrus_dt = (cirrus_thickness / dir.y) / float(cloud_shadow_cirrus_steps);
-    float3 cirrus_p0 = float3(crossing.x, cumulus_bottom_alt, crossing.y) + dir * ((cirrus_bottom_alt - cumulus_bottom_alt) / dir.y);
-    float cirrus_optical_depth = 0.0;
-    [unroll]
-    for (int i = 0; i < cloud_shadow_cirrus_steps; i++)
-    {
-        float3 p = cirrus_p0 + dir * ((float(i) + 0.5) * cirrus_dt);
-        cirrus_optical_depth += cloud_density_cirrus_cheap(p, tex3d, GET_SAMPLER(sampler_bilinear_wrap)) * cirrus_dt;
-    }
-
-    float trans = exp(-optical_depth * cumulus_sigma_t - cirrus_optical_depth * cirrus_sigma_t);
+    float trans = exp(-optical_depth * cumulus_sigma_t);
     tex_uav[tid.xy] = float4(trans, trans, trans, 1.0);
 }
 #endif

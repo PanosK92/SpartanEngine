@@ -376,7 +376,24 @@ struct vertex_processing
             {
                 float L   = buffer_frame.ocean_cascade_length[c];
                 float2 uv = world_xz / L;
-                disp     += tex_ocean_displacement.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float3(uv, (float)c), 0.0f).xyz;
+                float3 displacement;
+                if (time_offset < 0.0f)
+                {
+                    displacement = tex_ocean_displacement_previous.SampleLevel(
+                        GET_SAMPLER(sampler_bilinear_wrap),
+                        float3(uv, (float)c),
+                        0.0f
+                    ).xyz;
+                }
+                else
+                {
+                    displacement = tex_ocean_displacement.SampleLevel(
+                        GET_SAMPLER(sampler_bilinear_wrap),
+                        float3(uv, (float)c),
+                        0.0f
+                    ).xyz;
+                }
+                disp += displacement;
             }
             position_world += disp;
             return;
@@ -549,6 +566,12 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float4 position_local    = float4(input.position, 1.0f);
     float3 position          = mul(position_local, transform).xyz;
     float3 position_previous = mul(position_local, transform_previous).xyz;
+
+    // clipmap recentering is not water motion
+    if (surface.is_water())
+    {
+        position_previous.xz = position.xz;
+    }
 
     // terrain maps planar world xz with tiling as repeats per meter, the half precision vertex uv quantizes under heavy tiling and collapses into stripes of repeated texels
     if (surface.is_terrain())
