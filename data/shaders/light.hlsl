@@ -345,13 +345,7 @@ void evaluate_light(
         }
 
         float3 L_specular_lobes = 0.0f;
-        // area lights are not in the tlas, rt reflections sample them by ray rectangle tests,
-        // skip analytic area specular when rt owns the lobe or the two paths stack into fireflies
-        const bool rt_owns_area_specular =
-            is_ray_traced_reflections_enabled() &&
-            light.is_area() &&
-            !is_transparent;
-        if (has_brdf && !rt_owns_area_specular)
+        if (has_brdf)
         {
             if (surface.anisotropic > 0.0f)
             {
