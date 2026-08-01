@@ -156,7 +156,7 @@ namespace Contributors
         // call to action links
         if (ImGui::Button("Contribution Guide"))
         {
-            spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
+            spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Contributing");
         }
         ImGui::SameLine();
         ImGui::TextDisabled("Learn how to contribute");

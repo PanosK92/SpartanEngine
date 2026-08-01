@@ -374,7 +374,7 @@ namespace
 
                 if (ImGui::MenuItem("Contributing", nullptr, nullptr))
                 {
-                    spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
+                    spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Contributing");
                 }
 
                 if (ImGui::MenuItem("Perks of a contributor", nullptr, nullptr))

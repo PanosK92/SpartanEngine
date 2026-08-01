@@ -615,7 +615,7 @@ namespace spartan
             else
             {
                 SP_LOG_WARNING(
-                    "D3D12 runtime: agility sdk %u requested but %u loaded, check that D3D12/D3D12Core.dll sits next to the exe",
+                    "D3D12 runtime: agility sdk %u requested but %u loaded, check that D3D12Core.dll sits next to the exe",
                     requested, loaded_sdk_version);
             }
 

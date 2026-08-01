@@ -12,8 +12,11 @@
 *.VC.opendb
 *.VC.db
 /Binaries
+/binaries/
 /third_party/libraries/*.lib
 /third_party/libraries/*.dll
+*.bak
+**/_session*.jsonl
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -258,14 +261,19 @@ ModelManifest.xml
 # Rider IDE config dir
 .idea/
 
-# sky catalog bake download cache
-tools/sky/_cache/
 /third_party/libraries/libraries.7z
+
+# portable 7zr fetched by tools/setup.lua for libraries.7z only
+/third_party/lzma_sdk/bin/
 
 # d3d12 agility sdk, downloaded by tools/setup.lua
 /third_party/d3d12_agility/
 /third_party/d3d12_agility_extract/
 /third_party/d3d12_agility.nupkg
+
+# steamworks download leftovers from tools/setup.lua
+/third_party/steamworks_extract/
+/third_party/steamworks_sdk.zip
 
 /assets
 /spartan.slnx

@@ -32,6 +32,7 @@ SP_WARNINGS_OFF
 #include <SDL3/SDL_iostream.h>
 #include <SDL3/SDL_misc.h>
 #include <SDL3/SDL_process.h>
+#include "archive_7z.h"
 SP_WARNINGS_ON
 //===========================
 
@@ -1156,26 +1157,6 @@ namespace spartan
 
     bool FileSystem::ExtractArchive(const string& archive_path, const string& destination_path)
     {
-        // find 7z executable - check all possible locations and names at runtime
-        string seven_zip_exe;
-        vector<string> candidates = {"7z.exe", "tools/7z.exe", "7z", "7za"};
-
-        for (const auto& candidate : candidates)
-        {
-            if (Exists(candidate) || IsExecutableInPath(candidate))
-            {
-                seven_zip_exe = candidate;
-                break;
-            }
-        }
-
-        if (seven_zip_exe.empty())
-        {
-            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, tools/, or PATH.");
-            return false;
-        }
-
-        // ensure destination exists
         if (!Exists(destination_path))
         {
             CreateDirectory_(destination_path);
@@ -1183,18 +1164,15 @@ namespace spartan
 
         SP_LOG_INFO("Extracting: %s", archive_path.c_str());
 
-        // run 7z silently
-        run_silent_process({
-            seven_zip_exe, "x", archive_path,
-            "-o" + destination_path, "-aoa", "-bso0", "-bsp0"
-        });
-
-        // verify extraction by checking destination has content
-        int result = IsDirectoryEmpty(destination_path) ? 1 : 0;
-
-        if (result != 0)
+        if (archive_7z_extract(archive_path.c_str(), destination_path.c_str()) != 0)
         {
-            SP_LOG_ERROR("Failed to extract archive: %s (exit code: %d)", archive_path.c_str(), result);
+            SP_LOG_ERROR("Failed to extract archive: %s", archive_path.c_str());
+            return false;
+        }
+
+        if (IsDirectoryEmpty(destination_path))
+        {
+            SP_LOG_ERROR("Failed to extract archive: %s (destination empty)", archive_path.c_str());
             return false;
         }
 
@@ -1210,26 +1188,6 @@ namespace spartan
             return false;
         }
 
-        // find 7z executable - check all possible locations and names at runtime
-        string seven_zip_exe;
-        vector<string> candidates = {"7z.exe", "tools/7z.exe", "7z", "7za"};
-
-        for (const auto& candidate : candidates)
-        {
-            if (Exists(candidate) || IsExecutableInPath(candidate))
-            {
-                seven_zip_exe = candidate;
-                break;
-            }
-        }
-
-        if (seven_zip_exe.empty())
-        {
-            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, tools/, or PATH.");
-            return false;
-        }
-
-        // delete existing archive if it exists
         if (Exists(archive_path))
         {
             Delete(archive_path);
@@ -1237,19 +1195,19 @@ namespace spartan
 
         SP_LOG_INFO("Creating archive: %s", archive_path.c_str());
 
-        // build command arguments: 7z a archive.7z file1 file2 dir1 ...
-        vector<string> args = { seven_zip_exe, "a", archive_path };
+        vector<const char*> paths;
+        paths.reserve(paths_to_include.size());
         for (const string& path : paths_to_include)
         {
-            args.push_back(path);
+            paths.push_back(path.c_str());
         }
-        // add silent flags
-        args.push_back("-bso0");
-        args.push_back("-bsp0");
 
-        run_silent_process(args);
+        if (archive_7z_create(archive_path.c_str(), paths.data(), static_cast<int>(paths.size())) != 0)
+        {
+            SP_LOG_ERROR("Failed to create archive: %s", archive_path.c_str());
+            return false;
+        }
 
-        // verify archive was created
         if (!Exists(archive_path))
         {
             SP_LOG_ERROR("Failed to create archive: %s", archive_path.c_str());

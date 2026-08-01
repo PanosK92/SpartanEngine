@@ -23,9 +23,10 @@ local PROJECT_ROOT     = path.getabsolute(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_
 local BINARIES_DIR     = path.join(PROJECT_ROOT, "binaries")
 local DATA_DIR         = path.join(PROJECT_ROOT, "data")
 local LIBRARIES_DIR    = path.join(PROJECT_ROOT, "third_party", "libraries")
-local TOOLS_DIR        = path.join(PROJECT_ROOT, "tools")
-local SEVEN_ZIP        = path.join(TOOLS_DIR, "7z.exe")
 local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
+-- portable 7zr, fetched on demand only for libraries.7z (zips use tar)
+local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin", "7zr.exe")
+local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
 local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/1ikk55avwntblfhf3at3z/libraries.7z?rlkey=iexhlu58ouo603bv6i7kwkxxi&dl=1"
 local LIBRARY_HASH     = "3b3586bd80a6dbe170351f3b28e5dabef2a55eec63b39662fbce128600b24105"
@@ -46,9 +47,8 @@ local AGILITY_STAMP       = path.join(AGILITY_DIR, "version.txt")
 local AGILITY_URL         = "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/" .. AGILITY_VERSION
 local AGILITY_NUPKG       = path.join(PROJECT_ROOT, "third_party", "d3d12_agility.nupkg")
 
--- d3d12core.dll must sit in a subfolder next to the exe, matching the exported D3D12SDKPath
-local AGILITY_RUNTIME_SUBDIR = "D3D12"
-local AGILITY_RUNTIME_DLLS   = { "D3D12Core.dll", "d3d12SDKLayers.dll" }
+-- d3d12core.dll sits next to the exe, matching the exported D3D12SDKPath (".\\")
+local AGILITY_RUNTIME_DLLS = { "D3D12Core.dll", "d3d12SDKLayers.dll" }
 
 -- steamworks sdk, downloaded on demand into third_party/steamworks
 local STEAMWORKS_DIR   = path.join(PROJECT_ROOT, "third_party", "steamworks")
@@ -176,13 +176,65 @@ local function download_archive()
     end
 end
 
-local function extract_archive()
-    if not file_exists(SEVEN_ZIP) then
-        error("7z executable missing at " .. SEVEN_ZIP)
+local function which_command(name)
+    local cmd
+    if is_windows() then
+        cmd = string.format('where %s 2>nul', name)
+    else
+        cmd = string.format('command -v %s 2>/dev/null', name)
+    end
+    local handle = io.popen(cmd, "r")
+    if not handle then
+        return nil
+    end
+    local result = handle:read("*l")
+    handle:close()
+    if result and result ~= "" then
+        return (result:gsub("%s+$", ""))
+    end
+    return nil
+end
+
+local function ensure_7zr()
+    if file_exists(SEVEN_ZIP_CACHE) then
+        return SEVEN_ZIP_CACHE
     end
 
+    for _, name in ipairs({ "7zr", "7z", "7za" }) do
+        local found = which_command(name)
+        if found then
+            return found
+        end
+    end
+
+    if not is_windows() then
+        error("7zr/7z not found on PATH, needed to extract libraries.7z")
+    end
+
+    print("fetching portable 7zr for libraries.7z...")
+    os.mkdir(path.getdirectory(SEVEN_ZIP_CACHE))
+    local result, code = download_with_progress(SEVEN_ZIP_URL, SEVEN_ZIP_CACHE)
+    if result ~= "OK" or not file_exists(SEVEN_ZIP_CACHE) then
+        error(string.format("failed to download 7zr.exe: %s (http %s)", tostring(result), tostring(code)))
+    end
+    return SEVEN_ZIP_CACHE
+end
+
+local function extract_zip(archive, destination)
+    os.mkdir(destination)
+    -- windows 10+ and linux both ship a tar that can read zip
+    local cmd = string.format('tar -xf %s -C %s', quote(archive), quote(destination))
+    print("extracting " .. path.getname(archive) .. "...")
+    local ok = run(cmd)
+    if ok ~= true and ok ~= 0 then
+        error("zip extraction failed (cmd: " .. cmd .. ")")
+    end
+end
+
+local function extract_archive()
+    local seven_zip = ensure_7zr()
     local cmd = string.format('%s x %s -o%s -aoa -bso0 -bsp1',
-        quote(SEVEN_ZIP), quote(ARCHIVE_PATH), quote(LIBRARIES_DIR))
+        quote(seven_zip), quote(ARCHIVE_PATH), quote(LIBRARIES_DIR))
 
     print("extracting libraries.7z...")
     local ok = run(cmd)
@@ -222,11 +274,6 @@ local function ensure_agility_sdk()
         return
     end
 
-    if not file_exists(SEVEN_ZIP) then
-        print("  7z missing, cannot install agility sdk")
-        return
-    end
-
     print("downloading agility sdk " .. AGILITY_VERSION .. "...")
     os.mkdir(path.getdirectory(AGILITY_NUPKG))
 
@@ -239,16 +286,9 @@ local function ensure_agility_sdk()
     if os.isdir(extract_root) then
         os.rmdir(extract_root)
     end
-    os.mkdir(extract_root)
 
-    -- the nupkg is a plain zip, only build/native is needed
-    local extract_cmd = string.format('%s x %s -o%s -aoa -bso0 -bsp1 build\\native\\*',
-        quote(SEVEN_ZIP), quote(AGILITY_NUPKG), quote(extract_root))
-    print("extracting agility sdk...")
-    local ok = run(extract_cmd)
-    if ok ~= true and ok ~= 0 then
-        error("agility sdk extraction failed")
-    end
+    -- the nupkg is a plain zip
+    extract_zip(AGILITY_NUPKG, extract_root)
 
     local native_root = path.join(extract_root, "build", "native")
     if not os.isdir(native_root) then
@@ -279,19 +319,18 @@ local function stage_agility_runtime()
         return
     end
 
-    local destination = path.join(BINARIES_DIR, AGILITY_RUNTIME_SUBDIR)
-    local staged      = 0
+    local staged = 0
 
     for _, dll in ipairs(AGILITY_RUNTIME_DLLS) do
         local source = path.join(AGILITY_BIN_DIR, dll)
         if file_exists(source) then
-            copy_file(source, path.join(destination, dll))
+            copy_file(source, path.join(BINARIES_DIR, dll))
             staged = staged + 1
         end
     end
 
     if staged > 0 then
-        print(string.format("  staged %d agility dll(s) into binaries/%s", staged, AGILITY_RUNTIME_SUBDIR))
+        print(string.format("  staged %d agility dll(s) into binaries/", staged))
     else
         print("  agility sdk not found, skipping agility staging")
     end
@@ -300,11 +339,6 @@ end
 local function ensure_steamworks()
     if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
         print("steamworks sdk present, skipping download")
-        return
-    end
-
-    if not file_exists(SEVEN_ZIP) then
-        print("  7z missing, cannot install steamworks sdk")
         return
     end
 
@@ -322,14 +356,10 @@ local function ensure_steamworks()
     if os.isdir(extract_root) then
         os.rmdir(extract_root)
     end
-    os.mkdir(extract_root)
 
-    local extract_cmd = string.format('%s x %s -o%s -aoa -bso0 -bsp1',
-        quote(SEVEN_ZIP), quote(STEAMWORKS_ZIP), quote(extract_root))
-    print("extracting steamworks sdk...")
-    local ok = run(extract_cmd)
-    if ok ~= true and ok ~= 0 then
-        print("  steamworks extraction failed")
+    local ok, err = pcall(extract_zip, STEAMWORKS_ZIP, extract_root)
+    if not ok then
+        print("  steamworks extraction failed: " .. tostring(err))
         return
     end
 
@@ -360,8 +390,6 @@ end
 function setup.run()
     print("\n[1/6] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
-    copy_file(path.join(TOOLS_DIR, "7z.exe"), path.join(BINARIES_DIR, "7z.exe"))
-    copy_file(path.join(TOOLS_DIR, "7z.dll"), path.join(BINARIES_DIR, "7z.dll"))
 
     print("\n[2/6] ensuring libraries archive is present...")
     ensure_archive()

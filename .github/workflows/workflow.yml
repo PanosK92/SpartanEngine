@@ -80,10 +80,10 @@ jobs:
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           IF "${{ matrix.configuration }}" == "release" (
             echo "Creating binaries-only archive for Release..."
-            tools\7z.exe a -bb1 spartan_vulkan_release.7z .\binaries\7z.exe .\binaries\7z.dll .\binaries\dxcompiler.dll .\binaries\libxess.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+            tar -a -c -f spartan_vulkan_release.zip binaries\dxcompiler.dll binaries\libxess.dll binaries\data binaries\spartan_${{ matrix.api }}.exe
           ) ELSE (
             echo "Creating binaries-only archive for Debug..."
-            tools\7z.exe a -bb1 spartan_vulkan_debug.7z .\binaries\7z.exe .\binaries\7z.dll .\binaries\libxess.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
+            tar -a -c -f spartan_vulkan_debug.zip binaries\libxess.dll binaries\data binaries\spartan_${{ matrix.api }}_debug.exe
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
@@ -91,8 +91,8 @@ jobs:
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
-          path: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z
+          name: spartan_vulkan_${{ matrix.configuration }}
+          path: spartan_vulkan_${{ matrix.configuration }}.zip
 
   release:
     if: github.event_name != 'pull_request'
@@ -122,11 +122,11 @@ jobs:
 
       - name: Rename release artifact
         run: |
-          mv spartan_vulkan_release.7z spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.7z
+          mv spartan_vulkan_release.zip spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.zip
 
       - name: Rename debug artifact
         run: |
-          mv spartan_vulkan_debug.7z spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.7z
+          mv spartan_vulkan_debug.zip spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.zip
 
       - name: Generate release notes
         id: generate_release_notes
@@ -207,5 +207,5 @@ jobs:
           body: ${{ steps.generate_release_notes.outputs.notes }}
           prerelease: true
           files: |
-            spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.7z
-            spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.7z
+            spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.zip
+            spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.zip

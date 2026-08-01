@@ -68,6 +68,10 @@ function configure_graphics_api()
     end
 end
 
+function lzma_sdk_project_configuration()
+    dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "lzma_sdk.lua"))
+end
+
 function solution_configuration()
     solution(SOLUTION_NAME)
         location ".."
@@ -139,15 +143,17 @@ function spartan_project_configuration()
                 "../third_party/free_type", "../third_party/renderdoc",
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua",
-                "../third_party/nrd/Include", "../third_party/nrd/Integration", "../third_party/nri/Include"
+                "../third_party/nrd/Include", "../third_party/nrd/Integration", "../third_party/nri/Include",
+                "../third_party/lzma_sdk/spartan"
             }
+            dependson { "lzma_sdk" }
             defines { "NRD_STATIC_LIBRARY", "NRI_STATIC_LIBRARY" }
             linkoptions {
                 "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
                 "/NODEFAULTLIB:MSVCRT.lib",  -- block dynamic crt (using static runtime)
                 "/NODEFAULTLIB:MSVCPRT.lib"
             }
-            links { "Ws2_32" }
+            links { "Ws2_32", "oleaut32", "ole32" }
             if STEAM_ENABLED then
                 includedirs { "../third_party/steamworks/public" }
                 libdirs     { "../third_party/steamworks/redistributable_bin/win64" }
@@ -160,8 +166,11 @@ function spartan_project_configuration()
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
                 "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
-                "/usr/include/freetype2", "/usr/include/renderdoc"
+                "/usr/include/freetype2", "/usr/include/renderdoc",
+                "../third_party/lzma_sdk/spartan"
             }
+            dependson { "lzma_sdk" }
+            links { "lzma_sdk" }
 
         -- Vulkan-specific includes (Windows only)
         filter { "system:windows" }
@@ -193,7 +202,7 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME)
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
+            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua", "lzma_sdk" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
                 "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
@@ -221,7 +230,7 @@ function spartan_project_configuration()
             linkoptions { "/IGNORE:4099", "/DEBUG:FASTLINK" }
             
         filter { "configurations:debug", "system:windows" }
-            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug" }
+            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug", "lzma_sdk" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
                 "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
@@ -244,5 +253,6 @@ end
 if generation_actions[_ACTION] then
     configure_graphics_api()
     solution_configuration()
+    lzma_sdk_project_configuration()
     spartan_project_configuration()
 end
