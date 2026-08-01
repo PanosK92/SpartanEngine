@@ -123,7 +123,9 @@ function spartan_project_configuration()
         files {
             SOURCE_DIR .. "/**.h",   SOURCE_DIR .. "/**.cpp",
             SOURCE_DIR .. "/**.hpp", SOURCE_DIR .. "/**.inl",
-            SOURCE_DIR .. "/**.rc"
+            SOURCE_DIR .. "/**.rc",
+            "../third_party/engine_sim/**.h",
+            "../third_party/engine_sim/**.cpp"
         }
 
         if ARG_API_GRAPHICS == "d3d12" then
@@ -144,7 +146,8 @@ function spartan_project_configuration()
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua",
                 "../third_party/nrd/Include", "../third_party/nrd/Integration", "../third_party/nri/Include",
-                "../third_party/lzma_sdk/spartan"
+                "../third_party/lzma_sdk/spartan",
+                "../third_party/engine_sim", "../third_party/engine_sim/Core", "../third_party/engine_sim/Solver"
             }
             dependson { "lzma_sdk" }
             defines { "NRD_STATIC_LIBRARY", "NRI_STATIC_LIBRARY" }
@@ -167,7 +170,8 @@ function spartan_project_configuration()
                 SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
                 "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
                 "/usr/include/freetype2", "/usr/include/renderdoc",
-                "../third_party/lzma_sdk/spartan"
+                "../third_party/lzma_sdk/spartan",
+                "../third_party/engine_sim", "../third_party/engine_sim/Core", "../third_party/engine_sim/Solver"
             }
             dependson { "lzma_sdk" }
             links { "lzma_sdk" }

@@ -40,12 +40,12 @@ SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Light.h"
 #include "World/Components/Render.h"
+#include "MCP/McpJson.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <functional>
-#include <map>
 #include <sstream>
 //======================================
 
@@ -54,419 +54,74 @@ using namespace spartan;
 
 namespace
 {
-    struct JsonValue
+    using JsonValue = mcp_json::value;
+
+    JsonValue* json_object_find(JsonValue& object, const string& key)
     {
-        enum class Type
+        if (object.type != mcp_json::kind::object)
         {
-            Null,
-            Boolean,
-            Number,
-            String,
-            Array,
-            Object
-        };
-
-        const JsonValue* Find(const string& key) const
-        {
-            const auto iterator = object.find(key);
-            return iterator == object.end() ? nullptr : &iterator->second;
+            return nullptr;
         }
 
-        string String(const string& fallback = "") const
+        for (pair<string, JsonValue>& item : object.object_items)
         {
-            return type == Type::String ? text : fallback;
+            if (item.first == key)
+            {
+                return &item.second;
+            }
         }
 
-        double Number(double fallback = 0.0) const
-        {
-            return type == Type::Number ? number : fallback;
-        }
+        return nullptr;
+    }
 
-        bool Boolean(bool fallback = false) const
-        {
-            return type == Type::Boolean ? boolean : fallback;
-        }
-
-        Type type = Type::Null;
-        bool boolean = false;
-        double number = 0.0;
-        string text;
-        vector<JsonValue> array;
-        map<string, JsonValue> object;
-    };
-
-    class JsonParser
+    bool json_object_erase(JsonValue& object, const string& key)
     {
-    public:
-        explicit JsonParser(const string& source)
+        if (object.type != mcp_json::kind::object)
         {
-            m_source = &source;
-        }
-
-        bool Parse(JsonValue& value, string& error)
-        {
-            SkipWhitespace();
-            if (!ParseValue(value))
-            {
-                error = m_error;
-                return false;
-            }
-
-            SkipWhitespace();
-            if (m_position != m_source->size())
-            {
-                error = "unexpected data after catalog root";
-                return false;
-            }
-
-            return true;
-        }
-
-    private:
-        void SkipWhitespace()
-        {
-            while (
-                m_position < m_source->size() &&
-                isspace(
-                    static_cast<unsigned char>(
-                        (*m_source)[m_position]
-                    )
-                )
-            )
-            {
-                m_position++;
-            }
-        }
-
-        bool ParseValue(JsonValue& value)
-        {
-            SkipWhitespace();
-            if (m_position >= m_source->size())
-            {
-                return Fail("unexpected end of catalog");
-            }
-
-            const char token = (*m_source)[m_position];
-            if (token == '{')
-            {
-                return ParseObject(value);
-            }
-            if (token == '[')
-            {
-                return ParseArray(value);
-            }
-            if (token == '"')
-            {
-                value.type = JsonValue::Type::String;
-                return ParseString(value.text);
-            }
-            if (token == 't' || token == 'f')
-            {
-                return ParseBoolean(value);
-            }
-            if (token == 'n')
-            {
-                return ParseNull(value);
-            }
-            if (token == '-' || isdigit(static_cast<unsigned char>(token)))
-            {
-                return ParseNumber(value);
-            }
-
-            return Fail("unexpected catalog token");
-        }
-
-        bool ParseObject(JsonValue& value)
-        {
-            value.type = JsonValue::Type::Object;
-            m_position++;
-            SkipWhitespace();
-            if (Consume('}'))
-            {
-                return true;
-            }
-
-            while (m_position < m_source->size())
-            {
-                string key;
-                if (!ParseString(key))
-                {
-                    return false;
-                }
-                SkipWhitespace();
-                if (!Consume(':'))
-                {
-                    return Fail("expected colon after catalog key");
-                }
-
-                JsonValue child;
-                if (!ParseValue(child))
-                {
-                    return false;
-                }
-                value.object.emplace(move(key), move(child));
-
-                SkipWhitespace();
-                if (Consume('}'))
-                {
-                    return true;
-                }
-                if (!Consume(','))
-                {
-                    return Fail("expected comma in catalog object");
-                }
-                SkipWhitespace();
-            }
-
-            return Fail("unterminated catalog object");
-        }
-
-        bool ParseArray(JsonValue& value)
-        {
-            value.type = JsonValue::Type::Array;
-            m_position++;
-            SkipWhitespace();
-            if (Consume(']'))
-            {
-                return true;
-            }
-
-            while (m_position < m_source->size())
-            {
-                JsonValue child;
-                if (!ParseValue(child))
-                {
-                    return false;
-                }
-                value.array.emplace_back(move(child));
-
-                SkipWhitespace();
-                if (Consume(']'))
-                {
-                    return true;
-                }
-                if (!Consume(','))
-                {
-                    return Fail("expected comma in catalog array");
-                }
-                SkipWhitespace();
-            }
-
-            return Fail("unterminated catalog array");
-        }
-
-        bool ParseString(string& value)
-        {
-            if (!Consume('"'))
-            {
-                return Fail("expected catalog string");
-            }
-
-            value.clear();
-            while (m_position < m_source->size())
-            {
-                const char character = (*m_source)[m_position++];
-                if (character == '"')
-                {
-                    return true;
-                }
-                if (character != '\\')
-                {
-                    value += character;
-                    continue;
-                }
-                if (m_position >= m_source->size())
-                {
-                    return Fail("unterminated catalog escape");
-                }
-
-                const char escaped = (*m_source)[m_position++];
-                switch (escaped)
-                {
-                    case '"':  value += '"';  break;
-                    case '\\': value += '\\'; break;
-                    case '/':  value += '/';  break;
-                    case 'b':  value += '\b'; break;
-                    case 'f':  value += '\f'; break;
-                    case 'n':  value += '\n'; break;
-                    case 'r':  value += '\r'; break;
-                    case 't':  value += '\t'; break;
-                    case 'u':
-                    {
-                        if (m_position + 4 > m_source->size())
-                        {
-                            return Fail("invalid catalog unicode escape");
-                        }
-                        value += '?';
-                        m_position += 4;
-                        break;
-                    }
-                    default:
-                        return Fail("invalid catalog string escape");
-                }
-            }
-
-            return Fail("unterminated catalog string");
-        }
-
-        bool ParseNumber(JsonValue& value)
-        {
-            const size_t start = m_position;
-            if ((*m_source)[m_position] == '-')
-            {
-                m_position++;
-            }
-            while (
-                m_position < m_source->size() &&
-                isdigit(
-                    static_cast<unsigned char>(
-                        (*m_source)[m_position]
-                    )
-                )
-            )
-            {
-                m_position++;
-            }
-            if (
-                m_position < m_source->size() &&
-                (*m_source)[m_position] == '.'
-            )
-            {
-                m_position++;
-                while (
-                    m_position < m_source->size() &&
-                    isdigit(
-                        static_cast<unsigned char>(
-                            (*m_source)[m_position]
-                        )
-                    )
-                )
-                {
-                    m_position++;
-                }
-            }
-            if (
-                m_position < m_source->size() &&
-                (
-                    (*m_source)[m_position] == 'e' ||
-                    (*m_source)[m_position] == 'E'
-                )
-            )
-            {
-                m_position++;
-                if (
-                    m_position < m_source->size() &&
-                    (
-                        (*m_source)[m_position] == '+' ||
-                        (*m_source)[m_position] == '-'
-                    )
-                )
-                {
-                    m_position++;
-                }
-                while (
-                    m_position < m_source->size() &&
-                    isdigit(
-                        static_cast<unsigned char>(
-                            (*m_source)[m_position]
-                        )
-                    )
-                )
-                {
-                    m_position++;
-                }
-            }
-
-            try
-            {
-                value.type = JsonValue::Type::Number;
-                value.number = stod(
-                    m_source->substr(
-                        start,
-                        m_position - start
-                    )
-                );
-                return true;
-            }
-            catch (...)
-            {
-                return Fail("invalid catalog number");
-            }
-        }
-
-        bool ParseBoolean(JsonValue& value)
-        {
-            if (m_source->compare(m_position, 4, "true") == 0)
-            {
-                m_position += 4;
-                value.type = JsonValue::Type::Boolean;
-                value.boolean = true;
-                return true;
-            }
-            if (m_source->compare(m_position, 5, "false") == 0)
-            {
-                m_position += 5;
-                value.type = JsonValue::Type::Boolean;
-                value.boolean = false;
-                return true;
-            }
-
-            return Fail("invalid catalog boolean");
-        }
-
-        bool ParseNull(JsonValue& value)
-        {
-            if (m_source->compare(m_position, 4, "null") != 0)
-            {
-                return Fail("invalid catalog null");
-            }
-
-            m_position += 4;
-            value.type = JsonValue::Type::Null;
-            return true;
-        }
-
-        bool Consume(char character)
-        {
-            if (
-                m_position >= m_source->size() ||
-                (*m_source)[m_position] != character
-            )
-            {
-                return false;
-            }
-
-            m_position++;
-            return true;
-        }
-
-        bool Fail(const char* message)
-        {
-            m_error =
-                string(message) +
-                " at byte " +
-                to_string(m_position);
             return false;
         }
 
-        const string* m_source = nullptr;
-        size_t m_position = 0;
-        string m_error;
-    };
+        const auto iterator = find_if(
+            object.object_items.begin(),
+            object.object_items.end(),
+            [&](const pair<string, JsonValue>& item)
+            {
+                return item.first == key;
+            }
+        );
+        if (iterator == object.object_items.end())
+        {
+            return false;
+        }
+
+        object.object_items.erase(iterator);
+        return true;
+    }
+
+    JsonValue& json_object_ensure(JsonValue& object, const string& key)
+    {
+        if (JsonValue* existing = json_object_find(object, key))
+        {
+            return *existing;
+        }
+
+        object.object_items.emplace_back(key, JsonValue{});
+        return object.object_items.back().second;
+    }
 
     vector<string> json_strings(const JsonValue* value)
     {
         vector<string> strings;
-        if (!value || value->type != JsonValue::Type::Array)
+        if (!value || value->type != mcp_json::kind::array)
         {
             return strings;
         }
 
-        for (const JsonValue& item : value->array)
+        for (const JsonValue& item : value->array_items)
         {
-            if (item.type == JsonValue::Type::String)
+            if (item.type == mcp_json::kind::string)
             {
-                strings.emplace_back(item.text);
+                strings.emplace_back(item.string_value);
             }
         }
         return strings;
@@ -685,47 +340,47 @@ namespace
         const string child_indentation((depth + 1) * 2, ' ');
         switch (value.type)
         {
-        case JsonValue::Type::Null:
+        case mcp_json::kind::null:
             return "null";
-        case JsonValue::Type::Boolean:
-            return value.boolean ? "true" : "false";
-        case JsonValue::Type::Number:
+        case mcp_json::kind::boolean:
+            return value.boolean_value ? "true" : "false";
+        case mcp_json::kind::number:
         {
             ostringstream stream;
             stream.precision(17);
-            stream << value.number;
+            stream << value.number_value;
             return stream.str();
         }
-        case JsonValue::Type::String:
-            return serialize_json_string(value.text);
-        case JsonValue::Type::Array:
+        case mcp_json::kind::string:
+            return serialize_json_string(value.string_value);
+        case mcp_json::kind::array:
         {
-            if (value.array.empty())
+            if (value.array_items.empty())
             {
                 return "[]";
             }
             string result = "[\n";
-            for (size_t index = 0; index < value.array.size(); index++)
+            for (size_t index = 0; index < value.array_items.size(); index++)
             {
                 result +=
                     child_indentation +
-                    serialize_json(value.array[index], depth + 1);
+                    serialize_json(value.array_items[index], depth + 1);
                 result +=
-                    index + 1 < value.array.size() ?
+                    index + 1 < value.array_items.size() ?
                     ",\n" :
                     "\n";
             }
             return result + indentation + "]";
         }
-        case JsonValue::Type::Object:
+        case mcp_json::kind::object:
         {
-            if (value.object.empty())
+            if (value.object_items.empty())
             {
                 return "{}";
             }
             string result = "{\n";
             size_t index = 0;
-            for (const auto& [key, child] : value.object)
+            for (const auto& [key, child] : value.object_items)
             {
                 result +=
                     child_indentation +
@@ -733,7 +388,7 @@ namespace
                     ": " +
                     serialize_json(child, depth + 1);
                 result +=
-                    ++index < value.object.size() ?
+                    ++index < value.object_items.size() ?
                     ",\n" :
                     "\n";
             }
@@ -1045,17 +700,17 @@ namespace
         const char* key
     )
     {
-        const JsonValue* value = root.Find(key);
+        const JsonValue* value = root.find(key);
         if (value)
         {
             return value;
         }
 
-        const JsonValue* revision = root.Find("revision");
+        const JsonValue* revision = root.find("revision");
         return
             revision &&
-            revision->type == JsonValue::Type::Object ?
-            revision->Find(key) :
+            revision->type == mcp_json::kind::object ?
+            revision->find(key) :
             nullptr;
     }
 
@@ -1067,9 +722,9 @@ namespace
         for (const char* key : keys)
         {
             const JsonValue* value = json_object_value(root, key);
-            if (value && value->type == JsonValue::Type::String)
+            if (value && value->type == mcp_json::kind::string)
             {
-                return value->text;
+                return value->string_value;
             }
         }
         return "";
@@ -1085,11 +740,11 @@ namespace
             const JsonValue* value = json_object_value(root, key);
             if (
                 value &&
-                value->type == JsonValue::Type::Number &&
-                value->number > 0.0
+                value->type == mcp_json::kind::number &&
+                value->number_value > 0.0
             )
             {
-                return static_cast<uint64_t>(value->number);
+                return static_cast<uint64_t>(value->number_value);
             }
         }
         return 0;
@@ -1934,22 +1589,21 @@ void AssetViewer::RefreshCatalog(bool force)
     else
     {
         string parse_error;
-        JsonParser parser(source);
-        if (!parser.Parse(root, parse_error))
+        if (!mcp_json::parse(source, root, parse_error))
         {
             catalog_error = "invalid catalog, " + parse_error;
         }
         else
         {
             const JsonValue* schema_version =
-                root.Find("schema_version");
-            assets = root.Find("assets");
+                root.find("schema_version");
+            assets = root.find("assets");
             if (
-                root.type != JsonValue::Type::Object ||
+                root.type != mcp_json::kind::object ||
                 !schema_version ||
-                static_cast<int>(schema_version->Number()) != 2 ||
+                static_cast<int>(schema_version->number_or(0.0)) != 2 ||
                 !assets ||
-                assets->type != JsonValue::Type::Object
+                assets->type != mcp_json::kind::object
             )
             {
                 catalog_error =
@@ -1959,46 +1613,46 @@ void AssetViewer::RefreshCatalog(bool force)
         }
     }
 
-    static const map<string, JsonValue> no_assets;
+    static const vector<pair<string, JsonValue>> no_assets;
     for (
         const auto& [catalog_id, value] :
-        assets ? assets->object : no_assets
+        assets ? assets->object_items : no_assets
     )
     {
-        if (value.type != JsonValue::Type::Object)
+        if (value.type != mcp_json::kind::object)
         {
             continue;
         }
 
         AssetEntry asset;
         asset.id =
-            value.Find("id") ?
-            value.Find("id")->String(catalog_id) :
+            value.find("id") ?
+            value.find("id")->string_or(catalog_id) :
             catalog_id;
         asset.name =
-            value.Find("name") ?
-            value.Find("name")->String(asset.id) :
+            value.find("name") ?
+            value.find("name")->string_or(asset.id) :
             asset.id;
         asset.type =
-            value.Find("type") ?
-            lower_copy(value.Find("type")->String()) :
+            value.find("type") ?
+            lower_copy(value.find("type")->string_or("")) :
             "";
         asset.path =
-            value.Find("path") ?
-            value.Find("path")->String() :
+            value.find("path") ?
+            value.find("path")->string_or("") :
             "";
         asset.source_path =
-            value.Find("source_path") ?
-            value.Find("source_path")->String() :
+            value.find("source_path") ?
+            value.find("source_path")->string_or("") :
             "";
         asset.thumbnail_path =
-            value.Find("thumbnail_path") ?
-            value.Find("thumbnail_path")->String() :
+            value.find("thumbnail_path") ?
+            value.find("thumbnail_path")->string_or("") :
             "";
-        asset.aliases = json_strings(value.Find("aliases"));
-        asset.tags = json_strings(value.Find("tags"));
+        asset.aliases = json_strings(value.find("aliases"));
+        asset.tags = json_strings(value.find("tags"));
         asset.dependencies = json_strings(
-            value.Find("dependencies")
+            value.find("dependencies")
         );
         if (asset.type == "prefab")
         {
@@ -2065,21 +1719,21 @@ void AssetViewer::RefreshCatalog(bool force)
                 }
             }
         }
-        const JsonValue* quality = value.Find("quality");
+        const JsonValue* quality = value.find("quality");
         if (
             quality &&
-            quality->type == JsonValue::Type::Object
+            quality->type == mcp_json::kind::object
         )
         {
             asset.quality_score =
-                quality->Find("score") ?
+                quality->find("score") ?
                 static_cast<float>(
-                    quality->Find("score")->Number()
+                    quality->find("score")->number_or(0.0)
                 ) :
                 0.0f;
             asset.quality_verified =
-                quality->Find("verified") ?
-                quality->Find("verified")->Boolean() :
+                quality->find("verified") ?
+                quality->find("verified")->boolean_or(false) :
                 false;
         }
 
@@ -2630,8 +2284,8 @@ void AssetViewer::ScanRevisionCandidates(const bool force)
         string parse_error;
         if (
             !FileSystem::ReadFile(manifest_path, source) ||
-            !JsonParser(source).Parse(root, parse_error) ||
-            root.type != JsonValue::Type::Object
+            !mcp_json::parse(source, root, parse_error) ||
+            root.type != mcp_json::kind::object
         )
         {
             continue;
@@ -2677,8 +2331,8 @@ void AssetViewer::ScanRevisionCandidates(const bool force)
             json_object_value(root, "active");
         const bool manifest_active =
             !active_value ||
-            active_value->type != JsonValue::Type::Boolean ||
-            active_value->boolean;
+            active_value->type != mcp_json::kind::boolean ||
+            active_value->boolean_value;
         if (
             status.base_asset_id.empty() ||
             candidate_value.empty() ||
@@ -2802,10 +2456,7 @@ void AssetViewer::ScanRevisionCandidates(const bool force)
                     status.request_path,
                     request_source
                 ) &&
-                JsonParser(request_source).Parse(
-                    request_root,
-                    request_error
-                )
+                mcp_json::parse(request_source, request_root, request_error)
             )
             {
                 const uint64_t request_generation =
@@ -2833,10 +2484,7 @@ void AssetViewer::ScanRevisionCandidates(const bool force)
                     response_path,
                     response_source
                 ) &&
-                JsonParser(response_source).Parse(
-                    response_root,
-                    response_error
-                ) &&
+                mcp_json::parse(response_source, response_root, response_error) &&
                 json_uint_any(
                     response_root,
                     { "generation" }
@@ -6208,18 +5856,17 @@ void AssetViewer::ScanLibraryCleanup()
 
     string parse_error;
     JsonValue root;
-    JsonParser parser(source);
-    const bool parsed = parser.Parse(root, parse_error);
+    const bool parsed = mcp_json::parse(source, root, parse_error);
     const JsonValue* schema_version =
-        root.Find("schema_version");
-    const JsonValue* assets = root.Find("assets");
+        root.find("schema_version");
+    const JsonValue* assets = root.find("assets");
     if (
         !parsed ||
-        root.type != JsonValue::Type::Object ||
+        root.type != mcp_json::kind::object ||
         !schema_version ||
-        static_cast<int>(schema_version->Number()) != 2 ||
+        static_cast<int>(schema_version->number_or(0.0)) != 2 ||
         !assets ||
-        assets->type != JsonValue::Type::Object
+        assets->type != mcp_json::kind::object
     )
     {
         m_cleanup.error =
@@ -6308,7 +5955,7 @@ void AssetViewer::ScanLibraryCleanup()
     }
 
     // catalog assets are roots, including their source, thumbnail and dependencies
-    for (const auto& [asset_id, entry] : assets->object)
+    for (const auto& [asset_id, entry] : assets->object_items)
     {
         for (
             const char* key :
@@ -6319,21 +5966,21 @@ void AssetViewer::ScanLibraryCleanup()
             }
         )
         {
-            if (const JsonValue* value = entry.Find(key))
+            if (const JsonValue* value = entry.find(key))
             {
-                mark(value->String());
+                mark(value->string_or(""));
             }
         }
         if (
             const JsonValue* dependencies =
-                entry.Find("dependencies");
+                entry.find("dependencies");
             dependencies &&
-            dependencies->type == JsonValue::Type::Array
+            dependencies->type == mcp_json::kind::array
         )
         {
-            for (const JsonValue& dependency : dependencies->array)
+            for (const JsonValue& dependency : dependencies->array_items)
             {
-                mark(dependency.String());
+                mark(dependency.string_or(""));
             }
         }
     }
@@ -6802,37 +6449,34 @@ bool AssetViewer::RenameAsset(
 
     JsonValue root;
     string parse_error;
-    JsonParser parser(source);
-    if (!parser.Parse(root, parse_error))
+    if (!mcp_json::parse(source, root, parse_error))
     {
         m_status = "The asset catalog is invalid: " + parse_error;
         return false;
     }
 
-    auto assets_iterator = root.object.find("assets");
+    JsonValue* assets = json_object_find(root, "assets");
     if (
-        root.type != JsonValue::Type::Object ||
-        assets_iterator == root.object.end() ||
-        assets_iterator->second.type != JsonValue::Type::Object
+        root.type != mcp_json::kind::object ||
+        !assets ||
+        assets->type != mcp_json::kind::object
     )
     {
         m_status = "The asset catalog has no assets object.";
         return false;
     }
 
-    const auto asset_iterator =
-        assets_iterator->second.object.find(asset.id);
-    if (asset_iterator == assets_iterator->second.object.end())
+    JsonValue* asset_value = json_object_find(*assets, asset.id);
+    if (!asset_value)
     {
         m_status = "The selected asset is no longer in the catalog.";
         RefreshCatalog(true);
         return false;
     }
 
-    JsonValue& name_value =
-        asset_iterator->second.object["name"];
-    name_value.type = JsonValue::Type::String;
-    name_value.text = name;
+    JsonValue& name_value = json_object_ensure(*asset_value, "name");
+    name_value.type = mcp_json::kind::string;
+    name_value.string_value = name;
 
     const string temporary_path = m_catalog_path + ".rename.tmp";
     const string backup_path = m_catalog_path + ".rename.backup";
@@ -6984,8 +6628,7 @@ bool AssetViewer::DeleteAssets(const vector<string>& ids)
 
     JsonValue root;
     string parse_error;
-    JsonParser parser(source);
-    if (!parser.Parse(root, parse_error))
+    if (!mcp_json::parse(source, root, parse_error))
     {
         m_status =
             "The asset catalog is invalid: " +
@@ -6993,26 +6636,23 @@ bool AssetViewer::DeleteAssets(const vector<string>& ids)
         return false;
     }
 
-    auto assets_iterator = root.object.find("assets");
+    JsonValue* assets = json_object_find(root, "assets");
     if (
-        root.type != JsonValue::Type::Object ||
-        assets_iterator == root.object.end() ||
-        assets_iterator->second.type !=
-            JsonValue::Type::Object
+        root.type != mcp_json::kind::object ||
+        !assets ||
+        assets->type != mcp_json::kind::object
     )
     {
         m_status = "The asset catalog has no assets object.";
         return false;
     }
 
-    JsonValue& assets = assets_iterator->second;
     vector<string> owned_paths;
     vector<string> erased_ids;
     for (const string& asset_id : catalog_ids)
     {
-        const auto asset_iterator =
-            assets.object.find(asset_id);
-        if (asset_iterator == assets.object.end())
+        JsonValue* asset_value = json_object_find(*assets, asset_id);
+        if (!asset_value)
         {
             continue;
         }
@@ -7026,19 +6666,16 @@ bool AssetViewer::DeleteAssets(const vector<string>& ids)
             }
         )
         {
-            if (
-                const JsonValue* path =
-                    asset_iterator->second.Find(key)
-            )
+            if (const JsonValue* path = asset_value->find(key))
             {
-                if (!path->String().empty())
+                if (!path->string_or("").empty())
                 {
-                    owned_paths.push_back(path->String());
+                    owned_paths.push_back(path->string_or(""));
                 }
             }
         }
 
-        assets.object.erase(asset_iterator);
+        json_object_erase(*assets, asset_id);
         erased_ids.push_back(asset_id);
     }
 

@@ -70,9 +70,23 @@ namespace spartan
         }
         
         ResourceType GetResourceType()           const { return m_resource_type; }
-        const char* GetResourceTypeCstr()        const { return typeid(*this).name(); }
+        const char* GetResourceTypeCstr()        const
+        {
+            switch (m_resource_type)
+            {
+            case ResourceType::Texture:   return "texture";
+            case ResourceType::Audio:     return "audio";
+            case ResourceType::Material:  return "material";
+            case ResourceType::Mesh:      return "mesh";
+            case ResourceType::Cubemap:   return "cubemap";
+            case ResourceType::Animation: return "animation";
+            case ResourceType::Font:      return "font";
+            case ResourceType::Shader:    return "shader";
+            default:                      return "unknown";
+            }
+        }
         const std::string& GetResourceFilePath() const { return m_resource_file_path; }
-        const std::string GetResourceDirectory() const { return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
+        std::string GetResourceDirectory()       const { return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
 
         // flags
         void SetFlag(const uint32_t flag, bool enabled = true)
