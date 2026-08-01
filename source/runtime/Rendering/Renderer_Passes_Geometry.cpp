@@ -946,11 +946,19 @@ namespace spartan
 
                 for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
                 {
-                    const float cell_size  = m_pass_state.grass_params.cell_size_m[lod];
+                    const float cell_size   = m_pass_state.grass_params.cell_size_m[lod];
                     const float ring_radius = m_pass_state.grass_params.ring_radii_m[lod];
                     if (cell_size <= 0.0f || ring_radius <= 0.0f)
+                    {
                         continue;
+                    }
 
+                    const float inner_radius = lod == 0 ?
+                        0.0f :
+                        std::min(
+                            m_pass_state.grass_params.ring_radii_m[lod - 1],
+                            ring_radius
+                        );
                     // grass_instances is partitioned by lod, lod_base is the cumulative prefix sum
                     // of the per-lod caps so each ring writes into its own contiguous slot
                     const uint32_t lod_base   = renderer_grass_lod_base(lod);
@@ -958,11 +966,11 @@ namespace spartan
 
                     // layout mirrors grass_populate.hlsl values[0..2]
                     // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
-                    // values[1] = (height_min, height_max, max_slope_cos, lod_index)
+                    // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
                     // values[2] = (camera_xz.x, camera_xz.z, terrain_extent.x, terrain_extent.z)
                     m_pcb_pass_cpu.material_index = 0;
                     m_pcb_pass_cpu.is_transparent = 0;
-                    m_pcb_pass_cpu.draw_index     = 0;
+                    m_pcb_pass_cpu.draw_index     = lod;
                     m_pcb_pass_cpu.v[0]  = cell_size;
                     m_pcb_pass_cpu.v[1]  = ring_radius;
                     m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
@@ -970,7 +978,7 @@ namespace spartan
                     m_pcb_pass_cpu.v[4]  = m_pass_state.grass_params.height_min;
                     m_pcb_pass_cpu.v[5]  = m_pass_state.grass_params.height_max;
                     m_pcb_pass_cpu.v[6]  = max_slope_cos;
-                    m_pcb_pass_cpu.v[7]  = static_cast<float>(lod);
+                    m_pcb_pass_cpu.v[7]  = inner_radius;
                     m_pcb_pass_cpu.v[8]  = camera_pos.x;
                     m_pcb_pass_cpu.v[9]  = camera_pos.z;
                     m_pcb_pass_cpu.v[10] = m_pass_state.grass_params.terrain_extent_m.x;
@@ -978,11 +986,29 @@ namespace spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the blade index, the shader recomputes blades_per_cell so both formulas must match
-                    const uint32_t cells_per_axis  = static_cast<uint32_t>(ceilf(2.0f * ring_radius / cell_size));
-                    const uint32_t groups          = (cells_per_axis + 7u) / 8u;
-                    const float    ring_area       = math::pi * ring_radius * ring_radius;
-                    const float    cells_in_ring   = ring_area / (cell_size * cell_size);
-                    const uint32_t blades_per_cell = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(lod_cap) / std::max(cells_in_ring, 1.0f))));
+                    const uint32_t cells_per_axis =
+                        2u *
+                        static_cast<uint32_t>(
+                            ceilf(ring_radius / cell_size)
+                        ) +
+                        2u;
+                    const uint32_t groups = (cells_per_axis + 7u) / 8u;
+                    const float ring_area = math::pi * (
+                        (ring_radius * ring_radius) -
+                        (inner_radius * inner_radius)
+                    );
+                    const float cells_in_ring =
+                        ring_area /
+                        (cell_size * cell_size);
+                    const uint32_t blades_per_cell = std::max(
+                        1u,
+                        static_cast<uint32_t>(
+                            std::floor(
+                                static_cast<float>(lod_cap) /
+                                std::max(cells_in_ring, 1.0f)
+                            )
+                        )
+                    );
                     cmd_list->Dispatch(groups, groups, blades_per_cell);
                 }
             }

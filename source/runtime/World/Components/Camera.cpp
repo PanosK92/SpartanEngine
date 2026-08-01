@@ -1031,15 +1031,31 @@ namespace spartan
     
         // behavior: velocity model, accelerate toward a target velocity and glide to a stop, framerate independent
         {
-            m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
-            m_movement_scroll_accumulator  = clamp(m_movement_scroll_accumulator, -0.8f, 4.0f);
+            m_movement_scroll_accumulator +=
+                Input::GetMouseWheelDelta().y *
+                0.25f;
+            m_movement_scroll_accumulator = clamp(
+                m_movement_scroll_accumulator,
+                -4.0f,
+                6.0f
+            );
 
-            bool is_on_foot    = is_playing && has_physics_body;
-            float target_speed = is_on_foot ? (button_sprint ? run_speed : walk_speed) : fly_speed * (1.0f + m_movement_scroll_accumulator) * (button_sprint ? 3.0f : 1.0f);
+            bool is_on_foot = is_playing && has_physics_body;
+            float fly_speed_scale = powf(
+                2.0f,
+                m_movement_scroll_accumulator
+            );
+            float target_speed = is_on_foot ?
+                (button_sprint ? run_speed : walk_speed) :
+                fly_speed *
+                fly_speed_scale *
+                (button_sprint ? 10.0f : 1.0f);
 
             // on foot the body responds fast, the editor fly is snappy on input and releases into a short glide
             bool has_input   = movement_direction.LengthSquared() > 0.0f;
-            float accel_rate = is_on_foot ? (has_input ? 12.0f : 14.0f) : (has_input ? 20.0f : 9.0f);
+            float accel_rate = is_on_foot ?
+                (has_input ? 12.0f : 14.0f) :
+                (has_input ? 20.0f : 30.0f);
             m_movement_speed = Vector3::Lerp(m_movement_speed, movement_direction * target_speed, 1.0f - exp(-accel_rate * delta_time));
             if (!has_input && m_movement_speed.LengthSquared() < 0.0001f)
             {

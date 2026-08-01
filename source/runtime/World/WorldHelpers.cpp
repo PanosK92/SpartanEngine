@@ -65,7 +65,13 @@ namespace spartan
         Entity* water = World::CreateEntity();
         water->SetObjectName("water");
         water->SetPosition(position);
-        water->AddComponent<Water>();
+        Water* water_component = water->AddComponent<Water>();
+        water_component->SetAmplitude(0.18f);
+        water_component->SetChoppiness(0.30f);
+        water_component->SetDisplacementScale(0.35f);
+        water_component->SetNormalStrength(0.65f);
+        water_component->SetTurbidity(1.20f);
+        water_component->SetCausticsIntensity(0.40f);
 
         return water;
     }
@@ -318,10 +324,10 @@ namespace spartan
 
                 material_grass_blade = make_shared<Material>();
                 material_grass_blade->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
-                material_grass_blade->SetProperty(MaterialProperty::Roughness, 1.0f);
-                material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                material_grass_blade->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-                material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                material_grass_blade->SetProperty(MaterialProperty::Roughness, 0.85f);
+                material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+                material_grass_blade->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.5f);
+                material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
                 material_grass_blade->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                 material_grass_blade->SetColor(Color::standard_white);
                 material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));

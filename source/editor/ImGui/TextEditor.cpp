@@ -789,6 +789,13 @@ void TextEditor::HandleMouseInputs()
 
 	if (ImGui::IsWindowHovered())
 	{
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+		{
+			ImGui::SetWindowFocus();
+			io.WantCaptureKeyboard = true;
+			io.WantTextInput = true;
+		}
+
 		if (!shift && !alt)
 		{
 			auto click = ImGui::IsMouseClicked(0);

@@ -1197,7 +1197,14 @@ void Properties::ShowLight(spartan::Light* light) const
             layout::section_header("Weather");
 
             float cloud_coverage = light->GetCloudCoverage();
-            if (property_float("Cloud Coverage", &cloud_coverage, 0.005f, 0.0f, 1.0f, "how cloudy the day is, 0 = clear sky, 0.38 = fair weather, 1 = overcast", "%.2f"))
+            if (property_float(
+                "Cloud Coverage",
+                &cloud_coverage,
+                0.005f,
+                0.0f,
+                1.0f,
+                "how cloudy the day is, 0 = clear sky, 0.9 = default, 1 = overcast",
+                "%.2f"))
             {
                 light->SetCloudCoverage(cloud_coverage);
             }

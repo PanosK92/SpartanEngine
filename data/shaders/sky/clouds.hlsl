@@ -46,9 +46,7 @@ static const float cumulus_detail_scale   = 1.0 / 2600.0;
 static const float cumulus_coverage_scale = 1.0 / 60000.0;
 static const float cumulus_density_mul    = 1.30;
 
-// coverage is authored on the directional light component, 0 = clear sky, 1 = overcast,
-// fair weather sits around 0.30 - 0.45, cirrus rides along at a fixed ratio so both layers
-// clear out together, at the 0.38 default the ratio lands on the classic 0.22 cirrus value
+// coverage is authored on the directional light, 0 is clear and 1 is overcast
 float cloud_coverage_cumulus()
 {
     return buffer_frame.cloud_coverage;

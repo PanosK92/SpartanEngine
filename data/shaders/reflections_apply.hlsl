@@ -61,7 +61,7 @@ static const float g_refraction_step_length   = g_refraction_max_distance / (flo
 
 // contact foam only where opaque geometry sits within this 3d world distance of the water surface point,
 // vertical clearance alone foams every submerged wall seen through the water, full distance cannot
-static const float contact_foam_radius = 0.6f;
+static const float contact_foam_radius = 0.35f;
 
 // Compute Fresnel for dielectrics using Schlick approximation
 float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_inner)
@@ -157,6 +157,88 @@ float ocean_value_noise(float2 p)
     return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
 }
 
+float shoreline_intersection_mask(
+    float2 render_uv,
+    float3 water_position,
+    float3 terrain_position
+)
+{
+    static const int2 offsets[8] =
+    {
+        int2(-3,  0),
+        int2( 3,  0),
+        int2( 0, -3),
+        int2( 0,  3),
+        int2(-3, -3),
+        int2( 3, -3),
+        int2(-3,  3),
+        int2( 3,  3)
+    };
+
+    uint output_width;
+    uint output_height;
+    tex4.GetDimensions(
+        output_width,
+        output_height
+    );
+    float2 output_resolution = float2(
+        output_width,
+        output_height
+    );
+    float2 screen_uv = render_uv_to_screen_uv(
+        render_uv
+    );
+
+    float intersection = 0.0f;
+    [unroll]
+    for (uint i = 0; i < 8; i++)
+    {
+        float2 sample_uv =
+            screen_uv +
+            float2(offsets[i]) /
+            output_resolution;
+        if (!is_valid_uv(sample_uv))
+        {
+            continue;
+        }
+
+        float depth_raw = tex4.SampleLevel(
+            samplers[sampler_point_clamp],
+            sample_uv,
+            0.0f
+        ).r;
+        if (depth_raw <= 1e-5f)
+        {
+            continue;
+        }
+
+        float3 neighbor_position = get_position(
+            depth_raw,
+            sample_uv
+        );
+        float crosses_surface = smoothstep(
+            water_position.y - 0.04f,
+            water_position.y + 0.08f,
+            neighbor_position.y
+        );
+        float horizontal_distance = length(
+            neighbor_position.xz -
+            terrain_position.xz
+        );
+        float is_local = 1.0f - smoothstep(
+            0.15f,
+            1.50f,
+            horizontal_distance
+        );
+        intersection = max(
+            intersection,
+            crosses_surface * is_local
+        );
+    }
+
+    return intersection;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -221,17 +303,35 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // contact foam, the opaque point behind this water pixel must sit right at the surface point in
         // full 3d, a submerged wall seen through the water lies meters along the ray so it stays clean
         float2 uv_foam          = (thread_id.xy + 0.5f) / resolution_out;
+        float2 uv_foam_screen   = render_uv_to_screen_uv(uv_foam);
         float  depth_water      = linearize_depth(surface.depth);
-        float  depth_opaque_raw = tex4.SampleLevel(samplers[sampler_point_clamp], uv_foam, 0.0f).r;
+        float depth_opaque_raw = tex4.SampleLevel(
+            samplers[sampler_point_clamp],
+            uv_foam_screen,
+            0.0f
+        ).r;
         float  depth_opaque     = linearize_depth(depth_opaque_raw);
         if (depth_opaque > depth_water + 0.02f)
         {
-            float3 opaque_pos = get_position(depth_opaque_raw, render_uv_to_screen_uv(uv_foam));
-            float  contact    = saturate(1.0f - length(opaque_pos - surface.position) / contact_foam_radius);
+            float3 opaque_pos = get_position(
+                depth_opaque_raw,
+                uv_foam_screen
+            );
+            float contact = saturate(
+                1.0f -
+                length(opaque_pos - surface.position) /
+                contact_foam_radius
+            );
+            float shoreline = shoreline_intersection_mask(
+                uv_foam,
+                surface.position,
+                opaque_pos
+            );
             float contact_foam =
                 contact *
+                shoreline *
                 lerp(0.6f, 1.0f, lace) *
-                0.7f;
+                0.55f;
             foam = saturate(max(foam, contact_foam));
         }
     }

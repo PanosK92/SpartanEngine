@@ -108,7 +108,7 @@
    </render>
   </Entity>
   <Entity name="Area" id="15433749284114940480" active="true" position="0 9.1 0" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="0" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="244020" range="82.8000031" angle="0.52359879" index="1" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="1" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="244020" range="82.8000031" angle="0.52359879" index="1" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <Entity name="Quad" id="8912128754646494019" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
@@ -117,7 +117,7 @@
    </Entity>
   </Entity>
   <Entity name="Area_1" id="4344178989790944211" active="true" position="19.1 9.1 48.1" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="0" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="2" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="1" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="2" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <Entity name="Quad" id="4344273018838813361" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
@@ -126,7 +126,7 @@
    </Entity>
   </Entity>
   <Entity name="Area_1_1" id="2540919726110367087" active="true" position="19.1 9.1 0" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="0" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="3" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="1" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="3" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <Entity name="Quad" id="2540684954478654846" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
@@ -135,7 +135,7 @@
    </Entity>
   </Entity>
   <Entity name="Area_1_2" id="13774301228040694663" active="true" position="-44.9 9.1 48.1" rotation="0.707282 0 0 0.706931" scale="1 1 1">
-   <light flags="0" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="4" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+   <light flags="1" light_type="3" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="1" intensity_photometric="244020" range="557.401001" angle="0.52359879" index="4" preset="5" area_width="8" area_height="8" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <Entity name="Quad" id="13774430438290159076" active="true" position="0 0 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
     <render mesh_name="standard_quad" sub_mesh_index="0" material_name="area_light_emissive" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">

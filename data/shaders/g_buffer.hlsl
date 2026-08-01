@@ -34,10 +34,10 @@ struct gbuffer
 static const float3 vegetation_greener  = float3(0.05f, 0.4f, 0.03f);
 static const float3 vegetation_yellower = float3(0.45f, 0.4f, 0.15f);
 static const float3 vegetation_browner  = float3(0.3f, 0.15f, 0.08f);
-static const float3 grass_base          = float3(0.03f, 0.055f, 0.02f);
-static const float3 grass_tip           = float3(0.05f, 0.09f, 0.03f);
-static const float3 grass_var1          = float3(0.04f, 0.065f, 0.02f);
-static const float3 grass_var2          = float3(0.035f, 0.04f, 0.015f);
+static const float3 grass_base          = float3(0.018f, 0.060f, 0.010f);
+static const float3 grass_tip           = float3(0.055f, 0.180f, 0.025f);
+static const float3 grass_var1          = float3(0.140f, 0.115f, 0.025f);
+static const float3 grass_var2          = float3(0.015f, 0.045f, 0.008f);
 static const float3 flower_base         = float3(0.05f, 0.07f, 0.03f);
 static const float3 flower_blue         = float3(0.529f, 0.808f, 0.922f);
 static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);
@@ -118,7 +118,7 @@ float3 compute_grass_color(float height_percent, float variation)
     // branchless color variation
     float3 var_color = lerp(grass_tint, grass_var1, step(0.33f, variation));
     var_color        = lerp(var_color, grass_var2, step(0.66f, variation));
-    return lerp(grass_tint, var_color, 0.045f); // 0.3 * 0.15 = 0.045
+    return lerp(grass_tint, var_color, 0.18f);
 }
 
 // compute flower color with cluster-based hue
@@ -331,9 +331,12 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // vegetation coloring
     if (surface.is_grass_blade())
     {
-        uint instance_id     = vertex.uv_misc.w;
         float height_percent = vertex.uv_misc.z;
-        albedo.rgb           = compute_grass_color(height_percent, hash(instance_id));
+        float variation      = vertex.uv_misc.w;
+        albedo.rgb           = compute_grass_color(
+            height_percent,
+            variation
+        );
     }
     else if (surface.is_flower())
     {

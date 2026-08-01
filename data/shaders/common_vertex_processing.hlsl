@@ -133,7 +133,7 @@ struct gbuffer_vertex
     float4 position_previous : POS_CLIP_PREVIOUS;
     float3 normal            : NORMAL_WORLD;
     float3 tangent           : TANGENT_WORLD;
-    float4 uv_misc           : TEXCOORD;  // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
+    float4 uv_misc           : TEXCOORD;  // xy uv, z height percent, w instance data
     float width_percent      : TEXCOORD2; // temp, will remove
     nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
     nointerpolation uint view_id        : TEXCOORD4; // multiview eye index (0 = left, 1 = right)
@@ -317,6 +317,9 @@ float3x3 rotation_matrix(float3 axis, float angle)
 // world-space tile period for the baked wind field, must match the artistic intent for gust scale
 // every wind_world_period meters the texture wraps once, smaller values give smaller, more chaotic gusts
 static const float wind_world_period = 80.0f;
+static const float wind_flow_uv_per_second  = 0.03f;
+static const float wind_gust_uv_per_second  = 0.065f;
+static const float wind_micro_uv_per_second = 0.90f;
 
 // shared wind sample for grass, flowers, and trees
 // reading from the once-per-frame baked wind_field texture: rg = flow vector, b = gust pressure, a = micro turbulence
@@ -328,14 +331,53 @@ struct wind_sample
     float  micro;          // signed high-frequency jitter, [-0.5, 0.5]
 };
 
-wind_sample evaluate_wind(float3 world_position)
+wind_sample evaluate_wind(
+    float3 world_position,
+    float time_offset
+)
 {
     float3 wind_world = buffer_frame.wind;
     float  wind_mag   = length(float2(wind_world.x, wind_world.z));
     float2 wind_dir   = wind_mag > 1e-4f ? float2(wind_world.x, wind_world.z) / wind_mag : float2(0.0f, 1.0f);
 
-    float2 uv     = world_position.xz * (1.0f / wind_world_period);
-    float4 wf     = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv, 0);
+    float2 uv = world_position.xz * (1.0f / wind_world_period);
+    float4 wf = tex_wind_field.SampleLevel(
+        GET_SAMPLER(sampler_bilinear_wrap),
+        uv,
+        0
+    );
+    if (time_offset < 0.0f)
+    {
+        float history_delta = -time_offset;
+        float2 flow_uv = uv +
+            wind_dir *
+            history_delta *
+            wind_flow_uv_per_second;
+        float2 gust_uv = uv +
+            wind_dir *
+            history_delta *
+            wind_gust_uv_per_second;
+        float2 micro_uv = uv -
+            float2(0.31f, -0.27f) *
+            history_delta *
+            wind_micro_uv_per_second;
+
+        wf.rg = tex_wind_field.SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap),
+            flow_uv,
+            0
+        ).rg;
+        wf.b = tex_wind_field.SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap),
+            gust_uv,
+            0
+        ).b;
+        wf.a = tex_wind_field.SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap),
+            micro_uv,
+            0
+        ).a;
+    }
 
     // bias the bend direction with the local flow vector so the field is not purely along the macro wind
     float2 dir_xz = wind_dir + wf.rg * 0.55f;
@@ -344,7 +386,17 @@ wind_sample evaluate_wind(float3 world_position)
 
     wind_sample s;
     s.bend_dir_world = float3(dir_xz.x, 0.0f, dir_xz.y);
-    s.bend_strength  = (0.20f + 0.80f * wf.b) * wind_mag;
+    float ambient_pressure = 0.055f;
+    float gust_pressure = smoothstep(
+        0.08f,
+        0.55f,
+        wf.b
+    );
+    float wind_response = saturate(wind_mag * 0.10f);
+    s.bend_strength = wind_response * (
+        ambient_pressure +
+        gust_pressure * 1.35f
+    );
     s.gust           = wf.b;
     s.micro          = wf.a - 0.5f;
     return s;
@@ -405,7 +457,10 @@ struct vertex_processing
         {
             const float camera_bias_strength = 0.7f;
 
-            float3 to_camera    = buffer_frame.camera_position - position_world;
+            float3 camera_position = time_offset < 0.0f ?
+                buffer_frame.camera_position_previous :
+                buffer_frame.camera_position;
+            float3 to_camera    = camera_position - position_world;
             float3 to_camera_xz = normalize(float3(to_camera.x, 0.0f, to_camera.z));
 
             float3 blade_normal    = normalize(transform[2].xyz);
@@ -428,26 +483,51 @@ struct vertex_processing
             vertex.tangent = normalize(mul(bias_rot, vertex.tangent));
         }
 
-        // grass and flower wind: cantilever bend with per-instance spring response
+        // grass and flower wind
         if (surface.is_grass_blade() || surface.is_flower())
         {
-            wind_sample ws = evaluate_wind(position_world);
+            wind_sample ws = evaluate_wind(
+                instance_pos,
+                time_offset
+            );
 
             // height fraction along the blade, base = 0, tip = 1
             float h          = saturate(vertex.uv_misc.z);
             float h_cantilever = pow(h, 1.5f); // stiffer at the base than a linear taper
 
-            // per-instance natural frequency and phase, two oscillation modes for soft overshoot
+            // retain subtle blade variation without breaking gust coherence
             float2 inst          = wind_instance_phase_freq(instance_pos);
             float  instance_phase = inst.x;
             float  nat_freq       = inst.y;
-            float  spring         = sin(time * nat_freq + instance_phase) * 0.18f
-                                  + sin(time * nat_freq * 2.3f + instance_phase * 1.7f) * 0.07f;
+            float  spring         = sin(
+                time * nat_freq +
+                instance_phase
+            ) * 0.03f;
+            float wind_response = saturate(
+                length(buffer_frame.wind.xz) *
+                0.10f
+            );
+            float ambient_wobble = (
+                sin(
+                    time * 0.80f +
+                    instance_phase
+                ) * 1.60f +
+                sin(
+                    time * 0.53f +
+                    instance_phase * 1.70f
+                ) * 0.70f
+            ) * DEG_TO_RAD * wind_response;
 
-            // peak bend angle of 60 deg, modulated by the per-instance spring and a subtle micro jitter
-            float bend_amp     = ws.bend_strength * (1.0f + spring * 0.45f);
-            float micro_jitter = ws.micro * 0.10f;
-            float angle        = (bend_amp * (60.0f * DEG_TO_RAD) + micro_jitter) * h_cantilever;
+            // peak bend angle of 55 deg
+            float bend_amp     = ws.bend_strength * (1.0f + spring);
+            float micro_jitter = ws.micro *
+                0.035f *
+                ws.bend_strength;
+            float angle        = (
+                bend_amp * (55.0f * DEG_TO_RAD) +
+                ambient_wobble +
+                micro_jitter
+            ) * h_cantilever;
 
             // never let the blade rotate below horizontal
             static const float3 vertical              = float3(0.0f, 1.0f, 0.0f);
@@ -474,7 +554,10 @@ struct vertex_processing
             const float leaf_amplitude   = 0.10f;
             const float flutter_strength = 0.40f;
 
-            wind_sample ws = evaluate_wind(position_world);
+            wind_sample ws = evaluate_wind(
+                position_world,
+                time_offset
+            );
 
             float h = saturate(vertex.uv_misc.z); // 0 at trunk, 1 at branch tips
 
@@ -561,6 +644,12 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     matrix instance = compose_instance_transform(input.instance_position_x, input.instance_position_y, input.instance_position_z, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
     transform = mul(instance, transform);
     matrix transform_previous = mul(instance, pass_get_transform_previous());
+
+    if (surface.is_grass_blade())
+    {
+        float2 grass_cell = floor(transform[3].xz * 2.0f);
+        vertex.uv_misc.w  = hash(grass_cell);
+    }
     
     // transform position to world space
     float4 position_local    = float4(input.position, 1.0f);

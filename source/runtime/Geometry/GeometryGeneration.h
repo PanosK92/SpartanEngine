@@ -1741,10 +1741,10 @@ namespace spartan::geometry_generation
         using namespace math;
 
         // constants
-        const float grass_width    = 0.05f; // base width
-        const float grass_height   = 0.2f;  // blade height
-        const float thinning_start = 0.2f;  // thinning start (0=base, 1=top)
-        const float thinning_power = 1.0f;  // thinning sharpness
+        const float grass_width    = 0.03f;
+        const float grass_height   = 0.35f;
+        const float thinning_start = 0.35f;
+        const float thinning_power = 0.85f;
 
         // clear output vectors
         vertices->clear();
@@ -1791,7 +1791,7 @@ namespace spartan::geometry_generation
         }
 
         // bend towards downwards (emulate gravity pulling the blade down)
-        const float bend_amount = 0.25f;
+        const float bend_amount = 0.12f;
         for (RHI_Vertex_PosTexNorTan& v : *vertices)
         {
             float uv_misc_z     = v.get_uv().y;

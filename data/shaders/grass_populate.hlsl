@@ -42,8 +42,8 @@ static const float grass_cull_radius      = 1.5f;
 //
 // push constant layout (PassBufferData.values, 12 floats total):
 //   values[0] = (cell_size, ring_radius, lod_base_in_instances, max_instances_per_lod)
-//   values[1] = (height_min, height_max, max_slope_cos, lod_index)
-//   values[2] = (camera_xz_snapped.x, camera_xz_snapped.z, terrain_extent_x, terrain_extent_z)
+//   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
+//   values[2] = (camera_xz_anchor.x, camera_xz_anchor.z, terrain_extent_x, terrain_extent_z)
 // terrain heightmap is bound to tex (t7), R32_Float, world-space y per texel
 // terrain is centered at origin in xz, so world_xz to uv is (world_xz / terrain_extent) + 0.5
 
@@ -84,7 +84,11 @@ float sample_terrain_height(float2 world_xz, float2 terrain_extent, out float va
 
 // two forward taps for the surface slope, reuses the centre height so a surviving blade pays three terrain
 // samples total (one centre in sample_terrain_height plus these two) instead of five
-float sample_terrain_slope_cos(float2 world_xz, float2 terrain_extent, float y_c)
+float3 sample_terrain_normal(
+    float2 world_xz,
+    float2 terrain_extent,
+    float y_c
+)
 {
     float2 uv = world_xz / terrain_extent + 0.5f;
 
@@ -106,9 +110,7 @@ float sample_terrain_slope_cos(float2 world_xz, float2 terrain_extent, float y_c
     float dy_dx = (y_r - y_c) / world_per_texel_x;
     float dy_dz = (y_u - y_c) / world_per_texel_z;
 
-    // standard right-handed surface normal, y is the up axis, return its y as the slope cosine
-    float3 normal = normalize(float3(-dy_dx, 1.0f, -dy_dz));
-    return normal.y;
+    return normalize(float3(-dy_dx, 1.0f, -dy_dz));
 }
 
 // pack a position-yaw-scale-normal tuple into the 16-byte GrassInstance layout
@@ -156,10 +158,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float height_min    = buffer_pass.values[1].x;
     float height_max    = buffer_pass.values[1].y;
     float max_slope_cos = buffer_pass.values[1].z;
-    uint  lod_index     = (uint)buffer_pass.values[1].w;
+    float inner_radius  = buffer_pass.values[1].w;
+    uint  lod_index     = buffer_pass.draw_index;
 
-    float2 camera_xz_snapped = buffer_pass.values[2].xy;
-    float2 terrain_extent    = buffer_pass.values[2].zw;
+    float2 camera_xz_anchor = buffer_pass.values[2].xy;
+    float2 terrain_extent   = buffer_pass.values[2].zw;
 
     // stratified scatter: the world is divided into a grid of cells, each cell holds blades_per_cell
     // blades, and each blade is placed at a uniformly random position INSIDE the cell, independently of
@@ -168,8 +171,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // there is no per-cell lattice either, this is the cheapest stable approximation of a poisson disk
     // distribution that produces even coverage at any view angle. blade_index lives in dispatch_thread_id.z
     // so cells_per_axis stays a simple 2d grid sized to the ring
-    uint cells_per_axis  = (uint)(2.0f * ceil(ring_radius / cell_size));
-    float ring_area      = PI * ring_radius * ring_radius;
+    uint cells_per_axis = (uint)(
+        2.0f * ceil(ring_radius / cell_size)
+    ) + 2u;
+    float ring_area      = PI * (
+        ring_radius * ring_radius -
+        inner_radius * inner_radius
+    );
     float cells_in_ring  = ring_area / max(cell_size * cell_size, 1e-6f);
     uint  blades_per_cell = max(1u, (uint)floor(float(max_instances_per_lod) / max(cells_in_ring, 1.0f)));
     if (dispatch_thread_id.x >= cells_per_axis ||
@@ -183,8 +191,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     int cell_z_s   = (int)dispatch_thread_id.y - half_cells;
 
     // integer world coordinates of the cell, stable as the camera moves
-    int world_cell_x = (int)floor(camera_xz_snapped.x / cell_size) + cell_x_s;
-    int world_cell_z = (int)floor(camera_xz_snapped.y / cell_size) + cell_z_s;
+    int world_cell_x = (int)floor(camera_xz_anchor.x / cell_size) + cell_x_s;
+    int world_cell_z = (int)floor(camera_xz_anchor.y / cell_size) + cell_z_s;
 
     // hash combines the cell coordinates, the blade index inside the cell, and the lod seed,
     // each (cell, blade) pair gets an independent stable hash, no two blades collide and there is
@@ -202,11 +210,53 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float2 cell_origin_xz = float2(world_cell_x, world_cell_z) * cell_size;
     float2 world_xz       = cell_origin_xz + float2(jx, jz) * cell_size;
 
-    // ring distance reject, the ring is round so corner cells of the dispatch square get culled here
-    float2 to_camera = world_xz - camera_xz_snapped;
+    // retain narrow dithered transitions between annuli
+    float inner_transition = max(
+        cell_size * 2.0f,
+        inner_radius * 0.15f
+    );
+    float outer_transition = max(
+        cell_size * 2.0f,
+        ring_radius * 0.15f
+    );
+    float inner_start = max(
+        0.0f,
+        inner_radius - inner_transition
+    );
+    float outer_start = max(
+        inner_radius,
+        ring_radius - outer_transition
+    );
+
+    float2 to_camera = world_xz - camera_xz_anchor;
     float  dist2     = dot(to_camera, to_camera);
-    if (dist2 > ring_radius * ring_radius)
+    if (
+        dist2 < inner_start * inner_start ||
+        dist2 > ring_radius * ring_radius
+    )
+    {
         return;
+    }
+
+    float distance_to_camera = sqrt(dist2);
+    float fade_in = inner_radius > 0.0f ?
+        smoothstep(
+            inner_start,
+            inner_radius,
+            distance_to_camera
+        ) :
+        1.0f;
+    float fade_out = 1.0f - smoothstep(
+        outer_start,
+        ring_radius,
+        distance_to_camera
+    );
+    float lod_weight = fade_in * fade_out;
+    float lod_random = hash_unit(h0 ^ 0xa511e9b3u);
+    if (lod_random > lod_weight)
+    {
+        return;
+    }
 
     // height reject, single centre tap, also yields world_y for the visibility cull below
     float valid;
@@ -231,18 +281,18 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         return;
 
     // slope reject, two forward taps reusing the centre height, paid only by visible blades
-    float slope_cos = sample_terrain_slope_cos(world_xz, terrain_extent, world_y);
-    if (slope_cos < max_slope_cos)
+    float3 surface_normal = sample_terrain_normal(
+        world_xz,
+        terrain_extent,
+        world_y
+    );
+    if (surface_normal.y < max_slope_cos)
+    {
         return;
+    }
 
-    // grass blades only need a rough up vector to align to the surface, a flat up is enough
-    float3 up = float3(0.0f, 1.0f, 0.0f);
-
-    // scale: compose_instance_transform decodes scale_01 via exp2(lerp(log2(0.01), log2(100), t)),
-    // so scale_01 = 0.5 yields world scale 1.0 and a +/-0.07 window covers a perceptually balanced
-    // range around it, center is biased slightly above 0.5 so the minimum blade does not shrink into
-    // a barely-visible sliver while the maximum stays under ~3x to keep the lawn from looking patchy
-    float scale_01 = 0.54f + (sc - 0.5f) * 0.14f; // world scale roughly in [0.58, 2.75]
+    // keep the authored blade proportions within a natural range
+    float scale_01 = 0.5f + (sc - 0.5f) * 0.05f;
 
     // atomic-allocate a slot inside this lod's section, bail out cleanly once full
     // blades_per_cell was sized from cells_in_ring with floor() so the upper bound on writes is
@@ -255,7 +305,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     uint global_slot = lod_base + local_slot;
     grass_instances[global_slot] = build_grass_instance(
         float3(world_xz.x, world_y, world_xz.y),
-        up,
+        surface_normal,
         ys,
         scale_01
     );
