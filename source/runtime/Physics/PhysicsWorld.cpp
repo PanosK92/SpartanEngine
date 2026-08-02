@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Physics.h"
+#include "../World/Components/Ragdoll.h"
 #include "../World/World.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -112,6 +113,26 @@ namespace spartan
                 PxRigidActor* actor = hit.block.actor;
                 if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
                 {
+                    // frozen ragdoll limbs are kinematic, wake them so the pick joint can drag
+                    if (Entity* entity = static_cast<Entity*>(dynamic->userData))
+                    {
+                        if (Ragdoll* ragdoll = entity->GetComponent<Ragdoll>())
+                        {
+                            if (ragdoll->IsFrozen())
+                            {
+                                const Vector3 hit_pos(
+                                    hit.block.position.x,
+                                    hit.block.position.y,
+                                    hit.block.position.z
+                                );
+                                if (!ragdoll->Wake(hit_pos, Vector3::Zero))
+                                {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
                     // store the picked body
                     picked_body = dynamic;
 
@@ -365,8 +386,12 @@ namespace spartan
             const bool involves_pedestrian =
                 filter_data0.word2 == physics_collision_pedestrian ||
                 filter_data1.word2 == physics_collision_pedestrian;
+            const bool involves_ragdoll =
+                filter_data0.word2 == physics_collision_ragdoll ||
+                filter_data1.word2 == physics_collision_ragdoll;
 
-            if (involves_pedestrian &&
+            // pedestrians and ragdoll corpses need touch events so hits can activate / wake them
+            if ((involves_pedestrian || involves_ragdoll) &&
                 !PxFilterObjectIsTrigger(attributes0) &&
                 !PxFilterObjectIsTrigger(attributes1))
             {

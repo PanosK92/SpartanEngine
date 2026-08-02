@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "Component.h"
+#include "../../Math/BoundingBox.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Quaternion.h"
 #include "../../Math/Vector3.h"
@@ -60,6 +61,9 @@ namespace spartan
 
         void Initialize() override;
         void Remove() override;
+        void Start() override;
+        void Stop() override;
+        void PreTick() override;
         void Tick() override;
 
         static void RegisterForScripting(sol::state_view state);
@@ -70,8 +74,15 @@ namespace spartan
             const math::Vector3& hit_velocity
         );
 
+        // wake a frozen corpse, returns true if bodies are dynamic and pickable
+        bool Wake(
+            const math::Vector3& hit_position,
+            const math::Vector3& hit_velocity
+        );
+
         State GetState() const { return m_state; }
         bool IsDead() const { return m_state != State::Alive; }
+        bool IsFrozen() const { return m_state == State::Frozen; }
 
         void SetHitBodyEnabled(bool enabled);
         bool IsHitBodyEnabled() const { return m_hit_body_wanted; }
@@ -88,11 +99,19 @@ namespace spartan
         struct BoneJoint
         {
             physx::PxJoint* joint = nullptr;
+            int32_t parent_body = -1;
+            int32_t child_body = -1;
+            float swing_y = 0.5f;
+            float swing_z = 0.5f;
+            float twist = 0.3f;
         };
 
         void CreateHitBody();
         void DestroyHitBody();
         void DestroyRagdoll();
+        void DestroyJoints();
+        void RecreateJoints();
+        void ResetToAlive();
         void SyncHitBody() const;
         void ProcessHits();
         bool BuildRagdoll(
@@ -102,6 +121,7 @@ namespace spartan
         );
         void SyncPoseFromActors();
         void UpdateCullBounds();
+        void ApplyCullBounds(const math::BoundingBox& world_box);
         void Freeze();
         bool AreBodiesSleeping() const;
         bool IsFiniteMatrix(const math::Matrix& matrix) const;
@@ -126,6 +146,8 @@ namespace spartan
         void LogSyncSample(const char* reason);
 
         math::Matrix m_entity_world_at_activate = math::Matrix::Identity;
+        math::BoundingBox m_cull_bounds_world = math::BoundingBox::Unit;
+        bool m_cull_bounds_valid = false;
         State m_state = State::Alive;
         float m_sleep_timer = 0.0f;
         bool m_hit_body_wanted = false;

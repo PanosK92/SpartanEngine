@@ -1074,10 +1074,8 @@ namespace spartan
     void Animator::Stop()
     {
         RestoreHands();
-        if (!m_external_pose_active)
-        {
-            RestoreBindEntityPoses();
-        }
+        ClearExternalPose();
+        RestoreBindEntityPoses();
         m_playing         = false;
         m_blending        = false;
         m_time            = 0.0f;

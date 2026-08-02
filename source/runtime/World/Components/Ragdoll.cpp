@@ -207,15 +207,10 @@ namespace spartan
         }
     }
 
-    void Ragdoll::Remove()
+    void Ragdoll::ResetToAlive()
     {
         DestroyRagdoll();
         DestroyHitBody();
-        if (m_material)
-        {
-            m_material->release();
-            m_material = nullptr;
-        }
 
         Entity* root = GetEntity();
         if (root)
@@ -235,11 +230,43 @@ namespace spartan
             }
         }
 
+        if (m_animator)
+        {
+            m_animator->ClearExternalPose();
+        }
+
         m_state = State::Alive;
         m_sleep_timer = 0.0f;
         m_pose_locals.clear();
+        m_cull_bounds_valid = false;
+        m_entity_world_at_activate = Matrix::Identity;
         m_debug_sync_count = 0;
         m_debug_logged_bad = false;
+    }
+
+    void Ragdoll::Start()
+    {
+        m_animator = GetEntity()->GetComponent<Animator>();
+        ResetToAlive();
+        if (m_hit_body_wanted)
+        {
+            CreateHitBody();
+        }
+    }
+
+    void Ragdoll::Stop()
+    {
+        ResetToAlive();
+    }
+
+    void Ragdoll::Remove()
+    {
+        ResetToAlive();
+        if (m_material)
+        {
+            m_material->release();
+            m_material = nullptr;
+        }
     }
 
     void Ragdoll::LogMatrix(const char* label, const Matrix& matrix) const
@@ -327,6 +354,19 @@ namespace spartan
         }
     }
 
+    void Ragdoll::PreTick()
+    {
+        // before any Render::Tick frustum test, physics has already stepped
+        if (m_state == State::Simulating)
+        {
+            UpdateCullBounds();
+        }
+        else if (m_state == State::Frozen && m_cull_bounds_valid)
+        {
+            ApplyCullBounds(m_cull_bounds_world);
+        }
+    }
+
     void Ragdoll::Tick()
     {
         if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
@@ -345,6 +385,16 @@ namespace spartan
                 SyncHitBody();
                 ProcessHits();
             }
+            return;
+        }
+
+        if (m_state == State::Frozen)
+        {
+            if (m_cull_bounds_valid)
+            {
+                ApplyCullBounds(m_cull_bounds_world);
+            }
+            ProcessHits();
             return;
         }
 
@@ -372,8 +422,14 @@ namespace spartan
 
     void Ragdoll::Activate(const Vector3& hit_position, const Vector3& hit_velocity)
     {
-        if (m_state != State::Alive)
+        if (m_state == State::Simulating)
         {
+            return;
+        }
+
+        if (m_state == State::Frozen)
+        {
+            Wake(hit_position, hit_velocity);
             return;
         }
 
@@ -487,6 +543,7 @@ namespace spartan
         m_debug_logged_bad = false;
         SP_LOG_INFO("ragdoll simulating bodies=%zu joints=%zu", m_bodies.size(), m_joints.size());
         LogSyncSample("activate_done");
+        UpdateCullBounds();
     }
 
     void Ragdoll::CreateHitBody()
@@ -552,7 +609,7 @@ namespace spartan
         m_hit_body = nullptr;
     }
 
-    void Ragdoll::DestroyRagdoll()
+    void Ragdoll::DestroyJoints()
     {
         lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
 
@@ -564,8 +621,31 @@ namespace spartan
                 joint.joint = nullptr;
             }
         }
+    }
+
+    void Ragdoll::RecreateJoints()
+    {
+        vector<BoneJoint> specs = m_joints;
         m_joints.clear();
 
+        for (const BoneJoint& spec : specs)
+        {
+            AddBoneJoint(
+                spec.parent_body,
+                spec.child_body,
+                spec.swing_y,
+                spec.swing_z,
+                spec.twist
+            );
+        }
+    }
+
+    void Ragdoll::DestroyRagdoll()
+    {
+        DestroyJoints();
+        m_joints.clear();
+
+        lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
         for (BoneBody& body : m_bodies)
         {
             if (body.actor)
@@ -621,16 +701,51 @@ namespace spartan
                 continue;
             }
 
-            Vector3 velocity = actor_linear_velocity(other);
-            const float impulse_mag = contact.impulse.Length();
-            if (velocity.LengthSquared() < hit_speed * hit_speed && impulse_mag < hit_impulse)
+            // physx normal points from actor1 to actor0
+            Vector3 normal = contact.normal;
+            if (contact.entity_a != self)
+            {
+                normal = -normal;
+            }
+
+            Vector3 impulse = contact.impulse;
+            if (contact.entity_a != self)
+            {
+                impulse = -impulse;
+            }
+
+            // ignore bounced cube velocity pointing back at the camera
+            const Vector3 other_to_self = self->GetPosition() - other->GetPosition();
+            Vector3 launch = actor_linear_velocity(other);
+            if (Vector3::Dot(launch, other_to_self) < 0.0f)
+            {
+                launch = Vector3::Zero;
+            }
+
+            const float impulse_mag = impulse.Length();
+            if (launch.LengthSquared() < hit_speed * hit_speed && impulse_mag < hit_impulse)
             {
                 continue;
             }
 
-            if (velocity.LengthSquared() < 0.01f && impulse_mag >= hit_impulse)
+            if (launch.LengthSquared() < hit_speed * hit_speed)
             {
-                velocity = contact.normal * min(impulse_mag * 0.04f, max_launch_speed);
+                if (impulse_mag >= hit_impulse)
+                {
+                    launch = impulse.Normalized() * min(impulse_mag * 0.04f, max_launch_speed);
+                }
+                else if (normal.LengthSquared() > 0.0001f)
+                {
+                    launch = normal.Normalized() * hit_speed;
+                }
+                else if (other_to_self.LengthSquared() > 0.0001f)
+                {
+                    launch = other_to_self.Normalized() * hit_speed;
+                }
+                else
+                {
+                    continue;
+                }
             }
 
             Vector3 hit_position = contact.position;
@@ -639,7 +754,7 @@ namespace spartan
                 hit_position = self->GetPosition() + Vector3(0.0f, 1.0f, 0.0f);
             }
 
-            Activate(hit_position, velocity);
+            Activate(hit_position, launch);
             return;
         }
     }
@@ -849,6 +964,11 @@ namespace spartan
 
         BoneJoint entry;
         entry.joint = joint;
+        entry.parent_body = parent_body;
+        entry.child_body = child_body;
+        entry.swing_y = swing_y;
+        entry.swing_z = swing_z;
+        entry.twist = twist;
         m_joints.push_back(entry);
     }
 
@@ -1161,10 +1281,40 @@ namespace spartan
         UpdateCullBounds();
     }
 
+    void Ragdoll::ApplyCullBounds(const BoundingBox& world_box)
+    {
+        Entity* root = GetEntity();
+        if (!root)
+        {
+            return;
+        }
+
+        vector<Entity*> nodes;
+        nodes.push_back(root);
+        root->GetDescendants(&nodes);
+
+        for (Entity* node : nodes)
+        {
+            if (!node)
+            {
+                continue;
+            }
+
+            if (Render* render = node->GetComponent<Render>())
+            {
+                render->SetBoundingBoxOverride(world_box);
+            }
+        }
+    }
+
     void Ragdoll::UpdateCullBounds()
     {
         if (m_bodies.empty())
         {
+            if (m_cull_bounds_valid)
+            {
+                ApplyCullBounds(m_cull_bounds_world);
+            }
             return;
         }
 
@@ -1187,32 +1337,16 @@ namespace spartan
         }
 
         // pad so mesh volume around capsules stays inside the cull aabb
-        constexpr float pad = 0.5f;
+        constexpr float pad = 0.75f;
         BoundingBox box(points.data(), static_cast<uint32_t>(points.size()));
-        box = BoundingBox(box.GetMin() - Vector3(pad, pad, pad), box.GetMax() + Vector3(pad, pad, pad));
+        box = BoundingBox(
+            box.GetMin() - Vector3(pad, pad, pad),
+            box.GetMax() + Vector3(pad, pad, pad)
+        );
 
-        Entity* root = GetEntity();
-        if (!root)
-        {
-            return;
-        }
-
-        vector<Entity*> nodes;
-        nodes.push_back(root);
-        root->GetDescendants(&nodes);
-
-        for (Entity* node : nodes)
-        {
-            if (!node)
-            {
-                continue;
-            }
-
-            if (Render* render = node->GetComponent<Render>())
-            {
-                render->SetBoundingBoxOverride(box);
-            }
-        }
+        m_cull_bounds_world = box;
+        m_cull_bounds_valid = true;
+        ApplyCullBounds(box);
     }
 
     bool Ragdoll::AreBodiesSleeping() const
@@ -1236,8 +1370,24 @@ namespace spartan
     void Ragdoll::Freeze()
     {
         SyncPoseFromActors();
-        // keep last cull override, entity transform stays at activate pose
-        DestroyRagdoll();
+
+        // drop joints and park limbs as kinematic, cheap until woken by a hit or pick
+        DestroyJoints();
+        {
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+            for (BoneBody& body : m_bodies)
+            {
+                if (!body.actor)
+                {
+                    continue;
+                }
+
+                body.actor->setLinearVelocity(PxVec3(0.0f, 0.0f, 0.0f));
+                body.actor->setAngularVelocity(PxVec3(0.0f, 0.0f, 0.0f));
+                body.actor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+            }
+        }
+
         m_state = State::Frozen;
         m_sleep_timer = 0.0f;
 
@@ -1245,6 +1395,92 @@ namespace spartan
         {
             m_animator->SetExternalPose(m_pose_locals);
         }
+
+        UpdateCullBounds();
+    }
+
+    bool Ragdoll::Wake(const Vector3& hit_position, const Vector3& hit_velocity)
+    {
+        if (m_state != State::Frozen)
+        {
+            return m_state == State::Simulating;
+        }
+
+        if (m_bodies.empty())
+        {
+            if (!m_animator)
+            {
+                m_animator = GetEntity()->GetComponent<Animator>();
+            }
+
+            const Skeleton* skeleton = m_animator ? m_animator->GetSkeleton() : nullptr;
+            if (!skeleton || m_pose_locals.size() != skeleton->joint_count)
+            {
+                return false;
+            }
+
+            if (!BuildRagdoll(*skeleton, m_pose_locals, hit_velocity))
+            {
+                return false;
+            }
+
+            m_state = State::Simulating;
+            m_sleep_timer = 0.0f;
+            m_animator->SetExternalPose(m_pose_locals);
+            UpdateCullBounds();
+            return true;
+        }
+
+        Vector3 launch = hit_velocity;
+        if (launch.LengthSquared() < 0.01f)
+        {
+            launch = Vector3(0.0f, 1.5f, 0.0f);
+        }
+        launch.y = clamp(launch.y * 0.2f + 1.0f, 0.5f, 2.5f);
+        launch = clamp_vector_length(launch, max_launch_speed);
+        const Vector3 angular(launch.z * 0.04f, 0.0f, -launch.x * 0.04f);
+
+        {
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
+            for (BoneBody& body : m_bodies)
+            {
+                if (!body.actor)
+                {
+                    continue;
+                }
+
+                body.actor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, false);
+
+                const PxTransform pose = body.actor->getGlobalPose();
+                Vector3 to_body(
+                    pose.p.x - hit_position.x,
+                    pose.p.y - hit_position.y,
+                    pose.p.z - hit_position.z
+                );
+                const float distance = to_body.Length();
+                const float weight = distance < 0.01f
+                    ? 1.0f
+                    : clamp(1.0f / (1.0f + distance), 0.35f, 1.0f);
+
+                body.actor->setLinearVelocity(PxVec3(
+                    launch.x * weight,
+                    launch.y * weight,
+                    launch.z * weight
+                ));
+                body.actor->setAngularVelocity(PxVec3(
+                    angular.x * weight,
+                    angular.y * weight,
+                    angular.z * weight
+                ));
+                body.actor->wakeUp();
+            }
+        }
+
+        RecreateJoints();
+        m_state = State::Simulating;
+        m_sleep_timer = 0.0f;
+        UpdateCullBounds();
+        return true;
     }
 
     void Ragdoll::RegisterForScripting(sol::state_view state)
@@ -1252,7 +1488,9 @@ namespace spartan
         state.new_usertype<Ragdoll>("Ragdoll",
             sol::base_classes, sol::bases<Component>(),
             "IsDead", &Ragdoll::IsDead,
+            "IsFrozen", &Ragdoll::IsFrozen,
             "Activate", &Ragdoll::Activate,
+            "Wake", &Ragdoll::Wake,
             "SetHitBodyEnabled", &Ragdoll::SetHitBodyEnabled,
             "IsHitBodyEnabled", &Ragdoll::IsHitBodyEnabled
         );

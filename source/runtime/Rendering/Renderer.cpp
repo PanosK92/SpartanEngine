@@ -3040,7 +3040,10 @@ namespace spartan
             Mesh* mesh     = render->GetMesh();
 
             // flags bit 0 skinned, bit 1 per instance, bit 3 two sided material, bit 4 alpha tested (bit 2 retired with the hw-instancing fallback)
-            const bool is_skinned       = mesh->IsSkinned() && !cvar_meshlet_cull_skinned.GetValueAs<bool>();
+            // override means cpu already wrote a deformed world aabb, use the skinned cull path so phase a does not test lod_aabb * entity
+            const bool is_skinned       =
+                render->HasBoundingBoxOverride() ||
+                (mesh->IsSkinned() && !cvar_meshlet_cull_skinned.GetValueAs<bool>());
             const bool use_per_instance = is_instanced;
             const bool is_two_sided     = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
             const bool is_alpha_tested  = material->IsAlphaTested();
