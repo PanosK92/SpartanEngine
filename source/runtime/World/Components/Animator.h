@@ -52,6 +52,8 @@ namespace spartan
 
         bool Play(const std::string& clip_name);
         void Stop();
+        void Pause();
+        void Resume();
         bool IsPlaying() const { return m_playing; }
 
         float GetSpeed() const { return m_speed; }

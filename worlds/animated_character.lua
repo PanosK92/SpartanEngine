@@ -177,6 +177,11 @@ function animated_character.Initialize(self, entity)
 
     root:SetName("character")
 
+    -- runtime spawned, do not bake into the world on save
+    if root.SetTransient then
+        root:SetTransient(true)
+    end
+
     root:SetPosition(Vector3(0.0, ground_y, 0.0))
 
     root:SetScale(Vector3(1.0, 1.0, 1.0))

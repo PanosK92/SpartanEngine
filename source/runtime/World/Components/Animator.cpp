@@ -619,11 +619,7 @@ namespace spartan
             }
         }
 
-        Entity* root = m_mesh ? m_mesh->GetRootEntity() : GetEntity();
-        if (!root)
-        {
-            root = GetEntity();
-        }
+        Entity* root = GetEntity();
         if (!root)
         {
             return;
@@ -737,11 +733,7 @@ namespace spartan
         m_hands_attach_attempted = true;
 
         const Skeleton& skeleton = *m_mesh->GetSkeleton();
-        Entity* root = m_mesh->GetRootEntity();
-        if (!root)
-        {
-            root = GetEntity();
-        }
+        Entity* root = GetEntity();
 
         Entity* arm_l = FindJointByName(skeleton, "LowerArm.L");
         Entity* arm_r = FindJointByName(skeleton, "LowerArm.R");
@@ -790,11 +782,7 @@ namespace spartan
         m_joint_entities.assign(skeleton.joint_count, nullptr);
         m_bind_entity_poses.assign(skeleton.joint_count, {});
 
-        Entity* root = m_mesh ? m_mesh->GetRootEntity() : nullptr;
-        if (!root)
-        {
-            root = GetEntity();
-        }
+        Entity* root = GetEntity();
 
         if (!root || skeleton.joint_names.size() != skeleton.joint_count)
         {
@@ -948,7 +936,7 @@ namespace spartan
             return;
         }
 
-        Entity* root = m_mesh ? m_mesh->GetRootEntity() : GetEntity();
+        Entity* root = GetEntity();
 
         for (uint32_t i = 0; i < skeleton.joint_count; ++i)
         {
@@ -958,7 +946,7 @@ namespace spartan
                 continue;
             }
 
-            // never overwrite the mesh root (lua sets world pos/scale there)
+            // never overwrite the instance root (lua/ai sets world pos/scale there)
             if (entity == root)
             {
                 continue;
@@ -1092,6 +1080,19 @@ namespace spartan
         m_prev_time       = 0.0f;
         m_prev_clip_index = -1;
         m_blend_weight    = 1.0f;
+    }
+
+    void Animator::Pause()
+    {
+        m_playing = false;
+    }
+
+    void Animator::Resume()
+    {
+        if (m_clip_index >= 0)
+        {
+            m_playing = true;
+        }
     }
 
     void Animator::Tick()
@@ -1265,6 +1266,8 @@ namespace spartan
             sol::base_classes, sol::bases<Component>(),
             "Play",               &Animator::Play,
             "Stop",               &Animator::Stop,
+            "Pause",              &Animator::Pause,
+            "Resume",             &Animator::Resume,
             "IsPlaying",          &Animator::IsPlaying,
             "GetSpeed",           &Animator::GetSpeed,
             "SetSpeed",           &Animator::SetSpeed,

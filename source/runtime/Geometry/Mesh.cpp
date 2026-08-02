@@ -577,6 +577,70 @@ namespace spartan
             static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
     }
 
+    shared_ptr<Mesh> Mesh::CreateSkinnedInstance()
+    {
+        if (!m_ready_for_blas.load(memory_order_acquire) || m_vertices.empty())
+        {
+            SP_LOG_WARNING("Mesh::CreateSkinnedInstance: source mesh is not gpu-ready");
+            return nullptr;
+        }
+
+        shared_ptr<Mesh> instance = make_shared<Mesh>();
+        instance->m_flags = m_flags;
+        instance->m_type = m_type;
+        instance->m_dynamic = true;
+        instance->m_vertices = m_vertices;
+        instance->m_indices = m_indices;
+        instance->m_sub_meshes = m_sub_meshes;
+        instance->m_meshlets = m_meshlets;
+        instance->m_skeleton = m_skeleton;
+        instance->m_animation_clips = m_animation_clips;
+
+        if (m_skeletal_mesh_binding)
+        {
+            auto binding = make_unique<SkeletalMeshBinding>();
+            for (const SkeletalMeshSection& section : m_skeletal_mesh_binding->GetSections())
+            {
+                binding->AddSection(section);
+            }
+            instance->SetSkeletalMeshBinding(move(binding));
+        }
+
+        // share index/meshlet gpu slices, allocate a private vertex slice for skinning
+        instance->m_global_index_offset = m_global_index_offset;
+        instance->m_global_index_capacity = m_global_index_capacity;
+        instance->m_global_meshlet_offset = m_global_meshlet_offset;
+        instance->m_global_meshlet_capacity = m_global_meshlet_capacity;
+
+        auto get_dynamic_capacity = [](const size_t count) -> uint32_t
+        {
+            if (count == 0)
+            {
+                return 0u;
+            }
+
+            uint32_t capacity = 1;
+            while (capacity < count)
+            {
+                capacity *= 2;
+            }
+
+            return capacity;
+        };
+
+        instance->m_global_vertex_capacity = get_dynamic_capacity(m_vertices.size());
+        vector<RHI_Vertex_PosTexNorTan> vertices = m_vertices;
+        vertices.resize(instance->m_global_vertex_capacity);
+        instance->m_global_vertex_offset = GeometryBuffer::AppendVertices(
+            vertices.data(),
+            instance->m_global_vertex_capacity
+        );
+        instance->m_ready_for_blas.store(true, memory_order_release);
+
+        instance->SetObjectName(GetObjectName() + "_skinned_instance");
+        return instance;
+    }
+
     void Mesh::CreateGpuBuffers()
     {
         if (m_ready_for_blas.load(memory_order_acquire))

@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SkidMarks.h"
 #include "Water.h"
 #include "Traffic.h"
+#include "Pedestrians.h"
 #include "SpawnPoint.h"
 #include "CarReset.h"
 #include "Text3D.h"

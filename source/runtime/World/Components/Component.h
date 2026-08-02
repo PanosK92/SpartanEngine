@@ -40,7 +40,7 @@ namespace spartan
     class Entity;
     class FileStream;
 
-#define SP_COMPONENT_ARRAY Script, AudioSource, Render, Camera, Light, Terrain, Volume, Physics, Spline, SplineFollower, ParticleSystem, SkidMarks, Water, Traffic, SpawnPoint, CarReset, Text3D, Animator
+#define SP_COMPONENT_ARRAY Script, AudioSource, Render, Camera, Light, Terrain, Volume, Physics, Spline, SplineFollower, ParticleSystem, SkidMarks, Water, Traffic, Pedestrians, SpawnPoint, CarReset, Text3D, Animator
 
     // X-Macro: single source of truth for all components
     // Format: X(ClassName, string_name)
@@ -60,6 +60,7 @@ namespace spartan
         X(SkidMarks,        skid_marks)          \
         X(Water,            water)               \
         X(Traffic,          traffic)             \
+        X(Pedestrians,      pedestrians)        \
         X(SpawnPoint,       spawn_point)         \
         X(CarReset,         car_reset)           \
         X(Text3D,           text_3d)             \

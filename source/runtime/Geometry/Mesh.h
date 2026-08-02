@@ -160,6 +160,9 @@ namespace spartan
         const SkeletalMeshBinding* GetSkeletalMeshBinding() const { return m_skeletal_mesh_binding.get(); }
         bool IsSkinned() const { return m_skeleton != nullptr && m_skeletal_mesh_binding != nullptr; }
 
+        // own vertex gpu region, shared index/meshlet regions + skeleton/clips
+        std::shared_ptr<Mesh> CreateSkinnedInstance();
+
         // animation clips
         void AddAnimationClip(AnimationClip clip)                          { m_animation_clips.push_back(std::move(clip)); }
         const std::vector<AnimationClip>& GetAnimationClips() const        { return m_animation_clips; }

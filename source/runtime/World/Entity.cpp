@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/SkidMarks.h"
 #include "Components/Water.h"
 #include "Components/Traffic.h"
+#include "Components/Pedestrians.h"
 #include "Components/SpawnPoint.h"
 #include "Components/CarReset.h"
 #include "Components/Text3D.h"
@@ -312,6 +313,7 @@ namespace spartan
             "Rotate",                   &Entity::Rotate,
 
             "IsTransient",              &Entity::IsTransient,
+            "SetTransient",             &Entity::SetTransient,
 
             "GetUp",                    &Entity::GetUp,
             "GetDown",                  &Entity::GetDown,
@@ -801,6 +803,9 @@ namespace spartan
             break;
         case ComponentType::Traffic:
             component = std::make_shared<Traffic>(this);
+            break;
+        case ComponentType::Pedestrians:
+            component = std::make_shared<Pedestrians>(this);
             break;
         case ComponentType::SpawnPoint:
             component = std::make_shared<SpawnPoint>(this);
