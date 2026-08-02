@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include <cctype>
 #include <cmath>
-#include <cstdio>
 
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -240,8 +239,6 @@ namespace spartan
         m_pose_locals.clear();
         m_cull_bounds_valid = false;
         m_entity_world_at_activate = Matrix::Identity;
-        m_debug_sync_count = 0;
-        m_debug_logged_bad = false;
     }
 
     void Ragdoll::Start()
@@ -266,73 +263,6 @@ namespace spartan
         {
             m_material->release();
             m_material = nullptr;
-        }
-    }
-
-    void Ragdoll::LogMatrix(const char* label, const Matrix& matrix) const
-    {
-        const Vector3 t = matrix.GetTranslation();
-        const Vector3 s = matrix.GetScale();
-        const Quaternion r = matrix.GetRotation();
-        SP_LOG_INFO(
-            "ragdoll %s t=(%.3f, %.3f, %.3f) s=(%.3f, %.3f, %.3f) q=(%.3f, %.3f, %.3f, %.3f) max_abs=%.3f bad=%d",
-            label ? label : "matrix",
-            t.x, t.y, t.z,
-            s.x, s.y, s.z,
-            r.x, r.y, r.z, r.w,
-            matrix_max_abs(matrix),
-            matrix_looks_bad(matrix) ? 1 : 0
-        );
-    }
-
-    void Ragdoll::LogSyncSample(const char* reason)
-    {
-        const Skeleton* skeleton = m_animator ? m_animator->GetSkeleton() : nullptr;
-        SP_LOG_INFO(
-            "ragdoll sync_sample reason=%s sync_n=%u bodies=%zu pose_locals=%zu",
-            reason ? reason : "?",
-            m_debug_sync_count,
-            m_bodies.size(),
-            m_pose_locals.size()
-        );
-        LogMatrix("entity_world_locked", m_entity_world_at_activate);
-
-        for (size_t b = 0; b < m_bodies.size(); ++b)
-        {
-            const BoneBody& body = m_bodies[b];
-            if (!body.actor || body.joint_index < 0)
-            {
-                continue;
-            }
-
-            const string joint_name = (skeleton &&
-                body.joint_index < static_cast<int32_t>(skeleton->joint_names.size()))
-                ? skeleton->joint_names[static_cast<size_t>(body.joint_index)]
-                : "?";
-
-            const Matrix actor_world = matrix_from_px(body.actor->getGlobalPose());
-            const Matrix joint_world = body.actor_to_joint * actor_world;
-            const Matrix joint_model = joint_world * m_entity_world_at_activate.Inverted();
-
-            SP_LOG_INFO(
-                "ragdoll body[%zu] joint=%d(%s) parent=%d",
-                b,
-                body.joint_index,
-                joint_name.c_str(),
-                (skeleton && body.joint_index < static_cast<int32_t>(skeleton->joint_count))
-                    ? skeleton->parent_indices[static_cast<size_t>(body.joint_index)]
-                    : -999
-            );
-            LogMatrix("  actor_world", actor_world);
-            LogMatrix("  actor_to_joint", body.actor_to_joint);
-            LogMatrix("  joint_world", joint_world);
-            LogMatrix("  joint_model", joint_model);
-
-            if (body.joint_index >= 0 &&
-                body.joint_index < static_cast<int32_t>(m_pose_locals.size()))
-            {
-                LogMatrix("  pose_local", m_pose_locals[static_cast<size_t>(body.joint_index)]);
-            }
         }
     }
 
@@ -440,54 +370,22 @@ namespace spartan
 
         if (!m_animator)
         {
-            SP_LOG_ERROR("ragdoll activate failed, no animator on %s", GetEntity()->GetObjectName().c_str());
             return;
         }
 
         const Skeleton* skeleton = m_animator->GetSkeleton();
         if (!skeleton || skeleton->joint_count == 0)
         {
-            SP_LOG_ERROR("ragdoll activate failed, no skeleton on %s", GetEntity()->GetObjectName().c_str());
             return;
         }
 
         vector<Matrix> locals = m_animator->GetCurrentLocalPose();
-        SP_LOG_INFO(
-            "ragdoll activate entity=%s joints=%u locals=%zu hit=(%.2f, %.2f, %.2f) vel=(%.2f, %.2f, %.2f)",
-            GetEntity()->GetObjectName().c_str(),
-            skeleton->joint_count,
-            locals.size(),
-            hit_position.x, hit_position.y, hit_position.z,
-            hit_velocity.x, hit_velocity.y, hit_velocity.z
-        );
-
-        string names;
-        for (uint32_t i = 0; i < skeleton->joint_count; ++i)
-        {
-            if (i > 0)
-            {
-                names += ", ";
-            }
-            names += "[" + to_string(i) + "]" + skeleton->joint_names[i];
-            if (skeleton->parent_indices[i] >= 0)
-            {
-                names += "(p=" + to_string(skeleton->parent_indices[i]) + ")";
-            }
-        }
-        SP_LOG_INFO("ragdoll skeleton: %s", names.c_str());
-
         if (locals.size() != skeleton->joint_count)
         {
-            SP_LOG_WARNING(
-                "ragdoll current locals size %zu != joint_count %u, using bind pose",
-                locals.size(),
-                skeleton->joint_count
-            );
             locals = skeleton->bind_local_matrices;
         }
         if (locals.size() != skeleton->joint_count)
         {
-            SP_LOG_ERROR("ragdoll activate failed, bind locals size mismatch");
             return;
         }
 
@@ -498,14 +396,6 @@ namespace spartan
             entity->GetRotation(),
             entity->GetScale()
         );
-        LogMatrix("entity_world_at_activate", m_entity_world_at_activate);
-
-        for (uint32_t i = 0; i < min<uint32_t>(skeleton->joint_count, 8u); ++i)
-        {
-            char label[64];
-            snprintf(label, sizeof(label), "activate_local[%u:%s]", i, skeleton->joint_names[i].c_str());
-            LogMatrix(label, locals[i]);
-        }
 
         m_animator->SetFootIkEnabled(false);
         DestroyHitBody();
@@ -523,11 +413,8 @@ namespace spartan
             launch = away * 8.0f;
         }
 
-        SP_LOG_INFO("ragdoll launch=(%.2f, %.2f, %.2f)", launch.x, launch.y, launch.z);
-
         if (!BuildRagdoll(*skeleton, locals, launch))
         {
-            SP_LOG_ERROR("ragdoll BuildRagdoll failed for %s", entity->GetObjectName().c_str());
             if (m_hit_body_wanted)
             {
                 CreateHitBody();
@@ -539,10 +426,6 @@ namespace spartan
         m_animator->SetExternalPose(m_pose_locals);
         m_state = State::Simulating;
         m_sleep_timer = 0.0f;
-        m_debug_sync_count = 0;
-        m_debug_logged_bad = false;
-        SP_LOG_INFO("ragdoll simulating bodies=%zu joints=%zu", m_bodies.size(), m_joints.size());
-        LogSyncSample("activate_done");
         UpdateCullBounds();
     }
 
@@ -894,20 +777,6 @@ namespace spartan
         body.actor_to_joint = joint_world * actor_world.Inverted();
         m_bodies.push_back(body);
 
-        SP_LOG_INFO(
-            "ragdoll add_body idx=%d child=%d mass=%.1f radius=%.3f half_h=%.3f center=(%.2f, %.2f, %.2f) len=%.2f",
-            joint_index,
-            child_joint_index,
-            mass,
-            radius,
-            half_height,
-            center.x, center.y, center.z,
-            length
-        );
-        LogMatrix("  create_joint_world", joint_world);
-        LogMatrix("  create_actor_world", actor_world);
-        LogMatrix("  create_actor_to_joint", body.actor_to_joint);
-
         return static_cast<int32_t>(m_bodies.size() - 1);
     }
 
@@ -1031,29 +900,8 @@ namespace spartan
         const int32_t arm_r = FindJointIndexAny(skeleton, { "upperarm.r", "UpperArm.R", "RightArm", "mixamorig:RightArm" });
         const int32_t forearm_r = FindJointIndexAny(skeleton, { "lowerarm.r", "LowerArm.R", "RightForeArm", "mixamorig:RightForeArm" });
 
-        SP_LOG_INFO(
-            "ragdoll map hips=%d spine=%d chest=%d neck=%d head=%d thigh_l=%d calf_l=%d foot_l=%d thigh_r=%d calf_r=%d foot_r=%d arm_l=%d forearm_l=%d arm_r=%d forearm_r=%d",
-            hips, spine, chest, neck, head,
-            thigh_l, calf_l, foot_l, thigh_r, calf_r, foot_r,
-            arm_l, forearm_l, arm_r, forearm_r
-        );
-
         if (hips < 0 || thigh_l < 0 || thigh_r < 0)
         {
-            SP_LOG_WARNING(
-                "Ragdoll: missing joints hips=%d thigh_l=%d thigh_r=%d arm_l=%d arm_r=%d",
-                hips, thigh_l, thigh_r, arm_l, arm_r
-            );
-            string names;
-            for (uint32_t i = 0; i < skeleton.joint_count; ++i)
-            {
-                if (i > 0)
-                {
-                    names += ", ";
-                }
-                names += skeleton.joint_names[i];
-            }
-            SP_LOG_WARNING("Ragdoll skeleton joints: %s", names.c_str());
             return false;
         }
 
@@ -1064,7 +912,6 @@ namespace spartan
         const int32_t hips_index = hips >= 0 ? hips : 0;
         if (torso_child < 0 || torso_child == hips_index)
         {
-            SP_LOG_ERROR("ragdoll missing torso joint, hips=%d spine=%d chest=%d neck=%d", hips, spine, chest, neck);
             return false;
         }
 
@@ -1144,9 +991,6 @@ namespace spartan
             m_pose_locals = skeleton->bind_local_matrices;
         }
 
-        const bool log_this_frame = m_debug_sync_count < 5;
-        bool found_bad = false;
-
         // undriven bones keep animated locals, driven bones take physics globals
         const Matrix world_to_model = m_entity_world_at_activate.Inverted();
         vector<Matrix> model_globals(skeleton->joint_count, Matrix::Identity);
@@ -1165,19 +1009,6 @@ namespace spartan
             const Matrix joint_model = joint_world * world_to_model;
             if (!IsFiniteMatrix(joint_model) || matrix_looks_bad(joint_model))
             {
-                found_bad = true;
-                if (!m_debug_logged_bad || log_this_frame)
-                {
-                    SP_LOG_ERROR(
-                        "ragdoll bad joint_model joint=%d sync_n=%u",
-                        body.joint_index,
-                        m_debug_sync_count
-                    );
-                    LogMatrix("  bad_actor_world", actor_world);
-                    LogMatrix("  bad_actor_to_joint", body.actor_to_joint);
-                    LogMatrix("  bad_joint_world", joint_world);
-                    LogMatrix("  bad_joint_model", joint_model);
-                }
                 continue;
             }
 
@@ -1224,18 +1055,6 @@ namespace spartan
                 const Matrix parent_global = model_globals[static_cast<size_t>(parent)];
                 if (matrix_looks_bad(parent_global))
                 {
-                    found_bad = true;
-                    if (!m_debug_logged_bad || log_this_frame)
-                    {
-                        SP_LOG_ERROR(
-                            "ragdoll bad parent_global joint=%d parent=%d sync_n=%u",
-                            body.joint_index,
-                            parent,
-                            m_debug_sync_count
-                        );
-                        LogMatrix("  bad_parent_global", parent_global);
-                        LogMatrix("  bad_child_global", model_globals[i]);
-                    }
                     continue;
                 }
 
@@ -1244,22 +1063,6 @@ namespace spartan
 
             if (!IsFiniteMatrix(local) || matrix_looks_bad(local))
             {
-                found_bad = true;
-                if (!m_debug_logged_bad || log_this_frame)
-                {
-                    SP_LOG_ERROR(
-                        "ragdoll bad local joint=%d parent=%d sync_n=%u",
-                        body.joint_index,
-                        parent,
-                        m_debug_sync_count
-                    );
-                    LogMatrix("  bad_local", local);
-                    LogMatrix("  child_global", model_globals[i]);
-                    if (parent >= 0)
-                    {
-                        LogMatrix("  parent_global", model_globals[static_cast<size_t>(parent)]);
-                    }
-                }
                 continue;
             }
 
@@ -1267,16 +1070,6 @@ namespace spartan
             m_pose_locals[i] = local;
         }
 
-        if (log_this_frame || (found_bad && !m_debug_logged_bad))
-        {
-            LogSyncSample(found_bad ? "bad_matrix" : "sync_ok");
-            if (found_bad)
-            {
-                m_debug_logged_bad = true;
-            }
-        }
-
-        m_debug_sync_count++;
         m_animator->SetExternalPose(m_pose_locals);
         UpdateCullBounds();
     }

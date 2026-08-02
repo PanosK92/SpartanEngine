@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp" alt="Spartan Engine"/>
 </p>
 
-<h3 align="center">One engineer. Ten years. A bindless, GPU-driven engine with real-time path-traced global illumination.</h3>
+<h3 align="center">One engineer. Twelve years. A bindless, GPU-driven engine with real-time path-traced global illumination.</h3>
 
 <p align="center">
   <em>A personal R&D engine, not a commercial product. No roadmap promises, no support queue, no compromises on the vision.</em>

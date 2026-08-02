@@ -142,8 +142,6 @@ namespace spartan
         std::vector<BoneBody> m_bodies;
         std::vector<BoneJoint> m_joints;
         std::vector<math::Matrix> m_pose_locals;
-        void LogMatrix(const char* label, const math::Matrix& matrix) const;
-        void LogSyncSample(const char* reason);
 
         math::Matrix m_entity_world_at_activate = math::Matrix::Identity;
         math::BoundingBox m_cull_bounds_world = math::BoundingBox::Unit;
@@ -152,7 +150,5 @@ namespace spartan
         float m_sleep_timer = 0.0f;
         bool m_hit_body_wanted = false;
         math::Vector3 m_hit_center_offset = math::Vector3(0.0f, 0.83f, 0.0f);
-        uint32_t m_debug_sync_count = 0;
-        bool m_debug_logged_bad = false;
     };
 }
