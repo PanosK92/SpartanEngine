@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarReset.h"
 #include "Text3D.h"
 #include "Animator.h"
+#include "Ragdoll.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 SP_WARNINGS_ON

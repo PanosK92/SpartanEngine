@@ -225,8 +225,105 @@ namespace spartan
         static PxPhysics* physics                 = nullptr;
         static PxScene* scene                     = nullptr;
         static PxDefaultCpuDispatcher* dispatcher = nullptr;
+        static mutex contact_mutex;
+        static vector<PhysicsContact> pending_contacts;
 
-        // word two tags characters and vehicles while word three groups one vehicle
+        void queue_contact(Entity* entity_a, Entity* entity_b, const Vector3& position, const Vector3& normal, const Vector3& impulse)
+        {
+            if (!entity_a || !entity_b)
+            {
+                return;
+            }
+
+            PhysicsContact contact;
+            contact.entity_a = entity_a;
+            contact.entity_b = entity_b;
+            contact.position = position;
+            contact.normal = normal;
+            contact.impulse = impulse;
+
+            lock_guard<mutex> lock(contact_mutex);
+            pending_contacts.push_back(contact);
+        }
+
+        class ContactReportCallback : public PxSimulationEventCallback
+        {
+        public:
+            void onConstraintBreak(PxConstraintInfo*, PxU32) override {}
+            void onWake(PxActor**, PxU32) override {}
+            void onSleep(PxActor**, PxU32) override {}
+            void onAdvance(const PxRigidBody* const*, const PxTransform*, const PxU32) override {}
+
+            void onContact(const PxContactPairHeader& pair_header, const PxContactPair* pairs, PxU32 pair_count) override
+            {
+                if (pair_header.flags & (PxContactPairHeaderFlag::eREMOVED_ACTOR_0 | PxContactPairHeaderFlag::eREMOVED_ACTOR_1))
+                {
+                    return;
+                }
+
+                Entity* entity_a = pair_header.actors[0]
+                    ? static_cast<Entity*>(pair_header.actors[0]->userData)
+                    : nullptr;
+                Entity* entity_b = pair_header.actors[1]
+                    ? static_cast<Entity*>(pair_header.actors[1]->userData)
+                    : nullptr;
+                if (!entity_a || !entity_b)
+                {
+                    return;
+                }
+
+                for (PxU32 i = 0; i < pair_count; ++i)
+                {
+                    const PxContactPair& pair = pairs[i];
+                    if (!(pair.events & PxPairFlag::eNOTIFY_TOUCH_FOUND))
+                    {
+                        continue;
+                    }
+
+                    Vector3 position = Vector3::Zero;
+                    Vector3 normal = Vector3::Up;
+                    Vector3 impulse = Vector3::Zero;
+                    PxContactPairPoint points[4];
+                    const PxU32 point_count = pair.extractContacts(points, 4);
+                    if (point_count > 0)
+                    {
+                        position = Vector3(points[0].position.x, points[0].position.y, points[0].position.z);
+                        normal = Vector3(points[0].normal.x, points[0].normal.y, points[0].normal.z);
+                        impulse = Vector3(points[0].impulse.x, points[0].impulse.y, points[0].impulse.z);
+                    }
+
+                    queue_contact(entity_a, entity_b, position, normal, impulse);
+                }
+            }
+
+            void onTrigger(PxTriggerPair* pairs, PxU32 count) override
+            {
+                for (PxU32 i = 0; i < count; ++i)
+                {
+                    const PxTriggerPair& pair = pairs[i];
+                    if (pair.status != PxPairFlag::eNOTIFY_TOUCH_FOUND)
+                    {
+                        continue;
+                    }
+                    if (pair.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER | PxTriggerPairFlag::eREMOVED_SHAPE_OTHER))
+                    {
+                        continue;
+                    }
+
+                    Entity* trigger_entity = pair.triggerActor
+                        ? static_cast<Entity*>(pair.triggerActor->userData)
+                        : nullptr;
+                    Entity* other_entity = pair.otherActor
+                        ? static_cast<Entity*>(pair.otherActor->userData)
+                        : nullptr;
+                    queue_contact(trigger_entity, other_entity, Vector3::Zero, Vector3::Up, Vector3::Zero);
+                }
+            }
+        };
+
+        static ContactReportCallback contact_callback;
+
+        // word two tags characters, vehicles and pedestrians while word three groups one vehicle
         // character vehicle pairs and same vehicle pairs never collide
         PxFilterFlags collision_filter_shader(
             PxFilterObjectAttributes attributes0, PxFilterData filter_data0,
@@ -234,20 +331,50 @@ namespace spartan
             PxPairFlags& pair_flags, const void* constant_block, PxU32 constant_block_size)
         {
             bool is_character_vs_vehicle =
-                (filter_data0.word2 == 1 && filter_data1.word2 == 2) ||
-                (filter_data0.word2 == 2 && filter_data1.word2 == 1);
+                (filter_data0.word2 == physics_collision_character && filter_data1.word2 == physics_collision_vehicle) ||
+                (filter_data0.word2 == physics_collision_vehicle && filter_data1.word2 == physics_collision_character);
             bool is_same_vehicle =
-                filter_data0.word2 == 2 &&
-                filter_data1.word2 == 2 &&
+                filter_data0.word2 == physics_collision_vehicle &&
+                filter_data1.word2 == physics_collision_vehicle &&
                 filter_data0.word3 != 0 &&
                 filter_data0.word3 == filter_data1.word3;
+            bool is_pedestrian_vs_pedestrian =
+                filter_data0.word2 == physics_collision_pedestrian &&
+                filter_data1.word2 == physics_collision_pedestrian;
+            // cars vs ragdoll limbs still resolve visually via velocity transfer at activate
+            // suppressing stops a 1t chassis from fighting overlapping capsules on spawn
+            bool is_vehicle_vs_ragdoll =
+                (filter_data0.word2 == physics_collision_vehicle && filter_data1.word2 == physics_collision_ragdoll) ||
+                (filter_data0.word2 == physics_collision_ragdoll && filter_data1.word2 == physics_collision_vehicle);
 
-            if (is_character_vs_vehicle || is_same_vehicle)
+            if (is_character_vs_vehicle || is_same_vehicle || is_pedestrian_vs_pedestrian || is_vehicle_vs_ragdoll)
             {
                 return PxFilterFlag::eSUPPRESS;
             }
 
-            PxFilterFlags filter_flags = PxDefaultSimulationFilterShader(attributes0, filter_data0, attributes1, filter_data1, pair_flags, constant_block, constant_block_size);
+            PxFilterFlags filter_flags = PxDefaultSimulationFilterShader(
+                attributes0,
+                filter_data0,
+                attributes1,
+                filter_data1,
+                pair_flags,
+                constant_block,
+                constant_block_size
+            );
+
+            const bool involves_pedestrian =
+                filter_data0.word2 == physics_collision_pedestrian ||
+                filter_data1.word2 == physics_collision_pedestrian;
+
+            if (involves_pedestrian &&
+                !PxFilterObjectIsTrigger(attributes0) &&
+                !PxFilterObjectIsTrigger(attributes1))
+            {
+                pair_flags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
+                pair_flags |= PxPairFlag::eNOTIFY_CONTACT_POINTS;
+                pair_flags |= PxPairFlag::eDETECT_CCD_CONTACT;
+            }
+
             if (!PxFilterObjectIsTrigger(attributes0) && !PxFilterObjectIsTrigger(attributes1))
             {
                 pair_flags |= PxPairFlag::eDETECT_CCD_CONTACT;
@@ -268,12 +395,13 @@ namespace spartan
 
         // scene
         PxSceneDesc scene_desc(physics->getTolerancesScale());
-        scene_desc.gravity        = PxVec3(0.0f, settings::gravity, 0.0f);
-        scene_desc.cpuDispatcher  = PxDefaultCpuDispatcherCreate(2);
-        scene_desc.filterShader   = collision_filter_shader;
-        scene_desc.flags         |= PxSceneFlag::eENABLE_CCD; // enable continuous collision detection to reduce tunneling
-        scene_desc.ccdMaxPasses   = 4;
-        scene                     = physics->createScene(scene_desc);
+        scene_desc.gravity                 = PxVec3(0.0f, settings::gravity, 0.0f);
+        scene_desc.cpuDispatcher           = PxDefaultCpuDispatcherCreate(2);
+        scene_desc.filterShader            = collision_filter_shader;
+        scene_desc.simulationEventCallback = &contact_callback;
+        scene_desc.flags                  |= PxSceneFlag::eENABLE_CCD; // enable continuous collision detection to reduce tunneling
+        scene_desc.ccdMaxPasses            = 4;
+        scene                              = physics->createScene(scene_desc);
         SP_ASSERT(scene);
 
         // store dispatcher
@@ -304,11 +432,29 @@ namespace spartan
         Physics::Shutdown();
         vehicle_step_callbacks.clear();
 
+        {
+            lock_guard<mutex> lock(contact_mutex);
+            pending_contacts.clear();
+        }
+
         // release physx resources
         PX_RELEASE(scene);
         PX_RELEASE(dispatcher);
         PX_RELEASE(physics);
         PX_RELEASE(foundation);
+    }
+
+    const vector<PhysicsContact>& PhysicsWorld::GetFrameContacts()
+    {
+        return pending_contacts;
+    }
+
+    vector<PhysicsContact> PhysicsWorld::ConsumeContacts()
+    {
+        lock_guard<mutex> lock(contact_mutex);
+        vector<PhysicsContact> contacts;
+        contacts.swap(pending_contacts);
+        return contacts;
     }
 
     void PhysicsWorld::Tick()
@@ -337,6 +483,12 @@ namespace spartan
                 if (!Engine::IsFlagSet(EngineMode::Paused))
                 {
                     accumulated_time += static_cast<float>(Timer::GetDeltaTimeSec());
+                }
+
+                // fresh contact list for this frame's simulation steps
+                {
+                    lock_guard<mutex> lock(contact_mutex);
+                    pending_contacts.clear();
                 }
 
                 // perform simulation steps

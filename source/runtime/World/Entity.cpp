@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/CarReset.h"
 #include "Components/Text3D.h"
 #include "Components/Animator.h"
+#include "Components/Ragdoll.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -818,6 +819,9 @@ namespace spartan
             break;
         case ComponentType::Animator:
             component = std::make_shared<Animator>(this);
+            break;
+        case ComponentType::Ragdoll:
+            component = std::make_shared<Ragdoll>(this);
             break;
         case ComponentType::Max:
             break;

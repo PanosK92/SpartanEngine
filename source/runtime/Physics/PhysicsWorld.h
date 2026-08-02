@@ -37,12 +37,27 @@ namespace spartan
 {
     class Entity;
 
+    // word2 tags used by the simulation filter shader
+    constexpr uint32_t physics_collision_character  = 1;
+    constexpr uint32_t physics_collision_vehicle    = 2;
+    constexpr uint32_t physics_collision_pedestrian = 3;
+    constexpr uint32_t physics_collision_ragdoll    = 4;
+
     struct PhysicsRaycastHit
     {
         math::Vector3 position = math::Vector3::Zero;
         math::Vector3 normal = math::Vector3::Up;
         Entity* entity = nullptr;
         float distance = 0.0f;
+    };
+
+    struct PhysicsContact
+    {
+        Entity* entity_a = nullptr;
+        Entity* entity_b = nullptr;
+        math::Vector3 position = math::Vector3::Zero;
+        math::Vector3 normal = math::Vector3::Up;
+        math::Vector3 impulse = math::Vector3::Zero;
     };
 
     class PhysicsWorld
@@ -68,6 +83,10 @@ namespace spartan
         // vehicle force model hooks, invoked once per fixed simulation step before scene simulation
         static void RegisterVehicleStepCallback(const void* owner, const std::function<void(float)>& callback);
         static void UnregisterVehicleStepCallback(const void* owner);
+
+        // contacts from the last physics ticks, valid until the next physics tick
+        static const std::vector<PhysicsContact>& GetFrameContacts();
+        static std::vector<PhysicsContact> ConsumeContacts();
 
         // cast a ray against static geometry and return the closest hit position
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, math::Vector3& hit_position);

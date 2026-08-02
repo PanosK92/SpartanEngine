@@ -1059,6 +1059,7 @@ namespace spartan
             m_time         = 0.0f;
         }
 
+        ClearExternalPose();
         m_playing = true;
         EnsureDynamicBlas(mesh);
 
@@ -1073,7 +1074,10 @@ namespace spartan
     void Animator::Stop()
     {
         RestoreHands();
-        RestoreBindEntityPoses();
+        if (!m_external_pose_active)
+        {
+            RestoreBindEntityPoses();
+        }
         m_playing         = false;
         m_blending        = false;
         m_time            = 0.0f;
@@ -1084,14 +1088,98 @@ namespace spartan
 
     void Animator::Pause()
     {
-        m_playing = false;
+        if (!m_external_pose_active)
+        {
+            m_playing = false;
+        }
     }
 
     void Animator::Resume()
     {
+        if (m_external_pose_active)
+        {
+            return;
+        }
+
         if (m_clip_index >= 0)
         {
             m_playing = true;
+        }
+    }
+
+    const Skeleton* Animator::GetSkeleton() const
+    {
+        Mesh* mesh = const_cast<Animator*>(this)->ResolveMesh();
+        if (!mesh)
+        {
+            return nullptr;
+        }
+
+        return mesh->GetSkeleton().get();
+    }
+
+    void Animator::SetExternalPose(const vector<Matrix>& local_pose)
+    {
+        m_external_local_matrices = local_pose;
+        m_last_local_matrices = local_pose;
+        m_external_pose_active = !m_external_local_matrices.empty();
+        if (m_external_pose_active)
+        {
+            m_playing = false;
+            m_foot_ik_enabled = false;
+        }
+    }
+
+    void Animator::ClearExternalPose()
+    {
+        m_external_pose_active = false;
+        m_external_local_matrices.clear();
+    }
+
+    void Animator::SkinFromLocalPose(
+        Mesh* mesh,
+        const Skeleton& skeleton,
+        const vector<Matrix>& local_matrices
+    )
+    {
+        if (!mesh || local_matrices.size() != skeleton.joint_count)
+        {
+            return;
+        }
+
+        if (!m_joints_resolve_attempted)
+        {
+            ResolveJointEntities(skeleton);
+        }
+
+        ApplyHierarchy(skeleton, local_matrices);
+
+        SkeletalMeshBinding* binding = mesh->GetSkeletalMeshBinding();
+        if (!binding || !m_bind_captured || m_bind_vertices.empty())
+        {
+            return;
+        }
+
+        vector<Matrix> global_matrices(local_matrices.size());
+        skeleton.ComputeGlobalPose(local_matrices, global_matrices);
+
+        EnsureDynamicBlas(mesh);
+
+        if (animation_evaluate::SkinMesh(
+            *binding,
+            global_matrices,
+            skeleton.bind_global_matrices,
+            m_bind_vertices,
+            m_skinned_vertices))
+        {
+            mesh->GetVertices() = m_skinned_vertices;
+            GeometryBuffer::UpdateVertices(
+                m_skinned_vertices.data(),
+                mesh->GetGlobalVertexOffset(),
+                static_cast<uint32_t>(m_skinned_vertices.size())
+            );
+
+            MarkBlasNeedsRefit(mesh);
         }
     }
 
@@ -1103,11 +1191,6 @@ namespace spartan
         }
 
         if (!Engine::IsFlagSet(EngineMode::Playing))
-        {
-            return;
-        }
-
-        if (!m_playing)
         {
             return;
         }
@@ -1127,6 +1210,23 @@ namespace spartan
             }
         }
 
+        const shared_ptr<Skeleton>& skeleton = mesh->GetSkeleton();
+        if (!skeleton)
+        {
+            return;
+        }
+
+        if (m_external_pose_active)
+        {
+            SkinFromLocalPose(mesh, *skeleton, m_external_local_matrices);
+            return;
+        }
+
+        if (!m_playing)
+        {
+            return;
+        }
+
         if (m_clip_index < 0 || m_clip_index >= static_cast<int32_t>(mesh->GetAnimationClipCount()))
         {
             return;
@@ -1134,11 +1234,6 @@ namespace spartan
 
         const vector<AnimationClip>& clips = mesh->GetAnimationClips();
         const AnimationClip& clip = clips[m_clip_index];
-        const shared_ptr<Skeleton>& skeleton = mesh->GetSkeleton();
-        if (!skeleton)
-        {
-            return;
-        }
 
         if (!m_joints_resolve_attempted)
         {
@@ -1212,33 +1307,8 @@ namespace spartan
         }
 
         ApplyFootIk(*skeleton, local_matrices);
-        ApplyHierarchy(*skeleton, local_matrices);
-
-        SkeletalMeshBinding* binding = mesh->GetSkeletalMeshBinding();
-        if (binding && m_bind_captured && !m_bind_vertices.empty())
-        {
-            vector<Matrix> global_matrices(local_matrices.size());
-            skeleton->ComputeGlobalPose(local_matrices, global_matrices);
-
-            EnsureDynamicBlas(mesh);
-
-            if (animation_evaluate::SkinMesh(
-                *binding,
-                global_matrices,
-                skeleton->bind_global_matrices,
-                m_bind_vertices,
-                m_skinned_vertices))
-            {
-                mesh->GetVertices() = m_skinned_vertices;
-                GeometryBuffer::UpdateVertices(
-                    m_skinned_vertices.data(),
-                    mesh->GetGlobalVertexOffset(),
-                    static_cast<uint32_t>(m_skinned_vertices.size())
-                );
-
-                MarkBlasNeedsRefit(mesh);
-            }
-        }
+        m_last_local_matrices = local_matrices;
+        SkinFromLocalPose(mesh, *skeleton, local_matrices);
     }
 
     float Animator::GetFootIkGroundOffset()

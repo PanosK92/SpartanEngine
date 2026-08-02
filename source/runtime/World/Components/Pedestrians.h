@@ -33,6 +33,7 @@ namespace spartan
     class Animator;
     class Entity;
     class Mesh;
+    class Ragdoll;
 
     class Pedestrians : public Component
     {
@@ -51,6 +52,7 @@ namespace spartan
         {
             Entity* entity = nullptr;
             Animator* animator = nullptr;
+            Ragdoll* ragdoll = nullptr;
             std::shared_ptr<Mesh> mesh;
             math::Vector3 heading = math::Vector3(0.0f, 0.0f, -1.0f);
             float speed = 2.5f;
@@ -59,6 +61,7 @@ namespace spartan
             float turn_timer = 0.0f;
             float blocked_timer = 0.0f;
             bool animating = false;
+            bool dead = false;
         };
 
         void BeginSpawn();

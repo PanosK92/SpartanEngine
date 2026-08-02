@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Pedestrians.h"
 #include "Animator.h"
 #include "Camera.h"
+#include "Ragdoll.h"
 #include "Render.h"
 #include "../../Core/Engine.h"
 #include "../../Core/Timer.h"
@@ -100,7 +101,9 @@ namespace spartan
             }
             walker.entity = nullptr;
             walker.animator = nullptr;
+            walker.ragdoll = nullptr;
             walker.mesh.reset();
+            walker.dead = false;
         }
         m_walkers.clear();
         m_source_mesh.reset();
@@ -130,6 +133,19 @@ namespace spartan
             {
                 continue;
             }
+
+            if (walker.ragdoll && walker.ragdoll->IsDead())
+            {
+                walker.dead = true;
+                walker.animating = false;
+                continue;
+            }
+
+            if (walker.dead)
+            {
+                continue;
+            }
+
             UpdateWalker(walker, delta_time);
         }
     }
@@ -271,9 +287,17 @@ namespace spartan
         animator->SetLoop(true);
         animator->Play("walk");
 
+        Ragdoll* ragdoll = entity->AddComponent<Ragdoll>();
+        if (!ragdoll)
+        {
+            World::RemoveEntityImmediate(entity);
+            return false;
+        }
+
         Walker walker;
         walker.entity = entity;
         walker.animator = animator;
+        walker.ragdoll = ragdoll;
         walker.mesh = instance_mesh;
         walker.heading = heading;
         walker.speed = m_walk_speed * (0.85f + NextFloat() * 0.3f);
@@ -281,6 +305,7 @@ namespace spartan
         walker.height_offset = animator->GetFootIkGroundOffset();
         walker.turn_timer = 2.0f + NextFloat() * 6.0f;
         walker.animating = true;
+        walker.dead = false;
         m_walkers.push_back(move(walker));
         return true;
     }
@@ -474,10 +499,19 @@ namespace spartan
         {
             for (Walker& walker : m_walkers)
             {
+                if (walker.dead)
+                {
+                    continue;
+                }
+
                 if (walker.animator && !walker.animating)
                 {
                     walker.animator->Resume();
                     walker.animating = true;
+                }
+                if (walker.ragdoll)
+                {
+                    walker.ragdoll->SetHitBodyEnabled(true);
                 }
             }
             return;
@@ -489,7 +523,7 @@ namespace spartan
 
         for (Walker& walker : m_walkers)
         {
-            if (!walker.entity || !walker.animator)
+            if (!walker.entity || !walker.animator || walker.dead)
             {
                 continue;
             }
@@ -501,10 +535,17 @@ namespace spartan
             {
                 candidates.emplace_back(distance_squared, &walker);
             }
-            else if (walker.animating)
+            else
             {
-                walker.animator->Pause();
-                walker.animating = false;
+                if (walker.animating)
+                {
+                    walker.animator->Pause();
+                    walker.animating = false;
+                }
+                if (walker.ragdoll)
+                {
+                    walker.ragdoll->SetHitBodyEnabled(false);
+                }
             }
         }
 
@@ -527,6 +568,10 @@ namespace spartan
                     walker->animator->Pause();
                     walker->animating = false;
                 }
+                if (walker->ragdoll)
+                {
+                    walker->ragdoll->SetHitBodyEnabled(false);
+                }
             }
             candidates.resize(m_max_animated);
         }
@@ -538,6 +583,10 @@ namespace spartan
             {
                 walker->animator->Resume();
                 walker->animating = true;
+            }
+            if (walker->ragdoll)
+            {
+                walker->ragdoll->SetHitBodyEnabled(true);
             }
         }
     }

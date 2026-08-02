@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Terrain.h"
 #include "Components/Text3D.h"
 #include "Components/Animator.h"
+#include "Components/Ragdoll.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Material.h"
@@ -434,6 +435,7 @@ namespace spartan
             Spline          ::RegisterForScripting(state_view);
             Text3D          ::RegisterForScripting(state_view);
             Animator        ::RegisterForScripting(state_view);
+            Ragdoll         ::RegisterForScripting(state_view);
             Camera          ::RegisterForScripting(state_view);
             WorldHelpers    ::RegisterForScripting(state_view);
 
@@ -449,7 +451,8 @@ namespace spartan
                 "ParticleSystem",           ComponentType::ParticleSystem,
                 "Spline",                   ComponentType::Spline,
                 "Text3D",                   ComponentType::Text3D,
-                "Animator",                 ComponentType::Animator
+                "Animator",                 ComponentType::Animator,
+                "Ragdoll",                  ComponentType::Ragdoll
             );
 
             lua_state.new_enum("Intersection",

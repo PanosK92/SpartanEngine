@@ -86,6 +86,13 @@ namespace spartan
         bool HasFootIkSupportGround() const { return m_foot_ik_has_support; }
         float GetFootIkSupportGroundY() const { return m_foot_ik_support_ground_y; }
 
+        // ragdoll / external drivers push local matrices and keep skinning alive
+        const Skeleton* GetSkeleton() const;
+        const std::vector<math::Matrix>& GetCurrentLocalPose() const { return m_last_local_matrices; }
+        void SetExternalPose(const std::vector<math::Matrix>& local_pose);
+        void ClearExternalPose();
+        bool IsExternalPoseActive() const { return m_external_pose_active; }
+
     private:
         struct FootIkLeg
         {
@@ -135,6 +142,11 @@ namespace spartan
         void EnsureDynamicBlas(Mesh* mesh);
         void MarkBlasNeedsRefit(Mesh* mesh);
         void ApplyHierarchy(
+            const Skeleton& skeleton,
+            const std::vector<math::Matrix>& local_matrices
+        );
+        void SkinFromLocalPose(
+            Mesh* mesh,
             const Skeleton& skeleton,
             const std::vector<math::Matrix>& local_matrices
         );
@@ -195,5 +207,8 @@ namespace spartan
         bool m_foot_ik_has_support = false;
         FootIkLeg m_foot_ik_l;
         FootIkLeg m_foot_ik_r;
+        std::vector<math::Matrix> m_last_local_matrices;
+        std::vector<math::Matrix> m_external_local_matrices;
+        bool m_external_pose_active = false;
     };
 }

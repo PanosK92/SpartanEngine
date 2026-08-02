@@ -755,8 +755,36 @@ namespace spartan
         }
     }
 
+    void Render::SetBoundingBoxOverride(const BoundingBox& world_box)
+    {
+        m_bounding_box = world_box;
+        m_bounding_box_override = true;
+        m_bounding_box_dirty = false;
+        UpdateFrustumAndDistanceCulling();
+        UpdateLodIndices();
+    }
+
+    void Render::ClearBoundingBoxOverride()
+    {
+        if (!m_bounding_box_override)
+        {
+            return;
+        }
+
+        m_bounding_box_override = false;
+        m_bounding_box_dirty = true;
+        UpdateAabb();
+        UpdateFrustumAndDistanceCulling();
+        UpdateLodIndices();
+    }
+
     void Render::UpdateAabb()
     {
+        if (m_bounding_box_override)
+        {
+            return;
+        }
+
         const Matrix transform = (GetEntity() && GetEntity()->GetActive()) ? GetEntity()->GetMatrix() : Matrix::Identity;
 
         // refuse to fold a non finite transform into the world bbox, doing so would

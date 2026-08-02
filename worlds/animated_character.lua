@@ -131,6 +131,8 @@ function animated_character.Initialize(self, entity)
 
     self.animator = nil
 
+    self.ragdoll = nil
+
     self.vel_y = 0.0
 
     self.grounded = true
@@ -190,27 +192,21 @@ function animated_character.Initialize(self, entity)
 
     self.animator = root:AddComponent(ComponentType.Animator)
 
+    self.ragdoll = root:AddComponent(ComponentType.Ragdoll)
+
+    if self.ragdoll then
+
+        self.ragdoll:SetHitBodyEnabled(true)
+
+    end
+
 end
 
 
 
 function animated_character.Start(self, entity)
 
-    local cam_entity = get_camera_entity()
-
-    local camera = get_camera_component(cam_entity)
-
-    if camera then
-
-        camera:SetFlag(CameraFlags.CanBeControlled, false)
-
-        camera:SetFlag(CameraFlags.PhysicalBodyAnimation, false)
-
-        camera:SetFlag(CameraFlags.IsControlled, false)
-
-    end
-
-
+    -- leave the free cam alone so right+left click cube shooting still works
 
     self.vel_y = 0.0
 
@@ -254,29 +250,13 @@ function animated_character.Start(self, entity)
 
 
 
-    print("animated_character: play mode, follow cam + foot ik on")
+    print("animated_character: play mode, free cam, wasd character")
 
 end
 
 
 
 function animated_character.Stop(self, entity)
-
-    local cam_entity = get_camera_entity()
-
-    local camera = get_camera_component(cam_entity)
-
-    if camera then
-
-        camera:SetFlag(CameraFlags.CanBeControlled, true)
-
-        camera:SetFlag(CameraFlags.PhysicalBodyAnimation, false)
-
-        camera:SetFlag(CameraFlags.IsControlled, false)
-
-    end
-
-
 
     if self.animator then
 
@@ -294,7 +274,7 @@ function animated_character.Stop(self, entity)
 
     self.land_timer = 0.0
 
-    print("animated_character: editor mode, free fly on")
+    print("animated_character: stopped")
 
 end
 
@@ -310,23 +290,20 @@ function animated_character.Tick(self, entity)
 
 
 
-    local dt = Timer.GetDeltaTimeSec()
+    -- same ragdoll component as city pedestrians, stop controlling once hit
+    if self.ragdoll and self.ragdoll:IsDead() then
 
-    if dt <= 0.0 then
-
-        dt = 0.016
+        return
 
     end
 
 
 
-    -- orbit yaw from mouse
+    local dt = Timer.GetDeltaTimeSec()
 
-    local mouse = Input.GetMouseDelta()
+    if dt <= 0.0 then
 
-    if mouse then
-
-        self.yaw = self.yaw + mouse.x * mouse_sensitivity
+        dt = 0.016
 
     end
 
@@ -366,15 +343,48 @@ function animated_character.Tick(self, entity)
 
 
 
-        local yaw_rad = math.rad(self.yaw)
+        -- wasd relative to free cam facing on xz, camera itself is never written
+        local cam_entity = get_camera_entity()
 
-        local sin_y = math.sin(yaw_rad)
+        local forward = Vector3(0.0, 0.0, -1.0)
 
-        local cos_y = math.cos(yaw_rad)
+        local right = Vector3(1.0, 0.0, 0.0)
 
-        world_x = move_x * cos_y + move_z * sin_y
+        if cam_entity then
 
-        world_z = -move_x * sin_y + move_z * cos_y
+            forward = cam_entity:GetForward()
+
+            right = cam_entity:GetRight()
+
+        end
+
+        forward.y = 0.0
+
+        right.y = 0.0
+
+        local f_len = math.sqrt(forward.x * forward.x + forward.z * forward.z)
+
+        local r_len = math.sqrt(right.x * right.x + right.z * right.z)
+
+        if f_len > 0.001 then
+
+            forward.x = forward.x / f_len
+
+            forward.z = forward.z / f_len
+
+        end
+
+        if r_len > 0.001 then
+
+            right.x = right.x / r_len
+
+            right.z = right.z / r_len
+
+        end
+
+        world_x = right.x * move_x + forward.x * move_z
+
+        world_z = right.z * move_x + forward.z * move_z
 
     end
 
@@ -561,50 +571,6 @@ function animated_character.Tick(self, entity)
         play_clip(self, "idle", true)
 
     end
-
-
-
-    -- follow cam, no physics parent, drive the camera entity directly
-
-    local cam_entity = get_camera_entity()
-
-    if not cam_entity then
-
-        return
-
-    end
-
-
-
-    pos = self.character:GetPosition()
-
-    local yaw_rad = math.rad(self.yaw)
-
-    local cam_pos = Vector3(
-
-        pos.x - math.sin(yaw_rad) * camera_distance,
-
-        pos.y + camera_height,
-
-        pos.z - math.cos(yaw_rad) * camera_distance
-
-    )
-
-    local look = Vector3(
-
-        pos.x - cam_pos.x,
-
-        (pos.y + camera_look_y) - cam_pos.y,
-
-        pos.z - cam_pos.z
-
-    )
-
-
-
-    cam_entity:SetPosition(cam_pos)
-
-    cam_entity:SetRotation(Quaternion.FromLookRotation(look, Vector3(0.0, 1.0, 0.0)))
 
 end
 

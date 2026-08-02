@@ -109,6 +109,10 @@ namespace spartan
         // bounding box
         const math::BoundingBox& GetBoundingBox() const     { return m_bounding_box; }
         const math::BoundingBox& GetBoundingBoxMesh() const { return m_bounding_box_mesh; }
+        // world aabb that ignores entity transform, for ragdoll/cloth etc
+        void SetBoundingBoxOverride(const math::BoundingBox& world_box);
+        void ClearBoundingBoxOverride();
+        bool HasBoundingBoxOverride() const { return m_bounding_box_override; }
 
         // material
         void SetMaterial(const std::shared_ptr<Material>& material);
@@ -172,6 +176,7 @@ namespace spartan
         Mesh* m_mesh                          = nullptr;
         uint32_t m_sub_mesh_index             = 0;
         bool m_bounding_box_dirty             = true;
+        bool m_bounding_box_override          = false;
         math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Unit;
         math::BoundingBox m_bounding_box      = math::BoundingBox::Unit;
 
