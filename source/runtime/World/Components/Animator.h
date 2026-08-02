@@ -77,6 +77,13 @@ namespace spartan
             m_foot_ik_weight = weight < 0.0f ? 0.0f : (weight > 1.0f ? 1.0f : weight);
         }
 
+        // raise entity by this so bind-pose soles sit on the ground, any model
+        float GetFootIkGroundOffset();
+
+        // world y under the lowest planted foot, root should follow this not a center ray
+        bool HasFootIkSupportGround() const { return m_foot_ik_has_support; }
+        float GetFootIkSupportGroundY() const { return m_foot_ik_support_ground_y; }
+
     private:
         struct FootIkLeg
         {
@@ -84,14 +91,23 @@ namespace spartan
             int32_t calf  = -1;
             int32_t foot  = -1;
             int32_t ball  = -1;
-            // skin-bind local directions (from ibm), not cardinal axes
+            // bind-pose local directions, not cardinal axes (feet can sit at 45 deg)
             math::Vector3 sole_up_local = math::Vector3::Up;
-            math::Vector3 toe_fwd_local = math::Vector3::Forward;
+            math::Vector3 toe_fwd_local = math::Vector3(0.0f, 0.0f, -1.0f);
+            // bind-pose knee bend in model space, keeps ik from flipping backwards
+            math::Vector3 knee_pole_bind = math::Vector3(0.0f, 0.0f, -1.0f);
+            // bind hip-to-ankle height, restores standing length when planting
+            float bind_hip_foot_y = 0.85f;
             float ankle_height = 0.11f;
             math::Vector3 smooth_target = math::Vector3::Zero;
             math::Vector3 smooth_normal = math::Vector3::Up;
-            math::Vector3 smooth_forward = math::Vector3(0.0f, 0.0f, 1.0f);
+            math::Vector3 smooth_forward = math::Vector3(0.0f, 0.0f, -1.0f);
             float smooth_weight = 0.0f;
+            float contact_dy = 0.0f;
+            float ground_y_world = 0.0f;
+            bool ground_hit = false;
+            bool use_for_pelvis = false;
+            bool contact_active = false;
             bool has_smooth = false;
         };
         struct BindEntityPose
@@ -125,13 +141,18 @@ namespace spartan
             const Skeleton& skeleton,
             std::vector<math::Matrix>& local_matrices
         );
-        bool ApplyFootIkLeg(
+        void UpdateFootIkLegTarget(
             const Skeleton& skeleton,
-            std::vector<math::Matrix>& local_matrices,
+            const std::vector<math::Matrix>& local_matrices,
             FootIkLeg& leg,
             const math::Matrix& model_to_world,
             const math::Matrix& world_to_model,
             Entity* ignore_entity
+        );
+        bool SolveFootIkLeg(
+            const Skeleton& skeleton,
+            std::vector<math::Matrix>& local_matrices,
+            FootIkLeg& leg
         );
         int32_t FindJointIndex(const Skeleton& skeleton, const std::string& name) const;
         Mesh* ResolveMesh();
@@ -166,6 +187,10 @@ namespace spartan
         bool m_foot_ik_enabled = false;
         bool m_foot_ik_resolved = false;
         float m_foot_ik_weight = 1.0f;
+        float m_foot_ik_ground_offset = 0.0f;
+        float m_foot_ik_pelvis_offset = 0.0f;
+        float m_foot_ik_support_ground_y = 0.0f;
+        bool m_foot_ik_has_support = false;
         FootIkLeg m_foot_ik_l;
         FootIkLeg m_foot_ik_r;
     };

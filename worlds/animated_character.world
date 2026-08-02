@@ -4,44 +4,128 @@
   <Variable name="r.grid" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="camera" id="2001000000000000001" active="true" position="0 2 -8" rotation="0 0 0 1" scale="1 1 1">
-   <camera exposure_mode="1" aperture="5.6" shutter_speed="0.008" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
+  <Entity name="camera" id="2001000000000000001" active="true" position="6.60617 2.89105 -1.14961" rotation="0.101915 -0.505461 0.0602728 0.854687" scale="1 1 1">
+   <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="1" />
   </Entity>
-  <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/sun.lua" preset="dusk" volumetric="false" override_rotation="false" rot_pitch="0" rot_yaw="0" rot_roll="0" />
-  </Entity>
-  <Entity name="floor" id="2001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" body_type="2" />
-   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+  <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.899999976" />
+   <script file_path="../worlds/sun.lua" Initialize="" volumetric="false" override_rotation="false" rot_yaw="0" rot_roll="0" rot_pitch="0" preset="dusk" />
   </Entity>
   <Entity name="step_1" id="2001000000000000010" active="true" position="3 0.25 2" rotation="0 0 0 1" scale="2 0.3 1.2">
-   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
-   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="step_2" id="2001000000000000011" active="true" position="3 0.5 3.3" rotation="0 0 0 1" scale="2 0.3 1.2">
-   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
-   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="step_3" id="2001000000000000012" active="true" position="3 0.75 4.6" rotation="0 0 0 1" scale="2 0.3 1.2">
-   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
-   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+   <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="block_left" id="2001000000000000013" active="true" position="-2.5 0.35 1.5" rotation="0 0 0 1" scale="1.4 0.5 1.4">
-   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
-   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+   <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="step_2" id="2001000000000000011" active="true" position="3 0.55 3.2" rotation="0 0 0 1" scale="2 0.3 1.2">
+   <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="step_3" id="2001000000000000012" active="true" position="3 0.85 4.4" rotation="0 0 0 1" scale="2 0.3 1.2">
+   <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0.100000001" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
   <Entity name="character_controller" id="2001000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/animated_character.lua" />
+   <script file_path="../worlds/animated_character.lua" yaw="-2" ground_y="1" animator="" current_clip="" vel_y="0" character="" Start="" Tick="" Stop="" grounded="true" land_timer="0" Initialize="" height_offset="0" />
+  </Entity>
+  <Entity name="floor" id="2001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+  </Entity>
+  <Entity name="character" id="14564965775349741352" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <animator />
+   <Entity name="body.001" id="14564968331873438927" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="body.001_1" id="14564969779134063192" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="mannequiny" mesh_path="./project/animated_character_resources/mannequiny.mesh" sub_mesh_index="0" material_name="Azul" material_path="./project/animated_character_resources/Azul.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="body.001_2" id="14565427031776116079" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="mannequiny" mesh_path="./project/animated_character_resources/mannequiny.mesh" sub_mesh_index="1" material_name="Negro" material_path="./project/animated_character_resources/Negro.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+    <Entity name="body.001_3" id="14564982862509708836" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <render mesh_name="mannequiny" mesh_path="./project/animated_character_resources/mannequiny.mesh" sub_mesh_index="2" material_name="Blanco" material_path="./project/animated_character_resources/Blanco.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
+    </Entity>
+   </Entity>
+   <Entity name="pelvis" id="14564984010141153113" active="true" position="0.00926367 0.913335 -0.316629" rotation="-0.0818375 0.116115 0.0306954 0.989383" scale="0.999999 1 1">
+    <Entity name="thigh.l" id="14564977513115808089" active="true" position="0.101935 -0.0260149 -0.00481075" rotation="-0.746317 -0.227936 0.568304 0.260934" scale="1 0.999983 1">
+     <Entity name="calf.l" id="14564979213433750838" active="true" position="1.92316e-06 0.389355 9.53376e-07" rotation="-4.14095e-06 3.5497e-06 0.290042 0.957014" scale="1.00001 0.999992 1">
+      <Entity name="foot.l" id="14564992260863873657" active="true" position="0 0.427942 2.04891e-08" rotation="-0.447076 -0.540592 -0.382651 0.601217" scale="0.999953 0.999997 1.00002">
+       <Entity name="ball.l" id="14564988944236971259" active="true" position="-5.11564e-06 0.127669 -1.07012e-06" rotation="0.0449554 0.946656 -0.319093 0.000752677" scale="1 1.00001 0.999987" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="thigh.r" id="14564988041788450277" active="true" position="-0.1019 -0.0260435 -0.00487679" rotation="0.601843 0.0293445 0.794816 0.0720502" scale="1 0.999992 0.999997">
+     <Entity name="calf.r" id="14564984488436892907" active="true" position="-1.28224e-06 0.389355 1.75901e-06" rotation="-1.01968e-06 2.1527e-07 -0.131409 0.991328" scale="1 1 1">
+      <Entity name="foot.r" id="14565449461864312036" active="true" position="0 0.427941 -2.14204e-08" rotation="-0.288096 0.59454 0.223797 0.716546" scale="0.999954 1 1.00001">
+       <Entity name="ball.r" id="14565443231929104504" active="true" position="4.47205e-06 0.127669 -4.36279e-06" rotation="0.0424079 -0.807697 0.587896 0.0143145" scale="1.00001 1.00001 0.999999" />
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="spine_01" id="14565445214871633404" active="true" position="-1.15871e-09 0.120389 9.0684e-09" rotation="0.0691051 -0.112662 -0.0316849 0.990721" scale="1 1 1">
+     <Entity name="spine_02" id="14565420527207784025" active="true" position="1.94471e-08 0.185117 4.35506e-09" rotation="-0.0696143 -0.108623 0.0151486 0.991527" scale="0.999999 0.999998 0.999998">
+      <Entity name="neck_01" id="14565421743452150942" active="true" position="3.66679e-08 0.246004 9.2312e-08" rotation="-0.21338 -0.0065711 0.00143527 0.976946" scale="0.999998 1 0.999999">
+       <Entity name="head" id="14565422032158599518" active="true" position="2.45671e-08 0.0829918 5.40848e-09" rotation="0.260518 0.112517 0.00783205 0.958858" scale="1 1 1" />
+      </Entity>
+      <Entity name="clavicle.r" id="14565423200092607104" active="true" position="-0.0436108 0.180815 -0.0252515" rotation="-0.479621 0.608721 0.513838 0.367958" scale="1 0.999999 1">
+       <Entity name="upperarm.r" id="14565418310501831504" active="true" position="1.05622e-07 0.135449 -1.03601e-07" rotation="-0.596917 -0.631632 0.346301 0.35328" scale="1 0.999999 1">
+        <Entity name="lowerarm.r" id="14565429412011693088" active="true" position="5.94823e-08 0.261983 -7.81845e-07" rotation="-0.39597 0.00243085 0.237641 0.886977" scale="1 0.999716 1">
+         <Entity name="hand.r" id="14565431947699505240" active="true" position="-4.4334e-07 0.207321 8.2179e-07" rotation="-0.130814 -0.339647 -0.0730518 0.928542" scale="0.999999 1.00026 1.00002">
+          <Entity name="thumb_01.r" id="14565428717589901545" active="true" position="-0.0491563 0.050124 0.00458022" rotation="0.037294 0.831882 0.330048 0.444578" scale="1.00004 0.999922 1.00004">
+           <Entity name="thumb_02.r" id="14565454141884371062" active="true" position="-2.6994e-07 0.0210912 -1.39863e-06" rotation="0.115529 0.310024 0.091338 0.939253" scale="0.999971 0.999998 1.00003">
+            <Entity name="thumb_03.r" id="14565450827068163784" active="true" position="-2.6077e-08 0.0270386 -8.00937e-08" rotation="0.104099 -0.435691 0.0243996 0.893723" scale="1.00002 1.00001 0.999972" />
+           </Entity>
+          </Entity>
+          <Entity name="ring_01.r" id="14565453359034232331" active="true" position="0.0245812 0.0860669 0.00151788" rotation="0.33006 -0.0895194 0.071499 0.936982" scale="1 0.999921 1.00008">
+           <Entity name="ring_02.r" id="14565465834713228328" active="true" position="2.79397e-09 0.0220773 -1.49594e-07" rotation="0.498348 0.0174287 0.0129558 0.866705" scale="0.999999 0.999986 1.00002">
+            <Entity name="ring_03.r" id="14565459934348710199" active="true" position="1.86265e-09 0.0315887 -7.10425e-08" rotation="0.5003 0.00310357 -0.00770396 0.865813" scale="0.999999 1.00007 0.999933" />
+           </Entity>
+          </Entity>
+          <Entity name="middle_01.r" id="14565461861481194672" active="true" position="-0.00258047 0.0868959 -0.000368611" rotation="0.231604 -0.0485531 0.0438802 0.970606" scale="1 0.999934 1.00006">
+           <Entity name="middle_02.r" id="14565440565344853442" active="true" position="-2.79397e-09 0.0279773 -1.04701e-08" rotation="0.375692 0.0022253 -0.0131646 0.926649" scale="0.999999 0.999951 1.00005">
+            <Entity name="middle_03.r" id="14565434061427335309" active="true" position="9.31323e-10 0.0270531 -4.46016e-09" rotation="0.368612 0.0112521 -0.0128596 0.929426" scale="1 1.00006 0.999936" />
+           </Entity>
+          </Entity>
+          <Entity name="index_01.r" id="14565435792409464511" active="true" position="-0.0322245 0.0834579 0.00186431" rotation="0.205708 0.00302323 -0.0055401 0.978593" scale="1 0.999942 1.00006">
+           <Entity name="index_02.r" id="14565436424354221748" active="true" position="-9.31323e-10 0.0306825 7.09842e-08" rotation="0.186503 -0.00256188 -0.0224819 0.982194" scale="0.999998 0.999964 1.00004">
+            <Entity name="index_03.r" id="14565143350889076778" active="true" position="-1.39698e-09 0.0307386 -1.13505e-08" rotation="0.20588 -0.00117752 0.00762277 0.978547" scale="1 0.999999 0.999999" />
+           </Entity>
+          </Entity>
+         </Entity>
+        </Entity>
+       </Entity>
+      </Entity>
+      <Entity name="clavicle.l" id="14564698429610428943" active="true" position="0.0435938 0.180816 -0.025252" rotation="-0.43358 -0.633219 -0.526664 0.365605" scale="1 1 1">
+       <Entity name="upperarm.l" id="14564695732078609612" active="true" position="2.42179e-08 0.135449 -2.00433e-07" rotation="-0.424056 0.517116 -0.440436 0.598986" scale="1 0.999999 1">
+        <Entity name="lowerarm.l" id="14564694123880612828" active="true" position="-7.46902e-08 0.261983 -1.39233e-07" rotation="-0.0207512 -0.000125898 -0.00436867 0.999775" scale="1 0.999992 1">
+         <Entity name="hand.l" id="14564694714707834374" active="true" position="-6.71027e-08 0.207321 -2.11782e-07" rotation="-0.0153715 0.408499 0.0219354 0.912366" scale="1 1.00001 0.999998">
+          <Entity name="thumb_01.l" id="14564707770610617066" active="true" position="0.0491432 0.0500868 0.00465741" rotation="0.0371281 -0.832246 -0.330004 0.443943" scale="1 1 1">
+           <Entity name="thumb_02.l" id="14564710530747611717" active="true" position="2.32831e-08 0.0210913 1.86265e-08" rotation="0.115501 -0.31017 -0.0911374 0.939227" scale="1 0.999999 1">
+            <Entity name="thumb_03.l" id="14564707330938123154" active="true" position="-2.23517e-08 0.0270386 -1.86265e-09" rotation="0.104163 0.435512 -0.0241569 0.89381" scale="1 0.999999 1" />
+           </Entity>
+          </Entity>
+          <Entity name="ring_01.l" id="14564706889884799671" active="true" position="-0.0246042 0.0860432 0.00150695" rotation="0.330097 0.0886244 -0.0709613 0.937094" scale="1 1 1">
+           <Entity name="ring_02.l" id="14564682741284506503" active="true" position="7.45058e-09 0.0220774 -1.16415e-08" rotation="0.498343 -0.0174405 -0.0126075 0.866713" scale="1 1 1">
+            <Entity name="ring_03.l" id="14565167774365806356" active="true" position="1.86265e-09 0.0315886 3.87954e-08" rotation="0.500289 -0.00321806 0.0078979 0.865817" scale="0.999999 1 0.999999" />
+           </Entity>
+          </Entity>
+          <Entity name="middle_01.l" id="14565160426057237861" active="true" position="0.00256084 0.0868696 -0.000347595" rotation="0.231572 0.0474522 -0.0435528 0.970683" scale="1 1 1">
+           <Entity name="middle_02.l" id="14565162426181238761" active="true" position="9.31323e-10 0.0279775 -1.59635e-08" rotation="0.375694 -0.00203918 0.0135427 0.926643" scale="0.999999 0.999999 1">
+            <Entity name="middle_03.l" id="14565163632837377935" active="true" position="-2.09548e-09 0.027053 5.32782e-08" rotation="0.368605 -0.0114714 0.0131403 0.929422" scale="1 0.999999 1" />
+           </Entity>
+          </Entity>
+          <Entity name="index_01.l" id="14565141443657596647" active="true" position="0.0322053 0.0834296 0.00192046" rotation="0.205543 -0.00440782 0.00561494 0.978622" scale="1 1 1">
+           <Entity name="index_02.l" id="14565135401531049522" active="true" position="0 0.0306827 4.79922e-08" rotation="0.186547 0.00302733 0.0228941 0.982175" scale="1 0.999999 1">
+            <Entity name="index_03.l" id="14565140456988927776" active="true" position="-4.65661e-10 0.0307386 -1.49055e-07" rotation="0.205884 0.00107106 -0.00725763 0.978549" scale="1 1 1" />
+           </Entity>
+          </Entity>
+         </Entity>
+        </Entity>
+       </Entity>
+      </Entity>
+     </Entity>
+    </Entity>
+   </Entity>
   </Entity>
  </Entities>
 </World>

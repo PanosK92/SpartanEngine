@@ -134,13 +134,10 @@ namespace spartan
             const float sin_a = sqrtf(max(0.0f, 1.0f - cos_a * cos_a));
             Vector3 bend_dir = plane_n.Cross(to_target_dir).Normalized();
 
-            const float along = (mid_pos - root_pos).Dot(to_target_dir);
-            const Vector3 anim_bend = (mid_pos - root_pos) - to_target_dir * along;
-            if (anim_bend.LengthSquared() > k_epsilon && bend_dir.Dot(anim_bend) < 0.0f)
-            {
-                bend_dir = -bend_dir;
-            }
-            else if (anim_bend.LengthSquared() <= k_epsilon && bend_dir.Dot(pole_model - root_pos) < 0.0f)
+            // always bend toward the pole, never follow a flipped animated knee
+            Vector3 pole_off = pole_model - root_pos;
+            pole_off = pole_off - to_target_dir * pole_off.Dot(to_target_dir);
+            if (pole_off.LengthSquared() > k_epsilon && bend_dir.Dot(pole_off) < 0.0f)
             {
                 bend_dir = -bend_dir;
             }
@@ -211,50 +208,31 @@ namespace spartan
             vector<Matrix> globals(skeleton.joint_count);
             skeleton.ComputeGlobalPose(local_matrices, globals);
 
-            // bone-local frame from skin bind (handles 45 degree foot bones)
-            Vector3 l_up = sole_up_local.Normalized();
-            Vector3 l_fwd = toe_fwd_local - l_up * toe_fwd_local.Dot(l_up);
-            if (l_fwd.LengthSquared() < k_epsilon)
-            {
-                return false;
-            }
-            l_fwd.Normalize();
-            Vector3 l_side = l_up.Cross(l_fwd);
-            if (l_side.LengthSquared() < k_epsilon)
-            {
-                return false;
-            }
-            l_side.Normalize();
-            l_fwd = l_side.Cross(l_up).Normalized();
-
-            // model-space planted frame
             Vector3 w_up = ground_normal_model.Normalized();
+            // keep sole facing above the surface
+            if (w_up.Dot(Vector3::Up) < 0.0f)
+            {
+                w_up = -w_up;
+            }
+
+            const Quaternion end_rot = globals[end_index].GetRotation();
+
+            // pitch/roll: minimal rotation so bind sole up meets ground normal
+            const Vector3 sole_up_model = (end_rot * sole_up_local.Normalized()).Normalized();
+            Quaternion planted = Quaternion::FromRotation(sole_up_model, w_up) * end_rot;
+
+            // yaw: align toe on the ground plane without tipping the sole
             Vector3 w_fwd = flatten_on_plane(toe_forward_model, w_up);
             if (w_fwd.LengthSquared() < k_epsilon)
             {
-                w_fwd = flatten_on_plane(Vector3(0.0f, 0.0f, 1.0f), w_up);
+                w_fwd = flatten_on_plane(Vector3(0.0f, 0.0f, -1.0f), w_up);
             }
-            if (w_fwd.LengthSquared() < k_epsilon)
+            Vector3 toe_now = flatten_on_plane(planted * toe_fwd_local.Normalized(), w_up);
+            if (w_fwd.LengthSquared() > k_epsilon && toe_now.LengthSquared() > k_epsilon)
             {
-                return false;
+                planted = Quaternion::FromRotation(toe_now.Normalized(), w_fwd.Normalized()) * planted;
             }
-            w_fwd.Normalize();
-            Vector3 w_side = w_up.Cross(w_fwd);
-            if (w_side.LengthSquared() < k_epsilon)
-            {
-                return false;
-            }
-            w_side.Normalize();
-            w_fwd = w_side.Cross(w_up).Normalized();
 
-            // map local frame to world frame: planted * q_local = q_world
-            Quaternion q_local;
-            q_local.FromAxes(l_side, l_up, l_fwd);
-            Quaternion q_world;
-            q_world.FromAxes(w_side, w_up, w_fwd);
-            const Quaternion planted = q_world * q_local.Inverse();
-
-            const Quaternion end_rot = globals[end_index].GetRotation();
             const Quaternion end_rot_blend = Quaternion::Lerp(end_rot, planted, w);
 
             const int16_t parent = skeleton.parent_indices[end_index];

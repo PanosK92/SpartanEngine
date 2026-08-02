@@ -45,8 +45,8 @@ namespace spartan
             float weight
         );
 
-        // plant foot so sole_up_local aligns with ground normal and toe_fwd_local with toe forward
-        // local vectors come from skin bind (ibm), not animated pose
+        // pitch/roll sole_up_local onto ground normal, then yaw toe_fwd_local onto toe forward
+        // local vectors come from bind pose (filled ibm or skeleton bind globals)
         bool PlantFoot(
             const Skeleton& skeleton,
             std::vector<math::Matrix>& local_matrices,

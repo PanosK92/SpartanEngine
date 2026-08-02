@@ -74,6 +74,10 @@ namespace spartan
         m_hands_attach_attempted = false;
         m_dynamic_blas_ready = false;
         m_foot_ik_resolved = false;
+        m_foot_ik_ground_offset = 0.0f;
+        m_foot_ik_pelvis_offset = 0.0f;
+        m_foot_ik_support_ground_y = 0.0f;
+        m_foot_ik_has_support = false;
         m_foot_ik_l = {};
         m_foot_ik_r = {};
     }
@@ -255,17 +259,27 @@ namespace spartan
             m_foot_ik_r.foot = FindJointIndex(skeleton, "Foot.R");
         }
 
-        // use skin inverse-bind (not assimp node rest), that is the real sole orientation
+        // bind pose in skeleton space (same space as animated globals).
+        // do not take the first skin section ibm blindly: multi-primitive meshes
+        // leave unused bones as identity, which makes toes map to up.
         auto bind_matrix = [&](const uint32_t bone_index) -> Matrix
         {
             if (m_mesh && m_mesh->GetSkeletalMeshBinding())
             {
                 for (const SkeletalMeshSection& section : m_mesh->GetSkeletalMeshBinding()->GetSections())
                 {
-                    if (bone_index < section.inverse_bind_matrices.size())
+                    if (bone_index >= section.inverse_bind_matrices.size())
                     {
-                        return section.inverse_bind_matrices[bone_index].Inverted();
+                        continue;
                     }
+
+                    const Matrix& ibm = section.inverse_bind_matrices[bone_index];
+                    if (ibm == Matrix::Identity)
+                    {
+                        continue;
+                    }
+
+                    return ibm.Inverted();
                 }
             }
 
@@ -275,6 +289,17 @@ namespace spartan
             }
 
             return Matrix::Identity;
+        };
+
+        auto direction_to_local = [](const Matrix& bind, const Vector3& model_dir) -> Vector3
+        {
+            const Matrix bind_inv = bind.Inverted();
+            Vector3 local = (bind_inv * model_dir) - (bind_inv * Vector3::Zero);
+            if (local.LengthSquared() < 1.0e-10f)
+            {
+                return Vector3::Zero;
+            }
+            return local.Normalized();
         };
 
         auto cache_bind = [&](FootIkLeg& leg)
@@ -287,15 +312,17 @@ namespace spartan
             const uint32_t foot_i = static_cast<uint32_t>(leg.foot);
             const Matrix bind = bind_matrix(foot_i);
             const Vector3 foot_pos = bind.GetTranslation();
-            const Quaternion foot_rot = bind.GetRotation();
-            const Quaternion foot_rot_inv = foot_rot.Inverse();
 
-            leg.ankle_height = clamp(foot_pos.y, 0.08f, 0.20f);
+            leg.ankle_height = clamp(fabsf(foot_pos.y), 0.08f, 0.20f);
 
-            // exact local dirs from bind, mannequiny feet sit at 45 deg so no cardinal pick
-            leg.sole_up_local = (foot_rot_inv * Vector3::Up).Normalized();
+            // sole normal = model up expressed in foot local, works for 45 deg bones
+            leg.sole_up_local = direction_to_local(bind, Vector3::Up);
+            if (leg.sole_up_local.LengthSquared() < 1.0e-8f)
+            {
+                leg.sole_up_local = Vector3::Up;
+            }
 
-            Vector3 toe_model = Vector3::Forward;
+            Vector3 toe_model = Vector3::Zero;
             if (leg.ball >= 0)
             {
                 toe_model = bind_matrix(static_cast<uint32_t>(leg.ball)).GetTranslation() - foot_pos;
@@ -303,10 +330,37 @@ namespace spartan
             toe_model = toe_model - Vector3::Up * toe_model.Dot(Vector3::Up);
             if (toe_model.LengthSquared() < 1.0e-8f)
             {
-                toe_model = Vector3(0.0f, 0.0f, 1.0f);
+                // mannequiny faces -z
+                toe_model = Vector3(0.0f, 0.0f, -1.0f);
             }
             toe_model.Normalize();
-            leg.toe_fwd_local = (foot_rot_inv * toe_model).Normalized();
+            leg.toe_fwd_local = direction_to_local(bind, toe_model);
+            if (leg.toe_fwd_local.LengthSquared() < 1.0e-8f)
+            {
+                leg.toe_fwd_local = Vector3(0.0f, 0.0f, -1.0f);
+            }
+
+            // knee bend side from bind: offset of calf from thigh->foot axis
+            leg.knee_pole_bind = Vector3(0.0f, 0.0f, -1.0f);
+            leg.bind_hip_foot_y = 0.85f;
+            if (leg.thigh >= 0 && leg.calf >= 0)
+            {
+                const Vector3 hip = bind_matrix(static_cast<uint32_t>(leg.thigh)).GetTranslation();
+                const Vector3 knee = bind_matrix(static_cast<uint32_t>(leg.calf)).GetTranslation();
+                const Vector3 ankle = foot_pos;
+                leg.bind_hip_foot_y = max(0.35f, hip.y - ankle.y);
+                Vector3 axis = ankle - hip;
+                if (axis.LengthSquared() > 1.0e-8f)
+                {
+                    axis.Normalize();
+                    Vector3 knee_off = knee - hip;
+                    knee_off = knee_off - axis * knee_off.Dot(axis);
+                    if (knee_off.LengthSquared() > 1.0e-8f)
+                    {
+                        leg.knee_pole_bind = knee_off.Normalized();
+                    }
+                }
+            }
         };
 
         cache_bind(m_foot_ik_l);
@@ -315,20 +369,52 @@ namespace spartan
         m_foot_ik_resolved =
             m_foot_ik_l.thigh >= 0 && m_foot_ik_l.calf >= 0 && m_foot_ik_l.foot >= 0 &&
             m_foot_ik_r.thigh >= 0 && m_foot_ik_r.calf >= 0 && m_foot_ik_r.foot >= 0;
+
+        // offset so bind soles sit on y=0, never lower the character
+        m_foot_ik_ground_offset = 0.0f;
+        float min_sole_y = 0.0f;
+        bool have_sole = false;
+        if (!m_bind_vertices.empty())
+        {
+            min_sole_y = m_bind_vertices[0].pos[1];
+            for (size_t i = 1; i < m_bind_vertices.size(); ++i)
+            {
+                min_sole_y = min(min_sole_y, m_bind_vertices[i].pos[1]);
+            }
+            have_sole = true;
+        }
+        if (m_foot_ik_resolved)
+        {
+            const float sole_l = bind_matrix(static_cast<uint32_t>(m_foot_ik_l.foot)).GetTranslation().y -
+                m_foot_ik_l.ankle_height;
+            const float sole_r = bind_matrix(static_cast<uint32_t>(m_foot_ik_r.foot)).GetTranslation().y -
+                m_foot_ik_r.ankle_height;
+            const float joint_sole = min(sole_l, sole_r);
+            min_sole_y = have_sole ? min(min_sole_y, joint_sole) : joint_sole;
+            have_sole = true;
+        }
+        if (have_sole)
+        {
+            m_foot_ik_ground_offset = max(0.0f, -min_sole_y);
+        }
     }
 
-    bool Animator::ApplyFootIkLeg(
+    void Animator::UpdateFootIkLegTarget(
         const Skeleton& skeleton,
-        vector<Matrix>& local_matrices,
+        const vector<Matrix>& local_matrices,
         FootIkLeg& leg,
         const Matrix& model_to_world,
         const Matrix& world_to_model,
         Entity* ignore_entity
     )
     {
+        leg.contact_dy = 0.0f;
+        leg.contact_active = false;
+        leg.ground_hit = false;
+        leg.use_for_pelvis = false;
         if (leg.thigh < 0 || leg.calf < 0 || leg.foot < 0)
         {
-            return false;
+            return;
         }
 
         const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
@@ -339,22 +425,23 @@ namespace spartan
         skeleton.ComputeGlobalPose(local_matrices, globals);
 
         const uint32_t foot_i = static_cast<uint32_t>(leg.foot);
-        const uint32_t calf_i = static_cast<uint32_t>(leg.calf);
         const uint32_t thigh_i = static_cast<uint32_t>(leg.thigh);
         const Vector3 foot_model = globals[foot_i].GetTranslation();
-        const Vector3 calf_model = globals[calf_i].GetTranslation();
         const Vector3 thigh_model = globals[thigh_i].GetTranslation();
         const Vector3 foot_world = model_to_world * foot_model;
 
         constexpr float ray_up = 0.8f;
         constexpr float ray_down = 1.5f;
         constexpr float max_lift = 0.5f;
-        constexpr float max_drop = 0.4f;
+        // allow reach-down to a lower step; swing feet are filtered separately
+        constexpr float max_drop = 0.35f;
+        constexpr float contact_band = 0.14f;
+        constexpr float swing_band = 0.40f;
 
         float target_weight = 0.0f;
         Vector3 target_model = foot_model;
         Vector3 normal_model = Vector3::Up;
-        Vector3 forward_model = Vector3(0.0f, 0.0f, 1.0f);
+        Vector3 forward_model = Vector3(0.0f, 0.0f, -1.0f);
 
         if (leg.ball >= 0)
         {
@@ -366,7 +453,7 @@ namespace spartan
             }
             else
             {
-                forward_model = Vector3(0.0f, 0.0f, 1.0f);
+                forward_model = Vector3(0.0f, 0.0f, -1.0f);
             }
         }
 
@@ -378,14 +465,34 @@ namespace spartan
             hit,
             ignore_entity))
         {
-            const Vector3 ankle_world = hit.position + hit.normal * leg.ankle_height;
-            const float dy = ankle_world.y - foot_world.y;
-            if (dy <= max_lift && dy >= -max_drop)
+            Vector3 ground_n = hit.normal;
+            if (ground_n.Dot(Vector3::Up) < 0.0f)
+            {
+                ground_n = -ground_n;
+            }
+
+            leg.ground_hit = true;
+            leg.ground_y_world = hit.position.y;
+
+            const float above_ground = foot_world.y - hit.position.y;
+            const Vector3 ankle_world = hit.position + ground_n * leg.ankle_height;
+            const Vector3 ankle_model = world_to_model * ankle_world;
+            const float ankle_lift = ankle_model.y - foot_model.y;
+            const float stand_lift = (ankle_model.y + leg.bind_hip_foot_y) - thigh_model.y;
+            leg.contact_dy = max(ankle_lift, stand_lift);
+
+            // true walk swing: high above its own ground and needing a big pull-down
+            const bool true_swing = above_ground > leg.ankle_height + swing_band && ankle_lift < -0.12f;
+            leg.use_for_pelvis = !true_swing;
+
+            const bool airborne = above_ground > leg.ankle_height + contact_band;
+            if (!airborne && ankle_lift <= max_lift && ankle_lift >= -max_drop)
             {
                 target_weight = m_foot_ik_weight;
-                target_model = world_to_model * ankle_world;
+                target_model = ankle_model;
+                leg.contact_active = true;
 
-                Vector3 n = (world_to_model * hit.normal) - (world_to_model * Vector3::Zero);
+                Vector3 n = (world_to_model * ground_n) - (world_to_model * Vector3::Zero);
                 if (n.LengthSquared() > 1.0e-10f)
                 {
                     normal_model = n.Normalized();
@@ -406,22 +513,53 @@ namespace spartan
         leg.smooth_normal = Vector3::Lerp(leg.smooth_normal, normal_model, blend).Normalized();
         leg.smooth_forward = Vector3::Lerp(leg.smooth_forward, forward_model, blend).Normalized();
         leg.smooth_weight = leg.smooth_weight + (target_weight - leg.smooth_weight) * blend;
+    }
 
-        if (leg.smooth_weight <= 0.001f)
+    bool Animator::SolveFootIkLeg(
+        const Skeleton& skeleton,
+        vector<Matrix>& local_matrices,
+        FootIkLeg& leg
+    )
+    {
+        if (leg.thigh < 0 || leg.calf < 0 || leg.foot < 0 || leg.smooth_weight <= 0.001f)
         {
             return false;
         }
 
-        Vector3 pole_off = calf_model - thigh_model;
-        const Vector3 hip_to_foot = foot_model - thigh_model;
-        if (hip_to_foot.LengthSquared() > 1.0e-6f)
+        vector<Matrix> globals(skeleton.joint_count);
+        skeleton.ComputeGlobalPose(local_matrices, globals);
+
+        const uint32_t foot_i = static_cast<uint32_t>(leg.foot);
+        const uint32_t calf_i = static_cast<uint32_t>(leg.calf);
+        const uint32_t thigh_i = static_cast<uint32_t>(leg.thigh);
+        const Vector3 foot_model = globals[foot_i].GetTranslation();
+        const Vector3 thigh_model = globals[thigh_i].GetTranslation();
+
+        Vector3 hip_to_target = leg.smooth_target - thigh_model;
+        if (hip_to_target.LengthSquared() < 1.0e-6f)
         {
-            const Vector3 axis = hip_to_foot.Normalized();
-            pole_off = pole_off - axis * pole_off.Dot(axis);
+            hip_to_target = foot_model - thigh_model;
         }
-        const Vector3 pole_model = pole_off.LengthSquared() > 1.0e-6f
-            ? calf_model + pole_off.Normalized() * 0.35f
-            : calf_model + Vector3(0.0f, 0.0f, -0.35f);
+        Vector3 prefer = leg.knee_pole_bind;
+        if (prefer.LengthSquared() < 1.0e-6f)
+        {
+            prefer = leg.smooth_forward;
+        }
+        if (hip_to_target.LengthSquared() > 1.0e-6f)
+        {
+            const Vector3 axis = hip_to_target.Normalized();
+            prefer = prefer - axis * prefer.Dot(axis);
+        }
+        if (prefer.LengthSquared() < 1.0e-6f)
+        {
+            prefer = Vector3::Up.Cross(hip_to_target);
+        }
+        if (prefer.LengthSquared() < 1.0e-6f)
+        {
+            prefer = Vector3(1.0f, 0.0f, 0.0f);
+        }
+        prefer.Normalize();
+        const Vector3 pole_model = thigh_model + prefer * 0.5f;
 
         if (!animation_ik::SolveTwoBone(
             skeleton,
@@ -456,6 +594,19 @@ namespace spartan
     {
         if (!m_foot_ik_enabled || m_foot_ik_weight <= 0.0f)
         {
+            const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+            const float dt_clamped = dt > 0.0f ? dt : 0.016f;
+            const float blend = 1.0f - expf(-6.0f * dt_clamped);
+            m_foot_ik_pelvis_offset += (0.0f - m_foot_ik_pelvis_offset) * blend;
+            if (fabsf(m_foot_ik_pelvis_offset) > 1.0e-4f && !local_matrices.empty())
+            {
+                const Vector3 t = local_matrices[0].GetTranslation();
+                local_matrices[0] = Matrix(
+                    Vector3(t.x, t.y + m_foot_ik_pelvis_offset, t.z),
+                    local_matrices[0].GetRotation(),
+                    local_matrices[0].GetScale()
+                );
+            }
             return;
         }
 
@@ -481,8 +632,74 @@ namespace spartan
         const Matrix model_to_world = root->GetMatrix();
         const Matrix world_to_model = model_to_world.Inverted();
 
-        ApplyFootIkLeg(skeleton, local_matrices, m_foot_ik_l, model_to_world, world_to_model, root);
-        ApplyFootIkLeg(skeleton, local_matrices, m_foot_ik_r, model_to_world, world_to_model, root);
+        UpdateFootIkLegTarget(
+            skeleton, local_matrices, m_foot_ik_l, model_to_world, world_to_model, root);
+        UpdateFootIkLegTarget(
+            skeleton, local_matrices, m_foot_ik_r, model_to_world, world_to_model, root);
+
+        // support = lowest ground under either foot (split steps stay on the lower one)
+        m_foot_ik_has_support = false;
+        m_foot_ik_support_ground_y = 0.0f;
+        if (m_foot_ik_l.ground_hit || m_foot_ik_r.ground_hit)
+        {
+            if (m_foot_ik_l.ground_hit && m_foot_ik_r.ground_hit)
+            {
+                m_foot_ik_support_ground_y = min(
+                    m_foot_ik_l.ground_y_world,
+                    m_foot_ik_r.ground_y_world
+                );
+            }
+            else
+            {
+                m_foot_ik_support_ground_y = m_foot_ik_l.ground_hit
+                    ? m_foot_ik_l.ground_y_world
+                    : m_foot_ik_r.ground_y_world;
+            }
+            m_foot_ik_has_support = true;
+        }
+
+        // pelvis only rises as much as the lower stance foot allows
+        float pelvis_target = 0.0f;
+        bool has_pelvis = false;
+        if (m_foot_ik_l.use_for_pelvis)
+        {
+            pelvis_target = m_foot_ik_l.contact_dy;
+            has_pelvis = true;
+        }
+        if (m_foot_ik_r.use_for_pelvis)
+        {
+            if (has_pelvis)
+            {
+                pelvis_target = min(pelvis_target, m_foot_ik_r.contact_dy);
+            }
+            else
+            {
+                pelvis_target = m_foot_ik_r.contact_dy;
+                has_pelvis = true;
+            }
+        }
+        if (!has_pelvis)
+        {
+            pelvis_target = 0.0f;
+        }
+
+        const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+        const float dt_clamped = dt > 0.0f ? dt : 0.016f;
+        const float blend = 1.0f - expf(-5.0f * dt_clamped);
+        m_foot_ik_pelvis_offset += (pelvis_target - m_foot_ik_pelvis_offset) * blend;
+
+        if (!local_matrices.empty() && fabsf(m_foot_ik_pelvis_offset) > 1.0e-5f)
+        {
+            const Vector3 t = local_matrices[0].GetTranslation();
+            local_matrices[0] = Matrix(
+                Vector3(t.x, t.y + m_foot_ik_pelvis_offset, t.z),
+                local_matrices[0].GetRotation(),
+                local_matrices[0].GetScale()
+            );
+        }
+
+        SolveFootIkLeg(skeleton, local_matrices, m_foot_ik_l);
+        SolveFootIkLeg(skeleton, local_matrices, m_foot_ik_r);
     }
 
     bool Animator::AttachHand(Entity* hand, Entity* arm, HandAttach& out_attach)
@@ -1023,6 +1240,25 @@ namespace spartan
         }
     }
 
+    float Animator::GetFootIkGroundOffset()
+    {
+        if (!m_foot_ik_resolved)
+        {
+            if (!m_bind_captured)
+            {
+                CaptureBindPose();
+            }
+
+            Mesh* mesh = ResolveMesh();
+            if (mesh && mesh->GetSkeleton())
+            {
+                ResolveFootIkJoints(*mesh->GetSkeleton());
+            }
+        }
+
+        return m_foot_ik_ground_offset;
+    }
+
     void Animator::RegisterForScripting(sol::state_view state)
     {
         state.new_usertype<Animator>("Animator",
@@ -1040,7 +1276,10 @@ namespace spartan
             "GetFootIkEnabled",   &Animator::GetFootIkEnabled,
             "SetFootIkEnabled",   &Animator::SetFootIkEnabled,
             "GetFootIkWeight",    &Animator::GetFootIkWeight,
-            "SetFootIkWeight",    &Animator::SetFootIkWeight
+            "SetFootIkWeight",    &Animator::SetFootIkWeight,
+            "GetFootIkGroundOffset", &Animator::GetFootIkGroundOffset,
+            "HasFootIkSupportGround", &Animator::HasFootIkSupportGround,
+            "GetFootIkSupportGroundY", &Animator::GetFootIkSupportGroundY
         );
     }
 
