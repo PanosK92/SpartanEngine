@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/ParticleSystem.h"
 #include "Components/Terrain.h"
 #include "Components/Text3D.h"
+#include "Components/Animator.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Material.h"
@@ -432,6 +433,7 @@ namespace spartan
             ParticleSystem  ::RegisterForScripting(state_view);
             Spline          ::RegisterForScripting(state_view);
             Text3D          ::RegisterForScripting(state_view);
+            Animator        ::RegisterForScripting(state_view);
             Camera          ::RegisterForScripting(state_view);
             WorldHelpers    ::RegisterForScripting(state_view);
 
@@ -446,7 +448,8 @@ namespace spartan
                 "Script",                   ComponentType::Script,
                 "ParticleSystem",           ComponentType::ParticleSystem,
                 "Spline",                   ComponentType::Spline,
-                "Text3D",                   ComponentType::Text3D
+                "Text3D",                   ComponentType::Text3D,
+                "Animator",                 ComponentType::Animator
             );
 
             lua_state.new_enum("Intersection",
@@ -487,9 +490,10 @@ namespace spartan
                 );
 
             sol::table InputTable = lua_state.create_named_table("Input");
-            InputTable["GetKey"]     = &Input::GetKey;
-            InputTable["GetKeyDown"] = &Input::GetKeyDown;
-            InputTable["GetKeyUp"]   = &Input::GetKeyUp;
+            InputTable["GetKey"]         = &Input::GetKey;
+            InputTable["GetKeyDown"]     = &Input::GetKeyDown;
+            InputTable["GetKeyUp"]       = &Input::GetKeyUp;
+            InputTable["GetMouseDelta"]  = &Input::GetMouseDelta;
 
             lua_state.new_usertype<BoundingBox>("BoundingBox",
                 sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),
@@ -874,6 +878,14 @@ namespace spartan
                 "w", &Quaternion::w,
 
                 "FromEulerAngles", [](float pitch, float yaw, float roll) { return Quaternion::FromEulerAngles(pitch, yaw, roll); },
+                "FromLookRotation", [](const Vector3& direction, const Vector3& up)
+                {
+                    return Quaternion::FromLookRotation(direction, up);
+                },
+                "Lerp", [](const Quaternion& a, const Quaternion& b, float t)
+                {
+                    return Quaternion::Lerp(a, b, t);
+                },
                 "Identity",        sol::var(Quaternion::Identity)
             );
 

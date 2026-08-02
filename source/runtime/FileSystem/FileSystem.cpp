@@ -113,6 +113,7 @@ namespace spartan
             ".blend",
             ".dae",
             ".gltf",
+            ".glb",
             ".lwo",
             ".c4d",
             ".ase",

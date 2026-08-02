@@ -21,7 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include <cmath>
 #include <filesystem>
+#include <unordered_set>
 #include "ModelImporter.h"
 #include "../../Core/ProgressTracker.h"
 #include "../../Core/ThreadPool.h"
@@ -568,138 +570,302 @@ namespace spartan
             }
         }
 
-        // find a node by name in the scene hierarchy
-        const aiNode* find_node(const aiNode* root, const string& name)
+        // robotexpressive etc duplicate names (bone + mesh leaf). prefer armature bones.
+        void collect_nodes_named(const aiNode* root, const string& name, vector<const aiNode*>& out)
         {
             if (!root)
             {
-                return nullptr;
+                return;
             }
 
             if (string(root->mName.C_Str()) == name)
             {
-                return root;
+                out.push_back(root);
             }
 
             for (uint32_t i = 0; i < root->mNumChildren; ++i)
             {
-                const aiNode* found = find_node(root->mChildren[i], name);
-                if (found)
-                {
-                    return found;
-                }
+                collect_nodes_named(root->mChildren[i], name, out);
             }
-
-            return nullptr;
         }
 
-        // resolve parent index for each bone by walking the aiNode hierarchy
-        int16_t find_parent_bone_index(const aiNode* bone_node, const unordered_map<string, uint32_t>& name_to_index)
+        bool node_has_ancestor_named(const aiNode* node, const char* ancestor_name)
         {
-            const aiNode* parent = bone_node->mParent;
-            while (parent)
+            while (node)
             {
-                auto it = name_to_index.find(parent->mName.C_Str());
-                if (it != name_to_index.end())
+                if (string(node->mName.C_Str()) == ancestor_name)
                 {
-                    return static_cast<int16_t>(it->second);
+                    return true;
                 }
-
-                parent = parent->mParent;
+                node = node->mParent;
             }
-
-            return -1;
+            return false;
         }
 
-        // build a skeleton from the scene's bone data
-        shared_ptr<Skeleton> build_skeleton(const aiScene* scene)
+        int score_joint_node(const aiNode* node)
         {
-            vector<string> bone_names;
-            unordered_map<string, uint32_t> name_to_index;
-            collect_bone_names(scene, bone_names, name_to_index);
+            if (!node)
+            {
+                return -1000;
+            }
 
-            if (bone_names.empty())
+            int score = 0;
+            // bones have child joints/ends; mesh instances are usually leaves with meshes
+            score += static_cast<int>(node->mNumChildren) * 10;
+            if (node->mNumMeshes > 0 && node->mNumChildren == 0)
+            {
+                score -= 50;
+            }
+            if (node_has_ancestor_named(node, "Bone") || node_has_ancestor_named(node, "RobotArmature"))
+            {
+                score += 5;
+            }
+            return score;
+        }
+
+        const aiNode* find_node(const aiNode* root, const string& name)
+        {
+            vector<const aiNode*> matches;
+            collect_nodes_named(root, name, matches);
+            if (matches.empty())
             {
                 return nullptr;
             }
 
-            auto skeleton = make_shared<Skeleton>();
-            const uint16_t joint_count = static_cast<uint16_t>(bone_names.size());
-            skeleton->Allocate(joint_count);
-
-            // resolve parent indices and extract bind pose from inverse bind matrices
-            vector<Matrix> inverse_bind_matrices(joint_count, Matrix::Identity);
-
-            // gather inverse bind matrices from the first mesh that references each bone
-            for (uint32_t mesh_idx = 0; mesh_idx < scene->mNumMeshes; ++mesh_idx)
+            if (matches.size() == 1)
             {
-                const aiMesh* mesh = scene->mMeshes[mesh_idx];
-                for (uint32_t bone_idx = 0; bone_idx < mesh->mNumBones; ++bone_idx)
+                return matches[0];
+            }
+
+            const aiNode* best = matches[0];
+            int best_score = score_joint_node(best);
+            for (size_t i = 1; i < matches.size(); ++i)
+            {
+                const int score = score_joint_node(matches[i]);
+                if (score > best_score)
                 {
-                    const aiBone* bone = mesh->mBones[bone_idx];
-                    auto it = name_to_index.find(bone->mName.C_Str());
-                    if (it != name_to_index.end())
+                    best_score = score;
+                    best = matches[i];
+                }
+            }
+
+            return best;
+        }
+
+        // engine world = local * parent_world
+        Matrix compute_node_world(const aiNode* node)
+        {
+            if (!node)
+            {
+                return Matrix::Identity;
+            }
+
+            return to_matrix(node->mTransformation) * compute_node_world(node->mParent);
+        }
+
+        // build a skeleton from the scene's bone data
+        // includes bone ancestors so skipped nodes are not lost, topo-sorted for pose eval
+        shared_ptr<Skeleton> build_skeleton(
+            const aiScene* scene,
+            unordered_map<string, uint32_t>& out_name_to_index
+        )
+        {
+            out_name_to_index.clear();
+
+            vector<string> weighted_names;
+            unordered_map<string, uint32_t> weighted_map;
+            collect_bone_names(scene, weighted_names, weighted_map);
+
+            if (weighted_names.empty())
+            {
+                return nullptr;
+            }
+
+            // include weighted bones, animated nodes, and all their ancestors
+            unordered_set<string> joint_set(weighted_names.begin(), weighted_names.end());
+            if (scene->mAnimations)
+            {
+                for (uint32_t a = 0; a < scene->mNumAnimations; ++a)
+                {
+                    const aiAnimation* anim = scene->mAnimations[a];
+                    for (uint32_t c = 0; c < anim->mNumChannels; ++c)
                     {
-                        inverse_bind_matrices[it->second] = to_matrix(bone->mOffsetMatrix);
+                        const string channel_name = anim->mChannels[c]->mNodeName.C_Str();
+                        if (!channel_name.empty())
+                        {
+                            joint_set.insert(channel_name);
+                        }
                     }
                 }
             }
 
-            // resolve parent hierarchy and extract bind pose
+            unordered_set<string> with_ancestors = joint_set;
+            for (const string& name : joint_set)
+            {
+                const aiNode* node = find_node(scene->mRootNode, name);
+                while (node)
+                {
+                    const string node_name = node->mName.C_Str();
+                    if (!node_name.empty())
+                    {
+                        with_ancestors.insert(node_name);
+                    }
+                    node = node->mParent;
+                }
+            }
+            joint_set = move(with_ancestors);
+
+            // stable order: weighted bones first, then the rest
+            vector<string> joint_names = weighted_names;
+            for (const string& name : joint_set)
+            {
+                if (weighted_map.find(name) == weighted_map.end())
+                {
+                    joint_names.push_back(name);
+                }
+            }
+
+            // resolve immediate parent joint for each joint
+            const uint32_t unsorted_count = static_cast<uint32_t>(joint_names.size());
+            vector<int32_t> unsorted_parents(unsorted_count, -1);
+            unordered_map<string, uint32_t> unsorted_index;
+            for (uint32_t i = 0; i < unsorted_count; ++i)
+            {
+                unsorted_index[joint_names[i]] = i;
+            }
+
+            for (uint32_t i = 0; i < unsorted_count; ++i)
+            {
+                const aiNode* node = find_node(scene->mRootNode, joint_names[i]);
+                if (!node)
+                {
+                    continue;
+                }
+
+                const aiNode* parent = node->mParent;
+                while (parent)
+                {
+                    auto it = unsorted_index.find(parent->mName.C_Str());
+                    if (it != unsorted_index.end())
+                    {
+                        unsorted_parents[i] = static_cast<int32_t>(it->second);
+                        break;
+                    }
+                    parent = parent->mParent;
+                }
+            }
+
+            // topological sort, parents before children
+            vector<uint32_t> depths(unsorted_count, 0);
+            bool changed = true;
+            for (uint32_t pass = 0; pass < unsorted_count && changed; ++pass)
+            {
+                changed = false;
+                for (uint32_t i = 0; i < unsorted_count; ++i)
+                {
+                    if (unsorted_parents[i] < 0)
+                    {
+                        continue;
+                    }
+
+                    const uint32_t parent = static_cast<uint32_t>(unsorted_parents[i]);
+                    const uint32_t depth = depths[parent] + 1;
+                    if (depth > depths[i])
+                    {
+                        depths[i] = depth;
+                        changed = true;
+                    }
+                }
+            }
+
+            vector<uint32_t> order(unsorted_count);
+            for (uint32_t i = 0; i < unsorted_count; ++i)
+            {
+                order[i] = i;
+            }
+            stable_sort(order.begin(), order.end(), [&](const uint32_t a, const uint32_t b)
+            {
+                if (depths[a] != depths[b])
+                {
+                    return depths[a] < depths[b];
+                }
+                return a < b;
+            });
+
+            vector<string> sorted_names(unsorted_count);
+            vector<int16_t> sorted_parents(unsorted_count, -1);
+            unordered_map<uint32_t, uint32_t> old_to_new;
+            for (uint32_t new_index = 0; new_index < unsorted_count; ++new_index)
+            {
+                const uint32_t old_index = order[new_index];
+                old_to_new[old_index] = new_index;
+                sorted_names[new_index] = joint_names[old_index];
+            }
+
+            for (uint32_t new_index = 0; new_index < unsorted_count; ++new_index)
+            {
+                const uint32_t old_index = order[new_index];
+                const int32_t old_parent = unsorted_parents[old_index];
+                if (old_parent >= 0)
+                {
+                    sorted_parents[new_index] = static_cast<int16_t>(old_to_new[static_cast<uint32_t>(old_parent)]);
+                }
+            }
+
+            auto skeleton = make_shared<Skeleton>();
+            const uint16_t joint_count = static_cast<uint16_t>(unsorted_count);
+            skeleton->Allocate(joint_count);
+            skeleton->joint_names = sorted_names;
+
             for (uint32_t i = 0; i < joint_count; ++i)
             {
-                const aiNode* bone_node = find_node(scene->mRootNode, bone_names[i]);
+                out_name_to_index[sorted_names[i]] = i;
+                skeleton->m_mutable_parents[i] = sorted_parents[i];
 
-                // parent index
-                skeleton->m_mutable_parents[i] = bone_node ? find_parent_bone_index(bone_node, name_to_index) : -1;
-
-                // extract local bind pose from the node's local transform
-                if (bone_node)
+                const aiNode* bone_node = find_node(scene->mRootNode, sorted_names[i]);
+                if (!bone_node)
                 {
-                    const Matrix local_transform = to_matrix(bone_node->mTransformation);
-                    skeleton->m_mutable_positions[i] = local_transform.GetTranslation();
-                    skeleton->m_mutable_rotations[i] = local_transform.GetRotation();
-                    skeleton->m_mutable_scales[i]    = local_transform.GetScale();
+                    skeleton->bind_local_matrices[i] = Matrix::Identity;
+                    continue;
+                }
+
+                // prefer immediate node local when parent joint is the direct parent
+                if (sorted_parents[i] >= 0)
+                {
+                    const aiNode* parent_joint_node = find_node(
+                        scene->mRootNode,
+                        sorted_names[static_cast<uint32_t>(sorted_parents[i])]
+                    );
+
+                    if (parent_joint_node && bone_node->mParent == parent_joint_node)
+                    {
+                        skeleton->bind_local_matrices[i] = to_matrix(bone_node->mTransformation);
+                    }
+                    else
+                    {
+                        // bake skipped nodes between parent joint and this joint
+                        const Matrix bone_world = compute_node_world(bone_node);
+                        const Matrix parent_world = parent_joint_node
+                            ? compute_node_world(parent_joint_node)
+                            : Matrix::Identity;
+                        skeleton->bind_local_matrices[i] = bone_world * parent_world.Inverted();
+                    }
                 }
                 else
                 {
-                    skeleton->m_mutable_positions[i] = Vector3::Zero;
-                    skeleton->m_mutable_rotations[i] = Quaternion::Identity;
-                    skeleton->m_mutable_scales[i]    = Vector3::One;
+                    // root joint, use its node local only, not the full scene chain
+                    skeleton->bind_local_matrices[i] = to_matrix(bone_node->mTransformation);
                 }
             }
 
-            // ensure root bone has parent -1 (reorder if needed)
-            if (skeleton->m_mutable_parents[0] != -1)
-            {
-                for (uint32_t i = 0; i < joint_count; ++i)
-                {
-                    if (skeleton->m_mutable_parents[i] == -1)
-                    {
-                        // swap bone 0 and bone i
-                        swap(skeleton->m_mutable_parents[0], skeleton->m_mutable_parents[i]);
-                        swap(skeleton->m_mutable_positions[0], skeleton->m_mutable_positions[i]);
-                        swap(skeleton->m_mutable_rotations[0], skeleton->m_mutable_rotations[i]);
-                        swap(skeleton->m_mutable_scales[0], skeleton->m_mutable_scales[i]);
+            skeleton->FinalizeBindPose();
 
-                        // fix parent references
-                        for (uint32_t j = 0; j < joint_count; ++j)
-                        {
-                            if (skeleton->m_mutable_parents[j] == 0)
-                            {
-                                skeleton->m_mutable_parents[j] = static_cast<int16_t>(i);
-                            }
-                            else if (skeleton->m_mutable_parents[j] == static_cast<int16_t>(i))
-                            {
-                                skeleton->m_mutable_parents[j] = 0;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
+            SP_LOG_INFO(
+                "Skeleton built with %u joints (%u weighted)",
+                joint_count,
+                static_cast<uint32_t>(weighted_names.size())
+            );
 
-            SP_LOG_INFO("Skeleton built with %u joints", joint_count);
             return skeleton;
         }
 
@@ -765,13 +931,17 @@ namespace spartan
                 SkeletalVertexInfluence& influence = section.influences[v];
                 float total = 0.0f;
                 for (uint32_t w = 0; w < 4; ++w)
+                {
                     total += influence.bone_weights[w];
+                }
 
                 if (total > 0.0f)
                 {
                     const float inv = 1.0f / total;
                     for (uint32_t w = 0; w < 4; ++w)
+                    {
                         influence.bone_weights[w] *= inv;
+                    }
                 }
             }
 
@@ -790,20 +960,92 @@ namespace spartan
             binding.AddSection(move(section));
         }
 
+        Vector3 sample_vector_keys(const aiVectorKey* keys, const uint32_t count, const double time_ticks)
+        {
+            if (!keys || count == 0)
+            {
+                return Vector3::Zero;
+            }
+
+            if (count == 1 || time_ticks <= keys[0].mTime)
+            {
+                return to_vector3(keys[0].mValue);
+            }
+
+            if (time_ticks >= keys[count - 1].mTime)
+            {
+                return to_vector3(keys[count - 1].mValue);
+            }
+
+            uint32_t next = 1;
+            while (next < count && time_ticks > keys[next].mTime)
+            {
+                ++next;
+            }
+
+            const uint32_t prev = next - 1;
+            const double span = keys[next].mTime - keys[prev].mTime;
+            const float t = span > 0.0
+                ? static_cast<float>((time_ticks - keys[prev].mTime) / span)
+                : 0.0f;
+
+            return Vector3::Lerp(to_vector3(keys[prev].mValue), to_vector3(keys[next].mValue), t);
+        }
+
+        Quaternion sample_rotation_keys(const aiQuatKey* keys, const uint32_t count, const double time_ticks)
+        {
+            if (!keys || count == 0)
+            {
+                return Quaternion::Identity;
+            }
+
+            if (count == 1 || time_ticks <= keys[0].mTime)
+            {
+                return to_quaternion(keys[0].mValue);
+            }
+
+            if (time_ticks >= keys[count - 1].mTime)
+            {
+                return to_quaternion(keys[count - 1].mValue);
+            }
+
+            uint32_t next = 1;
+            while (next < count && time_ticks > keys[next].mTime)
+            {
+                ++next;
+            }
+
+            const uint32_t prev = next - 1;
+            const double span = keys[next].mTime - keys[prev].mTime;
+            const float t = span > 0.0
+                ? static_cast<float>((time_ticks - keys[prev].mTime) / span)
+                : 0.0f;
+
+            return Quaternion::Lerp(to_quaternion(keys[prev].mValue), to_quaternion(keys[next].mValue), t);
+        }
+
         // convert an assimp animation to the engine's AnimationClip format
         AnimationClip convert_animation(
             const aiAnimation* anim,
             const unordered_map<string, uint32_t>& bone_name_to_index,
-            const uint32_t joint_count)
+            const uint32_t joint_count,
+            const string& clip_name)
         {
             AnimationClip clip;
+            clip.name = clip_name;
 
             const double ticks_per_second = anim->mTicksPerSecond > 0.0 ? anim->mTicksPerSecond : 25.0;
             clip.duration_seconds = static_cast<float>(anim->mDuration / ticks_per_second);
             clip.sample_rate      = static_cast<float>(ticks_per_second);
             clip.joint_count      = joint_count;
 
-            // initialize base pose to identity
+            // densify to uniform samples so runtime can index by time * sample_rate
+            const uint32_t frame_count = max(
+                2u,
+                static_cast<uint32_t>(std::lround(static_cast<double>(clip.duration_seconds) * static_cast<double>(clip.sample_rate))) + 1u
+            );
+
+            // initialize base pose to identity, evaluate starts from skeleton bind
             clip.base_local_positions.resize(joint_count, Vector3::Zero);
             clip.base_local_rotations.resize(joint_count, Quaternion::Identity);
             clip.base_local_scales.resize(joint_count, Vector3::One);
@@ -811,7 +1053,8 @@ namespace spartan
             for (uint32_t ch = 0; ch < anim->mNumChannels; ++ch)
             {
                 const aiNodeAnim* channel = anim->mChannels[ch];
-                auto it = bone_name_to_index.find(channel->mNodeName.C_Str());
+                const string channel_name = channel->mNodeName.C_Str();
+                auto it = bone_name_to_index.find(channel_name);
                 if (it == bone_name_to_index.end())
                 {
                     continue;
@@ -834,13 +1077,20 @@ namespace spartan
                     AnimChannel ac;
                     ac.bone_index   = bone_index;
                     ac.first_sample = static_cast<uint32_t>(clip.position_stream.values.size());
-                    ac.sample_count = channel->mNumPositionKeys;
+                    ac.sample_count = frame_count;
                     clip.position_stream.channels.push_back(ac);
 
-                    for (uint32_t k = 0; k < channel->mNumPositionKeys; ++k)
-                        clip.position_stream.values.push_back(to_vector3(channel->mPositionKeys[k].mValue));
+                    for (uint32_t frame = 0; frame < frame_count; ++frame)
+                    {
+                        const double time_ticks = frame_count > 1
+                            ? (static_cast<double>(frame) / static_cast<double>(frame_count - 1)) * anim->mDuration
+                            : 0.0;
+                        clip.position_stream.values.push_back(
+                            sample_vector_keys(channel->mPositionKeys, channel->mNumPositionKeys, time_ticks)
+                        );
+                    }
 
-                    clip.base_local_positions[bone_index] = to_vector3(channel->mPositionKeys[0].mValue);
+                    clip.base_local_positions[bone_index] = clip.position_stream.values[ac.first_sample];
                 }
 
                 // rotation keys
@@ -857,13 +1107,20 @@ namespace spartan
                     AnimChannel ac;
                     ac.bone_index   = bone_index;
                     ac.first_sample = static_cast<uint32_t>(clip.rotation_stream.values.size());
-                    ac.sample_count = channel->mNumRotationKeys;
+                    ac.sample_count = frame_count;
                     clip.rotation_stream.channels.push_back(ac);
 
-                    for (uint32_t k = 0; k < channel->mNumRotationKeys; ++k)
-                        clip.rotation_stream.values.push_back(to_quaternion(channel->mRotationKeys[k].mValue));
+                    for (uint32_t frame = 0; frame < frame_count; ++frame)
+                    {
+                        const double time_ticks = frame_count > 1
+                            ? (static_cast<double>(frame) / static_cast<double>(frame_count - 1)) * anim->mDuration
+                            : 0.0;
+                        clip.rotation_stream.values.push_back(
+                            sample_rotation_keys(channel->mRotationKeys, channel->mNumRotationKeys, time_ticks)
+                        );
+                    }
 
-                    clip.base_local_rotations[bone_index] = to_quaternion(channel->mRotationKeys[0].mValue);
+                    clip.base_local_rotations[bone_index] = clip.rotation_stream.values[ac.first_sample];
                 }
 
                 // scale keys
@@ -880,13 +1137,20 @@ namespace spartan
                     AnimChannel ac;
                     ac.bone_index   = bone_index;
                     ac.first_sample = static_cast<uint32_t>(clip.scale_stream.values.size());
-                    ac.sample_count = channel->mNumScalingKeys;
+                    ac.sample_count = frame_count;
                     clip.scale_stream.channels.push_back(ac);
 
-                    for (uint32_t k = 0; k < channel->mNumScalingKeys; ++k)
-                        clip.scale_stream.values.push_back(to_vector3(channel->mScalingKeys[k].mValue));
+                    for (uint32_t frame = 0; frame < frame_count; ++frame)
+                    {
+                        const double time_ticks = frame_count > 1
+                            ? (static_cast<double>(frame) / static_cast<double>(frame_count - 1)) * anim->mDuration
+                            : 0.0;
+                        clip.scale_stream.values.push_back(
+                            sample_vector_keys(channel->mScalingKeys, channel->mNumScalingKeys, time_ticks)
+                        );
+                    }
 
-                    clip.base_local_scales[bone_index] = to_vector3(channel->mScalingKeys[0].mValue);
+                    clip.base_local_scales[bone_index] = clip.scale_stream.values[ac.first_sample];
                 }
             }
 
@@ -1205,26 +1469,35 @@ namespace spartan
         process_vertices_parallel(assimp_mesh, vertices);
         process_indices_parallel(assimp_mesh, indices);
 
-        const uint32_t vertex_offset = ctx.mesh->GetVertexCount();
+        // serialize append + weight offsets, parallel ParseMesh raced GetVertexCount
+        // and wrote overlapping skin sections (mannequiny exploded)
+        static mutex geometry_append_mutex;
+        uint32_t vertex_offset = 0;
+        {
+            lock_guard<mutex> geometry_lock(geometry_append_mutex);
 
-        // add vertex and index data into the pre-reserved sub-mesh slot
-        ctx.mesh->AddGeometry(vertices, indices, true, sub_mesh_index);
+            vertex_offset = ctx.mesh->GetVertexCount();
+            ctx.mesh->AddGeometry(vertices, indices, true, sub_mesh_index);
+
+            if (assimp_mesh->mNumBones > 0 && !ctx.bone_name_to_index.empty())
+            {
+                if (!ctx.mesh->GetSkeletalMeshBinding())
+                {
+                    ctx.mesh->SetSkeletalMeshBinding(make_unique<SkeletalMeshBinding>());
+                }
+
+                extract_bone_weights(
+                    assimp_mesh,
+                    ctx.bone_name_to_index,
+                    sub_mesh_index,
+                    vertex_offset,
+                    *ctx.mesh->GetSkeletalMeshBinding()
+                );
+            }
+        }
 
         // set the geometry
         entity_parent->AddComponent<Render>()->SetMesh(ctx.mesh, sub_mesh_index);
-
-        // extract bone weights if the mesh has bones, serialized because SkeletalMeshBinding is shared per-mesh
-        if (assimp_mesh->mNumBones > 0 && !ctx.bone_name_to_index.empty())
-        {
-            static mutex skeletal_binding_mutex;
-            lock_guard<mutex> binding_lock(skeletal_binding_mutex);
-            if (!ctx.mesh->GetSkeletalMeshBinding())
-            {
-                ctx.mesh->SetSkeletalMeshBinding(make_unique<SkeletalMeshBinding>());
-            }
-
-            extract_bone_weights(assimp_mesh, ctx.bone_name_to_index, sub_mesh_index, vertex_offset, *ctx.mesh->GetSkeletalMeshBinding());
-        }
 
         // material
         if (ctx.scene->HasMaterials())
@@ -1259,18 +1532,14 @@ namespace spartan
             return;
         }
 
-        // build the skeleton and populate the bone name map
-        shared_ptr<Skeleton> skeleton = build_skeleton(ctx.scene);
+        // build the skeleton and populate the bone name map (same indices)
+        shared_ptr<Skeleton> skeleton = build_skeleton(ctx.scene, ctx.bone_name_to_index);
         if (!skeleton)
         {
             return;
         }
 
         ctx.mesh->SetSkeleton(skeleton);
-
-        // populate the context bone name map for use during mesh parsing
-        vector<string> bone_names;
-        collect_bone_names(ctx.scene, bone_names, ctx.bone_name_to_index);
     }
 
     void ModelImporter::ParseAnimations(ImportContext& ctx)
@@ -1290,12 +1559,8 @@ namespace spartan
         for (uint32_t i = 0; i < ctx.scene->mNumAnimations; ++i)
         {
             const aiAnimation* anim = ctx.scene->mAnimations[i];
-            AnimationClip clip = convert_animation(anim, ctx.bone_name_to_index, joint_count);
-
             const string anim_name = anim->mName.length > 0 ? anim->mName.C_Str() : ("animation_" + to_string(i));
-            SP_LOG_INFO("Animation clip '%s' loaded: %.2fs, %u joints, %u channels",
-                anim_name.c_str(), clip.duration_seconds, clip.joint_count,
-                static_cast<uint32_t>(clip.position_stream.channels.size()));
+            AnimationClip clip = convert_animation(anim, ctx.bone_name_to_index, joint_count, anim_name);
 
             ctx.mesh->AddAnimationClip(move(clip));
         }

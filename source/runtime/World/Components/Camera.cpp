@@ -97,6 +97,15 @@ namespace spartan
             "automatic", CameraExposureMode::automatic
         );
 
+        state.new_enum("CameraFlags",
+            "CanBeControlled",       CameraFlags::CanBeControlled,
+            "IsControlled",          CameraFlags::IsControlled,
+            "WantsCursorHidden",     CameraFlags::WantsCursorHidden,
+            "IsDirty",               CameraFlags::IsDirty,
+            "PhysicalBodyAnimation", CameraFlags::PhysicalBodyAnimation,
+            "Flashlight",            CameraFlags::Flashlight
+        );
+
         state.new_usertype<Camera>("Camera",
             "GetFovHorizontalDeg",             &Camera::GetFovHorizontalDeg,
             "SetFovHorizontalDeg",             &Camera::SetFovHorizontalDeg,
@@ -107,7 +116,9 @@ namespace spartan
             "GetAutoExposureAdaptationSpeed",  &Camera::GetAutoExposureAdaptationSpeed,
             "SetAutoExposureAdaptationSpeed",  &Camera::SetAutoExposureAdaptationSpeed,
             "GetAutoExposureCompensation",     &Camera::GetAutoExposureCompensation,
-            "SetAutoExposureCompensation",     &Camera::SetAutoExposureCompensation
+            "SetAutoExposureCompensation",     &Camera::SetAutoExposureCompensation,
+            "GetFlag",                         &Camera::GetFlag,
+            "SetFlag",                         &Camera::SetFlag
         );
     }
 

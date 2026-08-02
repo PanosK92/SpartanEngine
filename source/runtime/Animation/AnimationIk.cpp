@@ -1,0 +1,276 @@
+/*
+Copyright(c) 2015-2026 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+//= INCLUDES =====================
+#include "pch.h"
+#include "AnimationIk.h"
+#include "Skeleton.h"
+#include <algorithm>
+#include <cmath>
+//================================
+
+//= NAMESPACES ===============
+using namespace std;
+using namespace spartan::math;
+//============================
+
+namespace spartan
+{
+    namespace
+    {
+        constexpr float k_epsilon = 1.0e-5f;
+
+        Matrix make_trs(const Vector3& t, const Quaternion& r, const Vector3& s)
+        {
+            return Matrix(t, r, s);
+        }
+
+        Matrix to_local(const Matrix& global, const Matrix& parent_global)
+        {
+            return global * parent_global.Inverted();
+        }
+
+        Vector3 flatten_on_plane(const Vector3& v, const Vector3& normal)
+        {
+            Vector3 flat = v - normal * v.Dot(normal);
+            if (flat.LengthSquared() < k_epsilon)
+            {
+                return Vector3::Zero;
+            }
+            return flat.Normalized();
+        }
+    }
+
+    namespace animation_ik
+    {
+        bool SolveTwoBone(
+            const Skeleton& skeleton,
+            vector<Matrix>& local_matrices,
+            const uint32_t root_index,
+            const uint32_t mid_index,
+            const uint32_t end_index,
+            const Vector3& target_model,
+            const Vector3& pole_model,
+            const float weight
+        )
+        {
+            if (weight <= 0.0f ||
+                local_matrices.size() != skeleton.joint_count ||
+                root_index >= skeleton.joint_count ||
+                mid_index >= skeleton.joint_count ||
+                end_index >= skeleton.joint_count)
+            {
+                return false;
+            }
+
+            const float w = clamp(weight, 0.0f, 1.0f);
+
+            vector<Matrix> globals(skeleton.joint_count);
+            skeleton.ComputeGlobalPose(local_matrices, globals);
+
+            const Vector3 root_pos = globals[root_index].GetTranslation();
+            const Vector3 mid_pos  = globals[mid_index].GetTranslation();
+            const Vector3 end_pos  = globals[end_index].GetTranslation();
+
+            const float len_upper = (mid_pos - root_pos).Length();
+            const float len_lower = (end_pos - mid_pos).Length();
+            if (len_upper < k_epsilon || len_lower < k_epsilon)
+            {
+                return false;
+            }
+
+            Vector3 to_target = target_model - root_pos;
+            float len_target = to_target.Length();
+            if (len_target < k_epsilon)
+            {
+                return false;
+            }
+
+            const float max_reach = len_upper + len_lower - k_epsilon;
+            const float min_reach = fabsf(len_upper - len_lower) + k_epsilon;
+            len_target = clamp(len_target, min_reach, max_reach);
+            const Vector3 to_target_dir = to_target.Normalized();
+            const Vector3 clamped_target = root_pos + to_target_dir * len_target;
+
+            Vector3 plane_n = (clamped_target - root_pos).Cross(pole_model - root_pos);
+            if (plane_n.LengthSquared() < k_epsilon)
+            {
+                plane_n = (clamped_target - root_pos).Cross(mid_pos - root_pos);
+            }
+            if (plane_n.LengthSquared() < k_epsilon)
+            {
+                plane_n = (clamped_target - root_pos).Cross(Vector3::Up);
+            }
+            if (plane_n.LengthSquared() < k_epsilon)
+            {
+                return false;
+            }
+            plane_n.Normalize();
+
+            const float cos_a = clamp(
+                (len_upper * len_upper + len_target * len_target - len_lower * len_lower) /
+                    (2.0f * len_upper * len_target),
+                -1.0f,
+                1.0f
+            );
+            const float sin_a = sqrtf(max(0.0f, 1.0f - cos_a * cos_a));
+            Vector3 bend_dir = plane_n.Cross(to_target_dir).Normalized();
+
+            const float along = (mid_pos - root_pos).Dot(to_target_dir);
+            const Vector3 anim_bend = (mid_pos - root_pos) - to_target_dir * along;
+            if (anim_bend.LengthSquared() > k_epsilon && bend_dir.Dot(anim_bend) < 0.0f)
+            {
+                bend_dir = -bend_dir;
+            }
+            else if (anim_bend.LengthSquared() <= k_epsilon && bend_dir.Dot(pole_model - root_pos) < 0.0f)
+            {
+                bend_dir = -bend_dir;
+            }
+
+            const Vector3 ik_mid =
+                root_pos + to_target_dir * (cos_a * len_upper) + bend_dir * (sin_a * len_upper);
+
+            const Vector3 blended_mid = Vector3::Lerp(mid_pos, ik_mid, w);
+            const Vector3 blended_end = Vector3::Lerp(end_pos, clamped_target, w);
+
+            const Vector3 old_upper = (mid_pos - root_pos).Normalized();
+            const Vector3 new_upper = (blended_mid - root_pos).Normalized();
+            const Quaternion root_rot = Quaternion::FromRotation(old_upper, new_upper) *
+                globals[root_index].GetRotation();
+
+            const int16_t root_parent = skeleton.parent_indices[root_index];
+            const Matrix root_parent_global = root_parent < 0
+                ? Matrix::Identity
+                : globals[static_cast<uint32_t>(root_parent)];
+
+            const Matrix root_global_ik = make_trs(
+                root_pos,
+                root_rot,
+                globals[root_index].GetScale()
+            );
+            local_matrices[root_index] = to_local(root_global_ik, root_parent_global);
+
+            const Vector3 old_lower = (end_pos - mid_pos).Normalized();
+            const Vector3 new_lower = (blended_end - blended_mid).Normalized();
+            if (new_lower.LengthSquared() < k_epsilon)
+            {
+                return false;
+            }
+
+            const Quaternion mid_rot_global = Quaternion::FromRotation(old_lower, new_lower) *
+                globals[mid_index].GetRotation();
+            const Matrix mid_global_ik = make_trs(
+                blended_mid,
+                mid_rot_global,
+                globals[mid_index].GetScale()
+            );
+            local_matrices[mid_index] = to_local(mid_global_ik, root_global_ik);
+            return true;
+        }
+
+        bool PlantFoot(
+            const Skeleton& skeleton,
+            vector<Matrix>& local_matrices,
+            const uint32_t end_index,
+            const Vector3& ground_normal_model,
+            const Vector3& toe_forward_model,
+            const Vector3& sole_up_local,
+            const Vector3& toe_fwd_local,
+            const float weight
+        )
+        {
+            if (weight <= 0.0f ||
+                local_matrices.size() != skeleton.joint_count ||
+                end_index >= skeleton.joint_count ||
+                ground_normal_model.LengthSquared() < k_epsilon ||
+                sole_up_local.LengthSquared() < k_epsilon ||
+                toe_fwd_local.LengthSquared() < k_epsilon)
+            {
+                return false;
+            }
+
+            const float w = clamp(weight, 0.0f, 1.0f);
+            vector<Matrix> globals(skeleton.joint_count);
+            skeleton.ComputeGlobalPose(local_matrices, globals);
+
+            // bone-local frame from skin bind (handles 45 degree foot bones)
+            Vector3 l_up = sole_up_local.Normalized();
+            Vector3 l_fwd = toe_fwd_local - l_up * toe_fwd_local.Dot(l_up);
+            if (l_fwd.LengthSquared() < k_epsilon)
+            {
+                return false;
+            }
+            l_fwd.Normalize();
+            Vector3 l_side = l_up.Cross(l_fwd);
+            if (l_side.LengthSquared() < k_epsilon)
+            {
+                return false;
+            }
+            l_side.Normalize();
+            l_fwd = l_side.Cross(l_up).Normalized();
+
+            // model-space planted frame
+            Vector3 w_up = ground_normal_model.Normalized();
+            Vector3 w_fwd = flatten_on_plane(toe_forward_model, w_up);
+            if (w_fwd.LengthSquared() < k_epsilon)
+            {
+                w_fwd = flatten_on_plane(Vector3(0.0f, 0.0f, 1.0f), w_up);
+            }
+            if (w_fwd.LengthSquared() < k_epsilon)
+            {
+                return false;
+            }
+            w_fwd.Normalize();
+            Vector3 w_side = w_up.Cross(w_fwd);
+            if (w_side.LengthSquared() < k_epsilon)
+            {
+                return false;
+            }
+            w_side.Normalize();
+            w_fwd = w_side.Cross(w_up).Normalized();
+
+            // map local frame to world frame: planted * q_local = q_world
+            Quaternion q_local;
+            q_local.FromAxes(l_side, l_up, l_fwd);
+            Quaternion q_world;
+            q_world.FromAxes(w_side, w_up, w_fwd);
+            const Quaternion planted = q_world * q_local.Inverse();
+
+            const Quaternion end_rot = globals[end_index].GetRotation();
+            const Quaternion end_rot_blend = Quaternion::Lerp(end_rot, planted, w);
+
+            const int16_t parent = skeleton.parent_indices[end_index];
+            const Matrix parent_global = parent < 0
+                ? Matrix::Identity
+                : globals[static_cast<uint32_t>(parent)];
+
+            local_matrices[end_index] = to_local(
+                make_trs(
+                    globals[end_index].GetTranslation(),
+                    end_rot_blend,
+                    globals[end_index].GetScale()
+                ),
+                parent_global
+            );
+            return true;
+        }
+    }
+}

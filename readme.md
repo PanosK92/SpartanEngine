@@ -139,7 +139,7 @@ A full vehicle dynamics simulation running inside the PhysX fixed-timestep loop.
 | System            | Details                                                                                           |
 | ----------------- | ------------------------------------------------------------------------------------------------- |
 | **Particles**     | GPU-driven with compute emission and simulation, depth-buffer collision, soft blending            |
-| **Animation**     | Skeletal hierarchies with keyframed clips and four-bone vertex skinning                           |
+| **Animation**     | Full skeletal animation: keyframed clips, crossfade blending, four-bone skinning, and two-bone inverse kinematics with ground-aware foot planting |
 | **Physics**       | PhysX with rigid bodies, character kinematics, and vehicle dynamics                               |
 | **Scripting**     | Lua 5.4 via Sol2 with full engine API and lifecycle callbacks                                     |
 | **Audio**         | 3D positional audio, streaming, reverb, procedural synthesis via SDL3                             |

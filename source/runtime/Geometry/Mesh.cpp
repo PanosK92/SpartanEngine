@@ -405,8 +405,9 @@ namespace spartan
 
         // lod 0: original geometry
         {
-            // optimize original geometry if flagged
-            if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
+            // never reorder skinned verts, bone weights are authored against assimp order
+            const bool is_skinned = m_skeleton != nullptr;
+            if (!is_skinned && (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize)))
             {
                 geometry_processing::optimize(vertices, indices);
             }

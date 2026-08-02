@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "../Math/Quaternion.h"
 #include <cstdint>
+#include <string>
 #include <vector>
 //=============================
 
@@ -70,6 +71,7 @@ namespace spartan
 
     struct AnimationClip
     {
+        std::string name;
         float duration_seconds = 0.0f;
         float sample_rate      = 30.0f;
         uint32_t joint_count   = 0;

@@ -75,8 +75,7 @@ namespace spartan
 
     void Log::Initialize()
     {
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC( SetLogToFile(false); ));
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown,            SP_EVENT_HANDLER_EXPRESSION_STATIC( SetLogToFile(true);  ));
+        // keep writing log.txt for the whole session, console is additive not a replacement
     }
 
     void Log::SetLogger(ILogger* logger_in)

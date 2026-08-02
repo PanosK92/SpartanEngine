@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<World name="animated_character" description="Third person animated character, wasd move, shift run, space jump, foot ik on steps">
+ <ConsoleVariables>
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="camera" id="2001000000000000001" active="true" position="0 2 -8" rotation="0 0 0 1" scale="1 1 1">
+   <camera exposure_mode="1" aperture="5.6" shutter_speed="0.008" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
+  </Entity>
+  <Entity name="light_directional" id="2001000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/sun.lua" preset="dusk" volumetric="false" override_rotation="false" rot_pitch="0" rot_yaw="0" rot_roll="0" />
+  </Entity>
+  <Entity name="floor" id="2001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" body_type="2" />
+   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="step_1" id="2001000000000000010" active="true" position="3 0.25 2" rotation="0 0 0 1" scale="2 0.3 1.2">
+   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
+   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="step_2" id="2001000000000000011" active="true" position="3 0.5 3.3" rotation="0 0 0 1" scale="2 0.3 1.2">
+   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
+   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="step_3" id="2001000000000000012" active="true" position="3 0.75 4.6" rotation="0 0 0 1" scale="2 0.3 1.2">
+   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
+   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="block_left" id="2001000000000000013" active="true" position="-2.5 0.35 1.5" rotation="0 0 0 1" scale="1.4 0.5 1.4">
+   <physics mass="1" friction="0.5" friction_rolling="0.4" restitution="0.1" is_static="true" is_kinematic="false" body_type="0" />
+   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="character_controller" id="2001000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/animated_character.lua" />
+  </Entity>
+ </Entities>
+</World>

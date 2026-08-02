@@ -22,11 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =========
-#include "../../Math/Matrix.h"
+#include "../Math/Matrix.h"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
+#include <vector>
 //====================
 
 namespace spartan
@@ -50,13 +52,18 @@ namespace spartan
             }
         }
 
-        // root joint is always 0
+        // root joint is always 0 after topo sort
         uint16_t joint_count = 0;
 
         std::span<const int16_t> parent_indices;
         std::span<const math::Vector3> bind_positions;
         std::span<const math::Quaternion> bind_rotations;
         std::span<const math::Vector3> bind_scales;
+
+        // exact bind locals/globals, no trs roundtrip
+        std::vector<math::Matrix> bind_local_matrices;
+        std::vector<math::Matrix> bind_global_matrices;
+        std::vector<std::string> joint_names;
 
         // builder api - used by importers and deserialization to populate the skeleton
         void Clear()
@@ -71,6 +78,9 @@ namespace spartan
             m_mutable_positions     = {};
             m_mutable_rotations     = {};
             m_mutable_scales        = {};
+            bind_local_matrices.clear();
+            bind_global_matrices.clear();
+            joint_names.clear();
         }
 
         template <typename T>
@@ -108,6 +118,26 @@ namespace spartan
             bind_positions = m_mutable_positions;
             bind_rotations = m_mutable_rotations;
             bind_scales    = m_mutable_scales;
+
+            bind_local_matrices.resize(joint_count, math::Matrix::Identity);
+            bind_global_matrices.resize(joint_count, math::Matrix::Identity);
+        }
+
+        void FinalizeBindPose()
+        {
+            if (joint_count == 0 || bind_local_matrices.size() != joint_count)
+            {
+                return;
+            }
+
+            ComputeGlobalPose(bind_local_matrices, bind_global_matrices);
+
+            for (uint16_t i = 0; i < joint_count; ++i)
+            {
+                m_mutable_positions[i] = bind_local_matrices[i].GetTranslation();
+                m_mutable_rotations[i] = bind_local_matrices[i].GetRotation();
+                m_mutable_scales[i]    = bind_local_matrices[i].GetScale();
+            }
         }
 
         template <typename T>

@@ -5,19 +5,18 @@
  </ConsoleVariables>
  <Entities>
   <Entity name="physics_body_camera" id="1001000000000000001" active="true" position="0 2 -10" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="1" friction_rolling="0.8" restitution="0.1" is_static="false" is_kinematic="false" body_type="6" />
-   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
-    <camera exposure_mode="1" aperture="5.6" shutter_speed="0.008" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <Entity name="component_camera" id="1001000000000000002" active="true" position="0 0.77 0" rotation="-0.0139591 -0.0209404 -0.000292409 0.999683" scale="1 1 1">
+    <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="3" flags="17" />
    </Entity>
   </Entity>
-  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
-   <script file_path="../worlds/sun.lua" preset="dusk" volumetric="false" override_rotation="false" rot_pitch="0" rot_yaw="0" rot_roll="0" />
+  <Entity name="light_directional" id="1001000000000000003" active="true" position="0 2 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="0.760870039" color_g="1.00591183" color_b="1.64558065" temperature="15000" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.899999976" />
+   <script file_path="../worlds/sun.lua" preset="dusk" volumetric="false" rot_roll="0" Initialize="" override_rotation="false" rot_yaw="0" rot_pitch="0" />
   </Entity>
   <Entity name="floor" id="1001000000000000004" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" body_type="2" />
-   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
+   <render mesh_name="standard_quad" mesh_path="" sub_mesh_index="0" material_name="material_ground" material_path="./project/empty_resources/material_ground.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
   </Entity>
  </Entities>
 </World>
