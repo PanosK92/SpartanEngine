@@ -112,7 +112,23 @@ namespace spartan
 
     void Traffic::Start()
     {
-        Stop();
+        // destroy live cars but keep a warm car mesh preload from world load
+        const vector<Car*> cars = Car::GetAll();
+        for (Driver& driver : m_drivers)
+        {
+            if (driver.car && find(cars.begin(), cars.end(), driver.car) != cars.end())
+            {
+                driver.car->SetThrottle(0.0f);
+                driver.car->SetBrake(1.0f);
+                driver.car->SetSteering(0.0f);
+                driver.car->Destroy();
+            }
+            driver.car = nullptr;
+            driver.entity = nullptr;
+            driver.physics = nullptr;
+        }
+        m_drivers.clear();
+        m_next_spawn_index = 0;
         BeginSpawn();
     }
 
@@ -280,6 +296,12 @@ namespace spartan
         }
 
         if (m_car_count == 0)
+        {
+            return;
+        }
+
+        // reuse an in-flight or finished preload for the same car file
+        if (m_preload_state && !m_preload_state->cancelled.load(std::memory_order_acquire))
         {
             return;
         }
@@ -1334,5 +1356,8 @@ namespace spartan
         m_physics_radius = std::clamp(node.attribute("physics_radius").as_float(m_physics_radius), 20.0f, 300.0f);
         m_physics_exit_radius = std::clamp(node.attribute("physics_exit_radius").as_float(m_physics_exit_radius), m_physics_radius + 5.0f, 350.0f);
         m_car_count = std::min(m_car_count, 64u);
+
+        // warm car meshes on a worker while the editor is still open
+        BeginSpawn();
     }
 }

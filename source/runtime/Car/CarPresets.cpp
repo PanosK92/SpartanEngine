@@ -195,6 +195,11 @@ namespace car
             float crank_axis_length = sqrtf(preset.engine_crank_axis_x * preset.engine_crank_axis_x + preset.engine_crank_axis_y * preset.engine_crank_axis_y + preset.engine_crank_axis_z * preset.engine_crank_axis_z);
             require(finite_range(crank_axis_length, 0.99f, 1.01f), "engine_crank_axis");
             require(finite_range(preset.final_drive, 0.1f, 10.0f) && finite_range(preset.clutch_engagement_rate, 0.1f, 100.0f) && finite_range(preset.clutch_max_torque, 10.0f, 10000.0f) && finite_range(preset.driveline_inertia, 0.001f, 10.0f) && finite_range(preset.drivetrain_efficiency, 0.1f, 1.0f) && finite_range(preset.driveshaft_stiffness, 1.0f, 1000000.0f) && finite_range(preset.driveshaft_damping, 0.0f, 10000.0f), "drivetrain");
+            require(finite_range(preset.arb_mass, 0.5f, 40.0f) && finite_range(preset.coilover_mass, 0.5f, 30.0f) && finite_range(preset.halfshaft_mass, 0.5f, 30.0f) && finite_range(preset.driveshaft_mass, 0.5f, 40.0f) && finite_range(preset.differential_mass, 1.0f, 80.0f), "driveline_mass");
+            if (preset.inertia_xx > 0.0f || preset.inertia_yy > 0.0f || preset.inertia_zz > 0.0f)
+            {
+                require(finite_range(preset.inertia_xx, 50.0f, 20000.0f) && finite_range(preset.inertia_yy, 50.0f, 20000.0f) && finite_range(preset.inertia_zz, 50.0f, 20000.0f), "chassis_inertia");
+            }
             require(std::isfinite(preset.gear_ratios[1]) && fabsf(preset.gear_ratios[1]) <= 1e-6f, "neutral_gear_ratio");
             for (int i = 0; i < std::clamp(preset.gear_count, 0, max_gears); i++)
             {
@@ -374,6 +379,14 @@ namespace car
             READ_FLOAT(upright_mass);
             READ_FLOAT(suspension_link_mass);
             READ_FLOAT(steering_rack_mass);
+            READ_FLOAT(arb_mass);
+            READ_FLOAT(coilover_mass);
+            READ_FLOAT(halfshaft_mass);
+            READ_FLOAT(driveshaft_mass);
+            READ_FLOAT(differential_mass);
+            READ_FLOAT(inertia_xx);
+            READ_FLOAT(inertia_yy);
+            READ_FLOAT(inertia_zz);
 
             READ_FLOAT(engine_idle_rpm);
             READ_FLOAT(engine_redline_rpm);

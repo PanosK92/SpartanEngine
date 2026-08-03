@@ -348,7 +348,7 @@ namespace car
         }
 
 
-    bool Simulation::is_front(int i)
+    bool Simulation::is_front(int i) const
     { return i == front_left || i == front_right; }
 
 
@@ -935,16 +935,20 @@ namespace car
 
     void Simulation::restore_actor_motion(PxRigidDynamic* actor, const actor_motion_state& state)
     {
-            if (!actor || !body || !state.valid)
+            if (!actor || !body || !state.valid
+                || actor->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC))
             {
                 return;
             }
 
             PxTransform chassis_pose = body->getGlobalPose();
             PxVec3 chassis_angular_velocity = body->getAngularVelocity();
-            PxVec3 chassis_point_velocity = body->getLinearVelocity() + chassis_angular_velocity.cross(actor->getGlobalPose().p - chassis_pose.p);
-            actor->setLinearVelocity(chassis_point_velocity + chassis_pose.q.rotate(state.linear_velocity));
-            actor->setAngularVelocity(chassis_angular_velocity + chassis_pose.q.rotate(state.angular_velocity));
+            PxVec3 chassis_point_velocity = body->getLinearVelocity()
+                + chassis_angular_velocity.cross(actor->getGlobalPose().p - chassis_pose.p);
+            actor->setLinearVelocity(
+                chassis_point_velocity + chassis_pose.q.rotate(state.linear_velocity));
+            actor->setAngularVelocity(
+                chassis_angular_velocity + chassis_pose.q.rotate(state.angular_velocity));
             actor->wakeUp();
         }
 
@@ -1006,7 +1010,7 @@ namespace car
 
     void Simulation::register_multibody_actor(PxRigidDynamic* actor)
     {
-            if (actor && multibody.actor_count < static_cast<int>(std::size(multibody.actors)))
+            if (actor && multibody.actor_count < max_multibody_actors)
             {
                 multibody.actors[multibody.actor_count++] = actor;
             }
@@ -1059,6 +1063,39 @@ namespace car
             actor->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
             multibody.scene->addActor(*actor);
             register_multibody_actor(actor);
+            return actor;
+        }
+
+
+    PxRigidDynamic* Simulation::create_segment_actor(
+        const PxVec3& world_start,
+        const PxVec3& world_end,
+        float radius,
+        float mass)
+    {
+            PxVec3 delta = world_end - world_start;
+            float length = delta.magnitude();
+            if (length < 0.02f)
+            {
+                return nullptr;
+            }
+            PxVec3 direction = delta / length;
+            PxVec3 cross = PxVec3(1.0f, 0.0f, 0.0f).cross(direction);
+            float dot = PxVec3(1.0f, 0.0f, 0.0f).dot(direction);
+            PxQuat rotation = dot < -0.9999f
+                ? PxQuat(PxPi, PxVec3(0.0f, 1.0f, 0.0f))
+                : PxQuat(cross.x, cross.y, cross.z, 1.0f + dot).getNormalized();
+            PxCapsuleGeometry geometry(radius, PxMax(length * 0.5f - radius, 0.01f));
+            PxRigidDynamic* actor = create_mechanism_actor(
+                PxTransform((world_start + world_end) * 0.5f, rotation),
+                geometry,
+                mass);
+            if (!actor)
+            {
+                return nullptr;
+            }
+            actor->setAngularDamping(1.5f);
+            actor->setLinearDamping(0.5f);
             return actor;
         }
 
@@ -1329,7 +1366,7 @@ namespace car
         }
 
 
-    PxVec3 Simulation::hardpoint_world(const PxTransform& chassis_pose, const PxVec3& local_point)
+    PxVec3 Simulation::hardpoint_world(const PxTransform& chassis_pose, const PxVec3& local_point) const
     {
             return chassis_pose.transform(local_point);
         }
@@ -1347,13 +1384,84 @@ namespace car
             };
 
             int suspension_links = link_count(spec.front_geometry.mechanism) * 2 + link_count(spec.rear_geometry.mechanism) * 2 + 2;
-            return (cfg.wheel_mass + spec.upright_mass) * static_cast<float>(wheel_count) + spec.suspension_link_mass * static_cast<float>(suspension_links) + spec.steering_rack_mass;
+            float mass = (cfg.wheel_mass + spec.upright_mass) * static_cast<float>(wheel_count)
+                + spec.suspension_link_mass * static_cast<float>(suspension_links)
+                + spec.steering_rack_mass;
+            if (spec.front_arb_stiffness > 0.0f)
+            {
+                mass += spec.arb_mass;
+            }
+            if (spec.rear_arb_stiffness > 0.0f)
+            {
+                mass += spec.arb_mass;
+            }
+            mass += spec.coilover_mass * static_cast<float>(wheel_count);
+            bool drives_front = spec.drivetrain_type == 1 || spec.drivetrain_type == 2;
+            bool drives_rear = spec.drivetrain_type == 0 || spec.drivetrain_type == 2;
+            int driven_wheels = (drives_front ? 2 : 0) + (drives_rear ? 2 : 0);
+            int driven_axles = (drives_front ? 1 : 0) + (drives_rear ? 1 : 0);
+            mass += spec.halfshaft_mass * static_cast<float>(driven_wheels);
+            mass += spec.driveshaft_mass * static_cast<float>(PxMax(driven_axles, 1));
+            mass += spec.differential_mass * static_cast<float>(driven_axles);
+            // gearbox and axle flanges carry driveline inertia, token mass for the actors
+            mass += 4.0f;
+            return mass;
+        }
+
+
+    float Simulation::unsprung_mass()
+    {
+            // outboard mass only, chassis mounted mechanisms still ride on the springs
+            bool drives_front = spec.drivetrain_type == 1 || spec.drivetrain_type == 2;
+            bool drives_rear = spec.drivetrain_type == 0 || spec.drivetrain_type == 2;
+            int driven_wheels = (drives_front ? 2 : 0) + (drives_rear ? 2 : 0);
+            float mass = (cfg.wheel_mass + spec.upright_mass) * static_cast<float>(wheel_count);
+            mass += spec.halfshaft_mass * static_cast<float>(driven_wheels);
+            mass += spec.coilover_mass * 0.45f * static_cast<float>(wheel_count);
+            return mass;
         }
 
 
     float Simulation::chassis_mass()
     {
             return PxMax(cfg.mass - mechanism_actor_mass(), 100.0f);
+        }
+
+
+    float Simulation::sprung_mass()
+    {
+            return PxMax(cfg.mass - unsprung_mass(), 100.0f);
+        }
+
+
+    bool Simulation::has_authored_inertia() const
+    {
+            return spec.inertia_xx > 0.0f && spec.inertia_yy > 0.0f && spec.inertia_zz > 0.0f;
+        }
+
+
+    void Simulation::apply_chassis_mass_properties(float mass, const PxVec3& com_local)
+    {
+            if (!body)
+            {
+                return;
+            }
+
+            float safe_mass = PxMax(mass, 0.1f);
+            PxVec3 safe_com = com_local;
+            if (has_authored_inertia())
+            {
+                body->setMass(safe_mass);
+                body->setCMassLocalPose(PxTransform(safe_com));
+                body->setMassSpaceInertiaTensor(PxVec3(
+                    PxMax(spec.inertia_xx, 0.1f),
+                    PxMax(spec.inertia_yy, 0.1f),
+                    PxMax(spec.inertia_zz, 0.1f)));
+            }
+            else
+            {
+                PxRigidBodyExt::setMassAndUpdateInertia(*body, safe_mass, &safe_com);
+            }
         }
 
 
@@ -1385,7 +1493,7 @@ namespace car
             PxVec3 target_world = chassis_pose.transform(target_local);
             PxVec3 chassis_center_world = (target_world * total_mass - mechanism_moment) / PxMax(body_mass, 1.0f);
             PxVec3 chassis_center_local = chassis_pose.transformInv(chassis_center_world);
-            PxRigidBodyExt::setMassAndUpdateInertia(*body, body_mass, &chassis_center_local);
+            apply_chassis_mass_properties(body_mass, chassis_center_local);
         }
 
 
@@ -1500,26 +1608,163 @@ namespace car
             }
             corner.chassis_shock_anchor = shock_top_local;
             corner.upright_shock_anchor = corner.upright->getGlobalPose().transformInv(shock_bottom_world);
-            float static_load = chassis_mass() * (is_front(wheel_index) ? get_weight_distribution_front() : 1.0f - get_weight_distribution_front()) * 0.5f * 9.81f;
-            corner.shock_rest_length = (shock_top_world - shock_bottom_world).magnitude() + static_load / PxMax(spring_stiffness[wheel_index], 1.0f);
+            float static_load = sprung_mass()
+                * (is_front(wheel_index) ? get_weight_distribution_front() : 1.0f - get_weight_distribution_front())
+                * 0.5f
+                * 9.81f;
+            corner.shock_rest_length = (shock_top_world - shock_bottom_world).magnitude()
+                + static_load / PxMax(spring_stiffness[wheel_index], 1.0f);
             corner.shock_length = (shock_top_world - shock_bottom_world).magnitude();
 
             corner.travel_joint = nullptr;
+            // coilover prismatic already limits shock travel, a second distance joint on the
+            // same anchors fights physx and can dump chassis velocity in one frame
             if (geometry.mechanism != suspension_mechanism::macpherson)
             {
-                corner.travel_joint = PxDistanceJointCreate(*multibody.physics, body, local_anchor(body, shock_top_world), corner.upright, local_anchor(corner.upright, shock_bottom_world));
+                if (!create_coilover(wheel_index))
+                {
+                    return false;
+                }
+            }
+            if (geometry.mechanism != suspension_mechanism::macpherson
+                && !has_physical_coilover(wheel_index))
+            {
+                corner.travel_joint = PxDistanceJointCreate(
+                    *multibody.physics,
+                    body,
+                    local_anchor(body, shock_top_world),
+                    corner.upright,
+                    local_anchor(corner.upright, shock_bottom_world));
                 if (!corner.travel_joint)
                 {
                     return false;
                 }
-                corner.travel_joint->setMinDistance(PxMax(corner.shock_rest_length - cfg.suspension_travel, 0.05f));
-                corner.travel_joint->setMaxDistance(corner.shock_rest_length + cfg.suspension_travel * 0.15f);
-                corner.travel_joint->setDistanceJointFlag(PxDistanceJointFlag::eMIN_DISTANCE_ENABLED, true);
-                corner.travel_joint->setDistanceJointFlag(PxDistanceJointFlag::eMAX_DISTANCE_ENABLED, true);
+                corner.travel_joint->setMinDistance(
+                    PxMax(corner.shock_rest_length - cfg.suspension_travel, 0.05f));
+                corner.travel_joint->setMaxDistance(
+                    corner.shock_rest_length + cfg.suspension_travel * 0.15f);
+                corner.travel_joint->setDistanceJointFlag(
+                    PxDistanceJointFlag::eMIN_DISTANCE_ENABLED, true);
+                corner.travel_joint->setDistanceJointFlag(
+                    PxDistanceJointFlag::eMAX_DISTANCE_ENABLED, true);
                 register_multibody_joint(corner.travel_joint);
             }
 
             return true;
+        }
+
+
+    bool Simulation::create_coilover(int wheel_index)
+    {
+            if (!is_valid_wheel(wheel_index))
+            {
+                return false;
+            }
+
+            suspension_corner& corner = multibody.corners[wheel_index];
+            if (!corner.upright || !body)
+            {
+                return false;
+            }
+
+            PxTransform chassis_pose = body->getGlobalPose();
+            PxVec3 top = chassis_pose.transform(corner.chassis_shock_anchor);
+            PxVec3 bottom = corner.upright->getGlobalPose().transform(corner.upright_shock_anchor);
+            PxVec3 delta = bottom - top;
+            float length = delta.magnitude();
+            if (length < 0.08f)
+            {
+                return false;
+            }
+            PxVec3 direction = delta / length;
+
+            PxVec3 cross = PxVec3(1.0f, 0.0f, 0.0f).cross(direction);
+            float dot = PxVec3(1.0f, 0.0f, 0.0f).dot(direction);
+            PxQuat shock_rotation = dot < -0.9999f
+                ? PxQuat(PxPi, PxVec3(0.0f, 1.0f, 0.0f))
+                : PxQuat(cross.x, cross.y, cross.z, 1.0f + dot).getNormalized();
+
+            float tube_length = length * 0.55f;
+            float rod_length = length * 0.55f;
+            float tube_mass = PxMax(spec.coilover_mass * 0.55f, 0.5f);
+            float rod_mass = PxMax(spec.coilover_mass * 0.45f, 0.4f);
+            float tube_radius = 0.028f;
+            float rod_radius = 0.014f;
+
+            PxVec3 tube_start = top;
+            PxVec3 tube_end = top + direction * tube_length;
+            PxVec3 rod_start = bottom - direction * rod_length;
+            PxVec3 rod_end = bottom;
+
+            auto make_segment = [&](const PxVec3& a, const PxVec3& b, float radius, float mass) -> PxRigidDynamic*
+            {
+                float segment_length = (b - a).magnitude();
+                PxCapsuleGeometry geometry(radius, PxMax(segment_length * 0.5f - radius, 0.01f));
+                return create_mechanism_actor(PxTransform((a + b) * 0.5f, shock_rotation), geometry, mass);
+            };
+
+            corner.coilover_unit.tube = make_segment(tube_start, tube_end, tube_radius, tube_mass);
+            corner.coilover_unit.rod = make_segment(rod_start, rod_end, rod_radius, rod_mass);
+            if (!corner.coilover_unit.tube || !corner.coilover_unit.rod)
+            {
+                return false;
+            }
+
+            if (!create_spherical_joint(body, corner.coilover_unit.tube, top)
+                || !create_spherical_joint(corner.upright, corner.coilover_unit.rod, bottom))
+            {
+                return false;
+            }
+
+            // prismatic spring between tube and rod, x runs down the shock, frames share the midpoint
+            PxVec3 joint_world = top + direction * (length * 0.5f);
+            PxTransform tube_frame(
+                corner.coilover_unit.tube->getGlobalPose().transformInv(joint_world),
+                (corner.coilover_unit.tube->getGlobalPose().q.getConjugate() * shock_rotation).getNormalized());
+            PxTransform rod_frame(
+                corner.coilover_unit.rod->getGlobalPose().transformInv(joint_world),
+                (corner.coilover_unit.rod->getGlobalPose().q.getConjugate() * shock_rotation).getNormalized());
+            corner.coilover_unit.spring_joint = PxD6JointCreate(
+                *multibody.physics,
+                corner.coilover_unit.tube,
+                tube_frame,
+                corner.coilover_unit.rod,
+                rod_frame);
+            if (!corner.coilover_unit.spring_joint)
+            {
+                return false;
+            }
+
+            float rest_length = corner.shock_rest_length;
+            corner.coilover_unit.rest_length = rest_length;
+            float min_x = (rest_length - cfg.suspension_travel) - length;
+            float max_x = (rest_length + cfg.suspension_travel * 0.15f) - length;
+            // telescope only, no spring drive, spring damper forces stay in update_multibody
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
+            corner.coilover_unit.spring_joint->setLinearLimit(
+                PxD6Axis::eX,
+                PxJointLinearLimitPair(multibody.physics->getTolerancesScale(), min_x, max_x));
+            corner.coilover_unit.spring_joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+            register_multibody_joint(corner.coilover_unit.spring_joint);
+            return true;
+        }
+
+
+    bool Simulation::has_physical_coilover(int wheel_index) const
+    {
+            if (wheel_index < 0 || wheel_index >= wheel_count)
+            {
+                return false;
+            }
+            const suspension_corner& corner = multibody.corners[wheel_index];
+            return corner.coilover_unit.spring_joint != nullptr
+                && corner.coilover_unit.tube != nullptr
+                && corner.coilover_unit.rod != nullptr;
         }
 
 
@@ -1586,6 +1831,460 @@ namespace car
         }
 
 
+    bool Simulation::create_anti_roll_bar(anti_roll_bar& arb, int left, int right, float stiffness)
+    {
+            if (stiffness <= 0.0f)
+            {
+                return true;
+            }
+
+            suspension_corner& left_corner = multibody.corners[left];
+            suspension_corner& right_corner = multibody.corners[right];
+            if (!left_corner.upright || !right_corner.upright)
+            {
+                return false;
+            }
+
+            PxTransform chassis_pose = body->getGlobalPose();
+            float bar_y = (left_corner.chassis_shock_anchor.y + right_corner.chassis_shock_anchor.y) * 0.5f;
+            float bar_z = (left_corner.chassis_shock_anchor.z + right_corner.chassis_shock_anchor.z) * 0.5f;
+            float track = is_front(left) ? cfg.track_front : cfg.track_rear;
+            float half_span = track * 0.42f;
+            float arm_length = 0.16f;
+            arb.arm_length = arm_length;
+            float arm_z = is_front(left) ? -arm_length : arm_length;
+
+            PxVec3 left_inboard_world = hardpoint_world(chassis_pose, PxVec3(-0.04f, bar_y, bar_z));
+            PxVec3 right_inboard_world = hardpoint_world(chassis_pose, PxVec3(0.04f, bar_y, bar_z));
+            PxVec3 left_arm_world = hardpoint_world(
+                chassis_pose, PxVec3(-half_span, bar_y, bar_z + arm_z));
+            PxVec3 right_arm_world = hardpoint_world(
+                chassis_pose, PxVec3(half_span, bar_y, bar_z + arm_z));
+            PxVec3 center_world = hardpoint_world(chassis_pose, PxVec3(0.0f, bar_y, bar_z));
+
+            auto make_half = [&](const PxVec3& inboard_world, const PxVec3& arm_world, float mass) -> PxRigidDynamic*
+            {
+                PxRigidDynamic* half = create_segment_actor(inboard_world, arm_world, 0.016f, mass);
+                if (!half)
+                {
+                    return nullptr;
+                }
+                // revolute about chassis lateral so each half follows wheel travel
+                PxQuat bar_rotation = chassis_pose.q;
+                PxTransform body_frame(
+                    body->getGlobalPose().transformInv(inboard_world),
+                    (body->getGlobalPose().q.getConjugate() * bar_rotation).getNormalized());
+                PxTransform half_frame(
+                    half->getGlobalPose().transformInv(inboard_world),
+                    (half->getGlobalPose().q.getConjugate() * bar_rotation).getNormalized());
+                PxRevoluteJoint* bearing = PxRevoluteJointCreate(
+                    *multibody.physics,
+                    body,
+                    body_frame,
+                    half,
+                    half_frame);
+                if (!bearing)
+                {
+                    return nullptr;
+                }
+                bearing->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+                register_multibody_joint(bearing);
+                return half;
+            };
+
+            float half_mass = PxMax(spec.arb_mass * 0.45f, 0.5f);
+            float drop_mass = PxMax(spec.arb_mass * 0.05f, 0.2f);
+            arb.left_half = make_half(left_inboard_world, left_arm_world, half_mass);
+            arb.right_half = make_half(right_inboard_world, right_arm_world, half_mass);
+            if (!arb.left_half || !arb.right_half)
+            {
+                return false;
+            }
+
+            PxQuat bar_rotation = chassis_pose.q;
+            PxTransform left_torsion_frame(
+                arb.left_half->getGlobalPose().transformInv(center_world),
+                (arb.left_half->getGlobalPose().q.getConjugate() * bar_rotation).getNormalized());
+            PxTransform right_torsion_frame(
+                arb.right_half->getGlobalPose().transformInv(center_world),
+                (arb.right_half->getGlobalPose().q.getConjugate() * bar_rotation).getNormalized());
+            arb.torsion_joint = PxD6JointCreate(
+                *multibody.physics,
+                arb.left_half,
+                left_torsion_frame,
+                arb.right_half,
+                right_torsion_frame);
+            if (!arb.torsion_joint)
+            {
+                return false;
+            }
+            // free twist, roll stiffness stays in the force couple path
+            arb.torsion_joint->setMotion(PxD6Axis::eX, PxD6Motion::eLOCKED);
+            arb.torsion_joint->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
+            arb.torsion_joint->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
+            arb.torsion_joint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+            arb.torsion_joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eLOCKED);
+            arb.torsion_joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
+            arb.torsion_joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+            register_multibody_joint(arb.torsion_joint);
+
+            PxVec3 left_bottom = left_corner.upright->getGlobalPose().transform(
+                left_corner.upright_shock_anchor);
+            PxVec3 right_bottom = right_corner.upright->getGlobalPose().transform(
+                right_corner.upright_shock_anchor);
+            arb.left_drop = create_link(left_arm_world, left_bottom, drop_mass, arb.left_half);
+            arb.right_drop = create_link(right_arm_world, right_bottom, drop_mass, arb.right_half);
+            if (!arb.left_drop || !arb.right_drop)
+            {
+                return false;
+            }
+            if (!connect_link_to_upright(arb.left_drop, left_corner.upright, left_bottom)
+                || !connect_link_to_upright(arb.right_drop, right_corner.upright, right_bottom))
+            {
+                return false;
+            }
+            return true;
+        }
+
+
+    bool Simulation::create_anti_roll_bars()
+    {
+            return create_anti_roll_bar(multibody.front_arb, front_left, front_right, spec.front_arb_stiffness)
+                && create_anti_roll_bar(multibody.rear_arb, rear_left, rear_right, spec.rear_arb_stiffness);
+        }
+
+
+    bool Simulation::create_driveline_shafts()
+    {
+            driveline_assembly& driveline = multibody.driveline;
+            PxTransform chassis_pose = body->getGlobalPose();
+            bool drives_front = spec.drivetrain_type == 1 || spec.drivetrain_type == 2;
+            bool drives_rear = spec.drivetrain_type == 0 || spec.drivetrain_type == 2;
+            float gearbox_z = 0.0f;
+            float gearbox_y = 0.02f;
+
+            auto add_axle = [&](bool front) -> bool
+            {
+                int left = front ? front_left : rear_left;
+                int right = front ? front_right : rear_right;
+                float axle_z = (wheel_offsets[left].z + wheel_offsets[right].z) * 0.5f;
+                float axle_y = -0.02f;
+                PxVec3 diff_local(0.0f, axle_y, axle_z);
+                PxVec3 diff_world = hardpoint_world(chassis_pose, diff_local);
+                if (driveline.differential_count >= 2)
+                {
+                    return false;
+                }
+                PxRigidDynamic* differential = create_mechanism_actor(
+                    PxTransform(diff_world, chassis_pose.q),
+                    PxSphereGeometry(0.08f),
+                    PxMax(spec.differential_mass, 1.0f));
+                if (!differential)
+                {
+                    return false;
+                }
+                PxD6Joint* mount = PxD6JointCreate(
+                    *multibody.physics,
+                    body,
+                    local_anchor(body, diff_world),
+                    differential,
+                    PxTransform(PxIdentity));
+                if (!mount)
+                {
+                    return false;
+                }
+                mount->setMotion(PxD6Axis::eX, PxD6Motion::eLOCKED);
+                mount->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
+                mount->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
+                mount->setMotion(PxD6Axis::eTWIST, PxD6Motion::eLOCKED);
+                mount->setMotion(PxD6Axis::eSWING1, PxD6Motion::eLOCKED);
+                mount->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
+                register_multibody_joint(mount);
+                driveline.differential[driveline.differential_count++] = differential;
+
+                for (int wheel_index : { left, right })
+                {
+                    suspension_corner& corner = multibody.corners[wheel_index];
+                    if (!corner.wheel_body)
+                    {
+                        return false;
+                    }
+                    // plunging cv shaft, dynamic, length free so suspension can travel
+                    PxVec3 hub_world = corner.wheel_body->getGlobalPose().p;
+                    PxVec3 delta = hub_world - diff_world;
+                    float length = delta.magnitude();
+                    if (length < 0.08f)
+                    {
+                        return false;
+                    }
+                    PxVec3 direction = delta / length;
+                    PxVec3 cross = PxVec3(1.0f, 0.0f, 0.0f).cross(direction);
+                    float dot = PxVec3(1.0f, 0.0f, 0.0f).dot(direction);
+                    PxQuat shaft_rotation = dot < -0.9999f
+                        ? PxQuat(PxPi, PxVec3(0.0f, 1.0f, 0.0f))
+                        : PxQuat(cross.x, cross.y, cross.z, 1.0f + dot).getNormalized();
+
+                    float shaft_mass = PxMax(spec.halfshaft_mass, 0.5f);
+                    float inner_length = length * 0.55f;
+                    float outer_length = length * 0.55f;
+                    PxRigidDynamic* inner = create_segment_actor(
+                        diff_world,
+                        diff_world + direction * inner_length,
+                        0.018f,
+                        shaft_mass * 0.5f);
+                    PxRigidDynamic* outer = create_segment_actor(
+                        hub_world - direction * outer_length,
+                        hub_world,
+                        0.018f,
+                        shaft_mass * 0.5f);
+                    if (!inner || !outer)
+                    {
+                        return false;
+                    }
+                    if (!create_spherical_joint(differential, inner, diff_world)
+                        || !create_spherical_joint(outer, corner.wheel_body, hub_world))
+                    {
+                        return false;
+                    }
+
+                    PxVec3 joint_world = diff_world + direction * (length * 0.5f);
+                    PxTransform inner_frame(
+                        inner->getGlobalPose().transformInv(joint_world),
+                        (inner->getGlobalPose().q.getConjugate() * shaft_rotation).getNormalized());
+                    PxTransform outer_frame(
+                        outer->getGlobalPose().transformInv(joint_world),
+                        (outer->getGlobalPose().q.getConjugate() * shaft_rotation).getNormalized());
+                    PxD6Joint* plunge = PxD6JointCreate(
+                        *multibody.physics,
+                        inner,
+                        inner_frame,
+                        outer,
+                        outer_frame);
+                    if (!plunge)
+                    {
+                        return false;
+                    }
+                    float plunge_travel = cfg.suspension_travel + 0.15f;
+                    plunge->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
+                    plunge->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
+                    plunge->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
+                    plunge->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+                    plunge->setMotion(PxD6Axis::eSWING1, PxD6Motion::eLOCKED);
+                    plunge->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
+                    plunge->setLinearLimit(
+                        PxD6Axis::eX,
+                        PxJointLinearLimitPair(
+                            multibody.physics->getTolerancesScale(),
+                            -plunge_travel,
+                            plunge_travel));
+                    plunge->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+                    register_multibody_joint(plunge);
+                    driveline.halfshaft[wheel_index] = outer;
+                }
+
+                PxVec3 gearbox_world = hardpoint_world(chassis_pose, PxVec3(0.0f, gearbox_y, gearbox_z));
+                if ((diff_world - gearbox_world).magnitude() > 0.05f && driveline.propshaft_count < 2)
+                {
+                    PxRigidDynamic* prop = create_link(
+                        gearbox_world,
+                        diff_world,
+                        PxMax(spec.driveshaft_mass, 0.5f));
+                    if (!prop)
+                    {
+                        return false;
+                    }
+                    if (!create_spherical_joint(prop, differential, diff_world))
+                    {
+                        return false;
+                    }
+                    prop->setAngularDamping(1.5f);
+                    prop->setLinearDamping(0.5f);
+                    driveline.propshaft[driveline.propshaft_count++] = prop;
+                }
+                return true;
+            };
+
+            if (drives_front && !add_axle(true))
+            {
+                return false;
+            }
+            if (drives_rear && !add_axle(false))
+            {
+                return false;
+            }
+            return true;
+        }
+
+
+    bool Simulation::create_driveline()
+    {
+            driveline_assembly& driveline = multibody.driveline;
+            if (!create_driveline_shafts())
+            {
+                return false;
+            }
+
+            PxTransform chassis_pose = body->getGlobalPose();
+            // joint twist is about x, so rotate frames so x runs down the propshaft (chassis z)
+            PxQuat shaft_rotation = (chassis_pose.q * PxQuat(PxPi * 0.5f, PxVec3(0.0f, 1.0f, 0.0f))).getNormalized();
+            PxVec3 gearbox_local(0.0f, 0.02f, 0.0f);
+            bool drives_rear = spec.drivetrain_type == 0 || spec.drivetrain_type == 2;
+            bool drives_front = spec.drivetrain_type == 1 || spec.drivetrain_type == 2;
+            float axle_z = drives_rear
+                ? (wheel_offsets[rear_left].z + wheel_offsets[rear_right].z) * 0.5f
+                : (wheel_offsets[front_left].z + wheel_offsets[front_right].z) * 0.5f;
+            if (drives_front && drives_rear)
+            {
+                axle_z = (wheel_offsets[rear_left].z + wheel_offsets[rear_right].z) * 0.5f;
+            }
+            PxVec3 axle_local(0.0f, -0.02f, axle_z);
+            PxVec3 gearbox_world = hardpoint_world(chassis_pose, gearbox_local);
+            PxVec3 axle_world = hardpoint_world(chassis_pose, axle_local);
+
+            driveline.gearbox_output = create_mechanism_actor(
+                PxTransform(gearbox_world, shaft_rotation),
+                PxCapsuleGeometry(0.06f, 0.04f),
+                2.0f);
+            driveline.axle_input = create_mechanism_actor(
+                PxTransform(axle_world, shaft_rotation),
+                PxCapsuleGeometry(0.05f, 0.03f),
+                2.0f);
+            if (!driveline.gearbox_output || !driveline.axle_input)
+            {
+                return false;
+            }
+
+            float driveline_inertia = PxMax(spec.driveline_inertia, 0.001f);
+            driveline.gearbox_output->setMassSpaceInertiaTensor(PxVec3(driveline_inertia, driveline_inertia * 0.35f, driveline_inertia * 0.35f));
+            driveline.axle_input->setMassSpaceInertiaTensor(PxVec3(0.02f, 0.01f, 0.01f));
+            driveline.gearbox_output->setMaxAngularVelocity(1000.0f);
+            driveline.axle_input->setMaxAngularVelocity(1000.0f);
+
+            auto make_bearing = [&](PxRigidDynamic* shaft, const PxVec3& world_pos) -> bool
+            {
+                PxTransform world_frame(world_pos, shaft_rotation);
+                PxTransform body_frame(
+                    body->getGlobalPose().transformInv(world_pos),
+                    (body->getGlobalPose().q.getConjugate() * shaft_rotation).getNormalized());
+                PxTransform shaft_frame(
+                    shaft->getGlobalPose().transformInv(world_pos),
+                    (shaft->getGlobalPose().q.getConjugate() * shaft_rotation).getNormalized());
+                PxRevoluteJoint* bearing = PxRevoluteJointCreate(
+                    *multibody.physics,
+                    body,
+                    body_frame,
+                    shaft,
+                    shaft_frame);
+                if (!bearing)
+                {
+                    return false;
+                }
+                bearing->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+                register_multibody_joint(bearing);
+                return true;
+            };
+
+            if (!make_bearing(driveline.gearbox_output, gearbox_world)
+                || !make_bearing(driveline.axle_input, axle_world))
+            {
+                return false;
+            }
+
+            PxTransform gearbox_joint_frame(
+                driveline.gearbox_output->getGlobalPose().transformInv(gearbox_world),
+                (driveline.gearbox_output->getGlobalPose().q.getConjugate() * shaft_rotation).getNormalized());
+            PxTransform axle_joint_frame(
+                driveline.axle_input->getGlobalPose().transformInv(axle_world),
+                (driveline.axle_input->getGlobalPose().q.getConjugate() * shaft_rotation).getNormalized());
+            driveline.torsion_joint = PxD6JointCreate(
+                *multibody.physics,
+                driveline.gearbox_output,
+                gearbox_joint_frame,
+                driveline.axle_input,
+                axle_joint_frame);
+            if (!driveline.torsion_joint)
+            {
+                return false;
+            }
+            // bearings hold position, twist drive is the physical driveshaft spring
+            driveline.torsion_joint->setMotion(PxD6Axis::eX, PxD6Motion::eFREE);
+            driveline.torsion_joint->setMotion(PxD6Axis::eY, PxD6Motion::eFREE);
+            driveline.torsion_joint->setMotion(PxD6Axis::eZ, PxD6Motion::eFREE);
+            driveline.torsion_joint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
+            driveline.torsion_joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
+            driveline.torsion_joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
+            // flanges carry inertia, twist compliance stays in the powertrain step
+            driveline.torsion_joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
+            register_multibody_joint(driveline.torsion_joint);
+            driveline.initialized = true;
+            return true;
+        }
+
+
+    bool Simulation::has_physical_driveline() const
+    {
+            return multibody.driveline.initialized
+                && multibody.driveline.torsion_joint
+                && multibody.driveline.gearbox_output
+                && multibody.driveline.axle_input;
+        }
+
+
+    float Simulation::read_driveline_twist() const
+    {
+            if (!has_physical_driveline())
+            {
+                return driveshaft_twist;
+            }
+            PxQuat relative = multibody.driveline.torsion_joint->getRelativeTransform().q;
+            // twist about joint x, small angle extract
+            float twist = 2.0f * atanf(relative.x / PxMax(relative.w, 1e-6f));
+            if (!std::isfinite(twist))
+            {
+                return 0.0f;
+            }
+            return twist;
+        }
+
+
+    float Simulation::read_driveline_gearbox_speed() const
+    {
+            if (!has_physical_driveline())
+            {
+                return gearbox_input_angular_velocity;
+            }
+            PxVec3 axis = multibody.driveline.gearbox_output->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+            return multibody.driveline.gearbox_output->getAngularVelocity().dot(axis);
+        }
+
+
+    void Simulation::sync_driveline_axle_speed(float axle_speed)
+    {
+            if (!has_physical_driveline())
+            {
+                return;
+            }
+            PxVec3 axis = multibody.driveline.axle_input->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+            PxVec3 chassis_angular = body->getAngularVelocity();
+            multibody.driveline.axle_input->setAngularVelocity(chassis_angular + axis * axle_speed);
+        }
+
+
+    void Simulation::set_driveline_torsion_enabled(bool enabled)
+    {
+            if (!has_physical_driveline() || enabled)
+            {
+                return;
+            }
+            // open clutch or neutral, align flanges so stored twist cannot shove the axle
+            multibody.driveline.gearbox_output->setGlobalPose(
+                PxTransform(
+                    multibody.driveline.gearbox_output->getGlobalPose().p,
+                    multibody.driveline.axle_input->getGlobalPose().q));
+            driveshaft_twist = 0.0f;
+        }
+
+
     void Simulation::destroy_multibody()
     {
             for (int i = multibody.joint_count - 1; i >= 0; i--)
@@ -1642,6 +2341,16 @@ namespace car
                 }
             }
             if (!create_steering_rack())
+            {
+                destroy_multibody();
+                return false;
+            }
+            if (!create_anti_roll_bars())
+            {
+                destroy_multibody();
+                return false;
+            }
+            if (!create_driveline())
             {
                 destroy_multibody();
                 return false;
@@ -1768,14 +2477,15 @@ namespace car
             for (int i = 0; i < multibody.actor_count; i++)
             {
                 PxRigidDynamic* actor = multibody.actors[i];
-                if (actor)
+                if (!actor || actor->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC))
                 {
-                    actor->setLinearVelocity(PxVec3(0.0f));
-                    actor->setAngularVelocity(PxVec3(0.0f));
-                    actor->clearForce(PxForceMode::eFORCE);
-                    actor->clearTorque(PxForceMode::eFORCE);
-                    actor->putToSleep();
+                    continue;
                 }
+                actor->setLinearVelocity(PxVec3(0.0f));
+                actor->setAngularVelocity(PxVec3(0.0f));
+                actor->clearForce(PxForceMode::eFORCE);
+                actor->clearTorque(PxForceMode::eFORCE);
+                actor->putToSleep();
             }
             for (int i = 0; i < wheel_count; i++)
             {
@@ -1839,21 +2549,23 @@ namespace car
                     wheels[i].motion_ratio = lerp(wheels[i].motion_ratio, target_motion_ratio, exp_decay(20.0f, delta_time));
                 }
                 float compression = PxClamp(corner.shock_rest_length - length, 0.0f, cfg.suspension_travel);
-                float force_magnitude = PxMax(spring_stiffness[i] * compression, 0.0f) - compute_damper_force(relative_speed, spring_damping[i]);
+                float damper = compute_damper_force(relative_speed, spring_damping[i]);
+                float bump_extra = 0.0f;
                 float bump_start = cfg.suspension_travel * spec.bump_stop_threshold;
                 if (compression > bump_start)
                 {
                     float bump_travel = PxMax(cfg.suspension_travel - bump_start, 0.001f);
                     float bump_compression = compression - bump_start;
                     float bump_progress = PxClamp(bump_compression / bump_travel, 0.0f, 1.0f);
-                    force_magnitude += bump_compression * spec.bump_stop_stiffness * (1.0f + spec.bump_stop_progression * bump_progress * bump_progress);
+                    bump_extra += bump_compression * spec.bump_stop_stiffness * (1.0f + spec.bump_stop_progression * bump_progress * bump_progress);
                 }
-                // packer threshold is a fraction of suspension travel
                 float packer_start = cfg.suspension_travel * spec.packer_threshold;
                 if (compression > packer_start)
                 {
-                    force_magnitude += (compression - packer_start) * spec.packer_stiffness;
+                    bump_extra += (compression - packer_start) * spec.packer_stiffness;
                 }
+
+                float force_magnitude = PxMax(spring_stiffness[i] * compression, 0.0f) - damper + bump_extra;
                 force_magnitude = PxClamp(force_magnitude, -spec.max_susp_force, spec.max_susp_force);
                 PxVec3 force = direction * force_magnitude;
                 PxRigidBodyExt::addForceAtPos(*body, force, top, PxForceMode::eFORCE);
@@ -1869,26 +2581,46 @@ namespace car
                 spring_force[i] = force_magnitude;
             }
 
+            // physical arb bars carry mass only, roll stiffness is always the force couple
             auto apply_anti_roll = [&](int left, int right, float stiffness)
             {
+                if (stiffness <= 0.0f)
+                {
+                    return;
+                }
                 suspension_corner& left_corner = multibody.corners[left];
                 suspension_corner& right_corner = multibody.corners[right];
-                // a torsion bar twists on the difference in wheel position whichever way each end moves,
-                // clamping the droop side at zero switched the bar off exactly when the inside wheel unloads
-                float left_compression = PxClamp(left_corner.shock_rest_length - left_corner.shock_length, -cfg.suspension_travel, cfg.suspension_travel);
-                float right_compression = PxClamp(right_corner.shock_rest_length - right_corner.shock_length, -cfg.suspension_travel, cfg.suspension_travel);
-                float force_magnitude = PxClamp((left_compression - right_compression) * stiffness, -spec.max_susp_force, spec.max_susp_force);
+                float left_compression = PxClamp(
+                    left_corner.shock_rest_length - left_corner.shock_length,
+                    -cfg.suspension_travel,
+                    cfg.suspension_travel);
+                float right_compression = PxClamp(
+                    right_corner.shock_rest_length - right_corner.shock_length,
+                    -cfg.suspension_travel,
+                    cfg.suspension_travel);
+                float force_magnitude = PxClamp(
+                    (left_compression - right_compression) * stiffness,
+                    -spec.max_susp_force,
+                    spec.max_susp_force);
                 PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
-                PxVec3 left_bottom = left_corner.upright->getGlobalPose().transform(left_corner.upright_shock_anchor);
-                PxVec3 right_bottom = right_corner.upright->getGlobalPose().transform(right_corner.upright_shock_anchor);
-                PxVec3 left_top = body->getGlobalPose().transform(left_corner.chassis_shock_anchor);
-                PxVec3 right_top = body->getGlobalPose().transform(right_corner.chassis_shock_anchor);
+                PxVec3 left_bottom = left_corner.upright->getGlobalPose().transform(
+                    left_corner.upright_shock_anchor);
+                PxVec3 right_bottom = right_corner.upright->getGlobalPose().transform(
+                    right_corner.upright_shock_anchor);
+                PxVec3 left_top = body->getGlobalPose().transform(
+                    left_corner.chassis_shock_anchor);
+                PxVec3 right_top = body->getGlobalPose().transform(
+                    right_corner.chassis_shock_anchor);
                 PxVec3 left_force = -up * force_magnitude;
                 PxVec3 right_force = up * force_magnitude;
-                PxRigidBodyExt::addForceAtPos(*left_corner.upright, left_force, left_bottom, PxForceMode::eFORCE);
-                PxRigidBodyExt::addForceAtPos(*right_corner.upright, right_force, right_bottom, PxForceMode::eFORCE);
-                PxRigidBodyExt::addForceAtPos(*body, -left_force, left_top, PxForceMode::eFORCE);
-                PxRigidBodyExt::addForceAtPos(*body, -right_force, right_top, PxForceMode::eFORCE);
+                PxRigidBodyExt::addForceAtPos(
+                    *left_corner.upright, left_force, left_bottom, PxForceMode::eFORCE);
+                PxRigidBodyExt::addForceAtPos(
+                    *right_corner.upright, right_force, right_bottom, PxForceMode::eFORCE);
+                PxRigidBodyExt::addForceAtPos(
+                    *body, -left_force, left_top, PxForceMode::eFORCE);
+                PxRigidBodyExt::addForceAtPos(
+                    *body, -right_force, right_top, PxForceMode::eFORCE);
             };
             apply_anti_roll(front_left, front_right, spec.front_arb_stiffness);
             apply_anti_roll(rear_left, rear_right, spec.rear_arb_stiffness);
@@ -2614,6 +3346,15 @@ namespace car
     {
             float ratio = is_in_neutral() ? 0.0f : spec.gear_ratios[current_gear] * spec.final_drive;
             float wheel_angular_velocity = get_average_driven_angular_velocity(false);
+            const bool physical_driveline = has_physical_driveline();
+            if (physical_driveline && fabsf(ratio) > 0.001f)
+            {
+                // flanges live in axle space, reflected gearbox inertia changes with gear
+                float reflected = PxMax(spec.driveline_inertia, 0.001f) * ratio * ratio;
+                multibody.driveline.gearbox_output->setMassSpaceInertiaTensor(
+                    PxVec3(reflected, reflected * 0.35f, reflected * 0.35f));
+                gearbox_input_angular_velocity = read_driveline_gearbox_speed() * ratio;
+            }
             if (!std::isfinite(engine_rpm) || !std::isfinite(gearbox_input_angular_velocity) || !std::isfinite(driveshaft_twist))
             {
                 engine_rpm = spec.engine_idle_rpm;
@@ -2654,6 +3395,10 @@ namespace car
             float accumulated_engine_torque = 0.0f;
             for (int step = 0; step < substep_count; step++)
             {
+                if (physical_driveline && fabsf(ratio) > 0.001f)
+                {
+                    gearbox_input_angular_velocity = read_driveline_gearbox_speed() * ratio;
+                }
                 // torque follows rpm inside the loop, a value frozen for the whole step overshoots
                 // idle control and the torque curve whenever the engine accelerates hard
                 float substep_rpm = engine_angular_velocity * 60.0f / (PxPi * 2.0f);
@@ -2667,6 +3412,10 @@ namespace car
                 float shaft_speed_difference = 0.0f;
                 // open driveline during shifts or with clutch out, shaft must not keep shoving the axle
                 bool driveline_open = is_shifting || fabsf(ratio) <= 0.001f || clutch <= 0.05f;
+                if (physical_driveline)
+                {
+                    set_driveline_torsion_enabled(!driveline_open && fabsf(ratio) > 0.001f);
+                }
                 if (driveline_open)
                 {
                     driveshaft_twist = 0.0f;
@@ -2675,12 +3424,24 @@ namespace car
                     if (fabsf(ratio) > 0.001f)
                     {
                         gearbox_input_angular_velocity = wheel_angular_velocity * ratio;
+                        if (physical_driveline)
+                        {
+                            sync_driveline_axle_speed(wheel_angular_velocity);
+                            PxVec3 axis = multibody.driveline.gearbox_output->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+                            multibody.driveline.gearbox_output->setAngularVelocity(
+                                body->getAngularVelocity() + axis * wheel_angular_velocity);
+                        }
                     }
                 }
                 else if (fabsf(ratio) > 0.001f)
                 {
                     // clutch capacity caps shaft windup so a locked spinning wheel cannot store fake energy
                     float max_shaft_torque = clutch_capacity * fabsf(ratio) * 1.25f;
+                    if (physical_driveline)
+                    {
+                        sync_driveline_axle_speed(wheel_angular_velocity);
+                        gearbox_input_angular_velocity = read_driveline_gearbox_speed() * ratio;
+                    }
                     shaft_speed_difference = gearbox_input_angular_velocity / ratio - wheel_angular_velocity;
                     driveshaft_twist += shaft_speed_difference * substep;
                     if (stiffness > 0.0f)
@@ -2741,8 +3502,25 @@ namespace car
                 float gearbox_acceleration = 0.0f;
                 if (!driveline_open)
                 {
-                    gearbox_acceleration = (clutch_torque - shaft_reaction - driveline_drag) / driveline_inertia;
-                    gearbox_input_angular_velocity += gearbox_acceleration * substep;
+                    if (physical_driveline && fabsf(ratio) > 0.001f)
+                    {
+                        // flange carries reflected inertia, shaft reaction is applied here
+                        float reflected = driveline_inertia * ratio * ratio;
+                        float axle_speed = read_driveline_gearbox_speed();
+                        float axle_clutch_torque = clutch_torque * ratio;
+                        float axle_drag = axle_speed * spec.bearing_friction * reflected;
+                        float axle_torque = axle_clutch_torque - shaft_torque * efficiency_factor - axle_drag;
+                        gearbox_acceleration = axle_torque / PxMax(reflected, 0.001f) / ratio;
+                        axle_speed += axle_torque / PxMax(reflected, 0.001f) * substep;
+                        PxVec3 axis = multibody.driveline.gearbox_output->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
+                        multibody.driveline.gearbox_output->setAngularVelocity(body->getAngularVelocity() + axis * axle_speed);
+                        gearbox_input_angular_velocity = axle_speed * ratio;
+                    }
+                    else
+                    {
+                        gearbox_acceleration = (clutch_torque - shaft_reaction - driveline_drag) / driveline_inertia;
+                        gearbox_input_angular_velocity += gearbox_acceleration * substep;
+                    }
                 }
                 accumulated_axle_torque += shaft_torque;
                 accumulated_powertrain_reaction -= engine_inertia * engine_acceleration + driveline_inertia * gearbox_acceleration;
@@ -3431,11 +4209,12 @@ namespace car
             for (int i = 0; i < multibody.actor_count; i++)
             {
                 PxRigidDynamic* actor = multibody.actors[i];
-                if (actor)
+                if (!actor || actor->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC))
                 {
-                    actor->setLinearVelocity(forward * speed);
-                    actor->setAngularVelocity(PxVec3(0.0f));
+                    continue;
                 }
+                actor->setLinearVelocity(forward * speed);
+                actor->setAngularVelocity(PxVec3(0.0f));
             }
             for (int i = 0; i < wheel_count; i++)
             {
@@ -3512,8 +4291,10 @@ namespace car
             float wheel_mass_safe = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
 
             float wdf = get_weight_distribution_front();
-            float sprung_mass = chassis_mass();
-            float axle_mass[2] = { sprung_mass * wdf * 0.5f, sprung_mass * (1.0f - wdf) * 0.5f };
+            // ride rates must track spring supported mass, not body only mass after
+            // subtracting arb coilover and diff actors that still hang on the chassis
+            float spring_mass = sprung_mass();
+            float axle_mass[2] = { spring_mass * wdf * 0.5f, spring_mass * (1.0f - wdf) * 0.5f };
             float freq[2]      = { spec.front_spring_freq, spec.rear_spring_freq };
 
             for (int i = 0; i < wheel_count; i++)
@@ -3578,10 +4359,13 @@ namespace car
             }
             material->setRestitutionCombineMode(PxCombineMode::eMIN);
             // spawn near spring equilibrium with sweep clearance to avoid initial overlap
-            float front_mass_per_wheel = chassis_mass() * get_weight_distribution_front() * 0.5f;
+            float front_mass_per_wheel = sprung_mass() * get_weight_distribution_front() * 0.5f;
             float front_omega = 2.0f * PxPi * spec.front_spring_freq;
             float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
-            float expected_sag = PxClamp((front_mass_per_wheel * 9.81f) / front_stiffness, 0.0f, cfg.suspension_travel * 0.8f);
+            float expected_sag = PxClamp(
+                (front_mass_per_wheel * 9.81f) / front_stiffness,
+                0.0f,
+                cfg.suspension_travel * 0.8f);
             float avg_wheel_r = (cfg.front_wheel_radius + cfg.rear_wheel_radius) * 0.5f;
             float spawn_y = avg_wheel_r + cfg.suspension_height - expected_sag + 0.02f;
 
@@ -3619,7 +4403,7 @@ namespace car
             }
 
             PxVec3 com(spec.center_of_mass_x, spec.center_of_mass_y, spec.center_of_mass_z);
-            PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
+            apply_chassis_mass_properties(chassis_mass(), com);
             body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
             body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
             body->setLinearDamping(spec.linear_damping);
@@ -3684,7 +4468,7 @@ namespace car
             }
 
             PxVec3 com(spec.center_of_mass_x, spec.center_of_mass_y, spec.center_of_mass_z);
-            PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
+            apply_chassis_mass_properties(chassis_mass(), com);
             if (multibody.initialized)
             {
                 update_assembled_center_of_mass();
@@ -3707,7 +4491,7 @@ namespace car
             }
 
             PxVec3 com(spec.center_of_mass_x, spec.center_of_mass_y, spec.center_of_mass_z);
-            PxRigidBodyExt::setMassAndUpdateInertia(*body, chassis_mass(), &com);
+            apply_chassis_mass_properties(chassis_mass(), com);
             if (multibody.initialized)
             {
                 update_assembled_center_of_mass();

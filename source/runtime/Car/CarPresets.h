@@ -104,6 +104,11 @@ namespace car
             upright_mass         = 14.0f;
             suspension_link_mass = 2.5f;
             steering_rack_mass   = 4.0f;
+            arb_mass             = 6.0f;
+            coilover_mass        = 4.0f;
+            halfshaft_mass       = 3.5f;
+            driveshaft_mass      = 8.0f;
+            differential_mass    = 16.0f;
             damping_bump_high_speed_ratio = 0.4f;
             damping_rebound_high_speed_ratio = 0.7f;
             damper_knee_velocity = 0.25f;
@@ -112,6 +117,7 @@ namespace car
             packer_stiffness = 600000.0f;
             clutch_max_torque = 700.0f;
             driveline_inertia = 0.08f;
+            driveshaft_stiffness = 5000.0f;
             driveshaft_damping = 60.0f;
             engine_crank_axis_x = 1.0f;
             engine_sound_cylinders = 4;
@@ -172,6 +178,15 @@ namespace car
         float upright_mass;
         float suspension_link_mass;
         float steering_rack_mass;
+        float arb_mass;
+        float coilover_mass;
+        float halfshaft_mass;
+        float driveshaft_mass;
+        float differential_mass;
+        // kg m2, zero means derive from chassis shape
+        float inertia_xx;
+        float inertia_yy;
+        float inertia_zz;
         assist_settings assists;
         validation_targets validation;
 

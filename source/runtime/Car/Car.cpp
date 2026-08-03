@@ -706,6 +706,45 @@ namespace spartan
                 );
             }
         }
+
+        // capsule endpoints in world space, used so shaft stripes follow the real actor not a guess
+        bool get_capsule_endpoints(physx::PxRigidActor* actor, physx::PxVec3& start, physx::PxVec3& end, float& radius)
+        {
+            if (!actor || actor->getNbShapes() == 0)
+            {
+                return false;
+            }
+            physx::PxShape* shape = nullptr;
+            actor->getShapes(&shape, 1);
+            if (!shape || shape->getGeometry().getType() != physx::PxGeometryType::eCAPSULE)
+            {
+                return false;
+            }
+            const physx::PxCapsuleGeometry& geometry =
+                static_cast<const physx::PxCapsuleGeometry&>(shape->getGeometry());
+            const physx::PxTransform pose = actor->getGlobalPose() * shape->getLocalPose();
+            const physx::PxVec3 axis = pose.q.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
+            start = pose.p - axis * geometry.halfHeight;
+            end = pose.p + axis * geometry.halfHeight;
+            radius = geometry.radius;
+            return true;
+        }
+
+        float get_actor_spin(physx::PxRigidDynamic* actor, const physx::PxVec3& axis_hint)
+        {
+            if (!actor)
+            {
+                return 0.0f;
+            }
+            physx::PxVec3 axis = axis_hint;
+            if (axis.normalize() < 1e-4f)
+            {
+                axis = actor->getGlobalPose().q.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
+            }
+            // angle from the actor orientation projected onto the spin axis, good enough for stripes
+            const physx::PxQuat q = actor->getGlobalPose().q;
+            return 2.0f * atanf(q.x / std::max(q.w, 1e-6f));
+        }
     }
 
     Car* Car::Create(const Config& config)
@@ -1299,11 +1338,23 @@ namespace spartan
             const float damper_load = std::clamp(damper_velocity / std::max(preset.max_damper_velocity, 0.1f), 0.0f, 1.0f);
             const Color spring_color = Color(1.0f, 0.72f + spring_load * 0.25f, 0.12f + spring_load * 0.55f, 1.0f);
             const Color damper_color = Color(1.0f, 0.38f + damper_load * 0.45f, 0.12f, 1.0f);
-            draw_skeleton_cylinder(shock_top, shock_mid, 0.030f, damper_color);
-            Renderer::DrawLine(shock_mid, shock_bottom, skeleton_color_joint, skeleton_color_joint);
-            draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f, spring_color);
-            draw_skeleton_joint(shock_top, skeleton_color_joint);
-            draw_skeleton_joint(shock_bottom, skeleton_color_joint);
+            const ::car::coilover& coilover_unit = corner.coilover_unit;
+            if (coilover_unit.tube && coilover_unit.rod)
+            {
+                draw_skeleton_actor_shapes(coilover_unit.tube, damper_color, to_render);
+                draw_skeleton_actor_shapes(coilover_unit.rod, skeleton_color_joint, to_render);
+                draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f, spring_color);
+                draw_skeleton_joint(shock_top, skeleton_color_joint);
+                draw_skeleton_joint(shock_bottom, skeleton_color_joint);
+            }
+            else
+            {
+                draw_skeleton_cylinder(shock_top, shock_mid, 0.030f, damper_color);
+                Renderer::DrawLine(shock_mid, shock_bottom, skeleton_color_joint, skeleton_color_joint);
+                draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f, spring_color);
+                draw_skeleton_joint(shock_top, skeleton_color_joint);
+                draw_skeleton_joint(shock_bottom, skeleton_color_joint);
+            }
             const math::Vector3 shock_axis = (shock_top - shock_bottom).Normalized();
             const math::Vector3 spring_force_vector = shock_axis * (suspension_force * 0.00001f);
             Renderer::DrawLine(shock_top, shock_top + spring_force_vector, spring_color, spring_color);
@@ -1456,33 +1507,155 @@ namespace spartan
         draw_skeleton_cylinder(frame_rear_left, shock_top_world[2], 0.018f, skeleton_color_frame);
         draw_skeleton_cylinder(frame_rear_right, shock_top_world[3], 0.018f, skeleton_color_frame);
 
-        auto draw_anti_roll_bar = [&](int left, int right, float stiffness)
+        auto draw_physical_anti_roll = [&](const ::car::anti_roll_bar& arb, int left, int right, float stiffness)
         {
-            if (stiffness <= 0.0f)
+            if (!arb.left_half || !arb.right_half)
             {
+                // no physx bar, fall back to the old travel-difference sketch
+                if (stiffness <= 0.0f)
+                {
+                    return;
+                }
+                const ::car::suspension_corner& left_corner = multibody.corners[left];
+                const ::car::suspension_corner& right_corner = multibody.corners[right];
+                const float compression_difference =
+                    (left_corner.shock_rest_length - left_corner.shock_length)
+                    - (right_corner.shock_rest_length - right_corner.shock_length);
+                const float anti_roll_load = std::clamp(
+                    fabsf(compression_difference * stiffness) / std::max(preset.max_susp_force, 1.0f),
+                    0.0f,
+                    1.0f);
+                const Color loaded = Color(0.82f + anti_roll_load * 0.18f, 0.35f + anti_roll_load * 0.30f, 1.0f, 1.0f);
+                const math::Vector3 left_arm_end = lerp_skeleton(shock_top_world[left], shock_bottom_world[left], 0.24f);
+                const math::Vector3 right_arm_end = lerp_skeleton(shock_top_world[right], shock_bottom_world[right], 0.24f);
+                const float anti_roll_twist =
+                    compression_difference / std::max(config.suspension_travel, 0.01f) * math::pi;
+                draw_skeleton_shaft(shock_top_world[left], shock_top_world[right], 0.020f, 0.0f, anti_roll_twist, loaded);
+                draw_skeleton_cylinder(shock_top_world[left], left_arm_end, 0.014f, loaded);
+                draw_skeleton_cylinder(shock_top_world[right], right_arm_end, 0.014f, loaded);
                 return;
             }
+
             const ::car::suspension_corner& left_corner = multibody.corners[left];
             const ::car::suspension_corner& right_corner = multibody.corners[right];
-            const float compression_difference = (left_corner.shock_rest_length - left_corner.shock_length) - (right_corner.shock_rest_length - right_corner.shock_length);
-            const float anti_roll_load = std::clamp(fabsf(compression_difference * stiffness) / std::max(preset.max_susp_force, 1.0f), 0.0f, 1.0f);
-            const Color loaded_anti_roll_color = Color(0.82f + anti_roll_load * 0.18f, 0.35f + anti_roll_load * 0.30f, 1.0f, 1.0f);
-            const math::Vector3 left_arm_end = lerp_skeleton(shock_top_world[left], shock_bottom_world[left], 0.24f);
-            const math::Vector3 right_arm_end = lerp_skeleton(shock_top_world[right], shock_bottom_world[right], 0.24f);
-            const float anti_roll_twist = compression_difference / std::max(config.suspension_travel, 0.01f) * math::pi;
-            draw_skeleton_shaft(shock_top_world[left], shock_top_world[right], 0.020f, 0.0f, anti_roll_twist, loaded_anti_roll_color);
-            draw_skeleton_cylinder(shock_top_world[left], left_arm_end, 0.014f, loaded_anti_roll_color);
-            draw_skeleton_cylinder(shock_top_world[right], right_arm_end, 0.014f, loaded_anti_roll_color);
-            const math::Vector3 anti_roll_force = vehicle_rotation * math::Vector3::Up * (compression_difference * stiffness * 0.00001f);
-            Renderer::DrawLine(shock_bottom_world[left], shock_bottom_world[left] - anti_roll_force, loaded_anti_roll_color, loaded_anti_roll_color);
-            Renderer::DrawLine(shock_bottom_world[right], shock_bottom_world[right] + anti_roll_force, loaded_anti_roll_color, loaded_anti_roll_color);
+            const float compression_difference =
+                (left_corner.shock_rest_length - left_corner.shock_length)
+                - (right_corner.shock_rest_length - right_corner.shock_length);
+            float twist = 0.0f;
+            if (arb.torsion_joint)
+            {
+                const physx::PxQuat relative = arb.torsion_joint->getRelativeTransform().q;
+                twist = 2.0f * atanf(relative.x / std::max(relative.w, 1e-6f));
+                if (!std::isfinite(twist))
+                {
+                    twist = 0.0f;
+                }
+            }
+            else
+            {
+                twist = compression_difference / std::max(arb.arm_length, 0.05f);
+            }
+            const float anti_roll_load = std::clamp(
+                fabsf(compression_difference * stiffness) / std::max(preset.max_susp_force, 1.0f),
+                0.0f,
+                1.0f);
+            const Color loaded = Color(0.82f + anti_roll_load * 0.18f, 0.35f + anti_roll_load * 0.30f, 1.0f, 1.0f);
+
+            physx::PxVec3 left_start, left_end, right_start, right_end;
+            float left_radius = 0.016f;
+            float right_radius = 0.016f;
+            const bool left_caps = get_capsule_endpoints(arb.left_half, left_start, left_end, left_radius);
+            const bool right_caps = get_capsule_endpoints(arb.right_half, right_start, right_end, right_radius);
+            draw_skeleton_actor_shapes(arb.left_half, loaded, to_render);
+            draw_skeleton_actor_shapes(arb.right_half, loaded, to_render);
+
+            if (left_caps && right_caps)
+            {
+                // inboard is the end with smaller chassis local |x|
+                const physx::PxTransform pose = body->getGlobalPose();
+                auto local_abs_x = [&](const physx::PxVec3& world) -> float
+                {
+                    return fabsf(pose.transformInv(world).x);
+                };
+                const physx::PxVec3 left_inboard =
+                    local_abs_x(left_start) < local_abs_x(left_end) ? left_start : left_end;
+                const physx::PxVec3 left_outboard = left_inboard == left_start ? left_end : left_start;
+                const physx::PxVec3 right_inboard =
+                    local_abs_x(right_start) < local_abs_x(right_end) ? right_start : right_end;
+                const physx::PxVec3 right_outboard = right_inboard == right_start ? right_end : right_start;
+                draw_skeleton_shaft(
+                    to_render(left_inboard),
+                    to_render(right_inboard),
+                    std::max(left_radius, right_radius) * 0.85f,
+                    0.0f,
+                    twist,
+                    loaded);
+                draw_skeleton_joint(to_render(left_inboard), skeleton_color_joint);
+                draw_skeleton_joint(to_render(right_inboard), skeleton_color_joint);
+                draw_skeleton_joint(to_render(left_outboard), loaded);
+                draw_skeleton_joint(to_render(right_outboard), loaded);
+            }
+
+            auto draw_drop = [&](physx::PxRigidDynamic* drop, int corner_index)
+            {
+                if (!drop)
+                {
+                    return;
+                }
+                draw_skeleton_actor_shapes(drop, loaded, to_render);
+                physx::PxVec3 drop_start, drop_end;
+                float drop_radius = 0.014f;
+                if (get_capsule_endpoints(drop, drop_start, drop_end, drop_radius))
+                {
+                    draw_skeleton_joint(to_render(drop_start), loaded);
+                    draw_skeleton_joint(to_render(drop_end), loaded);
+                    // load stalk along the link, same units as the old force sketch
+                    const math::Vector3 a = to_render(drop_start);
+                    const math::Vector3 b = to_render(drop_end);
+                    math::Vector3 along = b - a;
+                    if (along.LengthSquared() > 1e-6f)
+                    {
+                        along.Normalize();
+                        const float force_scale = anti_roll_load * 0.12f;
+                        Renderer::DrawLine(a, a - along * force_scale, loaded, loaded);
+                        Renderer::DrawLine(b, b + along * force_scale, loaded, loaded);
+                    }
+                }
+                else
+                {
+                    draw_skeleton_joint(to_render(drop->getGlobalPose().p), loaded);
+                    draw_skeleton_joint(shock_bottom_world[corner_index], loaded);
+                }
+            };
+            draw_drop(arb.left_drop, left);
+            draw_drop(arb.right_drop, right);
         };
-        draw_anti_roll_bar(0, 1, preset.front_arb_stiffness);
-        draw_anti_roll_bar(2, 3, preset.rear_arb_stiffness);
+        draw_physical_anti_roll(multibody.front_arb, 0, 1, preset.front_arb_stiffness);
+        draw_physical_anti_roll(multibody.rear_arb, 2, 3, preset.rear_arb_stiffness);
 
         const physx::PxTransform body_pose = body->getGlobalPose();
         const math::Vector3 center_of_mass = to_render(body_pose.transform(body->getCMassLocalPose().p));
         Renderer::DrawSphere(center_of_mass, 0.075f, 10, skeleton_color_spring);
+
+        // principal inertia axes at the com, length scales with sqrt(i) so yaw vs roll is readable
+        {
+            const physx::PxVec3 inertia = body->getMassSpaceInertiaTensor();
+            const float i_scale = 0.012f / std::max(sqrtf(std::max(std::max(inertia.x, inertia.y), inertia.z)), 1.0f);
+            const physx::PxTransform com_pose = body_pose * body->getCMassLocalPose();
+            auto draw_inertia_axis = [&](const physx::PxVec3& local_axis, float inertia_value, const Color& color)
+            {
+                const float half_length = sqrtf(std::max(inertia_value, 1.0f)) * i_scale * 40.0f;
+                const physx::PxVec3 world_axis = com_pose.q.rotate(local_axis) * half_length;
+                Renderer::DrawLine(
+                    to_render(com_pose.p - world_axis),
+                    to_render(com_pose.p + world_axis),
+                    color,
+                    color);
+            };
+            draw_inertia_axis(physx::PxVec3(1.0f, 0.0f, 0.0f), inertia.x, Color(1.0f, 0.35f, 0.35f, 1.0f));
+            draw_inertia_axis(physx::PxVec3(0.0f, 1.0f, 0.0f), inertia.y, Color(0.35f, 1.0f, 0.45f, 1.0f));
+            draw_inertia_axis(physx::PxVec3(0.0f, 0.0f, 1.0f), inertia.z, Color(0.35f, 0.65f, 1.0f, 1.0f));
+        }
         const ::car::aero_debug_data& aero_debug = simulation->get_aero_debug();
         if (aero_debug.valid)
         {
@@ -1522,10 +1695,7 @@ namespace spartan
         const int drivetrain_type = preset.drivetrain_type;
         const bool drives_front = drivetrain_type == 1 || drivetrain_type == 2;
         const bool drives_rear  = drivetrain_type == 0 || drivetrain_type == 2;
-        const math::Vector3 front_diff = to_world(math::Vector3(0.0f, -0.02f, front_z));
-        const math::Vector3 rear_diff  = to_world(math::Vector3(0.0f, -0.02f, rear_z));
-        const math::Vector3 gearbox    = to_world(math::Vector3(0.0f, 0.02f, 0.0f));
-        const float driveshaft_twist  = simulation->get_driveshaft_twist();
+        const math::Vector3 gearbox = to_world(math::Vector3(0.0f, 0.02f, 0.0f));
         const float driveshaft_torque = simulation->get_driveshaft_torque();
         const float torque_load = std::clamp(fabsf(driveshaft_torque) / 6000.0f, 0.0f, 1.0f);
         const Color loaded_drivetrain_color = Color(0.25f - torque_load * 0.08f, 0.72f + torque_load * 0.18f, 1.00f, 1.0f);
@@ -1543,32 +1713,255 @@ namespace spartan
         {
             power_unit_color = skeleton_color_spring;
         }
-        const float front_pinion_rotation = (simulation->get_wheel_rotation(0) + simulation->get_wheel_rotation(1)) * 0.5f * preset.final_drive;
-        const float rear_pinion_rotation  = (simulation->get_wheel_rotation(2) + simulation->get_wheel_rotation(3)) * 0.5f * preset.final_drive;
-        auto wheel_drivetrain_color = [&](int wheel_index)
-        {
-            const float wheel_torque_load = std::clamp(fabsf(simulation->get_wheel_state(wheel_index).drive_torque) / 6000.0f, 0.0f, 1.0f);
-            return Color(0.25f - wheel_torque_load * 0.08f, 0.72f + wheel_torque_load * 0.18f, 1.0f, 1.0f);
-        };
 
         const math::Vector3 flywheel_axis = vehicle_rotation * math::Vector3::Right * 0.10f;
         draw_skeleton_shaft(gearbox - flywheel_axis, gearbox + flywheel_axis, 0.075f + simulation->get_clutch() * 0.015f, simulation->get_engine_rotation(), 0.0f, power_unit_color);
         Renderer::DrawSphere(gearbox, 0.10f, 8, power_unit_color);
-        if (drives_front)
+
+        const ::car::driveline_assembly& driveline = multibody.driveline;
+        auto is_driveline_actor = [&](physx::PxRigidDynamic* actor) -> bool
         {
-            Renderer::DrawSphere(front_diff, 0.11f, 8, skeleton_color_drivetrain);
-            draw_skeleton_shaft(front_diff, wheel_world[0], 0.04f, simulation->get_wheel_rotation(0), simulation->get_wheel_state(0).drive_torque * 0.00005f, wheel_drivetrain_color(0));
-            draw_skeleton_shaft(front_diff, wheel_world[1], 0.04f, simulation->get_wheel_rotation(1), simulation->get_wheel_state(1).drive_torque * 0.00005f, wheel_drivetrain_color(1));
-            const float front_shaft_radius = drivetrain_type == 2 ? 0.035f + preset.torque_split_front * 0.04f : 0.055f;
-            draw_skeleton_shaft(gearbox, front_diff, front_shaft_radius, front_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
+            if (!actor)
+            {
+                return false;
+            }
+            if (actor == driveline.gearbox_output || actor == driveline.axle_input)
+            {
+                return true;
+            }
+            for (int i = 0; i < driveline.propshaft_count; i++)
+            {
+                if (actor == driveline.propshaft[i])
+                {
+                    return true;
+                }
+            }
+            for (int i = 0; i < driveline.differential_count; i++)
+            {
+                if (actor == driveline.differential[i])
+                {
+                    return true;
+                }
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                if (actor == driveline.halfshaft[i])
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+        auto is_arb_actor = [&](physx::PxRigidDynamic* actor) -> bool
+        {
+            auto match = [&](const ::car::anti_roll_bar& arb)
+            {
+                return actor == arb.left_half || actor == arb.right_half || actor == arb.left_drop || actor == arb.right_drop;
+            };
+            return match(multibody.front_arb) || match(multibody.rear_arb);
+        };
+
+        const float driveshaft_twist = simulation->get_driveshaft_twist();
+        auto wheel_drivetrain_color = [&](int wheel_index)
+        {
+            const float wheel_torque_load = std::clamp(
+                fabsf(simulation->get_wheel_state(wheel_index).drive_torque) / 6000.0f,
+                0.0f,
+                1.0f);
+            return Color(0.25f - wheel_torque_load * 0.08f, 0.72f + wheel_torque_load * 0.18f, 1.0f, 1.0f);
+        };
+        auto draw_spinning_capsule = [&](
+            physx::PxRigidDynamic* actor,
+            float rotation,
+            float twist,
+            float radius_scale,
+            const Color& color
+        )
+        {
+            if (!actor)
+            {
+                return;
+            }
+            physx::PxVec3 start, end;
+            float radius = 0.04f;
+            if (get_capsule_endpoints(actor, start, end, radius))
+            {
+                draw_skeleton_shaft(
+                    to_render(start),
+                    to_render(end),
+                    radius * radius_scale,
+                    rotation,
+                    twist,
+                    color);
+            }
+            else
+            {
+                draw_skeleton_actor_shapes(actor, color, to_render);
+            }
+        };
+
+        if (driveline.initialized)
+        {
+            if (driveline.gearbox_output)
+            {
+                draw_skeleton_actor_shapes(driveline.gearbox_output, power_unit_color, to_render);
+                const physx::PxVec3 flange_axis =
+                    driveline.gearbox_output->getGlobalPose().q.rotate(physx::PxVec3(1.0f, 0.0f, 0.0f));
+                const math::Vector3 flange_center = to_render(driveline.gearbox_output->getGlobalPose().p);
+                const math::Vector3 flange_axis_render =
+                    (to_render(driveline.gearbox_output->getGlobalPose().p + flange_axis) - flange_center).Normalized();
+                draw_skeleton_torque_arc(
+                    flange_center,
+                    flange_axis_render,
+                    0.11f,
+                    driveshaft_torque / 6000.0f,
+                    loaded_drivetrain_color);
+                Renderer::DrawSphere(flange_center, 0.055f, 7, power_unit_color);
+            }
+            if (driveline.axle_input)
+            {
+                draw_skeleton_actor_shapes(driveline.axle_input, loaded_drivetrain_color, to_render);
+                Renderer::DrawSphere(
+                    to_render(driveline.axle_input->getGlobalPose().p),
+                    0.045f,
+                    7,
+                    loaded_drivetrain_color);
+            }
+
+            for (int i = 0; i < driveline.propshaft_count; i++)
+            {
+                physx::PxRigidDynamic* prop = driveline.propshaft[i];
+                if (!prop)
+                {
+                    continue;
+                }
+                float pinion_rotation = 0.0f;
+                if (driveline.differential[i])
+                {
+                    const float axle_local_z =
+                        body_pose.transformInv(driveline.differential[i]->getGlobalPose().p).z;
+                    const bool front_axle = axle_local_z > 0.0f;
+                    pinion_rotation = front_axle
+                        ? (simulation->get_wheel_rotation(0) + simulation->get_wheel_rotation(1)) * 0.5f * preset.final_drive
+                        : (simulation->get_wheel_rotation(2) + simulation->get_wheel_rotation(3)) * 0.5f * preset.final_drive;
+                }
+                const float prop_radius_scale = drivetrain_type == 2 ? 1.15f : 1.45f;
+                draw_spinning_capsule(prop, pinion_rotation, driveshaft_twist, prop_radius_scale, loaded_drivetrain_color);
+            }
+
+            for (int i = 0; i < driveline.differential_count; i++)
+            {
+                physx::PxRigidDynamic* differential = driveline.differential[i];
+                if (!differential)
+                {
+                    continue;
+                }
+                draw_skeleton_actor_shapes(differential, skeleton_color_drivetrain, to_render);
+                Renderer::DrawSphere(
+                    to_render(differential->getGlobalPose().p),
+                    0.09f,
+                    8,
+                    skeleton_color_drivetrain);
+            }
+
+            for (int wheel_index = 0; wheel_index < 4; wheel_index++)
+            {
+                physx::PxRigidDynamic* shaft = driveline.halfshaft[wheel_index];
+                if (!shaft)
+                {
+                    continue;
+                }
+                const Color shaft_color = wheel_drivetrain_color(wheel_index);
+                const float wheel_twist = simulation->get_wheel_state(wheel_index).drive_torque * 0.00005f;
+                draw_spinning_capsule(
+                    shaft,
+                    simulation->get_wheel_rotation(wheel_index),
+                    wheel_twist,
+                    1.2f,
+                    shaft_color);
+
+                physx::PxVec3 shaft_start, shaft_end;
+                float shaft_radius = 0.04f;
+                if (get_capsule_endpoints(shaft, shaft_start, shaft_end, shaft_radius))
+                {
+                    Renderer::DrawSphere(to_render(shaft_start), 0.028f, 6, skeleton_color_joint);
+                    Renderer::DrawSphere(to_render(shaft_end), 0.028f, 6, skeleton_color_joint);
+                }
+            }
+
+            if (driveline.gearbox_output && driveline.axle_input)
+            {
+                draw_skeleton_shaft(
+                    to_render(driveline.gearbox_output->getGlobalPose().p),
+                    to_render(driveline.axle_input->getGlobalPose().p),
+                    0.018f + torque_load * 0.012f,
+                    get_actor_spin(driveline.gearbox_output, physx::PxVec3(0.0f)),
+                    driveshaft_twist,
+                    loaded_drivetrain_color);
+            }
         }
-        if (drives_rear)
+        else
         {
-            Renderer::DrawSphere(rear_diff, 0.11f, 8, skeleton_color_drivetrain);
-            draw_skeleton_shaft(rear_diff, wheel_world[2], 0.04f, simulation->get_wheel_rotation(2), simulation->get_wheel_state(2).drive_torque * 0.00005f, wheel_drivetrain_color(2));
-            draw_skeleton_shaft(rear_diff, wheel_world[3], 0.04f, simulation->get_wheel_rotation(3), simulation->get_wheel_state(3).drive_torque * 0.00005f, wheel_drivetrain_color(3));
-            const float rear_shaft_radius = drivetrain_type == 2 ? 0.035f + (1.0f - preset.torque_split_front) * 0.04f : 0.055f;
-            draw_skeleton_shaft(gearbox, rear_diff, rear_shaft_radius, rear_pinion_rotation, driveshaft_twist, loaded_drivetrain_color);
+            const math::Vector3 front_diff = to_world(math::Vector3(0.0f, -0.02f, front_z));
+            const math::Vector3 rear_diff  = to_world(math::Vector3(0.0f, -0.02f, rear_z));
+            const float front_pinion_rotation =
+                (simulation->get_wheel_rotation(0) + simulation->get_wheel_rotation(1)) * 0.5f * preset.final_drive;
+            const float rear_pinion_rotation =
+                (simulation->get_wheel_rotation(2) + simulation->get_wheel_rotation(3)) * 0.5f * preset.final_drive;
+            if (drives_front)
+            {
+                Renderer::DrawSphere(front_diff, 0.11f, 8, skeleton_color_drivetrain);
+                draw_skeleton_shaft(
+                    front_diff,
+                    wheel_world[0],
+                    0.04f,
+                    simulation->get_wheel_rotation(0),
+                    simulation->get_wheel_state(0).drive_torque * 0.00005f,
+                    wheel_drivetrain_color(0));
+                draw_skeleton_shaft(
+                    front_diff,
+                    wheel_world[1],
+                    0.04f,
+                    simulation->get_wheel_rotation(1),
+                    simulation->get_wheel_state(1).drive_torque * 0.00005f,
+                    wheel_drivetrain_color(1));
+                const float front_shaft_radius =
+                    drivetrain_type == 2 ? 0.035f + preset.torque_split_front * 0.04f : 0.055f;
+                draw_skeleton_shaft(
+                    gearbox,
+                    front_diff,
+                    front_shaft_radius,
+                    front_pinion_rotation,
+                    driveshaft_twist,
+                    loaded_drivetrain_color);
+            }
+            if (drives_rear)
+            {
+                Renderer::DrawSphere(rear_diff, 0.11f, 8, skeleton_color_drivetrain);
+                draw_skeleton_shaft(
+                    rear_diff,
+                    wheel_world[2],
+                    0.04f,
+                    simulation->get_wheel_rotation(2),
+                    simulation->get_wheel_state(2).drive_torque * 0.00005f,
+                    wheel_drivetrain_color(2));
+                draw_skeleton_shaft(
+                    rear_diff,
+                    wheel_world[3],
+                    0.04f,
+                    simulation->get_wheel_rotation(3),
+                    simulation->get_wheel_state(3).drive_torque * 0.00005f,
+                    wheel_drivetrain_color(3));
+                const float rear_shaft_radius =
+                    drivetrain_type == 2 ? 0.035f + (1.0f - preset.torque_split_front) * 0.04f : 0.055f;
+                draw_skeleton_shaft(
+                    gearbox,
+                    rear_diff,
+                    rear_shaft_radius,
+                    rear_pinion_rotation,
+                    driveshaft_twist,
+                    loaded_drivetrain_color);
+            }
         }
 
         // everything above reaches bodies by name, which silently misses any actor a future mechanism
@@ -1576,7 +1969,7 @@ namespace spartan
         for (int actor_index = 0; actor_index < multibody.actor_count; actor_index++)
         {
             physx::PxRigidDynamic* actor = multibody.actors[actor_index];
-            if (!actor || actor == multibody.rack)
+            if (!actor || actor == multibody.rack || is_driveline_actor(actor) || is_arb_actor(actor))
             {
                 continue;
             }
@@ -1585,7 +1978,10 @@ namespace spartan
             for (int i = 0; i < 4 && !covered; i++)
             {
                 const ::car::suspension_corner& corner = multibody.corners[i];
-                covered = actor == corner.upright || actor == corner.wheel_body;
+                covered = actor == corner.upright
+                    || actor == corner.wheel_body
+                    || actor == corner.coilover_unit.tube
+                    || actor == corner.coilover_unit.rod;
                 for (int member_index = 0; member_index < corner.member_count && !covered; member_index++)
                 {
                     covered = actor == corner.members[member_index].actor;

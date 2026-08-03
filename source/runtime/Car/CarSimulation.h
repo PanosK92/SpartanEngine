@@ -170,7 +170,7 @@ namespace car
         bool sanitize_float(float& v, float fallback = 0.0f);
         bool sanitize_vec(PxVec3& v, const PxVec3& fallback = PxVec3(0.0f));
         bool sanitize_wheel_state(int i);
-        bool is_front(int i);
+        bool is_front(int i) const;
         bool is_rear(int i);
         bool is_driven(int i);
         float lerp(float a, float b, float t);
@@ -207,6 +207,11 @@ namespace car
         void register_multibody_joint(PxJoint* joint);
         void configure_mechanism_shape(PxShape* shape);
         PxRigidDynamic* create_mechanism_actor(const PxTransform& pose, const PxGeometry& geometry, float mass);
+        PxRigidDynamic* create_segment_actor(
+            const PxVec3& world_start,
+            const PxVec3& world_end,
+            float radius,
+            float mass);
         PxSphericalJoint* create_spherical_joint(PxRigidActor* actor_a, PxRigidActor* actor_b, const PxVec3& world_anchor);
 
         // an inboard pickup is rubber, not a pin joint, stiff along the member because that is the load path
@@ -218,13 +223,28 @@ namespace car
         bool add_wishbone(suspension_corner& corner, const PxVec3& inner_front, const PxVec3& inner_rear, const PxVec3& outer, float mass);
         bool add_macpherson_strut(suspension_corner& corner, const PxVec3& top, const PxVec3& bottom, float mass);
         bool add_steering_stop(suspension_corner& corner, PxRigidDynamic* upright, const PxTransform& chassis_pose, const PxVec3& wheel_world, float angle_limit);
-        PxVec3 hardpoint_world(const PxTransform& chassis_pose, const PxVec3& local_point);
+        PxVec3 hardpoint_world(const PxTransform& chassis_pose, const PxVec3& local_point) const;
         float mechanism_actor_mass();
+        float unsprung_mass();
         float chassis_mass();
+        float sprung_mass();
+        bool has_authored_inertia() const;
+        void apply_chassis_mass_properties(float mass, const PxVec3& com_local);
         void update_assembled_center_of_mass();
         bool create_suspension_corner(int wheel_index, const suspension_geometry& geometry);
         bool create_locked_differential(int left, int right);
         bool create_steering_rack();
+        bool create_anti_roll_bar(anti_roll_bar& arb, int left, int right, float stiffness);
+        bool create_anti_roll_bars();
+        bool create_coilover(int wheel_index);
+        bool create_driveline_shafts();
+        bool create_driveline();
+        bool has_physical_coilover(int wheel_index) const;
+        bool has_physical_driveline() const;
+        float read_driveline_twist() const;
+        float read_driveline_gearbox_speed() const;
+        void sync_driveline_axle_speed(float axle_speed);
+        void set_driveline_torsion_enabled(bool enabled);
         void destroy_multibody();
         bool create_multibody(PxPhysics* physics, PxScene* scene, bool destroy_existing = true);
         bool rebuild_multibody(bool preserve_motion = true);

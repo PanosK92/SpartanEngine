@@ -13,7 +13,8 @@
     <chassis
         mass="1430" length="4.702" width="1.992" height="1.116"
         wheelbase="2.65" track_front="1.656" track_rear="1.64"
-        center_of_mass_x="0" center_of_mass_y="-0.28" center_of_mass_z="-0.238" />
+        center_of_mass_x="0" center_of_mass_y="-0.28" center_of_mass_z="-0.238"
+        inertia_xx="520" inertia_yy="2150" inertia_zz="1720" />
 
     <!-- v12 hybrid, torque in nm -->
     <engine
@@ -42,7 +43,8 @@
     <drivetrain
         drivetrain_type="0" torque_split_front="0" diff_type="2"
         lsd_preload="150" lsd_lock_ratio_accel="0.25" lsd_lock_ratio_decel="0.15" lsd_viscous="40"
-        driveshaft_stiffness="8000" driveshaft_damping="90" />
+        driveshaft_stiffness="8000" driveshaft_damping="90"
+        halfshaft_mass="3.2" driveshaft_mass="8.5" differential_mass="18" />
 
     <!-- carbon ceramic discs, temps in celsius -->
     <brakes
@@ -53,9 +55,9 @@
 
     <!-- angles in radians -->
     <suspension
-        suspension_height="0.3" suspension_travel="0.1"
-        upright_mass="13" suspension_link_mass="2.2" steering_rack_mass="3.5"
-        front_spring_freq="2.2" rear_spring_freq="2" front_damping_ratio="0.68" rear_damping_ratio="0.72"
+        suspension_height="0.3" suspension_travel="0.12"
+        upright_mass="13" suspension_link_mass="2.2" steering_rack_mass="3.5" arb_mass="7" coilover_mass="3.8"
+        front_spring_freq="2.35" rear_spring_freq="2.25" front_damping_ratio="0.68" rear_damping_ratio="0.72"
         damping_bump_ratio="0.7" damping_rebound_ratio="1.3" damping_bump_high_speed_ratio="0.32" damping_rebound_high_speed_ratio="0.55" damper_knee_velocity="0.18"
         front_arb_stiffness="14000" rear_arb_stiffness="11000"
         max_susp_force="35000" max_damper_velocity="5" bump_stop_stiffness="100000" bump_stop_threshold="0.9" bump_stop_progression="4"

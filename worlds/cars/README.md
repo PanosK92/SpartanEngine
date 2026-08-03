@@ -7,6 +7,7 @@ Every `.car` file is data for the shared vehicle assembly and simulation. Adding
 These values should come from manufacturer specifications or defensible public references:
 
 - chassis mass and dimensions
+- chassis inertia_xx inertia_yy inertia_zz when known
 - wheelbase and front and rear track
 - wheel and tire radius and width
 - engine crank axis
@@ -21,8 +22,9 @@ These values should come from manufacturer specifications or defensible public r
 These values describe components that are rarely published and may require estimation:
 
 - suspension hardpoints and mechanism
-- upright wheel link and rack masses
+- upright wheel link rack arb and coilover masses
 - spring frequency damping ratio and anti-roll stiffness
+- halfshaft driveshaft and differential masses
 - tire pure and combined slip Magic Formula coefficients relaxation length load sensitivity and vertical stiffness
 - clutch capacity driveline inertia and driveshaft stiffness and damping
 - differential preload locking and viscous behavior

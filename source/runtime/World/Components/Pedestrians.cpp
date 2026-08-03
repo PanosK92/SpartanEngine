@@ -20,12 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "pch.h"
+#include <thread>
 #include "Pedestrians.h"
 #include "Animator.h"
 #include "Camera.h"
 #include "Ragdoll.h"
 #include "Render.h"
 #include "../../Core/Engine.h"
+#include "../../Core/ThreadPool.h"
 #include "../../Core/Timer.h"
 #include "../../Geometry/Mesh.h"
 #include "../../Math/Quaternion.h"
@@ -83,12 +85,52 @@ namespace spartan
 
     void Pedestrians::Start()
     {
-        Stop();
+        // drop live walkers only, keep a world-load mesh preload so play does not hitch
+        for (Walker& walker : m_walkers)
+        {
+            if (walker.animator)
+            {
+                walker.animator->Stop();
+            }
+            if (walker.entity)
+            {
+                World::RemoveEntity(walker.entity);
+            }
+            walker.entity = nullptr;
+            walker.animator = nullptr;
+            walker.ragdoll = nullptr;
+            walker.mesh.reset();
+            walker.dead = false;
+        }
+        m_walkers.clear();
+        m_next_spawn_index = 0;
+        m_lod_timer = 0.0f;
+        m_physics_ready = false;
         BeginSpawn();
+    }
+
+    void Pedestrians::CancelPreload()
+    {
+        if (!m_preload_state)
+        {
+            return;
+        }
+
+        const shared_ptr<PreloadState> state = m_preload_state;
+        state->cancelled.store(true, memory_order_release);
+        m_preload_state.reset();
+
+        // wait so shutdown cannot clear the resource cache under an in-flight mesh load
+        while (!state->completed.load(memory_order_acquire))
+        {
+            this_thread::yield();
+        }
     }
 
     void Pedestrians::Stop()
     {
+        CancelPreload();
+
         for (Walker& walker : m_walkers)
         {
             if (walker.animator)
@@ -166,15 +208,19 @@ namespace spartan
         }
     }
 
-    void Pedestrians::BeginSpawn()
+    void Pedestrians::BeginPreload()
     {
-        m_random_state = 0x6d2b79f5;
-        m_next_spawn_index = 0;
-        m_spawn_ready = false;
-        m_physics_ready = false;
-        m_walkers.reserve(m_count);
-
         if (m_count == 0 || m_model_file.empty())
+        {
+            return;
+        }
+
+        // already warming or ready from world load
+        if (m_preload_state && !m_preload_state->cancelled.load(memory_order_acquire))
+        {
+            return;
+        }
+        if (m_spawn_ready && m_source_mesh)
         {
             return;
         }
@@ -184,29 +230,99 @@ namespace spartan
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale);
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
 
-        m_source_mesh = ResourceCache::Load<Mesh>(m_model_file, flags);
-        if (!m_source_mesh || !m_source_mesh->GetRootEntity())
+        m_preload_state = std::make_shared<PreloadState>();
+        const shared_ptr<PreloadState> state = m_preload_state;
+        const string model_file = m_model_file;
+        ThreadPool::AddTask([state, model_file, flags]()
         {
-            SP_LOG_ERROR("Pedestrians failed to load model: %s", m_model_file.c_str());
+            bool succeeded = false;
+            if (!state->cancelled.load(memory_order_acquire))
+            {
+                const shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(model_file, flags);
+                succeeded = mesh
+                    && mesh->GetRootEntity()
+                    && mesh->GetSkeleton()
+                    && mesh->GetAnimationClipCount() > 0;
+            }
+            state->succeeded.store(succeeded, memory_order_release);
+            state->completed.store(true, memory_order_release);
+        });
+    }
+
+    void Pedestrians::BeginSpawn()
+    {
+        m_random_state = 0x6d2b79f5;
+        m_next_spawn_index = 0;
+        m_physics_ready = false;
+        m_walkers.reserve(m_count);
+
+        if (m_count == 0 || m_model_file.empty())
+        {
             return;
         }
 
+        // keep a finished preload, only kick work if the mesh is not ready yet
+        if (!m_spawn_ready || !m_source_mesh)
+        {
+            m_spawn_ready = false;
+            BeginPreload();
+        }
+    }
+
+    bool Pedestrians::FinishPreloadOnMainThread()
+    {
+        if (m_spawn_ready && m_source_mesh)
+        {
+            return true;
+        }
+
+        if (!m_preload_state || !m_preload_state->completed.load(memory_order_acquire))
+        {
+            return false;
+        }
+
+        if (!m_preload_state->succeeded.load(memory_order_acquire))
+        {
+            SP_LOG_ERROR("Pedestrians failed to load model: %s", m_model_file.c_str());
+            m_preload_state.reset();
+            return false;
+        }
+
+        uint32_t flags = Mesh::GetDefaultFlags();
+        flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
+        flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale);
+        flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
+
+        // cache hit from the worker load, root setup stays on the main thread
+        m_source_mesh = ResourceCache::Load<Mesh>(m_model_file, flags);
+        m_preload_state.reset();
+        if (!m_source_mesh || !m_source_mesh->GetRootEntity())
+        {
+            SP_LOG_ERROR("Pedestrians failed to load model: %s", m_model_file.c_str());
+            return false;
+        }
         if (!m_source_mesh->GetSkeleton() || m_source_mesh->GetAnimationClipCount() == 0)
         {
             SP_LOG_ERROR("Pedestrians model has no skeleton/clips: %s", m_model_file.c_str());
             m_source_mesh.reset();
-            return;
+            return false;
         }
 
         Entity* template_root = m_source_mesh->GetRootEntity();
         template_root->SetTransient(true);
         template_root->SetActive(false);
         m_spawn_ready = true;
+        return true;
     }
 
     void Pedestrians::SpawnNext()
     {
-        if (!m_spawn_ready || m_next_spawn_index >= m_count)
+        if (m_next_spawn_index >= m_count)
+        {
+            return;
+        }
+
+        if (!FinishPreloadOnMainThread())
         {
             return;
         }
@@ -228,9 +344,17 @@ namespace spartan
             SP_LOG_INFO("Pedestrians physics ready, spawning %u walkers", m_count);
         }
 
-        if (SpawnWalker(m_next_spawn_index))
+        // small budget so play stays interactive while the crowd fills in
+        constexpr uint32_t max_spawns_per_tick = 3;
+        uint32_t spawned = 0;
+        while (m_next_spawn_index < m_count && spawned < max_spawns_per_tick)
         {
+            if (!SpawnWalker(m_next_spawn_index))
+            {
+                break;
+            }
             m_next_spawn_index++;
+            spawned++;
         }
     }
 
@@ -697,5 +821,8 @@ namespace spartan
         m_animation_radius = clamp(node.attribute("animation_radius").as_float(m_animation_radius), 20.0f, 500.0f);
         m_walk_speed = clamp(node.attribute("walk_speed").as_float(m_walk_speed), 0.5f, 8.0f);
         m_count = min(m_count, 256u);
+
+        // warm the mannequin on a worker while the editor is still open
+        BeginPreload();
     }
 }

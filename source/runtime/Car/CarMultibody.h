@@ -5,8 +5,32 @@ namespace car
 {
 
     static constexpr int max_suspension_members = 8;
-    static constexpr int max_suspension_joints  = 96;
+    static constexpr int max_suspension_joints  = 128;
+    static constexpr int max_multibody_actors   = wheel_count * (max_suspension_members + 2) + 32;
     static constexpr float wheel_inertia_shape_radius_scale = 0.75f;
+
+    struct anti_roll_bar
+    {
+        PxRigidDynamic* left_half  = nullptr;
+        PxRigidDynamic* right_half = nullptr;
+        PxRigidDynamic* left_drop  = nullptr;
+        PxRigidDynamic* right_drop = nullptr;
+        PxD6Joint* torsion_joint   = nullptr;
+        float arm_length           = 0.16f;
+    };
+
+    struct driveline_assembly
+    {
+        PxRigidDynamic* gearbox_output = nullptr;
+        PxRigidDynamic* axle_input     = nullptr;
+        PxRigidDynamic* propshaft[2]   = {};
+        PxRigidDynamic* differential[2] = {};
+        PxRigidDynamic* halfshaft[wheel_count] = {};
+        PxD6Joint* torsion_joint       = nullptr;
+        int propshaft_count            = 0;
+        int differential_count         = 0;
+        bool initialized               = false;
+    };
 
     struct suspension_member
     {
@@ -19,12 +43,21 @@ namespace car
         bool pivot_is_bushing = false;
     };
 
+    struct coilover
+    {
+        PxRigidDynamic* tube = nullptr;
+        PxRigidDynamic* rod = nullptr;
+        PxD6Joint* spring_joint = nullptr;
+        float rest_length = 0.0f;
+    };
+
     struct suspension_corner
     {
         PxRigidDynamic* upright = nullptr;
         PxRigidDynamic* wheel_body = nullptr;
         PxRevoluteJoint* wheel_joint = nullptr;
         PxDistanceJoint* travel_joint = nullptr;
+        coilover coilover_unit;
         // upright twist about the chassis vertical, its limit is the steering lock, zero on a rear corner
         PxD6Joint* steering_stop = nullptr;
         float steering_limit = 0.0f;
@@ -42,10 +75,13 @@ namespace car
         PxPhysics* physics = nullptr;
         PxScene* scene = nullptr;
         suspension_corner corners[wheel_count];
+        anti_roll_bar front_arb;
+        anti_roll_bar rear_arb;
+        driveline_assembly driveline;
         PxRigidDynamic* rack = nullptr;
         PxD6Joint* rack_joint = nullptr;
         PxJoint* joints[max_suspension_joints] = {};
-        PxRigidDynamic* actors[wheel_count * (max_suspension_members + 2) + 1] = {};
+        PxRigidDynamic* actors[max_multibody_actors] = {};
         int joint_count = 0;
         int actor_count = 0;
         float rack_travel = 0.14f;

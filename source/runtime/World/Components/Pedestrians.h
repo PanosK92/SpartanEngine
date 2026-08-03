@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Component.h"
 #include "../../Math/Vector3.h"
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -65,7 +66,17 @@ namespace spartan
             bool dead = false;
         };
 
+        struct PreloadState
+        {
+            std::atomic<bool> cancelled = false;
+            std::atomic<bool> completed = false;
+            std::atomic<bool> succeeded = false;
+        };
+
         void BeginSpawn();
+        void BeginPreload();
+        void CancelPreload();
+        bool FinishPreloadOnMainThread();
         void SpawnNext();
         bool SpawnWalker(uint32_t index);
         bool FindSpawnPosition(uint32_t index, math::Vector3& position, math::Vector3& heading);
@@ -92,5 +103,6 @@ namespace spartan
         uint32_t m_next_spawn_index = 0;
         bool m_spawn_ready = false;
         bool m_physics_ready = false;
+        std::shared_ptr<PreloadState> m_preload_state;
     };
 }
