@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "pch.h"
-#include <thread>
 #include "Traffic.h"
 #include "Physics.h"
 #include "../../Car/Car.h"
@@ -136,15 +135,9 @@ namespace spartan
     {
         if (m_preload_state)
         {
-            const shared_ptr<PreloadState> state = m_preload_state;
-            state->cancelled.store(true, memory_order_release);
+            // never spin wait on the main thread, the shared state keeps the worker safe until it finishes
+            m_preload_state->cancelled.store(true, memory_order_release);
             m_preload_state.reset();
-
-            // wait so shutdown cannot clear the resource cache under an in-flight mesh load
-            while (!state->completed.load(memory_order_acquire))
-            {
-                this_thread::yield();
-            }
         }
         m_next_spawn_index = 0;
         m_car_path.clear();

@@ -2047,7 +2047,7 @@ function collect_owned_resource_paths(
     const normalized = value.replaceAll("\\", "/");
     if (
       normalized.toLowerCase().includes(
-        "mcp_resources/",
+        "mcp/blockout/",
       ) &&
       path.posix.extname(normalized)
     )
@@ -2110,7 +2110,7 @@ function route_revision_resource_paths(
     {
       return normalized;
     }
-    const library_root = "project/mcp_resources/";
+    const library_root = "project/mcp/blockout/";
     if (normalized.startsWith(library_root))
     {
       return `${candidate_root}/work/${
@@ -3901,10 +3901,10 @@ async function dispatch_assistant_command(
           requested_path
             .toLowerCase()
             .startsWith(
-              "project/mcp_resources/thumbnails/",
+              "project/mcp/blockout/thumbnails/",
             )
             ? requested_path
-            : `project/mcp_resources/thumbnails/${file_name}`,
+            : `project/mcp/blockout/thumbnails/${file_name}`,
       },
       60000,
     );
@@ -3992,7 +3992,7 @@ async function dispatch_assistant_command(
       {
         args.name = revision.asset_name;
         args.path =
-          `project/mcp_resources/prefabs/${
+          `project/mcp/blockout/prefabs/${
             revision.asset_id
           }.prefab`;
       }
@@ -5049,7 +5049,7 @@ function build_prompt(
     "For focused asset work, never move or capture the main scene viewport. The run finalizer performs the one Asset Viewer review.",
     "For an environment build, reuse current library assets where they fit. Attempt at most one focused improvement per reused asset during the run; otherwise keep the current asset and continue the environment.",
     "When an environment build makes you model a recognisable standalone object the library did not have, register it as a library prefab once it looks right, and give it plain aliases and tags a later request would search by, meaning the everyday name of the object rather than its role in this scene. A workbench is registered as workbench with the alias table, not as rear_wall_prop. This is how the library grows enough to make the next blockout better than this one.",
-    "Every persistent resource created through MCP belongs under the shared project/mcp_resources directory. Put meshes, materials, textures, prefabs, editable sources, thumbnails, and catalog metadata in their matching shared subdirectories. Never write MCP-generated resources into a world-specific resource directory.",
+    "Every persistent resource created through MCP belongs under the shared project/mcp/blockout directory. Put meshes, materials, textures, prefabs, editable sources, thumbnails, and catalog metadata in their matching shared subdirectories. Never write MCP-generated resources into a world-specific resource directory.",
     "Use camera_snapshot before camera-relative placement such as in front of camera, beside camera, or from camera.",
     "Use world_raycast for ground or surface-relative placement instead of assuming y=0 when precision matters.",
     "Before deleting or rebuilding existing geometry while preserving look, call entity_render_materials on the target parent and reuse material names in entity_create_primitive_batch or component_set.",
@@ -5971,7 +5971,7 @@ async function run_cursor_fallback_serial({ prompt, brief = "", api_key, model_i
           active_assistant_context?.latest_prefab_path ??
           "",
         protected_paths: [
-          "project/mcp_resources/catalog.json",
+          "project/mcp/blockout/catalog.json",
           active_assistant_context?.catalog_path ?? "",
         ].filter(Boolean),
         owned_paths: [

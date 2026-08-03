@@ -58,13 +58,18 @@ namespace spartan
         static std::string GetResourceDirectory(
             const std::string& world_file_path
         );
-        // where a tool that authors resources into the project keeps them, a world save leaves whatever
-        // lives here alone because the tool owns it, not the world
+        // mcp ai blockout output, world save leaves these alone
         static void SetGeneratedResourceDirectory(
             const std::string& directory
         );
         static const std::string&
             GetGeneratedResourceDirectory();
+        // asset viewer curated library, separate from raw mcp blockout output
+        static void SetLibraryResourceDirectory(
+            const std::string& directory
+        );
+        static const std::string&
+            GetLibraryResourceDirectory();
         static const std::vector<std::string>&
             GetLastResourceCleanup();
         static const std::vector<std::string>&
@@ -92,6 +97,9 @@ namespace spartan
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
         static const std::vector<Entity*>& GetEntitiesWithRender();
+
+        // true while play mode is still spreading Entity::Start across frames
+        static bool IsPlayBooting();
 
         // misc
         static const std::string& GetName();

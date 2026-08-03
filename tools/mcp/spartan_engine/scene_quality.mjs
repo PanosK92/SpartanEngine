@@ -397,7 +397,7 @@ export function scene_quality_prompt_lines(prompt, intent) {
     "Search the world asset library before building reusable objects. Match semantic aliases, tags, dimensions, style, and material constraints, then load the suitable current asset.",
     "Environment builds may make at most one focused improvement attempt per reused asset in a run. Preserve the current asset when that attempt does not pass verification.",
     "Reusable objects authored during a scene build default to game-ready environment props with moderate geometry, few parts and a small reused material set.",
-    "Do not store layouts or build instructions as resource files. Every persistent MCP-generated mesh, material, texture, prefab, editable source, thumbnail, and catalog record belongs under shared project/mcp_resources, never under a world-specific resource directory.",
+    "Do not store layouts or build instructions as resource files. Every persistent MCP-generated mesh, material, texture, prefab, editable source, thumbnail, and catalog record belongs under shared project/mcp/blockout, never under a world-specific resource directory.",
     "Complete layout and circulation before structure, complete structure before functional objects, and complete functional objects before decoration. Do not hide an incoherent layout under detail.",
     "As soon as the quality root exists or is resolved, call viewport_frame on its id with the perspective view so the editor camera follows the build location. Frame it again after major layout changes.",
     "The planner is environment-agnostic. Infer suitable roles and dimensions for the current request; never force car, room, city, or other domain-specific structure onto unrelated scenes.",

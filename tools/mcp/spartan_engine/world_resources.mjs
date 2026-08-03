@@ -1,6 +1,7 @@
 import path from "node:path";
 
-const shared_library_directory = "project/mcp_resources";
+// mcp ai blockout output, not the curated asset viewer library
+const shared_library_directory = "project/mcp/blockout";
 
 function safe_name(value)
 {
@@ -34,7 +35,7 @@ function file_name(value, fallback, extension)
 // where generated resources live
 //
 // this used to derive a directory per world and refuse to answer without one. the library is shared across
-// worlds now, every path built below goes to project/mcp_resources regardless of what is passed in, so
+// worlds now, every path built below goes to project/mcp/blockout regardless of what is passed in, so
 // demanding a saved world only blocked work that never needed one
 export function world_resource_directory()
 {

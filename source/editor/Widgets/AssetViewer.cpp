@@ -1509,7 +1509,7 @@ void AssetViewer::RefreshCatalog(bool force)
 
     const string world_file_path = World::GetFilePath();
     const string catalog_path =
-        World::GetGeneratedResourceDirectory() +
+        World::GetLibraryResourceDirectory() +
         "catalog.json";
     // the directories are part of the signature, files can land on disk without the
     // catalog ever being rewritten
@@ -2212,7 +2212,7 @@ void AssetViewer::CollectPrefabDependencies(const string& path)
 void AssetViewer::ScanRevisionCandidates(const bool force)
 {
     const string candidates_root =
-        World::GetGeneratedResourceDirectory() +
+        World::GetLibraryResourceDirectory() +
         "candidates";
     vector<string> manifests;
     vector<string> signature_files;
@@ -7143,7 +7143,7 @@ void AssetViewer::DrawDetails(float height)
             if (ImGuiSp::button("Capture"))
             {
                 const string path =
-                    World::GetGeneratedResourceDirectory() +
+                    World::GetLibraryResourceDirectory() +
                     "thumbnails/asset_" +
                     asset.id +
                     ".png";

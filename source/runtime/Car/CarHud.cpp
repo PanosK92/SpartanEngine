@@ -1033,6 +1033,12 @@ namespace spartan::car_hud
             }
             if (visualization_preset == static_cast<int>(CarVisualizationPreset::Skeleton))
             {
+                bool show_body = car_instance->GetSkeletonShowBody();
+                if (ImGui::Checkbox("Show car body", &show_body))
+                {
+                    car_instance->SetSkeletonShowBody(show_body);
+                }
+                hud_tooltip("skeleton overlay stays on, toggle the painted mesh under it");
                 ImGui::TextColored(imvec4_from_u32(text_dim), "blue frame driveline and wheels  purple collision hull and sweep misses  silver links and joints  orange suspension longitudinal force and shifting power unit  green steering contact load and effective tire radius  heat colored tire zones  red brakes torque and bump stops  pink lateral force  cyan aero and rolling resistance");
             }
 

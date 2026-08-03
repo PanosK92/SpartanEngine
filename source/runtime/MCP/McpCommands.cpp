@@ -319,7 +319,7 @@ namespace spartan
             if (!path_is_within(resolved, meshes_directory))
             {
                 error =
-                    "mesh path must be inside the shared project mcp_resources/meshes directory";
+                    "mesh path must be inside the shared project mcp/meshes directory";
                 return std::nullopt;
             }
 
@@ -378,7 +378,7 @@ namespace spartan
             if (!path_is_within(resolved, textures_directory))
             {
                 error =
-                    "texture path must be inside the shared project mcp_resources/textures directory";
+                    "texture path must be inside the shared project mcp/textures directory";
                 return std::nullopt;
             }
 
@@ -424,7 +424,7 @@ namespace spartan
             if (!path_is_within(resolved, directory))
             {
                 error =
-                    "resource path must be inside project/mcp_resources/" +
+                    "resource path must be inside project/mcp/blockout/" +
                     std::string(directory_name);
                 return std::nullopt;
             }
@@ -3362,7 +3362,7 @@ namespace spartan
             if (!is_screenshot_path_valid(path))
             {
                 return json_error(
-                    "screenshot path must be inside project/mcp_resources/thumbnails"
+                    "screenshot path must be inside project/mcp/blockout/thumbnails"
                 );
             }
             std::string extension = std::filesystem::path(path).extension().generic_string();
@@ -3814,8 +3814,10 @@ namespace spartan
                 world_path.empty()
                 ? std::string()
                 : World::GetResourceDirectory(world_path);
-            const std::string mcp_resources =
+            const std::string mcp_blockout =
                 World::GetGeneratedResourceDirectory();
+            const std::string mcp_library =
+                World::GetLibraryResourceDirectory();
             std::string json = "{\"ok\":true";
             json += ",\"world_saved\":" +
                 std::string(world_path.empty() ? "false" : "true");
@@ -3823,23 +3825,46 @@ namespace spartan
                 json_string(world_path);
             json += ",\"resource_directory\":" +
                 json_string(resource_directory);
-            json += ",\"mcp_resources\":{";
+            json += ",\"mcp\":{";
+            json += "\"blockout\":{";
             json += "\"root\":" +
-                json_string(mcp_resources);
+                json_string(mcp_blockout);
             json += ",\"meshes\":" +
-                json_string(mcp_resources + "meshes/");
+                json_string(mcp_blockout + "meshes/");
             json += ",\"materials\":" +
-                json_string(mcp_resources + "materials/");
+                json_string(mcp_blockout + "materials/");
             json += ",\"textures\":" +
-                json_string(mcp_resources + "textures/");
+                json_string(mcp_blockout + "textures/");
             json += ",\"prefabs\":" +
-                json_string(mcp_resources + "prefabs/");
+                json_string(mcp_blockout + "prefabs/");
             json += ",\"sources\":" +
-                json_string(mcp_resources + "sources/");
+                json_string(mcp_blockout + "sources/");
             json += ",\"thumbnails\":" +
-                json_string(mcp_resources + "thumbnails/");
+                json_string(mcp_blockout + "thumbnails/");
             json += ",\"catalog\":" +
-                json_string(mcp_resources + "catalog.json");
+                json_string(mcp_blockout + "catalog.json");
+            json += "}";
+            json += ",\"library\":{";
+            json += "\"root\":" +
+                json_string(mcp_library);
+            json += ",\"meshes\":" +
+                json_string(mcp_library + "meshes/");
+            json += ",\"materials\":" +
+                json_string(mcp_library + "materials/");
+            json += ",\"textures\":" +
+                json_string(mcp_library + "textures/");
+            json += ",\"prefabs\":" +
+                json_string(mcp_library + "prefabs/");
+            json += ",\"sources\":" +
+                json_string(mcp_library + "sources/");
+            json += ",\"thumbnails\":" +
+                json_string(mcp_library + "thumbnails/");
+            json += ",\"catalog\":" +
+                json_string(mcp_library + "catalog.json");
+            json += "}";
+            // legacy root alias points at mcp blockout output
+            json += ",\"root\":" +
+                json_string(mcp_blockout);
             json += "}}";
             return json;
         }

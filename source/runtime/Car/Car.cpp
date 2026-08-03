@@ -949,13 +949,8 @@ namespace spartan
         return VehicleSimMode::Full;
     }
 
-    void Car::SetVisualizationPreset(CarVisualizationPreset preset)
+    void Car::ApplySkeletonBodyVisibility()
     {
-        if (preset == m_visualization_preset)
-        {
-            return;
-        }
-
         for (const BodyRenderState& state : m_body_render_states)
         {
             if (state.entity)
@@ -965,28 +960,74 @@ namespace spartan
         }
         m_body_render_states.clear();
 
-        m_visualization_preset = preset;
-        if (preset != CarVisualizationPreset::Skeleton || !m_vehicle_entity)
+        if (
+            m_visualization_preset != CarVisualizationPreset::Skeleton ||
+            m_skeleton_show_body ||
+            !m_vehicle_entity
+        )
         {
             return;
         }
 
-        std::vector<Entity*> render_entities;
-        render_entities.push_back(m_vehicle_entity);
-        m_vehicle_entity->GetDescendants(&render_entities);
-
-        for (Entity* entity : render_entities)
+        // deactivate roots, GetActive walks parents so every painted mesh under them is skipped
+        auto hide_entity = [this](Entity* entity)
         {
-            if (entity && entity->GetComponent<Render>())
+            if (!entity)
             {
-                m_body_render_states.push_back({ entity, entity->IsActive() });
+                return;
+            }
+
+            for (const BodyRenderState& state : m_body_render_states)
+            {
+                if (state.entity == entity)
+                {
+                    entity->SetActive(false);
+                    return;
+                }
+            }
+
+            m_body_render_states.push_back({ entity, entity->IsActive() });
+            entity->SetActive(false);
+        };
+
+        hide_entity(m_body_entity);
+
+        if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                hide_entity(
+                    physics->GetWheelEntity(static_cast<WheelIndex>(i))
+                );
             }
         }
 
-        for (const BodyRenderState& state : m_body_render_states)
+        // any other render meshes attached to the vehicle root
+        std::vector<Entity*> descendants;
+        m_vehicle_entity->GetDescendants(&descendants);
+        for (Entity* entity : descendants)
         {
-            state.entity->SetActive(false);
+            if (
+                entity &&
+                entity->IsActive() &&
+                entity->GetComponent<Render>()
+            )
+            {
+                hide_entity(entity);
+            }
         }
+    }
+
+    void Car::SetVisualizationPreset(CarVisualizationPreset preset)
+    {
+        m_visualization_preset = preset;
+        ApplySkeletonBodyVisibility();
+    }
+
+    void Car::SetSkeletonShowBody(bool show)
+    {
+        m_skeleton_show_body = show;
+        ApplySkeletonBodyVisibility();
     }
 
     void Car::LoadDefinition(const car::car_definition* definition)
@@ -1079,6 +1120,25 @@ namespace spartan
         if (m_visualization_preset != CarVisualizationPreset::Skeleton || !m_vehicle_entity)
         {
             return;
+        }
+
+        // something else can re-enable the body after the preset change, keep it down every frame
+        if (!m_skeleton_show_body)
+        {
+            if (m_body_render_states.empty())
+            {
+                ApplySkeletonBodyVisibility();
+            }
+            else
+            {
+                for (const BodyRenderState& state : m_body_render_states)
+                {
+                    if (state.entity && state.entity->IsActive())
+                    {
+                        state.entity->SetActive(false);
+                    }
+                }
+            }
         }
 
         Physics* physics = m_vehicle_entity->GetComponent<Physics>();
@@ -2203,8 +2263,14 @@ namespace spartan
             }
         }
 
-        // show window when outside
-        if (m_window_entity)
+        // show window when outside, do not fight skeleton body hiding
+        if (
+            m_window_entity &&
+            (
+                m_visualization_preset != CarVisualizationPreset::Skeleton ||
+                m_skeleton_show_body
+            )
+        )
         {
             m_window_entity->SetActive(true);
         }

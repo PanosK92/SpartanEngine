@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "pch.h"
-#include <thread>
 #include "Pedestrians.h"
 #include "Animator.h"
 #include "Camera.h"
@@ -116,15 +115,9 @@ namespace spartan
             return;
         }
 
-        const shared_ptr<PreloadState> state = m_preload_state;
-        state->cancelled.store(true, memory_order_release);
+        // never spin wait on the main thread, the shared state keeps the worker safe until it finishes
+        m_preload_state->cancelled.store(true, memory_order_release);
         m_preload_state.reset();
-
-        // wait so shutdown cannot clear the resource cache under an in-flight mesh load
-        while (!state->completed.load(memory_order_acquire))
-        {
-            this_thread::yield();
-        }
     }
 
     void Pedestrians::Stop()
@@ -139,6 +132,21 @@ namespace spartan
             }
             if (walker.entity)
             {
+                // drop raw mesh pointers before releasing the shared instance
+                vector<Entity*> nodes;
+                nodes.push_back(walker.entity);
+                walker.entity->GetDescendants(&nodes);
+                for (Entity* node : nodes)
+                {
+                    if (Render* render = node ? node->GetComponent<Render>() : nullptr)
+                    {
+                        if (render->GetMesh() == walker.mesh.get())
+                        {
+                            render->ClearMesh();
+                        }
+                    }
+                }
+
                 // deferred, world is still iterating Entity::Stop on the live entity list
                 World::RemoveEntity(walker.entity);
             }
@@ -344,8 +352,8 @@ namespace spartan
             SP_LOG_INFO("Pedestrians physics ready, spawning %u walkers", m_count);
         }
 
-        // small budget so play stays interactive while the crowd fills in
-        constexpr uint32_t max_spawns_per_tick = 3;
+        // one walker per tick, crowd fills in after play is already interactive
+        constexpr uint32_t max_spawns_per_tick = 1;
         uint32_t spawned = 0;
         while (m_next_spawn_index < m_count && spawned < max_spawns_per_tick)
         {

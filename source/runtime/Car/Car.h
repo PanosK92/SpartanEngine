@@ -132,6 +132,9 @@ namespace spartan
         bool GetShowTelemetry() const { return m_show_telemetry; }
         void SetVisualizationPreset(CarVisualizationPreset preset);
         CarVisualizationPreset GetVisualizationPreset() const { return m_visualization_preset; }
+        // when skeleton view is on, optionally keep the painted body drawn under the overlay
+        void SetSkeletonShowBody(bool show);
+        bool GetSkeletonShowBody() const { return m_skeleton_show_body; }
         void SetVehicleSimMode(VehicleSimMode mode);
         VehicleSimMode GetVehicleSimMode() const;
         void LoadDefinition(const car::car_definition* definition);
@@ -166,6 +169,7 @@ namespace spartan
         void TickEnterExit();
         void TickViewSwitch();
         void TickVisualization();
+        void ApplySkeletonBodyVisibility();
 
         // chase camera - gt7 style
         struct ChaseCameraState
@@ -213,6 +217,7 @@ namespace spartan
         bool              m_externally_controlled  = false;    // external control owns vehicle input and interaction
         CarView           m_current_view    = CarView::Chase;
         CarVisualizationPreset m_visualization_preset = CarVisualizationPreset::Full;
+        bool              m_skeleton_show_body = false;
         MaterialPaintPreset m_paint_preset  = MaterialPaintPreset::Metallic;
         Color             m_paint_color     = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
         bool              m_customize_materials = true;

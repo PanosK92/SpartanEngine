@@ -50,7 +50,7 @@ namespace editor_mcp
                 name += ".png";
             }
             return
-                World::GetGeneratedResourceDirectory() +
+                World::GetLibraryResourceDirectory() +
                 "thumbnails/" +
                 name;
         }

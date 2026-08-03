@@ -443,7 +443,9 @@ namespace spartan
     {
         // the library is registered whether or not the server comes up, the editor can start one later
         // and a world saved in between must still leave these files where they are
-        World::SetGeneratedResourceDirectory(std::string(ResourceCache::GetProjectDirectory()) + "mcp_resources/");
+        // blockout = mcp ai scene output, library = asset viewer curated assets
+        World::SetGeneratedResourceDirectory(std::string(ResourceCache::GetProjectDirectory()) + "mcp/blockout/");
+        World::SetLibraryResourceDirectory(std::string(ResourceCache::GetProjectDirectory()) + "mcp/library/");
 
         if (!has_argument(args, "--mcp-control"))
         {

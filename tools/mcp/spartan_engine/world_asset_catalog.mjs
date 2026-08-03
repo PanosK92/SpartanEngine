@@ -125,7 +125,8 @@ function local_path(project_root, engine_path)
 function library_paths(project_root)
 {
   const directory = "project";
-  const engine_root = `${directory}/mcp_resources`;
+  // mcp ai blockout output, curated asset viewer library is separate under mcp/library
+  const engine_root = `${directory}/mcp/blockout`;
   return {
     directory,
     engine_root,
@@ -2344,7 +2345,7 @@ export async function resolve_world_resource_directory(
 )
 {
   const provided_directory =
-    world?.mcp_resources?.root ??
+    world?.mcp?.root ??
     world?.mcp_resource_directory ??
     world?.resource_directory;
   if (provided_directory)
@@ -2354,7 +2355,7 @@ export async function resolve_world_resource_directory(
     ).replace(/\/+$/g, "");
   }
 
-  return "project/mcp_resources";
+  return "project/mcp/blockout";
 }
 
 export async function world_asset_catalog_entries(
@@ -3302,7 +3303,7 @@ async function world_material_publish_unlocked(
     const draft_path = normalize_engine_path(args.draft_path);
     if (!draft_path.startsWith(`${paths.engine_root}/sources/`))
     {
-      throw new Error("material draft must be under mcp_resources/sources");
+      throw new Error("material draft must be under mcp/blockout/sources");
     }
     const draft = JSON.parse(
       await fs.readFile(
@@ -3505,7 +3506,7 @@ export async function auto_register_world_asset(
   const normalized_resource_path = String(resource_path)
     .replaceAll("\\", "/");
   if (
-    /\/mcp_resources\/(?:meshes|materials|prefabs|textures)\/[^/]+\.[^/]+$/i.test(
+    /\/mcp\/library\/(?:meshes|materials|prefabs|textures)\/[^/]+\.[^/]+$/i.test(
       normalized_resource_path,
     )
   )

@@ -1326,9 +1326,11 @@ namespace spartan
         }
         else
         {
-            ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
             SP_LOG_ERROR("%s", importer.GetErrorString());
         }
+
+        // always clear importer progress so a missed JobDone cannot wedge IsLoading forever
+        ProgressTracker::GetProgress(ProgressType::ModelImporter).Complete();
 
         importer.FreeScene();
     }

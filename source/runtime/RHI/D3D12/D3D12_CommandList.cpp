@@ -3891,7 +3891,12 @@ namespace spartan
         cmd_list->Submit(nullptr, true);
 
         const uint32_t qi = static_cast<uint32_t>(cmd_list->GetQueue()->GetType());
-        immediate_execution::is_executing[qi] = false;
+
+        // clear under the lock, releasing without the mutex races the waiter in Begin and can lose the wakeup
+        {
+            lock_guard<mutex> lock(immediate_execution::mutexes[qi]);
+            immediate_execution::is_executing[qi] = false;
+        }
         immediate_execution::condition_vars[qi].notify_one();
     }
 

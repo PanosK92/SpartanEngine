@@ -80,9 +80,9 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - spline_junction snaps nearest endpoints only, not mid-spline points. For a mid-route T, split the arterial into two legs that both end at the junction, then join those ends with the spur.
 - `spline_reroute` preserves and redistributes its own furniture while excluding descendants of foreign spline roads from reclaim.
 - `detail_pattern_create` with `pattern: slats` treats `size` as each slat mesh size, not the total array span; use a narrow per slat size and control total coverage with `count * spacing`, otherwise scene bounds can expand dramatically.
-- Visual-review and screenshot paths are normalized to a safe filename under shared `project/mcp_resources/thumbnails`.
+- Visual-review and screenshot paths are normalized to a safe filename under shared `project/mcp/blockout/thumbnails`.
 - Native district and city blockouts create static collision and coordinated surface, structure, and accent materials for every render component.
-- Every persistent MCP-generated resource belongs under shared `project/mcp_resources`: meshes, materials, textures, prefabs, sources, thumbnails, and catalog metadata. Never write MCP output into `<world>_resources`. Text layers rasterize with fonts from `data/fonts` (Calibri), so labels are latin only.
+- Every persistent MCP-generated blockout resource belongs under shared `project/mcp/blockout`: meshes, materials, textures, prefabs, sources, thumbnails, and catalog metadata. Never write MCP output into `<world>_resources`. The curated Asset Viewer library is `project/mcp/library` and stays empty until assets are promoted there. Text layers rasterize with fonts from `data/fonts` (Calibri), so labels are latin only.
 
 ## Verified Patterns
 - A parent entity plus a single batch or Lua script is usually better than many individual entity tool calls.

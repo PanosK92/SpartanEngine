@@ -3445,6 +3445,11 @@ namespace spartan
         std::unordered_set<Mesh*> meshes;
         for (Entity* entity : render_entities())
         {
+            if (!entity)
+            {
+                continue;
+            }
+
             if (Render* render = entity->GetComponent<Render>())
             {
                 if (Mesh* mesh = render->GetMesh())
@@ -3455,7 +3460,10 @@ namespace spartan
         }
         for (Mesh* mesh : meshes)
         {
-            mesh->InvalidateAllBlas();
+            if (mesh)
+            {
+                mesh->InvalidateAllBlas();
+            }
         }
 
         SP_LOG_INFO("Acceleration structures destroyed for world change");

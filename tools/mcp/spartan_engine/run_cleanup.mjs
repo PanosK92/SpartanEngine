@@ -130,7 +130,7 @@ function relative_resource_path(root, value)
       : "";
   }
   const normalized = normalized_path(raw);
-  const marker = "mcp_resources/";
+  const marker = "mcp/blockout/";
   const marker_index = normalized
     .toLowerCase()
     .indexOf(marker);
@@ -214,7 +214,7 @@ function references_from_text(text)
     references.add(match[1]);
   }
   const resource_pattern = new RegExp(
-    "(?:project/)?mcp_resources/" +
+    "(?:project/)?mcp/blockout/" +
       "[a-z0-9_./-]+\\." +
       "(?:prefab|mesh|material|xml|" +
       "png|jpg|jpeg|dds|tga)",
@@ -315,7 +315,7 @@ async function reachable_resources(
     const raw = normalized_path(value);
     const is_anchored =
       path.isAbsolute(String(value ?? "")) ||
-      raw.toLowerCase().includes("mcp_resources/") ||
+      raw.toLowerCase().includes("mcp/blockout/") ||
       raw.toLowerCase().startsWith("project/");
     if (!is_anchored && referring_path)
     {

@@ -46,8 +46,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "Components/Physics.h"
 #include "Components/Traffic.h"
+#include "Components/Pedestrians.h"
+#include "Components/Script.h"
+#include "Components/CarReset.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Input/Input.h"
+#include "../Core/Timer.h"
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -78,9 +83,10 @@ namespace spartan
         string world_description;
         vector<string> last_resource_cleanup;
         vector<string> last_resource_cleanup_failures;
-        // a tool that authors resources into the project registers its directory here, empty means
-        // nothing outside the world owns any resource
+        // mcp ai blockout output (project/mcp/blockout), empty means none registered
         string generated_resource_directory;
+        // asset viewer curated library (project/mcp/library)
+        string library_resource_directory;
         vector<string> world_console_variables; // cvar names overridden by this world (preserved across save/load)
         mutex entity_access_mutex;
         // entities created by workers but not yet drained into the live entities vector, the main thread drains this every tick
@@ -170,6 +176,33 @@ namespace spartan
 
         // ids of entities created while playing, they are removed when play stops so spawned objects never leak into the world
         set<uint64_t> play_mode_spawned_ids;
+
+        // play boot spreads Entity::Start over frames so thousands of entities do not freeze the first tick
+        enum class play_boot_phase : uint8_t
+        {
+            idle,
+            starting,
+            ready
+        };
+        play_boot_phase play_boot = play_boot_phase::idle;
+        vector<Entity*> play_start_queue;
+        size_t play_start_cursor = 0;
+        constexpr double play_start_budget_ms = 4.0;
+
+        bool entity_has_play_priority(Entity* entity)
+        {
+            if (!entity)
+            {
+                return false;
+            }
+            return entity->GetComponent<Traffic>()
+                || entity->GetComponent<Pedestrians>()
+                || entity->GetComponent<CarReset>()
+                || entity->GetComponent<Physics>()
+                || entity->GetComponent<AudioSource>()
+                || entity->GetComponent<Script>()
+                || entity->GetComponent<Ragdoll>();
+        }
 
         // entity state tracking - things that change the nature of the entity for rendering
         enum class EntityChange : uint8_t
@@ -1265,6 +1298,9 @@ namespace spartan
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
         play_mode_spawned_ids.clear();
         play_mode_snapshot.clear();
+        play_boot = play_boot_phase::idle;
+        play_start_queue.clear();
+        play_start_cursor = 0;
         was_in_editor_mode = true;
         camera = nullptr;
         light  = nullptr;
@@ -1283,7 +1319,8 @@ namespace spartan
 
     void World::Tick()
     {
-        if (ProgressTracker::IsLoading())
+        // only world file loads park the tick, model importer progress from warm preloads must not freeze play
+        if (world_io_state.load(memory_order_acquire) == WorldIoState::Loading)
         {
             SP_PROFILE_CPU();
             was_loading = true;
@@ -1353,36 +1390,36 @@ namespace spartan
         const bool stopped = !Engine::IsFlagSet(EngineMode::Playing) && !was_in_editor_mode;
         was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Playing);
 
-        // start
+        // start, transform snapshot and Entity::Start are both time budgeted across frames
         if (started)
         {
-            // snapshot all entity transforms before simulation begins
             play_mode_snapshot.clear();
-            for (Entity* entity : entities)
-            {
-                if (!entity->IsTransient())
-                {
-                    EntitySnapshot snapshot;
-                    snapshot.position = entity->GetPositionLocal();
-                    snapshot.rotation = entity->GetRotationLocal();
-                    snapshot.scale    = entity->GetScaleLocal();
-                    play_mode_snapshot[entity->GetObjectId()] = snapshot;
-                }
-            }
+            play_mode_snapshot.reserve(entities.size());
             play_mode_time_of_day = world_time::time_of_day;
-
-            // start a fresh record of entities spawned during this play session
             play_mode_spawned_ids.clear();
 
+            play_start_queue.clear();
+            play_start_queue.reserve(entities.size());
             for (Entity* entity : entities)
             {
-                entity->Start();
+                play_start_queue.push_back(entity);
             }
+            // traffic pedestrians cars scripts first so their async work starts immediately
+            stable_partition(
+                play_start_queue.begin(),
+                play_start_queue.end(),
+                [](Entity* entity) { return entity_has_play_priority(entity); });
+            play_start_cursor = 0;
+            play_boot = play_boot_phase::starting;
         }
 
         // stop
         if (stopped)
         {
+            play_boot = play_boot_phase::idle;
+            play_start_queue.clear();
+            play_start_cursor = 0;
+
             // copy the list, Stop can queue removals and must not walk a mutating vector
             const vector<Entity*> entities_to_stop = entities;
             for (Entity* entity : entities_to_stop)
@@ -1441,86 +1478,125 @@ namespace spartan
 
         ProcessPendingRemovals();
 
-
-        for (Entity* entity : entities)
+        // drain a slice of snapshot + Entity::Start each frame until the scene is ready
+        if (play_boot == play_boot_phase::starting)
         {
-            if (entity->GetActive())
+            const double budget_start = Timer::GetTimeMs();
+            while (play_start_cursor < play_start_queue.size())
             {
-                entity->PreTick();
-            }
-        }
-
-        // tick
-        for (Entity* entity : entities)
-        {
-            if (entity->GetActive())
-            {
-                entity->Tick();
-            }
-        }
-
-        // check for entity changes
-        for (Entity* entity : entities)
-        {
-            if (entity->GetActive())
-            {
-                uint64_t id = entity->GetObjectId();
-                auto it = entity_states.find(id);
-                if (it != entity_states.end())
+                Entity* entity = play_start_queue[play_start_cursor++];
+                if (entity)
                 {
-                    uint32_t& state = it->second;
-                    uint32_t new_state = state;
-
-                    // active state
-                    bool was_active = (state & static_cast<uint32_t>(EntityChange::Active)) != 0;
-                    if (entity->GetActive() != was_active)
+                    if (!entity->IsTransient())
                     {
-                        new_state |= static_cast<uint32_t>(EntityChange::Active);
-                        resolve = true;
+                        EntitySnapshot snapshot;
+                        snapshot.position = entity->GetPositionLocal();
+                        snapshot.rotation = entity->GetRotationLocal();
+                        snapshot.scale    = entity->GetScaleLocal();
+                        play_mode_snapshot[entity->GetObjectId()] = snapshot;
                     }
+                    entity->Start();
+                }
 
-                    // component count
-                    uint8_t prev_component_count = (state >> 8) & 0xFF;
-                    uint8_t curr_component_count = static_cast<uint8_t>(min(entity->GetComponentCount(), 255u));
-                    if (curr_component_count != prev_component_count)
-                    {
-                        new_state = (new_state & ~0xFF00) | (curr_component_count << 8);
-                        new_state |= static_cast<uint32_t>(EntityChange::Components);
-                        resolve = true;
-                    }
+                if ((Timer::GetTimeMs() - budget_start) >= play_start_budget_ms)
+                {
+                    break;
+                }
+            }
 
-                    // cull mode
-                    uint8_t prev_cull = (state >> 16) & 0xFF;
-                    uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
-                    if (Render* render = entity->GetComponent<Render>())
+            if (play_start_cursor >= play_start_queue.size())
+            {
+                play_start_queue.clear();
+                play_start_cursor = 0;
+                play_boot = play_boot_phase::ready;
+                SP_LOG_INFO(
+                    "play boot complete, %zu entities started",
+                    entities.size());
+            }
+        }
+
+        // during boot keep rendering, but skip sim ticks and the per entity change scan
+        if (play_boot != play_boot_phase::starting)
+        {
+            for (Entity* entity : entities)
+            {
+                if (entity->GetActive())
+                {
+                    entity->PreTick();
+                }
+            }
+
+            for (Entity* entity : entities)
+            {
+                if (entity->GetActive())
+                {
+                    entity->Tick();
+                }
+            }
+
+            // check for entity changes
+            for (Entity* entity : entities)
+            {
+                if (entity->GetActive())
+                {
+                    uint64_t id = entity->GetObjectId();
+                    auto it = entity_states.find(id);
+                    if (it != entity_states.end())
                     {
-                        if (Material* material = render->GetMaterial())
+                        uint32_t& state = it->second;
+                        uint32_t new_state = state;
+
+                        // active state
+                        bool was_active = (state & static_cast<uint32_t>(EntityChange::Active)) != 0;
+                        if (entity->GetActive() != was_active)
                         {
-                            curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
+                            new_state |= static_cast<uint32_t>(EntityChange::Active);
+                            resolve = true;
                         }
-                    }
-                    if (curr_cull != prev_cull)
-                    {
-                        new_state = (new_state & ~0xFF0000) | (curr_cull << 16);
-                        new_state |= static_cast<uint32_t>(EntityChange::CullMode);
-                        resolve = true;
-                    }
 
-                    // light type
-                    uint8_t prev_light_type = (state >> 24) & 0xFF;
-                    uint8_t curr_light_type = static_cast<uint8_t>(LightType::Max);
-                    if (Light* light_comp = entity->GetComponent<Light>())
-                    {
-                        curr_light_type = static_cast<uint8_t>(light_comp->GetLightType());
-                    }
-                    if (curr_light_type != prev_light_type)
-                    {
-                        new_state = (new_state & ~0xFF000000) | (curr_light_type << 24);
-                        new_state |= static_cast<uint32_t>(EntityChange::LightType);
-                        resolve = true;
-                    }
+                        // component count
+                        uint8_t prev_component_count = (state >> 8) & 0xFF;
+                        uint8_t curr_component_count = static_cast<uint8_t>(min(entity->GetComponentCount(), 255u));
+                        if (curr_component_count != prev_component_count)
+                        {
+                            new_state = (new_state & ~0xFF00) | (curr_component_count << 8);
+                            new_state |= static_cast<uint32_t>(EntityChange::Components);
+                            resolve = true;
+                        }
 
-                    state = new_state;
+                        // cull mode
+                        uint8_t prev_cull = (state >> 16) & 0xFF;
+                        uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
+                        if (Render* render = entity->GetComponent<Render>())
+                        {
+                            if (Material* material = render->GetMaterial())
+                            {
+                                curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
+                            }
+                        }
+                        if (curr_cull != prev_cull)
+                        {
+                            new_state = (new_state & ~0xFF0000) | (curr_cull << 16);
+                            new_state |= static_cast<uint32_t>(EntityChange::CullMode);
+                            resolve = true;
+                        }
+
+                        // light type
+                        uint8_t prev_light_type = (state >> 24) & 0xFF;
+                        uint8_t curr_light_type = static_cast<uint8_t>(LightType::Max);
+                        if (Light* light_comp = entity->GetComponent<Light>())
+                        {
+                            curr_light_type = static_cast<uint8_t>(light_comp->GetLightType());
+                        }
+                        if (curr_light_type != prev_light_type)
+                        {
+                            new_state = (new_state & ~0xFF000000) | (curr_light_type << 24);
+                            new_state |= static_cast<uint32_t>(EntityChange::LightType);
+                            resolve = true;
+                        }
+
+                        state = new_state;
+                    }
                 }
             }
         }
@@ -1610,6 +1686,31 @@ namespace spartan
         return generated_resource_directory;
     }
 
+    void World::SetLibraryResourceDirectory(
+        const string& directory
+    )
+    {
+        library_resource_directory = directory;
+        replace(
+            library_resource_directory.begin(),
+            library_resource_directory.end(),
+            '\\',
+            '/'
+        );
+        if (
+            !library_resource_directory.empty() &&
+            library_resource_directory.back() != '/'
+        )
+        {
+            library_resource_directory += '/';
+        }
+    }
+
+    const string& World::GetLibraryResourceDirectory()
+    {
+        return library_resource_directory;
+    }
+
     const vector<string>& World::GetLastResourceCleanup()
     {
         return last_resource_cleanup;
@@ -1684,10 +1785,33 @@ namespace spartan
         {
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
-            // resources authored by a tool live outside the world, they are left alone rather than
-            // pulled in next to the world file or pruned as strays
+            // mcp raw blockout and curated library live outside the world, leave them alone
             const string generated_directory =
                 World::GetGeneratedResourceDirectory();
+            const string library_directory =
+                World::GetLibraryResourceDirectory();
+            auto is_mcp_owned = [&](const string& path) -> bool
+            {
+                if (path.empty())
+                {
+                    return false;
+                }
+                if (
+                    !generated_directory.empty() &&
+                    path_is_within(path, generated_directory)
+                )
+                {
+                    return true;
+                }
+                if (
+                    !library_directory.empty() &&
+                    path_is_within(path, library_directory)
+                )
+                {
+                    return true;
+                }
+                return false;
+            };
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResourcesSnapshot();
             set<IResource*> referenced_resources;
@@ -1836,14 +1960,7 @@ namespace spartan
 
                 const string current_path =
                     resource->GetResourceFilePath();
-                if (
-                    !current_path.empty() &&
-                    !generated_directory.empty() &&
-                    path_is_within(
-                        current_path,
-                        generated_directory
-                    )
-                )
+                if (is_mcp_owned(current_path))
                 {
                     continue;
                 }
@@ -1970,13 +2087,7 @@ namespace spartan
             last_resource_cleanup_failures.clear();
             for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
             {
-                if (
-                    !generated_directory.empty() &&
-                    path_is_within(
-                        existing_file,
-                        generated_directory
-                    )
-                )
+                if (is_mcp_owned(existing_file))
                 {
                     continue;
                 }
@@ -2747,6 +2858,11 @@ namespace spartan
     const vector<Entity*>& World::GetEntitiesWithRender()
     {
         return entities_with_render;
+    }
+
+    bool World::IsPlayBooting()
+    {
+        return play_boot == play_boot_phase::starting;
     }
 
     const string& World::GetName()

@@ -133,10 +133,11 @@ namespace spartan
         // so shut it down first (it waits) to avoid crashes due to race conditions
         ThreadPool::Shutdown();
 
-        ResourceCache::Shutdown();
+        // world must tear down first, DestroyAccelerationStructures and entity
+        // destructors still need live meshes and materials from the resource cache
+        World::Shutdown();
         ResourceCache::UnloadDefaultResources();
 
-        World::Shutdown();
         PhysicsWorld::Shutdown();
         Xr::Shutdown();
         Renderer::Shutdown();
