@@ -563,6 +563,12 @@ namespace spartan
                 dynamic->setLinearVelocity(PxVec3(0, 0, 0));
                 dynamic->setAngularVelocity(PxVec3(0, 0, 0));
             }
+
+            // still tick so play stop can restore skeleton body visibility and m_was_playing
+            if (m_car)
+            {
+                m_car->Tick();
+            }
         }
     }
 
@@ -1534,8 +1540,9 @@ namespace spartan
         if (mode == VehicleSimMode::Cheap)
         {
             CaptureCheapWheelRestPoses();
-            m_vehicle_simulation->set_mechanism_simulation_enabled(false);
+            // clear while mechanisms are still simulated, then disable them
             m_vehicle_simulation->clear_force_accumulators();
+            m_vehicle_simulation->set_mechanism_simulation_enabled(false);
             body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
             m_cheap_wheel_roll = 0.0f;
             m_cheap_steer_angle = 0.0f;

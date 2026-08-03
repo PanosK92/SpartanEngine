@@ -949,20 +949,48 @@ namespace spartan
         return VehicleSimMode::Full;
     }
 
-    void Car::ApplySkeletonBodyVisibility()
+    static void mark_entity_tree_transient(Entity* entity)
     {
-        for (const BodyRenderState& state : m_body_render_states)
+        if (!entity)
         {
-            if (state.entity)
+            return;
+        }
+
+        entity->SetTransient(true);
+        std::vector<Entity*> descendants;
+        entity->GetDescendants(&descendants);
+        for (Entity* descendant : descendants)
+        {
+            if (descendant)
             {
-                state.entity->SetActive(state.active);
+                descendant->SetTransient(true);
             }
         }
-        m_body_render_states.clear();
+    }
 
+    void Car::ClearBodyRenderStates(bool restore)
+    {
+        if (restore)
+        {
+            for (const BodyRenderState& state : m_body_render_states)
+            {
+                if (Entity* entity = World::GetEntityById(state.entity_id))
+                {
+                    entity->SetActive(state.active);
+                }
+            }
+        }
+
+        m_body_render_states.clear();
+    }
+
+    void Car::ApplySkeletonBodyVisibility()
+    {
+        ClearBodyRenderStates(true);
+
+        // skeleton mode always hides the painted 3d mesh, collision hull is a separate debug toggle
         if (
             m_visualization_preset != CarVisualizationPreset::Skeleton ||
-            m_skeleton_show_body ||
             !m_vehicle_entity
         )
         {
@@ -977,16 +1005,17 @@ namespace spartan
                 return;
             }
 
+            const uint64_t id = entity->GetObjectId();
             for (const BodyRenderState& state : m_body_render_states)
             {
-                if (state.entity == entity)
+                if (state.entity_id == id)
                 {
                     entity->SetActive(false);
                     return;
                 }
             }
 
-            m_body_render_states.push_back({ entity, entity->IsActive() });
+            m_body_render_states.push_back({ id, entity->IsActive() });
             entity->SetActive(false);
         };
 
@@ -1024,10 +1053,23 @@ namespace spartan
         ApplySkeletonBodyVisibility();
     }
 
-    void Car::SetSkeletonShowBody(bool show)
+    void Car::PrepareForPlayStop()
     {
-        m_skeleton_show_body = show;
-        ApplySkeletonBodyVisibility();
+        if (m_visualization_preset == CarVisualizationPreset::Skeleton)
+        {
+            SetVisualizationPreset(CarVisualizationPreset::Full);
+        }
+        else
+        {
+            ClearBodyRenderStates(false);
+        }
+
+        m_was_playing = false;
+    }
+
+    void Car::SetSkeletonShowCollision(bool show)
+    {
+        m_skeleton_show_collision = show;
     }
 
     void Car::LoadDefinition(const car::car_definition* definition)
@@ -1048,6 +1090,9 @@ namespace spartan
         {
             SetVisualizationPreset(CarVisualizationPreset::Full);
         }
+
+        // drop cached body pointers before destroying the mesh, restore would uaf
+        ClearBodyRenderStates(false);
 
         const math::Vector3 current_position = m_vehicle_entity->GetPosition();
         const math::Quaternion current_rotation = m_vehicle_entity->GetRotation();
@@ -1083,6 +1128,8 @@ namespace spartan
         if (m_body_entity)
         {
             m_body_entity->SetParent(m_vehicle_entity);
+            // play stop strips non transient play spawned entities, keep the body with the car
+            mark_entity_tree_transient(m_body_entity);
             if (definition->body_model.empty())
             {
                 m_body_entity->SetPositionLocal(math::Vector3::Zero);
@@ -1117,27 +1164,42 @@ namespace spartan
 
     void Car::TickVisualization()
     {
-        if (m_visualization_preset != CarVisualizationPreset::Skeleton || !m_vehicle_entity)
+        if (
+            m_visualization_preset != CarVisualizationPreset::Skeleton ||
+            !m_vehicle_entity
+        )
         {
             return;
         }
 
-        // something else can re-enable the body after the preset change, keep it down every frame
-        if (!m_skeleton_show_body)
+        // keep the painted mesh off every frame, something else can re-enable it after preset change
+        if (m_body_render_states.empty())
         {
-            if (m_body_render_states.empty())
+            ApplySkeletonBodyVisibility();
+        }
+        else
+        {
+            bool has_dead = false;
+            for (const BodyRenderState& state : m_body_render_states)
             {
-                ApplySkeletonBodyVisibility();
-            }
-            else
-            {
-                for (const BodyRenderState& state : m_body_render_states)
+                Entity* entity = World::GetEntityById(state.entity_id);
+                if (!entity)
                 {
-                    if (state.entity && state.entity->IsActive())
-                    {
-                        state.entity->SetActive(false);
-                    }
+                    has_dead = true;
+                    continue;
                 }
+
+                if (entity->IsActive())
+                {
+                    entity->SetActive(false);
+                }
+            }
+
+            // play stop can delete play spawned body meshes while the car object survives
+            if (has_dead)
+            {
+                ClearBodyRenderStates(false);
+                ApplySkeletonBodyVisibility();
             }
         }
 
@@ -1176,7 +1238,10 @@ namespace spartan
 
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
         auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(from_px(value)); };
-        draw_skeleton_actor_shapes(body, skeleton_color_collision, to_render);
+        if (m_skeleton_show_collision)
+        {
+            draw_skeleton_actor_shapes(body, skeleton_color_collision, to_render);
+        }
 
         // cheap mode only draws chassis hull plus four wheels
         if (physics->GetVehicleSimMode() == VehicleSimMode::Cheap)
@@ -2263,13 +2328,10 @@ namespace spartan
             }
         }
 
-        // show window when outside, do not fight skeleton body hiding
+        // show window when outside, skeleton mode keeps all painted mesh hidden
         if (
             m_window_entity &&
-            (
-                m_visualization_preset != CarVisualizationPreset::Skeleton ||
-                m_skeleton_show_body
-            )
+            m_visualization_preset != CarVisualizationPreset::Skeleton
         )
         {
             m_window_entity->SetActive(true);

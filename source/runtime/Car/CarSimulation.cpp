@@ -137,7 +137,7 @@ namespace car
             {
                 set_body_queries_enabled(true);
             }
-        }
+    }
 
     void Simulation::set_mechanism_simulation_enabled(bool enabled)
     {
@@ -148,12 +148,12 @@ namespace car
                     multibody.actors[i]->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, !enabled);
                 }
             }
-        }
+    }
 
     bool Simulation::has_multibody() const
     {
             return multibody.initialized && multibody.actor_count > 0;
-        }
+    }
 
     bool Simulation::ensure_multibody(PxPhysics* physics, PxScene* scene)
     {
@@ -162,7 +162,7 @@ namespace car
                 return true;
             }
             return create_multibody(physics, scene, true);
-        }
+    }
 
 
     void Simulation::set_force_retention(bool enabled)
@@ -178,37 +178,38 @@ namespace car
                     multibody.actors[i]->setRigidBodyFlag(PxRigidBodyFlag::eRETAIN_ACCELERATIONS, enabled);
                 }
             }
-        }
+    }
 
 
     void Simulation::clear_force_accumulators()
     {
-            if (body)
+            // skip disabled or released actors, clearForce crashes once eDISABLE_SIMULATION is set
+            if (can_apply_force(body))
             {
                 body->clearForce();
                 body->clearTorque();
             }
             for (int i = 0; i < multibody.actor_count; i++)
             {
-                if (multibody.actors[i])
+                if (can_apply_force(multibody.actors[i]))
                 {
                     multibody.actors[i]->clearForce();
                     multibody.actors[i]->clearTorque();
                 }
             }
-        }
+    }
 
 
     bool Simulation::is_finite_vec(const PxVec3& v)
     {
             return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
-        }
+    }
 
 
     bool Simulation::can_apply_force(PxRigidDynamic* body)
     {
             return body && body->getScene() && !body->getActorFlags().isSet(PxActorFlag::eDISABLE_SIMULATION) && !body->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC);
-        }
+    }
 
 
     void Simulation::safe_add_force(PxRigidDynamic* body, const PxVec3& force, PxForceMode::Enum mode )
@@ -223,7 +224,7 @@ namespace car
                 return;
             }
             body->addForce(force, mode);
-        }
+    }
 
 
     void Simulation::safe_add_torque(PxRigidDynamic* body, const PxVec3& torque, PxForceMode::Enum mode )
@@ -238,7 +239,7 @@ namespace car
                 return;
             }
             body->addTorque(torque, mode);
-        }
+    }
 
 
     void Simulation::safe_add_force_at_pos(PxRigidDynamic* body, const PxVec3& force, const PxVec3& pos, PxForceMode::Enum mode )
@@ -258,13 +259,13 @@ namespace car
                 return;
             }
             PxRigidBodyExt::addForceAtPos(*body, force, pos, mode);
-        }
+    }
 
 
     shape_2d& Simulation::shape_data_ref()
     {
             return shape_data;
-        }
+    }
 
 
     bool Simulation::is_in_reverse()
@@ -287,7 +288,7 @@ namespace car
                 return true;
             }
             return false;
-        }
+    }
 
 
     bool Simulation::sanitize_vec(PxVec3& v, const PxVec3& fallback )
@@ -309,7 +310,7 @@ namespace car
                 fixed = true;
             }
             return fixed;
-        }
+    }
 
 
     bool Simulation::sanitize_wheel_state(int i)
@@ -345,7 +346,7 @@ namespace car
             fixed |= sanitize_float(w.motion_ratio);
             fixed |= sanitize_float(w.drive_torque);
             return fixed;
-        }
+    }
 
 
     bool Simulation::is_front(int i) const
@@ -367,7 +368,7 @@ namespace car
                 return is_front(i);
             }
             return true;
-        }
+    }
 
 
     float Simulation::lerp(float a, float b, float t)
@@ -392,7 +393,7 @@ namespace car
             {
                 abs_active[i] = false;
             }
-        }
+    }
 
 
     float Simulation::get_assisted_steering_target(float raw_input)
@@ -404,7 +405,7 @@ namespace car
             float speed_factor = PxClamp(speed_kmh / PxMax(spec.assists.steering_speed_reference, 1.0f), 0.0f, 1.0f);
             float steering_limit = 1.0f - spec.assists.steering_speed_reduction * speed_factor;
             return PxClamp(filtered_input, -steering_limit, steering_limit);
-        }
+    }
 
 
     void Simulation::update_assist_controller(bool traction_requested, bool braking_requested, float dt)
@@ -460,14 +461,14 @@ namespace car
                     assisted_actuators.brake_torque_scale[i] = abs_phase < 0.5f ? release_factor : 1.0f;
                 }
             }
-        }
+    }
 
 
     float Simulation::get_camber_grip_factor(float camber)
     {
             float dev = camber - tuning::camber_optimal;
             return PxClamp(1.0f - tuning::camber_grip_loss * dev * dev, 0.5f, 1.0f);
-        }
+    }
 
 
     float Simulation::get_weight_distribution_front()
@@ -477,7 +478,7 @@ namespace car
                 return 0.5f;
             }
             return PxClamp(0.5f + spec.center_of_mass_z / cfg.wheelbase, 0.0f, 1.0f);
-        }
+    }
 
 
     float Simulation::load_sensitive_grip(float load)
@@ -487,7 +488,7 @@ namespace car
                 return 0.0f;
             }
             return load * powf(load / PxMax(spec.load_reference, 1.0f), spec.load_sensitivity - 1.0f);
-        }
+    }
 
 
     float Simulation::get_tire_temp_grip_factor(float temperature)
@@ -499,7 +500,7 @@ namespace car
             float penalty = norm * norm * spec.tire_grip_temp_factor;
             // a preset factor above one would otherwise drive grip to zero or negative
             return PxClamp(1.0f - penalty, 0.1f, 1.0f);
-        }
+    }
 
 
     tire_condition_modifiers Simulation::get_tire_condition_modifiers(float surface_temperature, float core_temperature, float wear, float load)
@@ -521,7 +522,7 @@ namespace car
             modifiers.stiffness = PxClamp(temperature_stiffness * pressure_stiffness * wear_stiffness, 0.55f, 1.30f);
             modifiers.relaxation = PxClamp(powf(load_ratio, 0.12f) * (1.0f + wear_clamped * 0.20f) / modifiers.stiffness, 0.65f, 1.80f);
             return modifiers;
-        }
+    }
 
 
     float Simulation::get_surface_friction(surface_type surface)
@@ -535,7 +536,7 @@ namespace car
                 tuning::surface_friction_ice
             };
             return (surface >= 0 && surface < surface_count) ? friction[surface] : 1.0f;
-        }
+    }
 
 
     float Simulation::get_brake_efficiency(float temp)
@@ -554,7 +555,7 @@ namespace car
             }
             float t = (temp - opt) / (fade - opt);
             return PxClamp(1.0f - 0.4f * t, 0.5f, 1.0f);
-        }
+    }
 
 
     void Simulation::compute_aero_from_shape(const std::vector<PxVec3>& vertices)
@@ -673,7 +674,7 @@ namespace car
 
             // visualization geometry is derived after aero inference
             compute_shape_visualization(vertices, min_pt, max_pt);
-        }
+    }
 
 
     std::vector<std::pair<float, float>> Simulation::graham_scan_hull_2d(std::vector<std::pair<float, float>> points)
@@ -720,7 +721,7 @@ namespace car
                 hull.push_back(pt);
             }
             return hull;
-        }
+    }
 
 
     void Simulation::compute_shape_visualization(const std::vector<PxVec3>& vertices, const PxVec3& min_pt, const PxVec3& max_pt)
@@ -745,7 +746,7 @@ namespace car
             sd.front_profile = graham_scan_hull_2d(std::move(front_points));
 
             sd.valid = sd.side_profile.size() >= 3 && sd.front_profile.size() >= 3;
-        }
+    }
 
 
     void Simulation::apply_aero_and_resistance()
@@ -904,7 +905,7 @@ namespace car
             aero_debug.yaw_angle = yaw_angle;
             aero_debug.ground_effect_factor = ground_effect_factor;
             aero_debug.valid = true;
-        }
+    }
 
 
     PxU32 Simulation::multibody_collision_group()
@@ -912,7 +913,7 @@ namespace car
             // matching groups suppress contacts between parts of the same vehicle
             const PxU32 collision_group = static_cast<PxU32>(reinterpret_cast<uintptr_t>(body) >> 4);
             return collision_group != 0 ? collision_group : 1;
-        }
+    }
 
 
     actor_motion_state Simulation::capture_actor_motion(PxRigidDynamic* actor)
@@ -930,7 +931,7 @@ namespace car
             state.angular_velocity = chassis_pose.q.rotateInv(actor->getAngularVelocity() - chassis_angular_velocity);
             state.valid = true;
             return state;
-        }
+    }
 
 
     void Simulation::restore_actor_motion(PxRigidDynamic* actor, const actor_motion_state& state)
@@ -950,7 +951,7 @@ namespace car
             actor->setAngularVelocity(
                 chassis_angular_velocity + chassis_pose.q.rotate(state.angular_velocity));
             actor->wakeUp();
-        }
+    }
 
 
     multibody_motion_state Simulation::capture_multibody_motion()
@@ -976,7 +977,7 @@ namespace car
             state.rack = capture_actor_motion(multibody.rack);
             state.valid = true;
             return state;
-        }
+    }
 
 
     void Simulation::restore_multibody_motion(const multibody_motion_state& state)
@@ -999,13 +1000,13 @@ namespace car
                 }
             }
             restore_actor_motion(multibody.rack, state.rack);
-        }
+    }
 
 
     PxTransform Simulation::local_anchor(PxRigidActor* actor, const PxVec3& world_point)
     {
             return actor ? PxTransform(actor->getGlobalPose().transformInv(world_point)) : PxTransform(world_point);
-        }
+    }
 
 
     void Simulation::register_multibody_actor(PxRigidDynamic* actor)
@@ -1014,7 +1015,7 @@ namespace car
             {
                 multibody.actors[multibody.actor_count++] = actor;
             }
-        }
+    }
 
 
     void Simulation::register_multibody_joint(PxJoint* joint)
@@ -1023,7 +1024,7 @@ namespace car
             {
                 multibody.joints[multibody.joint_count++] = joint;
             }
-        }
+    }
 
 
     void Simulation::configure_mechanism_shape(PxShape* shape)
@@ -1037,7 +1038,7 @@ namespace car
             shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
             shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
             shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
-        }
+    }
 
 
     PxRigidDynamic* Simulation::create_mechanism_actor(const PxTransform& pose, const PxGeometry& geometry, float mass)
@@ -1064,7 +1065,7 @@ namespace car
             multibody.scene->addActor(*actor);
             register_multibody_actor(actor);
             return actor;
-        }
+    }
 
 
     PxRigidDynamic* Simulation::create_segment_actor(
@@ -1097,7 +1098,7 @@ namespace car
             actor->setAngularDamping(1.5f);
             actor->setLinearDamping(0.5f);
             return actor;
-        }
+    }
 
 
     PxSphericalJoint* Simulation::create_spherical_joint(PxRigidActor* actor_a, PxRigidActor* actor_b, const PxVec3& world_anchor)
@@ -1109,7 +1110,7 @@ namespace car
                 register_multibody_joint(joint);
             }
             return joint;
-        }
+    }
 
 
     PxJoint* Simulation::create_bushing_joint(PxRigidActor* actor_a, PxRigidActor* actor_b, const PxVec3& world_anchor, const PxVec3& load_direction)
@@ -1163,7 +1164,7 @@ namespace car
             joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
             register_multibody_joint(joint);
             return joint;
-        }
+    }
 
 
     PxRigidDynamic* Simulation::create_link(const PxVec3& world_start, const PxVec3& world_end, float mass, PxRigidDynamic* start_actor , PxJoint** out_anchor_joint , bool* out_anchor_is_bushing )
@@ -1207,7 +1208,7 @@ namespace car
                 }
             }
             return actor;
-        }
+    }
 
 
     bool Simulation::connect_link_to_upright(PxRigidDynamic* link, PxRigidDynamic* upright, const PxVec3& world_anchor)
@@ -1217,7 +1218,7 @@ namespace car
                 return false;
             }
             return create_spherical_joint(link, upright, world_anchor) != nullptr;
-        }
+    }
 
 
     bool Simulation::add_link_member(suspension_corner& corner, const PxVec3& world_start, const PxVec3& world_end, float mass, PxRigidDynamic* start_actor )
@@ -1246,7 +1247,7 @@ namespace car
             member.pivot_joint = anchor_joint;
             member.pivot_is_bushing = anchor_is_bushing;
             return true;
-        }
+    }
 
 
     bool Simulation::add_wishbone(suspension_corner& corner, const PxVec3& inner_front, const PxVec3& inner_rear, const PxVec3& outer, float mass)
@@ -1285,7 +1286,7 @@ namespace car
             rear_member.pivot_joint = rear_bush;
             rear_member.pivot_is_bushing = rear_bush->is<PxD6Joint>() != nullptr;
             return true;
-        }
+    }
 
 
     bool Simulation::add_macpherson_strut(suspension_corner& corner, const PxVec3& top, const PxVec3& bottom, float mass)
@@ -1329,7 +1330,7 @@ namespace car
             member.pivot_joint = anchor_joint;
             member.pivot_is_bushing = anchor_is_bushing;
             return true;
-        }
+    }
 
 
     bool Simulation::add_steering_stop(suspension_corner& corner, PxRigidDynamic* upright, const PxTransform& chassis_pose, const PxVec3& wheel_world, float angle_limit)
@@ -1363,13 +1364,13 @@ namespace car
             corner.steering_stop = stop;
             corner.steering_limit = PxMax(angle_limit, 0.0f);
             return true;
-        }
+    }
 
 
     PxVec3 Simulation::hardpoint_world(const PxTransform& chassis_pose, const PxVec3& local_point) const
     {
             return chassis_pose.transform(local_point);
-        }
+    }
 
 
     float Simulation::mechanism_actor_mass()
@@ -1406,7 +1407,7 @@ namespace car
             // gearbox and axle flanges carry driveline inertia, token mass for the actors
             mass += 4.0f;
             return mass;
-        }
+    }
 
 
     float Simulation::unsprung_mass()
@@ -1419,25 +1420,25 @@ namespace car
             mass += spec.halfshaft_mass * static_cast<float>(driven_wheels);
             mass += spec.coilover_mass * 0.45f * static_cast<float>(wheel_count);
             return mass;
-        }
+    }
 
 
     float Simulation::chassis_mass()
     {
             return PxMax(cfg.mass - mechanism_actor_mass(), 100.0f);
-        }
+    }
 
 
     float Simulation::sprung_mass()
     {
             return PxMax(cfg.mass - unsprung_mass(), 100.0f);
-        }
+    }
 
 
     bool Simulation::has_authored_inertia() const
     {
             return spec.inertia_xx > 0.0f && spec.inertia_yy > 0.0f && spec.inertia_zz > 0.0f;
-        }
+    }
 
 
     void Simulation::apply_chassis_mass_properties(float mass, const PxVec3& com_local)
@@ -1462,7 +1463,7 @@ namespace car
             {
                 PxRigidBodyExt::setMassAndUpdateInertia(*body, safe_mass, &safe_com);
             }
-        }
+    }
 
 
     void Simulation::update_assembled_center_of_mass()
@@ -1494,7 +1495,7 @@ namespace car
             PxVec3 chassis_center_world = (target_world * total_mass - mechanism_moment) / PxMax(body_mass, 1.0f);
             PxVec3 chassis_center_local = chassis_pose.transformInv(chassis_center_world);
             apply_chassis_mass_properties(body_mass, chassis_center_local);
-        }
+    }
 
 
     bool Simulation::create_suspension_corner(int wheel_index, const suspension_geometry& geometry)
@@ -1651,7 +1652,7 @@ namespace car
             }
 
             return true;
-        }
+    }
 
 
     bool Simulation::create_coilover(int wheel_index)
@@ -1752,7 +1753,7 @@ namespace car
             corner.coilover_unit.spring_joint->setConstraintFlag(PxConstraintFlag::eENABLE_EXTENDED_LIMITS, true);
             register_multibody_joint(corner.coilover_unit.spring_joint);
             return true;
-        }
+    }
 
 
     bool Simulation::has_physical_coilover(int wheel_index) const
@@ -1765,7 +1766,7 @@ namespace car
             return corner.coilover_unit.spring_joint != nullptr
                 && corner.coilover_unit.tube != nullptr
                 && corner.coilover_unit.rod != nullptr;
-        }
+    }
 
 
     bool Simulation::create_locked_differential(int left, int right)
@@ -1785,7 +1786,7 @@ namespace car
             differential->setGearRatio(-1.0f);
             register_multibody_joint(differential);
             return true;
-        }
+    }
 
 
     bool Simulation::create_steering_rack()
@@ -1828,7 +1829,7 @@ namespace car
                 }
             }
             return true;
-        }
+    }
 
 
     bool Simulation::create_anti_roll_bar(anti_roll_bar& arb, int left, int right, float stiffness)
@@ -1944,14 +1945,14 @@ namespace car
                 return false;
             }
             return true;
-        }
+    }
 
 
     bool Simulation::create_anti_roll_bars()
     {
             return create_anti_roll_bar(multibody.front_arb, front_left, front_right, spec.front_arb_stiffness)
                 && create_anti_roll_bar(multibody.rear_arb, rear_left, rear_right, spec.rear_arb_stiffness);
-        }
+    }
 
 
     bool Simulation::create_driveline_shafts()
@@ -2113,7 +2114,7 @@ namespace car
                 return false;
             }
             return true;
-        }
+    }
 
 
     bool Simulation::create_driveline()
@@ -2218,7 +2219,7 @@ namespace car
             register_multibody_joint(driveline.torsion_joint);
             driveline.initialized = true;
             return true;
-        }
+    }
 
 
     bool Simulation::has_physical_driveline() const
@@ -2227,7 +2228,7 @@ namespace car
                 && multibody.driveline.torsion_joint
                 && multibody.driveline.gearbox_output
                 && multibody.driveline.axle_input;
-        }
+    }
 
 
     float Simulation::read_driveline_twist() const
@@ -2244,7 +2245,7 @@ namespace car
                 return 0.0f;
             }
             return twist;
-        }
+    }
 
 
     float Simulation::read_driveline_gearbox_speed() const
@@ -2255,7 +2256,7 @@ namespace car
             }
             PxVec3 axis = multibody.driveline.gearbox_output->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
             return multibody.driveline.gearbox_output->getAngularVelocity().dot(axis);
-        }
+    }
 
 
     void Simulation::sync_driveline_axle_speed(float axle_speed)
@@ -2267,7 +2268,7 @@ namespace car
             PxVec3 axis = multibody.driveline.axle_input->getGlobalPose().q.rotate(PxVec3(1.0f, 0.0f, 0.0f));
             PxVec3 chassis_angular = body->getAngularVelocity();
             multibody.driveline.axle_input->setAngularVelocity(chassis_angular + axis * axle_speed);
-        }
+    }
 
 
     void Simulation::set_driveline_torsion_enabled(bool enabled)
@@ -2282,7 +2283,7 @@ namespace car
                     multibody.driveline.gearbox_output->getGlobalPose().p,
                     multibody.driveline.axle_input->getGlobalPose().q));
             driveshaft_twist = 0.0f;
-        }
+    }
 
 
     void Simulation::destroy_multibody()
@@ -2302,7 +2303,7 @@ namespace car
                 }
             }
             multibody = multibody_state();
-        }
+    }
 
 
     bool Simulation::create_multibody(PxPhysics* physics, PxScene* scene, bool destroy_existing )
@@ -2359,7 +2360,7 @@ namespace car
             update_assembled_center_of_mass();
             multibody.initialized = true;
             return true;
-        }
+    }
 
 
     bool Simulation::rebuild_multibody(bool preserve_motion )
@@ -2389,20 +2390,20 @@ namespace car
                 sleep_vehicle_assembly();
             }
             return true;
-        }
+    }
 
 
     PxVec3 Simulation::actor_point_velocity(PxRigidBody* actor, const PxVec3& world_point)
     {
             return actor->getLinearVelocity() + actor->getAngularVelocity().cross(world_point - actor->getGlobalPose().p);
-        }
+    }
 
 
     PxVec3 Simulation::ground_point_velocity(const wheel& wheel_state)
     {
             const PxRigidDynamic* ground = wheel_state.contact_actor ? wheel_state.contact_actor->is<PxRigidDynamic>() : nullptr;
             return ground ? ground->getLinearVelocity() + ground->getAngularVelocity().cross(wheel_state.contact_point - ground->getGlobalPose().p) : PxVec3(0.0f);
-        }
+    }
 
 
     void Simulation::refresh_wheel_actor_state()
@@ -2417,7 +2418,7 @@ namespace car
                 wheels[i].hub_linear_velocity = wheel_actor ? wheel_actor->getLinearVelocity() : PxVec3(0.0f);
                 wheels[i].hub_angular_velocity = wheel_actor ? wheel_actor->getAngularVelocity() : PxVec3(0.0f);
             }
-        }
+    }
 
 
     void Simulation::wake_vehicle_assembly()
@@ -2435,7 +2436,7 @@ namespace car
             }
             vehicle_sleep_timer = 0.0f;
             vehicle_sleeping = false;
-        }
+    }
 
 
     bool Simulation::vehicle_assembly_is_settled()
@@ -2460,7 +2461,7 @@ namespace car
                 }
             }
             return true;
-        }
+    }
 
 
     void Simulation::sleep_vehicle_assembly()
@@ -2499,7 +2500,7 @@ namespace car
             prev_velocity = PxVec3(0.0f);
             vehicle_sleep_timer = 0.0f;
             vehicle_sleeping = true;
-        }
+    }
 
 
     float Simulation::compute_damper_force(float velocity, float base_damping)
@@ -2514,7 +2515,7 @@ namespace car
             float knee_velocity = PxMax(spec.damper_knee_velocity, 0.01f);
             float force = high_speed_damping * speed + (low_speed_damping - high_speed_damping) * knee_velocity * (1.0f - expf(-speed / knee_velocity));
             return copysignf(force, velocity);
-        }
+    }
 
 
     void Simulation::update_multibody(float delta_time)
@@ -2624,7 +2625,7 @@ namespace car
             };
             apply_anti_roll(front_left, front_right, spec.front_arb_stiffness);
             apply_anti_roll(rear_left, rear_right, spec.rear_arb_stiffness);
-        }
+    }
 
 
     tire_probe_row Simulation::probe_tread_row(PxScene* scene, const PxVec3& row_center, const PxVec3& plane_down, const PxVec3& wheel_axis, const PxVec3& local_up, float row_radius, float ray_length, float max_penetration, int column_count, float arc, const PxQueryFilterData& filter)
@@ -2718,7 +2719,7 @@ namespace car
             row.normal = normal;
             row.point = point;
             return row;
-        }
+    }
 
 
     void Simulation::update_suspension(PxScene* scene, float dt)
@@ -2897,13 +2898,13 @@ namespace car
                     debug_sweep[i].row_load[slot] = row.load;
                 }
             }
-        }
+    }
 
 
     float Simulation::angular_velocity_to_rpm(float angular_velocity)
     {
             return angular_velocity * 60.0f / (2.0f * PxPi);
-        }
+    }
 
 
     float Simulation::get_driven_wheel_radius()
@@ -2918,7 +2919,7 @@ namespace car
                 raw_radius = (cfg.front_wheel_radius + cfg.rear_wheel_radius) * 0.5f;
             }
             return std::isfinite(raw_radius) && raw_radius > 0.0f ? PxMax(raw_radius, 0.05f) : 0.34f;
-        }
+    }
 
 
     float Simulation::get_average_driven_angular_velocity(bool absolute, int* count )
@@ -2938,7 +2939,7 @@ namespace car
                 *count = driven_count;
             }
             return driven_count > 0 ? angular_velocity / static_cast<float>(driven_count) : 0.0f;
-        }
+    }
 
 
     void Simulation::update_boost(float throttle, float rpm, float dt)
@@ -2962,7 +2963,7 @@ namespace car
 
             float rate = (target > boost_pressure) ? spec.boost_spool_rate : spec.boost_spool_rate * 2.0f;
             boost_pressure = lerp(boost_pressure, target, exp_decay(rate, dt));
-        }
+    }
 
 
     float Simulation::get_engine_torque(float rpm)
@@ -3022,7 +3023,7 @@ namespace car
             }
 
             return spec.engine_peak_torque * factor;
-        }
+    }
 
 
     float Simulation::get_electric_motor_torque(float rpm, float throttle)
@@ -3048,7 +3049,7 @@ namespace car
                 tq = PxMin(tq, p_tq);
             }
             return throttle * tq;
-        }
+    }
 
 
     float Simulation::wheel_rpm_to_engine_rpm(float wheel_rpm, int gear)
@@ -3058,7 +3059,7 @@ namespace car
                 return spec.engine_idle_rpm;
             }
             return fabsf(wheel_rpm * spec.gear_ratios[gear] * spec.final_drive);
-        }
+    }
 
 
     float Simulation::get_upshift_speed(int from_gear, float throttle)
@@ -3069,13 +3070,13 @@ namespace car
             }
             float t = PxClamp((throttle - 0.3f) / 0.5f, 0.0f, 1.0f);
             return spec.upshift_speed_base[from_gear] + t * (spec.upshift_speed_sport[from_gear] - spec.upshift_speed_base[from_gear]);
-        }
+    }
 
 
     float Simulation::get_downshift_speed(int gear)
     {
             return (gear >= 2 && gear < spec.gear_count) ? spec.downshift_speeds[gear] : 0.0f;
-        }
+    }
 
 
     void Simulation::set_active_gear(int gear)
@@ -3100,7 +3101,7 @@ namespace car
                 gearbox_input_angular_velocity = 0.0f;
             }
             current_gear = gear;
-        }
+    }
 
 
     void Simulation::update_automatic_gearbox(float dt, float throttle, float forward_speed)
@@ -3270,7 +3271,7 @@ namespace car
                     }
                 }
             }
-        }
+    }
 
 
     const char* Simulation::get_gear_string()
@@ -3278,7 +3279,7 @@ namespace car
             static constexpr const char* names[] = { "R", "N", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
             constexpr int name_count = static_cast<int>(sizeof(names) / sizeof(names[0]));
             return (current_gear >= 0 && current_gear < spec.gear_count && current_gear < name_count) ? names[current_gear] : "?";
-        }
+    }
 
 
     void Simulation::apply_axle_diff(int left, int right, float axle_torque, float dt)
@@ -3316,7 +3317,7 @@ namespace car
             wheels[right].net_torque += right_torque;
             wheels[left].drive_torque += left_torque;
             wheels[right].drive_torque += right_torque;
-        }
+    }
 
 
     void Simulation::apply_drive_torque(float total_torque, float dt)
@@ -3339,7 +3340,7 @@ namespace car
                 // rwd
                 apply_axle_diff(rear_left, rear_right, total_torque, dt);
             }
-        }
+    }
 
 
     void Simulation::integrate_powertrain(float dt)
@@ -3551,7 +3552,7 @@ namespace car
             }
             apply_drive_torque(axle_drive_torque, dt);
             engine_rpm = engine_angular_velocity * 60.0f / (PxPi * 2.0f);
-        }
+    }
 
 
     float Simulation::brake_torque_sign(int wheel_index)
@@ -3576,7 +3577,7 @@ namespace car
             }
             float longitudinal_speed = (wheel_actor->getLinearVelocity() - ground_point_velocity(wheel_state)).dot(wheel_forward);
             return fabsf(longitudinal_speed) > 0.05f ? (longitudinal_speed > 0.0f ? -1.0f : 1.0f) : 0.0f;
-        }
+    }
 
 
     void Simulation::apply_service_brakes(float forward_speed_ms, float dt)
@@ -3628,7 +3629,7 @@ namespace car
 
                 wheels[i].net_torque += brake_torque_sign(i) * t;
             }
-        }
+    }
 
 
     void Simulation::apply_drivetrain(float forward_speed_kmh, float dt)
@@ -3673,7 +3674,7 @@ namespace car
 
             integrate_powertrain(dt);
             apply_service_brakes(forward_speed_ms, dt);
-        }
+    }
 
 
     float Simulation::get_effective_wheel_radius(int wheel_index, float tire_load)
@@ -3682,7 +3683,7 @@ namespace car
             float radius = std::isfinite(raw_radius) && raw_radius > 0.0f ? PxMax(raw_radius, 0.05f) : 0.34f;
             float deflection = spec.tire_vertical_stiffness > 1000.0f ? PxClamp(tire_load / spec.tire_vertical_stiffness, 0.0f, 0.05f) : 0.0f;
             return PxMax(radius - deflection * 0.55f, 0.05f);
-        }
+    }
 
 
     void Simulation::update_handbrake()
@@ -3698,7 +3699,7 @@ namespace car
                     wheel_joint->setRevoluteJointFlag(PxRevoluteJointFlag::eDRIVE_ENABLED, enabled);
                 }
             }
-        }
+    }
 
 
     void Simulation::update_tire_condition()
@@ -3719,7 +3720,7 @@ namespace car
                     w.tire_saturation = 0.0f;
                 }
             }
-        }
+    }
 
 
     void Simulation::relax_tire_slip(wheel& w, float raw_slip_ratio, float raw_slip_angle, float ground_speed, float surface_speed, float dt)
@@ -3746,7 +3747,7 @@ namespace car
                     w.slip_angle = 0.0f;
                 }
             }
-        }
+    }
 
 
     void Simulation::apply_tire_forces(float dt)
@@ -4177,7 +4178,7 @@ namespace car
             {
                 SP_LOG_INFO("=== pacejka tick end ===\n");
             }
-        }
+    }
 
 
     void Simulation::apply_self_aligning_torque()
@@ -4197,7 +4198,7 @@ namespace car
                     safe_add_torque(const_cast<PxRigidDynamic*>(ground_actor), -torque);
                 }
             }
-        }
+    }
 
 
     void Simulation::set_validation_speed(float speed)
@@ -4228,7 +4229,7 @@ namespace car
                 }
             }
             prev_velocity = forward * speed;
-        }
+    }
 
 
     void Simulation::refresh_geometry_cache()
@@ -4236,7 +4237,7 @@ namespace car
             cfg.wheelbase   = wheel_offsets[front_left].z - wheel_offsets[rear_left].z;
             cfg.track_front = wheel_offsets[front_right].x - wheel_offsets[front_left].x;
             cfg.track_rear  = wheel_offsets[rear_right].x  - wheel_offsets[rear_left].x;
-        }
+    }
 
 
     void Simulation::apply_positive_override(float& target, float value)
@@ -4245,7 +4246,7 @@ namespace car
             {
                 target = value;
             }
-        }
+    }
 
 
     void Simulation::apply_preset_geometry(const car_preset& spec)
@@ -4264,7 +4265,7 @@ namespace car
             apply_positive_override(cfg.front_wheel_width, spec.front_wheel_width);
             apply_positive_override(cfg.rear_wheel_width, spec.rear_wheel_width);
             apply_positive_override(cfg.wheel_mass, spec.wheel_mass);
-        }
+    }
 
 
     void Simulation::compute_constants()
@@ -4312,7 +4313,7 @@ namespace car
                 float dr = is_front(i) ? spec.front_damping_ratio : spec.rear_damping_ratio;
                 spring_damping[i]   = 2.0f * dr * sqrtf(spring_stiffness[i] * mass);
             }
-        }
+    }
 
 
     void Simulation::destroy()
@@ -4320,7 +4321,7 @@ namespace car
             destroy_multibody();
             if (body)             { body->release();             body = nullptr; }
             if (material)         { material->release();         material = nullptr; }
-        }
+    }
 
 
     bool Simulation::setup(const setup_params& params)
@@ -4432,7 +4433,7 @@ namespace car
                 params.create_mechanisms ? 1 : 0
             );
             return true;
-        }
+    }
 
 
     bool Simulation::set_chassis(PxConvexMesh* mesh, const std::vector<PxVec3>& vertices, PxPhysics* physics)
@@ -4480,7 +4481,7 @@ namespace car
             }
 
             return true;
-        }
+    }
 
 
     void Simulation::update_mass_properties()
@@ -4498,7 +4499,7 @@ namespace car
             }
 
             SP_LOG_INFO("car center of mass set to (%.2f, %.2f, %.2f)", com.x, com.y, com.z);
-        }
+    }
 
 
     void Simulation::apply_car_spec(const car_preset& preset, bool set_as_base)
@@ -4511,7 +4512,7 @@ namespace car
             apply_preset_geometry(spec);
             compute_constants();
             update_mass_properties();
-        }
+    }
 
 
     bool Simulation::rebuild_vehicle_geometry()
@@ -4519,7 +4520,7 @@ namespace car
             compute_constants();
             update_mass_properties();
             return !multibody.initialized || rebuild_multibody();
-        }
+    }
 
 
     void Simulation::reset_drivetrain_transients()
@@ -4556,7 +4557,7 @@ namespace car
             vehicle_sleeping = false;
             drs_active = false;
             engine_brake_torque = 0.0f;
-        }
+    }
 
 
     void Simulation::reset_wheel_thermals()
@@ -4581,7 +4582,7 @@ namespace car
                 wheels[i].wear_grip = 1.0f;
                 wheels[i].brake_efficiency = 1.0f;
             }
-        }
+    }
 
 
     void Simulation::load_car(const car_preset& new_spec)
@@ -4612,7 +4613,7 @@ namespace car
                 new_spec.name ? new_spec.name : "?",
                 cfg.mass, cfg.wheelbase, cfg.track_front, cfg.track_rear,
                 new_spec.drivetrain_type == 0 ? "rwd" : new_spec.drivetrain_type == 1 ? "fwd" : "awd");
-        }
+    }
 
 
     car_preset Simulation::make_upgraded_spec(const car_preset& base, const active_upgrades& ups)
@@ -4669,7 +4670,7 @@ namespace car
             p.tire_friction = PxMax(p.tire_friction, 0.1f);
 
             return p;
-        }
+    }
 
 
     void Simulation::clamp_upgrade_stage(int& stage, int max_stage)
@@ -4682,7 +4683,7 @@ namespace car
             {
                 stage = 0;
             }
-        }
+    }
 
 
     void Simulation::reapply_upgrades()
@@ -4750,14 +4751,14 @@ namespace car
                 update_mass_properties();
                 SP_LOG_ERROR("failed to rebuild vehicle upgrades");
             }
-        }
+    }
 
 
     void Simulation::reset_upgrades()
     {
             upgrades = active_upgrades{};
             reapply_upgrades();
-        }
+    }
 
 
     void Simulation::set_center_of_mass(float x, float y, float z)
@@ -4767,7 +4768,7 @@ namespace car
             spec.center_of_mass_z = z;
             compute_constants();
             update_mass_properties();
-        }
+    }
 
 
     void Simulation::set_center_of_mass_x(float x)
@@ -4880,7 +4881,7 @@ namespace car
                 : lerp(input.brake, input_target.brake, exp_decay(spec.brake_smoothing, dt));
 
             input.handbrake = input_target.handbrake;
-        }
+    }
 
 
     void Simulation::tick(float dt)
@@ -5033,7 +5034,7 @@ namespace car
             }
 
             tick_telemetry(dt, speed_kmh);
-        }
+    }
 
 
     float Simulation::get_speed_kmh()
@@ -5062,7 +5063,7 @@ namespace car
             return spec.tire_model_type == static_cast<int>(tire_model::brush)
                 ? evaluate_brush_trail(w.contact_patch_length * 0.5f, w.tire_saturation)
                 : evaluate_pneumatic_trail(spec, w.slip_angle, w.tire_load, w.condition_stiffness);
-        }
+    }
 
 
     float Simulation::get_wheel_self_aligning_torque(int i)
@@ -5072,7 +5073,7 @@ namespace car
                 return 0.0f;
             }
             return -wheels[i].lateral_force * get_wheel_pneumatic_trail(i) * spec.self_align_gain;
-        }
+    }
 
 
     void Simulation::set_wheel_rotation(int i, float v)
@@ -5081,7 +5082,7 @@ namespace car
             {
                 wheels[i].rotation = std::isfinite(v) ? v : 0.0f;
             }
-        }
+    }
 
 
     void Simulation::set_wheel_angular_velocity(int i, float v)
@@ -5097,7 +5098,7 @@ namespace car
                     wheel_actor->setAngularVelocity(actor_velocity + wheel_axis * (angular_velocity - actor_velocity.dot(wheel_axis)));
                 }
             }
-        }
+    }
 
 
     float Simulation::get_handbrake()
@@ -5171,7 +5172,7 @@ namespace car
     float Simulation::get_wheel_suspension_force(int i)
     {
             return is_valid_wheel(i) ? spring_force[i] : 0.0f;
-        }
+    }
 
 
     float Simulation::get_axle_roll_stiffness(bool front)
@@ -5183,25 +5184,25 @@ namespace car
             float left_wheel_rate = spring_stiffness[left] * wheels[left].motion_ratio * wheels[left].motion_ratio;
             float right_wheel_rate = spring_stiffness[right] * wheels[right].motion_ratio * wheels[right].motion_ratio;
             return ((left_wheel_rate + right_wheel_rate) * 0.5f + anti_roll) * track * track * 0.5f;
-        }
+    }
 
 
     float Simulation::get_wheel_temp_grip_factor(int i)
     {
             return is_valid_wheel(i) ? wheels[i].condition_grip : 1.0f;
-        }
+    }
 
 
     float Simulation::get_wheel_surface_temp(int i, int zone)
     {
             return (is_valid_wheel(i) && zone >= 0 && zone < 3) ? wheels[i].thermal.surface[zone] : 0.0f;
-        }
+    }
 
 
     float Simulation::get_wheel_core_temp(int i)
     {
             return is_valid_wheel(i) ? wheels[i].thermal.core : 0.0f;
-        }
+    }
 
 
     float Simulation::get_tire_pressure()
@@ -5216,7 +5217,7 @@ namespace car
     {
             const float offset = 0.1f;
             return -(cfg.height * 0.5f + cfg.suspension_height) + offset;
-        }
+    }
 
 
     void Simulation::set_abs_enabled(bool enabled)
@@ -5241,7 +5242,7 @@ namespace car
                 }
             }
             return false;
-        }
+    }
 
 
     float Simulation::get_abs_phase()
@@ -5277,7 +5278,7 @@ namespace car
             is_shifting = true;
             shift_timer = spec.shift_time;
             last_shift_direction = direction;
-        }
+    }
 
 
     void Simulation::shift_up()
@@ -5288,7 +5289,7 @@ namespace car
             }
             set_active_gear((current_gear == 0) ? 1 : current_gear + 1);
             begin_shift(1);
-        }
+    }
 
 
     void Simulation::shift_down()
@@ -5303,7 +5304,7 @@ namespace car
             }
             set_active_gear((current_gear == 1) ? 0 : current_gear - 1);
             begin_shift(-1);
-        }
+    }
 
 
     void Simulation::shift_to_neutral()
@@ -5314,7 +5315,7 @@ namespace car
             }
             set_active_gear(1);
             begin_shift(0);
-        }
+    }
 
 
     int Simulation::get_current_gear()
@@ -5401,7 +5402,7 @@ namespace car
                 spec.boost_min_rpm       = 2000.0f;
                 spec.boost_wastegate_rpm = spec.engine_redline_rpm > 0.0f ? spec.engine_redline_rpm - 500.0f : 6500.0f;
             }
-        }
+    }
 
 
     bool Simulation::get_turbo_enabled()
@@ -5446,7 +5447,7 @@ namespace car
                 spec.diff_type = previous_type;
                 SP_LOG_ERROR("failed to rebuild physical differential");
             }
-        }
+    }
 
 
     int Simulation::get_diff_type()
@@ -5457,7 +5458,7 @@ namespace car
     {
             static constexpr const char* names[] = { "Open", "Locked", "LSD" };
             return (spec.diff_type >= 0 && spec.diff_type <= 2) ? names[spec.diff_type] : "?";
-        }
+    }
 
 
     float Simulation::get_wheel_wear(int i)
@@ -5470,7 +5471,7 @@ namespace car
             {
                 wheels[i].wear = 0.0f;
             }
-        }
+    }
 
 
     float Simulation::get_wheel_wear_grip_factor(int i)
@@ -5491,7 +5492,7 @@ namespace car
             {
                 wheels[i].contact_surface = surface;
             }
-        }
+    }
 
 
     surface_type Simulation::get_wheel_surface(int i)
@@ -5502,7 +5503,7 @@ namespace car
     {
             static constexpr const char* names[] = { "Asphalt", "Concrete", "Wet", "Gravel", "Grass", "Ice" };
             return (surface >= 0 && surface < surface_count) ? names[surface] : "Unknown";
-        }
+    }
 
 
     float Simulation::get_front_camber()
@@ -5529,7 +5530,7 @@ namespace car
                 wheel_offsets[wheel].z = z;
                 refresh_geometry_cache();
             }
-        }
+    }
 
 
     PxVec3 Simulation::get_wheel_offset(int wheel)
@@ -5539,7 +5540,7 @@ namespace car
                 return wheel_offsets[wheel];
             }
             return PxVec3(0);
-        }
+    }
 
 
     const aero_debug_data& Simulation::get_aero_debug()
@@ -5558,13 +5559,13 @@ namespace car
                 hit_point = debug_sweep[wheel].hit_point;
                 hit       = debug_sweep[wheel].hit;
             }
-        }
+    }
 
 
     int Simulation::get_debug_contact_rows(int wheel) const
     {
             return (wheel >= 0 && wheel < wheel_count) ? debug_sweep[wheel].row_count : 0;
-        }
+    }
 
 
     void Simulation::get_debug_contact_row(int wheel, int row, PxVec3& point, PxVec3& normal, float& load) const
@@ -5575,7 +5576,7 @@ namespace car
                 normal = debug_sweep[wheel].row_normal[row];
                 load   = debug_sweep[wheel].row_load[row];
             }
-        }
+    }
 
 
     void Simulation::get_debug_suspension(int wheel, PxVec3& top, PxVec3& bottom)
@@ -5585,7 +5586,7 @@ namespace car
                 top    = debug_suspension_top[wheel];
                 bottom = debug_suspension_bottom[wheel];
             }
-        }
+    }
 
 
     float Simulation::get_wheel_radius()

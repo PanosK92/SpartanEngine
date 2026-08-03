@@ -1217,6 +1217,7 @@ namespace spartan
         // collect first, never wait for preload while holding entity_access_mutex
         {
             vector<Traffic*> traffics;
+            vector<Pedestrians*> pedestrians;
             {
                 lock_guard<mutex> lock(entity_access_mutex);
                 for (Entity* entity : entities)
@@ -1226,6 +1227,10 @@ namespace spartan
                         if (Traffic* traffic = entity->GetComponent<Traffic>())
                         {
                             traffics.push_back(traffic);
+                        }
+                        if (Pedestrians* peds = entity->GetComponent<Pedestrians>())
+                        {
+                            pedestrians.push_back(peds);
                         }
                     }
                 }
@@ -1237,12 +1242,21 @@ namespace spartan
                         {
                             traffics.push_back(traffic);
                         }
+                        if (Pedestrians* peds = entity->GetComponent<Pedestrians>())
+                        {
+                            pedestrians.push_back(peds);
+                        }
                     }
                 }
             }
             for (Traffic* traffic : traffics)
             {
                 traffic->Stop();
+            }
+            // stop before entity delete, ~Pedestrians must not RemoveEntity under the mutex
+            for (Pedestrians* peds : pedestrians)
+            {
+                peds->Stop();
             }
         }
 
@@ -1444,6 +1458,15 @@ namespace spartan
             }
             play_mode_snapshot.clear();
             world_time::time_of_day = play_mode_time_of_day;
+
+            // restore skeleton body visibility before play spawned meshes are destroyed
+            for (Car* car : Car::GetAll())
+            {
+                if (car)
+                {
+                    car->PrepareForPlayStop();
+                }
+            }
 
             // remove anything spawned during play so it never leaks into the world or gets saved by accident
             // the removal is deferred and handled by ProcessPendingRemovals right below

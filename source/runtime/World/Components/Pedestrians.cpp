@@ -79,7 +79,38 @@ namespace spartan
 
     Pedestrians::~Pedestrians()
     {
-        Stop();
+        // never RemoveEntity here, World::Shutdown/RemoveEntity may already hold entity_access_mutex
+        CancelPreload();
+        for (Walker& walker : m_walkers)
+        {
+            if (walker.animator)
+            {
+                walker.animator->Stop();
+            }
+            if (walker.entity)
+            {
+                vector<Entity*> nodes;
+                nodes.push_back(walker.entity);
+                walker.entity->GetDescendants(&nodes);
+                for (Entity* node : nodes)
+                {
+                    if (Render* render = node ? node->GetComponent<Render>() : nullptr)
+                    {
+                        if (render->GetMesh() == walker.mesh.get())
+                        {
+                            render->ClearMesh();
+                        }
+                    }
+                }
+            }
+            walker.entity = nullptr;
+            walker.animator = nullptr;
+            walker.ragdoll = nullptr;
+            walker.mesh.reset();
+            walker.dead = false;
+        }
+        m_walkers.clear();
+        m_source_mesh.reset();
     }
 
     void Pedestrians::Start()
