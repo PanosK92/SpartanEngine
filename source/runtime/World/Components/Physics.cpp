@@ -1547,9 +1547,13 @@ namespace spartan
             m_cheap_wheel_roll = 0.0f;
             m_cheap_steer_angle = 0.0f;
             SetBodyTransform(position, rotation, false);
+            SetLinearVelocity(linear_velocity);
+            SetAngularVelocity(angular_velocity);
         }
         else
         {
+            // cheap mode leaves mechanism actors frozen at old world poses while the
+            // chassis keeps moving, re enabling them without a rebuild detonates constraints
             PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
             PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
             if (!m_vehicle_simulation->ensure_multibody(physics, scene))
@@ -1557,15 +1561,15 @@ namespace spartan
                 SP_LOG_ERROR("failed to build suspension assembly for full sim mode");
                 return;
             }
-            m_vehicle_simulation->set_mechanism_simulation_enabled(true);
             body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
             m_wheel_offsets_synced = false;
+            // rebuild at the current chassis pose with zeroed velocities first
             SetBodyTransform(position, rotation, true);
+            m_vehicle_simulation->set_mechanism_simulation_enabled(true);
+            // leave velocities zero, restoring cheap chassis speed onto a fresh assembly launches the car
         }
 
         m_vehicle_sim_mode = mode;
-        SetLinearVelocity(linear_velocity);
-        SetAngularVelocity(angular_velocity);
         m_vehicle_simulation_accumulator = 0.0f;
         m_interpolation_initialized = false;
     }

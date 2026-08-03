@@ -1711,13 +1711,19 @@ namespace car
                 return false;
             }
 
+            // light damping on free floating mechanism bodies, same as create_segment_actor
+            corner.coilover_unit.tube->setAngularDamping(1.5f);
+            corner.coilover_unit.tube->setLinearDamping(0.5f);
+            corner.coilover_unit.rod->setAngularDamping(1.5f);
+            corner.coilover_unit.rod->setLinearDamping(0.5f);
+
             if (!create_spherical_joint(body, corner.coilover_unit.tube, top)
                 || !create_spherical_joint(corner.upright, corner.coilover_unit.rod, bottom))
             {
                 return false;
             }
 
-            // prismatic spring between tube and rod, x runs down the shock, frames share the midpoint
+            // prismatic telescope between tube and rod, x runs down the shock, frames share the midpoint
             PxVec3 joint_world = top + direction * (length * 0.5f);
             PxTransform tube_frame(
                 corner.coilover_unit.tube->getGlobalPose().transformInv(joint_world),
@@ -1740,13 +1746,14 @@ namespace car
             corner.coilover_unit.rest_length = rest_length;
             float min_x = (rest_length - cfg.suspension_travel) - length;
             float max_x = (rest_length + cfg.suspension_travel * 0.15f) - length;
-            // telescope only, no spring drive, spring damper forces stay in update_multibody
+            // slide on x only, lock swing so tube and rod stay coaxial like a real damper
+            // twist stays free so the rod can spin in the tube, same as halfshaft plunge
             corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eX, PxD6Motion::eLIMITED);
             corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eY, PxD6Motion::eLOCKED);
             corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eZ, PxD6Motion::eLOCKED);
             corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eTWIST, PxD6Motion::eFREE);
-            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eFREE);
-            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eFREE);
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eLOCKED);
+            corner.coilover_unit.spring_joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
             corner.coilover_unit.spring_joint->setLinearLimit(
                 PxD6Axis::eX,
                 PxJointLinearLimitPair(multibody.physics->getTolerancesScale(), min_x, max_x));
