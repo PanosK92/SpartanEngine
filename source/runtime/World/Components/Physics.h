@@ -79,6 +79,13 @@ namespace spartan
         Count      = 4
     };
 
+    // full = multibody tires, cheap = arcade chassis plus visual wheels
+    enum class VehicleSimMode
+    {
+        Full,
+        Cheap
+    };
+
     class Physics : public Component
     {
     public:
@@ -177,6 +184,8 @@ namespace spartan
         void SetVehicleHandbrake(float value);  // 0 to 1 (locks rear wheels for drifting)
         void SetVehicleSimulationActive(bool active);
         bool IsVehicleSimulationActive() const { return m_vehicle_simulation_active; }
+        void SetVehicleSimMode(VehicleSimMode mode);
+        VehicleSimMode GetVehicleSimMode() const { return m_vehicle_sim_mode; }
 
         // vehicle wheel entities (visual meshes that rotate with physics)
         void SetWheelEntity(WheelIndex wheel, Entity* entity);
@@ -314,6 +323,7 @@ namespace spartan
         void TickController(bool is_playing, float delta_time);
         void TickVehicle(bool is_playing);
         void TickVehicleSubstep(float dt); // vehicle force model, runs once per fixed physics step in lockstep with integration
+        void TickVehicleCheapSubstep(float dt);
         car::Simulation* EnsureVehicleSimulation();
         void TickCloth(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
@@ -322,6 +332,8 @@ namespace spartan
         float ComputeVolume();
 
         void UpdateWheelTransforms();
+        void UpdateCheapWheelTransforms();
+        void CaptureCheapWheelRestPoses();
         void Create();
         void CreateBodies();
         void CreateCloth();
@@ -353,6 +365,12 @@ namespace spartan
         const void* m_wheel_ground_actors[static_cast<int>(WheelIndex::Count)] = {};
         uint8_t m_wheel_ground_surfaces[static_cast<int>(WheelIndex::Count)] = {};
         bool m_vehicle_simulation_active = true;
+        VehicleSimMode m_vehicle_sim_mode = VehicleSimMode::Full;
+        math::Vector3 m_cheap_wheel_local_pos[static_cast<int>(WheelIndex::Count)] = {};
+        math::Quaternion m_cheap_wheel_local_rot[static_cast<int>(WheelIndex::Count)];
+        bool m_cheap_wheel_rest_captured[static_cast<int>(WheelIndex::Count)] = {};
+        float m_cheap_wheel_roll = 0.0f;
+        float m_cheap_steer_angle = 0.0f;
 
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;

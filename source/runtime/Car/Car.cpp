@@ -742,6 +742,7 @@ namespace spartan
             physics->SetMass(definition->performance.mass > 0.0f ? definition->performance.mass : 1500.0f);
             physics->SetVehiclePreset(definition->performance);
             physics->GetVehicleSimulation()->set_log_to_file(config.show_telemetry);
+            physics->SetVehicleSimMode(config.vehicle_sim_mode);
             physics->SetBodyType(BodyType::Vehicle);
             physics->SetCar(car);  // car ticks automatically through entity system
 
@@ -884,6 +885,31 @@ namespace spartan
         return s_cars;
     }
 
+    void Car::SetVehicleSimMode(VehicleSimMode mode)
+    {
+        if (!m_vehicle_entity)
+        {
+            return;
+        }
+        if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+        {
+            physics->SetVehicleSimMode(mode);
+        }
+    }
+
+    VehicleSimMode Car::GetVehicleSimMode() const
+    {
+        if (!m_vehicle_entity)
+        {
+            return VehicleSimMode::Full;
+        }
+        if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+        {
+            return physics->GetVehicleSimMode();
+        }
+        return VehicleSimMode::Full;
+    }
+
     void Car::SetVisualizationPreset(CarVisualizationPreset preset)
     {
         if (preset == m_visualization_preset)
@@ -1023,14 +1049,15 @@ namespace spartan
         }
 
         ::car::Simulation* simulation = physics->GetVehicleSimulation();
+        if (!simulation)
+        {
+            return;
+        }
         physx::PxRigidDynamic* body = simulation->get_body();
         if (!body)
         {
             return;
         }
-        const ::car::config& config = simulation->get_config();
-        const ::car::car_preset& preset = simulation->get_spec();
-        const ::car::multibody_state& multibody = simulation->get_multibody_state();
 
         Entity* wheel_entities[4] =
         {
@@ -1048,12 +1075,63 @@ namespace spartan
             }
         }
 
-        const math::Vector3 vehicle_position = m_vehicle_entity->GetPosition();
-        const math::Quaternion vehicle_rotation = m_vehicle_entity->GetRotation();
-        auto to_world = [&](const math::Vector3& local) { return vehicle_position + vehicle_rotation * local; };
         auto from_px = [](const physx::PxVec3& value) { return math::Vector3(value.x, value.y, value.z); };
         auto to_render = [&](const physx::PxVec3& value) { return physics->TransformVehiclePointToRender(from_px(value)); };
         draw_skeleton_actor_shapes(body, skeleton_color_collision, to_render);
+
+        // cheap mode only draws chassis hull plus four wheels
+        if (physics->GetVehicleSimMode() == VehicleSimMode::Cheap)
+        {
+            const ::car::config& config = simulation->get_config();
+            for (int i = 0; i < 4; i++)
+            {
+                const float wheel_radius = config.wheel_radius_for(i);
+                const float wheel_half_width = config.wheel_width_for(i) * 0.5f;
+                const math::Vector3 wheel_center = wheel_entities[i]->GetPosition();
+                const math::Quaternion wheel_rotation = wheel_entities[i]->GetRotation();
+                const math::Vector3 wheel_axis = wheel_rotation * math::Vector3::Right;
+                const math::Vector3 wheel_radial_y = wheel_rotation * math::Vector3::Up;
+                const math::Vector3 wheel_radial_z = wheel_rotation * math::Vector3::Forward;
+                const math::Vector3 wheel_left = wheel_center - wheel_axis * wheel_half_width;
+                const math::Vector3 wheel_right = wheel_center + wheel_axis * wheel_half_width;
+                const int wheel_segments = 20;
+                math::Vector3 previous_left;
+                math::Vector3 previous_right;
+                for (int segment = 0; segment <= wheel_segments; segment++)
+                {
+                    const float angle =
+                        static_cast<float>(segment) /
+                        static_cast<float>(wheel_segments) *
+                        math::pi * 2.0f;
+                    const math::Vector3 radial =
+                        (wheel_radial_y * cosf(angle) + wheel_radial_z * sinf(angle)) *
+                        wheel_radius;
+                    const math::Vector3 left = wheel_left + radial;
+                    const math::Vector3 right = wheel_right + radial;
+                    if (segment > 0)
+                    {
+                        Renderer::DrawLine(previous_left, left, skeleton_color_wheel, skeleton_color_wheel);
+                        Renderer::DrawLine(previous_right, right, skeleton_color_wheel, skeleton_color_wheel);
+                        Renderer::DrawLine(left, right, skeleton_color_wheel, skeleton_color_wheel);
+                    }
+                    previous_left = left;
+                    previous_right = right;
+                }
+            }
+            return;
+        }
+
+        const ::car::config& config = simulation->get_config();
+        const ::car::car_preset& preset = simulation->get_spec();
+        const ::car::multibody_state& multibody = simulation->get_multibody_state();
+        if (!simulation->has_multibody())
+        {
+            return;
+        }
+
+        const math::Vector3 vehicle_position = m_vehicle_entity->GetPosition();
+        const math::Quaternion vehicle_rotation = m_vehicle_entity->GetRotation();
+        auto to_world = [&](const math::Vector3& local) { return vehicle_position + vehicle_rotation * local; };
 
         math::Vector3 wheel_local[4];
         math::Vector3 wheel_world[4];

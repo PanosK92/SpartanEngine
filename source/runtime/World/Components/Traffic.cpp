@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #include "pch.h"
+#include <thread>
 #include "Traffic.h"
 #include "Physics.h"
 #include "../../Car/Car.h"
@@ -119,8 +120,15 @@ namespace spartan
     {
         if (m_preload_state)
         {
-            m_preload_state->cancelled.store(true, std::memory_order_release);
+            const shared_ptr<PreloadState> state = m_preload_state;
+            state->cancelled.store(true, memory_order_release);
             m_preload_state.reset();
+
+            // wait so shutdown cannot clear the resource cache under an in-flight mesh load
+            while (!state->completed.load(memory_order_acquire))
+            {
+                this_thread::yield();
+            }
         }
         m_next_spawn_index = 0;
         m_car_path.clear();
@@ -349,6 +357,7 @@ namespace spartan
         config.position = position;
         config.car_file = m_car_path;
         config.drivable = true;
+        config.vehicle_sim_mode = VehicleSimMode::Cheap;
         config.customize_materials = false;
         config.paint_preset = MaterialPaintPreset::Metallic;
         config.paint_color = Color(
@@ -466,26 +475,37 @@ namespace spartan
             }
         }
 
-        float slip = 0.0f;
-        float grip = 0.0f;
-        float tire_load = 0.0f;
-        uint32_t grounded = 0;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(WheelIndex::Count); i++)
+        if (driver.physics->GetVehicleSimMode() == VehicleSimMode::Cheap)
         {
-            const WheelIndex wheel = static_cast<WheelIndex>(i);
-            if (driver.physics->IsWheelGrounded(wheel))
-            {
-                grounded++;
-            }
-            slip += positive_or(driver.physics->GetWheelSlipMagnitude(wheel), 0.0f);
-            grip += positive_or(driver.physics->GetWheelTempGripFactor(wheel) * driver.physics->GetWheelWearGripFactor(wheel), 0.35f);
-            tire_load += positive_or(driver.physics->GetWheelTireLoad(wheel), 0.0f);
+            telemetry.slip = 0.0f;
+            telemetry.grip = 1.0f;
+            telemetry.load_factor = 1.0f;
+            telemetry.grounded_ratio = 1.0f;
+            telemetry.drive_acceleration = driver.limits.acceleration;
         }
-        const bool has_wheel_telemetry = grounded > 0 || tire_load > driver.limits.mass * gravity * 0.05f;
-        telemetry.slip = has_wheel_telemetry ? slip * 0.25f : 0.0f;
-        telemetry.grip = has_wheel_telemetry ? std::clamp(grip * 0.25f, 0.35f, 1.2f) : 1.0f;
-        telemetry.load_factor = has_wheel_telemetry ? std::clamp(tire_load / (driver.limits.mass * gravity), 0.45f, 1.15f) : 1.0f;
-        telemetry.grounded_ratio = has_wheel_telemetry ? static_cast<float>(grounded) * 0.25f : 1.0f;
+        else
+        {
+            float slip = 0.0f;
+            float grip = 0.0f;
+            float tire_load = 0.0f;
+            uint32_t grounded = 0;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(WheelIndex::Count); i++)
+            {
+                const WheelIndex wheel = static_cast<WheelIndex>(i);
+                if (driver.physics->IsWheelGrounded(wheel))
+                {
+                    grounded++;
+                }
+                slip += positive_or(driver.physics->GetWheelSlipMagnitude(wheel), 0.0f);
+                grip += positive_or(driver.physics->GetWheelTempGripFactor(wheel) * driver.physics->GetWheelWearGripFactor(wheel), 0.35f);
+                tire_load += positive_or(driver.physics->GetWheelTireLoad(wheel), 0.0f);
+            }
+            const bool has_wheel_telemetry = grounded > 0 || tire_load > driver.limits.mass * gravity * 0.05f;
+            telemetry.slip = has_wheel_telemetry ? slip * 0.25f : 0.0f;
+            telemetry.grip = has_wheel_telemetry ? std::clamp(grip * 0.25f, 0.35f, 1.2f) : 1.0f;
+            telemetry.load_factor = has_wheel_telemetry ? std::clamp(tire_load / (driver.limits.mass * gravity), 0.45f, 1.15f) : 1.0f;
+            telemetry.grounded_ratio = has_wheel_telemetry ? static_cast<float>(grounded) * 0.25f : 1.0f;
+        }
         if (driver.throttle > 0.35f && telemetry.grounded_ratio > 0.5f)
         {
             const float measured_response = std::clamp(telemetry.acceleration / std::max(telemetry.drive_acceleration * driver.throttle, 0.1f), 0.35f, 1.25f);
@@ -552,7 +572,24 @@ namespace spartan
         else
         {
             driver.physics->SetVehicleSimulationActive(true);
-            driver.physics->SetBodyTransform(driver.entity->GetPosition(), driver.entity->GetRotation());
+            Vector3 spawn_position = driver.entity->GetPosition();
+            Vector3 ground;
+            if (SampleGround(spawn_position, ground))
+            {
+                // match cheap ride height, wheel radius plus suspension height above road
+                float ride = std::max(driver.limits.wheel_radius, 0.2f) + 0.3f;
+                if (driver.car && driver.car->GetDefinition())
+                {
+                    const car::car_preset& preset = driver.car->GetDefinition()->performance;
+                    const float preset_radius = std::max(
+                        (preset.front_wheel_radius + preset.rear_wheel_radius) * 0.5f,
+                        0.2f
+                    );
+                    ride = preset_radius + std::max(preset.suspension_height, 0.1f);
+                }
+                spawn_position.y = ground.y + ride;
+            }
+            driver.physics->SetBodyTransform(spawn_position, driver.entity->GetRotation());
             const Vector3 forward = horizontal(driver.entity->GetForward());
             driver.physics->SetLinearVelocity(forward * driver.spline_speed);
             driver.physics->SetAngularVelocity(Vector3::Zero);

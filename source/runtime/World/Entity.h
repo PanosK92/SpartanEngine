@@ -170,10 +170,11 @@ namespace spartan
         void GetDescendants(std::vector<Entity*>* descendants);
         Entity* GetDescendantByName(const std::string& name);
         bool HasChildren() const                  { return GetChildrenCount() > 0; }
-        uint32_t GetChildrenCount() const         { return static_cast<uint32_t>(m_children.size()); }
-        Entity* GetRoot()                         { return m_parent ? GetParent()->GetRoot() : this; }
+        uint32_t GetChildrenCount() const;
+        Entity* GetRoot()                         { return m_parent ? m_parent->GetRoot() : this; }
         Entity* GetParent()                       { return m_parent; }
-        std::vector<Entity*>& GetChildren()       { return m_children; }
+        // returns a copy under the children mutex, mutate through AddChild/RemoveChild/MoveChildToIndex
+        std::vector<Entity*> GetChildren() const;
         //===============================================================================================
 
         const math::Matrix& GetMatrix() const              { return m_matrix; }
@@ -245,8 +246,8 @@ namespace spartan
         std::vector<Entity*> m_children; // the children of this entity
 
         // misc
-        std::mutex m_mutex_children;
-        std::mutex m_mutex_parent;
+        mutable std::mutex m_mutex_children;
+        mutable std::mutex m_mutex_parent;
         float m_time_since_last_transform_sec = 0.0f;
 
         // free-form labels, serialized as a comma separated attribute

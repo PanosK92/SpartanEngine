@@ -68,9 +68,7 @@ function configure_graphics_api()
     end
 end
 
-function lzma_sdk_project_configuration()
-    dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "lzma_sdk.lua"))
-end
+local lzma_sdk = dofile(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "lzma_sdk.lua"))
 
 function solution_configuration()
     solution(SOLUTION_NAME)
@@ -127,6 +125,7 @@ function spartan_project_configuration()
             "../third_party/engine_sim/**.h",
             "../third_party/engine_sim/**.cpp"
         }
+        files(lzma_sdk.sources())
 
         if ARG_API_GRAPHICS == "d3d12" then
             removefiles { SOURCE_DIR .. "/runtime/RHI/Vulkan/**" }
@@ -136,6 +135,28 @@ function spartan_project_configuration()
 
         pchheader "pch.h"
         pchsource(SOURCE_DIR .. "/runtime/Core/pch.cpp")
+
+        -- lzma sdk: compile into spartan, no separate solution project
+        filter { "files:**/lzma_sdk/**" }
+            flags { "NoPCH" }
+            warnings "Off"
+            exceptionhandling "On"
+            rtti "On"
+            defines { "Z7_NO_CRYPTO", "UNICODE", "_UNICODE" }
+            includedirs {
+                lzma_sdk.root,
+                path.join(lzma_sdk.root, "C"),
+                path.join(lzma_sdk.root, "CPP"),
+                path.join(lzma_sdk.root, "spartan"),
+            }
+
+        filter { "files:**/lzma_sdk/**", "system:windows" }
+            buildoptions { "/W0", "/WX-" }
+
+        filter { "files:**/lzma_sdk/**", "system:linux" }
+            buildoptions { "-w" }
+
+        filter {}
 
         -- Windows includes for all builds
         filter { "system:windows" }
@@ -149,7 +170,6 @@ function spartan_project_configuration()
                 "../third_party/lzma_sdk/spartan",
                 "../third_party/engine_sim", "../third_party/engine_sim/Core", "../third_party/engine_sim/Solver"
             }
-            dependson { "lzma_sdk" }
             defines { "NRD_STATIC_LIBRARY", "NRI_STATIC_LIBRARY" }
             linkoptions {
                 "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
@@ -173,8 +193,6 @@ function spartan_project_configuration()
                 "../third_party/lzma_sdk/spartan",
                 "../third_party/engine_sim", "../third_party/engine_sim/Core", "../third_party/engine_sim/Solver"
             }
-            dependson { "lzma_sdk" }
-            links { "lzma_sdk" }
 
         -- Vulkan-specific includes (Windows only)
         filter { "system:windows" }
@@ -206,7 +224,7 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME)
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua", "lzma_sdk" }
+            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
                 "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle_static_64", "PhysXCharacterKinematic_static_64"
@@ -234,7 +252,7 @@ function spartan_project_configuration()
             linkoptions { "/IGNORE:4099", "/DEBUG:FASTLINK" }
             
         filter { "configurations:debug", "system:windows" }
-            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug", "lzma_sdk" }
+            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
                 "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
@@ -257,6 +275,5 @@ end
 if generation_actions[_ACTION] then
     configure_graphics_api()
     solution_configuration()
-    lzma_sdk_project_configuration()
     spartan_project_configuration()
 end

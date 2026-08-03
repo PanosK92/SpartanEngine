@@ -45,11 +45,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Material.h"
 #include "../Rendering/Renderer.h"
 #include "Components/Physics.h"
+#include "Components/Traffic.h"
 #include "../Physics/PhysicsWorld.h"
 #include "../Input/Input.h"
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <functional>
+#include <sstream>
+#include <thread>
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
@@ -83,10 +87,14 @@ namespace spartan
         // workers may still be configuring components for these, the renderer tolerates partial state via skip checks
         vector<Entity*> entities_pending;
         // deferred script initialization, lua is single threaded so script init is collected during the parallel
-        // entity load and executed sequentially on the load thread once every entity exists
+        // entity load and executed on the main thread after entities are published
         atomic<bool> defer_script_init = false;
         mutex script_init_mutex;
         vector<pair<int, function<void()>>> script_inits_pending;
+        // keeps the world xml alive until main thread finishes deferred script init
+        shared_ptr<pugi::xml_document> deferred_load_document;
+        // load worker finished entity build, main thread must publish and run scripts before clearing loading
+        atomic<bool> load_ready_for_main_commit = false;
         set<uint64_t> pending_remove;
         uint32_t audio_source_count = 0;
         atomic<bool> resolve        = false;
@@ -1171,34 +1179,90 @@ namespace spartan
     void World::Shutdown()
     {
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
-        Renderer::DisableProceduralGrass();          // drop renderer references to builder owned grass mesh/material
-        WorldHelpers::Clear();                        // release long lived builder meshes and materials
-        Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
-        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)n
 
+        // stop background world jobs before tearing down resources they may still touch
+        // collect first, never wait for preload while holding entity_access_mutex
+        {
+            vector<Traffic*> traffics;
+            {
+                lock_guard<mutex> lock(entity_access_mutex);
+                for (Entity* entity : entities)
+                {
+                    if (entity)
+                    {
+                        if (Traffic* traffic = entity->GetComponent<Traffic>())
+                        {
+                            traffics.push_back(traffic);
+                        }
+                    }
+                }
+                for (Entity* entity : entities_pending)
+                {
+                    if (entity)
+                    {
+                        if (Traffic* traffic = entity->GetComponent<Traffic>())
+                        {
+                            traffics.push_back(traffic);
+                        }
+                    }
+                }
+            }
+            for (Traffic* traffic : traffics)
+            {
+                traffic->Stop();
+            }
+        }
+
+        defer_script_init.store(false, memory_order_release);
+        {
+            lock_guard lock(script_init_mutex);
+            script_inits_pending.clear();
+        }
+        deferred_load_document.reset();
+        load_ready_for_main_commit.store(false, memory_order_release);
+
+        // drop queued work and wait for in-flight material/resource/load tasks
+        ThreadPool::Flush(true);
+
+        // a load worker may have signaled commit as it finished, drop that after the wait
+        {
+            lock_guard lock(script_init_mutex);
+            script_inits_pending.clear();
+        }
+        deferred_load_document.reset();
+        load_ready_for_main_commit.store(false, memory_order_release);
+        defer_script_init.store(false, memory_order_release);
+
+        Renderer::DisableProceduralGrass();          // drop renderer references to builder owned grass mesh/material
+        Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
+
+        // cars hold entity pointers, drop them before entity delete
         Car::ShutdownAll();
 
-        // clear entities
-        camera          = nullptr;
-        camera_override = nullptr;
-        light           = nullptr;
-        for (Entity* entity : entities)
-        {
-            delete entity;
-        }
-        entities.clear();
-        entities_lights.clear();
-        entities_with_render.clear();
-        // also clear any entities the loader had queued, otherwise we'd leak partially-built objects when a load is aborted
+        // entities before resources, component destructors still need live meshes/materials
         {
             lock_guard<mutex> lock(entity_access_mutex);
+            camera          = nullptr;
+            camera_override = nullptr;
+            light           = nullptr;
+            for (Entity* entity : entities)
+            {
+                delete entity;
+            }
+            entities.clear();
+            entities_lights.clear();
+            entities_with_render.clear();
+            // also clear any entities the loader had queued, otherwise we'd leak partially-built objects when a load is aborted
             for (Entity* entity : entities_pending)
             {
                 delete entity;
             }
             entities_pending.clear();
+            pending_remove.clear();
         }
-        pending_remove.clear();
+
+        WorldHelpers::Clear();                        // release long lived builder meshes and materials
+        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
         play_mode_spawned_ids.clear();
         play_mode_snapshot.clear();
         was_in_editor_mode = true;
@@ -1223,7 +1287,48 @@ namespace spartan
         {
             SP_PROFILE_CPU();
             was_loading = true;
-            return;
+
+            // only the main thread may publish into entities, the load worker stages into entities_pending
+            if (load_ready_for_main_commit.exchange(false, memory_order_acq_rel))
+            {
+                ProcessPendingAdditions();
+
+                defer_script_init.store(false, memory_order_release);
+                {
+                    vector<pair<int, function<void()>>> inits;
+                    {
+                        lock_guard lock(script_init_mutex);
+                        inits.swap(script_inits_pending);
+                    }
+
+                    // run lower order first so lights are configured before heavy world builders populate the scene
+                    stable_sort(inits.begin(), inits.end(), [](const pair<int, function<void()>>& a, const pair<int, function<void()>>& b)
+                    {
+                        return a.first < b.first;
+                    });
+
+                    for (pair<int, function<void()>>& init : inits)
+                    {
+                        init.second();
+                    }
+                }
+
+                // builder scripts may have spawned more entities
+                ProcessPendingAdditions();
+                deferred_load_document.reset();
+
+                ProgressTracker::GetProgress(ProgressType::World).Complete();
+                ProgressTracker::SetGlobalLoadingState(false);
+                world_io_state.store(WorldIoState::Idle, memory_order_release);
+
+                // fall through so resolve rebuilds entities_with_render before Renderer::Tick
+                // returning here left that list empty while HaveMaterialsChangedThisFrame still
+                // recorded hashes, so bindless materials never uploaded until a later entity spawn
+            }
+            else
+            {
+                return;
+            }
         }
 
         SP_PROFILE_CPU();
@@ -1237,6 +1342,9 @@ namespace spartan
             // force a resolve so the final entity state, deferred script setup like the sun, is rebuilt into the
             // renderer caches, a static world such as empty would otherwise stay on the last unlit loading frame
             resolve = true;
+            // drop hashes recorded against an empty entities_with_render during the commit frame gap
+            material_state_hashes.clear();
+            light_state_hashes.clear();
             SP_FIRE_EVENT(EventType::WorldLoaded);
         }
 
@@ -1275,9 +1383,14 @@ namespace spartan
         // stop
         if (stopped)
         {
-            for (Entity* entity : entities)
+            // copy the list, Stop can queue removals and must not walk a mutating vector
+            const vector<Entity*> entities_to_stop = entities;
+            for (Entity* entity : entities_to_stop)
             {
-                entity->Stop();
+                if (entity)
+                {
+                    entity->Stop();
+                }
             }
 
             // restore all entity transforms from snapshot
@@ -1523,7 +1636,7 @@ namespace spartan
         }
 
         SaveStateReset reset;
-        return SaveToFileInternal(move(file_path));
+        return SaveToFileInternal(move(file_path), false);
     }
 
     bool World::SaveToFileAsync(string file_path)
@@ -1540,13 +1653,12 @@ namespace spartan
             return false;
         }
 
-        ThreadPool::AddTask(
-            [file_path = move(file_path)]()
-            {
-                SaveStateReset reset;
-                SaveToFileInternal(file_path);
-            }
-        );
+        // snapshot live world state on the caller, only the xml write runs on a worker
+        if (!SaveToFileInternal(move(file_path), true))
+        {
+            world_io_state.store(WorldIoState::Idle, memory_order_release);
+            return false;
+        }
 
         return true;
     }
@@ -1558,7 +1670,7 @@ namespace spartan
             WorldIoState::Saving;
     }
 
-    bool World::SaveToFileInternal(string file_path)
+    bool World::SaveToFileInternal(string file_path, bool defer_xml_write)
     {
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
         {
@@ -1577,7 +1689,7 @@ namespace spartan
             const string generated_directory =
                 World::GetGeneratedResourceDirectory();
 
-            vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
+            vector<shared_ptr<IResource>> resources = ResourceCache::GetResourcesSnapshot();
             set<IResource*> referenced_resources;
             auto reference_material =
                 [&referenced_resources](Material* material)
@@ -1595,72 +1707,75 @@ namespace spartan
                     }
                 }
             };
-            for (Entity* entity : entities)
             {
-                if (entity == nullptr)
+                lock_guard<mutex> lock(entity_access_mutex);
+                for (Entity* entity : entities)
                 {
-                    continue;
-                }
-                if (Render* render = entity->GetComponent<Render>())
-                {
-                    if (Mesh* mesh = render->GetMesh())
+                    if (entity == nullptr)
                     {
-                        referenced_resources.insert(mesh);
+                        continue;
                     }
-                    if (!render->IsUsingDefaultMaterial())
+                    if (Render* render = entity->GetComponent<Render>())
                     {
-                        reference_material(
-                            render->GetMaterial()
-                        );
+                        if (Mesh* mesh = render->GetMesh())
+                        {
+                            referenced_resources.insert(mesh);
+                        }
+                        if (!render->IsUsingDefaultMaterial())
+                        {
+                            reference_material(
+                                render->GetMaterial()
+                            );
+                        }
                     }
-                }
-                if (
-                    ParticleSystem* particles =
-                        entity->GetComponent<ParticleSystem>()
-                )
-                {
-                    if (RHI_Texture* texture = particles->GetTexture())
-                    {
-                        referenced_resources.insert(texture);
-                    }
-                }
-                if (
-                    Terrain* terrain =
-                        entity->GetComponent<Terrain>()
-                )
-                {
                     if (
-                        RHI_Texture* height_map =
-                            terrain->GetHeightMapSeed()
+                        ParticleSystem* particles =
+                            entity->GetComponent<ParticleSystem>()
                     )
                     {
-                        referenced_resources.insert(height_map);
+                        if (RHI_Texture* texture = particles->GetTexture())
+                        {
+                            referenced_resources.insert(texture);
+                        }
                     }
-                    reference_material(
-                        terrain->GetMaterial().get()
-                    );
-                }
-                if (
-                    Spline* spline =
-                        entity->GetComponent<Spline>()
-                )
-                {
-                    const string& mesh_path =
-                        spline->GetInstanceMeshPath();
                     if (
-                        !mesh_path.empty()
+                        Terrain* terrain =
+                            entity->GetComponent<Terrain>()
                     )
                     {
                         if (
-                            shared_ptr<Mesh> mesh =
-                                ResourceCache::GetByPath<Mesh>(
-                                    mesh_path
-                                )
+                            RHI_Texture* height_map =
+                                terrain->GetHeightMapSeed()
                         )
                         {
-                            referenced_resources.insert(
-                                mesh.get()
-                            );
+                            referenced_resources.insert(height_map);
+                        }
+                        reference_material(
+                            terrain->GetMaterial().get()
+                        );
+                    }
+                    if (
+                        Spline* spline =
+                            entity->GetComponent<Spline>()
+                    )
+                    {
+                        const string& mesh_path =
+                            spline->GetInstanceMeshPath();
+                        if (
+                            !mesh_path.empty()
+                        )
+                        {
+                            if (
+                                shared_ptr<Mesh> mesh =
+                                    ResourceCache::GetByPath<Mesh>(
+                                        mesh_path
+                                    )
+                            )
+                            {
+                                referenced_resources.insert(
+                                    mesh.get()
+                                );
+                            }
                         }
                     }
                 }
@@ -1944,7 +2059,7 @@ namespace spartan
             // progress tracking
             ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
 
-            // write entities to node
+            // write entities to node while the world is still owned by this thread
             for (Entity* root : root_entities)
             {
                 // transient entities are runtime only, such as skid mark trails, they must never be serialized
@@ -1961,6 +2076,40 @@ namespace spartan
 
             // an empty world starts the tracker in continuous mode where it can never reach one on its own
             ProgressTracker::GetProgress(ProgressType::World).Complete();
+        }
+
+        if (defer_xml_write)
+        {
+            // snapshot is complete, only the file write leaves the main thread
+            ostringstream xml_stream;
+            doc.save(xml_stream, " ", pugi::format_indent);
+            string xml_content = xml_stream.str();
+            const float elapsed_ms = timer.GetElapsedTimeMs();
+
+            ThreadPool::AddTask(
+                [file_path = move(file_path), xml_content = move(xml_content), elapsed_ms]()
+                {
+                    SaveStateReset reset;
+
+                    ofstream out(file_path, ios::binary | ios::trunc);
+                    if (!out)
+                    {
+                        SP_LOG_ERROR("Failed to save XML file.");
+                        return;
+                    }
+
+                    out.write(xml_content.data(), static_cast<streamsize>(xml_content.size()));
+                    if (!out)
+                    {
+                        SP_LOG_ERROR("Failed to save XML file.");
+                        return;
+                    }
+
+                    SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), elapsed_ms);
+                }
+            );
+
+            return true;
         }
 
         // save to file
@@ -2146,21 +2295,23 @@ namespace spartan
                 }
             }
 
-            // load xml document
-            pugi::xml_document doc;
-            pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+            // load xml document, kept alive until main thread finishes deferred script init
+            shared_ptr<pugi::xml_document> doc = make_shared<pugi::xml_document>();
+            pugi::xml_parse_result result = doc->load_file(file_path.c_str());
             if (!result)
             {
                 SP_LOG_ERROR("Failed to load XML file: %s", result.description());
                 finish();
                 return;
             }
+            deferred_load_document = doc;
 
             // get world node
-            pugi::xml_node world_node = doc.child("World");
+            pugi::xml_node world_node = doc->child("World");
             if (!world_node)
             {
                 SP_LOG_ERROR("No 'World' node found.");
+                deferred_load_document.reset();
                 finish();
                 return;
             }
@@ -2196,6 +2347,7 @@ namespace spartan
                 if (!entities_node)
                 {
                     SP_LOG_ERROR("No 'Entities' node found.");
+                    deferred_load_document.reset();
                     finish();
                     return;
                 }
@@ -2229,6 +2381,9 @@ namespace spartan
 
                 // progress tracking
                 uint32_t entity_count = static_cast<uint32_t>(flat_entities.size());
+                // close the resource phase first, a missed resource JobDone would accumulate into
+                // this start and leave the bar stuck under 100 after every entity has loaded
+                ProgressTracker::GetProgress(ProgressType::World).Complete();
                 ProgressTracker::GetProgress(ProgressType::World).Start(entity_count, "Loading entities...");
 
                 // defer script lua execution, lua is single threaded and cannot run across the worker threads below
@@ -2239,61 +2394,43 @@ namespace spartan
                 defer_script_init.store(true, memory_order_release);
 
                 // create and load every entity without hierarchy, children are wired after
+                // keep this sequential on the load worker, component Initialize/Load is not safe
+                // across the pool (audio cache, water gpu buffers, renderer ocean state)
                 vector<Entity*> loaded_entities(entity_count, nullptr);
                 if (entity_count > 0)
                 {
-                    ThreadPool::ParallelLoop([&flat_entities, &loaded_entities](uint32_t start, uint32_t end)
+                    for (uint32_t i = 0; i < entity_count; i++)
                     {
-                        for (uint32_t i = start; i < end; i++)
-                        {
-                            Entity* entity = World::CreateEntity();
-                            entity->Load(flat_entities[i].node, false);
-                            loaded_entities[i] = entity;
-                            ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                        }
-                    }, entity_count);
+                        Entity* entity = World::CreateEntity();
+                        entity->Load(flat_entities[i].node, false);
+                        loaded_entities[i] = entity;
+                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                    }
 
                     // wire parents in document order so each parent exists before its children attach
                     for (uint32_t i = 0; i < entity_count; i++)
                     {
                         const uint32_t parent_index = flat_entities[i].parent_index;
-                        if (parent_index != UINT32_MAX)
+                        if (parent_index == UINT32_MAX)
                         {
-                            loaded_entities[i]->SetParent(loaded_entities[parent_index]);
+                            continue;
                         }
+
+                        SP_ASSERT(parent_index < loaded_entities.size());
+                        SP_ASSERT(loaded_entities[i] != nullptr);
+                        SP_ASSERT(loaded_entities[parent_index] != nullptr);
+                        loaded_entities[i]->SetParent(loaded_entities[parent_index]);
                     }
                 }
 
-                // publish the complete serialized world once so deferred scripts can query it
-                ProcessPendingAdditions();
-
-                // every entity now exists, run the queued script initialization sequentially on this thread
-                // builder scripts get the full thread pool for their own parallel work and lua stays single threaded
-                defer_script_init.store(false, memory_order_release);
-                {
-                    vector<pair<int, function<void()>>> inits;
-                    {
-                        lock_guard lock(script_init_mutex);
-                        inits.swap(script_inits_pending);
-                    }
-
-                    // run lower order first so lights are configured before heavy world builders populate the scene
-                    stable_sort(inits.begin(), inits.end(), [](const pair<int, function<void()>>& a, const pair<int, function<void()>>& b)
-                    {
-                        return a.first < b.first;
-                    });
-
-                    for (pair<int, function<void()>>& init : inits)
-                    {
-                        init.second();
-                    }
-                }
+                // leave entities in entities_pending, only the main thread may publish into the live vector
             }
 
             // report time
             SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
-            finish();
+            // hand off publish + deferred script init to World::Tick, loading stays up until that finishes
+            load_ready_for_main_commit.store(true, memory_order_release);
         });
 
         return true;
@@ -2381,7 +2518,9 @@ namespace spartan
 
     void World::RemoveEntityImmediate(Entity* entity_to_remove)
     {
+        // main thread only, escaped Entity* holders are not notified
         SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
+        SP_ASSERT_MSG(!ProgressTracker::IsLoading(), "Immediate delete is unsafe during world loading");
 
         lock_guard<mutex> lock(entity_access_mutex);
 

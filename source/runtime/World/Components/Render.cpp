@@ -733,7 +733,8 @@ namespace spartan
             return 0;
         }
 
-        return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());
+        // bounds checked, shutdown can clear submeshes while a dangling raw pointer still looks non null
+        return m_mesh->GetLodCount(m_sub_mesh_index);
     }
 
     void Render::SetFlag(const RenderFlags flag, const bool enable /*= true*/)

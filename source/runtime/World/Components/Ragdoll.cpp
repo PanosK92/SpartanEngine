@@ -56,7 +56,8 @@ namespace spartan
     namespace
     {
         constexpr float freeze_sleep_seconds = 1.25f;
-        constexpr float max_launch_speed = 16.0f;
+        // high so activated bodies can keep car/cube hit speed
+        constexpr float max_body_speed = 80.0f;
         constexpr float hit_speed = 3.5f;
         constexpr float hit_impulse = 40.0f;
         constexpr float hit_radius = 0.28f;
@@ -117,17 +118,30 @@ namespace spartan
 
         Vector3 actor_linear_velocity(Entity* entity)
         {
-            if (!entity)
+            // walk parents, vehicle contacts can land on a child without Physics
+            while (entity)
             {
-                return Vector3::Zero;
-            }
+                if (Physics* physics = entity->GetComponent<Physics>())
+                {
+                    return physics->GetLinearVelocity();
+                }
 
-            if (Physics* physics = entity->GetComponent<Physics>())
-            {
-                return physics->GetLinearVelocity();
+                entity = entity->GetParent();
             }
 
             return Vector3::Zero;
+        }
+
+        // keep real hit velocity, only add a small lift when the hit is almost flat
+        Vector3 shape_launch_velocity(Vector3 launch)
+        {
+            const float horizontal = sqrtf(launch.x * launch.x + launch.z * launch.z);
+            if (launch.y < horizontal * 0.05f)
+            {
+                launch.y = max(launch.y, min(horizontal * 0.12f, 6.0f));
+            }
+
+            return clamp_vector_length(launch, max_body_speed);
         }
 
         bool is_finite(float value)
@@ -193,7 +207,16 @@ namespace spartan
 
     Ragdoll::~Ragdoll()
     {
-        Remove();
+        // skip ResetToAlive render/lod work, entity teardown can run after meshes are gone
+        DestroyRagdoll();
+        DestroyHitBody();
+        if (m_material)
+        {
+            m_material->release();
+            m_material = nullptr;
+        }
+        m_animator = nullptr;
+        m_state = State::Alive;
     }
 
     void Ragdoll::Initialize()
@@ -597,12 +620,21 @@ namespace spartan
                 impulse = -impulse;
             }
 
-            // ignore bounced cube velocity pointing back at the camera
+            // copy hitter velocity, if it points the wrong way redirect along the hit
             const Vector3 other_to_self = self->GetPosition() - other->GetPosition();
             Vector3 launch = actor_linear_velocity(other);
-            if (Vector3::Dot(launch, other_to_self) < 0.0f)
+            const float launch_speed = launch.Length();
+            if (launch_speed >= hit_speed)
             {
-                launch = Vector3::Zero;
+                Vector3 away = other_to_self;
+                if (away.LengthSquared() < 0.0001f && normal.LengthSquared() > 0.0001f)
+                {
+                    away = normal;
+                }
+                if (away.LengthSquared() > 0.0001f && Vector3::Dot(launch, away) < 0.0f)
+                {
+                    launch = away.Normalized() * launch_speed;
+                }
             }
 
             const float impulse_mag = impulse.Length();
@@ -615,7 +647,7 @@ namespace spartan
             {
                 if (impulse_mag >= hit_impulse)
                 {
-                    launch = impulse.Normalized() * min(impulse_mag * 0.04f, max_launch_speed);
+                    launch = impulse.Normalized() * min(impulse_mag * 0.04f, max_body_speed);
                 }
                 else if (normal.LengthSquared() > 0.0001f)
                 {
@@ -637,7 +669,7 @@ namespace spartan
                 hit_position = self->GetPosition() + Vector3(0.0f, 1.0f, 0.0f);
             }
 
-            Activate(hit_position, launch);
+            Activate(hit_position, shape_launch_velocity(launch));
             return;
         }
     }
@@ -762,10 +794,10 @@ namespace spartan
 
         PxRigidBodyExt::setMassAndUpdateInertia(*actor, mass);
         actor->setSolverIterationCounts(6, 2);
-        actor->setMaxLinearVelocity(max_launch_speed);
-        actor->setMaxAngularVelocity(14.0f);
-        actor->setLinearDamping(0.4f);
-        actor->setAngularDamping(0.65f);
+        actor->setMaxLinearVelocity(max_body_speed);
+        actor->setMaxAngularVelocity(25.0f);
+        actor->setLinearDamping(0.12f);
+        actor->setAngularDamping(0.35f);
         actor->userData = reinterpret_cast<void*>(GetEntity());
         tag_shapes(actor, physics_collision_ragdoll);
         PhysicsWorld::AddActor(actor);
@@ -953,10 +985,8 @@ namespace spartan
         AddBoneJoint(torso_body, arm_r_body, 1.15f, 1.15f, 0.7f);
         AddBoneJoint(arm_r_body, forearm_r_body, 0.12f, 1.35f, 0.2f);
 
-        Vector3 launch = hit_velocity;
-        launch.y = clamp(launch.y * 0.2f + 1.0f, 0.5f, 2.5f);
-        launch = clamp_vector_length(launch, max_launch_speed);
-        const Vector3 angular(launch.z * 0.04f, 0.0f, -launch.x * 0.04f);
+        const Vector3 launch = shape_launch_velocity(hit_velocity);
+        const Vector3 angular(launch.z * 0.06f, 0.0f, -launch.x * 0.06f);
 
         for (BoneBody& body : m_bodies)
         {
@@ -1229,9 +1259,8 @@ namespace spartan
         {
             launch = Vector3(0.0f, 1.5f, 0.0f);
         }
-        launch.y = clamp(launch.y * 0.2f + 1.0f, 0.5f, 2.5f);
-        launch = clamp_vector_length(launch, max_launch_speed);
-        const Vector3 angular(launch.z * 0.04f, 0.0f, -launch.x * 0.04f);
+        launch = shape_launch_velocity(launch);
+        const Vector3 angular(launch.z * 0.06f, 0.0f, -launch.x * 0.06f);
 
         {
             lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());

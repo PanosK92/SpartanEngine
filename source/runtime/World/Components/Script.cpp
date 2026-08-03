@@ -230,13 +230,14 @@ void Script::Save(pugi::xml_node& node)
 void Script::Load(pugi::xml_node& node)
 {
     // during a bulk world load entities load across the thread pool, lua is single threaded so the actual
-    // script execution is queued and run sequentially on the load thread once all entities exist
+    // script execution is queued and run on the main thread once entities are published
     if (World::IsDeferringScriptInit())
     {
         // light configuring scripts run first so the scene is lit while heavier builder scripts populate it
         int order = GetEntity() && GetEntity()->GetComponent<Light>() ? 0 : 1;
 
-        pugi::xml_node node_copy = node; // lightweight handle, stays valid until the load task finishes
+        // lightweight handle, stays valid while World keeps the load document alive
+        pugi::xml_node node_copy = node;
         World::AddDeferredScriptInit(order, [this, node_copy]() mutable
         {
             LoadInternal(node_copy);

@@ -48,6 +48,9 @@ namespace spartan
         deque<Task> tasks;
 
         thread_local bool is_worker_thread = false;
+        // nested ParallelLoop from inside a pool task must run inline, otherwise workers
+        // wait on futures that can only run on the same exhausted pool and the load freezes
+        thread_local uint32_t parallel_depth = 0;
 
         bool execute_queued_task()
         {
@@ -61,10 +64,10 @@ namespace spartan
 
                 task = std::move(tasks.front());
                 tasks.pop_front();
+                // count work before releasing the mutex so flush cannot see empty+idle in the pop gap
+                working_count.fetch_add(1, memory_order_relaxed);
             }
 
-            // stolen work counts as in flight, otherwise flush returns while this task is still running
-            working_count.fetch_add(1, memory_order_relaxed);
             task();
             working_count.fetch_sub(1, memory_order_relaxed);
             pending_count.fetch_sub(1, memory_order_relaxed);
@@ -92,9 +95,9 @@ namespace spartan
 
                 task = std::move(tasks.front());
                 tasks.pop_front();
+                // count work before releasing the mutex so flush cannot see empty+idle in the pop gap
+                working_count.fetch_add(1, memory_order_relaxed);
             }
-
-            working_count.fetch_add(1, memory_order_relaxed);
 
             // execute task - exceptions are handled by packaged_task if one is used
             task();
@@ -177,23 +180,44 @@ namespace spartan
         return result;
     }
 
-    void ThreadPool::ParallelLoop(function<void(uint32_t, uint32_t)>&& function, const uint32_t work_total)
+    void ThreadPool::ParallelLoop(function<void(uint32_t, uint32_t)>&& work_fn, const uint32_t work_total)
     {
         SP_ASSERT_MSG(work_total > 0, "parallel loop requires work_total > 0");
 
         // no threads available - run on calling thread
         if (threads.empty())
         {
-            function(0, work_total);
+            work_fn(0, work_total);
             return;
         }
+
+        // nested ParallelLoop from inside a chunk must run inline, scheduling more pool
+        // tasks while every worker waits on futures freezes world load (dreamcore at ~89%)
+        if (parallel_depth > 0)
+        {
+            work_fn(0, work_total);
+            return;
+        }
+
+        struct depth_scope
+        {
+            depth_scope()  { parallel_depth++; }
+            ~depth_scope() { parallel_depth--; }
+        };
 
         uint32_t workers   = min(thread_count, work_total);
         uint32_t base_work = work_total / workers;
         uint32_t remainder = work_total % workers;
 
+        // one shared copy so every chunk invokes the same callable
+        // alias keeps msvc from treating the comma in void(uint32_t, uint32_t) as template args
+        using parallel_fn = function<void(uint32_t, uint32_t)>;
+        const shared_ptr<parallel_fn> shared_fn = make_shared<parallel_fn>(std::move(work_fn));
+
         vector<future<void>> futures;
         futures.reserve(workers);
+
+        depth_scope caller_depth;
 
         uint32_t work_index = 0;
         for (uint32_t i = 0; i < workers; ++i)
@@ -202,7 +226,12 @@ namespace spartan
             uint32_t start      = work_index;
             uint32_t end        = work_index + work_count;
 
-            futures.emplace_back(AddTask([fn = function, start, end]() { fn(start, end); }));
+            // chunks inherit nesting depth so ParallelLoop inside them stays inline
+            futures.emplace_back(AddTask([shared_fn, start, end]()
+            {
+                depth_scope chunk_depth;
+                (*shared_fn)(start, end);
+            }));
             work_index = end;
         }
 
@@ -216,10 +245,11 @@ namespace spartan
                 if (!execute_queued_task())
                 {
                     unique_lock<mutex> lock(task_mutex);
-                    idle_cv.wait_for(
+                    // wait on task_cv so AddTask wakes us, idle_cv only signals completions
+                    task_cv.wait_for(
                         lock,
                         chrono::microseconds(100),
-                        [] { return !tasks.empty(); }
+                        [] { return !tasks.empty() || stopping; }
                     );
                 }
             }

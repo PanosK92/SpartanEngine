@@ -46,7 +46,7 @@ namespace spartan
         void JobDone();
         void Complete(); // forces the tracker to 100 percent, used on load exit paths
 
-        const std::string& GetText();
+        std::string GetText();
         void SetText(const std::string& text);
 
         bool IsProgressing() const;

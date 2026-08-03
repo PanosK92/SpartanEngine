@@ -122,7 +122,9 @@ namespace spartan
         static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);
 
     private:
-        static bool SaveToFileInternal(std::string file_path);
+        // when defer_xml_write is true, resource and entity serialization runs on the caller
+        // and only the xml file write is posted to the thread pool
+        static bool SaveToFileInternal(std::string file_path, bool defer_xml_write);
         static void ProcessPendingRemovals();
     };
 }

@@ -25,7 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "MenuBar.h"
 #include "World/Entity.h"
+#include "World/World.h"
 #include "World/Prefab.h"
+#include "Core/ProgressTracker.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/Physics.h"
@@ -85,7 +87,7 @@ namespace
 
         out_entities.push_back(entity);
 
-        const vector<Entity*>& children = entity->GetChildren();
+        const vector<Entity*> children = entity->GetChildren();
         for (Entity* child : children)
         {
             CollectEntitiesInTreeOrder(child, out_entities);
@@ -143,7 +145,9 @@ namespace
         }
 
         uint32_t count = 1;
-        for (Entity* child : entity->GetChildren())
+        // copy children, hierarchy mutates on loader threads during world load
+        const vector<Entity*> children = entity->GetChildren();
+        for (Entity* child : children)
         {
             count += count_active_entities(child);
         }
@@ -156,6 +160,12 @@ namespace
         filtered_entity_ids.clear();
         entity_count       = 0;
         filter_match_count = 0;
+
+        // hierarchy is mutated on loader workers while ProgressTracker is loading
+        if (ProgressTracker::IsLoading())
+        {
+            return;
+        }
 
         static vector<Entity*> root_entities;
         World::GetRootEntities(root_entities);
@@ -360,6 +370,13 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 
 void WorldViewer::OnTickVisible()
 {
+    // loader workers mutate parents/children while ProgressTracker is loading
+    if (ProgressTracker::IsLoading())
+    {
+        ImGui::TextDisabled("loading world...");
+        return;
+    }
+
     prepare_entity_filter();
     DrawToolbar();
 
@@ -494,7 +511,7 @@ void WorldViewer::TreeShow()
                             // same parent - just reorder
                             if (target_parent)
                             {
-                                std::vector<Entity*>& children = target_parent->GetChildren();
+                                const std::vector<Entity*> children = target_parent->GetChildren();
                                 uint32_t target_index = 0;
                                 for (uint32_t i = 0; i < children.size(); ++i)
                                 {
@@ -518,7 +535,7 @@ void WorldViewer::TreeShow()
                             dropped_entity->SetParent(target_parent);
                             if (target_parent)
                             {
-                                std::vector<Entity*>& children = target_parent->GetChildren();
+                                const std::vector<Entity*> children = target_parent->GetChildren();
                                 uint32_t target_index = 0;
                                 for (uint32_t i = 0; i < children.size(); ++i)
                                 {
@@ -596,7 +613,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 
     // set up tree node flags - we handle highlighting manually, so no SpanFullWidth or Selected
     ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_OpenOnArrow;
-    const vector<Entity*>& children = entity->GetChildren();
+    const vector<Entity*> children = entity->GetChildren();
     bool has_children = !children.empty();
     if (entity_filter.IsActive())
     {

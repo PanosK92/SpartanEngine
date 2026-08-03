@@ -106,13 +106,15 @@ namespace spartan
         m_fraction        = 1.0f;
     }
 
-	const string& Progress::GetText()
+    string Progress::GetText()
     {
+        lock_guard lock(mutex_jobs);
         return m_text;
     }
 
     void Progress::SetText(const string& text)
     {
+        lock_guard lock(mutex_jobs);
         m_text = text;
     }
 

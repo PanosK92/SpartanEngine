@@ -19,11 +19,11 @@ end
 
 local function refresh_world_bounds(self, entity)
     local bounds = nil
-    local entity_id = entity:GetObjectID()
 
     for _, candidate in ipairs(World.GetEntities()) do
+        -- compare entities directly, uint64 object ids are not exact in lua numbers
         local excluded =
-            candidate:GetObjectID() == entity_id or
+            candidate == entity or
             candidate:IsDescendantOf(entity)
 
         if not excluded then

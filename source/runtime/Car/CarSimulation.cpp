@@ -139,6 +139,31 @@ namespace car
             }
         }
 
+    void Simulation::set_mechanism_simulation_enabled(bool enabled)
+    {
+            for (int i = 0; i < multibody.actor_count; i++)
+            {
+                if (multibody.actors[i])
+                {
+                    multibody.actors[i]->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, !enabled);
+                }
+            }
+        }
+
+    bool Simulation::has_multibody() const
+    {
+            return multibody.initialized && multibody.actor_count > 0;
+        }
+
+    bool Simulation::ensure_multibody(PxPhysics* physics, PxScene* scene)
+    {
+            if (has_multibody())
+            {
+                return true;
+            }
+            return create_multibody(physics, scene, true);
+        }
+
 
     void Simulation::set_force_retention(bool enabled)
     {
@@ -3607,14 +3632,21 @@ namespace car
                 compute_aero_from_shape(params.vertices);
             }
 
-            if (!create_multibody(params.physics, params.scene))
+            if (params.create_mechanisms)
             {
-                SP_LOG_ERROR("failed to create car suspension assembly");
-                destroy();
-                return false;
+                if (!create_multibody(params.physics, params.scene))
+                {
+                    SP_LOG_ERROR("failed to create car suspension assembly");
+                    destroy();
+                    return false;
+                }
             }
 
-            SP_LOG_INFO("car setup complete: mass=%.0f kg", cfg.mass);
+            SP_LOG_INFO(
+                "car setup complete: mass=%.0f kg mechanisms=%d",
+                cfg.mass,
+                params.create_mechanisms ? 1 : 0
+            );
             return true;
         }
 

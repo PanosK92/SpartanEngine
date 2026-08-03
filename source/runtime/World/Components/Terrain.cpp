@@ -1374,19 +1374,19 @@ namespace spartan
 
     void Terrain::Generate()
     {
-        if (m_is_generating)
+        bool expected = false;
+        if (!m_is_generating.compare_exchange_strong(expected, true))
         {
             SP_LOG_WARNING("terrain generation already in progress");
             return;
         }
-    
+
         if (!m_height_map_seed)
         {
             SP_LOG_WARNING("assign a height map before generating terrain");
+            m_is_generating.store(false);
             return;
         }
-    
-        m_is_generating = true;
     
         uint32_t job_count = 9;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");

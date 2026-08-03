@@ -97,7 +97,8 @@ namespace spartan
             }
             if (walker.entity)
             {
-                World::RemoveEntityImmediate(walker.entity);
+                // deferred, world is still iterating Entity::Stop on the live entity list
+                World::RemoveEntity(walker.entity);
             }
             walker.entity = nullptr;
             walker.animator = nullptr;
@@ -108,6 +109,7 @@ namespace spartan
         m_walkers.clear();
         m_source_mesh.reset();
         m_next_spawn_index = 0;
+        m_lod_timer = 0.0f;
         m_spawn_ready = false;
         m_physics_ready = false;
     }
@@ -126,7 +128,13 @@ namespace spartan
         }
 
         const float delta_time = clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f);
-        UpdateAnimationLod();
+        m_lod_timer += delta_time;
+        if (m_lod_timer >= 0.15f)
+        {
+            m_lod_timer = 0.0f;
+            UpdateAnimationLod();
+        }
+
         for (Walker& walker : m_walkers)
         {
             if (!walker.entity)
@@ -146,7 +154,15 @@ namespace spartan
                 continue;
             }
 
-            UpdateWalker(walker, delta_time);
+            // near animated walkers get path casts, far ones just glide
+            if (walker.animating)
+            {
+                UpdateWalker(walker, delta_time);
+            }
+            else
+            {
+                UpdateWalkerFar(walker, delta_time);
+            }
         }
     }
 
@@ -485,11 +501,57 @@ namespace spartan
         const float t = 1.0f - expf(-turn_speed * delta_time);
         entity->SetRotation(Quaternion::Lerp(entity->GetRotation(), target_rot, t));
         entity->SetPosition(position);
+    }
 
-        if (walker.animator)
+    void Pedestrians::UpdateWalkerFar(Walker& walker, float delta_time)
+    {
+        Entity* entity = walker.entity;
+        Vector3 position = entity->GetPosition();
+
+        walker.turn_timer -= delta_time;
+        if (walker.turn_timer <= 0.0f)
         {
-            walker.height_offset = walker.animator->GetFootIkGroundOffset();
+            const float yaw = (NextFloat() - 0.5f) * 0.8f;
+            const float cos_y = cosf(yaw);
+            const float sin_y = sinf(yaw);
+            walker.heading = planar_normalize(Vector3(
+                walker.heading.x * cos_y - walker.heading.z * sin_y,
+                0.0f,
+                walker.heading.x * sin_y + walker.heading.z * cos_y
+            ));
+            walker.turn_timer = 4.0f + NextFloat() * 8.0f;
         }
+
+        if (!IsInsideBounds(position, 4.0f))
+        {
+            const Vector3 center = (m_bounds_min + m_bounds_max) * 0.5f;
+            walker.heading = planar_normalize(Vector3(center.x - position.x, 0.0f, center.z - position.z));
+            walker.turn_timer = 2.0f + NextFloat() * 2.0f;
+        }
+
+        position.x += walker.heading.x * walker.speed * delta_time;
+        position.z += walker.heading.z * walker.speed * delta_time;
+
+        // ground less often, stagger by object id so they do not all raycast one frame
+        walker.ground_sample_timer -= delta_time;
+        if (walker.ground_sample_timer <= 0.0f)
+        {
+            walker.ground_sample_timer = 0.35f + static_cast<float>(entity->GetObjectId() % 17u) * 0.02f;
+            Vector3 ground;
+            if (SampleGround(position, ground))
+            {
+                walker.ground_y = ground.y;
+            }
+        }
+        position.y = walker.ground_y + walker.height_offset;
+
+        const Quaternion target_rot = Quaternion::FromLookRotation(
+            Vector3(-walker.heading.x, 0.0f, -walker.heading.z),
+            Vector3::Up
+        );
+        const float t = 1.0f - expf(-turn_speed * delta_time);
+        entity->SetRotation(Quaternion::Lerp(entity->GetRotation(), target_rot, t));
+        entity->SetPosition(position);
     }
 
     void Pedestrians::UpdateAnimationLod()

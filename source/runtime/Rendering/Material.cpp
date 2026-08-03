@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture.h"
 #include "../World/World.h"
 #include "../Core/ProgressTracker.h"
-#include "../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -408,11 +407,8 @@ namespace spartan
                         height
                     );
                     texture_normal_new->GetMip(0, 0)->bytes = move(normal_data);
-        
-                    // prepare for gpu now that data is filled
-                    texture_normal_new->PrepareForGpu();
 
-                    // cache the new texture
+                    // cache the new texture, Material::PrepareForGpu uploads after releasing m_mutex
                     texture_normal_new->SetResourceFilePath(texture_color->GetObjectName() + "_normal_from_albedo.png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
                     texture_normal_new = ResourceCache::Cache<RHI_Texture>(texture_normal_new);
                 }
@@ -591,9 +587,7 @@ namespace spartan
                             texture_packed->GetMip(0, 0)->bytes
                         );
 
-                        // prepare for gpu now that data is filled
-                        texture_packed->PrepareForGpu();
-
+                        // Material::PrepareForGpu uploads after releasing m_mutex
                         texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
                     }
         
@@ -1060,26 +1054,36 @@ namespace spartan
     void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot, const bool auto_adjust_multiplier)
     {
         SP_ASSERT(slot < slots_per_texture);
-    
-        // calculate the actual array index based on texture type and slot
-        uint32_t array_index = (static_cast<uint32_t>(texture_type) * slots_per_texture) + slot;
 
-        // check if the texture is actually changing
-        RHI_Texture* previous_texture = m_textures[array_index];
-        bool texture_changed = (previous_texture != texture);
-        
-        m_textures[array_index] = texture;
-
-        // mark for repacking if this texture type contributes to the packed texture and actually changed
-        if (texture_changed && IsPackableTextureType(texture_type))
+        bool should_prepare = false;
         {
-            m_needs_repack = true;
+            lock_guard<recursive_mutex> lock(m_mutex);
 
-            // if already prepared for gpu, schedule async repack
-            if (m_resource_state == ResourceState::PreparedForGpu)
+            // calculate the actual array index based on texture type and slot
+            uint32_t array_index = (static_cast<uint32_t>(texture_type) * slots_per_texture) + slot;
+
+            // check if the texture is actually changing
+            RHI_Texture* previous_texture = m_textures[array_index];
+            bool texture_changed = (previous_texture != texture);
+
+            m_textures[array_index] = texture;
+
+            // mark for repacking if this texture type contributes to the packed texture and actually changed
+            if (texture_changed && IsPackableTextureType(texture_type))
             {
-                PrepareForGpu();
+                m_needs_repack = true;
+
+                // if already prepared for gpu, schedule async repack outside the lock
+                if (m_resource_state == ResourceState::PreparedForGpu)
+                {
+                    should_prepare = true;
+                }
             }
+        }
+
+        if (should_prepare)
+        {
+            PrepareForGpu();
         }
 
         if (auto_adjust_multiplier)
@@ -1171,21 +1175,31 @@ namespace spartan
 
     RHI_Texture* Material::GetTexture(const MaterialTextureType texture_type, const uint8_t slot)
     {
+        // unlocked read, IsAlphaTested/sort/draw call this every frame and a mutex there costs milliseconds
+        // writers (SetTexture/PrepareForGpu) still take m_mutex
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture) + slot];
     }
 
     void Material::PrepareForGpu()
     {
+        // keep alive if owned by shared_ptr so sync gpu work cannot free this mid-call
+        shared_ptr<IResource> self_keep_alive = weak_from_this().lock();
+
+        array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> textures{};
         {
-            lock_guard<mutex> lock(m_mutex);
+            lock_guard<recursive_mutex> lock(m_mutex);
 
             // skip if already preparing or if no repack is needed for already-prepared materials
             if (m_resource_state == ResourceState::PreparingForGpu)
+            {
                 return;
+            }
 
             bool is_repack = m_resource_state == ResourceState::PreparedForGpu;
             if (is_repack && !m_needs_repack)
+            {
                 return;
+            }
 
             m_resource_state = ResourceState::PreparingForGpu;
 
@@ -1196,32 +1210,30 @@ namespace spartan
             }
 
             m_needs_repack = false;
+            textures       = m_textures;
         }
 
-        ThreadPool::AddTask([this]()
+        // gpu prep outside the material lock, ImmediateExecution and compress can take a while
+        for (RHI_Texture* texture : textures)
         {
+            if (texture && texture->GetResourceState() == ResourceState::Max)
             {
-                lock_guard<mutex> lock(m_mutex);
-
-                // prepare any textures that haven't been prepared yet
-                for (RHI_Texture* texture : m_textures)
-                {
-                    if (texture && texture->GetResourceState() == ResourceState::Max)
-                    {
-                        texture->PrepareForGpu();
-                    }
-                }
-
-                m_resource_state = ResourceState::PreparedForGpu;
+                texture->PrepareForGpu();
             }
+        }
 
-            // check if textures were set during preparation (async texture loading race condition)
-            // if so, trigger another preparation cycle to repack with the new textures
-            if (m_needs_repack)
-            {
-                PrepareForGpu();
-            }
-        });
+        bool needs_repack = false;
+        {
+            lock_guard<recursive_mutex> lock(m_mutex);
+            m_resource_state = ResourceState::PreparedForGpu;
+            needs_repack     = m_needs_repack;
+        }
+
+        // textures set during preparation, repack once more
+        if (needs_repack)
+        {
+            PrepareForGpu();
+        }
     }
 
     uint32_t Material::GetUsedSlotCount() const
@@ -1341,12 +1353,9 @@ namespace spartan
 
     bool Material::IsAlphaTested()
     {
-        bool albedo_mask = false;
-        if (RHI_Texture* texture = GetTexture(MaterialTextureType::Color))
-        {
-            albedo_mask = texture->IsSemiTransparent();
-        }
-
+        // hot path for draw sort and shadow passes, read slots directly
+        RHI_Texture* color = m_textures[static_cast<uint32_t>(MaterialTextureType::Color) * slots_per_texture];
+        const bool albedo_mask = color && color->IsSemiTransparent();
         return HasTextureOfType(MaterialTextureType::AlphaMask) || albedo_mask;
     }
 

@@ -134,7 +134,7 @@ namespace spartan
         template <class T>
         static std::shared_ptr<T> Cache(const std::shared_ptr<T> resource)
         {
-            if (!resource)
+            if (!resource || IsShuttingDown())
                 return nullptr;
 
             if (resource->GetResourceFilePath().empty())
@@ -152,6 +152,11 @@ namespace spartan
         template <class T>
         static std::shared_ptr<T> Load(const std::string& file_path, uint32_t flags = 0)
         {
+            if (IsShuttingDown())
+            {
+                return nullptr;
+            }
+
             if (!FileSystem::Exists(file_path))
             {
                 SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
@@ -164,6 +169,11 @@ namespace spartan
 
             // serialize concurrent loads of the same path so we don't decode the same file twice
             std::lock_guard<std::mutex> in_flight_guard(GetInFlightMutex(file_path));
+
+            if (IsShuttingDown())
+            {
+                return nullptr;
+            }
 
             // re-check after taking the per-path lock, another thread may have completed the load while we waited
             if (std::shared_ptr<T> existing = GetByPath<T>(file_path))
@@ -204,9 +214,13 @@ namespace spartan
         static const char* GetDataDirectory();
 
         // misc
+        // mutable view, caller must hold GetMutex for the whole use
         static std::vector<std::shared_ptr<IResource>>& GetResources();
+        // owning copy under the cache mutex, safe for unlocked iteration
+        static std::vector<std::shared_ptr<IResource>> GetResourcesSnapshot();
         static std::recursive_mutex& GetMutex();
         static std::mutex& GetInFlightMutex(const std::string& path);
+        static bool IsShuttingDown();
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
         static const Icon& GetIcon(IconType type);

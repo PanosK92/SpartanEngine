@@ -60,6 +60,7 @@ namespace spartan
             float height_offset = 0.0f;
             float turn_timer = 0.0f;
             float blocked_timer = 0.0f;
+            float ground_sample_timer = 0.0f;
             bool animating = false;
             bool dead = false;
         };
@@ -72,6 +73,7 @@ namespace spartan
         bool IsPathClear(const math::Vector3& position, const math::Vector3& direction, float distance) const;
         bool IsInsideBounds(const math::Vector3& position, float margin) const;
         void UpdateWalker(Walker& walker, float delta_time);
+        void UpdateWalkerFar(Walker& walker, float delta_time);
         void UpdateAnimationLod();
         float NextFloat();
         uint32_t NextUInt();
@@ -85,6 +87,7 @@ namespace spartan
         uint32_t m_max_animated = 32;
         float m_animation_radius = 120.0f;
         float m_walk_speed = 2.5f;
+        float m_lod_timer = 0.0f;
         uint32_t m_random_state = 0x6d2b79f5;
         uint32_t m_next_spawn_index = 0;
         bool m_spawn_ready = false;

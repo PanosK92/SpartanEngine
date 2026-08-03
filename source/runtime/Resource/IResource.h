@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include <atomic>
+#include <memory>
 #include "../FileSystem/FileSystem.h"
 #include "../Core/SpartanObject.h"
 //===================================
@@ -51,7 +52,7 @@ namespace spartan
         Max
     };
 
-    class IResource : public SpartanObject
+    class IResource : public SpartanObject, public std::enable_shared_from_this<IResource>
     {
     public:
         IResource(ResourceType type);

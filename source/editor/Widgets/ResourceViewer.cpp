@@ -87,7 +87,7 @@ ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
 
 void ResourceViewer::OnTickVisible()
 {
-    auto resources = ResourceCache::GetResources();
+    auto resources = ResourceCache::GetResourcesSnapshot();
     const float memory_usage = ResourceCache::GetMemoryUsage() / 1000.0f / 1000.0f;
 
     ImGui::Text("Resource count in scene: %d, Memory usage: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage));

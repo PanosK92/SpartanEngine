@@ -58,6 +58,7 @@ namespace spartan
         unordered_map<string, shared_ptr<IResource>> m_resources_by_path;
         atomic<bool> m_resource_path_index_dirty = false;
         recursive_mutex m_mutex;
+        atomic<bool> shutting_down = false;
         bool use_root_shader_directory = false;
         bool root_shader_directory_resolved = false;
         string root_shader_directory;
@@ -152,21 +153,29 @@ namespace spartan
 
     void ResourceCache::Shutdown()
     {
+        shutting_down.store(true, memory_order_release);
+
         // clear texture references from materials owned by renderer before destroying cached textures
         // this prevents dangling pointers since those materials outlive ResourceCache resources
         Renderer::ClearMaterialTextureReferences();
 
-        uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
-        m_resources.clear();
-        m_resources_by_path.clear();
-        m_resource_path_index_dirty.store(
-            false,
-            memory_order_release
-        );
-        if (resource_count != 0)
         {
-            SP_LOG_INFO("%d resources have been cleared", resource_count);
+            lock_guard<recursive_mutex> guard(m_mutex);
+            uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
+            m_resources.clear();
+            m_resources_by_path.clear();
+            m_resource_path_index_dirty.store(
+                false,
+                memory_order_release
+            );
+            if (resource_count != 0)
+            {
+                SP_LOG_INFO("%d resources have been cleared", resource_count);
+            }
         }
+
+        // world reloads call shutdown then load again, reopen the cache for the next load
+        shutting_down.store(false, memory_order_release);
     }
 
     void ResourceCache::LoadDefaultResources()
@@ -309,6 +318,17 @@ namespace spartan
             memory_order_release
         );
         return m_resources;
+    }
+
+    vector<shared_ptr<IResource>> ResourceCache::GetResourcesSnapshot()
+    {
+        lock_guard<recursive_mutex> guard(m_mutex);
+        return m_resources;
+    }
+
+    bool ResourceCache::IsShuttingDown()
+    {
+        return shutting_down.load(memory_order_acquire);
     }
 
     shared_ptr<IResource> ResourceCache::GetByPathInternal(

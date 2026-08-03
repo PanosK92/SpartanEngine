@@ -531,7 +531,14 @@ namespace spartan
             GetEntity()->SetRotation(render_rot);
 
             // update wheel visuals
-            UpdateWheelTransforms();
+            if (m_vehicle_sim_mode == VehicleSimMode::Cheap)
+            {
+                UpdateCheapWheelTransforms();
+            }
+            else
+            {
+                UpdateWheelTransforms();
+            }
 
             // tick the car (input, camera, sounds, telemetry)
             if (m_car)
@@ -578,6 +585,12 @@ namespace spartan
             m_vehicle_simulation->clear_force_accumulators();
         }
 
+        if (m_vehicle_sim_mode == VehicleSimMode::Cheap)
+        {
+            TickVehicleCheapSubstep(dt);
+            return;
+        }
+
         // sync wheel offsets once at start of play
         if (!m_wheel_offsets_synced)
         {
@@ -600,6 +613,124 @@ namespace spartan
             }
             m_vehicle_simulation->set_wheel_surface(i, static_cast<car::surface_type>(m_wheel_ground_surfaces[i]));
         }
+    }
+
+    void Physics::TickVehicleCheapSubstep(float dt)
+    {
+        PxRigidDynamic* body = m_vehicle_simulation->get_body();
+        if (!body || dt <= 0.0f)
+        {
+            return;
+        }
+
+        // pedals land in input_target, cheap mode still needs the smooth copy into input
+        m_vehicle_simulation->update_input(dt);
+
+        // cheap cars are held at ride height, gravity would sink the chassis hull into the road
+        body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+
+        const car::car_preset& spec = m_vehicle_simulation->get_spec();
+        const float wheelbase = std::max(spec.wheelbase > 0.0f ? spec.wheelbase : 2.7f, 1.5f);
+        const float max_steer = std::clamp(
+            spec.max_steer_angle > 0.0f ? spec.max_steer_angle : 0.6f,
+            0.25f,
+            0.9f
+        );
+        const float wheel_radius = std::max(
+            (spec.front_wheel_radius + spec.rear_wheel_radius) * 0.5f,
+            0.2f
+        );
+        // body origin sits wheel radius plus suspension height above the road, same as full sim spawn
+        const float ride_height = wheel_radius + std::max(m_vehicle_simulation->get_config().suspension_height, 0.1f);
+        const float accel = 8.0f;
+        const float brake_decel = 14.0f;
+        const float lateral_damp = 10.0f;
+        const float drag = 0.35f;
+
+        Vector3 position;
+        Quaternion rotation;
+        from_px_transform(body->getGlobalPose(), position, rotation);
+
+        // snap height to the road so wheels sit on the surface
+        Vector3 hit_position;
+        const Vector3 ray_origin = position + Vector3::Up * 3.0f;
+        if (PhysicsWorld::RaycastStatic(ray_origin, Vector3::Down, 8.0f, hit_position))
+        {
+            position.y = hit_position.y + ride_height;
+            body->setGlobalPose(
+                PxTransform(
+                    PxVec3(position.x, position.y, position.z),
+                    PxQuat(rotation.x, rotation.y, rotation.z, rotation.w)
+                )
+            );
+        }
+
+        Vector3 forward = rotation * Vector3::Forward;
+        forward.y = 0.0f;
+        if (forward.LengthSquared() > 0.0001f)
+        {
+            forward.Normalize();
+        }
+        else
+        {
+            forward = Vector3::Forward;
+        }
+        Vector3 right = rotation * Vector3::Right;
+        right.y = 0.0f;
+        if (right.LengthSquared() > 0.0001f)
+        {
+            right.Normalize();
+        }
+        else
+        {
+            right = Vector3::Right;
+        }
+
+        PxVec3 px_vel = body->getLinearVelocity();
+        Vector3 velocity(px_vel.x, 0.0f, px_vel.z);
+        const float forward_speed = Vector3::Dot(velocity, forward);
+        const float lateral_speed = Vector3::Dot(velocity, right);
+
+        const float throttle = std::clamp(m_vehicle_simulation->get_throttle(), 0.0f, 1.0f);
+        const float brake = std::clamp(m_vehicle_simulation->get_brake(), 0.0f, 1.0f);
+        const float steer = std::clamp(m_vehicle_simulation->get_steering(), -1.0f, 1.0f);
+        const float handbrake = std::clamp(m_vehicle_simulation->get_handbrake(), 0.0f, 1.0f);
+
+        float drive = throttle * accel;
+        if (fabsf(forward_speed) > 0.5f)
+        {
+            drive -= brake * brake_decel * (forward_speed >= 0.0f ? 1.0f : -1.0f);
+        }
+        else if (brake > throttle)
+        {
+            // arcade reverse when nearly stopped
+            drive = -brake * accel * 0.65f;
+        }
+        drive -= handbrake * brake_decel * (forward_speed >= 0.0f ? 1.0f : -1.0f) * 0.75f;
+
+        Vector3 planar_velocity = forward * forward_speed + right * lateral_speed;
+        planar_velocity += forward * (drive * dt);
+        planar_velocity -= right * lateral_speed * std::clamp(lateral_damp * dt, 0.0f, 1.0f);
+        planar_velocity *= std::max(1.0f - drag * dt, 0.0f);
+        velocity.x = planar_velocity.x;
+        velocity.y = 0.0f;
+        velocity.z = planar_velocity.z;
+
+        const float signed_speed = Vector3::Dot(velocity, forward);
+        const float steer_speed_scale = std::clamp(fabsf(signed_speed) / 12.0f, 0.0f, 1.0f);
+        m_cheap_steer_angle = steer * max_steer * (0.35f + 0.65f * steer_speed_scale);
+        float yaw_rate = 0.0f;
+        if (fabsf(signed_speed) > 0.2f)
+        {
+            yaw_rate = (signed_speed / wheelbase) * tanf(m_cheap_steer_angle);
+        }
+
+        body->setLinearVelocity(PxVec3(velocity.x, 0.0f, velocity.z));
+        body->setAngularVelocity(PxVec3(0.0f, yaw_rate, 0.0f));
+        body->wakeUp();
+
+        const float roll_speed = signed_speed / std::max(wheel_radius, 0.05f);
+        m_cheap_wheel_roll += roll_speed * dt;
     }
 
     void Physics::TickDynamicBodies(bool is_playing)
@@ -1366,9 +1497,70 @@ namespace spartan
             simulation->set_force_retention(m_vehicle_simulation_interval > 0.0f);
             m_wheel_offsets_synced = false;
             m_interpolation_initialized = false;
+            if (m_vehicle_sim_mode == VehicleSimMode::Cheap)
+            {
+                simulation->set_mechanism_simulation_enabled(false);
+            }
         }
         m_vehicle_simulation_accumulator = 0.0f;
         m_vehicle_simulation_active = active;
+    }
+
+    void Physics::SetVehicleSimMode(VehicleSimMode mode)
+    {
+        if (m_vehicle_sim_mode == mode)
+        {
+            return;
+        }
+
+        // body not ready yet, remember the mode for create
+        if (m_body_type != BodyType::Vehicle || !m_vehicle_simulation || !m_vehicle_simulation->get_body())
+        {
+            m_vehicle_sim_mode = mode;
+            return;
+        }
+
+        PxRigidDynamic* body = m_vehicle_simulation->get_body();
+        Vector3 position;
+        Quaternion rotation;
+        from_px_transform(body->getGlobalPose(), position, rotation);
+        const Vector3 linear_velocity = GetLinearVelocity();
+        Vector3 angular_velocity = Vector3::Zero;
+        {
+            const PxVec3 px_ang = body->getAngularVelocity();
+            angular_velocity = Vector3(px_ang.x, px_ang.y, px_ang.z);
+        }
+
+        if (mode == VehicleSimMode::Cheap)
+        {
+            CaptureCheapWheelRestPoses();
+            m_vehicle_simulation->set_mechanism_simulation_enabled(false);
+            m_vehicle_simulation->clear_force_accumulators();
+            body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+            m_cheap_wheel_roll = 0.0f;
+            m_cheap_steer_angle = 0.0f;
+            SetBodyTransform(position, rotation, false);
+        }
+        else
+        {
+            PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
+            PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
+            if (!m_vehicle_simulation->ensure_multibody(physics, scene))
+            {
+                SP_LOG_ERROR("failed to build suspension assembly for full sim mode");
+                return;
+            }
+            m_vehicle_simulation->set_mechanism_simulation_enabled(true);
+            body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, false);
+            m_wheel_offsets_synced = false;
+            SetBodyTransform(position, rotation, true);
+        }
+
+        m_vehicle_sim_mode = mode;
+        SetLinearVelocity(linear_velocity);
+        SetAngularVelocity(angular_velocity);
+        m_vehicle_simulation_accumulator = 0.0f;
+        m_interpolation_initialized = false;
     }
 
     void Physics::SetVehicleSimulationFrequency(float frequency)
@@ -1658,12 +1850,12 @@ namespace spartan
                 m_vehicle_simulation->set_wheel_angular_velocity(i, 0.0f);
             }
 
-            if (rebuild_vehicle && !m_vehicle_simulation->rebuild_multibody(false))
+            if (rebuild_vehicle && m_vehicle_simulation->has_multibody())
             {
-                SP_LOG_ERROR("failed to rebuild suspension after vehicle reset");
-            }
-            if (rebuild_vehicle)
-            {
+                if (!m_vehicle_simulation->rebuild_multibody(false))
+                {
+                    SP_LOG_ERROR("failed to rebuild suspension after vehicle reset");
+                }
                 m_vehicle_simulation->reset_drivetrain_transients();
                 m_vehicle_simulation->reset_wheel_thermals();
             }
@@ -1737,11 +1929,22 @@ namespace spartan
         int index = static_cast<int>(wheel);
         if (index >= 0 && index < static_cast<int>(WheelIndex::Count))
         {
+            if (m_wheel_entities[index] != entity)
+            {
+                m_cheap_wheel_rest_captured[index] = false;
+            }
             m_wheel_entities[index] = entity;
 
             // sync the physics wheel offset from the entity position
             if (entity)
             {
+                if (!m_cheap_wheel_rest_captured[index])
+                {
+                    m_cheap_wheel_local_pos[index] = entity->GetPositionLocal();
+                    m_cheap_wheel_local_rot[index] = entity->GetRotationLocal();
+                    m_cheap_wheel_rest_captured[index] = true;
+                }
+
                 Entity* vehicle_entity = GetEntity();
                 if (vehicle_entity)
                 {
@@ -2811,7 +3014,7 @@ namespace spartan
             m_vehicle_simulation->set_wheel_offset(i, local_pos.x, local_pos.z);
         }
 
-        if (!m_vehicle_simulation->rebuild_multibody())
+        if (m_vehicle_simulation->has_multibody() && !m_vehicle_simulation->rebuild_multibody())
         {
             SP_LOG_ERROR("failed to rebuild car suspension after wheel synchronization");
         }
@@ -2891,6 +3094,79 @@ namespace spartan
             wheel_position = TransformVehiclePointToRender(wheel_position);
             wheel_rotation = TransformVehicleRotationToRender(wheel_rotation);
             wheel_position -= wheel_rotation * m_wheel_mesh_center_offsets[i];
+            wheel_entity->SetPosition(wheel_position);
+            wheel_entity->SetRotation(wheel_rotation);
+        }
+    }
+
+    void Physics::CaptureCheapWheelRestPoses()
+    {
+        for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+        {
+            Entity* wheel_entity = m_wheel_entities[i];
+            if (!wheel_entity)
+            {
+                continue;
+            }
+            if (!m_cheap_wheel_rest_captured[i])
+            {
+                m_cheap_wheel_local_pos[i] = wheel_entity->GetPositionLocal();
+                m_cheap_wheel_local_rot[i] = wheel_entity->GetRotationLocal();
+                m_cheap_wheel_rest_captured[i] = true;
+            }
+        }
+    }
+
+    void Physics::UpdateCheapWheelTransforms()
+    {
+        if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))
+        {
+            return;
+        }
+
+        CaptureCheapWheelRestPoses();
+
+        Entity* vehicle_entity = GetEntity();
+        if (!vehicle_entity)
+        {
+            return;
+        }
+
+        const Vector3 vehicle_position = vehicle_entity->GetPosition();
+        const Quaternion vehicle_rotation = vehicle_entity->GetRotation();
+        Vector3 car_right = vehicle_rotation * Vector3::Right;
+        Vector3 car_up = vehicle_rotation * Vector3::Up;
+        if (car_right.LengthSquared() > 0.0001f)
+        {
+            car_right.Normalize();
+        }
+        if (car_up.LengthSquared() > 0.0001f)
+        {
+            car_up.Normalize();
+        }
+
+        const Quaternion spin = Quaternion::FromAxisAngle(car_right, m_cheap_wheel_roll);
+        const Quaternion steer_q = Quaternion::FromAxisAngle(car_up, m_cheap_steer_angle);
+
+        for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+        {
+            Entity* wheel_entity = m_wheel_entities[i];
+            if (!wheel_entity || !m_cheap_wheel_rest_captured[i])
+            {
+                continue;
+            }
+
+            const bool is_front =
+                i == static_cast<int>(WheelIndex::FrontLeft) ||
+                i == static_cast<int>(WheelIndex::FrontRight);
+            const Quaternion base = vehicle_rotation * m_cheap_wheel_local_rot[i];
+            Quaternion wheel_rotation = (is_front ? steer_q : Quaternion::Identity) * spin * base;
+            Vector3 wheel_position = vehicle_position + vehicle_rotation * m_cheap_wheel_local_pos[i];
+            wheel_position -= wheel_rotation * m_wheel_mesh_center_offsets[i];
+            if (!wheel_position.IsFinite() || !wheel_rotation.IsFinite())
+            {
+                continue;
+            }
             wheel_entity->SetPosition(wheel_position);
             wheel_entity->SetRotation(wheel_rotation);
         }
@@ -2977,6 +3253,7 @@ namespace spartan
             car::setup_params params;
             params.physics = physics;
             params.scene   = scene;
+            params.create_mechanisms = m_vehicle_sim_mode == VehicleSimMode::Full;
 
             if (m_vehicle_simulation->setup(params))
             {
@@ -2988,9 +3265,12 @@ namespace spartan
                 Vector3 pos = GetEntity()->GetPosition();
                 PxTransform current_pose = body->getGlobalPose();
                 body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
-                if (!m_vehicle_simulation->rebuild_multibody(false))
+                if (params.create_mechanisms)
                 {
-                    SP_LOG_ERROR("failed to place car suspension assembly");
+                    if (!m_vehicle_simulation->rebuild_multibody(false))
+                    {
+                        SP_LOG_ERROR("failed to place car suspension assembly");
+                    }
                 }
                 if (m_chassis_entity)
                 {
@@ -3001,6 +3281,11 @@ namespace spartan
                 if (!m_vehicle_simulation_active)
                 {
                     m_vehicle_simulation->set_simulation_enabled(false);
+                }
+                else if (m_vehicle_sim_mode == VehicleSimMode::Cheap)
+                {
+                    m_vehicle_simulation->set_mechanism_simulation_enabled(false);
+                    body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
                 }
 
                 // run the vehicle force model in lockstep with the fixed physics step
@@ -3228,7 +3513,10 @@ namespace spartan
 
             if (shapes_created == 0)
             {
-                SP_LOG_ERROR("No convex shapes were created for MeshConvex");
+                SP_LOG_WARNING(
+                    "No convex shapes were created for MeshConvex on '%s'",
+                    GetEntity() ? GetEntity()->GetObjectName().c_str() : "unknown"
+                );
                 actor->release();
                 return;
             }

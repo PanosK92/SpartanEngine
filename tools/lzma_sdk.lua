@@ -1,4 +1,4 @@
--- lzma sdk static lib: in-process 7z extract + create
+-- lzma sdk sources: in-process 7z extract + create (compiled into spartan)
 local LZMA_ROOT = path.getabsolute(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_DIR, "../third_party/lzma_sdk"))
 
 local function lzma_sources()
@@ -80,49 +80,7 @@ local function lzma_sources()
     return files_list
 end
 
-project "lzma_sdk"
-    kind "StaticLib"
-    language "C++"
-    cppdialect(CPP_VERSION)
-    staticruntime "On"
-    warnings "Off"
-    fatalwarnings { }
-    characterset "Unicode"
-    exceptionhandling "On"
-    rtti "On"
-
-    targetdir(LIBRARY_DIR)
-    objdir(path.join(OBJ_DIR, "lzma_sdk"))
-
-    files(lzma_sources())
-
-    includedirs {
-        LZMA_ROOT,
-        path.join(LZMA_ROOT, "C"),
-        path.join(LZMA_ROOT, "CPP"),
-        path.join(LZMA_ROOT, "spartan"),
-    }
-
-    defines {
-        "Z7_NO_CRYPTO",
-        "UNICODE",
-        "_UNICODE",
-    }
-
-    filter { "system:windows" }
-        buildoptions { "/W0", "/WX-", "/wd4996" }
-
-    filter { "system:linux" }
-        buildoptions { "-w" }
-
-    filter { "configurations:debug" }
-        targetname "lzma_sdk_debug"
-        symbols "On"
-        optimize "Off"
-
-    filter { "configurations:release" }
-        targetname "lzma_sdk"
-        symbols "Off"
-        optimize "Speed"
-
-    filter {}
+return {
+    root = LZMA_ROOT,
+    sources = lzma_sources,
+}

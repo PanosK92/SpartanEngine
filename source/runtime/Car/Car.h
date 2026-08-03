@@ -21,14 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ===========================
 #include <vector>
 #include <memory>
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/BoundingBox.h"
 #include "../Rendering/Material.h"
-//==============================
+#include "../World/Components/Physics.h"
+//======================================
 
 namespace pugi
 {
@@ -76,6 +77,7 @@ namespace spartan
             bool          customize_materials = true;
             MaterialPaintPreset paint_preset = MaterialPaintPreset::Metallic;
             Color               paint_color  = Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f);
+            VehicleSimMode      vehicle_sim_mode = VehicleSimMode::Full;
         };
 
         // factory method - creates a car and adds it to the registry
@@ -130,6 +132,8 @@ namespace spartan
         bool GetShowTelemetry() const { return m_show_telemetry; }
         void SetVisualizationPreset(CarVisualizationPreset preset);
         CarVisualizationPreset GetVisualizationPreset() const { return m_visualization_preset; }
+        void SetVehicleSimMode(VehicleSimMode mode);
+        VehicleSimMode GetVehicleSimMode() const;
         void LoadDefinition(const car::car_definition* definition);
 
         // camera orbit (right stick control)

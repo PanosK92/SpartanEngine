@@ -1129,7 +1129,7 @@
    <traffic car_count="20" car_file="cars/ferrari_laferrari.car" bounds_min_x="-220" bounds_min_y="-10" bounds_min_z="-380" bounds_max_x="380" bounds_max_y="80" bounds_max_z="260" simulation_frequency="50" physics_radius="80" physics_exit_radius="100" />
   </Entity>
   <Entity name="pedestrian_manager" id="18446744073709551021" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <pedestrians count="100" model_file="project/models/mannequiny/mannequiny.glb" bounds_min_x="454.5" bounds_min_y="-10" bounds_min_z="-793.9" bounds_max_x="1414.5" bounds_max_y="80" bounds_max_z="166.1" max_animated="32" animation_radius="120" walk_speed="2.5" />
+   <pedestrians count="100" model_file="project/models/mannequiny/mannequiny.glb" bounds_min_x="454.5" bounds_min_y="-10" bounds_min_z="-793.9" bounds_max_x="1414.5" bounds_max_y="80" bounds_max_z="166.1" max_animated="16" animation_radius="80" walk_speed="2.5" />
   </Entity>
   <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.461521 0.0278618 -0.886573 0.0145039" scale="1 1 1">
    <light flags="3" light_type="0" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.300000012" />

@@ -284,7 +284,11 @@ namespace spartan
             "GetName",                  &Entity::GetObjectName,
             "SetName",                  &Entity::SetObjectName,
             "GetObjectSize",            &Entity::GetObjectSize,
-            "GetObjectID",              &Entity::GetObjectId,
+            // return as string so lua does not lose uint64 precision
+            "GetObjectID", [](Entity* self) -> std::string
+            {
+                return self ? std::to_string(self->GetObjectId()) : "0";
+            },
 
             "Clone",                    &Entity::Clone,
             "IsActive",                 &Entity::IsActive,
@@ -294,7 +298,7 @@ namespace spartan
             {
                 sol::state_view lua = World::GetLuaState();
                 sol::table result = lua.create_table();
-                const std::vector<Entity*>& children = Self->GetChildren();
+                const std::vector<Entity*> children = Self->GetChildren();
                 for (size_t i = 0; i < children.size(); i++)
                 {
                     result[i + 1] = children[i];
@@ -342,7 +346,7 @@ namespace spartan
 
     void Entity::Start()
     {
-        for (shared_ptr<Component> component : m_components)
+        for (shared_ptr<Component>& component : m_components)
         {
             if (component)
             {
@@ -353,7 +357,7 @@ namespace spartan
 
     void Entity::Stop()
     {
-        for (shared_ptr<Component> component : m_components)
+        for (shared_ptr<Component>& component : m_components)
         {
             if (component)
             {
@@ -442,10 +446,11 @@ namespace spartan
             }
         }
 
+        const vector<Entity*> children = GetChildren();
         if (HasPrefabData())
         {
             // the prefab base is rebuilt on load, so only persist what the user added on top
-            for (Entity* child : m_children)
+            for (Entity* child : children)
             {
                 if (child->IsTransient())
                 {
@@ -467,7 +472,7 @@ namespace spartan
         }
         else
         {
-            for (Entity* child : m_children)
+            for (Entity* child : children)
             {
                 if (child->IsTransient())
                 {
@@ -493,8 +498,9 @@ namespace spartan
             }
         }
 
+        const vector<Entity*> children = GetChildren();
         bool has_user_children = false;
-        for (Entity* child : m_children)
+        for (Entity* child : children)
         {
             if (!child->m_prefab_owned && !child->IsTransient())
             {
@@ -526,7 +532,7 @@ namespace spartan
                 }
             }
 
-            for (Entity* child : m_children)
+            for (Entity* child : children)
             {
                 if (!child->m_prefab_owned && !child->IsTransient())
                 {
@@ -537,7 +543,7 @@ namespace spartan
         }
 
         // recurse into base children to capture additions deeper in the hierarchy
-        for (Entity* child : m_children)
+        for (Entity* child : children)
         {
             if (child->m_prefab_owned)
             {
@@ -920,10 +926,37 @@ namespace spartan
         // mark update
         m_time_since_last_transform_sec = 0.0f;
 
-        // update children
-        for (Entity* child : m_children)
+        // copy under the children lock, parallel prefab loads can AddChild while a parent updates
+        Entity* stack_children[32];
+        Entity** child_list = nullptr;
+        uint32_t child_count = 0;
+        vector<Entity*> heap_children;
         {
-            child->UpdateTransform();
+            lock_guard lock(m_mutex_children);
+            child_count = static_cast<uint32_t>(m_children.size());
+            if (child_count == 0)
+            {
+                return;
+            }
+
+            if (child_count <= 32)
+            {
+                memcpy(stack_children, m_children.data(), child_count * sizeof(Entity*));
+                child_list = stack_children;
+            }
+            else
+            {
+                heap_children = m_children;
+                child_list    = heap_children.data();
+            }
+        }
+
+        for (uint32_t i = 0; i < child_count; i++)
+        {
+            if (child_list[i])
+            {
+                child_list[i]->UpdateTransform();
+            }
         }
     }
 
@@ -1070,7 +1103,8 @@ namespace spartan
 
     Entity* Entity::GetChildByIndex(const uint32_t index)
     {
-        if (!HasChildren() || index >= GetChildrenCount())
+        lock_guard lock(m_mutex_children);
+        if (index >= m_children.size())
         {
             return nullptr;
         }
@@ -1080,6 +1114,7 @@ namespace spartan
 
     Entity* Entity::GetChildByName(const string& name)
     {
+        lock_guard lock(m_mutex_children);
         for (Entity* child : m_children)
         {
             if (child->GetObjectName() == name)
@@ -1117,49 +1152,62 @@ namespace spartan
 
     void Entity::SetParent(Entity* new_parent)
     {
-        lock_guard lock(m_mutex_parent);
-
-        if (new_parent)
         {
-            // early exit if the parent is this entity
-            if (GetObjectId() == new_parent->GetObjectId())
-            {
-                return;
-            }
+            lock_guard lock(m_mutex_parent);
 
-            // early exit if the parent is already set
-            if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
+            if (new_parent)
             {
-                return;
-            }
-
-            // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
-            if (new_parent->IsDescendantOf(this))
-            {
-                for (Entity* child : m_children)
+                // early exit if the parent is this entity
+                if (GetObjectId() == new_parent->GetObjectId())
                 {
-                    child->m_parent = m_parent; // directly setting parent
-                    child->UpdateTransform();   // update transform if needed
+                    return;
                 }
 
-                m_children.clear();
+                // early exit if the parent is already set
+                if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
+                {
+                    return;
+                }
+
+                // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
+                if (new_parent->IsDescendantOf(this))
+                {
+                    vector<Entity*> children;
+                    {
+                        lock_guard children_lock(m_mutex_children);
+                        children.swap(m_children);
+                    }
+
+                    for (Entity* child : children)
+                    {
+                        if (!child)
+                        {
+                            continue;
+                        }
+
+                        child->m_parent = m_parent; // directly setting parent
+                        child->UpdateTransform();   // update transform if needed
+                    }
+                }
             }
+
+            // remove the this as a child from the existing parent
+            if (m_parent)
+            {
+                bool update_child_with_null_parent = false;
+                m_parent->RemoveChild(this, update_child_with_null_parent);
+            }
+
+            // add this is a child to new parent
+            if (new_parent)
+            {
+                new_parent->AddChild(this);
+            }
+
+            m_parent = new_parent;
         }
 
-        // remove the this as a child from the existing parent
-        if (m_parent)
-        {
-            bool update_child_with_null_parent = false;
-            m_parent->RemoveChild(this, update_child_with_null_parent);
-        }
-
-        // add this is a child to new parent
-        if (new_parent)
-        {
-            new_parent->AddChild(this);
-        }
-
-        m_parent = new_parent;
+        // transform after releasing m_mutex_parent, UpdateTransform can touch children/locks
         UpdateTransform();
     }
 
@@ -1226,12 +1274,14 @@ namespace spartan
             return;
         }
 
-        lock_guard lock(m_mutex_children);
+        {
+            lock_guard lock(m_mutex_children);
 
-        // remove the child
-        m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
+            // remove the child
+            m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Entity* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
+        }
 
-        // remove the child's parent
+        // never call SetParent while holding m_mutex_children, that path can re-enter RemoveChild and deadlock
         if (update_child_with_null_parent)
         {
             child->SetParent(nullptr);
@@ -1244,6 +1294,18 @@ namespace spartan
 
         m_parent = nullptr;
         UpdateTransform();
+    }
+
+    uint32_t Entity::GetChildrenCount() const
+    {
+        lock_guard lock(m_mutex_children);
+        return static_cast<uint32_t>(m_children.size());
+    }
+
+    vector<Entity*> Entity::GetChildren() const
+    {
+        lock_guard lock(m_mutex_children);
+        return m_children;
     }
 
     // searches the entire hierarchy, finds any children and saves them in m_children
@@ -1301,7 +1363,8 @@ namespace spartan
 
     void Entity::GetDescendants(vector<Entity*>* descendants)
     {
-        for (Entity* child : m_children)
+        const vector<Entity*> children = GetChildren();
+        for (Entity* child : children)
         {
             descendants->emplace_back(child);
 

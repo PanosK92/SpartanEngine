@@ -68,17 +68,19 @@ namespace audio_clip_cache
         }
     };
     unordered_map<string, weak_ptr<AudioClip>> cache;
+    mutex cache_mutex;
 
     shared_ptr<AudioClip> Get(const string& file_path)
     {
+        // parallel entity loads can hit this together, the map is not thread safe without a lock
+        lock_guard<mutex> lock(cache_mutex);
+
         auto it = cache.find(file_path);
-        shared_ptr<AudioClip> clip;
         if (it != cache.end())
         {
-            clip = it->second.lock();
-            if (clip)
+            if (shared_ptr<AudioClip> existing = it->second.lock())
             {
-                return clip;
+                return existing;
             }
         }
 
@@ -133,7 +135,7 @@ namespace audio_clip_cache
             return nullptr;
         }
 
-        clip         = make_shared<AudioClip>();
+        shared_ptr<AudioClip> clip = make_shared<AudioClip>();
         clip->buffer = target_buffer;
         clip->length = static_cast<uint32_t>(target_length);
         clip->spec   = new SDL_AudioSpec(target_spec);
@@ -144,6 +146,7 @@ namespace audio_clip_cache
 
     void ReleaseAll()
     {
+        lock_guard<mutex> lock(cache_mutex);
         cache.clear();
     }
 }

@@ -1193,6 +1193,12 @@ namespace spartan
             return;
         }
 
+        // paused pedestrians skip mesh resolve and bind work entirely
+        if (!m_playing && !m_external_pose_active)
+        {
+            return;
+        }
+
         Mesh* mesh = ResolveMesh();
         if (!mesh || !mesh->GetSkeleton())
         {

@@ -1036,6 +1036,15 @@ namespace spartan::car_hud
                 ImGui::TextColored(imvec4_from_u32(text_dim), "blue frame driveline and wheels  purple collision hull and sweep misses  silver links and joints  orange suspension longitudinal force and shifting power unit  green steering contact load and effective tire radius  heat colored tire zones  red brakes torque and bump stops  pink lateral force  cyan aero and rolling resistance");
             }
 
+            int sim_mode = static_cast<int>(car_instance->GetVehicleSimMode());
+            const char* sim_modes[] = { "Full", "Cheap" };
+            ImGui::SetNextItemWidth(160.0f);
+            if (ImGui::Combo("Sim mode", &sim_mode, sim_modes, IM_ARRAYSIZE(sim_modes)))
+            {
+                car_instance->SetVehicleSimMode(static_cast<VehicleSimMode>(sim_mode));
+            }
+            hud_tooltip("full is the real multibody car, cheap is arcade chassis plus four visual wheels for traffic and evaluation");
+
             ImGui::SetNextItemWidth(260.0f);
             if (ImGui::BeginCombo("Car", spec.name))
             {

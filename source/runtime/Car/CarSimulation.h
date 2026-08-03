@@ -37,6 +37,7 @@ namespace car
         PxConvexMesh*       chassis_mesh = nullptr; // convex hull for collision
         std::vector<PxVec3> vertices;               // original mesh verts for aero calculation
         config              car_config;
+        bool                create_mechanisms = true; // false skips suspension multibody for cheap sim
     };
 
     // the whole vehicle model, a physx chassis body plus per-wheel tire, suspension, drivetrain and aero
@@ -125,6 +126,10 @@ namespace car
         float get_clutch() const;
         float get_engine_rotation() const;
         void set_simulation_enabled(bool enabled);
+        // toggles suspension multibody actors only, chassis stays as set by set_simulation_enabled
+        void set_mechanism_simulation_enabled(bool enabled);
+        bool has_multibody() const;
+        bool ensure_multibody(PxPhysics* physics, PxScene* scene);
         void set_force_retention(bool enabled);
         void clear_force_accumulators();
 

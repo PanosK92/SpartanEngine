@@ -215,6 +215,8 @@ namespace spartan
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index        = 0;
         bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
-        std::mutex m_mutex;
+        // recursive, PrepareForGpu holds this while pack_textures calls SetTexture
+        // GetTexture stays unlocked, draw/sort call it every frame
+        std::recursive_mutex m_mutex;
     };
 }
