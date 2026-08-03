@@ -1790,7 +1790,8 @@ namespace car
                 return false;
             }
 
-            differential->setGearRatio(-1.0f);
+            // both hubs share local +x, positive ratio keeps them co-rotating
+            differential->setGearRatio(1.0f);
             register_multibody_joint(differential);
             return true;
     }
@@ -1821,7 +1822,13 @@ namespace car
             multibody.rack_joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eLOCKED);
             multibody.rack_joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
             multibody.rack_joint->setLinearLimit(PxD6Axis::eX, PxJointLinearLimitPair(multibody.physics->getTolerancesScale(), -multibody.rack_travel, multibody.rack_travel));
-            multibody.rack_joint->setDrive(PxD6Drive::eX, PxD6JointDrive(18000.0f, 1800.0f, PX_MAX_F32, true));
+            // force drive must out-stiff tire sat through the tie rods, soft accel drive let the rack steer itself into a brake weave
+            const float rack_mass = PxMax(spec.steering_rack_mass, 0.5f);
+            const float rack_hold_stiffness = 500000.0f;
+            const float rack_hold_damping = 2.0f * sqrtf(rack_hold_stiffness * rack_mass);
+            multibody.rack_joint->setDrive(
+                PxD6Drive::eX,
+                PxD6JointDrive(rack_hold_stiffness, rack_hold_damping, PX_MAX_F32, false));
             register_multibody_joint(multibody.rack_joint);
 
             for (int wheel_index : { front_left, front_right })
@@ -2535,6 +2542,7 @@ namespace car
             if (multibody.rack_joint)
             {
                 float curved_input = copysignf(powf(fabsf(PxClamp(input.steering, -1.0f, 1.0f)), spec.steering_linearity), input.steering);
+                // minus matches trailing-rod + input convention, verify in-game before flipping
                 float rack_target = -curved_input * multibody.rack_travel;
                 multibody.rack_joint->setDrivePosition(PxTransform(PxVec3(rack_target, 0.0f, 0.0f)));
             }
@@ -2589,7 +2597,7 @@ namespace car
                 spring_force[i] = force_magnitude;
             }
 
-            // physical arb bars carry mass only, roll stiffness is always the force couple
+            // physical arb bars carry mass only, roll stiffness and bush damping live in the force couple
             auto apply_anti_roll = [&](int left, int right, float stiffness)
             {
                 if (stiffness <= 0.0f)
@@ -2606,8 +2614,15 @@ namespace car
                     right_corner.shock_rest_length - right_corner.shock_length,
                     -cfg.suspension_travel,
                     cfg.suspension_travel);
+                // shock_velocity > 0 on extension, compression rate delta matches the spring term sign
+                float compression_delta = left_compression - right_compression;
+                float compression_rate_delta =
+                    right_corner.shock_velocity - left_corner.shock_velocity;
+                float arb_mass = PxMax(spec.arb_mass, 1.0f);
+                float roll_mass = PxMax(cfg.mass * 0.05f, arb_mass);
+                float arb_damping = 2.0f * 0.4f * sqrtf(stiffness * roll_mass);
                 float force_magnitude = PxClamp(
-                    (left_compression - right_compression) * stiffness,
+                    compression_delta * stiffness + compression_rate_delta * arb_damping,
                     -spec.max_susp_force,
                     spec.max_susp_force);
                 PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0.0f, 1.0f, 0.0f));
