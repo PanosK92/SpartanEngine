@@ -36,6 +36,13 @@ local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "libxess.dll"),
 }
 
+-- xess-sr overlay from github so upscaler stays current without libraries.7z churn
+local XESS_VERSION     = "3.0.2"
+local XESS_DIR         = path.join(PROJECT_ROOT, "third_party", "xess")
+local XESS_STAMP       = path.join(XESS_DIR, "version.txt")
+local XESS_URL         = "https://github.com/intel/xess/releases/download/v" .. XESS_VERSION .. "/XeSS_SDK_" .. XESS_VERSION .. ".zip"
+local XESS_ZIP         = path.join(PROJECT_ROOT, "third_party", "XeSS_SDK_" .. XESS_VERSION .. ".zip")
+
 -- d3d12 agility sdk, downloaded on demand into third_party/d3d12_agility
 -- the middle number of the nuget version is the D3D12SDKVersion exported by the exe
 local AGILITY_VERSION     = "1.619.4"
@@ -336,6 +343,78 @@ local function stage_agility_runtime()
     end
 end
 
+local function ensure_xess_sdk()
+    if not is_windows() then
+        print("  not windows, skipping xess sdk")
+        return
+    end
+
+    local required = {
+        path.join(XESS_DIR, "xess", "xess.h"),
+        path.join(LIBRARIES_DIR, "libxess.lib"),
+        path.join(LIBRARIES_DIR, "libxess.dll"),
+    }
+
+    local present = read_text(XESS_STAMP) == XESS_VERSION
+    if present then
+        for _, p in ipairs(required) do
+            if not file_exists(p) then
+                present = false
+                break
+            end
+        end
+    end
+
+    if present then
+        print("xess sdk " .. XESS_VERSION .. " present, skipping download")
+        return
+    end
+
+    print("downloading xess sdk " .. XESS_VERSION .. "...")
+    os.mkdir(path.getdirectory(XESS_ZIP))
+
+    local result, code = download_with_progress(XESS_URL, XESS_ZIP)
+    if result ~= "OK" then
+        error(string.format("xess sdk download failed: %s (http %s)", tostring(result), tostring(code)))
+    end
+
+    local extract_root = path.join(PROJECT_ROOT, "third_party", "xess_sdk_extract")
+    if os.isdir(extract_root) then
+        os.rmdir(extract_root)
+    end
+
+    extract_zip(XESS_ZIP, extract_root)
+
+    local sdk_root = extract_root
+    if not os.isdir(path.join(sdk_root, "inc")) then
+        -- some zips nest one directory
+        for _, entry in ipairs(os.matchdirs(path.join(extract_root, "*"))) do
+            if os.isdir(path.join(entry, "inc")) then
+                sdk_root = entry
+                break
+            end
+        end
+    end
+
+    if not os.isdir(path.join(sdk_root, "inc")) then
+        error("unexpected xess sdk archive layout")
+    end
+
+    os.mkdir(XESS_DIR)
+    copy_dir(path.join(sdk_root, "inc", "xess"), path.join(XESS_DIR, "xess"))
+    copy_file(path.join(sdk_root, "lib", "libxess.lib"), path.join(LIBRARIES_DIR, "libxess.lib"))
+    copy_file(path.join(sdk_root, "bin", "libxess.dll"), path.join(LIBRARIES_DIR, "libxess.dll"))
+
+    local f = io.open(XESS_STAMP, "wb")
+    f:write(XESS_VERSION)
+    f:close()
+
+    os.rmdir(extract_root)
+    os.remove(XESS_ZIP)
+
+    print("xess sdk " .. XESS_VERSION .. " installed")
+end
+
 local function ensure_steamworks()
     if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
         print("steamworks sdk present, skipping download")
@@ -388,24 +467,31 @@ local function ensure_steamworks()
 end
 
 function setup.run()
-    print("\n[1/6] copying data files into binaries...")
+    print("\n[1/7] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
 
-    print("\n[2/6] ensuring libraries archive is present...")
+    print("\n[2/7] ensuring libraries archive is present...")
     ensure_archive()
 
-    print("\n[3/6] extracting archive...")
+    print("\n[3/7] extracting archive...")
     extract_archive()
 
-    print("\n[4/6] ensuring d3d12 agility sdk...")
+    print("\n[4/7] ensuring xess sdk...")
+    ensure_xess_sdk()
+
+    print("\n[5/7] ensuring d3d12 agility sdk...")
     ensure_agility_sdk()
 
-    print("\n[5/6] ensuring steamworks sdk...")
+    print("\n[6/7] ensuring steamworks sdk...")
     ensure_steamworks()
 
-    print("\n[6/6] copying runtime dlls into binaries...")
+    print("\n[7/7] copying runtime dlls into binaries...")
     for _, dll in ipairs(RUNTIME_DLLS) do
-        copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
+        if file_exists(dll) then
+            copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))
+        else
+            print("  missing runtime dll: " .. path.getname(dll))
+        end
     end
 
     stage_agility_runtime()

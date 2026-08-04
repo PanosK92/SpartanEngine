@@ -101,7 +101,7 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 
 - **Variable rate shading** and **dynamic resolution scaling**
 - **TAAU**, temporal anti-aliasing with built-in upsampling, Halton-jittered with variance-clip history reprojection
-- **Intel XeSS 2** upscaling
+- **Intel XeSS 3** upscaling
 - **FXAA**
 - **Custom breadcrumbs** for GPU crash tracing and post-mortem debugging
 
