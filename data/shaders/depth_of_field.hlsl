@@ -27,40 +27,48 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
     constants
 ------------------------------------------------------------------------------*/
-// camera/lens parameters
-static const float SENSOR_HEIGHT_MM = 24.0f;  // full-frame 35mm sensor
-static const float FOCAL_LENGTH_MM  = 50.0f;  // standard lens
+// full frame 35mm sensor, focal length is derived from horizontal fov each frame
+static const float SENSOR_WIDTH_MM  = 36.0f;
+static const float SENSOR_HEIGHT_MM = 24.0f;
 
 // blur parameters
-static const float MAX_COC_RADIUS     = 16.0f;  // maximum blur in pixels
-static const float COC_CLAMP_FACTOR   = 0.8f;   // prevent excessive blur
-static const float IN_FOCUS_THRESHOLD = 0.5f;   // coc below this = sharp
-static const int   SAMPLE_COUNT       = 48;     // bokeh quality (higher = smoother)
+static const float MAX_COC_RADIUS     = 24.0f; // maximum blur in pixels
+static const float COC_CLAMP_FACTOR   = 0.85f; // prevent excessive blur
+static const float IN_FOCUS_THRESHOLD = 0.4f;  // coc below this = sharp
+static const int   SAMPLE_COUNT       = 64;    // bokeh quality
 static const float GOLDEN_ANGLE       = 2.39996323f;
+static const int   APERTURE_BLADES    = 6;     // hexagonal cinematic bokeh
 
-// auto-focus parameters
-static const int   FOCUS_SAMPLES      = 24;     // depth samples for focus calculation
-static const float FOCUS_REGION       = 0.12f;  // screen fraction for focus area
-static const float CENTER_WEIGHT_BIAS = 2.5f;   // prefer center of screen for focus
-static const float SUBJECT_TOLERANCE  = 2.0f;   // depths within this multiple of the nearest hit are the same subject
+// auto focus parameters
+static const int   FOCUS_SAMPLES      = 32;    // depth samples for focus calculation
+static const float FOCUS_REGION       = 0.10f; // screen fraction for focus area
+static const float CENTER_WEIGHT_BIAS = 3.0f;  // prefer centre of screen for focus
+static const float SUBJECT_TOLERANCE  = 2.0f;  // depths within this multiple of the nearest hit are the same subject
+static const float FOCUS_ADAPT_SPEED  = 3.5f;  // cinematic focus pull, higher is snappier
 
 // depth handling
-static const float NEAR_SCALE = 1.2f;           // foreground blur emphasis
-static const float FAR_SCALE  = 1.0f;           // background blur scale
-static const float BG_LEAK_PREVENTION = 0.5f;   // reduce background bleeding into foreground
+static const float NEAR_SCALE         = 1.25f; // foreground blur emphasis
+static const float FAR_SCALE          = 1.0f;  // background blur scale
+static const float BG_LEAK_PREVENTION = 0.45f; // reduce background bleeding into foreground
 
-// derived constants (compile-time)
-static const float COC_CLAMP_PIXELS  = MAX_COC_RADIUS * COC_CLAMP_FACTOR;
-static const float INV_SAMPLE_COUNT  = 1.0f / (float)SAMPLE_COUNT;
-static const float INV_SCATTER_NORM  = 1.0f / (MAX_COC_RADIUS * 0.3f);
+// highlight preserving bokeh, keeps specular orbs alive in the blur
+static const float HIGHLIGHT_THRESHOLD = 1.0f;
+static const float HIGHLIGHT_GAIN      = 2.5f;
+
+// derived constants
+static const float COC_CLAMP_PIXELS = MAX_COC_RADIUS * COC_CLAMP_FACTOR;
+static const float INV_SAMPLE_COUNT = 1.0f / (float)SAMPLE_COUNT;
+static const float INV_SCATTER_NORM = 1.0f / (MAX_COC_RADIUS * 0.3f);
+static const float BLADE_ANGLE      = PI2 / (float)APERTURE_BLADES;
 
 /*------------------------------------------------------------------------------
     lens constants computed once per group then read by every thread
 ------------------------------------------------------------------------------*/
 struct lens_t
 {
-    float focus_distance;  // s, focus distance in meters clamped above focal length
-    float coc_factor;      // aperture_diameter * f * resolution.y / sensor_m / abs(s - f)
+    float focus_distance; // s, focus distance in meters
+    float coc_factor;     // aperture_diameter * f * pixels_per_meter / abs(s - f)
+    float aperture_fstop; // used to blend circular vs polygonal bokeh
 };
 
 groupshared lens_t gs_lens;
@@ -81,7 +89,7 @@ float compute_coc_signed(float depth, lens_t lens)
 }
 
 /*------------------------------------------------------------------------------
-    auto-focus, locks onto the nearest subject near the screen centre
+    auto focus, locks onto the nearest subject near the screen centre
 
     a weighted average of the sampled depths is a poor estimator, a thin subject
     like a bottle or a pole only covers a few of the samples so the far background
@@ -93,9 +101,6 @@ float compute_coc_signed(float depth, lens_t lens)
     sample is not trusted on its own so it falls back to the next nearest
     cluster, this is what a camera does when it focuses on what is in front of it
 ------------------------------------------------------------------------------*/
-// the spiral places sample i at radius sqrt(i / (n - 1)) * FOCUS_REGION, so the
-// normalised distance from the centre is just sqrt(t), the weight needs no stored
-// offset and no length()
 float focus_sample_weight(int i)
 {
     float t = (float)i / (float)(FOCUS_SAMPLES - 1);
@@ -110,8 +115,6 @@ float compute_focus_distance(float2 resolution)
     // pull focus, otherwise a subject against the sky is always defocused
     const float sky_depth = max(buffer_frame.camera_far * 0.99f, 1.0f);
 
-    // only the depths are kept, the weights are a function of the index, keeping both
-    // arrays live would cost the bokeh gather below a chunk of its occupancy
     float depths[FOCUS_SAMPLES];
     float nearest  = sky_depth;
     float any_sum  = 0.0f;
@@ -198,6 +201,41 @@ float compute_focus_distance(float2 resolution)
 }
 
 /*------------------------------------------------------------------------------
+    smooth the raw focus target toward a cinematic focus pull
+------------------------------------------------------------------------------*/
+float smooth_focus_distance(float target_distance)
+{
+    float prev = tex2.Load(int3(0, 0, 0)).r;
+    if (isnan(prev) || prev <= 0.0f)
+        return target_distance;
+
+    // pull nearer a touch faster, matches how real lenses and eyes settle
+    float speed = target_distance < prev ? FOCUS_ADAPT_SPEED * 1.6f : FOCUS_ADAPT_SPEED;
+    float alpha = 1.0f - exp(-speed * buffer_frame.delta_time);
+    return lerp(prev, target_distance, alpha);
+}
+
+/*------------------------------------------------------------------------------
+    map a unit disk sample onto a polygonal aperture
+    wide open stays round, stopping down reveals blade shape
+------------------------------------------------------------------------------*/
+float2 aperture_sample_offset(float t, float angle, float aperture_fstop)
+{
+    float r = sqrt(t);
+
+    float sector = fmod(angle, BLADE_ANGLE) - BLADE_ANGLE * 0.5f;
+    float poly_r = cos(BLADE_ANGLE * 0.5f) / max(cos(sector), 1e-3f);
+
+    // f/1.4 ~ circular, f/8+ ~ clear hexagon
+    float poly_amount = saturate((aperture_fstop - 1.4f) / 6.5f);
+    r *= lerp(1.0f, poly_r, poly_amount * 0.9f);
+
+    float sin_a, cos_a;
+    sincos(angle, sin_a, cos_a);
+    return float2(cos_a, sin_a) * r;
+}
+
+/*------------------------------------------------------------------------------
     main bokeh blur with gather sampling
 ------------------------------------------------------------------------------*/
 float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens, float2 texel_size, float2 resolution)
@@ -206,44 +244,47 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
 
     float3 color_sum  = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
     float  weight_sum = 1.0f;
-    
+
     bool center_is_fg = center_coc < 0.0f;
 
     // randomize starting angle per pixel for temporal stability with taa
     float angle = noise_interleaved_gradient(uv * resolution, true) * PI2;
-    
+
     [loop]
     for (int i = 0; i < SAMPLE_COUNT; i++)
     {
         angle += GOLDEN_ANGLE;
-        
+
         float t = (float)(i + 1) * INV_SAMPLE_COUNT;
-        float r = sqrt(t) * blur_radius;
-        
-        float sin_a, cos_a;
-        sincos(angle, sin_a, cos_a);
-        float2 offset    = float2(cos_a, sin_a) * r * texel_size;
+        float2 disk = aperture_sample_offset(t, angle, lens.aperture_fstop);
+        float r = length(disk) * blur_radius;
+
+        float2 offset    = disk * blur_radius * texel_size;
         float2 sample_uv = uv + offset;
-        
+
         if (!is_valid_uv(sample_uv))
             continue;
-        
+
         float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb;
         float  sample_depth = get_linear_depth(sample_uv * get_render_uv_scale());
         float  sample_coc   = compute_coc_signed(sample_depth, lens);
         float  abs_sample_coc = abs(sample_coc);
 
-        // inlined sample_weight
         float effective_coc = max(abs_sample_coc, blur_radius);
         float coverage      = saturate(1.0f - r / max(effective_coc, FLT_MIN));
         float depth_weight  = (sample_depth > center_depth && center_is_fg) ? BG_LEAK_PREVENTION : 1.0f;
-        float scatter       = lerp(0.3f, 1.0f, saturate(abs_sample_coc * INV_SCATTER_NORM));
-        float w             = coverage * depth_weight * scatter;
-        
+        float scatter       = lerp(0.35f, 1.0f, saturate(abs_sample_coc * INV_SCATTER_NORM));
+
+        // keep bright specular energy so out of focus lights form soft orbs
+        float lum       = luminance(sample_color);
+        float highlight = 1.0f + HIGHLIGHT_GAIN * saturate((lum - HIGHLIGHT_THRESHOLD) * 0.25f);
+
+        float w = coverage * depth_weight * scatter * highlight;
+
         color_sum  += sample_color * w;
         weight_sum += w;
     }
-    
+
     return color_sum / max(weight_sum, FLT_MIN);
 }
 
@@ -251,7 +292,7 @@ float3 bokeh_gather(float2 uv, float center_coc, float center_depth, lens_t lens
     compute shader entry point
 ------------------------------------------------------------------------------*/
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex)
+void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
 {
     float2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
@@ -259,29 +300,41 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
     // one thread per group computes the lens constants and shares them with the rest
     if (group_index == 0)
     {
-        float aperture_fstop    = pass_get_f3_value().x;
-        float f                 = FOCAL_LENGTH_MM * 0.001f;
-        float aperture_diameter = f / max(aperture_fstop, 1.0f);
+        float aperture_fstop = max(pass_get_f3_value().x, 0.5f);
+
+        // physical focal length from horizontal fov and full frame sensor width
+        float fov_h    = max(buffer_frame.camera_fov, 0.01f);
+        float f        = (SENSOR_WIDTH_MM * 0.001f) * 0.5f / max(tan(fov_h * 0.5f), 1e-4f);
+        float aperture_diameter = f / aperture_fstop;
         float sensor_m          = SENSOR_HEIGHT_MM * 0.001f;
         float pixels_per_meter  = resolution.y / sensor_m;
-        float focus_distance    = compute_focus_distance(resolution);
-        float s                 = max(focus_distance, f + 0.01f);
+
+        float target_focus   = compute_focus_distance(resolution);
+        float focus_distance = smooth_focus_distance(target_focus);
+        float s              = max(focus_distance, f + 0.01f);
 
         gs_lens.focus_distance = s;
         gs_lens.coc_factor     = (aperture_diameter * f * pixels_per_meter) / (abs(s - f) + FLT_MIN);
+        gs_lens.aperture_fstop = aperture_fstop;
+
+        // only the first group on the owning view persists the smoothed focus
+        if (all(group_id.xy == 0) && pass_get_f3_value().y > 0.5f)
+        {
+            tex_uav2[uint2(0, 0)] = float4(s, s, s, 1.0f);
+        }
     }
     GroupMemoryBarrierWithGroupSync();
 
     if (any(thread_id.xy >= uint2(resolution)))
         return;
 
-    lens_t lens       = gs_lens;
-    float2 uv         = (thread_id.xy + 0.5f) / resolution;
-    float  depth      = get_linear_depth(uv * get_render_uv_scale());
-    float  coc        = compute_coc_signed(depth, lens);
+    lens_t lens        = gs_lens;
+    float2 uv          = (thread_id.xy + 0.5f) / resolution;
+    float  depth       = get_linear_depth(uv * get_render_uv_scale());
+    float  coc         = compute_coc_signed(depth, lens);
     float  blur_radius = abs(coc);
 
-    // in-focus passthrough, smoothstep blend below 0.5 px is sub-perceptual so we skip the gather entirely
+    // in focus passthrough
     if (blur_radius < IN_FOCUS_THRESHOLD)
     {
         tex_uav[thread_id.xy] = tex[thread_id.xy];
@@ -292,8 +345,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupI
     float3 blurred    = bokeh_gather(uv, coc, depth, lens, texel_size, resolution);
 
     float4 original = tex[thread_id.xy];
-    float  blend    = smoothstep(0.0f, 1.0f, blur_radius / MAX_COC_RADIUS);
-    float3 result   = lerp(original.rgb, blurred, blend);
+    // soft transition out of the sharp plane, then full cinematic blur
+    float  blend  = smoothstep(IN_FOCUS_THRESHOLD, IN_FOCUS_THRESHOLD + 1.75f, blur_radius);
+    float3 result = lerp(original.rgb, blurred, blend);
 
     tex_uav[thread_id.xy] = float4(result, original.a);
 }

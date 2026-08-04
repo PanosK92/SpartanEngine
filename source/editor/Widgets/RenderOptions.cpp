@@ -430,7 +430,7 @@ void RenderOptions::OnTickVisible()
                 if (option_header("Camera Effects"))
                 {
                     option_check_box("Motion blur", "r.motion_blur", "Controlled by camera shutter speed");
-                    option_check_box("Depth of field", "r.depth_of_field", "Controlled by camera aperture");
+                    option_check_box("Depth of field", "r.depth_of_field", "Cinematic auto focus, strength from aperture");
                     option_check_box("Film grain", "r.film_grain", "Simulates old film camera noise");
                     option_check_box("Chromatic aberration", "r.chromatic_aberration", "Lens color fringing effect");
                     option_check_box("VHS effect", "r.vhs", "Retro VHS look");

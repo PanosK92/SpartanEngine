@@ -28,8 +28,8 @@ local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
 local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin", "7zr.exe")
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
-local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/pynxelufoo972vwht5gsn/libraries.7z?rlkey=wrjnopmagkxylx7s9krpd1u7k&dl=1"
-local LIBRARY_HASH     = "e2cbeffde8c12047755bf26384b8ca83fd0e5f4f5f6727a4e6a55eee3d29692a"
+local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/zs3eco3vniorxwjrpqm5u/libraries.7z?rlkey=81bt0q6t2d85f4tglop70jnbr&dl=1"
+local LIBRARY_HASH     = "2f565f1ceff222135e2f21fac2f288b8784fa81227bb5dd7d9c503854f435e46"
 
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),

@@ -140,12 +140,41 @@ namespace spartan
 
         if (cvar_depth_of_field.GetValueAs<bool>())
         {
+            RHI_Texture* tex_dof_focus          = GetRenderTarget(Renderer_RenderTarget::dof_focus);
+            RHI_Texture* tex_dof_focus_previous = GetRenderTarget(Renderer_RenderTarget::dof_focus_previous);
+            const bool update_focus_history =
+                tex_dof_focus &&
+                tex_dof_focus_previous &&
+                !IsSecondaryViewActive() &&
+                (
+                    eye_layer == rhi_all_mips ||
+                    eye_layer == 0
+                );
+
             run_effect("depth_of_field", Renderer_Shader::depth_of_field_c, [&]()
             {
                 SetCommonTextures(cmd_list, eye_layer);
-                m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetAperture(), 0.0f, 0.0f);
+                if (tex_dof_focus_previous)
+                {
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_dof_focus_previous);
+                }
+                if (update_focus_history)
+                {
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_dof_focus);
+                }
+                // y flags whether this dispatch owns the focus history write
+                m_pcb_pass_cpu.set_f3_value(
+                    World::GetCamera()->GetAperture(),
+                    update_focus_history ? 1.0f : 0.0f,
+                    0.0f
+                );
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
+
+            if (update_focus_history)
+            {
+                cmd_list->Blit(tex_dof_focus, tex_dof_focus_previous, false);
+            }
         }
 
         if (cvar_motion_blur.GetValueAs<bool>())

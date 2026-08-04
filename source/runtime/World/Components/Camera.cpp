@@ -238,7 +238,7 @@ namespace spartan
             m_iso                = 1600.0f;
             break;
         case CameraPreset::cinematic:
-            m_aperture           = 2.8f;
+            m_aperture           = 2.0f;
             m_shutter_speed      = 1.0f / 48.0f;
             m_iso                = 400.0f;
             break;

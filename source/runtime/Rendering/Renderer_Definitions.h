@@ -416,6 +416,9 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // cinematic dof focus pull history, 1x1 meters
+        dof_focus,
+        dof_focus_previous,
         // ray traced shadows
         ray_traced_shadows,
         // restir path tracing output
