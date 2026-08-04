@@ -1039,7 +1039,7 @@ namespace spartan::car_hud
                     car_instance->SetSkeletonShowCollision(show_collision);
                 }
                 hud_tooltip("purple chassis collision shape, mesh stays hidden in skeleton mode");
-                ImGui::TextColored(imvec4_from_u32(text_dim), "blue frame driveline and wheels  purple collision hull and sweep misses  silver links and joints  orange suspension longitudinal force and shifting power unit  green steering contact load and effective tire radius  heat colored tire zones  red brakes torque and bump stops  pink lateral force  cyan aero and rolling resistance");
+                ImGui::TextColored(imvec4_from_u32(text_dim), "steel frame  amber suspension  green steering  cyan drivetrain  pale wheels  purple collision  lime contact  orange long force  pink lat force  red torque  mint aero");
             }
 
             int sim_mode = static_cast<int>(car_instance->GetVehicleSimMode());

@@ -1975,15 +1975,35 @@ namespace car
             PxTransform chassis_pose = body->getGlobalPose();
             bool drives_front = spec.drivetrain_type == 1 || spec.drivetrain_type == 2;
             bool drives_rear = spec.drivetrain_type == 0 || spec.drivetrain_type == 2;
-            float gearbox_z = 0.0f;
-            float gearbox_y = 0.02f;
+            // hub height, shafts hang under the floor beside the axles
+            float axle_y = (wheel_offsets[front_left].y + wheel_offsets[rear_left].y) * 0.5f;
+            float front_z = (wheel_offsets[front_left].z + wheel_offsets[front_right].z) * 0.5f;
+            float rear_z = (wheel_offsets[rear_left].z + wheel_offsets[rear_right].z) * 0.5f;
+            // rwd/fwd package on the driven axle, awd power unit near the com
+            float gearbox_z = spec.center_of_mass_z;
+            if (drives_front && !drives_rear)
+            {
+                gearbox_z = front_z;
+            }
+            else if (drives_rear && !drives_front)
+            {
+                gearbox_z = rear_z;
+            }
+            {
+                float driven_axle_z = drives_rear ? rear_z : front_z;
+                if (fabsf(gearbox_z - driven_axle_z) < 0.08f)
+                {
+                    float toward_center = (driven_axle_z >= 0.0f) ? -1.0f : 1.0f;
+                    gearbox_z = driven_axle_z + toward_center * 0.10f;
+                }
+            }
+            float gearbox_y = axle_y;
 
             auto add_axle = [&](bool front) -> bool
             {
                 int left = front ? front_left : rear_left;
                 int right = front ? front_right : rear_right;
                 float axle_z = (wheel_offsets[left].z + wheel_offsets[right].z) * 0.5f;
-                float axle_y = -0.02f;
                 PxVec3 diff_local(0.0f, axle_y, axle_z);
                 PxVec3 diff_world = hardpoint_world(chassis_pose, diff_local);
                 if (driveline.differential_count >= 2)
@@ -2098,7 +2118,8 @@ namespace car
                 }
 
                 PxVec3 gearbox_world = hardpoint_world(chassis_pose, PxVec3(0.0f, gearbox_y, gearbox_z));
-                if ((diff_world - gearbox_world).magnitude() > 0.05f && driveline.propshaft_count < 2)
+                // skip the short transaxle flange gap, only span real longitudinal runs
+                if ((diff_world - gearbox_world).magnitude() > 0.25f && driveline.propshaft_count < 2)
                 {
                     PxRigidDynamic* prop = create_link(
                         gearbox_world,
@@ -2142,17 +2163,33 @@ namespace car
             PxTransform chassis_pose = body->getGlobalPose();
             // joint twist is about x, so rotate frames so x runs down the propshaft (chassis z)
             PxQuat shaft_rotation = (chassis_pose.q * PxQuat(PxPi * 0.5f, PxVec3(0.0f, 1.0f, 0.0f))).getNormalized();
-            PxVec3 gearbox_local(0.0f, 0.02f, 0.0f);
             bool drives_rear = spec.drivetrain_type == 0 || spec.drivetrain_type == 2;
             bool drives_front = spec.drivetrain_type == 1 || spec.drivetrain_type == 2;
-            float axle_z = drives_rear
-                ? (wheel_offsets[rear_left].z + wheel_offsets[rear_right].z) * 0.5f
-                : (wheel_offsets[front_left].z + wheel_offsets[front_right].z) * 0.5f;
+            float axle_y = (wheel_offsets[front_left].y + wheel_offsets[rear_left].y) * 0.5f;
+            float front_z = (wheel_offsets[front_left].z + wheel_offsets[front_right].z) * 0.5f;
+            float rear_z = (wheel_offsets[rear_left].z + wheel_offsets[rear_right].z) * 0.5f;
+            float gearbox_z = spec.center_of_mass_z;
+            if (drives_front && !drives_rear)
+            {
+                gearbox_z = front_z;
+            }
+            else if (drives_rear && !drives_front)
+            {
+                gearbox_z = rear_z;
+            }
+            float axle_z = drives_rear ? rear_z : front_z;
             if (drives_front && drives_rear)
             {
-                axle_z = (wheel_offsets[rear_left].z + wheel_offsets[rear_right].z) * 0.5f;
+                axle_z = rear_z;
             }
-            PxVec3 axle_local(0.0f, -0.02f, axle_z);
+            // keep a short flange gap so the torsion joint is not degenerate on transaxles
+            if (fabsf(gearbox_z - axle_z) < 0.08f)
+            {
+                float toward_center = (axle_z >= 0.0f) ? -1.0f : 1.0f;
+                gearbox_z = axle_z + toward_center * 0.10f;
+            }
+            PxVec3 gearbox_local(0.0f, axle_y, gearbox_z);
+            PxVec3 axle_local(0.0f, axle_y, axle_z);
             PxVec3 gearbox_world = hardpoint_world(chassis_pose, gearbox_local);
             PxVec3 axle_world = hardpoint_world(chassis_pose, axle_local);
 

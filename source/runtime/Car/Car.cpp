@@ -328,19 +328,29 @@ namespace spartan
             return material;
         }
 
-        const Color skeleton_color_frame       = Color(0.20f, 0.72f, 1.00f, 1.0f);
-        const Color skeleton_color_control_arm = Color(0.86f, 0.88f, 0.92f, 1.0f);
-        const Color skeleton_color_spring      = Color(1.00f, 0.72f, 0.12f, 1.0f);
-        const Color skeleton_color_steering    = Color(0.25f, 1.00f, 0.48f, 1.0f);
-        const Color skeleton_color_drivetrain  = Color(0.25f, 0.72f, 1.00f, 1.0f);
-        const Color skeleton_color_joint       = Color(1.00f, 1.00f, 1.00f, 1.0f);
-        const Color skeleton_color_wheel       = Color(0.38f, 0.78f, 0.96f, 1.0f);
-        const Color skeleton_color_contact     = Color(0.20f, 1.00f, 0.42f, 1.0f);
-        const Color skeleton_color_tire_force  = Color(1.00f, 0.30f, 0.68f, 1.0f);
-        const Color skeleton_color_long_force  = Color(1.00f, 0.62f, 0.12f, 1.0f);
-        const Color skeleton_color_torque      = Color(1.00f, 0.18f, 0.18f, 1.0f);
-        const Color skeleton_color_aero        = Color(0.15f, 0.92f, 1.00f, 1.0f);
+        // structure colors are reserved by nature, load only tints inside the same hue
+        const Color skeleton_color_frame       = Color(0.55f, 0.62f, 0.72f, 1.0f);
+        const Color skeleton_color_suspension  = Color(0.98f, 0.70f, 0.12f, 1.0f);
+        const Color skeleton_color_steering    = Color(0.20f, 0.95f, 0.42f, 1.0f);
+        const Color skeleton_color_drivetrain  = Color(0.10f, 0.78f, 1.00f, 1.0f);
+        const Color skeleton_color_wheel       = Color(0.78f, 0.82f, 0.88f, 1.0f);
         const Color skeleton_color_collision   = Color(0.72f, 0.28f, 1.00f, 1.0f);
+        // telemetry overlays, never used for structure
+        const Color skeleton_color_contact     = Color(0.55f, 1.00f, 0.30f, 1.0f);
+        const Color skeleton_color_tire_force  = Color(1.00f, 0.30f, 0.68f, 1.0f);
+        const Color skeleton_color_long_force  = Color(1.00f, 0.40f, 0.15f, 1.0f);
+        const Color skeleton_color_torque      = Color(1.00f, 0.18f, 0.18f, 1.0f);
+        const Color skeleton_color_aero        = Color(0.25f, 0.90f, 0.75f, 1.0f);
+
+        auto tint_skeleton_color = [](const Color& base, float load, float lift) -> Color
+        {
+            const float t = std::clamp(load, 0.0f, 1.0f) * lift;
+            return Color(
+                std::min(base.r + t * (1.0f - base.r), 1.0f),
+                std::min(base.g + t * (1.0f - base.g), 1.0f),
+                std::min(base.b + t * (1.0f - base.b), 1.0f),
+                base.a);
+        };
 
         math::Vector3 lerp_skeleton(const math::Vector3& a, const math::Vector3& b, float t)
         {
@@ -668,7 +678,7 @@ namespace spartan
                 }
             }
 
-            const Color bush_color = Color(0.55f + load * 0.45f, 0.45f - load * 0.28f, 0.85f - load * 0.55f, 1.0f);
+            const Color bush_color = tint_skeleton_color(skeleton_color_suspension, load, 0.40f);
             math::Vector3 along = outboard - pivot;
             if (along.LengthSquared() < 0.000001f)
             {
@@ -1360,7 +1370,7 @@ namespace spartan
                 }
             }
 
-            draw_skeleton_cylinder(to_render(wheel_left), to_render(wheel_right), 0.045f, skeleton_color_joint);
+            draw_skeleton_cylinder(to_render(wheel_left), to_render(wheel_right), 0.045f, skeleton_color_wheel);
             const float brake_radius = wheel_radius * 0.62f;
             const float brake_temperature_range = std::max(preset.brake_fade_temp - preset.brake_ambient_temp, 1.0f);
             const float brake_heat = std::clamp((wheel.brake_temp - preset.brake_ambient_temp) / brake_temperature_range, 0.0f, 1.0f);
@@ -1378,7 +1388,7 @@ namespace spartan
                 previous_brake = brake_point;
             }
             const physx::PxVec3 spin_marker = wheel_pose.q.rotate(physx::PxVec3(0.0f, wheel_radius * 0.9f, 0.0f));
-            Renderer::DrawLine(wheel_world[i], to_render(wheel_pose.p + spin_marker), skeleton_color_joint, skeleton_color_joint);
+            Renderer::DrawLine(wheel_world[i], to_render(wheel_pose.p + spin_marker), skeleton_color_wheel, skeleton_color_wheel);
             const math::Vector3 wheel_axis_render = (to_render(wheel_pose.p + wheel_axis) - wheel_world[i]).Normalized();
             const float wheel_torque_reference = std::max(preset.handbrake_torque + preset.brake_force * wheel_radius, 1.0f);
             draw_skeleton_torque_arc(wheel_world[i], wheel_axis_render, wheel_radius * 0.72f, wheel.net_torque / wheel_torque_reference, skeleton_color_torque);
@@ -1399,8 +1409,8 @@ namespace spartan
             // the upright box is sized from the ball joint spread, drawing a fixed length rod here
             // hid every geometry change the preset made to it
             const physx::PxTransform upright_pose = corner.upright->getGlobalPose();
-            draw_skeleton_actor_shapes(corner.upright, skeleton_color_control_arm, to_render);
-            draw_skeleton_joint(to_render(upright_pose.transform(corner.upright_shock_anchor)), skeleton_color_joint);
+            draw_skeleton_actor_shapes(corner.upright, skeleton_color_suspension, to_render);
+            draw_skeleton_joint(to_render(upright_pose.transform(corner.upright_shock_anchor)), skeleton_color_suspension);
 
             // the wheel carries a sphere for its rotational inertia, it is not the tyre outline and
             // seeing the two apart is the only way to tell the collision proxy from the visual radius
@@ -1419,7 +1429,7 @@ namespace spartan
                 const math::Vector3 start = to_render(member_pose.transform(member.local_start));
                 const math::Vector3 end = to_render(member_pose.transform(member.local_end));
                 const bool tie_rod = is_front_wheel && multibody.rack && member_index == corner.member_count - 1;
-                const Color& member_color = tie_rod ? skeleton_color_steering : skeleton_color_control_arm;
+                const Color& member_color = tie_rod ? skeleton_color_steering : skeleton_color_suspension;
 
                 // a wishbone registers its single arm under two members, one per inner pivot, so
                 // the shape has to be drawn once while both pivots still get their own marker
@@ -1447,9 +1457,9 @@ namespace spartan
                 }
                 else
                 {
-                    draw_skeleton_joint(start, tie_rod ? skeleton_color_steering : skeleton_color_joint);
+                    draw_skeleton_joint(start, tie_rod ? skeleton_color_steering : skeleton_color_suspension);
                 }
-                draw_skeleton_joint(end, tie_rod ? skeleton_color_steering : skeleton_color_joint);
+                draw_skeleton_joint(end, tie_rod ? skeleton_color_steering : skeleton_color_suspension);
             }
 
             const math::Vector3 shock_top = to_render(body->getGlobalPose().transform(corner.chassis_shock_anchor));
@@ -1461,24 +1471,24 @@ namespace spartan
             const float spring_load = std::clamp(fabsf(suspension_force) / std::max(preset.max_susp_force, 1.0f), 0.0f, 1.0f);
             const float damper_velocity = fabsf(wheel.compression_velocity) * config.suspension_travel;
             const float damper_load = std::clamp(damper_velocity / std::max(preset.max_damper_velocity, 0.1f), 0.0f, 1.0f);
-            const Color spring_color = Color(1.0f, 0.72f + spring_load * 0.25f, 0.12f + spring_load * 0.55f, 1.0f);
-            const Color damper_color = Color(1.0f, 0.38f + damper_load * 0.45f, 0.12f, 1.0f);
+            const Color spring_color = tint_skeleton_color(skeleton_color_suspension, spring_load, 0.45f);
+            const Color damper_color = tint_skeleton_color(skeleton_color_suspension, damper_load, 0.25f);
             const ::car::coilover& coilover_unit = corner.coilover_unit;
             if (coilover_unit.tube && coilover_unit.rod)
             {
                 draw_skeleton_actor_shapes(coilover_unit.tube, damper_color, to_render);
-                draw_skeleton_actor_shapes(coilover_unit.rod, skeleton_color_joint, to_render);
+                draw_skeleton_actor_shapes(coilover_unit.rod, skeleton_color_suspension, to_render);
                 draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f, spring_color);
-                draw_skeleton_joint(shock_top, skeleton_color_joint);
-                draw_skeleton_joint(shock_bottom, skeleton_color_joint);
+                draw_skeleton_joint(shock_top, skeleton_color_suspension);
+                draw_skeleton_joint(shock_bottom, skeleton_color_suspension);
             }
             else
             {
                 draw_skeleton_cylinder(shock_top, shock_mid, 0.030f, damper_color);
-                Renderer::DrawLine(shock_mid, shock_bottom, skeleton_color_joint, skeleton_color_joint);
+                Renderer::DrawLine(shock_mid, shock_bottom, skeleton_color_suspension, skeleton_color_suspension);
                 draw_skeleton_spring(shock_top, shock_bottom, vehicle_rotation * math::Vector3::Forward, 0.055f, spring_color);
-                draw_skeleton_joint(shock_top, skeleton_color_joint);
-                draw_skeleton_joint(shock_bottom, skeleton_color_joint);
+                draw_skeleton_joint(shock_top, skeleton_color_suspension);
+                draw_skeleton_joint(shock_bottom, skeleton_color_suspension);
             }
             const math::Vector3 shock_axis = (shock_top - shock_bottom).Normalized();
             const math::Vector3 spring_force_vector = shock_axis * (suspension_force * 0.00001f);
@@ -1505,7 +1515,7 @@ namespace spartan
                 const float band = std::max((maximum - minimum) * 0.06f, 0.002f);
                 const bool at_droop = travel_length > maximum - band;
                 const bool at_bump  = travel_length < minimum + band;
-                const Color travel_color = at_droop || at_bump ? skeleton_color_torque : skeleton_color_frame;
+                const Color travel_color = at_droop || at_bump ? skeleton_color_torque : skeleton_color_suspension;
                 // the two ends of the allowed band, drawn along the shock so the remaining travel is visible
                 const math::Vector3 droop_mark = shock_top + shock_axis * -maximum;
                 const math::Vector3 bump_mark  = shock_top + shock_axis * -minimum;
@@ -1650,7 +1660,7 @@ namespace spartan
                     fabsf(compression_difference * stiffness) / std::max(preset.max_susp_force, 1.0f),
                     0.0f,
                     1.0f);
-                const Color loaded = Color(0.82f + anti_roll_load * 0.18f, 0.35f + anti_roll_load * 0.30f, 1.0f, 1.0f);
+                const Color loaded = tint_skeleton_color(skeleton_color_suspension, anti_roll_load, 0.40f);
                 const math::Vector3 left_arm_end = lerp_skeleton(shock_top_world[left], shock_bottom_world[left], 0.24f);
                 const math::Vector3 right_arm_end = lerp_skeleton(shock_top_world[right], shock_bottom_world[right], 0.24f);
                 const float anti_roll_twist =
@@ -1684,7 +1694,7 @@ namespace spartan
                 fabsf(compression_difference * stiffness) / std::max(preset.max_susp_force, 1.0f),
                 0.0f,
                 1.0f);
-            const Color loaded = Color(0.82f + anti_roll_load * 0.18f, 0.35f + anti_roll_load * 0.30f, 1.0f, 1.0f);
+            const Color loaded = tint_skeleton_color(skeleton_color_suspension, anti_roll_load, 0.40f);
 
             physx::PxVec3 left_start, left_end, right_start, right_end;
             float left_radius = 0.016f;
@@ -1715,8 +1725,8 @@ namespace spartan
                     0.0f,
                     twist,
                     loaded);
-                draw_skeleton_joint(to_render(left_inboard), skeleton_color_joint);
-                draw_skeleton_joint(to_render(right_inboard), skeleton_color_joint);
+                draw_skeleton_joint(to_render(left_inboard), skeleton_color_suspension);
+                draw_skeleton_joint(to_render(right_inboard), skeleton_color_suspension);
                 draw_skeleton_joint(to_render(left_outboard), loaded);
                 draw_skeleton_joint(to_render(right_outboard), loaded);
             }
@@ -1760,7 +1770,7 @@ namespace spartan
 
         const physx::PxTransform body_pose = body->getGlobalPose();
         const math::Vector3 center_of_mass = to_render(body_pose.transform(body->getCMassLocalPose().p));
-        Renderer::DrawSphere(center_of_mass, 0.075f, 10, skeleton_color_spring);
+        Renderer::DrawSphere(center_of_mass, 0.075f, 10, skeleton_color_frame);
 
         // principal inertia axes at the com, length scales with sqrt(i) so yaw vs roll is readable
         {
@@ -1820,23 +1830,41 @@ namespace spartan
         const int drivetrain_type = preset.drivetrain_type;
         const bool drives_front = drivetrain_type == 1 || drivetrain_type == 2;
         const bool drives_rear  = drivetrain_type == 0 || drivetrain_type == 2;
-        const math::Vector3 gearbox = to_world(math::Vector3(0.0f, 0.02f, 0.0f));
+        const float axle_y = (wheel_local[0].y + wheel_local[2].y) * 0.5f;
+        float gearbox_z = preset.center_of_mass_z;
+        if (drives_front && !drives_rear)
+        {
+            gearbox_z = front_z;
+        }
+        else if (drives_rear && !drives_front)
+        {
+            gearbox_z = rear_z;
+        }
+        {
+            const float driven_axle_z = drives_rear ? rear_z : front_z;
+            if (fabsf(gearbox_z - driven_axle_z) < 0.08f)
+            {
+                const float toward_center = (driven_axle_z >= 0.0f) ? -1.0f : 1.0f;
+                gearbox_z = driven_axle_z + toward_center * 0.10f;
+            }
+        }
+        const math::Vector3 gearbox = to_world(math::Vector3(0.0f, axle_y, gearbox_z));
         const float driveshaft_torque = simulation->get_driveshaft_torque();
         const float torque_load = std::clamp(fabsf(driveshaft_torque) / 6000.0f, 0.0f, 1.0f);
-        const Color loaded_drivetrain_color = Color(0.25f - torque_load * 0.08f, 0.72f + torque_load * 0.18f, 1.00f, 1.0f);
+        const Color loaded_drivetrain_color = tint_skeleton_color(skeleton_color_drivetrain, torque_load, 0.45f);
         const float motor_load = preset.electric_enabled ? std::clamp(fabsf(simulation->get_motor_torque()) / std::max(preset.electric_motor_torque, 1.0f), 0.0f, 1.0f) : 0.0f;
-        Color power_unit_color = Color(0.25f, 0.72f + motor_load * 0.24f, 1.0f, 1.0f);
+        Color power_unit_color = tint_skeleton_color(skeleton_color_drivetrain, motor_load, 0.35f);
         if (simulation->get_rev_limiter_active())
         {
             power_unit_color = skeleton_color_torque;
         }
         else if (simulation->is_tc_active())
         {
-            power_unit_color = Color(1.0f, 0.55f + simulation->get_tc_reduction() * 0.35f, 0.10f, 1.0f);
+            power_unit_color = skeleton_color_long_force;
         }
         else if (simulation->get_is_shifting())
         {
-            power_unit_color = skeleton_color_spring;
+            power_unit_color = tint_skeleton_color(skeleton_color_drivetrain, 1.0f, 0.55f);
         }
 
         const math::Vector3 flywheel_axis = vehicle_rotation * math::Vector3::Right * 0.10f;
@@ -1893,7 +1921,7 @@ namespace spartan
                 fabsf(simulation->get_wheel_state(wheel_index).drive_torque) / 6000.0f,
                 0.0f,
                 1.0f);
-            return Color(0.25f - wheel_torque_load * 0.08f, 0.72f + wheel_torque_load * 0.18f, 1.0f, 1.0f);
+            return tint_skeleton_color(skeleton_color_drivetrain, wheel_torque_load, 0.45f);
         };
         auto draw_spinning_capsule = [&](
             physx::PxRigidDynamic* actor,
@@ -2009,8 +2037,8 @@ namespace spartan
                 float shaft_radius = 0.04f;
                 if (get_capsule_endpoints(shaft, shaft_start, shaft_end, shaft_radius))
                 {
-                    Renderer::DrawSphere(to_render(shaft_start), 0.028f, 6, skeleton_color_joint);
-                    Renderer::DrawSphere(to_render(shaft_end), 0.028f, 6, skeleton_color_joint);
+                    Renderer::DrawSphere(to_render(shaft_start), 0.028f, 6, skeleton_color_drivetrain);
+                    Renderer::DrawSphere(to_render(shaft_end), 0.028f, 6, skeleton_color_drivetrain);
                 }
             }
 
@@ -2027,8 +2055,8 @@ namespace spartan
         }
         else
         {
-            const math::Vector3 front_diff = to_world(math::Vector3(0.0f, -0.02f, front_z));
-            const math::Vector3 rear_diff  = to_world(math::Vector3(0.0f, -0.02f, rear_z));
+            const math::Vector3 front_diff = to_world(math::Vector3(0.0f, axle_y, front_z));
+            const math::Vector3 rear_diff  = to_world(math::Vector3(0.0f, axle_y, rear_z));
             const float front_pinion_rotation =
                 (simulation->get_wheel_rotation(0) + simulation->get_wheel_rotation(1)) * 0.5f * preset.final_drive;
             const float rear_pinion_rotation =
