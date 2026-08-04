@@ -406,13 +406,54 @@ namespace spartan
 
         // ssao
         bool need_ssao = cvar_ssao.GetValueAs<bool>();
-        if (need_ssao && !at(render_targets, Renderer_RenderTarget::ssao))
+        if (need_ssao)
         {
-            at(render_targets, Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ssao");
+            if (!at(render_targets, Renderer_RenderTarget::ssao))
+            {
+                at(render_targets, Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width,
+                    height,
+                    1,
+                    1,
+                    RHI_Format::R16G16B16A16_Float,
+                    flags,
+                    "ssao"
+                );
+            }
+            if (!at(render_targets, Renderer_RenderTarget::ssao_history_0))
+            {
+                at(render_targets, Renderer_RenderTarget::ssao_history_0) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width,
+                    height,
+                    1,
+                    1,
+                    RHI_Format::R16G16B16A16_Float,
+                    flags,
+                    "ssao_history_0"
+                );
+                at(render_targets, Renderer_RenderTarget::ssao_history_1) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width,
+                    height,
+                    1,
+                    1,
+                    RHI_Format::R16G16B16A16_Float,
+                    flags,
+                    "ssao_history_1"
+                );
+                m_pass_state.ssao_history_valid = false;
+                m_pass_state.ssao_history_index = 0;
+            }
         }
-        else if (!need_ssao && at(render_targets, Renderer_RenderTarget::ssao))
+        else if (at(render_targets, Renderer_RenderTarget::ssao))
         {
-            at(render_targets, Renderer_RenderTarget::ssao) = nullptr;
+            at(render_targets, Renderer_RenderTarget::ssao)           = nullptr;
+            at(render_targets, Renderer_RenderTarget::ssao_history_0) = nullptr;
+            at(render_targets, Renderer_RenderTarget::ssao_history_1) = nullptr;
+            m_pass_state.ssao_history_valid = false;
+            m_pass_state.ssao_history_index = 0;
         }
         
         // ray traced reflections gbuffer, concurrent sharing so rt reflections can run on the compute queue
@@ -533,6 +574,8 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = nullptr;
             at(render_targets, Renderer_RenderTarget::sss)                         = nullptr;
             at(render_targets, Renderer_RenderTarget::ssao)                        = nullptr;
+            at(render_targets, Renderer_RenderTarget::ssao_history_0)              = nullptr;
+            at(render_targets, Renderer_RenderTarget::ssao_history_1)              = nullptr;
             at(render_targets, Renderer_RenderTarget::reflections)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position)= nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
@@ -722,6 +765,17 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_blur_scratch, renderer_resolution_blur_scratch, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
             at(render_targets, Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, 1, compute_mip_count(renderer_resolution_skysphere_w, renderer_resolution_skysphere_h, lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "skysphere");
+            // l2 sh coeffs for directional diffuse ibl, 9 float4s in a 9x1 texture
+            at(render_targets, Renderer_RenderTarget::sky_sh) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                9,
+                1,
+                1,
+                1,
+                RHI_Format::R32G32B32A32_Float,
+                RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing,
+                "sky_sh"
+            );
 
             at(render_targets, Renderer_RenderTarget::auto_exposure)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_1");
             at(render_targets, Renderer_RenderTarget::auto_exposure_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_2");
@@ -887,6 +941,7 @@ namespace spartan
 
             // sky
             { Renderer_Shader::skysphere_c,                           RHI_Shader_Type::Compute, "sky/skysphere.hlsl"                                                         },
+            { Renderer_Shader::skysphere_sh_project_c,                RHI_Shader_Type::Compute, "sky/skysphere_sh_project.hlsl"                                               },
             { Renderer_Shader::skysphere_transmittance_lut_c,         RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "TRANSMITTANCE_LUT" },
             { Renderer_Shader::skysphere_multiscatter_lut_c,          RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "MULTISCATTER_LUT"  },
             { Renderer_Shader::skysphere_sky_view_lut_c,              RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "SKY_VIEW_LUT"      },

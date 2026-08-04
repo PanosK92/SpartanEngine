@@ -28,8 +28,8 @@ local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
 local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin", "7zr.exe")
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
-local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/1ikk55avwntblfhf3at3z/libraries.7z?rlkey=iexhlu58ouo603bv6i7kwkxxi&dl=1"
-local LIBRARY_HASH     = "3b3586bd80a6dbe170351f3b28e5dabef2a55eec63b39662fbce128600b24105"
+local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/pynxelufoo972vwht5gsn/libraries.7z?rlkey=wrjnopmagkxylx7s9krpd1u7k&dl=1"
+local LIBRARY_HASH     = "e2cbeffde8c12047755bf26384b8ca83fd0e5f4f5f6727a4e6a55eee3d29692a"
 
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),
@@ -45,7 +45,7 @@ local XESS_ZIP         = path.join(PROJECT_ROOT, "third_party", "XeSS_SDK_" .. X
 
 -- d3d12 agility sdk, downloaded on demand into third_party/d3d12_agility
 -- the middle number of the nuget version is the D3D12SDKVersion exported by the exe
-local AGILITY_VERSION     = "1.619.4"
+local AGILITY_VERSION     = "1.619.5"
 local AGILITY_SDK_VERSION = "619"
 local AGILITY_DIR         = path.join(PROJECT_ROOT, "third_party", "d3d12_agility")
 local AGILITY_INCLUDE_DIR = path.join(AGILITY_DIR, "include")

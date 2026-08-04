@@ -1350,6 +1350,12 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
+            // l2 sh projected from the skysphere, used for directional diffuse ibl
+            RHI_Texture* tex_sky_sh = GetRenderTarget(Renderer_RenderTarget::sky_sh);
+            cmd_list->SetTexture(
+                Renderer_BindingsSrv::tex5,
+                tex_sky_sh ? tex_sky_sh : GetStandardTexture(Renderer_StandardTexture::Black)
+            );
 
             RHI_Texture* tex_gi = GetRenderTarget(
                 Renderer_RenderTarget::restir_denoised

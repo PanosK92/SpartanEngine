@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2015-2026 Baldur Karlsson
  * Copyright (c) 2014 Crytek
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -110,6 +110,12 @@ version of RenderDoc that addes a new section type. They should be considered eq
   This section contains an internal copy of D3D12SDKLayers for replaying.
 
   The name for this section will be "renderdoc/internal/d3d12sdklayers".
+
+.. data:: EmbeddedExternalFiles
+
+  This section contains externally referenced files that have been embedded into the capture.
+
+  The name for this section will be "renderdoc/internal/embeddedexternalfiles".
 )");
 enum class SectionType : uint32_t
 {
@@ -126,6 +132,7 @@ enum class SectionType : uint32_t
   EditedShaders,
   D3D12Core,
   D3D12SDKLayers,
+  EmbeddedExternalFiles,
   Count,
 };
 
@@ -2195,7 +2202,7 @@ tool.
 
 :param KnownShaderTool tool: The tool to get the input encoding for.
 :return: The encoding that this tool expects as an input by default.
-:rtype: renderdoc.ShaderEncoding
+:rtype: ShaderEncoding
 )");
 constexpr inline ShaderEncoding ToolInput(KnownShaderTool tool)
 {
@@ -2222,7 +2229,7 @@ tool.
 
 :param KnownShaderTool tool: The tool to get the output encoding for.
 :return: The encoding that this tool produces as an output by default.
-:rtype: renderdoc.ShaderEncoding
+:rtype: ShaderEncoding
 )");
 constexpr inline ShaderEncoding ToolOutput(KnownShaderTool tool)
 {
@@ -4943,6 +4950,12 @@ displayed
 .. data:: SignedEnum
 
   For enums, the base type is a signed integer allowing signed values.
+
+.. data:: SingleElementArray
+
+  In some cases it can be possible to represent and need to distinguish a variable declared as
+  an array of size 1 from a scalar object. This flag indicates that even though elements == 1
+  normally means 'not an array', in this case it means an array of size 1.
 )");
 enum class ShaderVariableFlags : uint32_t
 {
@@ -4957,6 +4970,7 @@ enum class ShaderVariableFlags : uint32_t
   SNorm = 0x0080,
   Truncated = 0x0100,
   SignedEnum = 0x0200,
+  SingleElementArray = 0x0400,
 };
 
 BITMASK_OPERATORS(ShaderVariableFlags);

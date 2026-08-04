@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2016-2026 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -65,10 +65,16 @@ struct Layout
       return instanceDataStepRate < o.instanceDataStepRate;
     return false;
   }
-  DOCUMENT("The semantic name for this input.");
+  DOCUMENT(R"(The semantic name for this input.
+
+:type: str
+)");
   rdcstr semanticName;
 
-  DOCUMENT("The semantic index for this input.");
+  DOCUMENT(R"(The semantic index for this input.
+
+:type: int
+)");
   uint32_t semanticIndex = 0;
 
   DOCUMENT(R"(The format describing how the input data is interpreted.
@@ -77,7 +83,10 @@ struct Layout
 )");
   ResourceFormat format;
 
-  DOCUMENT("The vertex buffer input slot where the data is sourced from.");
+  DOCUMENT(R"(The vertex buffer input slot where the data is sourced from.
+
+:type: int
+)");
   uint32_t inputSlot = 0;
 
   DOCUMENT(R"(The byte offset from the start of the vertex data in the vertex buffer from
@@ -85,10 +94,15 @@ struct Layout
 
 If the value is :data:`TightlyPacked` then the element is packed tightly after the previous element, or 0
 if this is the first element.
+
+:type: int
 )");
   uint32_t byteOffset = 0;
 
-  DOCUMENT("``True`` if the vertex data is instance-rate.");
+  DOCUMENT(R"(``True`` if the vertex data is instance-rate.
+
+:type: bool
+)");
   bool perInstance = false;
 
   DOCUMENT(R"(If :data:`perInstance` is ``True`` then this is how many times each instance data is
@@ -96,6 +110,8 @@ used before advancing to the next instance.
 
 E.g. if this value is two, then two instances will be drawn with the first instance data, then two
 with the next instance data.
+
+:type: int
 )");
   uint32_t instanceDataStepRate = 0;
 
@@ -128,16 +144,28 @@ struct VertexBuffer
       return byteOffset < o.byteOffset;
     return false;
   }
-  DOCUMENT("The :class:`ResourceId` of the buffer bound to this slot.");
+  DOCUMENT(R"(The :class:`ResourceId` of the buffer bound to this slot.
+
+:type: ResourceId
+)");
   ResourceId resourceId;
 
-  DOCUMENT("The byte offset from the start of the buffer to the beginning of the vertex data.");
+  DOCUMENT(R"(The byte offset from the start of the buffer to the beginning of the vertex data.
+
+:type: int
+)");
   uint64_t byteOffset = 0;
 
-  DOCUMENT("The number of bytes available in this vertex buffer.");
+  DOCUMENT(R"(The number of bytes available in this vertex buffer.
+
+:type: int
+)");
   uint32_t byteSize = 0;
 
-  DOCUMENT("The byte stride between the start of one set of vertex data and the next.");
+  DOCUMENT(R"(The byte stride between the start of one set of vertex data and the next.
+
+:type: int
+)");
   uint32_t byteStride = 0;
 };
 
@@ -149,17 +177,28 @@ struct IndexBuffer
   IndexBuffer(const IndexBuffer &) = default;
   IndexBuffer &operator=(const IndexBuffer &) = default;
 
-  DOCUMENT("The :class:`ResourceId` of the index buffer.");
+  DOCUMENT(R"(The :class:`ResourceId` of the index buffer.
+
+:type: ResourceId
+)");
   ResourceId resourceId;
 
-  DOCUMENT("The byte offset from the start of the buffer to the beginning of the index data.");
+  DOCUMENT(R"(The byte offset from the start of the buffer to the beginning of the index data.
+
+:type: int
+)");
   uint64_t byteOffset = 0;
 
-  DOCUMENT("The number of bytes available in this index buffer.");
+  DOCUMENT(R"(The number of bytes available in this index buffer.
+
+:type: int
+)");
   uint32_t byteSize = 0;
 
   DOCUMENT(R"(The number of bytes for each index in the index buffer. Typically 2 or 4 bytes but
 it can be 0 if no index buffer is bound.
+
+:type: int
 )");
   uint32_t byteStride = 0;
 };
@@ -192,6 +231,8 @@ struct InputAssembly
 
   DOCUMENT(R"(The index value to use for cutting strips. Either ``0``, ``0xffff`` or ``0xffffffff``.
 If the value is 0, strip cutting is disabled.
+
+:type: int
 )");
   uint32_t indexStripCutValue = 0;
 
@@ -210,16 +251,22 @@ struct Shader
   Shader(const Shader &) = default;
   Shader &operator=(const Shader &) = default;
 
-  DOCUMENT("The :class:`ResourceId` of the shader object itself.");
+  DOCUMENT(R"(The :class:`ResourceId` of the shader object itself.
+
+:type: ResourceId
+)");
   ResourceId resourceId;
 
   DOCUMENT(R"(The reflection data for this shader.
 
 :type: ShaderReflection
 )");
-  ShaderReflection *reflection = NULL;
+  const ShaderReflection *reflection = NULL;
 
-  DOCUMENT("A :class:`ShaderStage` identifying which stage this shader is bound to.");
+  DOCUMENT(R"(A :class:`ShaderStage` identifying which stage this shader is bound to.
+
+:type: ShaderStage
+)");
   ShaderStage stage = ShaderStage::Vertex;
 };
 
@@ -251,19 +298,32 @@ struct StreamOutBind
       return writtenCountByteOffset < o.writtenCountByteOffset;
     return false;
   }
-  DOCUMENT("The :class:`ResourceId` of the buffer.");
+  DOCUMENT(R"(The :class:`ResourceId` of the buffer.
+
+:type: ResourceId
+)");
   ResourceId resourceId;
   DOCUMENT(R"(The byte offset in :data:`resourceId` where the buffer view starts in the underlying
 buffer.
+
+:type: int
 )");
   uint64_t byteOffset = 0;
-  DOCUMENT("How many bytes are in this stream-out buffer view.");
+  DOCUMENT(R"(How many bytes are in this stream-out buffer view.
+
+:type: int
+)");
   uint64_t byteSize = 0;
 
-  DOCUMENT("The :class:`ResourceId` of the buffer where the written count will be stored.");
+  DOCUMENT(R"(The :class:`ResourceId` of the buffer where the written count will be stored.
+
+:type: ResourceId
+)");
   ResourceId writtenCountResourceId;
   DOCUMENT(R"(The byte offset in :data:`writtenCountResourceId` where the stream-out count will be
 written.
+
+:type: int
 )");
   uint64_t writtenCountByteOffset = 0;
 };
@@ -307,38 +367,76 @@ struct RasterizerState
   RasterizerState(const RasterizerState &) = default;
   RasterizerState &operator=(const RasterizerState &) = default;
 
-  DOCUMENT("The polygon :class:`FillMode`.");
+  DOCUMENT(R"(The polygon :class:`FillMode`.
+
+:type: FillMode
+)");
   FillMode fillMode = FillMode::Solid;
-  DOCUMENT("The polygon :class:`CullMode`.");
+
+  DOCUMENT(R"(The polygon :class:`CullMode`.
+
+:type: CullMode
+)");
   CullMode cullMode = CullMode::NoCull;
+
   DOCUMENT(R"(``True`` if counter-clockwise polygons are front-facing.
 ``False`` if clockwise polygons are front-facing.
+
+:type: bool
 )");
   bool frontCCW = false;
-  DOCUMENT("The fixed depth bias value to apply to z-values.");
+
+  DOCUMENT(R"(The fixed depth bias value to apply to z-values.
+
+:type: float
+)");
   float depthBias = 0.0f;
+
   DOCUMENT(R"(The clamp value for calculated depth bias from :data:`depthBias` and
 :data:`slopeScaledDepthBias`
+
+:type: float
 )");
   float depthBiasClamp = 0.0f;
-  DOCUMENT("The slope-scaled depth bias value to apply to z-values.");
+
+  DOCUMENT(R"(The slope-scaled depth bias value to apply to z-values.
+
+:type: float
+)");
   float slopeScaledDepthBias = 0.0f;
-  DOCUMENT("``True`` if pixels outside of the near and far depth planes should be clipped.");
+
+  DOCUMENT(R"(``True`` if pixels outside of the near and far depth planes should be clipped.
+
+:type: bool
+)");
   bool depthClip = false;
-  DOCUMENT("The line rasterization mode.");
+
+  DOCUMENT(R"(The line rasterization mode.
+
+:type: LineRaster
+)");
   LineRaster lineRasterMode = LineRaster::Default;
+
   DOCUMENT(R"(A sample count to force rasterization to when UAV rendering or rasterizing, or 0 to
 not force any sample count.
+
+:type: int
 )");
   uint32_t forcedSampleCount = 0;
-  DOCUMENT("The current :class:`ConservativeRaster` mode.");
+
+  DOCUMENT(R"(The current :class:`ConservativeRaster` mode.
+
+:type: ConservativeRaster
+)");
   ConservativeRaster conservativeRasterization = ConservativeRaster::Disabled;
+
   DOCUMENT(R"(The current base variable shading rate. This will always be 1x1 when variable shading
 is disabled.
 
 :type: Tuple[int,int]
 )");
   rdcpair<uint32_t, uint32_t> baseShadingRate = {1, 1};
+
   DOCUMENT(R"(The shading rate combiners.
 
 The combiners are applied as follows, according to the D3D spec:
@@ -371,7 +469,10 @@ struct Rasterizer
   Rasterizer(const Rasterizer &) = default;
   Rasterizer &operator=(const Rasterizer &) = default;
 
-  DOCUMENT("The mask determining which samples are written to.");
+  DOCUMENT(R"(The mask determining which samples are written to.
+
+:type: int
+)");
   uint32_t sampleMask = ~0U;
 
   DOCUMENT(R"(The bound viewports.
@@ -401,15 +502,30 @@ struct DepthStencilState
   DepthStencilState(const DepthStencilState &) = default;
   DepthStencilState &operator=(const DepthStencilState &) = default;
 
-  DOCUMENT("``True`` if depth testing should be performed.");
+  DOCUMENT(R"(``True`` if depth testing should be performed.
+
+:type: bool
+)");
   bool depthEnable = false;
-  DOCUMENT("``True`` if depth values should be written to the depth target.");
+  DOCUMENT(R"(``True`` if depth values should be written to the depth target.
+
+:type: bool
+)");
   bool depthWrites = false;
-  DOCUMENT("``True`` if depth bounds tests should be applied.");
+  DOCUMENT(R"(``True`` if depth bounds tests should be applied.
+
+:type: bool
+)");
   bool depthBoundsEnable = false;
-  DOCUMENT("The :class:`CompareFunction` to use for testing depth values.");
+  DOCUMENT(R"(The :class:`CompareFunction` to use for testing depth values.
+
+:type: CompareFunction
+)");
   CompareFunction depthFunction = CompareFunction::AlwaysTrue;
-  DOCUMENT("``True`` if stencil operations should be performed.");
+  DOCUMENT(R"(``True`` if stencil operations should be performed.
+
+:type: bool
+)");
   bool stencilEnable = false;
 
   DOCUMENT(R"(The stencil state for front-facing polygons.
@@ -424,9 +540,15 @@ struct DepthStencilState
 )");
   StencilFace backFace;
 
-  DOCUMENT("The near plane bounding value.");
+  DOCUMENT(R"(The near plane bounding value.
+
+:type: float
+)");
   float minDepthBounds = 0.0f;
-  DOCUMENT("The far plane bounding value.");
+  DOCUMENT(R"(The far plane bounding value.
+
+:type: float
+)");
   float maxDepthBounds = 0.0f;
 };
 
@@ -438,11 +560,16 @@ struct BlendState
   BlendState(const BlendState &) = default;
   BlendState &operator=(const BlendState &) = default;
 
-  DOCUMENT("``True`` if alpha-to-coverage should be used when blending to an MSAA target.");
+  DOCUMENT(R"(``True`` if alpha-to-coverage should be used when blending to an MSAA target.
+
+:type: bool
+)");
   bool alphaToCoverage = false;
   DOCUMENT(R"(``True`` if independent blending for each target should be used.
 
 ``False`` if the first blend should be applied to all targets.
+
+:type: bool
 )");
   bool independentBlend = false;
 
@@ -490,15 +617,16 @@ struct OM
 :type: Descriptor
 )");
   Descriptor depthTarget;
-  DOCUMENT("``True`` if depth access to the depth-stencil target is read-only.");
-  bool depthReadOnly = false;
-  DOCUMENT("``True`` if stenncil access to the depth-stencil target is read-only.");
-  bool stencilReadOnly = false;
+  DOCUMENT(R"(``True`` if depth access to the depth-stencil target is read-only.
 
-  DOCUMENT("The sample count used for rendering.");
-  uint32_t multiSampleCount = 1;
-  DOCUMENT("The MSAA quality level used for rendering.");
-  uint32_t multiSampleQuality = 0;
+:type: bool
+)");
+  bool depthReadOnly = false;
+  DOCUMENT(R"(``True`` if stenncil access to the depth-stencil target is read-only.
+
+:type: bool
+)");
+  bool stencilReadOnly = false;
 };
 
 DOCUMENT("Describes the current state that a sub-resource is in.");
@@ -516,7 +644,10 @@ struct ResourceState
       return name < o.name;
     return false;
   }
-  DOCUMENT("A human-readable name for the current state.");
+  DOCUMENT(R"(A human-readable name for the current state.
+
+:type: str
+)");
   rdcstr name;
 };
 
@@ -540,7 +671,10 @@ struct ResourceData
       return states < o.states;
     return false;
   }
-  DOCUMENT("The :class:`ResourceId` of the resource.");
+  DOCUMENT(R"(The :class:`ResourceId` of the resource.
+
+:type: ResourceId
+)");
   ResourceId resourceId;
 
   DOCUMENT(R"(The subresource states in this resource.
@@ -690,7 +824,7 @@ struct RootParam
   DOCUMENT(R"(For a root table parameter, the byte offset into the descriptor heap bound to this
 parameter. See :data:`heap` and :data:`tableRanges`.
 
-:type: ResourceId
+:type: int
 )");
   uint32_t heapByteOffset = 0;
 
@@ -780,6 +914,38 @@ struct RootSignature
   rdcarray<StaticSampler> staticSamplers;
 };
 
+DOCUMENT("Describes the current state of D3D12 predicated rendering.");
+struct Predication
+{
+  DOCUMENT("");
+  Predication() = default;
+  Predication(const Predication &) = default;
+  Predication &operator=(const Predication &) = default;
+
+  DOCUMENT(R"(The :class:`ResourceId` of the buffer used for predicate data.
+
+If this is unset, predication is not enabled.
+
+:type: ResourceId
+)");
+  ResourceId resourceId;
+
+  DOCUMENT(R"(The offset in the buffer where the value is read.
+
+:type: int
+)");
+  uint64_t offset = 0;
+
+  DOCUMENT(R"(``True`` if a value of zero in the buffer would lead to draws/dispatches being skipped when
+predication is enabled.
+
+If ``False`` then a zero in the buffer would lead to them being performed as normal.
+
+:type: bool
+)");
+  bool skipIfZero = false;
+};
+
 DOCUMENT("The full current D3D12 pipeline state.");
 struct State
 {
@@ -789,7 +955,10 @@ struct State
   State(const State &) = delete;
 #endif
 
-  DOCUMENT("The :class:`ResourceId` of the pipeline state object.");
+  DOCUMENT(R"(The :class:`ResourceId` of the pipeline state object.
+
+:type: ResourceId
+)");
   ResourceId pipelineResourceId;
 
   DOCUMENT(R"(The descriptor heaps currently bound.
@@ -869,6 +1038,12 @@ struct State
 )");
   OM outputMerger;
 
+  DOCUMENT(R"(The predicated rendering state.
+
+:type: D3D12Predication
+)");
+  Predication predication;
+
   DOCUMENT(R"(The resource states for the currently live resources.
 
 :type: List[D3D12ResourceData]
@@ -896,4 +1071,5 @@ DECLARE_REFLECTION_STRUCT(D3D12Pipe::RootTableRange);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::RootParam);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::StaticSampler);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::RootSignature);
+DECLARE_REFLECTION_STRUCT(D3D12Pipe::Predication);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::State);

@@ -329,6 +329,7 @@ namespace spartan
         static void Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
+        static void Pass_Skysphere_SH_Project(RHI_CommandList* cmd_list);
         static void Pass_Clouds_Render(RHI_CommandList* cmd_list, uint32_t eye_layer);
         static void Pass_Clouds_Temporal(RHI_CommandList* cmd_list, uint32_t eye_layer);
         static void Pass_Clouds_Composite(RHI_CommandList* cmd_list, uint32_t eye_layer, RHI_Texture* tex_scene);
@@ -489,6 +490,9 @@ namespace spartan
 
             bool     cloud_history_valid       = false;
             uint32_t cloud_history_index       = 0;
+
+            bool     ssao_history_valid        = false;
+            uint32_t ssao_history_index        = 0;
             bool     cloud_environment_dirty   = true;
             Light*   cloud_light               = nullptr;
             math::Quaternion cloud_light_rotation = math::Quaternion::Identity;

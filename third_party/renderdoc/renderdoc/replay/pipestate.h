@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2018-2026 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -432,12 +432,44 @@ convenience of access.
 )");
   rdcarray<ColorBlend> GetColorBlends() const;
 
+  DOCUMENT(R"(Retrieves the current fixed blend factor.
+
+:return: The currently fixed blend factor.
+:rtype: Tuple[float,float,float,float]
+)");
+  rdcfixedarray<float, 4> GetBlendFactor() const;
+
+  DOCUMENT(R"(Checks whether stencil operations are enabled or not.
+
+:return: ``True`` if stencil testing is enabled.
+:rtype: bool
+)");
+  bool IsStencilTestEnabled() const;
+
   DOCUMENT(R"(Retrieves the current stencil states.
 
 :return: The currently stencil states. Front facing first, back facing second.
 :rtype: Tuple[StencilFace, StencilFace]
 )");
   rdcpair<StencilFace, StencilFace> GetStencilFaces() const;
+
+  DOCUMENT(R"(Retrieves some of the depth testing state.
+
+This doesn't contain all properties from all APIs but a common subset.
+
+:return: The currently depth testing state.
+:rtype: DepthTestState
+)");
+  DepthTestState GetDepthTestState() const;
+
+  DOCUMENT(R"(Retrieves some of the rasterizer state.
+
+This doesn't contain all properties from all APIs but a common subset.
+
+:return: The currently depth testing state.
+:rtype: RasterState
+)");
+  RasterState GetRasterState() const;
 
   DOCUMENT(R"(Determines whether or not independent blending is enabled.
 

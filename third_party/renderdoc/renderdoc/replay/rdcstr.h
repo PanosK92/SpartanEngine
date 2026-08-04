@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2019-2026 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1121,6 +1121,42 @@ public:
   bool empty() const { return c_str()[0] == 0; }
   const char *c_str() const { return (const char *)(uintptr_t)pointer; }
   size_t size() const { return strlen(c_str()); }
+  bool beginsWith(const char *beginning) const
+  {
+    if(!beginning)
+      return false;
+
+    const char *a = c_str();
+    const char *b = beginning;
+
+    // empty string we're checking against, degenerate case but true
+    if(*b == 0)
+      return true;
+
+    // if we are an empty string we don't match any non-empty prefix
+    if(*a == 0)
+      return false;
+
+    while(*a && *b)
+    {
+      if(*a != *b)
+        return false;
+
+      a++;
+      b++;
+
+      // if we reached the end of beginning before hitting a difference, we do begin with it
+      if(*b == 0)
+        return true;
+
+      // if we reached the end of our own string but beginning still has something left, we don't begin with it
+      if(*a == 0)
+        return false;
+    }
+
+    // should never reach here
+    return false;
+  }
   operator rdcstr() const
   {
     if(is_literal == 0)

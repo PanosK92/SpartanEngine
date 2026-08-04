@@ -1,5 +1,4 @@
 // Copyright 2015-2026 The Khronos Group Inc.
-//
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 
@@ -14,15 +13,15 @@
 #  define VULKAN_HPP_CPLUSPLUS __cplusplus
 #endif
 
-#if 202002L < VULKAN_HPP_CPLUSPLUS
+#if 202002l < VULKAN_HPP_CPLUSPLUS
 #  define VULKAN_HPP_CPP_VERSION 23
-#elif 201703L < VULKAN_HPP_CPLUSPLUS
+#elif 201703l < VULKAN_HPP_CPLUSPLUS
 #  define VULKAN_HPP_CPP_VERSION 20
-#elif 201402L < VULKAN_HPP_CPLUSPLUS
+#elif 201402l < VULKAN_HPP_CPLUSPLUS
 #  define VULKAN_HPP_CPP_VERSION 17
-#elif 201103L < VULKAN_HPP_CPLUSPLUS
+#elif 201103l < VULKAN_HPP_CPLUSPLUS
 #  define VULKAN_HPP_CPP_VERSION 14
-#elif 199711L < VULKAN_HPP_CPLUSPLUS
+#elif 199711l < VULKAN_HPP_CPLUSPLUS
 #  define VULKAN_HPP_CPP_VERSION 11
 #else
 #  error "vulkan.hpp needs at least c++ standard version 11"
@@ -87,6 +86,23 @@
 #  define VULKAN_HPP_ENABLE_DYNAMIC_LOADER_TOOL 1
 #endif
 
+#if VULKAN_HPP_ENABLE_DYNAMIC_LOADER_TOOL == 1
+#  if defined( __unix__ ) || defined( __APPLE__ ) || defined( __QNX__ ) || defined( __Fuchsia__ ) && !defined( VULKAN_HPP_CXX_MODULE )
+#    include <dlfcn.h>
+#  elif defined( _WIN32 ) && !defined( VULKAN_HPP_NO_WIN32_PROTOTYPES )
+using HINSTANCE = struct HINSTANCE__ *;
+#    if defined( _WIN64 )
+#      include <cstdint>
+using FARPROC = int64_t( __stdcall * )();
+#    else
+using FARPROC = int( __stdcall * )();
+#    endif
+extern "C" __declspec( dllimport ) HINSTANCE __stdcall LoadLibraryA( char const * lpLibFileName );
+extern "C" __declspec( dllimport ) int __stdcall       FreeLibrary( HINSTANCE hLibModule );
+extern "C" __declspec( dllimport ) FARPROC __stdcall   GetProcAddress( HINSTANCE hModule, char const * lpProcName );
+#  endif
+#endif
+
 #if !defined( __has_include )
 #  define __has_include( x ) false
 #endif
@@ -97,6 +113,12 @@
 
 #if defined( __cpp_lib_span ) && ( 201803 <= __cpp_lib_span )
 #  define VULKAN_HPP_SUPPORT_SPAN
+#endif
+
+#if defined( VULKAN_HPP_CXX_MODULE )
+#  define VULKAN_HPP_EXPORT export
+#else
+#  define VULKAN_HPP_EXPORT
 #endif
 
 #if defined( VULKAN_HPP_CXX_MODULE ) && !( defined( __cpp_modules ) && defined( __cpp_lib_modules ) )
@@ -175,7 +197,7 @@ VULKAN_HPP_COMPILE_WARNING( "This is a non-conforming implementation of C++ name
 #  else
 #    define VULKAN_HPP_CONSTEXPR_17
 #  endif
-#  if ( 201907 <= __cpp_constexpr ) && ( !defined( __GNUC__ ) || ( 110400 < GCC_VERSION ) )
+#  if ( 201907 <= __cpp_constexpr ) && ( !defined( __GNUC__ ) || ( 120000 <= GCC_VERSION ) )
 #    define VULKAN_HPP_CONSTEXPR_20 constexpr
 #  else
 #    define VULKAN_HPP_CONSTEXPR_20
@@ -188,7 +210,7 @@ VULKAN_HPP_COMPILE_WARNING( "This is a non-conforming implementation of C++ name
 #endif
 
 #if !defined( VULKAN_HPP_CONSTEXPR_INLINE )
-#  if 201606L <= __cpp_inline_variables
+#  if 201606l <= __cpp_inline_variables
 #    define VULKAN_HPP_CONSTEXPR_INLINE VULKAN_HPP_CONSTEXPR inline
 #  else
 #    define VULKAN_HPP_CONSTEXPR_INLINE VULKAN_HPP_CONSTEXPR
@@ -233,6 +255,14 @@ VULKAN_HPP_COMPILE_WARNING( "This is a non-conforming implementation of C++ name
 #  define VULKAN_HPP_NODISCARD_WHEN_NO_EXCEPTIONS
 #endif
 
+#if 17 <= VULKAN_HPP_CPP_VERSION
+#  define VULKAN_HPP_MAYBE_UNUSED [[maybe_unused]]
+#  define VULKAN_HPP_UNUSED( var )
+#else
+#  define VULKAN_HPP_MAYBE_UNUSED
+#  define VULKAN_HPP_UNUSED( var ) ( (void)( var ) )
+#endif
+
 #if !defined( VULKAN_HPP_NAMESPACE )
 #  define VULKAN_HPP_NAMESPACE vk
 #endif
@@ -268,20 +298,6 @@ VULKAN_HPP_COMPILE_WARNING( "This is a non-conforming implementation of C++ name
 #  endif
 #endif
 
-namespace VULKAN_HPP_NAMESPACE
-{
-  namespace detail
-  {
-    class DispatchLoaderDynamic;
-
-#if !defined( VULKAN_HPP_DEFAULT_DISPATCHER )
-#  if VULKAN_HPP_DISPATCH_LOADER_DYNAMIC == 1
-    extern VULKAN_HPP_STORAGE_API DispatchLoaderDynamic defaultDispatchLoaderDynamic;
-#  endif
-#endif
-  }  // namespace detail
-}  // namespace VULKAN_HPP_NAMESPACE
-
 #if !defined( VULKAN_HPP_DISPATCH_LOADER_DYNAMIC_TYPE )
 #  define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC_TYPE VULKAN_HPP_NAMESPACE::detail::DispatchLoaderDynamic
 #endif
@@ -312,6 +328,8 @@ namespace VULKAN_HPP_NAMESPACE
 #    define VULKAN_HPP_DEFAULT_DISPATCHER ::VULKAN_HPP_NAMESPACE::detail::getDispatchLoaderStatic()
 #    define VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 #  endif
+#else
+#  define VULKAN_HPP_DEFAULT_DISPATCHER_HANDLED
 #endif
 
 #if defined( VULKAN_HPP_NO_DEFAULT_DISPATCHER )

@@ -369,7 +369,7 @@ struct VKU_FORMAT_INFO {
     uint32_t component_count;
     struct VKU_FORMAT_COMPONENT_INFO components[VKU_FORMAT_MAX_COMPONENTS];
 };
-const struct VKU_FORMAT_INFO vku_formats[295] = {
+const struct VKU_FORMAT_INFO vku_formats[298] = {
     { VKU_FORMAT_COMPATIBILITY_CLASS_NONE, 0, 0, {0, 0, 0}, 0, {} },
     { VKU_FORMAT_COMPATIBILITY_CLASS_8BIT, 1, 1, {1, 1, 1}, 2, {{VKU_FORMAT_COMPONENT_TYPE_R, 4}, {VKU_FORMAT_COMPONENT_TYPE_G, 4}} },
     { VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 4, {{VKU_FORMAT_COMPONENT_TYPE_R, 4}, {VKU_FORMAT_COMPONENT_TYPE_G, 4}, {VKU_FORMAT_COMPONENT_TYPE_B, 4}, {VKU_FORMAT_COMPONENT_TYPE_A, 4}} },
@@ -648,6 +648,9 @@ const struct VKU_FORMAT_INFO vku_formats[295] = {
     { VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 4, {{VKU_FORMAT_COMPONENT_TYPE_A, 4}, {VKU_FORMAT_COMPONENT_TYPE_R, 4}, {VKU_FORMAT_COMPONENT_TYPE_G, 4}, {VKU_FORMAT_COMPONENT_TYPE_B, 4}} },
     { VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 4, {{VKU_FORMAT_COMPONENT_TYPE_A, 4}, {VKU_FORMAT_COMPONENT_TYPE_B, 4}, {VKU_FORMAT_COMPONENT_TYPE_G, 4}, {VKU_FORMAT_COMPONENT_TYPE_R, 4}} },
     { VKU_FORMAT_COMPATIBILITY_CLASS_8BIT, 1, 1, {1, 1, 1}, 1, {{VKU_FORMAT_COMPONENT_TYPE_R, 8}} },
+    { VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 1, {{VKU_FORMAT_COMPONENT_TYPE_R, 16}} },
+    { VKU_FORMAT_COMPATIBILITY_CLASS_8BIT, 1, 1, {1, 1, 1}, 1, {{VKU_FORMAT_COMPONENT_TYPE_R, 8}} },
+    { VKU_FORMAT_COMPATIBILITY_CLASS_8BIT, 1, 1, {1, 1, 1}, 1, {{VKU_FORMAT_COMPONENT_TYPE_R, 8}} },
     { VKU_FORMAT_COMPATIBILITY_CLASS_32BIT, 4, 1, {1, 1, 1}, 2, {{VKU_FORMAT_COMPONENT_TYPE_R, 16}, {VKU_FORMAT_COMPONENT_TYPE_G, 16}} },
     { VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 4, {{VKU_FORMAT_COMPONENT_TYPE_A, 1}, {VKU_FORMAT_COMPONENT_TYPE_B, 5}, {VKU_FORMAT_COMPONENT_TYPE_G, 5}, {VKU_FORMAT_COMPONENT_TYPE_R, 5}} },
     { VKU_FORMAT_COMPATIBILITY_CLASS_8BIT_ALPHA, 1, 1, {1, 1, 1}, 1, {{VKU_FORMAT_COMPONENT_TYPE_A, 8}} },
@@ -674,10 +677,10 @@ static inline struct VKU_FORMAT_INFO vkuGetFormatInfo(VkFormat format) {
     else if (VK_FORMAT_ASTC_3x3x3_UNORM_BLOCK_EXT <= format && format <= VK_FORMAT_ASTC_6x6x6_SFLOAT_BLOCK_EXT ) { return vku_formats[format - VK_FORMAT_ASTC_3x3x3_UNORM_BLOCK_EXT + 241]; }
     else if (VK_FORMAT_G8_B8R8_2PLANE_444_UNORM <= format && format <= VK_FORMAT_G16_B16R16_2PLANE_444_UNORM ) { return vku_formats[format - VK_FORMAT_G8_B8R8_2PLANE_444_UNORM + 271]; }
     else if (VK_FORMAT_A4R4G4B4_UNORM_PACK16 <= format && format <= VK_FORMAT_A4B4G4R4_UNORM_PACK16 ) { return vku_formats[format - VK_FORMAT_A4R4G4B4_UNORM_PACK16 + 275]; }
-    else if (VK_FORMAT_R8_BOOL_ARM <= format && format <= VK_FORMAT_R8_BOOL_ARM ) { return vku_formats[format - VK_FORMAT_R8_BOOL_ARM + 277]; }
-    else if (VK_FORMAT_R16G16_SFIXED5_NV <= format && format <= VK_FORMAT_R16G16_SFIXED5_NV ) { return vku_formats[format - VK_FORMAT_R16G16_SFIXED5_NV + 278]; }
-    else if (VK_FORMAT_A1B5G5R5_UNORM_PACK16 <= format && format <= VK_FORMAT_A8_UNORM ) { return vku_formats[format - VK_FORMAT_A1B5G5R5_UNORM_PACK16 + 279]; }
-    else if (VK_FORMAT_R10X6_UINT_PACK16_ARM <= format && format <= VK_FORMAT_G14X2_B14X2R14X2_2PLANE_422_UNORM_3PACK16_ARM ) { return vku_formats[format - VK_FORMAT_R10X6_UINT_PACK16_ARM + 281]; }
+    else if (VK_FORMAT_R8_BOOL_ARM <= format && format <= VK_FORMAT_R8_SFLOAT_FPENCODING_FLOAT8E5M2_ARM ) { return vku_formats[format - VK_FORMAT_R8_BOOL_ARM + 277]; }
+    else if (VK_FORMAT_R16G16_SFIXED5_NV <= format && format <= VK_FORMAT_R16G16_SFIXED5_NV ) { return vku_formats[format - VK_FORMAT_R16G16_SFIXED5_NV + 281]; }
+    else if (VK_FORMAT_A1B5G5R5_UNORM_PACK16 <= format && format <= VK_FORMAT_A8_UNORM ) { return vku_formats[format - VK_FORMAT_A1B5G5R5_UNORM_PACK16 + 282]; }
+    else if (VK_FORMAT_R10X6_UINT_PACK16_ARM <= format && format <= VK_FORMAT_G14X2_B14X2R14X2_2PLANE_422_UNORM_3PACK16_ARM ) { return vku_formats[format - VK_FORMAT_R10X6_UINT_PACK16_ARM + 284]; }
     // Default case - return VK_FORMAT_UNDEFINED
     else {
         return vku_formats[0];
@@ -843,6 +846,9 @@ bool vkuFormatIsSFLOAT(VkFormat format) {
         case VK_FORMAT_ASTC_6x5x5_SFLOAT_BLOCK_EXT:
         case VK_FORMAT_ASTC_6x6x5_SFLOAT_BLOCK_EXT:
         case VK_FORMAT_ASTC_6x6x6_SFLOAT_BLOCK_EXT:
+        case VK_FORMAT_R16_SFLOAT_FPENCODING_BFLOAT16_ARM:
+        case VK_FORMAT_R8_SFLOAT_FPENCODING_FLOAT8E4M3_ARM:
+        case VK_FORMAT_R8_SFLOAT_FPENCODING_FLOAT8E5M2_ARM:
             return true;
         default:
             return false;
@@ -1812,6 +1818,8 @@ static inline bool vkuFormatIs8bit(VkFormat format) {
         case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
         case VK_FORMAT_G8_B8R8_2PLANE_444_UNORM:
         case VK_FORMAT_R8_BOOL_ARM:
+        case VK_FORMAT_R8_SFLOAT_FPENCODING_FLOAT8E4M3_ARM:
+        case VK_FORMAT_R8_SFLOAT_FPENCODING_FLOAT8E5M2_ARM:
             return true;
         default:
             return false;
@@ -1857,6 +1865,7 @@ static inline bool vkuFormatIs16bit(VkFormat format) {
         case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
         case VK_FORMAT_G16_B16R16_2PLANE_444_UNORM:
         case VK_FORMAT_R16G16_SFIXED5_NV:
+        case VK_FORMAT_R16_SFLOAT_FPENCODING_BFLOAT16_ARM:
             return true;
         default:
             return false;

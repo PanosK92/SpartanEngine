@@ -1463,6 +1463,8 @@ namespace spartan
             m_pass_state.sky_first_frame         = true;
             m_pass_state.cloud_history_valid     = false;
             m_pass_state.cloud_environment_dirty = true;
+            m_pass_state.ssao_history_valid      = false;
+            m_pass_state.ssao_history_index      = 0;
             m_taau_reset_history                 = true;
 
             CreateSamplers();
@@ -1512,6 +1514,8 @@ namespace spartan
         CreateRenderTargets(true, true, true);
         m_pass_state.cloud_history_valid     = false;
         m_pass_state.cloud_environment_dirty = true;
+        m_pass_state.ssao_history_valid      = false;
+        m_pass_state.ssao_history_index      = 0;
         CreateSamplers();
     }
 

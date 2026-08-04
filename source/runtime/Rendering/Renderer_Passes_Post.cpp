@@ -73,10 +73,17 @@ namespace spartan
         }
 
         RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
-        if (!tex_ssao)
+        RHI_Texture* tex_hist_0 = GetRenderTarget(Renderer_RenderTarget::ssao_history_0);
+        RHI_Texture* tex_hist_1 = GetRenderTarget(Renderer_RenderTarget::ssao_history_1);
+        if (!tex_ssao || !tex_hist_0 || !tex_hist_1)
         {
             return;
         }
+
+        const uint32_t history_write = m_pass_state.ssao_history_index;
+        const uint32_t history_read  = 1u - history_write;
+        RHI_Texture* tex_history_read  = history_read == 0 ? tex_hist_0 : tex_hist_1;
+        RHI_Texture* tex_history_write = history_write == 0 ? tex_hist_0 : tex_hist_1;
 
         cmd_list->BeginTimeblock("screen_space_ambient_occlusion");
         {
@@ -85,10 +92,22 @@ namespace spartan
             pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);
             cmd_list->SetPipelineState(pso);
 
-            SetCommonTextures(cmd_list);
+            // skip ssao srv, this pass writes it and must not bind it for read
+            SetCommonTextures(cmd_list, rhi_all_mips, false);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_history_read);
+            cmd_list->SetTexture(
+                Renderer_BindingsSrv::tex2,
+                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous)
+            );
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_history_write);
+            // x > 0.5 resets temporal history (first frame or after rt recreate)
+            m_pcb_pass_cpu.set_f3_value(m_pass_state.ssao_history_valid ? 0.0f : 1.0f, 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(tex_ssao, GetResolutionScale());
+
+            m_pass_state.ssao_history_index = history_read;
+            m_pass_state.ssao_history_valid = true;
         }
         cmd_list->EndTimeblock();
     }

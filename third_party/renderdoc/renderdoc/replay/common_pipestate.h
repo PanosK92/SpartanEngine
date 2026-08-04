@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2017-2026 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -64,19 +64,40 @@ struct Viewport
     return false;
   }
 
-  DOCUMENT("Is this viewport enabled.");
+  DOCUMENT(R"(Is this viewport enabled.
+
+:type: bool
+)");
   bool enabled = true;
-  DOCUMENT("The X co-ordinate of the viewport.");
+  DOCUMENT(R"(The X co-ordinate of the viewport.
+
+:type: float
+)");
   float x = 0.0f;
-  DOCUMENT("The Y co-ordinate of the viewport.");
+  DOCUMENT(R"(The Y co-ordinate of the viewport.
+
+:type: float
+)");
   float y = 0.0f;
-  DOCUMENT("The width of the viewport.");
+  DOCUMENT(R"(The width of the viewport.
+
+:type: float
+)");
   float width = 0.0f;
-  DOCUMENT("The height of the viewport.");
+  DOCUMENT(R"(The height of the viewport.
+
+:type: float
+)");
   float height = 0.0f;
-  DOCUMENT("The minimum depth of the viewport.");
+  DOCUMENT(R"(The minimum depth of the viewport.
+
+:type: float
+)");
   float minDepth = 0.0f;
-  DOCUMENT("The maximum depth of the viewport.");
+  DOCUMENT(R"(The maximum depth of the viewport.
+
+:type: float
+)");
   float maxDepth = 0.0f;
 };
 
@@ -111,15 +132,30 @@ struct Scissor
       return enabled < o.enabled;
     return false;
   }
-  DOCUMENT("X co-ordinate of the scissor region.");
+  DOCUMENT(R"(X co-ordinate of the scissor region.
+
+:type: int
+)");
   int32_t x = 0;
-  DOCUMENT("Y co-ordinate of the scissor region.");
+  DOCUMENT(R"(Y co-ordinate of the scissor region.
+
+:type: int
+)");
   int32_t y = 0;
-  DOCUMENT("Width of the scissor region.");
+  DOCUMENT(R"(Width of the scissor region.
+
+:type: int
+)");
   int32_t width = 0;
-  DOCUMENT("Height of the scissor region.");
+  DOCUMENT(R"(Height of the scissor region.
+
+:type: int
+)");
   int32_t height = 0;
-  DOCUMENT("``True`` if this scissor region is enabled.");
+  DOCUMENT(R"(``True`` if this scissor region is enabled.
+
+:type: bool
+)");
   bool enabled = true;
 };
 
@@ -147,11 +183,20 @@ struct BlendEquation
       return operation < o.operation;
     return false;
   }
-  DOCUMENT("The :class:`BlendMultiplier` for the source blend value.");
+  DOCUMENT(R"(The :class:`BlendMultiplier` for the source blend value.
+
+:type: BlendMultiplier
+)");
   BlendMultiplier source = BlendMultiplier::One;
-  DOCUMENT("The :class:`BlendMultiplier` for the destination blend value.");
+  DOCUMENT(R"(The :class:`BlendMultiplier` for the destination blend value.
+
+:type: BlendMultiplier
+)");
   BlendMultiplier destination = BlendMultiplier::One;
-  DOCUMENT("The :class:`BlendOperation` to use in the blend calculation.");
+  DOCUMENT(R"(The :class:`BlendOperation` to use in the blend calculation.
+
+:type: BlendOperation
+)");
   BlendOperation operation = BlendOperation::Add;
 };
 
@@ -201,18 +246,97 @@ struct ColorBlend
 
   DOCUMENT(R"(The :class:`LogicOperation` to use for logic operations, if
 :data:`logicOperationEnabled` is ``True``.
+    
+:type: LogicOperation
 )");
   LogicOperation logicOperation = LogicOperation::NoOp;
 
-  DOCUMENT("``True`` if blending is enabled for this target.");
+  DOCUMENT(R"(``True`` if blending is enabled for this target.
+    
+:type: bool
+)");
   bool enabled = false;
-  DOCUMENT("``True`` if the logic operation in :data:`logicOperation` should be used.");
+  DOCUMENT(R"(``True`` if the logic operation in :data:`logicOperation` should be used.
+    
+:type: bool
+)");
   bool logicOperationEnabled = false;
-  DOCUMENT("The mask for writes to the render target.");
+  DOCUMENT(R"(The mask for writes to the render target.
+    
+:type: int
+)");
   byte writeMask = 0;
 };
 
 DECLARE_REFLECTION_STRUCT(ColorBlend);
+
+DOCUMENT("Describes a common subset of rasterizing state.");
+struct RasterState
+{
+  DOCUMENT("");
+  RasterState() = default;
+  RasterState(const RasterState &) = default;
+  RasterState &operator=(const RasterState &) = default;
+
+  DOCUMENT(R"(``True`` if counter-clockwise polygons are front-facing.
+``False`` if clockwise polygons are front-facing.
+
+:type: bool
+)");
+  bool frontCCW = false;
+
+  DOCUMENT(R"(The polygon :class:`FillMode`.
+
+:type: FillMode
+)");
+  FillMode fillMode = FillMode::Solid;
+
+  DOCUMENT(R"(The polygon :class:`CullMode`.
+
+:type: CullMode
+)");
+  CullMode cullMode = CullMode::NoCull;
+};
+
+DOCUMENT("Describes a common subset of depth testing state.");
+struct DepthTestState
+{
+  DOCUMENT("");
+  DepthTestState() = default;
+  DepthTestState(const DepthTestState &) = default;
+  DepthTestState &operator=(const DepthTestState &) = default;
+
+  DOCUMENT(R"(``True`` if depth testing should be performed.
+
+:type: bool
+)");
+  bool depthEnable = false;
+  DOCUMENT(R"(The :class:`CompareFunction` to use for testing depth values.
+
+:type: CompareFunction
+)");
+  CompareFunction depthFunction = CompareFunction::AlwaysTrue;
+  DOCUMENT(R"(``True`` if depth values should be written to the depth target.
+
+:type: bool
+)");
+  bool depthWrites = false;
+  DOCUMENT(R"(``True`` if depth bounds tests should be applied.
+
+:type: bool
+)");
+  bool depthBounds = false;
+  DOCUMENT(R"(The near plane bounding value.
+
+:type: float
+)");
+  double minDepthBounds = 0.0;
+  DOCUMENT(R"(The far plane bounding value.
+
+:type: float
+)");
+  double maxDepthBounds = 0.0;
+};
 
 DOCUMENT("Describes the details of a stencil operation.");
 struct StencilFace
@@ -222,19 +346,40 @@ struct StencilFace
   StencilFace(const StencilFace &) = default;
   StencilFace &operator=(const StencilFace &) = default;
 
-  DOCUMENT("The :class:`StencilOperation` to apply if the stencil-test fails.");
+  DOCUMENT(R"(The :class:`StencilOperation` to apply if the stencil-test fails.
+
+:type: StencilOperation
+)");
   StencilOperation failOperation = StencilOperation::Keep;
-  DOCUMENT("the :class:`StencilOperation` to apply if the depth-test fails.");
+  DOCUMENT(R"(the :class:`StencilOperation` to apply if the depth-test fails.
+
+:type: StencilOperation
+)");
   StencilOperation depthFailOperation = StencilOperation::Keep;
-  DOCUMENT("the :class:`StencilOperation` to apply if the stencil-test passes.");
+  DOCUMENT(R"(the :class:`StencilOperation` to apply if the stencil-test passes.
+
+:type: StencilOperation
+)");
   StencilOperation passOperation = StencilOperation::Keep;
-  DOCUMENT("the :class:`CompareFunction` to use for testing stencil values.");
+  DOCUMENT(R"(the :class:`CompareFunction` to use for testing stencil values.
+
+:type: CompareFunction
+)");
   CompareFunction function = CompareFunction::AlwaysTrue;
-  DOCUMENT("The current stencil reference value.");
+  DOCUMENT(R"(The current stencil reference value.
+
+:type: int
+)");
   uint32_t reference = 0;
-  DOCUMENT("The mask for testing stencil values.");
+  DOCUMENT(R"(The mask for testing stencil values.
+
+:type: int
+)");
   uint32_t compareMask = 0;
-  DOCUMENT("The mask for writing stencil values.");
+  DOCUMENT(R"(The mask for writing stencil values.
+
+:type: int
+)");
   uint32_t writeMask = 0;
 };
 
@@ -265,13 +410,25 @@ struct BoundVBuffer
       return byteSize < o.byteSize;
     return false;
   }
-  DOCUMENT("A :class:`~renderdoc.ResourceId` identifying the buffer.");
+  DOCUMENT(R"(A :class:`~renderdoc.ResourceId` identifying the buffer.
+
+:type: ResourceId
+)");
   ResourceId resourceId;
-  DOCUMENT("The offset in bytes from the start of the buffer to the data.");
+  DOCUMENT(R"(The offset in bytes from the start of the buffer to the data.
+
+:type: int
+)");
   uint64_t byteOffset = 0;
-  DOCUMENT("The stride in bytes between the start of one element and the start of the next.");
+  DOCUMENT(R"(The stride in bytes between the start of one element and the start of the next.
+
+:type: int
+)");
   uint32_t byteStride = 0;
-  DOCUMENT("The size of the buffer binding, or 0xFFFFFFFF if the whole buffer is bound.");
+  DOCUMENT(R"(The size of the buffer binding, or 0xFFFFFFFF if the whole buffer is bound.
+
+:type: int
+)");
   uint64_t byteSize = 0;
 };
 
@@ -538,13 +695,25 @@ of the contents of this structure are not valid as the descriptor is not a sampl
 )");
   DescriptorType type = DescriptorType::Unknown;
 
-  DOCUMENT("The :class:`AddressMode` in the U direction.");
+  DOCUMENT(R"(The :class:`AddressMode` in the U direction.
+
+:type: AddressMode
+)");
   AddressMode addressU = AddressMode::Wrap;
-  DOCUMENT("The :class:`AddressMode` in the V direction.");
+  DOCUMENT(R"(The :class:`AddressMode` in the V direction.
+
+:type: AddressMode
+)");
   AddressMode addressV = AddressMode::Wrap;
-  DOCUMENT("The :class:`AddressMode` in the W direction.");
+  DOCUMENT(R"(The :class:`AddressMode` in the W direction.
+
+:type: AddressMode
+)");
   AddressMode addressW = AddressMode::Wrap;
-  DOCUMENT("The :class:`CompareFunction` for comparison samplers.");
+  DOCUMENT(R"(The :class:`CompareFunction` for comparison samplers.
+
+:type: CompareFunction
+)");
   CompareFunction compareFunction = CompareFunction::AlwaysTrue;
 
   DOCUMENT(R"(The filtering mode.
@@ -552,20 +721,41 @@ of the contents of this structure are not valid as the descriptor is not a sampl
 :type: TextureFilter
 )");
   TextureFilter filter;
-  DOCUMENT("``True`` if the border colour is swizzled with an sRGB formatted image.");
+  DOCUMENT(R"(``True`` if the border colour is swizzled with an sRGB formatted image.
+
+:type: bool
+)");
   bool srgbBorder = false;
-  DOCUMENT("``True`` if this sampler is seamless across cubemap boundaries (the default).");
+  DOCUMENT(R"(``True`` if this sampler is seamless across cubemap boundaries (the default).
+
+:type: bool
+)");
   bool seamlessCubemaps = true;
-  DOCUMENT("``True`` if unnormalized co-ordinates are used in this sampler.");
+  DOCUMENT(R"(``True`` if unnormalized co-ordinates are used in this sampler.
+
+:type: bool
+)");
   bool unnormalized = false;
 
-  DOCUMENT("The maximum anisotropic filtering level to use.");
+  DOCUMENT(R"(The maximum anisotropic filtering level to use.
+
+:type: float
+)");
   float maxAnisotropy = 0;
-  DOCUMENT("The maximum mip level that can be used.");
+  DOCUMENT(R"(The maximum mip level that can be used.
+
+:type: float
+)");
   float maxLOD = 0.0f;
-  DOCUMENT("The minimum mip level that can be used.");
+  DOCUMENT(R"(The minimum mip level that can be used.
+
+:type: float
+)");
   float minLOD = 0.0f;
-  DOCUMENT("A bias to apply to the calculated mip level before sampling.");
+  DOCUMENT(R"(A bias to apply to the calculated mip level before sampling.
+
+:type: float
+)");
   float mipBias = 0.0f;
 
   DOCUMENT(R"(The RGBA border color value. Typically the float tuple inside will be used,
@@ -588,17 +778,35 @@ information for border colors.
 )");
   TextureSwizzle4 swizzle;
 
-  DOCUMENT("For ycbcr samplers - the :class:`YcbcrConversion` used for conversion.");
+  DOCUMENT(R"(For ycbcr samplers - the :class:`YcbcrConversion` used for conversion.
+
+:type: YcbcrConversion
+)");
   YcbcrConversion ycbcrModel;
-  DOCUMENT("For ycbcr samplers - the :class:`YcbcrRange` used for conversion.");
+  DOCUMENT(R"(For ycbcr samplers - the :class:`YcbcrRange` used for conversion.
+
+:type: YcbcrRange
+)");
   YcbcrRange ycbcrRange;
-  DOCUMENT("For ycbcr samplers - the :class:`ChromaSampleLocation` X-axis chroma offset.");
+  DOCUMENT(R"(For ycbcr samplers - the :class:`ChromaSampleLocation` X-axis chroma offset.
+
+:type: ChromaSampleLocation
+)");
   ChromaSampleLocation xChromaOffset;
-  DOCUMENT("For ycbcr samplers - the :class:`ChromaSampleLocation` Y-axis chroma offset.");
+  DOCUMENT(R"(For ycbcr samplers - the :class:`ChromaSampleLocation` Y-axis chroma offset.
+
+:type: ChromaSampleLocation
+)");
   ChromaSampleLocation yChromaOffset;
-  DOCUMENT("For ycbcr samplers - the :class:`FilterMode` describing the chroma filtering mode.");
+  DOCUMENT(R"(For ycbcr samplers - the :class:`FilterMode` describing the chroma filtering mode.
+
+:type: FilterMode
+)");
   FilterMode chromaFilter;
-  DOCUMENT("For ycbcr samplers - ``True`` if explicit reconstruction is force enabled.");
+  DOCUMENT(R"(For ycbcr samplers - ``True`` if explicit reconstruction is force enabled.
+
+:type: bool
+)");
   bool forceExplicitReconstruction = false;
 
   DOCUMENT(R"(``True`` if this sampler was initialised at creation time for a pipeline or
@@ -611,6 +819,8 @@ explicitly set and may have no real descriptor storage.
 
   DOCUMENT(R"(The :class:`ResourceId` of the ycbcr conversion object associated with
 this sampler.
+
+:type: ResourceId
 )");
   ResourceId ycbcrSampler;
 
@@ -980,16 +1190,30 @@ struct VertexInputAttribute
     return false;
   }
 
-  DOCUMENT("The name of this input. This may be a variable name or a semantic name.");
+  DOCUMENT(R"(The name of this input. This may be a variable name or a semantic name.
+
+:type: str
+)");
   rdcstr name;
-  DOCUMENT("The index of the vertex buffer used to provide this attribute.");
+  DOCUMENT(R"(The index of the vertex buffer used to provide this attribute.
+
+:type: int
+)");
   int vertexBuffer;
-  DOCUMENT("The byte offset from the start of the vertex data for this VB to this attribute.");
+  DOCUMENT(R"(The byte offset from the start of the vertex data for this VB to this attribute.
+
+:type: int
+)");
   uint32_t byteOffset;
-  DOCUMENT("``True`` if this attribute runs at instance rate.");
+  DOCUMENT(R"(``True`` if this attribute runs at instance rate.
+
+:type: bool
+)");
   bool perInstance;
   DOCUMENT(R"(If :data:`perInstance` is ``True``, the number of instances that source the same value
 from the vertex buffer before advancing to the next value.
+
+:type: int
 )");
   int instanceRate;
   DOCUMENT(R"(The interpreted format of this attribute.
@@ -1002,7 +1226,10 @@ from the vertex buffer before advancing to the next value.
 :type: PixelValue
 )");
   PixelValue genericValue;
-  DOCUMENT("``True`` if this attribute is using :data:`genericValue` for its data.");
+  DOCUMENT(R"(``True`` if this attribute is using :data:`genericValue` for its data.
+
+:type: bool
+)");
   bool genericEnabled = false;
   DOCUMENT(R"(Only valid for attributes on OpenGL. If the attribute has been set up for integers to
 be converted to floats (glVertexAttribFormat with GL_INT) we store the format as integers. This is
@@ -1012,9 +1239,14 @@ read something undefined - possibly the int bits of the casted float.
 
 This property is set to ``True`` if the cast happens to an integer input and that bad cast needs to
 be emulated.
+
+:type: bool
 )");
   bool floatCastWrong = false;
-  DOCUMENT("``True`` if this attribute is enabled and used by the vertex shader.");
+  DOCUMENT(R"(``True`` if this attribute is enabled and used by the vertex shader.
+
+:type: bool
+)");
   bool used;
 };
 

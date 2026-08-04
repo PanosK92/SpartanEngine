@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2016-2026 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -247,7 +247,10 @@ struct SDType
   }
 #endif
 
-  DOCUMENT("The name of this type.");
+  DOCUMENT(R"(The name of this type.
+
+:type: str
+)");
   rdcinflexiblestr name;
 
   DOCUMENT(R"(The :class:`SDBasic` category that this type belongs to.
@@ -297,10 +300,16 @@ struct SDChunkMetaData
   SDChunkMetaData(const SDChunkMetaData &) = default;
   SDChunkMetaData &operator=(const SDChunkMetaData &) = default;
 
-  DOCUMENT("The internal chunk ID - unique given a particular driver in use.");
+  DOCUMENT(R"(The internal chunk ID - unique given a particular driver in use.
+
+:type: int
+)");
   uint32_t chunkID = 0;
 
-  DOCUMENT("The :class:`SDChunkFlags` for this chunk.");
+  DOCUMENT(R"(The :class:`SDChunkFlags` for this chunk.
+
+:type: SDChunkFlags
+)");
   SDChunkFlags flags = SDChunkFlags::NoFlags;
 
   DOCUMENT(R"(The length in bytes of this chunk - may be longer than the actual sum of the data if a
@@ -442,7 +451,7 @@ struct SDObjectData
 
   DOCUMENT(R"(The plain-old data contents of the object, in a :class:`SDObjectPODData`.
 
-:type: basic
+:type: SDObjectPODData
 )");
   SDObjectPODData basic;
 
@@ -610,16 +619,16 @@ struct SDObject
       PopulateAllChildren();
     }
 
-    ret->data.children.resize(data.children.size());
+    ret->data.children.reserve(data.children.size());
     for(size_t i = 0; i < data.children.size(); i++)
-      ret->data.children[i] = data.children[i]->Duplicate();
+      ret->AddAndOwnChild(data.children[i]->Duplicate());
 
     return ret;
   }
 
   DOCUMENT(R"(The name of this object.
 
-:type: name
+:type: str
 )");
   rdcinflexiblestr name;
 
@@ -682,8 +691,7 @@ recursively through children.
     // fully owned children. This shouldn't happen, but just in case we'll evaluate the lazy array
     // here.
     PopulateAllChildren();
-    data.children.push_back(child->Duplicate());
-    data.children.back()->m_Parent = this;
+    AddAndOwnChild(child->Duplicate());
   }
   DOCUMENT(R"(Find a child object by a given name. If no matching child is found, ``None`` is
 returned.
@@ -723,6 +731,127 @@ The order of the search is not guaranteed, so care should be taken when the name
     }
 
     return NULL;
+  }
+
+  DOCUMENT(R"(Create a child object by a key path. Children will be created as necessary to ensure
+that the key path exists, but if they already exist then the existing object will be returned.
+
+Key paths are dotted recursive references, e.g. ``foo.bar`` is the member ``bar`` in parent ``foo``.
+
+Arrays are represented by simple numeric entries e.g. ``foo.0.bar``, ``foo.1.bar``.
+
+Empty entries are ignored so ``foo..bar`` and ``foo.bar`` refer to the same object.
+
+Key paths must not be empty and must not begin with a dot.
+
+If any path element is not unique in any child the behaviour is undefined, so objects should only be
+manipulated by key path exclusively or not at all.
+
+:param str keyPath: The key path to search for and return.
+:return: A reference to the object at the relative key path
+:rtype: SDObject
+)");
+  inline SDObject *CreateChildByKeyPath(const rdcstr &keyPath)
+  {
+    if(keyPath.empty() || keyPath[0] == '.')
+      return this;
+
+    int dotIdx = keyPath.indexOf('.');
+    rdcstr element = keyPath.substr(0, dotIdx);
+
+    SDObject *child = NULL;
+    for(size_t i = 0; i < data.children.size(); i++)
+      if(GetChild(i)->name == element)
+        child = GetChild(i);
+
+    if(!child)
+      child = AddAndOwnChild(new SDObject(element, ""_lit));
+
+    while(dotIdx >= 0 && keyPath[dotIdx] == '.')
+      dotIdx++;
+
+    if(dotIdx >= 0 && dotIdx < keyPath.count())
+      return child->CreateChildByKeyPath(keyPath.substr(dotIdx));
+
+    return child;
+  }
+
+  DOCUMENT(R"(Find if a child object if it exists by a key path. Children will not be created
+if any element of the path doesn't exist and instead ``None`` will be returned.
+
+Key paths are dotted recursive references, e.g. ``foo.bar`` is the member ``bar`` in parent ``foo``.
+
+Arrays are represented by simple numeric entries e.g. ``foo.0.bar``, ``foo.1.bar``.
+
+Empty entries are ignored so ``foo..bar`` and ``foo.bar`` refer to the same object.
+
+Key paths must not be empty and must not begin with a dot.
+
+If any path element is not unique in any child the behaviour is undefined, so objects should only be
+manipulated by key path exclusively or not at all.
+
+:param str keyPath: The key path to search for and return.
+:return: Whether or not a child exists at the given key path
+:rtype: SDObject
+)");
+  inline const SDObject *FindChildByKeyPath(const rdcstr &keyPath) const
+  {
+    if(keyPath.empty() || keyPath[0] == '.')
+      return this;
+
+    int dotIdx = keyPath.indexOf('.');
+    rdcstr element = keyPath.substr(0, dotIdx);
+
+    const SDObject *child = NULL;
+    for(size_t i = 0; i < data.children.size(); i++)
+      if(GetChild(i)->name == element)
+        child = GetChild(i);
+
+    if(!child)
+      return NULL;
+
+    while(dotIdx >= 0 && keyPath[dotIdx] == '.')
+      dotIdx++;
+
+    if(dotIdx >= 0 && dotIdx < keyPath.count())
+      return child->FindChildByKeyPath(keyPath.substr(dotIdx));
+
+    return child;
+  }
+
+  DOCUMENT(R"(Delete a child object by a key path. All children of the resulting path will be deleted
+as well. If no such path exists, nothing will be changed.
+
+If any path element is not unique in any child the behaviour is undefined, so objects should only be
+manipulated by key path exclusively or not at all.
+
+:param str keyPath: The key path to search for and delete.
+)");
+  inline void EraseChildByKeyPath(const rdcstr &keyPath)
+  {
+    // shouldn't happen since we delete the found child (if it exists) from the parent, but return to be fault-tolerant
+    if(keyPath.empty() || keyPath[0] == '.')
+      return;
+
+    int dotIdx = keyPath.indexOf('.');
+    rdcstr element = keyPath.substr(0, dotIdx);
+
+    int childIdx = -1;
+    for(int i = 0; i < data.children.count(); i++)
+      if(GetChild(i)->name == element)
+        childIdx = i;
+
+    // if the child doesn't exist we can stop now
+    if(childIdx < 0)
+      return;
+
+    while(dotIdx >= 0 && keyPath[dotIdx] == '.')
+      dotIdx++;
+
+    if(dotIdx >= 0 && dotIdx < keyPath.count())
+      return GetChild(childIdx)->EraseChildByKeyPath(keyPath.substr(dotIdx));
+
+    RemoveChild(childIdx);
   }
 
   DOCUMENT(R"(Find a child object by a given index. If the index is out of bounds, ``None`` is
@@ -1034,6 +1163,13 @@ protected:
     }
   }
 
+  void Detach()
+  {
+    PopulateAllChildren();
+    for(size_t i = 0; i < data.children.size(); i++)
+      data.children[i]->Detach();
+  }
+
   void PopulateAllChildren() const
   {
     if(m_Lazy)
@@ -1077,6 +1213,9 @@ private:
   friend void DoSerialise(SerialiserType &ser, SDChunk &el);
   template <class SerialiserType>
   friend void DoSerialise(SerialiserType &ser, SDObject &el, StructuredObjectList &children);
+
+  // SDFile should be a friend so it can detach
+  friend struct SDFile;
 
   void DeleteLazyGenerator() const
   {
@@ -1462,7 +1601,10 @@ struct SDChunk : public SDObject
   {
     type.basetype = SDBasic::Chunk;
   }
-  DOCUMENT("The :class:`SDChunkMetaData` with the metadata for this chunk.");
+  DOCUMENT(R"(The :class:`SDChunkMetaData` with the metadata for this chunk.
+
+:type: SDChunkMetaData
+)");
   SDChunkMetaData metadata;
 
   DOCUMENT(R"(
@@ -1478,12 +1620,11 @@ struct SDChunk : public SDObject
     ret->data.basic = data.basic;
     ret->data.str = data.str;
 
-    ret->data.children.resize(data.children.size());
-
     PopulateAllChildren();
 
+    ret->data.children.reserve(data.children.size());
     for(size_t i = 0; i < data.children.size(); i++)
-      ret->data.children[i] = data.children[i]->Duplicate();
+      ret->AddAndOwnChild(data.children[i]->Duplicate());
 
     return ret;
   }
@@ -1639,6 +1780,15 @@ public:
     chunks.swap(other.chunks);
     buffers.swap(other.buffers);
     std::swap(version, other.version);
+  }
+
+  DOCUMENT(R"(Prepares the SDFile to remove any possible dependencies on what
+created it.
+)");
+  void Detach()
+  {
+    for(SDChunk *c : chunks)
+      c->Detach();
   }
 
 protected:

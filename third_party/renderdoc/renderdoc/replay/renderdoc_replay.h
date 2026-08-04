@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2015-2026 Baldur Karlsson
  * Copyright (c) 2014 Crytek
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -717,7 +717,7 @@ created resources.
 
 See :meth:`BuildTargetShader`, :meth:`RemoveReplacement`.
 
-:param ResourceId original: The id of the original resource that should be substituted.
+:param ResourceId original: The id of the resource that should be substituted.
 :param ResourceId replacement: The id of the new resource that should be used instead.
 )");
   virtual void ReplaceResource(ResourceId original, ResourceId replacement) = 0;
@@ -727,11 +727,15 @@ re-initialise any data, including e.g. bindless feedback, printf results or mesh
 )");
   virtual void ClearReplayCache() = 0;
 
+  DOCUMENT(R"(Reload the shader debug information for all shaders in the capture.
+)");
+  virtual void ReloadShaderDebugInformation() = 0;
+
   DOCUMENT(R"(Remove any previously specified replacement for an object.
 
 See :meth:`ReplaceResource`.
 
-:param ResourceId id: The id of the original resource that was previously being substituted.
+:param ResourceId id: The id of the resource that was previously being substituted.
 )");
   virtual void RemoveReplacement(ResourceId id) = 0;
 
@@ -1108,6 +1112,9 @@ texture to something compatible with the target file format.
 
   DOCUMENT(R"(Retrieve the contents of one subresource of a texture as a ``bytes``.
 
+.. note:: For 3D textures a whole width x height x depth mip is returned, you can't select a single
+  depth slice using :data:`Subresource.slice`.
+
 :param ResourceId tex: The id of the texture to retrieve data from.
 :param Subresource sub: The subresource within this texture to use.
 :return: The requested texture contents.
@@ -1339,6 +1346,63 @@ Must only be called after :meth:`InitResolver` has returned ``True``.
 :rtype: str
 )");
   virtual rdcstr DriverName() = 0;
+
+  DOCUMENT(R"(Stores the dependent file data into the capture i.e. shader debug files.
+
+This reads the contents of the dependent files and stores their file contents into the capture.
+This can help the capture to be more portable by embedding all externally referenced dependent files.
+Use :meth:`RemoveDependenciesFromCapture` to remove the embedded file data.
+
+.. warning::
+  Will remove all the existing embedded file data from the capture.
+  Will directly modify the capture file on disk.
+
+.. note::
+  This will increase the size of the capture file.
+  Externally referenced files which can't be found on disk are skipped.
+
+:return: The result of the operation.
+:rtype: ResultDetails
+)");
+  virtual ResultDetails EmbedDependenciesIntoCapture() = 0;
+
+  DOCUMENT(R"(Removes the dependent files storage from the capture i.e. shader debug files.
+
+The files will be still be considered to be referenced by the capture and could be re-embedded 
+by calling :meth:`EmbedDependenciesIntoCapture`.
+
+.. warning::
+  Will directly modify the capture file on disk.
+
+:return: The result of the operation.
+:rtype: ResultDetails
+)");
+  virtual ResultDetails RemoveDependenciesFromCapture() = 0;
+
+  DOCUMENT(R"(Are there any depdendent files embedded in the capture i.e. shader debug files.
+
+:return: ``True`` if the capture has embedded dependent files, or ``False`` if the capture does not any embedded dependent files.
+:rtype: bool
+)");
+  virtual bool HasEmbeddedDependencies() = 0;
+
+  DOCUMENT(R"(Does the capture have references to dependecies i.e. shader debug files.
+
+:return: ``True`` if the capture has references to dependent files, or ``False`` if the capture does not contain references to dependent files.
+:rtype: bool
+)");
+  virtual bool HasPendingDependencies() = 0;
+
+  DOCUMENT(R"(Retrieve a list of the nicknames of the externally referenced dependent files being referenced 
+by the capture i.e. shader debug files.
+
+.. note::
+  The nicknames can be arbitary and do not have to be a filename or a file path.
+
+:return: A list of the nicknames used to reference dependencies.
+:rtype: List[str]
+)");
+  virtual rdcarray<rdcstr> GetPendingDependenciesNicknames() = 0;
 
 protected:
   ICaptureAccess() = default;
@@ -1728,6 +1792,15 @@ struct ICamera
   DOCUMENT("Closes the camera handle.");
   virtual void Shutdown() = 0;
 
+  DOCUMENT(R"(Sets the near and far plane for the camera's display.
+
+The default value is ``0.1 - 100000.0`` if these are not set explicitly.
+
+:param float n: The near plane.
+:param float f: The far plane.
+)");
+  virtual void SetNearFar(float n, float f) = 0;
+
   DOCUMENT(R"(Sets the position for the camera, either arcball or FPS.
 
 For arcball cameras, this sets the lookat position at the centre of the arcball.
@@ -2082,13 +2155,22 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_EndSelfHostCapture(const rd
 DOCUMENT("INTERNAL: Information about vulkan layer registration");
 struct VulkanLayerRegistrationInfo
 {
-  DOCUMENT(":class:`VulkanLayerFlags` detailing the current registration.");
+  DOCUMENT(R"(:class:`VulkanLayerFlags` detailing the current registration.
+
+:type: VulkanLayerFlags
+)");
   VulkanLayerFlags flags;
 
-  DOCUMENT("A list of jsons that should be registered");
+  DOCUMENT(R"(A list of jsons that should be registered
+
+:type: List[str]
+)");
   rdcarray<rdcstr> myJSONs;
 
-  DOCUMENT("A list of jsons that should be unregistered / updated");
+  DOCUMENT(R"(A list of jsons that should be unregistered / updated
+
+:type: List[str]
+)");
   rdcarray<rdcstr> otherJSONs;
 };
 
@@ -2362,8 +2444,7 @@ extern "C" RENDERDOC_API int RENDERDOC_CC RENDERDOC_RunUnitTests(const rdcstr &c
                                                                  const rdcarray<rdcstr> &args);
 
 DOCUMENT("INTERNAL: Run functional tests.");
-extern "C" RENDERDOC_API int RENDERDOC_CC RENDERDOC_RunFunctionalTests(int pythonMinorVersion,
-                                                                       const rdcarray<rdcstr> &args);
+extern "C" RENDERDOC_API int RENDERDOC_CC RENDERDOC_RunFunctionalTests(const rdcarray<rdcstr> &args);
 #endif
 
 #if !defined(SWIG)

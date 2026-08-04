@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// = INCLUDES ======
+// = INCLUDES ========================
 #include "brdf.hlsl"
-//==================
+#include "spherical_harmonics.hlsl"
+//====================================
 
 float3 sample_restir_gi_bilateral(
     float2 uv,
@@ -174,18 +175,29 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float horizon       = saturate(1.0f + dot(dominant_specular_direction, surface.normal));
     specular_occlusion *= horizon * horizon;
 
-    // environment sampling
-    float3 specular_skysphere = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
-    float3 diffuse_skysphere  = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
-    
-    // multi-bounce ao for diffuse, occlusion and horizon fade for specular
-    // the visibility floor represents baseline indirect bounce energy so crevices do not crush to black
-    // specular is not floored, mirror reflections correctly go to 0 when the sky is occluded
+    // environment sampling, specular stays on the prefiltered skysphere
+    float3 specular_skysphere = tex3.SampleLevel(
+        samplers[sampler_trilinear_clamp],
+        direction_sphere_uv(dominant_specular_direction),
+        mip_level
+    ).rgb;
+
+    // diffuse directional gtao on sh, bent normal is the visibility cone axis, ao narrows
+    // higher bands (soft integration over the open cone), multi-bounce is applied as a
+    // relative boost so occlusion is not squared on top of the cone
+    float3 sky_sh[9];
+    sh_load_l2(tex5, sky_sh);
     const float ibl_visibility_floor = 0.1f;
-    float  ibl_visibility    = max(surface.occlusion, ibl_visibility_floor);
-    float3 diffuse_occlusion = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
-    float3 diffuse_ibl       = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
-    float3 specular_ibl      = specular_skysphere * specular_energy * specular_occlusion;
+    float  ibl_visibility = max(surface.occlusion, ibl_visibility_floor);
+    float3 diffuse_skysphere = sh_irradiance_l2(
+        surface.bent_normal,
+        sky_sh,
+        ibl_visibility
+    );
+    float3 multi_bounce = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
+    float3 bounce_boost = multi_bounce / ibl_visibility;
+    float3 diffuse_ibl  = diffuse_skysphere * bounce_boost * diffuse_energy * surface.albedo.rgb;
+    float3 specular_ibl = specular_skysphere * specular_energy * specular_occlusion;
 
     // transparents have no diffuse lobe, transmission is composited in reflections_apply, a sky
     // lambert layer on top reads as an opaque milky sheet, the specular sky reflection stays

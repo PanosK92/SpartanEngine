@@ -13,56 +13,55 @@
 #  define has_include_was_not_defined
 #endif
 
-// clang-format off
-#include <vulkan/vulkan.hpp>
-// clang-format on
+#if !defined( VULKAN_HPP_CXX_MODULE )
+#  include <vulkan/vulkan.hpp>
+#  if __has_include( <vk_video/vulkan_video_codecs_common.h> )
+#    include <vk_video/vulkan_video_codecs_common.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_h264std.h> )
+#    include <vk_video/vulkan_video_codec_h264std.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_h264std_decode.h> )
+#    include <vk_video/vulkan_video_codec_h264std_decode.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_h264std_encode.h> )
+#    include <vk_video/vulkan_video_codec_h264std_encode.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_h265std.h> )
+#    include <vk_video/vulkan_video_codec_h265std.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_h265std_decode.h> )
+#    include <vk_video/vulkan_video_codec_h265std_decode.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_h265std_encode.h> )
+#    include <vk_video/vulkan_video_codec_h265std_encode.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_vp9std.h> )
+#    include <vk_video/vulkan_video_codec_vp9std.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_vp9std_decode.h> )
+#    include <vk_video/vulkan_video_codec_vp9std_decode.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_av1std.h> )
+#    include <vk_video/vulkan_video_codec_av1std.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_av1std_decode.h> )
+#    include <vk_video/vulkan_video_codec_av1std_decode.h>
+#  endif
+#  if __has_include( <vk_video/vulkan_video_codec_av1std_encode.h> )
+#    include <vk_video/vulkan_video_codec_av1std_encode.h>
+#  endif
 
-#if __has_include( <vk_video/vulkan_video_codecs_common.h> )
-#  include <vk_video/vulkan_video_codecs_common.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_h264std.h> )
-#  include <vk_video/vulkan_video_codec_h264std.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_h264std_decode.h> )
-#  include <vk_video/vulkan_video_codec_h264std_decode.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_h264std_encode.h> )
-#  include <vk_video/vulkan_video_codec_h264std_encode.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_h265std.h> )
-#  include <vk_video/vulkan_video_codec_h265std.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_h265std_decode.h> )
-#  include <vk_video/vulkan_video_codec_h265std_decode.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_h265std_encode.h> )
-#  include <vk_video/vulkan_video_codec_h265std_encode.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_vp9std.h> )
-#  include <vk_video/vulkan_video_codec_vp9std.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_vp9std_decode.h> )
-#  include <vk_video/vulkan_video_codec_vp9std_decode.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_av1std.h> )
-#  include <vk_video/vulkan_video_codec_av1std.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_av1std_decode.h> )
-#  include <vk_video/vulkan_video_codec_av1std_decode.h>
-#endif
-#if __has_include( <vk_video/vulkan_video_codec_av1std_encode.h> )
-#  include <vk_video/vulkan_video_codec_av1std_encode.h>
 #endif
 
 #if !defined( VULKAN_HPP_VIDEO_NAMESPACE )
 #  define VULKAN_HPP_VIDEO_NAMESPACE video
 #endif
 
-namespace VULKAN_HPP_NAMESPACE
+VULKAN_HPP_EXPORT namespace VULKAN_HPP_NAMESPACE
 {
   namespace VULKAN_HPP_VIDEO_NAMESPACE
   {
-
     //=================
     //=== CONSTANTs ===
     //=================
@@ -174,6 +173,8 @@ namespace VULKAN_HPP_NAMESPACE
       eBaseline          = STD_VIDEO_H264_PROFILE_IDC_BASELINE,
       eMain              = STD_VIDEO_H264_PROFILE_IDC_MAIN,
       eHigh              = STD_VIDEO_H264_PROFILE_IDC_HIGH,
+      eHigh10            = STD_VIDEO_H264_PROFILE_IDC_HIGH_10,
+      eHigh422           = STD_VIDEO_H264_PROFILE_IDC_HIGH_422,
       eHigh444Predictive = STD_VIDEO_H264_PROFILE_IDC_HIGH_444_PREDICTIVE,
       eInvalid           = STD_VIDEO_H264_PROFILE_IDC_INVALID
     };
@@ -805,7 +806,7 @@ namespace VULKAN_HPP_NAMESPACE
       uint8_t                                                                     chroma_sample_loc_type_top_field    = {};
       uint8_t                                                                     chroma_sample_loc_type_bottom_field = {};
       uint32_t                                                                    reserved1                           = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264HrdParameters * pHrdParameters                      = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264HrdParameters const * pHrdParameters                      = {};
     };
 
     struct H264SpsFlags
@@ -982,9 +983,9 @@ namespace VULKAN_HPP_NAMESPACE
       uint32_t                                                      frame_crop_top_offset                            = {};
       uint32_t                                                      frame_crop_bottom_offset                         = {};
       uint32_t                                                      reserved2                                        = {};
-      const int32_t *                                               pOffsetForRefFrame                               = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264ScalingLists *            pScalingLists            = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264SequenceParameterSetVui * pSequenceParameterSetVui = {};
+      int32_t const *                                               pOffsetForRefFrame                               = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264ScalingLists const *            pScalingLists            = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264SequenceParameterSetVui const * pSequenceParameterSetVui = {};
     };
 
     struct H264PpsFlags
@@ -1087,7 +1088,7 @@ namespace VULKAN_HPP_NAMESPACE
       int8_t                                                                     pic_init_qs_minus26           = {};
       int8_t                                                                     chroma_qp_index_offset        = {};
       int8_t                                                                     second_chroma_qp_index_offset = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264ScalingLists * pScalingLists                 = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264ScalingLists const * pScalingLists                 = {};
     };
 #endif
 
@@ -1669,9 +1670,9 @@ namespace VULKAN_HPP_NAMESPACE
       uint8_t                                                                                refList1ModOpCount           = {};
       uint8_t                                                                                refPicMarkingOpCount         = {};
       ArrayWrapper1D<uint8_t, 7>                                                             reserved1                    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264RefListModEntry *    pRefList0ModOperations       = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264RefListModEntry *    pRefList1ModOperations       = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264RefPicMarkingEntry * pRefPicMarkingOperations     = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264RefListModEntry const *    pRefList0ModOperations       = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264RefListModEntry const *    pRefList1ModOperations       = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264RefPicMarkingEntry const * pRefPicMarkingOperations     = {};
     };
 
     struct EncodeH264PictureInfo
@@ -1721,7 +1722,7 @@ namespace VULKAN_HPP_NAMESPACE
       int32_t                                                                                PicOrderCnt = {};
       uint8_t                                                                                temporal_id = {};
       ArrayWrapper1D<uint8_t, 3>                                                             reserved1   = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264ReferenceListsInfo * pRefLists   = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264ReferenceListsInfo const * pRefLists   = {};
     };
 
     struct EncodeH264ReferenceInfo
@@ -1819,7 +1820,7 @@ namespace VULKAN_HPP_NAMESPACE
         VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264CabacInitIdc::e0;
       VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264DisableDeblockingFilterIdc disable_deblocking_filter_idc =
         VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H264DisableDeblockingFilterIdc::eDisabled;
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264WeightTable * pWeightTable = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH264WeightTable const * pWeightTable = {};
     };
 #endif
 
@@ -2016,8 +2017,8 @@ namespace VULKAN_HPP_NAMESPACE
       ArrayWrapper1D<uint8_t, STD_VIDEO_H265_SUBLAYERS_LIST_SIZE>                         cpb_cnt_minus1                               = {};
       ArrayWrapper1D<uint16_t, STD_VIDEO_H265_SUBLAYERS_LIST_SIZE>                        elemental_duration_in_tc_minus1              = {};
       ArrayWrapper1D<uint16_t, 3>                                                         reserved                                     = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265SubLayerHrdParameters * pSubLayerHrdParametersNal                    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265SubLayerHrdParameters * pSubLayerHrdParametersVcl                    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265SubLayerHrdParameters const * pSubLayerHrdParametersNal                    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265SubLayerHrdParameters const * pSubLayerHrdParametersVcl                    = {};
     };
 
     struct H265VpsFlags
@@ -2198,9 +2199,9 @@ namespace VULKAN_HPP_NAMESPACE
       uint32_t                                                                       vps_time_scale                    = {};
       uint32_t                                                                       vps_num_ticks_poc_diff_one_minus1 = {};
       uint32_t                                                                       reserved3                         = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265DecPicBufMgr *     pDecPicBufMgr                     = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265HrdParameters *    pHrdParameters                    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ProfileTierLevel * pProfileTierLevel                 = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265DecPicBufMgr const *     pDecPicBufMgr                     = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265HrdParameters const *    pHrdParameters                    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ProfileTierLevel const * pProfileTierLevel                 = {};
     };
 
     struct H265ScalingLists
@@ -2387,7 +2388,7 @@ namespace VULKAN_HPP_NAMESPACE
       uint8_t                                                                     max_bits_per_min_cu_denom           = {};
       uint8_t                                                                     log2_max_mv_length_horizontal       = {};
       uint8_t                                                                     log2_max_mv_length_vertical         = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265HrdParameters * pHrdParameters                      = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265HrdParameters const * pHrdParameters                      = {};
     };
 
     struct H265PredictorPaletteEntries
@@ -2744,13 +2745,13 @@ namespace VULKAN_HPP_NAMESPACE
       uint32_t                                                                              conf_win_right_offset                         = {};
       uint32_t                                                                              conf_win_top_offset                           = {};
       uint32_t                                                                              conf_win_bottom_offset                        = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ProfileTierLevel *        pProfileTierLevel                             = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265DecPicBufMgr *            pDecPicBufMgr                                 = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ScalingLists *            pScalingLists                                 = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ShortTermRefPicSet *      pShortTermRefPicSet                           = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265LongTermRefPicsSps *      pLongTermRefPicsSps                           = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265SequenceParameterSetVui * pSequenceParameterSetVui                      = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265PredictorPaletteEntries * pPredictorPaletteEntries                      = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ProfileTierLevel const *        pProfileTierLevel                             = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265DecPicBufMgr const *            pDecPicBufMgr                                 = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ScalingLists const *            pScalingLists                                 = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ShortTermRefPicSet const *      pShortTermRefPicSet                           = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265LongTermRefPicsSps const *      pLongTermRefPicsSps                           = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265SequenceParameterSetVui const * pSequenceParameterSetVui                      = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265PredictorPaletteEntries const * pPredictorPaletteEntries                      = {};
     };
 
     struct H265PpsFlags
@@ -2932,8 +2933,8 @@ namespace VULKAN_HPP_NAMESPACE
       ArrayWrapper1D<uint16_t, STD_VIDEO_H265_CHROMA_QP_OFFSET_TILE_COLS_LIST_SIZE>         column_width_minus1                       = {};
       ArrayWrapper1D<uint16_t, STD_VIDEO_H265_CHROMA_QP_OFFSET_TILE_ROWS_LIST_SIZE>         row_height_minus1                         = {};
       uint32_t                                                                              reserved3                                 = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ScalingLists *            pScalingLists                             = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265PredictorPaletteEntries * pPredictorPaletteEntries                  = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ScalingLists const *            pScalingLists                             = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265PredictorPaletteEntries const * pPredictorPaletteEntries                  = {};
     };
 #endif
 
@@ -3325,7 +3326,7 @@ namespace VULKAN_HPP_NAMESPACE
       int8_t                                                          slice_act_cr_qp_offset       = {};
       int8_t                                                          slice_qp_delta               = {};
       uint16_t                                                        reserved1                    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH265WeightTable * pWeightTable = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH265WeightTable const * pWeightTable = {};
     };
 
     struct EncodeH265ReferenceListsInfoFlags
@@ -3561,9 +3562,9 @@ namespace VULKAN_HPP_NAMESPACE
       int32_t                                                           PicOrderCntVal                           = {};
       uint8_t                                                           TemporalId                               = {};
       ArrayWrapper1D<uint8_t, 7>                                        reserved1                                = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH265ReferenceListsInfo * pRefLists           = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ShortTermRefPicSet *       pShortTermRefPicSet = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH265LongTermRefPics *    pLongTermRefPics    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH265ReferenceListsInfo const * pRefLists           = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::H265ShortTermRefPicSet const *       pShortTermRefPicSet = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeH265LongTermRefPics const *    pLongTermRefPics    = {};
     };
 
     struct EncodeH265ReferenceInfoFlags
@@ -4019,9 +4020,9 @@ namespace VULKAN_HPP_NAMESPACE
       uint8_t                                                                   tile_cols_log2 = {};
       uint8_t                                                                   tile_rows_log2 = {};
       ArrayWrapper1D<uint16_t, 3>                                               reserved1      = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::VP9ColorConfig *  pColorConfig   = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::VP9LoopFilter *   pLoopFilter    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::VP9Segmentation * pSegmentation  = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::VP9ColorConfig const *  pColorConfig   = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::VP9LoopFilter const *   pLoopFilter    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::VP9Segmentation const * pSegmentation  = {};
     };
 #endif
 
@@ -4502,10 +4503,10 @@ namespace VULKAN_HPP_NAMESPACE
       uint16_t                                                           context_update_tile_id  = {};
       uint8_t                                                            tile_size_bytes_minus_1 = {};
       ArrayWrapper1D<uint8_t, 7>                                         reserved1               = {};
-      const uint16_t *                                                   pMiColStarts            = {};
-      const uint16_t *                                                   pMiRowStarts            = {};
-      const uint16_t *                                                   pWidthInSbsMinus1       = {};
-      const uint16_t *                                                   pHeightInSbsMinus1      = {};
+      uint16_t const *                                                   pMiColStarts            = {};
+      uint16_t const *                                                   pMiRowStarts            = {};
+      uint16_t const *                                                   pWidthInSbsMinus1       = {};
+      uint16_t const *                                                   pHeightInSbsMinus1      = {};
     };
 
     struct AV1CDEF
@@ -4862,8 +4863,8 @@ namespace VULKAN_HPP_NAMESPACE
       uint8_t                                                      seq_force_integer_mv               = {};
       uint8_t                                                      seq_force_screen_content_tools     = {};
       ArrayWrapper1D<uint8_t, 5>                                   reserved1                          = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1ColorConfig * pColorConfig           = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1TimingInfo *  pTimingInfo            = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1ColorConfig const * pColorConfig           = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1TimingInfo const *  pTimingInfo            = {};
     };
 #endif
 
@@ -5008,14 +5009,14 @@ namespace VULKAN_HPP_NAMESPACE
       ArrayWrapper1D<uint8_t, 3>                                                reserved2           = {};
       ArrayWrapper1D<uint8_t, STD_VIDEO_AV1_NUM_REF_FRAMES>                     OrderHints          = {};
       ArrayWrapper1D<uint32_t, STD_VIDEO_AV1_NUM_REF_FRAMES>                    expectedFrameId     = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1TileInfo *     pTileInfo           = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Quantization * pQuantization       = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Segmentation * pSegmentation       = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopFilter *   pLoopFilter         = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1CDEF *         pCDEF               = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopRestoration * pLoopRestoration = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1GlobalMotion *    pGlobalMotion    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1FilmGrain *       pFilmGrain       = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1TileInfo const *     pTileInfo           = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Quantization const * pQuantization       = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Segmentation const * pSegmentation       = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopFilter const *   pLoopFilter         = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1CDEF const *         pCDEF               = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopRestoration const * pLoopRestoration = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1GlobalMotion const *    pGlobalMotion    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1FilmGrain const *       pFilmGrain       = {};
     };
 
     struct DecodeAV1ReferenceInfoFlags
@@ -5421,15 +5422,15 @@ namespace VULKAN_HPP_NAMESPACE
       ArrayWrapper1D<int8_t, STD_VIDEO_AV1_REFS_PER_FRAME>                      ref_frame_idx                = {};
       ArrayWrapper1D<uint8_t, 3>                                                reserved1                    = {};
       ArrayWrapper1D<uint32_t, STD_VIDEO_AV1_REFS_PER_FRAME>                    delta_frame_id_minus_1       = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1TileInfo *     pTileInfo                    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Quantization * pQuantization                = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Segmentation * pSegmentation                = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopFilter *   pLoopFilter                  = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1CDEF *         pCDEF                        = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopRestoration *       pLoopRestoration    = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1GlobalMotion *          pGlobalMotion       = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeAV1ExtensionHeader * pExtensionHeader    = {};
-      const uint32_t *                                                                   pBufferRemovalTimes = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1TileInfo const *     pTileInfo                    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Quantization const * pQuantization                = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1Segmentation const * pSegmentation                = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopFilter const *   pLoopFilter                  = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1CDEF const *         pCDEF                        = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1LoopRestoration const *       pLoopRestoration    = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1GlobalMotion const *          pGlobalMotion       = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeAV1ExtensionHeader const * pExtensionHeader    = {};
+      uint32_t const *                                                                   pBufferRemovalTimes = {};
     };
 
     struct EncodeAV1ReferenceInfoFlags
@@ -5514,10 +5515,9 @@ namespace VULKAN_HPP_NAMESPACE
       VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1FrameType frame_type = VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::AV1FrameType::eKey;
       uint8_t                                                        OrderHint  = {};
       ArrayWrapper1D<uint8_t, 3>                                     reserved1  = {};
-      const VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeAV1ExtensionHeader * pExtensionHeader = {};
+      VULKAN_HPP_NAMESPACE::VULKAN_HPP_VIDEO_NAMESPACE::EncodeAV1ExtensionHeader const * pExtensionHeader = {};
     };
 #endif
-
   }  // namespace VULKAN_HPP_VIDEO_NAMESPACE
 }  // namespace VULKAN_HPP_NAMESPACE
 

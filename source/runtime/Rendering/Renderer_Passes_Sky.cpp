@@ -150,11 +150,40 @@ namespace spartan
                         cmd_list->Dispatch(dispatch_x, dispatch_y);
                     }
                 }
+
+                // rebuild l2 sh when the panorama mips are fresh
+                if (do_downscale)
+                {
+                    Pass_Skysphere_SH_Project(cmd_list);
+                }
             }
         }
         cmd_list->EndTimeblock();
 
         Pass_Clouds_Environment(cmd_list);
+    }
+
+    void Renderer::Pass_Skysphere_SH_Project(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_sky_sh    = GetRenderTarget(Renderer_RenderTarget::sky_sh);
+        RHI_Shader* shader         = GetShader(Renderer_Shader::skysphere_sh_project_c);
+        if (!tex_skysphere || !tex_sky_sh || !shader || !shader->IsCompiled())
+        {
+            return;
+        }
+
+        cmd_list->BeginTimeblock("skysphere_sh_project");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "skysphere_sh_project";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_sky_sh);
+            cmd_list->Dispatch(1, 1, 1);
+        }
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_Clouds_Render(RHI_CommandList* cmd_list, uint32_t eye_layer)

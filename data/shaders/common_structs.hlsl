@@ -130,20 +130,25 @@ struct Surface
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;
 
-        // ssao
-        bent_normal          = float3(0, 1, 0);
+        // ssao, bent normal defaults to geometric normal so ibl never samples world-up or zero
+        bent_normal          = normal;
         occlusion            = sample_material.a;
         bool is_fully_opaque = sample_albedo.a >= 0.999f;
         if (is_ssao_enabled() && is_fully_opaque)
         {
-            float4 normal_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-            bent_normal          = normal_sample.rgb;
-            occlusion            = min(sample_material.a, normal_sample.a); // use the minimum of the ssao and material occlusion
+            float4 ssao_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+            float3 ssao_bent   = ssao_sample.rgb;
+            if (!any(isnan(ssao_bent)) && dot(ssao_bent, ssao_bent) > 1e-6f)
+            {
+                bent_normal = normalize(ssao_bent);
+            }
+            occlusion = min(sample_material.a, ssao_sample.a);
         }
-        
+
         if (!is_fully_opaque)
         {
-            occlusion = 1.0f;
+            occlusion   = 1.0f;
+            bent_normal = normal;
         }
 
         position               = get_position(depth, render_uv_to_screen_uv(uv));

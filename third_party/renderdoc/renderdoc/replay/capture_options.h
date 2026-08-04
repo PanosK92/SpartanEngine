@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2025 Baldur Karlsson
+ * Copyright (c) 2015-2026 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -87,6 +87,8 @@ Default - enabled
 ``True`` - The application can enable or disable vsync at will.
 
 ``False`` - vsync is force disabled.
+
+:type: bool
 )");
   bool allowVSync;
 
@@ -97,6 +99,8 @@ Default - enabled
 ``True`` - The application can enable or disable fullscreen at will.
 
 ``False`` - fullscreen is force disabled.
+
+:type: bool
 )");
   bool allowFullscreen;
 
@@ -108,6 +112,8 @@ Default - disabled
 the capture logfile, which is matched up with events on replay.
 
 ``False`` - no API debugging is forcibly enabled.
+
+:type: bool
 )");
   bool apiValidation;
 
@@ -118,6 +124,8 @@ Default - disabled
 ``True`` - Enables capturing of callstacks.
 
 ``False`` - no callstacks are captured.
+
+:type: bool
 )");
   bool captureCallstacks;
 
@@ -129,6 +137,8 @@ Default - disabled
 ``True`` - Only captures callstacks for actions.
 
 ``False`` - Callstacks, if enabled, are captured for every event.
+
+:type: bool
 )");
   bool captureCallstacksOnlyActions;
 
@@ -138,6 +148,8 @@ creating or injecting into a process, before continuing to allow it to run.
 ``0`` indicates no delay, and the process will run immediately after injection.
 
 Default - 0 seconds
+
+:type: int
 )");
   uint32_t delayForDebugger;
 
@@ -156,6 +168,8 @@ Default - disabled
 
 ``False`` - No verification is performed, and overwriting bounds may cause crashes or corruption in
 RenderDoc.
+
+:type: bool
 )");
   bool verifyBufferAccess;
 
@@ -167,6 +181,8 @@ Default - disabled
 ``True`` - Hooks into spawned child processes.
 
 ``False`` - Child processes are not hooked by RenderDoc.
+
+:type: bool
 )");
   bool hookIntoChildren;
 
@@ -179,6 +195,8 @@ Default - disabled
 and available for inspection.
 
 ``False`` - only the resources referenced by the captured frame are included.
+
+:type: bool
 )");
   bool refAllResources;
 
@@ -197,6 +215,8 @@ capture.
 
 ``False`` - Command lists are only captured if their recording begins during
 the period when a frame capture is in progress.
+
+:type: bool
 )");
   bool captureAllCmdLists;
 
@@ -207,6 +227,8 @@ Default - enabled
 ``True`` - Mute any API debug messages from being displayed or passed through.
 
 ``False`` - API debugging is displayed as normal.
+
+:type: bool
 )");
   bool debugOutputMute;
 
@@ -220,6 +242,8 @@ Not all memory allocations may be deferred like this so it is not a guarantee of
 Units are in MBs, suggested values would range from 200MB to 1000MB.
 
 Default - 0 Megabytes
+
+:type: int
 )");
   uint32_t softMemoryLimit;
 };
