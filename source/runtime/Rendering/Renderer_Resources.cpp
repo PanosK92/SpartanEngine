@@ -561,6 +561,8 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::light_diffuse)               = nullptr;
             at(render_targets, Renderer_RenderTarget::light_specular)              = nullptr;
             at(render_targets, Renderer_RenderTarget::light_volumetric)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::fog_froxel)                  = nullptr;
+            at(render_targets, Renderer_RenderTarget::fog_froxel_history)          = nullptr;
             at(render_targets, Renderer_RenderTarget::particle_volume)             = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_raw)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::cloud_raw_distance)          = nullptr;
@@ -646,6 +648,9 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
             at(render_targets, Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
             at(render_targets, Renderer_RenderTarget::particle_volume)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_particle_volume_width, renderer_particle_volume_height, renderer_particle_volume_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "particle_volume");
+            at(render_targets, Renderer_RenderTarget::fog_froxel)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_fog_froxel_width, renderer_fog_froxel_height, renderer_fog_froxel_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "fog_froxel");
+            at(render_targets, Renderer_RenderTarget::fog_froxel_history)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, renderer_fog_froxel_width, renderer_fog_froxel_height, renderer_fog_froxel_depth, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "fog_froxel_history");
+            m_pass_state.fog_froxel_history_valid = false;
 
             // debug output sits at render resolution so debug raster passes can share gbuffer_depth for read-equal tests
             at(render_targets, Renderer_RenderTarget::debug_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "debug_output");
@@ -696,7 +701,8 @@ namespace spartan
             uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
             at(render_targets, Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_diffuse");
             at(render_targets, Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_specular");
-            at(render_targets, Renderer_RenderTarget::light_volumetric) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_volumetric");
+            // rgba: rgb inscatter, a transmittance from the froxel integrate pass
+            at(render_targets, Renderer_RenderTarget::light_volumetric) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "light_volumetric");
 
             at(render_targets, Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
             at(render_targets, Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
@@ -924,6 +930,11 @@ namespace spartan
             { Renderer_Shader::light_flare_p,                         RHI_Shader_Type::Pixel,   "light_flare.hlsl"                                                           },
             { Renderer_Shader::light_composition_c,                   RHI_Shader_Type::Compute, "light_composition.hlsl"                                                     },
             { Renderer_Shader::light_image_based_c,                   RHI_Shader_Type::Compute, "light_image_based.hlsl"                                                     },
+            { Renderer_Shader::fog_froxel_density_c,                  RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_DENSITY"      },
+            { Renderer_Shader::fog_froxel_light_c,                    RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_LIGHT"        },
+            { Renderer_Shader::fog_froxel_temporal_c,                 RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_TEMPORAL"     },
+            { Renderer_Shader::fog_froxel_history_copy_c,             RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_HISTORY_COPY" },
+            { Renderer_Shader::fog_froxel_integrate_c,                RHI_Shader_Type::Compute, "fog_froxel.hlsl",                            RHI_Vertex_Type::Max, "FOG_INTEGRATE"    },
 
             // blur
             { Renderer_Shader::blur_gaussian_c,                       RHI_Shader_Type::Compute, "blur.hlsl"                                                                  },

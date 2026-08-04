@@ -3985,6 +3985,9 @@ namespace spartan
 
     void Renderer::ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer)
     {
+        // unified froxel fog before lighting so composition can apply transmittance and inscatter
+        Pass_Fog_Froxel(cmd_list, eye_layer);
+
         // on graphics on purpose, the graphics queue would otherwise idle for the whole of pass_light
         Pass_Light(cmd_list, false, eye_layer);
         Pass_Light_Composition(cmd_list, false, eye_layer);

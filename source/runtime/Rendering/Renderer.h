@@ -341,6 +341,7 @@ namespace spartan
         static void Pass_LightClusterVisualize(RHI_CommandList* cmd_list);
         static void Pass_LightFlares(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Fog_Froxel(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light_Ibl(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
@@ -490,6 +491,8 @@ namespace spartan
 
             bool     cloud_history_valid       = false;
             uint32_t cloud_history_index       = 0;
+
+            bool     fog_froxel_history_valid  = false;
 
             bool     ssao_history_valid        = false;
             uint32_t ssao_history_index        = 0;

@@ -1250,11 +1250,96 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_Fog_Froxel(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    {
+        RHI_Texture* fog_froxel         = GetRenderTarget(Renderer_RenderTarget::fog_froxel);
+        RHI_Texture* fog_froxel_history = GetRenderTarget(Renderer_RenderTarget::fog_froxel_history);
+        RHI_Texture* light_volumetric   = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        if (!fog_froxel || !fog_froxel_history || !light_volumetric)
+        {
+            return;
+        }
+
+        const uint32_t groups_x = (renderer_fog_froxel_width  + 7) / 8;
+        const uint32_t groups_y = (renderer_fog_froxel_height + 7) / 8;
+        const uint32_t groups_z = (renderer_fog_froxel_depth  + 3) / 4;
+
+        cmd_list->BeginTimeblock("fog_froxel");
+        {
+            // density
+            {
+                RHI_PipelineState pso;
+                pso.name             = "fog_froxel_density";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::fog_froxel_density_c);
+                cmd_list->SetPipelineState(pso);
+                m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue(), 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, fog_froxel);
+                cmd_list->Dispatch(groups_x, groups_y, groups_z);
+            }
+
+            // light
+            {
+                RHI_PipelineState pso;
+                pso.name             = "fog_froxel_light";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::fog_froxel_light_c);
+                cmd_list->SetPipelineState(pso);
+                SetCommonTextures(cmd_list, eye_layer);
+                m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue(), 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, fog_froxel);
+                cmd_list->SetBuffer(Renderer_BindingsUav::volumetric_light_indices, GetBuffer(Renderer_Buffer::VolumetricLightIndices));
+                cmd_list->Dispatch(groups_x, groups_y, groups_z);
+            }
+
+            // temporal
+            {
+                RHI_PipelineState pso;
+                pso.name             = "fog_froxel_temporal";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::fog_froxel_temporal_c);
+                cmd_list->SetPipelineState(pso);
+                m_pcb_pass_cpu.set_f3_value(m_pass_state.fog_froxel_history_valid ? 0.0f : 1.0f, cvar_fog.GetValue(), 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, fog_froxel_history);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, fog_froxel);
+                cmd_list->Dispatch(groups_x, groups_y, groups_z);
+            }
+
+            // full volume copy, blit only covers one z slice on 3d textures
+            {
+                RHI_PipelineState pso;
+                pso.name             = "fog_froxel_history_copy";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::fog_froxel_history_copy_c);
+                cmd_list->SetPipelineState(pso);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, fog_froxel);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, fog_froxel_history);
+                cmd_list->Dispatch(groups_x, groups_y, groups_z);
+            }
+            m_pass_state.fog_froxel_history_valid = true;
+
+            // integrate to screen
+            {
+                RHI_PipelineState pso;
+                pso.name             = "fog_froxel_integrate";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::fog_froxel_integrate_c);
+                cmd_list->SetPipelineState(pso);
+                SetCommonTextures(cmd_list, eye_layer);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, fog_froxel);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, light_volumetric);
+                cmd_list->Dispatch(light_volumetric, Renderer::GetResolutionScale());
+            }
+        }
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
-        RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
-        RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        RHI_Texture* light_diffuse  = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* light_specular = GetRenderTarget(Renderer_RenderTarget::light_specular);
 
         RHI_PipelineState pso;
         pso.name             = is_transparent_pass ? "light_transparent" : "light";
@@ -1269,16 +1354,13 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::skysphere));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4,    GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
-            // sun-projected cloud transmittance, sampled by the volumetric fog march
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5,    GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
 
             // clustered lighting grid, written by light_cluster_assign in compute batch a
-            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,       GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices,    GetBuffer(Renderer_Buffer::ClusterLightIndices));
-            cmd_list->SetBuffer(Renderer_BindingsUav::volumetric_light_indices, GetBuffer(Renderer_Buffer::VolumetricLightIndices));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
 
             // bind tlas for inline ray traced shadows when ray tracing is supported and the world has geometry
             if (RHI_Device::IsSupportedRayTracing())
@@ -1292,9 +1374,8 @@ namespace spartan
                 }
             }
     
-            // active light count now flows through buffer_frame.cluster_light_count, fog density still rides in f3.y
             m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue());
+            m_pcb_pass_cpu.set_f3_value(0.0f, 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->Dispatch(light_diffuse, Renderer::GetResolutionScale());
@@ -1319,7 +1400,6 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue(), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             SetCommonTextures(cmd_list, eye_layer);
