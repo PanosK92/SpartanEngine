@@ -41,6 +41,7 @@ SP_WARNINGS_OFF
 #include <openxr/openxr.h>
 #include <physx/foundation/PxPhysicsVersion.h>
 #include <sol/sol.hpp>
+#include <renderdoc/replay/version.h>
 #include "IO/pugixml.hpp"
 #if defined(_WIN32)
 #include <xess/xess.h>
@@ -48,6 +49,7 @@ SP_WARNINGS_OFF
 #if defined(API_GRAPHICS_VULKAN)
 #include <vulkan/vulkan_core.h>
 #include <spirv_cross/spirv_cross_c.h>
+#include "vk_mem_alloc.h"
 #endif
 SP_WARNINGS_ON
 //================================
@@ -249,8 +251,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 // single header drop, version is not exposed as a macro
                 v.push_back({ "AMD FidelityFX CAS/SPD", "1.1.4", "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK" });
 
-                // single header drop, version is not exposed as a macro
-                v.push_back({ "AMD Vulkan Memory Allocator", "3.3.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator" });
+#if defined(API_GRAPHICS_VULKAN)
+                {
+                    std::string ver = std::to_string(VK_VERSION_MAJOR(VMA_VERSION)) + "." +
+                                      std::to_string(VK_VERSION_MINOR(VMA_VERSION)) + "." +
+                                      std::to_string(VK_VERSION_PATCH(VMA_VERSION));
+                    v.push_back({ "AMD Vulkan Memory Allocator", ver, "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator" });
+                }
+#else
+                // keep in sync with third_party/vulkan_memory_allocator/vk_mem_alloc.h VMA_VERSION
+                v.push_back({ "AMD Vulkan Memory Allocator", "3.4.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator" });
+#endif
 
                 // runtime query, tracks the linked binary
                 {
@@ -264,7 +275,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 v.push_back({ "DirectX", "12.0", "https://en.wikipedia.org/wiki/DirectX" });
 
                 // no compile time macro, runtime query requires loading the dll
-                v.push_back({ "DirectXShaderCompiler", "May 2025", "https://github.com/microsoft/DirectXShaderCompiler" });
+                v.push_back({ "DirectXShaderCompiler", "v1.9.2607", "https://github.com/microsoft/DirectXShaderCompiler" });
 
                 // runtime query
                 v.push_back({ "FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/" });
@@ -277,7 +288,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 v.push_back({ "ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui" });
 
 #if defined(_WIN32)
-                // runtime query
+                // xessGetVersion reports XeSS-SR lib version; sdk package version is separate
                 {
                     xess_version_t xv = {};
                     std::string ver  = "n/a";
@@ -285,7 +296,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     {
                         ver = std::to_string(xv.major) + "." +
                               std::to_string(xv.minor) + "." +
-                              std::to_string(xv.patch);
+                              std::to_string(xv.patch) +
+                              " (SDK 3.0.2)";
                     }
                     v.push_back({ "Intel XeSS", ver, "https://github.com/intel/xess" });
                 }
@@ -338,8 +350,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     v.push_back({ "pugixml", ver, "https://github.com/zeux/pugixml" });
                 }
 
-                // only the in process api version is queryable
-                v.push_back({ "RenderDoc", "1.40", "https://renderdoc.org/" });
+                {
+                    std::string ver = SP_VERSION_XSTR(RENDERDOC_VERSION_MAJOR) "."
+                                      SP_VERSION_XSTR(RENDERDOC_VERSION_MINOR);
+                    v.push_back({ "RenderDoc", ver, "https://renderdoc.org/" });
+                }
 
                 {
                     std::string ver = SP_VERSION_XSTR(SDL_MAJOR_VERSION) "."
