@@ -1459,6 +1459,21 @@ namespace spartan
             play_mode_snapshot.clear();
             world_time::time_of_day = play_mode_time_of_day;
 
+            // snapshot restores bone entities to mid-play values after Animator::Stop
+            // re-bind so skinned meshes leave play in a standing rest pose
+            for (Entity* entity : entities)
+            {
+                if (!entity)
+                {
+                    continue;
+                }
+
+                if (Animator* animator = entity->GetComponent<Animator>())
+                {
+                    animator->ApplyBindPose();
+                }
+            }
+
             // restore skeleton body visibility before play spawned meshes are destroyed
             for (Car* car : Car::GetAll())
             {
@@ -1554,6 +1569,20 @@ namespace spartan
                 if (entity->GetActive())
                 {
                     entity->Tick();
+                }
+            }
+
+            // ragdoll hit capsules after scripts/pedestrians moved the bodies
+            for (Entity* entity : entities)
+            {
+                if (!entity->GetActive())
+                {
+                    continue;
+                }
+
+                if (Ragdoll* ragdoll = entity->GetComponent<Ragdoll>())
+                {
+                    ragdoll->LateTick();
                 }
             }
 

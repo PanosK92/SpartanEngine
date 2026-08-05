@@ -191,7 +191,8 @@ namespace spartan
             const Vector3& toe_forward_model,
             const Vector3& sole_up_local,
             const Vector3& toe_fwd_local,
-            const float weight
+            const float weight,
+            const int32_t ball_index
         )
         {
             if (weight <= 0.0f ||
@@ -248,6 +249,31 @@ namespace spartan
                 ),
                 parent_global
             );
+
+            // planting rotates the foot in world space. ball local is relative to the foot, so
+            // without compensation the toes tip with that delta. undo only the plant delta so
+            // left/right both keep the clip toe pose instead of freezing to bind.
+            if (ball_index >= 0 &&
+                static_cast<uint32_t>(ball_index) < skeleton.joint_count &&
+                skeleton.parent_indices[static_cast<uint32_t>(ball_index)] ==
+                    static_cast<int16_t>(end_index) &&
+                w > 0.0f)
+            {
+                const uint32_t ball_i = static_cast<uint32_t>(ball_index);
+                const Matrix& ball_local = local_matrices[ball_i];
+                const Quaternion ball_anim = ball_local.GetRotation();
+
+                // row-vector: ball_world = ball_local * foot_world, keep it across plant
+                const Quaternion ball_world = ball_anim * end_rot;
+                const Quaternion ball_comp = ball_world * end_rot_blend.Inverse();
+
+                local_matrices[ball_i] = Matrix(
+                    ball_local.GetTranslation(),
+                    ball_comp,
+                    ball_local.GetScale()
+                );
+            }
+
             return true;
         }
     }

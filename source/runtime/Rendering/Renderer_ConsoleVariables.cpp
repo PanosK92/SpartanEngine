@@ -152,6 +152,7 @@ namespace spartan
     TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,                                                    "draw entity icons and debug visuals");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "show performance metrics",                on_performance_metrics_change);
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
+    TConsoleVar<float> cvar_ragdoll                        ("r.ragdoll",                        0.0f,                                                    "draw ragdoll capsules and joints in play mode");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");
     // post-processing
     TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "bloom intensity, 0 to disable");

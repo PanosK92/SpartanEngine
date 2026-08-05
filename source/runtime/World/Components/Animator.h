@@ -46,12 +46,12 @@ namespace spartan
         void Initialize() override;
         void Tick() override;
         void Remove() override;
+        void Stop() override;
 
         static void RegisterForScripting(sol::state_view state);
         sol::reference AsLua(sol::state_view state) override;
 
         bool Play(const std::string& clip_name);
-        void Stop();
         void Pause();
         void Resume();
         bool IsPlaying() const { return m_playing; }
@@ -93,6 +93,9 @@ namespace spartan
         void ClearExternalPose();
         bool IsExternalPoseActive() const { return m_external_pose_active; }
 
+        // restore bind joint entities and mesh skin, used when leaving play or ragdoll
+        void ApplyBindPose();
+
     private:
         struct FootIkLeg
         {
@@ -103,6 +106,8 @@ namespace spartan
             // bind-pose local directions, not cardinal axes (feet can sit at 45 deg)
             math::Vector3 sole_up_local = math::Vector3::Up;
             math::Vector3 toe_fwd_local = math::Vector3(0.0f, 0.0f, -1.0f);
+            // bind foot to ball on xz, used for plant yaw instead of animated toes
+            math::Vector3 toe_fwd_model_bind = math::Vector3(0.0f, 0.0f, -1.0f);
             // bind-pose knee bend in model space, keeps ik from flipping backwards
             math::Vector3 knee_pole_bind = math::Vector3(0.0f, 0.0f, -1.0f);
             // bind hip-to-ankle height, restores standing length when planting

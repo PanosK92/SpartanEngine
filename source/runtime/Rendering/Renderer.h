@@ -62,6 +62,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_entity_icons;
     extern TConsoleVar<float> cvar_performance_metrics;
     extern TConsoleVar<float> cvar_physics;
+    extern TConsoleVar<float> cvar_ragdoll;
     extern TConsoleVar<float> cvar_wireframe;
     extern TConsoleVar<float> cvar_bloom;
     extern TConsoleVar<float> cvar_light_flares;

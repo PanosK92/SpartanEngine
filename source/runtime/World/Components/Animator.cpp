@@ -321,6 +321,11 @@ namespace spartan
             {
                 leg.sole_up_local = Vector3::Up;
             }
+            // mirrored feet can flip the extracted axis, keep sole facing model up
+            if ((bind.GetRotation() * leg.sole_up_local).Dot(Vector3::Up) < 0.0f)
+            {
+                leg.sole_up_local = -leg.sole_up_local;
+            }
 
             Vector3 toe_model = Vector3::Zero;
             if (leg.ball >= 0)
@@ -330,14 +335,19 @@ namespace spartan
             toe_model = toe_model - Vector3::Up * toe_model.Dot(Vector3::Up);
             if (toe_model.LengthSquared() < 1.0e-8f)
             {
-                // mannequiny faces -z
-                toe_model = Vector3(0.0f, 0.0f, -1.0f);
+                // mannequiny bind toes point +z
+                toe_model = Vector3(0.0f, 0.0f, 1.0f);
             }
             toe_model.Normalize();
+            leg.toe_fwd_model_bind = toe_model;
             leg.toe_fwd_local = direction_to_local(bind, toe_model);
             if (leg.toe_fwd_local.LengthSquared() < 1.0e-8f)
             {
                 leg.toe_fwd_local = Vector3(0.0f, 0.0f, -1.0f);
+            }
+            if ((bind.GetRotation() * leg.toe_fwd_local).Dot(toe_model) < 0.0f)
+            {
+                leg.toe_fwd_local = -leg.toe_fwd_local;
             }
 
             // knee bend side from bind: offset of calf from thigh->foot axis
@@ -441,20 +451,11 @@ namespace spartan
         float target_weight = 0.0f;
         Vector3 target_model = foot_model;
         Vector3 normal_model = Vector3::Up;
-        Vector3 forward_model = Vector3(0.0f, 0.0f, -1.0f);
-
-        if (leg.ball >= 0)
+        // bind toe dir for plant yaw, live ball is bent by toe curl
+        Vector3 forward_model = leg.toe_fwd_model_bind;
+        if (forward_model.LengthSquared() < 1.0e-8f)
         {
-            forward_model = globals[static_cast<uint32_t>(leg.ball)].GetTranslation() - foot_model;
-            forward_model.y = 0.0f;
-            if (forward_model.LengthSquared() > 1.0e-8f)
-            {
-                forward_model.Normalize();
-            }
-            else
-            {
-                forward_model = Vector3(0.0f, 0.0f, -1.0f);
-            }
+            forward_model = Vector3(0.0f, 0.0f, -1.0f);
         }
 
         PhysicsRaycastHit hit;
@@ -582,7 +583,8 @@ namespace spartan
             leg.smooth_forward,
             leg.sole_up_local,
             leg.toe_fwd_local,
-            leg.smooth_weight
+            leg.smooth_weight,
+            leg.ball
         );
         return true;
     }
@@ -1075,13 +1077,48 @@ namespace spartan
     {
         RestoreHands();
         ClearExternalPose();
-        RestoreBindEntityPoses();
         m_playing         = false;
         m_blending        = false;
         m_time            = 0.0f;
         m_prev_time       = 0.0f;
         m_prev_clip_index = -1;
+        m_clip_index      = -1;
         m_blend_weight    = 1.0f;
+        m_current_clip.clear();
+        m_foot_ik_pelvis_offset = 0.0f;
+        m_foot_ik_has_support = false;
+        m_foot_ik_l.has_smooth = false;
+        m_foot_ik_r.has_smooth = false;
+        m_foot_ik_l.smooth_weight = 0.0f;
+        m_foot_ik_r.smooth_weight = 0.0f;
+        // bind pose after clearing clip state
+        ApplyBindPose();
+    }
+
+    void Animator::ApplyBindPose()
+    {
+        Mesh* mesh = ResolveMesh();
+        if (!mesh || !mesh->GetSkeleton())
+        {
+            RestoreBindEntityPoses();
+            return;
+        }
+
+        if (!m_bind_captured)
+        {
+            CaptureBindPose();
+        }
+
+        const shared_ptr<Skeleton>& skeleton = mesh->GetSkeleton();
+        if (!skeleton || skeleton->bind_local_matrices.empty())
+        {
+            RestoreBindEntityPoses();
+            return;
+        }
+
+        RestoreBindEntityPoses();
+        SkinFromLocalPose(mesh, *skeleton, skeleton->bind_local_matrices);
+        m_last_local_matrices = skeleton->bind_local_matrices;
     }
 
     void Animator::Pause()

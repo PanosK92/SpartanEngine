@@ -143,6 +143,8 @@ function animated_character.Initialize(self, entity)
 
     self.height_offset = 0.0
 
+    self.spawn_pos = Vector3(0.0, ground_y, 0.0)
+
 
 
     local flags = Mesh.GetDefaultFlags()
@@ -180,11 +182,22 @@ function animated_character.Initialize(self, entity)
     root:SetName("character")
 
     -- runtime spawned, do not bake into the world on save
+    -- mark the whole hierarchy so play-stop snapshot cannot restore walk bone poses
     if root.SetTransient then
         root:SetTransient(true)
+        if root.GetDescendants then
+            local descendants = root:GetDescendants()
+            for i = 1, #descendants do
+                if descendants[i] and descendants[i].SetTransient then
+                    descendants[i]:SetTransient(true)
+                end
+            end
+        end
     end
 
-    root:SetPosition(Vector3(0.0, ground_y, 0.0))
+    root:SetPosition(self.spawn_pos)
+
+    root:SetRotation(Quaternion.Identity)
 
     root:SetScale(Vector3(1.0, 1.0, 1.0))
 
@@ -266,6 +279,17 @@ function animated_character.Stop(self, entity)
 
     end
 
+    -- transient character is skipped by world spawn cleanup, put it back ourselves
+    if self.character and self.spawn_pos then
+
+        self.character:SetPosition(self.spawn_pos)
+
+        self.character:SetRotation(Quaternion.Identity)
+
+        self.character:SetScale(Vector3(1.0, 1.0, 1.0))
+
+    end
+
     self.current_clip = ""
 
     self.vel_y = 0.0
@@ -273,6 +297,8 @@ function animated_character.Stop(self, entity)
     self.grounded = true
 
     self.land_timer = 0.0
+
+    self.ground_y = ground_y
 
     print("animated_character: stopped")
 

@@ -120,15 +120,21 @@ namespace spartan
                         {
                             if (ragdoll->IsFrozen())
                             {
-                                const Vector3 hit_pos(
+                                const Vector3 wake_pos(
                                     hit.block.position.x,
                                     hit.block.position.y,
                                     hit.block.position.z
                                 );
-                                if (!ragdoll->Wake(hit_pos, Vector3::Zero))
+                                if (!ragdoll->Wake(wake_pos, Vector3::Zero))
                                 {
                                     return;
                                 }
+                            }
+
+                            // drop kick velocity so grab does not fling him upward
+                            if (ragdoll->IsDead())
+                            {
+                                ragdoll->PrepareForPick();
                             }
                         }
                     }
@@ -146,6 +152,12 @@ namespace spartan
                     dummy_actor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
                     scene->addActor(*dummy_actor);
 
+                    // kill motion on the grabbed limb itself before the spring attaches
+                    picked_body->setLinearVelocity(PxVec3(0.0f, 0.0f, 0.0f));
+                    picked_body->setAngularVelocity(PxVec3(0.0f, 0.0f, 0.0f));
+                    picked_body->clearForce();
+                    picked_body->clearTorque();
+
                     // create d6 joint between dummy and picked body
                     PxTransform local_frame_body = PxTransform(picked_body->getGlobalPose().transformInv(hit_pos));
                     joint = PxD6JointCreate(*physics, dummy_actor, PxTransform(PxIdentity), picked_body, local_frame_body);
@@ -158,9 +170,9 @@ namespace spartan
                     joint->setMotion(PxD6Axis::eSWING1, PxD6Motion::eLOCKED);
                     joint->setMotion(PxD6Axis::eSWING2, PxD6Motion::eLOCKED);
 
-                    // add drive for spring-like behavior
-                    float stiffness = 1000.0f; // controls how strongly the body is pulled
-                    float damping   = 100.0f;  // reduces oscillation
+                    // stiff + heavily damped so the grab snaps to the mouse without bouncing
+                    const float stiffness = 2500.0f;
+                    const float damping   = 500.0f;
                     joint->setDrive(PxD6Drive::eX, PxD6JointDrive(stiffness, damping, PX_MAX_F32, true));
                     joint->setDrive(PxD6Drive::eY, PxD6JointDrive(stiffness, damping, PX_MAX_F32, true));
                     joint->setDrive(PxD6Drive::eZ, PxD6JointDrive(stiffness, damping, PX_MAX_F32, true));
@@ -296,7 +308,10 @@ namespace spartan
                 for (PxU32 i = 0; i < pair_count; ++i)
                 {
                     const PxContactPair& pair = pairs[i];
-                    if (!(pair.events & PxPairFlag::eNOTIFY_TOUCH_FOUND))
+                    // found + persists: a fast car can stay overlapping after a weak first touch
+                    const PxU32 touch_events =
+                        PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_PERSISTS;
+                    if (!(pair.events & touch_events))
                     {
                         continue;
                     }
@@ -362,13 +377,9 @@ namespace spartan
             bool is_pedestrian_vs_pedestrian =
                 filter_data0.word2 == physics_collision_pedestrian &&
                 filter_data1.word2 == physics_collision_pedestrian;
-            // cars vs ragdoll limbs still resolve visually via velocity transfer at activate
-            // suppressing stops a 1t chassis from fighting overlapping capsules on spawn
-            bool is_vehicle_vs_ragdoll =
-                (filter_data0.word2 == physics_collision_vehicle && filter_data1.word2 == physics_collision_ragdoll) ||
-                (filter_data0.word2 == physics_collision_ragdoll && filter_data1.word2 == physics_collision_vehicle);
 
-            if (is_character_vs_vehicle || is_same_vehicle || is_pedestrian_vs_pedestrian || is_vehicle_vs_ragdoll)
+            // vehicle vs ragdoll stays on, physx pushes the body; soft depenetration on spawn
+            if (is_character_vs_vehicle || is_same_vehicle || is_pedestrian_vs_pedestrian)
             {
                 return PxFilterFlag::eSUPPRESS;
             }
@@ -390,12 +401,12 @@ namespace spartan
                 filter_data0.word2 == physics_collision_ragdoll ||
                 filter_data1.word2 == physics_collision_ragdoll;
 
-            // pedestrians and ragdoll corpses need touch events so hits can activate / wake them
             if ((involves_pedestrian || involves_ragdoll) &&
                 !PxFilterObjectIsTrigger(attributes0) &&
                 !PxFilterObjectIsTrigger(attributes1))
             {
                 pair_flags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
+                pair_flags |= PxPairFlag::eNOTIFY_TOUCH_PERSISTS;
                 pair_flags |= PxPairFlag::eNOTIFY_CONTACT_POINTS;
                 pair_flags |= PxPairFlag::eDETECT_CCD_CONTACT;
             }
@@ -557,9 +568,11 @@ namespace spartan
                 // alpha = how far into the next physics step we are (0 to 1)
                 interpolation::alpha = accumulated_time / fixed_time_step;
             }
-            // object picking
+            // object picking, skip when right is held so cube shoot does not also grab
             {
-                if (Input::GetKeyDown(KeyCode::Click_Left) && Input::GetMouseIsInViewport())
+                if (Input::GetKeyDown(KeyCode::Click_Left) &&
+                    Input::GetMouseIsInViewport() &&
+                    !Input::GetKey(KeyCode::Click_Right))
                 {
                     picking::PickBody();
                 }
