@@ -2096,8 +2096,11 @@ namespace spartan
             return;
         }
 
-        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)",
-            render_entities.size(), entities_to_exclude.size());
+        SP_LOG_INFO(
+            "BuildChassisConvexShapes: collecting verts from %zu mesh entities (excluded %zu)",
+            render_entities.size(),
+            entities_to_exclude.size()
+        );
 
         // the chassis entity's local transform relative to the vehicle (physics body)
         Vector3 chassis_local_pos = chassis_entity->GetPositionLocal();
@@ -2107,19 +2110,37 @@ namespace spartan
         Quaternion chassis_world_rot = chassis_entity->GetRotation();
         Quaternion chassis_world_rot_inv = chassis_world_rot.Conjugate();
 
-        // keep the chassis hull above the wheel attachment plane
-        const float chassis_hull_min_y = -m_vehicle_simulation->get_config().suspension_height;
+        const car::config& car_cfg = m_vehicle_simulation->get_config();
 
-        // collect ALL vertices from all meshes into a single list, transformed to vehicle body space
+        // raise verts only inside wheel wells so the body does not rest on the road
+        // skirts and overhangs outside those wells keep a lower floor for curb contact
+        const float wheel_well_min_y = -car_cfg.suspension_height;
+        const float body_floor_min_y = -(car_cfg.suspension_height + 0.18f);
+
+        auto is_in_wheel_well = [&](const Vector3& body_local_v) -> bool
+        {
+            for (int i = 0; i < car::wheel_count; i++)
+            {
+                const PxVec3 wheel_offset = m_vehicle_simulation->get_wheel_offset(i);
+                const float half_width = car_cfg.wheel_width_for(i) * 1.35f;
+                const float half_length = car_cfg.wheel_radius_for(i) * 1.45f;
+                if (fabsf(body_local_v.x - wheel_offset.x) <= half_width &&
+                    fabsf(body_local_v.z - wheel_offset.z) <= half_length)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         vector<PxVec3> all_vertices;
-        all_vertices.reserve(10000); // pre-allocate for performance
+        all_vertices.reserve(20000);
 
-        float pre_clip_min_y = std::numeric_limits<float>::infinity();
+        float pre_clip_min_y = numeric_limits<float>::infinity();
         size_t clipped_count = 0;
 
         for (const auto& [ent, render] : render_entities)
         {
-            // get geometry
             vector<uint32_t> indices;
             vector<RHI_Vertex_PosTexNorTan> vertices;
             render->GetGeometry(&indices, &vertices);
@@ -2128,24 +2149,28 @@ namespace spartan
                 continue;
             }
 
-            // compute transform from entity space to vehicle body space
+            // thin dense visual meshes so the spatial bins stay cookable
+            const size_t max_sample_verts = 512;
+            if (vertices.size() > max_sample_verts && !indices.empty())
+            {
+                const size_t target_index_count = min<size_t>(indices.size(), max_sample_verts * 3);
+                geometry_processing::simplify(indices, vertices, target_index_count, false, false);
+            }
+
             Vector3 ent_world_pos = ent->GetPosition();
             Quaternion ent_world_rot = ent->GetRotation();
             Vector3 ent_scale = ent->GetScale();
 
-            // transform: entity local -> world -> chassis local -> vehicle body local
             for (const auto& vertex : vertices)
             {
-                // vertex in entity local space (scaled)
-                Vector3 v(vertex.pos[0] * ent_scale.x, vertex.pos[1] * ent_scale.y, vertex.pos[2] * ent_scale.z);
+                Vector3 v(
+                    vertex.pos[0] * ent_scale.x,
+                    vertex.pos[1] * ent_scale.y,
+                    vertex.pos[2] * ent_scale.z
+                );
 
-                // transform to world space
                 Vector3 world_v = ent_world_rot * v + ent_world_pos;
-
-                // transform to chassis local space
                 Vector3 chassis_local_v = chassis_world_rot_inv * (world_v - chassis_world_pos);
-
-                // apply chassis scale and transform to vehicle body space
                 chassis_local_v.x *= chassis_local_scale.x;
                 chassis_local_v.y *= chassis_local_scale.y;
                 chassis_local_v.z *= chassis_local_scale.z;
@@ -2156,9 +2181,15 @@ namespace spartan
                 {
                     pre_clip_min_y = body_local_v.y;
                 }
-                if (body_local_v.y < chassis_hull_min_y)
+
+                if (body_local_v.y < wheel_well_min_y && is_in_wheel_well(body_local_v))
                 {
-                    body_local_v.y = chassis_hull_min_y;
+                    body_local_v.y = wheel_well_min_y;
+                    clipped_count++;
+                }
+                else if (body_local_v.y < body_floor_min_y)
+                {
+                    body_local_v.y = body_floor_min_y;
                     clipped_count++;
                 }
 
@@ -2168,37 +2199,83 @@ namespace spartan
 
         if (clipped_count > 0)
         {
-            SP_LOG_INFO("BuildChassisConvexShapes: clipped %zu verts up to y=%.3f (was as low as %.3f)",
-                clipped_count, chassis_hull_min_y, pre_clip_min_y);
+            SP_LOG_INFO(
+                "BuildChassisConvexShapes: clipped %zu verts, wheel_well_y=%.3f floor_y=%.3f (was as low as %.3f)",
+                clipped_count,
+                wheel_well_min_y,
+                body_floor_min_y,
+                pre_clip_min_y
+            );
         }
 
-        if (all_vertices.empty())
+        if (all_vertices.size() < 4)
         {
-            SP_LOG_WARNING("No vertices collected for chassis convex shape");
+            SP_LOG_WARNING("BuildChassisConvexShapes: not enough vertices for chassis compound");
             return;
         }
 
-        // subsample vertices if there are too many - physx convex hull works best with fewer points
-        const size_t max_input_vertices = 512;
-        if (all_vertices.size() > max_input_vertices)
+        PxVec3 bounds_min(PX_MAX_F32);
+        PxVec3 bounds_max(-PX_MAX_F32);
+        for (const PxVec3& vertex : all_vertices)
         {
-            // use a simple stride-based subsampling
-            size_t stride = all_vertices.size() / max_input_vertices;
-            vector<PxVec3> subsampled;
-            subsampled.reserve(max_input_vertices);
-
-            for (size_t i = 0; i < all_vertices.size() && subsampled.size() < max_input_vertices; i += stride)
+            if (!vertex.isFinite())
             {
-                subsampled.push_back(all_vertices[i]);
+                continue;
             }
-
-            SP_LOG_INFO("BuildChassisConvexShapes: subsampled %zu vertices to %zu", all_vertices.size(), subsampled.size());
-            all_vertices = std::move(subsampled);
+            bounds_min = bounds_min.minimum(vertex);
+            bounds_max = bounds_max.maximum(vertex);
         }
 
-        SP_LOG_INFO("BuildChassisConvexShapes: creating convex hull from %zu vertices", all_vertices.size());
+        const PxVec3 bounds_extent = bounds_max - bounds_min;
+        if (
+            bounds_extent.x <= 0.000001f ||
+            bounds_extent.y <= 0.000001f ||
+            bounds_extent.z <= 0.000001f
+        )
+        {
+            SP_LOG_WARNING("BuildChassisConvexShapes: degenerate chassis bounds");
+            return;
+        }
 
-        // cooking parameters for convex hull generation
+        // a few large overlapping regions, each cooked into a low poly convex
+        // overlap is intentional so the compound reads as one continuous car
+        struct region_def
+        {
+            float min_u;
+            float max_u;
+            float min_v;
+            float max_v;
+            float min_w;
+            float max_w;
+            float expand; // grows the query so neighboring hulls overlap
+            size_t min_hits;
+        };
+
+        const region_def regions[] =
+        {
+            // main body, covers most of the silhouette
+            { 0.05f, 0.95f, 0.00f, 0.70f, 0.05f, 0.95f, 0.06f, 32 },
+            // cabin / canopy
+            { 0.18f, 0.82f, 0.35f, 1.00f, 0.25f, 0.75f, 0.05f, 16 },
+            // front
+            { 0.10f, 0.90f, 0.00f, 0.65f, 0.00f, 0.38f, 0.07f, 16 },
+            // rear
+            { 0.10f, 0.90f, 0.00f, 0.70f, 0.62f, 1.00f, 0.07f, 16 },
+            // left side / skirt
+            { 0.00f, 0.38f, 0.00f, 0.55f, 0.12f, 0.88f, 0.06f, 12 },
+            // right side / skirt
+            { 0.62f, 1.00f, 0.00f, 0.55f, 0.12f, 0.88f, 0.06f, 12 },
+        };
+
+        auto unit_to_world = [&](float u, float v, float w) -> PxVec3
+        {
+            return PxVec3(
+                bounds_min.x + bounds_extent.x * u,
+                bounds_min.y + bounds_extent.y * v,
+                bounds_min.z + bounds_extent.z * w
+            );
+        };
+
         PxTolerancesScale px_scale;
         px_scale.length = 1.0f;
         Vector3 gravity = PhysicsWorld::GetGravity();
@@ -2206,47 +2283,161 @@ namespace spartan
         PxCookingParams params(px_scale);
         params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
         params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-        params.meshWeldTolerance = 0.05f; // aggressive welding for cleaner hull
+        params.meshWeldTolerance = 0.01f;
         params.gaussMapLimit = 32;
 
         PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-
-        // create a SINGLE convex hull from all collected vertices
-        // physx will compute the convex hull automatically
-        PxConvexMeshDesc mesh_desc;
-        mesh_desc.points.count = static_cast<PxU32>(all_vertices.size());
-        mesh_desc.points.stride = sizeof(PxVec3);
-        mesh_desc.points.data = all_vertices.data();
-        mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX | PxConvexFlag::eSHIFT_VERTICES;
-        mesh_desc.vertexLimit = 64; // limit output hull complexity
-
-        PxConvexMeshCookingResult::Enum condition;
-        PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
-        if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+        if (!insertion_callback)
         {
-            SP_LOG_ERROR("Failed to create chassis convex hull: %d", static_cast<int>(condition));
-            if (convex_mesh)
+            SP_LOG_ERROR("BuildChassisConvexShapes: missing physx insertion callback");
+            return;
+        }
+
+        vector<PxConvexMesh*> meshes;
+        vector<PxVec3> aero_vertices;
+        meshes.reserve(sizeof(regions) / sizeof(regions[0]));
+
+        auto cook_region = [&](const vector<PxVec3>& region_verts) -> PxConvexMesh*
+        {
+            if (region_verts.size() < 4)
             {
-                convex_mesh->release();
+                return nullptr;
+            }
+
+            vector<PxVec3> cook_verts = region_verts;
+            const size_t max_input = 96;
+            if (cook_verts.size() > max_input)
+            {
+                const size_t stride = cook_verts.size() / max_input;
+                vector<PxVec3> subsampled;
+                subsampled.reserve(max_input);
+                for (
+                    size_t i = 0;
+                    i < cook_verts.size() && subsampled.size() < max_input;
+                    i += stride
+                )
+                {
+                    subsampled.push_back(cook_verts[i]);
+                }
+                cook_verts = std::move(subsampled);
+            }
+
+            PxConvexMeshDesc mesh_desc;
+            mesh_desc.points.count = static_cast<PxU32>(cook_verts.size());
+            mesh_desc.points.stride = sizeof(PxVec3);
+            mesh_desc.points.data = cook_verts.data();
+            mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX | PxConvexFlag::eSHIFT_VERTICES;
+            mesh_desc.vertexLimit = 16;
+
+            PxConvexMeshCookingResult::Enum condition;
+            PxConvexMesh* convex_mesh = PxCreateConvexMesh(
+                params,
+                mesh_desc,
+                *insertion_callback,
+                &condition
+            );
+            if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+            {
+                if (convex_mesh)
+                {
+                    convex_mesh->release();
+                }
+                return nullptr;
+            }
+            return convex_mesh;
+        };
+
+        for (const region_def& region : regions)
+        {
+            float min_u = std::clamp(region.min_u - region.expand, 0.0f, 1.0f);
+            float max_u = std::clamp(region.max_u + region.expand, 0.0f, 1.0f);
+            float min_v = std::clamp(region.min_v - region.expand, 0.0f, 1.0f);
+            float max_v = std::clamp(region.max_v + region.expand, 0.0f, 1.0f);
+            float min_w = std::clamp(region.min_w - region.expand, 0.0f, 1.0f);
+            float max_w = std::clamp(region.max_w + region.expand, 0.0f, 1.0f);
+
+            const PxVec3 query_min = unit_to_world(min_u, min_v, min_w);
+            const PxVec3 query_max = unit_to_world(max_u, max_v, max_w);
+
+            vector<PxVec3> region_verts;
+            region_verts.reserve(1024);
+
+            for (const PxVec3& vertex : all_vertices)
+            {
+                if (!vertex.isFinite())
+                {
+                    continue;
+                }
+                if (
+                    vertex.x < query_min.x || vertex.x > query_max.x ||
+                    vertex.y < query_min.y || vertex.y > query_max.y ||
+                    vertex.z < query_min.z || vertex.z > query_max.z
+                )
+                {
+                    continue;
+                }
+                region_verts.push_back(vertex);
+            }
+
+            if (region_verts.size() < region.min_hits)
+            {
+                continue;
+            }
+
+            PxConvexMesh* convex_mesh = cook_region(region_verts);
+            if (!convex_mesh)
+            {
+                continue;
+            }
+
+            const PxU32 hull_vert_count = convex_mesh->getNbVertices();
+            const PxVec3* hull_verts = convex_mesh->getVertices();
+            aero_vertices.insert(aero_vertices.end(), hull_verts, hull_verts + hull_vert_count);
+            meshes.push_back(convex_mesh);
+        }
+
+        // fallback: one hull from everything if regions failed
+        if (meshes.empty())
+        {
+            PxConvexMesh* fallback = cook_region(all_vertices);
+            if (!fallback)
+            {
+                SP_LOG_WARNING("BuildChassisConvexShapes: failed to cook chassis proxies");
+                return;
+            }
+
+            const PxU32 hull_vert_count = fallback->getNbVertices();
+            const PxVec3* hull_verts = fallback->getVertices();
+            aero_vertices.assign(hull_verts, hull_verts + hull_vert_count);
+            meshes.push_back(fallback);
+        }
+
+        if (!m_vehicle_simulation->set_chassis(meshes, aero_vertices, physics))
+        {
+            SP_LOG_ERROR("Failed to set chassis compound");
+            for (PxConvexMesh* mesh : meshes)
+            {
+                if (mesh)
+                {
+                    mesh->release();
+                }
             }
             return;
         }
 
-        // extract the actual convex hull vertices from physx for visualization
-        PxU32 hull_vert_count = convex_mesh->getNbVertices();
-        const PxVec3* hull_verts = convex_mesh->getVertices();
-        std::vector<PxVec3> convex_hull_vertices(hull_verts, hull_verts + hull_vert_count);
-
-        if (!m_vehicle_simulation->set_chassis(convex_mesh, convex_hull_vertices, physics))
+        for (PxConvexMesh* mesh : meshes)
         {
-            SP_LOG_ERROR("Failed to set chassis");
-            convex_mesh->release();
-            return;
+            if (mesh)
+            {
+                mesh->release();
+            }
         }
 
-        convex_mesh->release();
-        SP_LOG_INFO("BuildChassisConvexShapes: created hull with %u verts from %zu source verts",
-            hull_vert_count, all_vertices.size());
+        SP_LOG_INFO(
+            "BuildChassisConvexShapes: created %zu overlapping convex proxies from %zu source verts",
+            meshes.size(),
+            all_vertices.size()
+        );
     }
 
     void Physics::SetWheelRadius(float radius)

@@ -4501,7 +4501,11 @@ namespace car
     }
 
 
-    bool Simulation::set_chassis(PxConvexMesh* mesh, const std::vector<PxVec3>& vertices, PxPhysics* physics)
+    bool Simulation::set_chassis(
+        const std::vector<PxConvexMesh*>& meshes,
+        const std::vector<PxVec3>& vertices,
+        PxPhysics* physics
+    )
     {
             if (!body || !physics)
             {
@@ -4514,20 +4518,35 @@ namespace car
                 std::vector<PxShape*> shapes(shape_count);
                 body->getShapes(shapes.data(), shape_count);
                 for (PxShape* shape : shapes)
+                {
                     body->detachShape(*shape);
+                }
             }
 
-            if (mesh && material)
+            int shapes_attached = 0;
+            if (material)
             {
-                PxConvexMeshGeometry geometry(mesh);
-                PxShape* shape = physics->createShape(geometry, *material);
-                if (shape)
+                for (PxConvexMesh* mesh : meshes)
                 {
+                    if (!mesh)
+                    {
+                        continue;
+                    }
+
+                    PxConvexMeshGeometry geometry(mesh);
+                    PxShape* shape = physics->createShape(geometry, *material);
+                    if (!shape)
+                    {
+                        continue;
+                    }
+
                     shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                     body->attachShape(*shape);
                     shape->release();
+                    shapes_attached++;
                 }
             }
+
             if (PxScene* scene = body->getScene())
             {
                 scene->flushQueryUpdates();
@@ -4545,7 +4564,7 @@ namespace car
                 compute_aero_from_shape(vertices);
             }
 
-            return true;
+            return shapes_attached > 0;
     }
 
 

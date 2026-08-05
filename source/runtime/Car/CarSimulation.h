@@ -34,7 +34,7 @@ namespace car
     {
         PxPhysics*          physics      = nullptr;
         PxScene*            scene        = nullptr;
-        PxConvexMesh*       chassis_mesh = nullptr; // convex hull for collision
+        PxConvexMesh*       chassis_mesh = nullptr; // optional seed hull, replaced by compound later
         std::vector<PxVec3> vertices;               // original mesh verts for aero calculation
         config              car_config;
         bool                create_mechanisms = true; // false skips suspension multibody for cheap sim
@@ -308,7 +308,12 @@ namespace car
         void compute_constants();
         void destroy();
         bool setup(const setup_params& params);
-        bool set_chassis(PxConvexMesh* mesh, const std::vector<PxVec3>& vertices, PxPhysics* physics);
+        // replaces chassis collision with overlapping convex proxies in body space
+        bool set_chassis(
+            const std::vector<PxConvexMesh*>& meshes,
+            const std::vector<PxVec3>& vertices,
+            PxPhysics* physics
+        );
         void update_mass_properties();
         void apply_car_spec(const car_preset& preset, bool set_as_base);
         bool rebuild_vehicle_geometry();

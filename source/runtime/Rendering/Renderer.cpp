@@ -3513,8 +3513,8 @@ namespace spartan
             return;
         }
 
-        // row-based packing: lays out uniform-sized slices left-to-right, wrapping to the next row.
-        // when rects is null it only tests whether the layout fits; when non-null it writes the rectangles.
+        // row-based packing: lays out uniform-sized slices left-to-right, wrapping to the next row
+        // when rects is null it only tests whether the layout fits; when non-null it writes the rectangles
         auto pack_row = [&](uint32_t slice_res, uint32_t num_slices, vector<ShadowSlice>* rects) -> bool
         {
             if (slice_res > resolution_atlas)

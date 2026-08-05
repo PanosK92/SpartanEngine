@@ -337,7 +337,8 @@ namespace spartan
         void Create();
         void CreateBodies();
         void CreateCloth();
-        void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude); // builds convex shapes from chassis mesh hierarchy
+        // builds overlapping low poly convex proxies for the vehicle chassis
+        void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude);
 
         float m_mass                   = 1.0f;
         float m_friction               = 0.4f;
