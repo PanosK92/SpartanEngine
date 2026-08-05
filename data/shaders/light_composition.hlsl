@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // = INCLUDES ========
 #include "common.hlsl"
+#include "fog.hlsl"
 //====================
 
 // catmull rom filtered sky panorama fetch, sky pixels magnify the 4k panorama ~2.5x at a
@@ -67,6 +68,30 @@ float3 sample_sky_catmull_rom(float2 uv)
     return clamp(result * rcp(weight_sum), sky_min, sky_max);
 }
 
+// 3x3 gaussian blur on the volumetric fog buffer to kill the per pixel raymarch jitter
+float3 sample_volumetric_smooth(float2 uv)
+{
+    float2 vol_size;
+    tex5.GetDimensions(vol_size.x, vol_size.y);
+    float2 texel = 1.0f / vol_size;
+
+    const float w_center = 4.0f / 16.0f;
+    const float w_edge   = 2.0f / 16.0f;
+    const float w_corner = 1.0f / 16.0f;
+
+    float3 result = 0.0f;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv,                                       0).rgb * w_center;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( texel.x,        0.0f),       0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2(-texel.x,        0.0f),       0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( 0.0f,           texel.y),    0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( 0.0f,          -texel.y),    0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( texel.x,        texel.y),    0).rgb * w_corner;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2(-texel.x,        texel.y),    0).rgb * w_corner;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( texel.x,       -texel.y),    0).rgb * w_corner;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2(-texel.x,       -texel.y),    0).rgb * w_corner;
+    return result;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -79,33 +104,36 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (pass_is_transparent() && !surface.is_transparent())
         return;
 
-    float3 light_diffuse     = 0.0f;
-    float3 light_specular    = 0.0f;
-    float3 light_emissive    = 0.0f;
-    float3 light_atmospheric = 0.0f;
-    float alpha              = 0.0f;
+    float3 light_diffuse       = 0.0f;
+    float3 light_specular      = 0.0f;
+    float3 light_emissive      = 0.0f;
+    float3 light_atmospheric   = 0.0f;
+    float alpha                = 0.0f;
+    float distance_from_camera = 0.0f;
 
     // fill in the sky pixels
     if (surface.is_sky() && pass_is_opaque())
     {
         // clamp y to the upper hemisphere so the dimmed below horizon sky does not show a dark band
-        float3 view_dir_sky = surface.camera_to_pixel;
-        view_dir_sky.y      = max(view_dir_sky.y, 0.0f);
-        view_dir_sky        = normalize(view_dir_sky);
-        light_emissive      = sample_sky_catmull_rom(direction_sphere_uv(view_dir_sky));
-        alpha               = 0.0f;
+        float3 view_dir_sky  = surface.camera_to_pixel;
+        view_dir_sky.y       = max(view_dir_sky.y, 0.0f);
+        view_dir_sky         = normalize(view_dir_sky);
+        light_emissive       = sample_sky_catmull_rom(direction_sphere_uv(view_dir_sky));
+        alpha                = 0.0f;
+        distance_from_camera = FLT_MAX_16;
     }
     // fill opaque and transparent pixels based on pass type
     else if ((pass_is_opaque() && surface.is_opaque()) || (pass_is_transparent() && surface.is_transparent()))
     {
-        light_diffuse  = tex3.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
-        light_specular = tex4.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+        light_diffuse        = tex3.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+        light_specular       = tex4.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
         // emissive is authored as a 0-1 scalar, calibrate it in physical luminance, 1.0 maps to
         // the nits below and converts to the radiometric scene units like every other light source
         bool        is_emissive_from_albedo = (surface.flags & uint(1U << 15)) != 0;
         const float emissive_nits           = is_emissive_from_albedo ? 100000.0f : 10000.0f;
-        light_emissive = surface.emissive * surface.albedo * photometric_to_radiometric(emissive_nits);
-        alpha          = surface.alpha;
+        light_emissive       = surface.emissive * surface.albedo * photometric_to_radiometric(emissive_nits);
+        alpha                = surface.alpha;
+        distance_from_camera = surface.camera_to_pixel_length;
 
         // water and glass are shaded from reflection and transmission inside the refraction
         // composite, a lambert albedo layer on top double counts and washes the fresnel structure
@@ -155,24 +183,58 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             }
         }
     }
-
-    // unified froxel fog, rgb = inscatter, a = transmittance along the view ray
+    
+    // fog
+    // the haze color is built from two fixed world direction sky samples (sun and zenith) at a
+    // coarse mip so no per pixel panorama detail imprints onto geometry, the per pixel variation
+    // is a smooth cosine lobe of view to sun
     {
-        float4 fog           = tex5.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0);
-        float3 inscatter     = fog.rgb;
-        float  transmittance = saturate(fog.a);
+        float3 camera_position = get_camera_position();
+        float3 view_dir        = normalize(surface.position - camera_position);
+
+        Light light;
+        light.Build(0, surface);
+        float3 light_dir = normalize(-light.forward);
+
+        // coarse mip, 32 x 16 texels, wider than any cloud or sun disc halo
+        const uint sky_mip = 7;
+
+        // sky color in the sun direction, lifted onto the horizon when the sun is below it
+        float3 sun_sample_dir   = normalize(float3(light_dir.x, max(light_dir.y, 0.0f), light_dir.z));
+        float2 sun_uv           = direction_sphere_uv(sun_sample_dir);
+        float3 sky_color_sun    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], sun_uv, sky_mip).rgb;
+
+        // sky color at zenith for the cool side of the gradient
+        float2 zenith_uv        = direction_sphere_uv(float3(0.0f, 1.0f, 0.0f));
+        float3 sky_color_zenith = tex2.SampleLevel(samplers[sampler_trilinear_clamp], zenith_uv, sky_mip).rgb;
+
+        // clamp both references so residual sun disc bleed does not punch the haze too bright
+        const float sky_color_max = 50.0f;
+        sky_color_sun    = min(sky_color_sun,    sky_color_max);
+        sky_color_zenith = min(sky_color_zenith, sky_color_max);
+
+        // smooth per pixel blend, the endpoints are screen wide constants
+        float  cos_theta = saturate(dot(view_dir, light_dir));
+        float  sun_lobe  = pow(cos_theta, 4.0f);
+        float3 sky_color = lerp(sky_color_zenith, sky_color_sun, sun_lobe);
+
+        float fog_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y);
+        float3 fog_volumetric = sample_volumetric_smooth(surface.uv);
 
         if (surface.is_sky())
         {
-            // sky already integrates atmospheric scattering, only shafts are additive
-            light_atmospheric = inscatter;
+            // sky already integrates atmospheric scattering, only god rays are additive
+            light_atmospheric = fog_volumetric;
         }
         else
         {
-            light_diffuse     *= transmittance;
-            light_specular    *= transmittance;
-            light_emissive    *= transmittance;
-            light_atmospheric  = inscatter;
+            // extinction based fog, surface lighting fades and sky inscatter fills the missing energy
+            float fog_factor    = fog_atmospheric;
+            float transmittance = 1.0f - fog_factor;
+            light_diffuse  *= transmittance;
+            light_specular *= transmittance;
+            light_emissive *= transmittance;
+            light_atmospheric = fog_factor * sky_color + fog_volumetric;
         }
     }
 

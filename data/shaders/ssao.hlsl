@@ -31,9 +31,8 @@ static const uint  g_steps            = 3;
 // r2 (roberts 2018), low discrepancy 2d sequence with no short period beats
 static const float g_r2_a1            = 0.7548776662466927f;
 static const float g_r2_a2            = 0.5698402909980532f;
-static const float g_max_accum_frames = 16.0f;
-// previous depth closer than current by this relative amount = occluder left, drop history
-static const float g_disoccl_rel      = 0.05f;
+static const float g_max_accum_frames = 32.0f;
+static const float g_depth_reject     = 0.1f;
 
 float2 temporal_r2(uint frame)
 {
@@ -286,13 +285,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         visibility = 1.0f;
     }
 
-    // temporal, only gate is depth disocclusion, taa handles the rest
+    // temporal accumulation, progressive average weighted by landed frame count
     float3 out_bent = bent_normal;
     float  out_vis  = visibility;
     float  accum    = 1.0f;
 
-    float2 velocity_uv = get_velocity_uv(pos) * float2(0.5f, -0.5f);
-    float2 uv_prev     = origin_uv - velocity_uv;
+    float2 velocity_ndc = get_velocity_uv(pos);
+    float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
+    float2 uv_prev      = origin_uv - velocity_uv;
 
     float2 inset         = 1.5f / resolution_out;
     bool   history_valid = pass_get_f3_value().x < 0.5f
@@ -307,27 +307,26 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float lin_prev = linearize_depth(
             tex2.SampleLevel(samplers[sampler_point_clamp], uv_prev, 0).r
         );
+        float depth_rel = abs(lin_curr - lin_prev) / max(max(lin_curr, lin_prev), 1e-3f);
 
-        // current farther than previous = something was in front last frame (car), go noisy
-        bool disoccluded = lin_curr > lin_prev * (1.0f + g_disoccl_rel);
-        // previous farther = different surface / bad reproj, also drop
-        bool bad_reproj  = lin_prev > lin_curr * (1.0f + g_disoccl_rel);
-
-        history_valid = !disoccluded
-            && !bad_reproj
+        history_valid = depth_rel < g_depth_reject
             && hist.w >= 1.0f
             && !any(isnan(hist));
 
         if (history_valid)
         {
             float3 hist_bent = octahedral_decode_ssao(hist.xy);
-            accum   = min(hist.w + 1.0f, g_max_accum_frames);
+            float  hist_vis  = hist.z;
+            float  hist_n    = hist.w;
+
+            accum   = min(hist_n + 1.0f, g_max_accum_frames);
             float w = rcp(accum);
-            out_vis  = lerp(hist.z, visibility, w);
+            out_vis  = lerp(hist_vis, visibility, w);
             out_bent = normalize(lerp(hist_bent, bent_normal, w));
         }
     }
 
     tex_uav[thread_id.xy]  = float4(out_bent, out_vis);
+    // history packing, octahedral bent, visibility, accumulated frame count
     tex_uav2[thread_id.xy] = float4(octahedral_encode_ssao(out_bent), out_vis, accum);
 }

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
-#include "sky/clouds.hlsl"
+#include "fog.hlsl"
 #include "light_cluster.hlsl"
 //============================
 
@@ -254,8 +254,11 @@ void evaluate_light(
     bool    is_transparent,
     float3  diffuse_precomputed,
     float3  specular_precomputed,
+    bool    eval_surface,
+    bool    eval_volumetric,
     inout float3 out_diffuse,
-    inout float3 out_specular)
+    inout float3 out_specular,
+    inout float3 out_volumetric)
 {
     Light light;
     light.Build(light_index, surface);
@@ -267,6 +270,7 @@ void evaluate_light(
     float3 L_specular_sum  = 0.0f;
     float3 L_diffuse_term  = 0.0f;
     float3 L_subsurface    = 0.0f;
+    float3 L_volumetric    = 0.0f;
     float  micro_shadow    = 1.0f;
 
     // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
@@ -279,7 +283,7 @@ void evaluate_light(
     bool has_brdf                   = any(light.radiance > 0.0f);
     bool has_sss                    = surface.subsurface_scattering > 0.0f;
 
-    if (!surface.is_sky() && light_can_contribute && (has_brdf || has_sss))
+    if (eval_surface && !surface.is_sky() && light_can_contribute && (has_brdf || has_sss))
     {
         float L_shadow_primary = 1.0f;
         float L_shadow_contact = 1.0f;
@@ -382,10 +386,16 @@ void evaluate_light(
         }
     }
 
-    // micro_shadow defaults to 1 for sky and transparent paths
+    if (eval_volumetric && light.is_volumetric())
+    {
+        L_volumetric += compute_volumetric_fog(surface, light, pixel_xy);
+    }
+
+    // micro_shadow defaults to 1 for sky, volumetric and transparent paths
     // sss is not folded in since back lit surfaces have meaningless n_dot_l
-    out_diffuse  += (L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy) * micro_shadow + L_subsurface;
-    out_specular += (L_specular_sum * light.radiance * specular_precomputed) * micro_shadow;
+    out_diffuse    += (L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy) * micro_shadow + L_subsurface;
+    out_specular   += (L_specular_sum * light.radiance * specular_precomputed) * micro_shadow;
+    out_volumetric += L_volumetric;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -402,8 +412,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2)
         return;
 
-    float3 out_diffuse  = 0.0f;
-    float3 out_specular = 0.0f;
+    float3 out_diffuse    = 0.0f;
+    float3 out_specular   = 0.0f;
+    float3 out_volumetric = 0.0f;
 
     // transparents skip alpha on specular and zero diffuse
     // ao is not applied to direct light, it only modulates indirect, contact comes from micro_shadow
@@ -418,7 +429,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         evaluate_light(0u, thread_id.xy, surface, is_transparent,
                        diffuse_precomputed, specular_precomputed,
-                       out_diffuse, out_specular);
+                       true, true,
+                       out_diffuse, out_specular, out_volumetric);
     }
 
     // clustered point, spot and area lights
@@ -438,10 +450,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             uint light_idx = cluster_light_indices[range.x + k];
             evaluate_light(light_idx, thread_id.xy, surface, is_transparent,
                            diffuse_precomputed, specular_precomputed,
-                           out_diffuse, out_specular);
+                           true, false,
+                           out_diffuse, out_specular, out_volumetric);
         }
     }
 
-    tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,  1.0f));
-    tex_uav2[thread_id.xy] = validate_output(float4(out_specular, 1.0f));
+    // volumetric fog scans a cpu built list since fog rays cross multiple clusters
+    uint volumetric_count = buffer_frame.volumetric_light_count;
+    for (uint k = 0u; k < volumetric_count; k++)
+    {
+        uint v = volumetric_light_indices[k];
+        evaluate_light(v, thread_id.xy, surface, is_transparent,
+                       diffuse_precomputed, specular_precomputed,
+                       false, true,
+                       out_diffuse, out_specular, out_volumetric);
+    }
+
+    tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,    1.0f));
+    tex_uav2[thread_id.xy] = validate_output(float4(out_specular,   1.0f));
+    tex_uav3[thread_id.xy] = validate_output(float4(out_volumetric, 1.0f));
 }
