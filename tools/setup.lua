@@ -28,7 +28,7 @@ local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
 local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin", "7zr.exe")
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
-local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/pynxelufoo972vwht5gsn/libraries.7z?rlkey=wrjnopmagkxylx7s9krpd1u7k&dl=1"
+local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/zs3eco3vniorxwjrpqm5u/libraries.7z?rlkey=81bt0q6t2d85f4tglop70jnbr&dl=1"
 local LIBRARY_HASH     = "a8d0df4017d6e61b3c3c871e437ce4a050ccc917db0e373812576b75ebc37ac0"
 
 local RUNTIME_DLLS     = {
