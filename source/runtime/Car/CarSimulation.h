@@ -122,6 +122,7 @@ namespace car
         bool get_log_to_file() const;
         void set_log_to_file(bool enabled);
         void set_telemetry_path(const std::string& path);
+        std::string get_telemetry_path() const;
         bool get_rev_limiter_active() const;
         float get_clutch() const;
         float get_engine_rotation() const;
@@ -139,9 +140,6 @@ namespace car
         float elapsed_time  = 0.0f;
         void close_telemetry();
         void flush_telemetry();
-
-        // absolute path of the csv when known, empty if not open yet
-        std::string get_telemetry_path() const;
 
         // reopen for append without truncating an existing csv
         bool reopen_telemetry_append();

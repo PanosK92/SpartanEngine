@@ -90,6 +90,30 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
     return p + r;
 }
 
+// sky has no gbuffer velocity, rebuild camera rotation at infinity so history
+// tracks the dome instead of smearing into curved ghost trails
+float2 compute_sky_velocity(float2 uv)
+{
+    matrix vp_curr = pass_is_right_eye() ?
+        buffer_frame.view_projection_unjittered_right :
+        buffer_frame.view_projection_unjittered;
+    matrix vp_prev = pass_is_right_eye() ?
+        buffer_frame.view_projection_previous_unjittered_right :
+        buffer_frame.view_projection_previous_unjittered;
+
+    float2 ndc      = uv_to_ndc(uv);
+    float4 world    = mul(float4(ndc, 0.0001f, 1.0f), get_view_projection_inverted());
+    float3 view_dir = normalize(world.xyz / world.w - get_camera_position());
+
+    static const float sky_distance = 10000.0f;
+    float3 sky_curr = get_camera_position()                 + view_dir * sky_distance;
+    float3 sky_prev = buffer_frame.camera_position_previous + view_dir * sky_distance;
+
+    float4 curr_clip = mul(float4(sky_curr, 1.0f), vp_curr);
+    float4 prev_clip = mul(float4(sky_prev, 1.0f), vp_prev);
+    return curr_clip.xy / max(curr_clip.w, 1e-6f) - prev_clip.xy / max(prev_clip.w, 1e-6f);
+}
+
 // history sampling
 float3 sample_history_catmull_rom(float2 uv, float2 resolution)
 {
@@ -206,11 +230,16 @@ float3 taau(uint2 px_out, float2 res_out)
     bool current_valid      = weight_sum > 0.0f;
     current_rgb_tm          = current_valid ? current_rgb_tm * rcp(weight_sum) : 0.0f.xxx;
     float3 current_ycocg_tm = rgb_to_ycocg(current_rgb_tm);
+    bool   is_sky           = closest_depth < 1e-4f;
 
     // history reprojection
     float2 velocity_ndc = tex_velocity[closest_pos].xy;
-    float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
-    float2 uv_prev      = uv_out - velocity_uv;
+    if (is_sky && dot(velocity_ndc, velocity_ndc) < 1e-12f)
+    {
+        velocity_ndc = compute_sky_velocity(uv_out);
+    }
+    float2 velocity_uv = velocity_ndc * float2(0.5f, -0.5f);
+    float2 uv_prev     = uv_out - velocity_uv;
 
     float2 inset           = 1.5f / res_out;
     bool   uv_prev_valid   = all(uv_prev > inset) && all(uv_prev < 1.0f - inset);
@@ -220,7 +249,10 @@ float3 taau(uint2 px_out, float2 res_out)
         return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
     }
 
-    float3 history_rgb = sample_history_catmull_rom(uv_prev, res_out);
+    // cubic negative lobes darken smooth hdr sky and seed the black trails below
+    float3 history_rgb = is_sky ?
+        tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_prev, 0.0f).rgb :
+        sample_history_catmull_rom(uv_prev, res_out);
 
     // a stale nan in the history buffer would recirculate forever and spread through the bilinear taps
     if (any(isnan(history_rgb)))
@@ -236,25 +268,40 @@ float3 taau(uint2 px_out, float2 res_out)
 
     float3 history_rgb_tm   = tonemap_for_taa(history_rgb);
     float3 history_ycocg_tm = rgb_to_ycocg(history_rgb_tm);
+    float  motion           = saturate(length(velocity_uv * res_out) * (1.0f / 64.0f));
+    float  contrast         = saturate((cmax.x - cmin.x) * 4.0f);
+    float  blend            = lerp(1.0f / 8.0f, 1.0f / 4.0f, max(motion, contrast));
+    float3 result_rgb_tm;
 
-    // history clipping
-    float  inv_count = rcp(count);
-    float3 mean      = m1 * inv_count;
-    float3 sigma     = sqrt(max(m2 * inv_count - mean * mean, 0.0f.xxx));
-    sigma            = max(sigma, 0.005f);
-    float  motion    = saturate(length(velocity_uv * res_out) * (1.0f / 64.0f));
-    float  contrast  = saturate((cmax.x - cmin.x) * 4.0f);
-    float  gamma     = lerp(1.5f, 1.0f, motion);
-    gamma            = lerp(gamma, 0.75f, contrast);
-    float3 aabb_min  = max(mean - sigma * gamma, cmin);
-    float3 aabb_max  = min(mean + sigma * gamma, cmax);
-    float3 history_c = clip_aabb(aabb_min, aabb_max, mean, history_ycocg_tm);
+    // smooth hdr sky: ycocg aabb collapses, invents invalid colors that clamp to black
+    // and then recirculate as curved trails, accumulate in tonemapped rgb instead
+    if (is_sky)
+    {
+        float hist_l = max(history_rgb_tm.r, max(history_rgb_tm.g, history_rgb_tm.b));
+        float curr_l = max(current_rgb_tm.r, max(current_rgb_tm.g, current_rgb_tm.b));
+        // dump stale black history instead of letting it linger across frames
+        if (hist_l < curr_l * 0.5f)
+        {
+            blend = max(blend, 0.5f);
+        }
+        result_rgb_tm = max(lerp(history_rgb_tm, current_rgb_tm, blend), 0.0f.xxx);
+    }
+    else
+    {
+        float  inv_count = rcp(count);
+        float3 mean      = m1 * inv_count;
+        float3 sigma     = sqrt(max(m2 * inv_count - mean * mean, 0.0f.xxx));
+        // wide floor on low contrast so the box cannot collapse into black-producing colors
+        sigma            = max(sigma, lerp(0.04f, 0.005f, contrast));
+        float  gamma     = lerp(1.5f, 1.0f, motion);
+        gamma            = lerp(gamma, 0.75f, contrast);
+        float3 aabb_min  = max(mean - sigma * gamma, cmin);
+        float3 aabb_max  = min(mean + sigma * gamma, cmax);
+        float3 history_c = clip_aabb(aabb_min, aabb_max, mean, history_ycocg_tm);
 
-    // accumulation
-    float blend = lerp(1.0f / 8.0f, 1.0f / 4.0f, max(motion, contrast));
-
-    float3 result_ycocg_tm = lerp(history_c, current_ycocg_tm, blend);
-    float3 result_rgb_tm   = max(ycocg_to_rgb(result_ycocg_tm), 0.0f.xxx);
+        float3 result_ycocg_tm = lerp(history_c, current_ycocg_tm, blend);
+        result_rgb_tm          = max(ycocg_to_rgb(result_ycocg_tm), 0.0f.xxx);
+    }
 
     float l_tm        = max(result_rgb_tm.r, max(result_rgb_tm.g, result_rgb_tm.b));
     float l_tm_safe   = min(l_tm, 1.0f - 1e-3f);

@@ -1081,6 +1081,18 @@ namespace spartan::car_hud
             }
             hud_tooltip("opens car bench, fast scripted stress of the current car");
 
+            bool write_telemetry = simulation->get_log_to_file();
+            if (ImGui::Checkbox("Write telemetry file", &write_telemetry))
+            {
+                simulation->set_log_to_file(write_telemetry);
+            }
+            hud_tooltip("writes a csv while driving, off by default, toggle here to start or stop");
+            if (write_telemetry)
+            {
+                ImGui::SameLine();
+                ImGui::TextColored(imvec4_from_u32(text_dim), "%s", simulation->get_telemetry_path().c_str());
+            }
+
             bool abs_enabled  = physics->GetAbsEnabled();
             bool tc_enabled   = physics->GetTcEnabled();
             bool manual_trans = physics->GetManualTransmission();

@@ -79,7 +79,13 @@ namespace car
 
 
     void Simulation::set_log_to_file(bool enabled)
-    { log_to_file = enabled; }
+    {
+        log_to_file = enabled;
+        if (!enabled)
+        {
+            close_telemetry();
+        }
+    }
 
 
     bool Simulation::get_rev_limiter_active() const
