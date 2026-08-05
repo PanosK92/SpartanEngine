@@ -44,12 +44,34 @@ namespace spartan
 
         void resolve_file_path()
         {
-            if (FileSystem::Exists(file_path))
+            // already resolved to an absolute path from a previous call
+            if (file_path.size() > 2 &&
+                (file_path[1] == ':' || file_path[0] == '/' || file_path[0] == '\\'))
             {
+                if (FileSystem::Exists(file_path))
+                {
+                    return;
+                }
+            }
+
+            // prefer the xml next to the exe, cwd differs between vs and a double click
+            const string exe_dir = FileSystem::GetExecutableDirectory();
+            const string exe_xml = exe_dir + "/spartan.xml";
+            if (FileSystem::Exists(exe_xml))
+            {
+                file_path = exe_xml;
                 return;
             }
 
-            string current = FileSystem::GetWorkingDirectory();
+            const string cwd_xml = FileSystem::GetWorkingDirectory() + "/spartan.xml";
+            if (FileSystem::Exists(cwd_xml))
+            {
+                file_path = cwd_xml;
+                return;
+            }
+
+            // walk up from the exe looking for binaries/spartan.xml
+            string current = exe_dir;
             for (uint32_t level = 0; level < 16; level++)
             {
                 const string candidate = current + "/binaries/spartan.xml";
@@ -66,6 +88,9 @@ namespace spartan
                 }
                 current = parent;
             }
+
+            // last resort, keep a writable default next to the exe
+            file_path = exe_xml;
         }
 
         // helper to convert cvar name to xml-safe name (e.g., "r.bloom" -> "r_bloom")

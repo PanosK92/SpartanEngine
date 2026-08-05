@@ -113,13 +113,20 @@ namespace spartan
         unordered_map<string, unique_ptr<mutex>> m_in_flight_mutexes;
         mutex m_in_flight_map_mutex;
 
-        string resolve_root_shader_directory()
+        // walk up from an anchor looking for the repo root (source/runtime + data/shaders)
+        string find_root_shader_directory_from(const string& anchor)
         {
-            string current = FileSystem::GetWorkingDirectory();
+            if (anchor.empty())
+            {
+                return "";
+            }
+
+            string current = filesystem::path(anchor).lexically_normal().generic_string();
             for (uint32_t level = 0; level < 16; level++)
             {
                 const string candidate = current + "/data/shaders";
-                if (FileSystem::IsDirectory(current + "/source/runtime") && FileSystem::IsDirectory(candidate))
+                if (FileSystem::IsDirectory(current + "/source/runtime") &&
+                    FileSystem::IsDirectory(candidate))
                 {
                     return candidate;
                 }
@@ -133,6 +140,24 @@ namespace spartan
             }
 
             return "";
+        }
+
+        // exe dir first, cwd second, so vs debugdir and double click behave the same
+        string resolve_root_shader_directory()
+        {
+            const string exe_dir = FileSystem::GetExecutableDirectory();
+            string resolved = find_root_shader_directory_from(exe_dir);
+            if (!resolved.empty())
+            {
+                return resolved;
+            }
+
+            const string cwd = FileSystem::GetWorkingDirectory();
+            if (cwd != exe_dir)
+            {
+                resolved = find_root_shader_directory_from(cwd);
+            }
+            return resolved;
         }
     }
 
@@ -253,26 +278,11 @@ namespace spartan
     string ResourceCache::GetResourceDirectory(const ResourceDirectory resource_directory_type)
     {
         string directory = m_standard_resource_directories[static_cast<uint32_t>(resource_directory_type)];
-        if (use_root_shader_directory && resource_directory_type == ResourceDirectory::Shaders)
+        if (use_root_shader_directory &&
+            resource_directory_type == ResourceDirectory::Shaders &&
+            !root_shader_directory.empty())
         {
-            if (!root_shader_directory_resolved)
-            {
-                root_shader_directory          = resolve_root_shader_directory();
-                root_shader_directory_resolved = true;
-                if (root_shader_directory.empty())
-                {
-                    SP_LOG_WARNING("Root shader directory was requested but no source tree was found");
-                }
-                else
-                {
-                    SP_LOG_INFO("Using root shader directory: %s", root_shader_directory.c_str());
-                }
-            }
-
-            if (!root_shader_directory.empty())
-            {
-                return root_shader_directory;
-            }
+            return root_shader_directory;
         }
         return directory;
     }
@@ -426,6 +436,26 @@ namespace spartan
             root_shader_directory_resolved = false;
         }
         use_root_shader_directory = _use_root_shader_directory;
+
+        // resolve immediately so renderer init (before Settings::Initialize) gets the
+        // root path, and so a failed walk is logged once instead of silently using binaries
+        if (use_root_shader_directory && !root_shader_directory_resolved)
+        {
+            root_shader_directory          = resolve_root_shader_directory();
+            root_shader_directory_resolved = true;
+            if (root_shader_directory.empty())
+            {
+                SP_LOG_WARNING(
+                    "UseRootShaderDirectory is on but no source tree was found from exe '%s' or cwd '%s'",
+                    FileSystem::GetExecutableDirectory().c_str(),
+                    FileSystem::GetWorkingDirectory().c_str()
+                );
+            }
+            else
+            {
+                SP_LOG_INFO("Using root shader directory: %s", root_shader_directory.c_str());
+            }
+        }
     }
 
     const Icon& ResourceCache::GetIcon(IconType type)

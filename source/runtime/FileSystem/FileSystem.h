@@ -77,6 +77,8 @@ namespace spartan
         static std::string GetExtensionFromFilePath(const std::string& path);
         static std::string GetRelativePath(const std::string& path);
         static std::string GetWorkingDirectory();
+        // directory containing the running exe, independent of cwd
+        static std::string GetExecutableDirectory();
         static std::string GetRootDirectory(const std::string& path);
         static std::string GetParentDirectory(const std::string& path);
         static std::vector<std::string> GetDirectoriesInDirectory(const std::string& path);

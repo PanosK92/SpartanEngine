@@ -24,24 +24,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <string>
 #include <filesystem>
+#include <system_error>
 #ifdef _WIN32 // windows
 #include <Windows.h>
 #include <shellapi.h>
+#endif
 
 // force the working directory to the executable's own, the shell can hand us a different cwd
 static void set_working_directory_to_executable()
 {
-    wchar_t path[MAX_PATH];
-    if (GetModuleFileNameW(nullptr, path, MAX_PATH))
+    const std::string exe_dir = spartan::FileSystem::GetExecutableDirectory();
+    if (!exe_dir.empty())
     {
-        std::filesystem::path exe_dir = std::filesystem::path(path).parent_path();
-        if (!exe_dir.empty())
-        {
-            std::filesystem::current_path(exe_dir);
-        }
+        std::error_code ec;
+        std::filesystem::current_path(exe_dir, ec);
     }
 }
 
+#ifdef _WIN32 // windows
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     set_working_directory_to_executable();
@@ -62,12 +62,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #else // linux
 int main(int argc, char** argv)
 {
-    // ensure working directory is the executable's location
-    std::filesystem::path exe_dir = std::filesystem::canonical("/proc/self/exe").parent_path();
-    if (!exe_dir.empty())
-    {
-        std::filesystem::current_path(exe_dir);
-    }
+    set_working_directory_to_executable();
 
     std::vector<std::string> args(argv, argv + argc);
 #endif

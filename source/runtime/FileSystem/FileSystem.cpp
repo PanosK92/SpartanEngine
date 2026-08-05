@@ -23,10 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <fstream>
 #include <filesystem>
+#include <system_error>
 #include <thread>
 #include <codecvt>
 #include <locale>
 #include <regex>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 SP_WARNINGS_OFF
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_iostream.h>
@@ -873,6 +877,27 @@ namespace spartan
     string FileSystem::GetWorkingDirectory()
     {
         return filesystem::current_path().generic_string();
+    }
+
+    string FileSystem::GetExecutableDirectory()
+    {
+#ifdef _WIN32
+        wchar_t path[MAX_PATH];
+        const DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
+        if (length == 0 || length >= MAX_PATH)
+        {
+            return GetWorkingDirectory();
+        }
+        return filesystem::path(path).parent_path().generic_string();
+#else
+        error_code ec;
+        filesystem::path exe = filesystem::canonical("/proc/self/exe", ec);
+        if (ec || exe.empty())
+        {
+            return GetWorkingDirectory();
+        }
+        return exe.parent_path().generic_string();
+#endif
     }
 
     string FileSystem::GetParentDirectory(const string& path)
