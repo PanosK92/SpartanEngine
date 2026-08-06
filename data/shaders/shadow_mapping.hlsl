@@ -95,7 +95,7 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
     for(uint i = 0; i < g_penumbra_sample_count; i++)
     {
         float2 offset = vogel_disk_sample(i, g_penumbra_sample_count, rotation_angle) * search_radius;
-        float depth   = light.sample_depth(sample_coords + float3(offset, 0.0f));
+        float depth   = light_sample_depth(light, sample_coords + float3(offset, 0.0f));
 
         if(depth > receiver_depth + 0.0001f)
         {
@@ -128,13 +128,21 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multiplier = 1.0f)
 {
     // early out, a fully lit or fully shadowed center skips the pcss search and the pcf taps
-    float center = light.compare_depth(sample_coords, receiver_depth);
+    float center = light_compare_depth(light, sample_coords, receiver_depth);
     if (center <= 0.001f) return 0.0f;
     if (center >= 0.999f) return 1.0f;
 
     // atlas texel size in cascade local space, computed once and shared with the penumbra search
     uint   cascade_index            = (uint)sample_coords.z;
-    float2 texel_size_cascade_local = light.atlas_texel_size[cascade_index] / light.atlas_scale[cascade_index];
+    float2 texel_size_cascade_local =
+        light_get_atlas_texel_size(
+            light,
+            cascade_index
+        ) /
+        light_get_atlas_scale(
+            light,
+            cascade_index
+        );
     float  rotation_angle           = float(cascade_index) * 0.785398163f;
     float  shadow_factor            = 0.0f;
     
@@ -158,7 +166,11 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
         float is_valid    = step(0.0f, sample_uv.x) * step(sample_uv.x, 1.0f) * step(0.0f, sample_uv.y) * step(sample_uv.y, 1.0f);
 
         // depth comparison
-        float depth_sample = light.compare_depth(float3(uv_clamped, sample_coords.z), receiver_depth);
+        float depth_sample = light_compare_depth(
+            light,
+            float3(uv_clamped, sample_coords.z),
+            receiver_depth
+        );
         depth_sample       = lerp(1.0f, depth_sample, fade_factor * is_valid + (1.0f - is_valid));
         
         shadow_factor      += depth_sample;
@@ -173,8 +185,20 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
 {
     // calculate world-space texel size from projection matrix
-    float world_frustum_width = 2.0f / length(light.transform[cascade_index][0].xyz);
-    float texel_size_world    = world_frustum_width * light.atlas_texel_size[cascade_index].x;
+    float world_frustum_width =
+        2.0f /
+        length(
+            light_get_transform(
+                light,
+                cascade_index
+            )[0].xyz
+        );
+    float texel_size_world =
+        world_frustum_width *
+        light_get_atlas_texel_size(
+            light,
+            cascade_index
+        ).x;
 
     // compute slope
     float3 light_dir = light.is_directional() ? normalize(-light.forward.xyz) : normalize(surface.position - light.position);
@@ -216,7 +240,10 @@ float compute_shadow(Surface surface, Light light)
                           (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0.0f ? 2u : 3u) :
                                                                                (light_to_pixel.z > 0.0f ? 4u : 5u);
 
-        float4 clip_pos = mul(float4(position_world, 1.0f), light.transform[face_index]);
+        float4 clip_pos = mul(
+            float4(position_world, 1.0f),
+            light_get_transform(light, face_index)
+        );
         float3 ndc      = clip_pos.xyz / clip_pos.w;
         float2 uv       = ndc_to_uv(ndc.xy);
         shadow          = vogel_depth(light, surface, float3(uv, (float)face_index), ndc.z);
@@ -230,7 +257,10 @@ float compute_shadow(Surface surface, Light light)
         
         // sample near cascade
         float3 position_world = surface.position + compute_normal_offset(surface, light, near_cascade);
-        float4 clip_pos_near  = mul(float4(position_world, 1.0f), light.transform[near_cascade]);
+        float4 clip_pos_near  = mul(
+            float4(position_world, 1.0f),
+            light_get_transform(light, near_cascade)
+        );
         float3 ndc_near       = clip_pos_near.xyz / clip_pos_near.w;
         float2 uv_near        = ndc_to_uv(ndc_near.xy);
         
@@ -251,7 +281,10 @@ float compute_shadow(Surface surface, Light light)
             
             // sample far cascade with re-calculated offset
             float3 position_world_far = surface.position + compute_normal_offset(surface, light, far_cascade);
-            float4 clip_pos_far       = mul(float4(position_world_far, 1.0f), light.transform[far_cascade]);
+            float4 clip_pos_far       = mul(
+                float4(position_world_far, 1.0f),
+                light_get_transform(light, far_cascade)
+            );
             float3 ndc_far            = clip_pos_far.xyz / clip_pos_far.w;
             float2 uv_far             = ndc_to_uv(ndc_far.xy);
             

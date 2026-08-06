@@ -120,6 +120,7 @@ namespace spartan
         // csv capture
         bool capture_requested = false;
         bool capture_this_frame = false;
+        bool capture_gpu_sample_this_frame = false;
         bool capture_stop_pending = false;
         bool capture_reset_metrics_pending = false;
         uint64_t capture_frame_count = 0;
@@ -134,6 +135,21 @@ namespace spartan
 
         // cpu
         const char* cpu_name = "N/A";
+        bool is_cpu_wait(const char* name)
+        {
+            if (!name)
+            {
+                return false;
+            }
+
+            return
+                strcmp(name, "frame_slot_wait") == 0 ||
+                strcmp(name, "frame_acquire") == 0 ||
+                strcmp(name, "frame_present") == 0 ||
+                strcmp(name, "queue_wait_idle") == 0 ||
+                strncmp(name, "cmd_wait", 8) == 0;
+        }
+
         const char* get_cpu_name()
         {
 #ifdef _WIN32
@@ -390,8 +406,23 @@ namespace spartan
                         "d3d12";
             const bool gpu_timing_enabled =
                 Debugging::IsGpuTimingEnabled();
+            const bool gpu_timing_valid =
+                any_of(
+                    m_time_blocks_read.begin(),
+                    m_time_blocks_read.end(),
+                    [](const TimeBlock& block)
+                    {
+                        return
+                            block.IsComplete() &&
+                            block.GetType() ==
+                                TimeBlockType::Gpu &&
+                            block.GetDuration() > 0.0f;
+                    }
+                );
             const char* capture_mode =
-                "low_overhead_cpu_per_frame";
+                capture_gpu_sample_this_frame ?
+                    "cpu_per_frame_gpu_sample" :
+                    "low_overhead_cpu_per_frame";
             string block_rows;
             block_rows.reserve(
                 m_time_blocks_read.size() *
@@ -454,9 +485,12 @@ namespace spartan
                     TimeBlockType::Gpu
                 )
                 {
-                fields[
-                    CaptureColumn_GpuTimingValid
-                ] = "0";
+                    fields[
+                        CaptureColumn_GpuTimingValid
+                    ] =
+                        gpu_timing_valid ?
+                            "1" :
+                            "0";
                 }
                 fields[CaptureColumn_CpuScope] =
                     "main_thread";
@@ -729,7 +763,9 @@ namespace spartan
             fields[CaptureColumn_GpuTimingEnabled] =
                 gpu_timing_enabled ? "1" : "0";
             fields[CaptureColumn_GpuTimingValid] =
-                "0";
+                gpu_timing_valid ?
+                    "1" :
+                    "0";
             fields[CaptureColumn_CpuScope] =
                 "main_thread";
 
@@ -830,6 +866,7 @@ namespace spartan
 
             capture_requested = false;
             capture_this_frame = false;
+            capture_gpu_sample_this_frame = false;
             capture_stop_pending = false;
             capture_reset_metrics_pending = false;
             if (capture_error.empty())
@@ -913,7 +950,7 @@ namespace spartan
             "row_type,capture_frame,engine_frame,elapsed_ms,"
             "block_index,block_id,parent_id,tree_depth,"
             "name,block_type,queue,start_ms,end_ms,"
-            "duration_ms,wall_ms,cpu_root_ms,gpu_span_ms,"
+            "duration_ms,wall_ms,cpu_active_ms,gpu_span_ms,"
             "pacing_ms,wait_ms,acquire_ms,submit_ms,"
             "present_ms,profiler_readback_ms,"
             "profiler_block_serialize_ms,"
@@ -1004,6 +1041,10 @@ namespace spartan
             capture_reset_metrics_pending = false;
         }
         capture_this_frame = capture_requested;
+        capture_gpu_sample_this_frame =
+            capture_this_frame &&
+            capture_frame_count == 0 &&
+            Debugging::IsGpuTimingEnabled();
         if (capture_this_frame)
         {
             poll = true;
@@ -1070,6 +1111,7 @@ namespace spartan
             time_gpu_last     = 0.0f;
             float gpu_start_ms = numeric_limits<float>::max();
             float gpu_end_ms   = numeric_limits<float>::lowest();
+            vector<pair<float, float>> cpu_wait_intervals;
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
                 if (!time_block.IsComplete())
@@ -1077,12 +1119,26 @@ namespace spartan
                     continue;
                 }
                 if (
-                    !time_block.HasParent() &&
                     time_block.GetType() ==
                         TimeBlockType::Cpu
                 )
                 {
-                    time_cpu_last += time_block.GetDuration();
+                    if (!time_block.HasParent())
+                    {
+                        time_cpu_last +=
+                            time_block.GetDuration();
+                    }
+                    else if (
+                        is_cpu_wait(
+                            time_block.GetName()
+                        )
+                    )
+                    {
+                        cpu_wait_intervals.emplace_back(
+                            time_block.GetStartMs(),
+                            time_block.GetEndMs()
+                        );
+                    }
                 }
                 if (
                     !time_block.HasParent() &&
@@ -1102,6 +1158,30 @@ namespace spartan
                         );
                 }
             }
+
+            sort(
+                cpu_wait_intervals.begin(),
+                cpu_wait_intervals.end()
+            );
+            float wait_end_ms = 0.0f;
+            for (
+                const auto& [start_ms, end_ms] :
+                    cpu_wait_intervals
+            )
+            {
+                if (end_ms <= wait_end_ms)
+                {
+                    continue;
+                }
+
+                time_cpu_last -=
+                    end_ms -
+                    max(start_ms, wait_end_ms);
+                wait_end_ms = end_ms;
+            }
+            time_cpu_last =
+                max(time_cpu_last, 0.0f);
+
             if (gpu_end_ms >= gpu_start_ms)
             {
                 time_gpu_last =
@@ -1218,43 +1298,18 @@ namespace spartan
 
         // only pay the gpu stall cost when the profiler widget is actually open and
         // we need accurate timeline positions; otherwise use cheap stale durations
-        if (is_visualized && !capture_this_frame)
+        if (
+            (
+                is_visualized &&
+                !capture_this_frame
+            ) ||
+            capture_gpu_sample_this_frame
+        )
         {
             // wait for gpu completion and read back fresh timestamps from all used command lists
             for (RHI_CommandList* cmd_list : cmd_lists_used)
             {
                 cmd_list->ReadbackTimestampsForProfiler();
-            }
-
-            // gpu passes are recorded sequentially per command list, so the next block's start
-            // gives us a stable end boundary even if a block's explicit end timestamp is noisy.
-            unordered_map<RHI_CommandList*, vector<uint32_t>> gpu_blocks_by_cmd_list;
-            unordered_map<uint32_t, uint64_t> gpu_end_tick_overrides;
-            for (uint32_t i = 0; i <= static_cast<uint32_t>(m_time_block_index); i++)
-            {
-                TimeBlock& time_block = m_time_blocks_write[i];
-                if (time_block.IsComplete() && time_block.GetType() == TimeBlockType::Gpu && time_block.GetCmdList())
-                {
-                    gpu_blocks_by_cmd_list[time_block.GetCmdList()].push_back(i);
-                }
-            }
-
-            for (auto& [cmd_list, block_indices] : gpu_blocks_by_cmd_list)
-            {
-                sort(block_indices.begin(), block_indices.end(), [&](uint32_t a, uint32_t b)
-                {
-                    return m_time_blocks_write[a].GetTimestampIndexStart() < m_time_blocks_write[b].GetTimestampIndexStart();
-                });
-
-                for (size_t i = 0; i + 1 < block_indices.size(); i++)
-                {
-                    const TimeBlock& next_block = m_time_blocks_write[block_indices[i + 1]];
-                    uint64_t next_start_tick    = cmd_list->GetTimestampRawTick(next_block.GetTimestampIndexStart());
-                    if (next_start_tick != 0)
-                    {
-                        gpu_end_tick_overrides[block_indices[i]] = next_start_tick;
-                    }
-                }
             }
 
             // use the earliest timestamp written by a gpu block
@@ -1313,13 +1368,10 @@ namespace spartan
 
                 if (time_block.GetType() == TimeBlockType::Gpu && global_reference_tick != 0)
                 {
-                    uint64_t end_tick_override = 0;
-                    if (gpu_end_tick_overrides.find(i) != gpu_end_tick_overrides.end())
-                    {
-                        end_tick_override = gpu_end_tick_overrides[i];
-                    }
-
-                    time_block.ResolveGpuTimestamps(global_reference_tick, timestamp_period, end_tick_override);
+                    time_block.ResolveGpuTimestamps(
+                        global_reference_tick,
+                        timestamp_period
+                    );
                 }
 
                 m_time_blocks_read.push_back(time_block);
@@ -1367,6 +1419,7 @@ namespace spartan
 
         if (
             capture_this_frame &&
+            !capture_gpu_sample_this_frame &&
             type == TimeBlockType::Gpu
         )
         {
@@ -1691,7 +1744,7 @@ namespace spartan
                 static_cast<uint32_t>(m_rhi_descriptor_set_count),
                 static_cast<uint32_t>(rhi_max_descriptor_set_count));
             SP_ASSERT(offset < sizeof(metrics_buffer));
-        }
+        
 
         // draw directly from the static buffer
         Renderer::DrawString(metrics_buffer, math::Vector2(0.005f, 0.02f));

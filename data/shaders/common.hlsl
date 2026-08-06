@@ -805,4 +805,80 @@ float get_alpha_threshold(float3 position_world)
 #include "common_vertex_processing.hlsl"
 //======================================
 
+matrix light_get_transform(Light light, uint array_index)
+{
+    return light_parameters[light.index].transform[array_index];
+}
+
+float2 light_get_atlas_scale(Light light, uint array_index)
+{
+    return light_parameters[light.index].atlas_scales[array_index];
+}
+
+float2 light_get_atlas_texel_size(Light light, uint array_index)
+{
+    return light_parameters[light.index].atlas_texel_sizes[array_index];
+}
+
+uint light_get_screen_space_shadow_slice(Light light)
+{
+    return light_parameters[
+        light.index
+    ].screen_space_shadow_slice_index;
+}
+
+float light_compare_depth(
+    Light light,
+    float3 uv,
+    float compare
+)
+{
+    uint array_index = (uint)uv.z;
+    float2 atlas_offset =
+        light_parameters[
+            light.index
+        ].atlas_offsets[array_index];
+    float2 atlas_scale =
+        light_parameters[
+            light.index
+        ].atlas_scales[array_index];
+    float2 atlas_uv = atlas_offset + uv.xy * atlas_scale;
+    atlas_uv = clamp(
+        atlas_uv,
+        atlas_offset,
+        atlas_offset + atlas_scale
+    );
+
+    return tex2.SampleCmpLevelZero(
+        samplers_comparison[sampler_compare_depth],
+        atlas_uv,
+        compare
+    ).r;
+}
+
+float light_sample_depth(Light light, float3 uv)
+{
+    uint array_index = (uint)uv.z;
+    float2 atlas_offset =
+        light_parameters[
+            light.index
+        ].atlas_offsets[array_index];
+    float2 atlas_scale =
+        light_parameters[
+            light.index
+        ].atlas_scales[array_index];
+    float2 atlas_uv = atlas_offset + uv.xy * atlas_scale;
+    atlas_uv = clamp(
+        atlas_uv,
+        atlas_offset,
+        atlas_offset + atlas_scale
+    );
+
+    return tex2.SampleLevel(
+        samplers[sampler_bilinear_clamp_border],
+        atlas_uv,
+        0
+    ).r;
+}
+
 #endif // SPARTAN_COMMON

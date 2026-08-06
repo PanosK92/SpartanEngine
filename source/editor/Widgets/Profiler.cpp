@@ -441,8 +441,8 @@ void Profiler::OnTickVisible()
         "CPU",
         m_frozen_time_cpu,
         ImGui::Style::color_accent_2,
-        "Elapsed main-thread frame work, includes CPU work and "
-        "blocking inside the active frame, excludes frame-rate pacing"
+        "Main-thread CPU execution time, excludes time blocked on "
+        "GPU resources, synchronization, presentation, and pacing"
     );
     ImGui::SameLine();
     draw_metric(

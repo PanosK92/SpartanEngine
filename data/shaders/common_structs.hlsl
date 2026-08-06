@@ -174,6 +174,7 @@ struct Surface
 struct Light
 {
     // properties
+    uint   index;
     uint   flags;
     float3 color;
     float3 position;
@@ -193,12 +194,6 @@ struct Light
     float  cos_outer;
     float  cos_inner;
     float  angle_scale;
-    float2 resolution;
-    matrix transform[6];
-    uint screen_space_shadows_slice_index;
-    float2 atlas_offset[6];
-    float2 atlas_scale[6];
-    float2 atlas_texel_size[6];
  
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
@@ -238,11 +233,6 @@ struct Light
         float cd          = dot(to_pixel, forward);
         float attenuation = saturate((cd - cos_outer) * angle_scale);
         return attenuation * attenuation;
-    }
-
-    float2 compute_resolution()
-    {
-        return 1.0f / atlas_texel_size[0]; // assuming all slices are the same resolution
     }
 
     // builds an orthonormal basis for the area light using the entity's authored right vector
@@ -401,38 +391,6 @@ struct Light
         return direction;
     }
 
-    float compare_depth(float3 uv, float compare)
-    {
-        uint array_index = (uint)uv.z;
-    
-        // compute atlas UV
-        float2 atlas_uv = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
-    
-        // clamp to slice bounds
-        float2 min_uv = atlas_offset[array_index];
-        float2 max_uv = atlas_offset[array_index] + atlas_scale[array_index];
-        atlas_uv      = clamp(atlas_uv, min_uv, max_uv);
-    
-        // comparison sampling
-        return tex2.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], atlas_uv, compare).r;
-    }
-    
-    float sample_depth(float3 uv)
-    {
-        uint array_index = (uint)uv.z;
-    
-        // compute atlas UV
-        float2 atlas_uv = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
-    
-        // clamp to slice bounds
-        float2 min_uv = atlas_offset[array_index];
-        float2 max_uv = atlas_offset[array_index] + atlas_scale[array_index];
-        atlas_uv      = clamp(atlas_uv, min_uv, max_uv);
-    
-        // normal sampling
-        return tex2.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
-    }
-
     // karis 2013 area light roughness widening, spreads the specular lobe to match the light's angular extent
     float compute_area_roughness_modification(float roughness_alpha, float distance)
     {
@@ -441,9 +399,10 @@ struct Light
         return saturate(roughness_alpha + solid_angle / (2.0f * roughness_alpha + solid_angle));
     }
 
-    void Build(uint index, Surface surface)
+    void Build(uint light_index, Surface surface)
     {
-        LightParameters light            = light_parameters[index];
+        LightParameters light            = light_parameters[light_index];
+        index                            = light_index;
         flags                            = light.flags;
         color                            = light.color.rgb;
         position                         = light.position.xyz;
@@ -474,13 +433,6 @@ struct Light
         // compute attenuation
         attenuation = compute_attenuation(surface.position);
         
-        resolution                       = compute_resolution();
-        screen_space_shadows_slice_index = light.screen_space_shadow_slice_index;
-        transform                        = light.transform;
-        atlas_offset                     = light.atlas_offsets;
-        atlas_scale                      = light.atlas_scales;
-        atlas_texel_size                 = light.atlas_texel_sizes;
-
         radiance = color * intensity * attenuation * n_dot_l;
     }
 };

@@ -76,13 +76,20 @@ float visible(float3 position, Light light, uint2 pixel_pos)
                           (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0.0f ? 2u : 3u) :
                                                                                (light_to_pixel.z > 0.0f ? 4u : 5u);
 
-        float4 clip_pos = mul(float4(position, 1.0f), light.transform[face_index]);
+        float4 clip_pos = mul(
+            float4(position, 1.0f),
+            light_get_transform(light, face_index)
+        );
         if (clip_pos.w <= 0.0f)
             return 1.0f;
 
         float3 ndc          = clip_pos.xyz / clip_pos.w;
         float2 projected_uv = ndc_to_uv(ndc.xy);
-        return light.compare_depth(float3(projected_uv, (float)face_index), ndc.z);
+        return light_compare_depth(
+            light,
+            float3(projected_uv, (float)face_index),
+            ndc.z
+        );
     }
 
     if (light.is_directional())
@@ -91,25 +98,42 @@ float visible(float3 position, Light light, uint2 pixel_pos)
         const uint near_cascade = 0;
         const uint far_cascade  = 1;
 
-        float3 projected_pos_near = world_to_ndc(position, light.transform[near_cascade]);
+        float3 projected_pos_near = world_to_ndc(
+            position,
+            light_get_transform(light, near_cascade)
+        );
         float2 projected_uv_near  = ndc_to_uv(projected_pos_near);
         if (is_valid_uv(projected_uv_near))
         {
-            return light.compare_depth(float3(projected_uv_near, (float)near_cascade), projected_pos_near.z);
+            return light_compare_depth(
+                light,
+                float3(projected_uv_near, (float)near_cascade),
+                projected_pos_near.z
+            );
         }
 
-        float3 projected_pos_far = world_to_ndc(position, light.transform[far_cascade]);
+        float3 projected_pos_far = world_to_ndc(
+            position,
+            light_get_transform(light, far_cascade)
+        );
         float2 projected_uv_far  = ndc_to_uv(projected_pos_far);
         if (is_valid_uv(projected_uv_far))
         {
-            return light.compare_depth(float3(projected_uv_far, (float)far_cascade), projected_pos_far.z);
+            return light_compare_depth(
+                light,
+                float3(projected_uv_far, (float)far_cascade),
+                projected_pos_far.z
+            );
         }
 
         return 1.0f;
     }
 
     // spot or area light, both render a single perspective slice into the atlas
-    float4 clip_pos = mul(float4(position, 1.0f), light.transform[0]);
+    float4 clip_pos = mul(
+        float4(position, 1.0f),
+        light_get_transform(light, 0)
+    );
     if (clip_pos.w <= 0.0f)
         return 1.0f;
 
@@ -118,7 +142,11 @@ float visible(float3 position, Light light, uint2 pixel_pos)
     if (!is_valid_uv(projected_uv))
         return 1.0f;
 
-    return light.compare_depth(float3(projected_uv, 0.0f), projected_pos.z);
+    return light_compare_depth(
+        light,
+        float3(projected_uv, 0.0f),
+        projected_pos.z
+    );
 }
 
 // henyey greenstein phase, g 0 isotropic, positive forward scatter, negative back scatter

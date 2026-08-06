@@ -317,7 +317,14 @@ void evaluate_light(
             bool rt_owns_contact = use_rt_shadow_texture || (use_inline_rt_shadow && light.is_directional());
             if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque() && !rt_owns_contact)
             {
-                float contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
+                float contact = tex_uav_sss[
+                    int3(
+                        pixel_xy,
+                        light_get_screen_space_shadow_slice(
+                            light
+                        )
+                    )
+                ].x;
                 float contact_fade = 1.0f - saturate((surface.camera_to_pixel_length - 25.0f) / 50.0f);
                 L_shadow_contact   = lerp(1.0f, contact, contact_fade);
             }
@@ -408,9 +415,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // early exit for mismatched pass/surface types
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent() && !surface.is_sky();
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
+    bool early_exit_2 = pass_is_transparent() && !surface.is_transparent();
     if (early_exit_1 || early_exit_2)
+    {
         return;
+    }
 
     float3 out_diffuse    = 0.0f;
     float3 out_specular   = 0.0f;

@@ -47,16 +47,17 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     if (index_light >= light_count || index_array >= 6)
         return (gbuffer_vertex)0;
 
-    Light light;
-    Surface surface;
-    light.Build(index_light, surface);
-
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
     vertex.view_id                 = 0;
-    vertex.position                = mul(float4(position_world, 1.0f), light.transform[index_array]);
+    vertex.position                = mul(
+        float4(position_world, 1.0f),
+        light_parameters[
+            index_light
+        ].transform[index_array]
+    );
 
     return vertex;
 }
