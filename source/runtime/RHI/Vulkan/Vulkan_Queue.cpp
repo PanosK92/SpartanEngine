@@ -57,7 +57,7 @@ namespace spartan
 
             if (type == RHI_Queue_Type::Compute)
             {
-                return 8;
+                return 12;
             }
 
             return 4;
