@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/SplineFollower.h"
 #include "Commands/Command.h"
 #include "Commands/CommandStack.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_Style.h"
 #include "FileSystem/FileSystem.h"
@@ -164,7 +165,10 @@ namespace
     void inspector_label(const char* label, float full_width)
     {
         ImGui::AlignTextToFramePadding();
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.70f, 0.70f, 1.0f));
+        ImGui::PushStyleColor(
+            ImGuiCol_Text,
+            ImGui::Style::color_text_muted
+        );
         ImGui::TextUnformatted(label);
         ImGui::PopStyleColor();
         const float column = full_width * inspector_label_ratio;
@@ -184,14 +188,11 @@ namespace
     // panel title with a subtle underline, labels the timeline and properties panels
     void panel_header(const char* title)
     {
-        ImGui::PushFont(Editor::font_bold, 0.0f);
-        ImGui::TextUnformatted(title);
-        ImGui::PopFont();
-        ImGui::Dummy(ImVec2(0.0f, 3.0f));
-        const ImVec2 p     = ImGui::GetCursorScreenPos();
-        const float line_w = ImGui::GetContentRegionAvail().x;
-        ImGui::GetWindowDrawList()->AddLine(p, ImVec2(p.x + line_w, p.y), IM_COL32(255, 255, 255, 20), 1.0f);
-        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+        ImGui::EditorUi::panel_header(
+            title,
+            nullptr,
+            Editor::font_bold
+        );
     }
 
     // combo listing every camera entity, returns true when the choice changed

@@ -44,6 +44,24 @@ namespace spartan
     namespace
     {
         vector<DisplayMode> display_modes;
+        bool luminance_max_valid = false;
+        bool sdr_white_nits_valid = false;
+        float luminance_max = 350.0f;
+        float sdr_white_nits = 203.0f;
+
+        float cache_luminance_max(const float value)
+        {
+            luminance_max = value;
+            luminance_max_valid = true;
+            return value;
+        }
+
+        float cache_sdr_white_nits(const float value)
+        {
+            sdr_white_nits = value;
+            sdr_white_nits_valid = true;
+            return value;
+        }
     }
 
     void Display::RegisterDisplayMode(const uint32_t width, const uint32_t height, float hz, uint32_t display_index)
@@ -76,6 +94,7 @@ namespace spartan
 
     void Display::Initialize()
     {
+        InvalidateProperties();
         display_modes.clear();
 
         uint32_t display_id = GetId();
@@ -151,6 +170,11 @@ namespace spartan
   
     float Display::GetLuminanceMax()
     {
+        if (luminance_max_valid)
+        {
+            return luminance_max;
+        }
+
         float value = 350.0f;
 
         #if defined(_WIN32)
@@ -161,7 +185,7 @@ namespace spartan
         if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
         {
             SP_LOG_ERROR("Failed to create DXGI factory");
-            return value;
+            return cache_luminance_max(value);
         }
         
         // enumerate and get the primary adapter (gpu)
@@ -181,7 +205,7 @@ namespace spartan
         if (!adapter)
         {
             SP_LOG_ERROR("No DXGI adapter found");
-            return value;
+            return cache_luminance_max(value);
         }
         
         // find primary display by detecting which display is being intersected the most by the engine window
@@ -205,7 +229,7 @@ namespace spartan
                 if (FAILED(output_current->GetDesc(&desc)))
                 {
                     SP_LOG_ERROR("Failed to get output description");
-                    return value;
+                    return cache_luminance_max(value);
                 }
         
                 RECT r  = desc.DesktopCoordinates;
@@ -238,11 +262,16 @@ namespace spartan
         }
         #endif
 
-        return value;
+        return cache_luminance_max(value);
     }
 
     float Display::GetSdrWhiteNits()
     {
+        if (sdr_white_nits_valid)
+        {
+            return sdr_white_nits;
+        }
+
         // bt.2408 reference white, used when the os does not expose a user sdr white level
         float value = 203.0f;
 
@@ -251,18 +280,56 @@ namespace spartan
         UINT mode_count = 0;
         if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS || path_count == 0)
         {
-            return value;
+            return cache_sdr_white_nits(value);
         }
 
         vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
         vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
         if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS)
         {
-            return value;
+            return cache_sdr_white_nits(value);
         }
+
+        MONITORINFOEXW monitor_info = {};
+        monitor_info.cbSize = sizeof(monitor_info);
+        const HMONITOR monitor = MonitorFromWindow(
+            static_cast<HWND>(Window::GetHandleRaw()),
+            MONITOR_DEFAULTTONEAREST
+        );
+        const bool monitor_valid =
+            monitor &&
+            GetMonitorInfoW(
+                monitor,
+                reinterpret_cast<MONITORINFO*>(
+                    &monitor_info
+                )
+            );
 
         for (UINT i = 0; i < path_count; i++)
         {
+            DISPLAYCONFIG_SOURCE_DEVICE_NAME source = {};
+            source.header.type =
+                DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+            source.header.size = sizeof(source);
+            source.header.adapterId =
+                paths[i].sourceInfo.adapterId;
+            source.header.id = paths[i].sourceInfo.id;
+            if (
+                monitor_valid &&
+                (
+                    DisplayConfigGetDeviceInfo(
+                        &source.header
+                    ) != ERROR_SUCCESS ||
+                    wcscmp(
+                        source.viewGdiDeviceName,
+                        monitor_info.szDevice
+                    ) != 0
+                )
+            )
+            {
+                continue;
+            }
+
             DISPLAYCONFIG_SDR_WHITE_LEVEL sdr = {};
             sdr.header.type      = DISPLAYCONFIG_DEVICE_INFO_GET_SDR_WHITE_LEVEL;
             sdr.header.size      = sizeof(sdr);
@@ -277,7 +344,13 @@ namespace spartan
         }
         #endif
 
-        return value;
+        return cache_sdr_white_nits(value);
+    }
+
+    void Display::InvalidateProperties()
+    {
+        luminance_max_valid = false;
+        sdr_white_nits_valid = false;
     }
     
     float Display::GetGamma()

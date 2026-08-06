@@ -507,6 +507,7 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_velocity);
         cmd_list->AdoptComputeShaderResource(tex_depth);
         cmd_list->AdoptUnorderedAccess(tex_output);
+        cmd_list->RestoreAfterExternalPass();
     #endif
     }
 
@@ -636,6 +637,7 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_view_z);
         cmd_list->AdoptComputeShaderResource(tex_signal_in);
         cmd_list->AdoptUnorderedAccess(tex_signal_out);
+        cmd_list->RestoreAfterExternalPass();
         return true;
     #else
         return false;

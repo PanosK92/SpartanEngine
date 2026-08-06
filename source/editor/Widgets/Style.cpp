@@ -34,6 +34,12 @@ using namespace math;
 using namespace ImGui::Style;
 //===========================
 
+namespace
+{
+    constexpr uint32_t style_magic   = 0x53505448;
+    constexpr uint32_t style_version = 3;
+}
+
 Style::Style(Editor* editor) : Widget(editor)
 {
     m_title        = "Style";
@@ -44,14 +50,15 @@ Style::Style(Editor* editor) : Widget(editor)
 
     ImGui::Style::SetupImGuiBase();
 
-    if (spartan::FileSystem::Exists("imgui_style_user.bin"))
-    {
+    const bool loaded =
+        spartan::FileSystem::Exists("imgui_style_user.bin") &&
         LoadStyleColors("imgui_style_user.bin");
-    }
-    else
+
+    if (!loaded)
     {
         ImGui::Style::StyleSpartan();
         ImGui::Style::SetupImGuiColors();
+        SaveStyleColors("imgui_style_user.bin");
     }
 
     ImGui::GetStyle().ScaleAllSizes(spartan::Window::GetDpiScale());
@@ -66,7 +73,15 @@ void Style::SaveStyleColors(const char* path)
         return;
     }
 
-    // write imgui colors followed by custom palette
+    file.write(
+        reinterpret_cast<const char*>(&style_magic),
+        sizeof(style_magic)
+    );
+    file.write(
+        reinterpret_cast<const char*>(&style_version),
+        sizeof(style_version)
+    );
+
     ImGuiStyle& style = ImGui::GetStyle();
     file.write(reinterpret_cast<const char*>(style.Colors), ImGuiCol_COUNT * sizeof(ImVec4));
     file.write(reinterpret_cast<const char*>(&bg_color_1), sizeof(ImVec4));
@@ -86,28 +101,40 @@ void Style::SaveStyleColors(const char* path)
     }
 }
 
-void Style::LoadStyleColors(const char* path)
+bool Style::LoadStyleColors(const char* path)
 {
     ifstream file(path, ios::binary);
     if (!file)
     {
         SP_LOG_ERROR("failed to open style file for reading: %s", path);
-        return;
+        return false;
     }
 
-    // validate file size
-    const size_t expected_size = ImGuiCol_COUNT * sizeof(ImVec4) + 10 * sizeof(ImVec4);
+    const size_t expected_size =
+        sizeof(style_magic) +
+        sizeof(style_version) +
+        ImGuiCol_COUNT * sizeof(ImVec4) +
+        10 * sizeof(ImVec4);
     file.seekg(0, ios::end);
     const streamsize file_size = file.tellg();
     file.seekg(0, ios::beg);
 
     if (static_cast<size_t>(file_size) != expected_size)
     {
-        SP_LOG_ERROR("style file size mismatch: %s", path);
-        return;
+        SP_LOG_INFO("upgrading editor theme: %s", path);
+        return false;
     }
 
-    // read imgui colors followed by custom palette
+    uint32_t magic   = 0;
+    uint32_t version = 0;
+    file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
+    file.read(reinterpret_cast<char*>(&version), sizeof(version));
+    if (magic != style_magic || version != style_version)
+    {
+        SP_LOG_INFO("upgrading editor theme: %s", path);
+        return false;
+    }
+
     ImGuiStyle& style = ImGui::GetStyle();
     file.read(reinterpret_cast<char*>(style.Colors), ImGuiCol_COUNT * sizeof(ImVec4));
     file.read(reinterpret_cast<char*>(&bg_color_1), sizeof(ImVec4));
@@ -124,7 +151,11 @@ void Style::LoadStyleColors(const char* path)
     if (!file)
     {
         SP_LOG_ERROR("failed to read style file: %s", path);
+        return false;
     }
+
+    ImGui::Style::UpdateSemanticColors();
+    return true;
 }
 
 void Style::OnTickVisible()
@@ -139,9 +170,18 @@ void Style::OnTickVisible()
             case 0: ImGui::Style::StyleSpartan(); ImGui::Style::SetupImGuiColors(); break;
             case 1: ImGui::Style::StyleDark();    ImGui::Style::SetupImGuiColors(); break;
             case 2: ImGui::Style::StyleLight();   ImGui::Style::SetupImGuiColors(); break;
-            case 3: ImGui::StyleColorsClassic(); break;
-            case 4: ImGui::StyleColorsDark();    break;
-            case 5: ImGui::StyleColorsLight();   break;
+            case 3:
+                ImGui::StyleColorsClassic();
+                ImGui::Style::SyncSemanticColorsFromImGui();
+                break;
+            case 4:
+                ImGui::StyleColorsDark();
+                ImGui::Style::SyncSemanticColorsFromImGui();
+                break;
+            case 5:
+                ImGui::StyleColorsLight();
+                ImGui::Style::SyncSemanticColorsFromImGui();
+                break;
         }
     }
 

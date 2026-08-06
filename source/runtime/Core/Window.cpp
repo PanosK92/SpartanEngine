@@ -347,12 +347,16 @@ namespace spartan
                     break;
                 case SDL_EVENT_WINDOW_ICCPROF_CHANGED:
                     SP_LOG_INFO("The ICC profile of the window's display has changed");
+                    Display::InvalidateProperties();
                     break;
                 case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
                     SP_LOG_INFO("Display has been changed, detecting new display modes");
                     Display::Initialize();
                     break;
                 case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+                    break;
+                case SDL_EVENT_WINDOW_HDR_STATE_CHANGED:
+                    Display::InvalidateProperties();
                     break;
                 case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
                     break;

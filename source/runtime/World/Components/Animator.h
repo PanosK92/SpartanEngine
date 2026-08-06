@@ -182,6 +182,8 @@ namespace spartan
         Mesh* m_mesh = nullptr;
         std::vector<RHI_Vertex_PosTexNorTan> m_bind_vertices;
         std::vector<RHI_Vertex_PosTexNorTan> m_skinned_vertices;
+        std::vector<math::Matrix> m_global_matrices;
+        std::vector<math::Matrix> m_skin_matrices;
         std::vector<Entity*> m_joint_entities;
         std::vector<BindEntityPose> m_bind_entity_poses;
         HandAttach m_hand_l;

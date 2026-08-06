@@ -1332,11 +1332,10 @@ namespace spartan
                 m_gpu_frame_reference_tick = m_timestamp_data[0];
             }
     
-            // queries need to be reset before they are first used and they
-            // also need to be reset after every use, so we just reset them always
+            // timestamp queries are reset before first use
             m_timestamp_index = 0;
             queries::timestamp::reset(m_rhi_resource, m_rhi_query_pool_timestamps);
-            queries::occlusion::reset(m_rhi_resource, m_rhi_query_pool_occlusion);
+            m_occlusion_query_pool_reset = false;
         }
     }
 
@@ -1994,11 +1993,9 @@ namespace spartan
             uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
             auto sbt = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "sbt");
             it = m_shader_binding_tables.emplace(pipeline_handle, move(sbt)).first;
+            it->second->UpdateHandles(this);
         }
         RHI_Buffer* sbt = it->second.get();
-
-        // update handles (copies shader group handles from the pipeline into the buffer)
-        sbt->UpdateHandles(this);
 
         // load extension func once
         static PFN_vkCmdTraceRaysKHR pfn_vk_cmd_trace_rays_khr = nullptr;
@@ -2561,6 +2558,48 @@ namespace spartan
             static_cast<VkBuffer>(destination->GetRhiResource()),
             1, &region
         );
+
+        if (
+            destination->GetType() ==
+            RHI_Buffer_Type::Readback
+        )
+        {
+            VkBufferMemoryBarrier2 barrier = {};
+            barrier.sType =
+                VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier.srcStageMask =
+                VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            barrier.srcAccessMask =
+                VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            barrier.dstStageMask =
+                VK_PIPELINE_STAGE_2_HOST_BIT;
+            barrier.dstAccessMask =
+                VK_ACCESS_2_HOST_READ_BIT;
+            barrier.srcQueueFamilyIndex =
+                VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex =
+                VK_QUEUE_FAMILY_IGNORED;
+            barrier.buffer =
+                static_cast<VkBuffer>(
+                    destination->GetRhiResource()
+                );
+            barrier.offset = 0;
+            barrier.size   = VK_WHOLE_SIZE;
+
+            VkDependencyInfo dependency_info = {};
+            dependency_info.sType =
+                VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.bufferMemoryBarrierCount = 1;
+            dependency_info.pBufferMemoryBarriers =
+                &barrier;
+            vkCmdPipelineBarrier2(
+                static_cast<VkCommandBuffer>(
+                    GetRhiResource()
+                ),
+                &dependency_info
+            );
+            Profiler::m_rhi_pipeline_barriers++;
+        }
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -3031,6 +3070,16 @@ namespace spartan
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
     {
         SP_ASSERT_MSG(m_pso.IsGraphics(), "Occlusion queries are only supported in graphics pipelines");
+
+        if (!m_occlusion_query_pool_reset)
+        {
+            RenderPassEnd();
+            queries::occlusion::reset(
+                m_rhi_resource,
+                m_rhi_query_pool_occlusion
+            );
+            m_occlusion_query_pool_reset = true;
+        }
 
         queries::occlusion::index_active = queries::occlusion::allocate_index(entity_id);
         if (queries::occlusion::index_active == 0)

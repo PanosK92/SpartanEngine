@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../ImGui/Source/imgui_stdlib.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Style.h"
 #include "../Widgets/Viewport.h"
 #include <Rendering/Material.h>
@@ -793,39 +794,22 @@ void FileDialog::RenderGridView()
 
         // invisible button for interaction
         ImGui::InvisibleButton("##card", ImVec2(item_width - 4, item_height - 4));
+        const ImGuiID card_id = ImGui::GetItemID();
         bool is_hovered  = ImGui::IsItemHovered();
         bool is_selected = (m_selected_item_id == item.GetId());
 
         // handle drag
         ItemDrag(&item);
 
-        // draw card using draw list (no cursor manipulation)
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-        // shadow (subtle)
-        if (is_hovered || is_selected)
-        {
-            draw_list->AddRectFilled(
-                ImVec2(card_min.x + 2, card_min.y + 2),
-                ImVec2(card_max.x + 2, card_max.y + 2),
-                col_shadow,
-                card_rounding
-            );
-        }
-
-        // card background
-        ImU32 bg_color = is_selected ? col_card_bg_selected : (is_hovered ? col_card_bg_hover : col_card_bg);
-        draw_list->AddRectFilled(card_min, card_max, bg_color, card_rounding);
-
-        // card border (on hover or selection)
-        if (is_selected)
-        {
-            draw_list->AddRect(card_min, card_max, col_card_border_hover, card_rounding, 2.0f);
-        }
-        else if (is_hovered)
-        {
-            draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 1.0f);
-        }
+        ImGui::EditorUi::draw_card(
+            card_min,
+            card_max,
+            is_hovered,
+            is_selected,
+            card_rounding,
+            card_id
+        );
 
         // icon - draw directly to draw list
         float icon_area    = icon_size - grid_item_padding;
@@ -972,6 +956,7 @@ void FileDialog::RenderGridView()
 void FileDialog::RenderListView()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8, 4));
+    ImGui::EditorUi::push_table_style();
 
     if (ImGui::BeginTable("##files", 3, ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
     {
@@ -1096,12 +1081,17 @@ void FileDialog::RenderListView()
 
             // type column
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+            ImGui::TextColored(
+                ImGui::Style::color_text_muted,
                 item.IsDirectory() ? "Folder" : FileSystem::GetExtensionFromFilePath(item.GetPath()).c_str());
 
             // modified column
             ImGui::TableSetColumnIndex(2);
-            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+            ImGui::TextColored(
+                ImGui::EditorUi::alpha(
+                    ImGui::Style::color_text_muted,
+                    0.82f
+                ),
                 FileSystem::GetLastWriteTime(item.GetPath()).c_str());
 
             ImGui::PopID();
@@ -1117,6 +1107,7 @@ void FileDialog::RenderListView()
         ImGui::EndTable();
     }
 
+    ImGui::EditorUi::pop_table_style();
     ImGui::PopStyleVar();
 }
 

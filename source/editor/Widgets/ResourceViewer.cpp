@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ResourceViewer.h"
 #include "Resource/ResourceCache.h"
+#include "../ImGui/ImGui_EditorUi.h"
 //=================================
 
 //= NAMESPACES ===============
@@ -90,7 +91,19 @@ void ResourceViewer::OnTickVisible()
     auto resources = ResourceCache::GetResourcesSnapshot();
     const float memory_usage = ResourceCache::GetMemoryUsage() / 1000.0f / 1000.0f;
 
-    ImGui::Text("Resource count in scene: %d, Memory usage: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage));
+    ImGui::TextDisabled("Resources");
+    ImGui::SameLine();
+    ImGui::Text(
+        "%d",
+        static_cast<uint32_t>(resources.size())
+    );
+    ImGui::SameLine(
+        0.0f,
+        ImGui::EditorUi::scaled(16.0f)
+    );
+    ImGui::TextDisabled("Memory");
+    ImGui::SameLine();
+    ImGui::Text("%.0f MB", memory_usage);
     ImGui::Separator();
     static char search_buffer[128] = "";
     ImGui::InputTextWithHint("##resource_viewer_search", "Search by type, ID, name or path in case insensitive format", search_buffer, IM_ARRAYSIZE(search_buffer));
@@ -113,7 +126,14 @@ void ResourceViewer::OnTickVisible()
         ImGuiTableFlags_ScrollY;            // Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
 
     static ImVec2 size = ImVec2(-1.0f);
-    if (ImGui::BeginTable("##Widget_ResourceCache", 5, flags, size))
+    bool has_results = false;
+    ImGui::EditorUi::push_table_style();
+    if (ImGui::BeginTable(
+        "##Widget_ResourceCache",
+        5,
+        flags,
+        size
+    ))
     {
         // Headers
         ImGui::TableSetupColumn("Type");
@@ -183,6 +203,8 @@ void ResourceViewer::OnTickVisible()
                     resource_search_count++;
                 }
 
+                has_results = true;
+
                 // Switch row
                 ImGui::TableNextRow();
 
@@ -208,6 +230,27 @@ void ResourceViewer::OnTickVisible()
             }
         }
 
+        if (!has_results)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            const char* message = search_buffer[0] == '\0'
+                ? "No resources are loaded"
+                : "No resources match this search";
+            ImGui::PushStyleColor(
+                ImGuiCol_Text,
+                ImGui::Style::color_text_muted
+            );
+            ImGui::Selectable(
+                message,
+                false,
+                ImGuiSelectableFlags_SpanAllColumns |
+                ImGuiSelectableFlags_Disabled
+            );
+            ImGui::PopStyleColor();
+        }
+
         ImGui::EndTable();
     }
+    ImGui::EditorUi::pop_table_style();
 }

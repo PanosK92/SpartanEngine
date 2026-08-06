@@ -63,6 +63,8 @@ namespace spartan
         m_mesh = nullptr;
         m_bind_vertices.clear();
         m_skinned_vertices.clear();
+        m_global_matrices.clear();
+        m_skin_matrices.clear();
         m_joint_entities.clear();
         m_bind_entity_poses.clear();
         m_hand_l = {};
@@ -977,7 +979,7 @@ namespace spartan
         }
 
         m_bind_vertices = mesh->GetVertices();
-        m_skinned_vertices.resize(m_bind_vertices.size());
+        m_skinned_vertices = m_bind_vertices;
         m_bind_captured = !m_bind_vertices.empty();
 
         if (mesh->GetSkeleton())
@@ -1195,17 +1197,21 @@ namespace spartan
             return;
         }
 
-        vector<Matrix> global_matrices(local_matrices.size());
-        skeleton.ComputeGlobalPose(local_matrices, global_matrices);
+        m_global_matrices.resize(local_matrices.size());
+        skeleton.ComputeGlobalPose(
+            local_matrices,
+            m_global_matrices
+        );
 
         EnsureDynamicBlas(mesh);
 
         if (animation_evaluate::SkinMesh(
             *binding,
-            global_matrices,
-            skeleton.bind_global_matrices,
+            m_global_matrices,
+            skeleton.bind_inverse_global_matrices,
             m_bind_vertices,
-            m_skinned_vertices))
+            m_skinned_vertices,
+            m_skin_matrices))
         {
             mesh->GetVertices() = m_skinned_vertices;
             GeometryBuffer::UpdateVertices(

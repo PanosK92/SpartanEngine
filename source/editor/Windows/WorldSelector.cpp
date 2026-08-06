@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldSelector.h"
 #include "../WorldPreviews.h"
 #include "../GeneralWindows.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_Style.h"
 #include "../Widgets/Viewport.h"
@@ -710,6 +711,7 @@ namespace
         ImVec2 card_min = ImGui::GetCursorScreenPos();
         ImVec2 card_max = ImVec2(card_min.x + card_w, card_min.y + card_h);
         ImGui::InvisibleButton("##world_card", ImVec2(card_w, card_h));
+        const ImGuiID card_id = ImGui::GetItemID();
 
         bool is_hovered  = ImGui::IsItemHovered();
         bool is_selected = selected_index == world_index;
@@ -739,16 +741,14 @@ namespace
         }
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        float rounding        = scaled(card_rounding);
-
-        if (is_hovered || is_selected)
-        {
-            draw_list->AddRectFilled(ImVec2(card_min.x + scaled(2.0f), card_min.y + scaled(3.0f)), ImVec2(card_max.x + scaled(2.0f), card_max.y + scaled(3.0f)), colors.shadow, rounding);
-        }
-
-        ImU32 bg = is_selected ? colors.card_bg_selected : (is_hovered ? colors.card_bg_hover : colors.card_bg);
-        draw_list->AddRectFilled(card_min, card_max, bg, rounding);
-        draw_list->AddRect(card_min, card_max, is_selected ? colors.card_border_accent : colors.card_border, rounding, is_selected ? scaled(2.0f) : scaled(1.0f));
+        ImGui::EditorUi::draw_card(
+            card_min,
+            card_max,
+            is_hovered,
+            is_selected,
+            card_rounding,
+            card_id
+        );
 
         float pad       = scaled(card_padding);
         ImVec2 image_min = ImVec2(card_min.x + pad, card_min.y + pad);

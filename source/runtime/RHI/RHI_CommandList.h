@@ -222,6 +222,7 @@ namespace spartan
         // rhi
         void* GetRhiResourcePipeline();
         void* GetRhiResource() const { return m_rhi_resource; }
+        void* GetRhiState() const    { return m_rhi_state; }
 
     private:
         friend class RHI_Texture;
@@ -270,6 +271,7 @@ namespace spartan
         uint64_t m_buffer_id_instance                        = 0;
         uint64_t m_buffer_id_index                           = 0;
         uint32_t m_timestamp_index                           = 0;
+        bool m_occlusion_query_pool_reset                    = false;
 
         // per-command-list timestamp storage (avoids cross-queue data corruption)
         static constexpr uint32_t m_max_timestamps           = 256;
@@ -308,6 +310,11 @@ namespace spartan
         std::array<uint32_t, 10> m_dynamic_offsets = {};
         uint32_t m_dynamic_offset_count = 0;
         bool m_pipeline_state_dirty = false;
+        bool m_resources_dirty = true;
+        bool m_resources_have_write_bindings = false;
+        mutable uint64_t m_texture_bindings_hash = 0;
+        mutable uint64_t m_texture_bindings_srv = 0;
+        mutable uint64_t m_texture_bindings_uav = 0;
         bool m_batch_barrier_flush = false;
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
@@ -333,6 +340,7 @@ namespace spartan
 
         // rhi resources
         void* m_rhi_resource                       = nullptr;
+        void* m_rhi_state                          = nullptr;
         void* m_rhi_cmd_pool_resource              = nullptr;
         void* m_rhi_query_pool_timestamps          = nullptr;
         void* m_rhi_query_pool_pipeline_statistics = nullptr;

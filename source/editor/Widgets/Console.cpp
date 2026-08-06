@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <ranges>
 #include <utility>
 #include "Window.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "Commands/Console/ConsoleCommands.h"
@@ -78,10 +79,24 @@ void Console::OnTickVisible()
         const float icon_size = 14.0f * dpi;
         const ImVec2 button_size = ImVec2(style.FramePadding.x * 2.0f + icon_size + style.ItemInnerSpacing.x + ImGui::CalcTextSize(count_text.c_str()).x, ImGui::GetFrameHeight());
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f * dpi);
-        ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImVec4(color.x, color.y, color.z, 0.24f) : ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.x, color.y, color.z, 0.34f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.x, color.y, color.z, 0.44f));
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_FrameRounding,
+            ImGui::EditorUi::scaled(6.0f)
+        );
+        ImGui::PushStyleColor(
+            ImGuiCol_Button,
+            visibility
+                ? ImGui::EditorUi::alpha(color, 0.24f)
+                : ImVec4(0, 0, 0, 0)
+        );
+        ImGui::PushStyleColor(
+            ImGuiCol_ButtonHovered,
+            ImGui::EditorUi::alpha(color, 0.34f)
+        );
+        ImGui::PushStyleColor(
+            ImGuiCol_ButtonActive,
+            ImGui::EditorUi::alpha(color, 0.44f)
+        );
 
         if (ImGui::Button("##log_type_toggle", button_size))
         {
@@ -177,7 +192,10 @@ void Console::OnTickVisible()
         const ImVec4 bg_color_even = ImGui::GetStyle().Colors[ImGuiCol_TableRowBg];
         const ImVec4 bg_color_odd  = ImGui::GetStyle().Colors[ImGuiCol_TableRowBgAlt];
         const ImVec4 accent = ImGui::Style::color_accent_1;
-        const ImVec4 selection_color = ImVec4(accent.x, accent.y, accent.z, 0.35f);
+        const ImVec4 selection_color = ImGui::EditorUi::alpha(
+            accent,
+            0.35f
+        );
         const ImVec4 cursor_color = ImGui::GetStyle().Colors[ImGuiCol_Text];
 
         // validate selection bounds - clear if invalid (e.g., logs were removed or filtered)

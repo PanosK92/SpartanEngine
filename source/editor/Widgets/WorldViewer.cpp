@@ -833,15 +833,17 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     ImGui::PopID();
 
     // draw icon (still on foreground channel)
-    ImVec2 icon_pos        = row_pos;
     const Icon entry       = component_to_image(entity);
-    float next_x           = icon_pos.x;
+    float next_x           = row_pos.x;
     if (entry.texture)
     {
         const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
         const float icon_size = ImGui::GetTextLineHeightWithSpacing() - padding;
-        const float y_offset  = (ImGui::GetTextLineHeightWithSpacing() - icon_size) * 0.25f;
-        ImVec2 icon_min       = ImVec2(icon_pos.x, icon_pos.y + y_offset);
+        const float y_offset  = (row_height - icon_size) * 0.5f;
+        ImVec2 icon_min       = ImVec2(
+            row_pos.x,
+            content_min.y + y_offset
+        );
         ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
         dl->AddImage(reinterpret_cast<ImTextureID>(entry.texture), icon_min, icon_max,
             ImVec2(entry.uv_min.x, entry.uv_min.y), ImVec2(entry.uv_max.x, entry.uv_max.y));
@@ -850,7 +852,11 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 
     // draw text (still on foreground channel) skipped while inline renaming this entity
     const bool is_renaming_this = rename_entity_id == entity->GetObjectId();
-    const ImVec2 text_pos       = ImVec2(next_x, row_pos.y - (ImGui::GetTextLineHeightWithSpacing() - ImGui::GetTextLineHeight()) * 0.25f);
+    const ImVec2 text_pos = ImVec2(
+        next_x,
+        content_min.y +
+        (row_height - ImGui::GetTextLineHeight()) * 0.5f
+    );
     if (!is_renaming_this)
     {
         dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, ImGui::GetColorU32(ImGuiCol_Text), entity->GetObjectName().c_str());
@@ -862,7 +868,11 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     // inline rename input drawn on top of where the label would go
     if (is_renaming_this)
     {
-        ImGui::SetCursorScreenPos(ImVec2(next_x, row_pos.y));
+        ImGui::SetCursorScreenPos(ImVec2(
+            next_x,
+            content_min.y +
+            (row_height - ImGui::GetFrameHeight()) * 0.5f
+        ));
         const float available_width = ImGui::GetContentRegionAvail().x;
         rename_entity_inline(entity, available_width);
     }

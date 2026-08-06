@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../MCP/McpAssistant.h"
 #include "../WorldPreviews.h"
 #include "../GeneralWindows.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Style.h"
 //===============================
 
@@ -402,7 +403,7 @@ namespace
 
     namespace buttons_toolbar
     {
-        float button_size = 19.0f;
+        float button_size = 18.0f;
         vector<pair<spartan::IconType, Widget*>> widgets;
 
         float dpi()
@@ -432,7 +433,7 @@ namespace
 
         float group_rounding()
         {
-            return 5.0f * dpi();
+            return 6.0f * dpi();
         }
 
         float tool_icon_size()
@@ -442,7 +443,7 @@ namespace
 
         ImVec2 tool_padding()
         {
-            return ImVec2(8.0f * dpi(), 4.0f * dpi());
+            return ImVec2(6.0f * dpi(), 6.0f * dpi());
         }
 
         float tool_button_width()
@@ -457,12 +458,12 @@ namespace
 
         ImVec2 transport_padding()
         {
-            return ImVec2(13.0f * dpi(), 4.0f * dpi());
+            return ImVec2(11.0f * dpi(), 5.0f * dpi());
         }
 
         float transport_icon_size()
         {
-            return 22.0f * dpi();
+            return 20.0f * dpi();
         }
 
         float transport_button_width()
@@ -529,11 +530,23 @@ namespace
             ImVec2 window_pos      = ImGui::GetWindowPos();
             ImVec2 min_pos         = ImVec2(window_pos.x + start_x, window_pos.y + inset_y);
             ImVec2 max_pos         = ImVec2(window_pos.x + start_x + width, window_pos.y + menubar_height - inset_y);
-            ImVec4 fill           = ImGui::Style::lerp(ImGui::Style::bg_color_1, ImGui::Style::bg_color_2, 0.35f);
+            ImVec4 fill           = ImGui::Style::color_panel;
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-            draw_list->AddRectFilled(min_pos, max_pos, ImGui::GetColorU32(with_alpha(fill, 0.70f)), rounding);
-            draw_list->AddRect(min_pos, max_pos, IM_COL32(255, 255, 255, 18), rounding);
+            draw_list->AddRectFilled(
+                min_pos,
+                max_pos,
+                ImGui::GetColorU32(with_alpha(fill, 0.92f)),
+                rounding
+            );
+            draw_list->AddRect(
+                min_pos,
+                max_pos,
+                ImGui::EditorUi::color(
+                    ImGui::Style::color_border
+                ),
+                rounding
+            );
         }
 
         void push_button_colors(bool is_active)
@@ -548,8 +561,14 @@ namespace
             else
             {
                 ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.09f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(1, 1, 1, 0.16f));
+                ImGui::PushStyleColor(
+                    ImGuiCol_ButtonHovered,
+                    ImGui::Style::color_surface_hover
+                );
+                ImGui::PushStyleColor(
+                    ImGuiCol_ButtonActive,
+                    ImGui::Style::color_surface_active
+                );
             }
         }
 
@@ -580,7 +599,9 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(is_active);
 
-            const ImVec4 tint = is_active ? ImGui::Style::color_accent_1 : ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+            const ImVec4 tint = is_active
+                ? ImGui::Style::color_accent_1
+                : ImGui::Style::color_text_muted;
             if (ImGuiSp::image_button(icon_type, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 on_press(widget);
@@ -634,7 +655,9 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(snap_enabled);
 
-            const ImVec4 tint = snap_enabled ? ImGui::Style::color_accent_1 : ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+            const ImVec4 tint = snap_enabled
+                ? ImGui::Style::color_accent_1
+                : ImGui::Style::color_text_muted;
             if (ImGuiSp::image_button(spartan::IconType::Snap, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 spartan::ConsoleRegistry::Get().SetValueFromString("r.transform_snap", snap_enabled ? "0" : "1");
@@ -666,7 +689,9 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(is_running || is_visible);
 
-            const ImVec4 tint = (is_running || is_visible) ? ImGui::Style::color_accent_1 : ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+            const ImVec4 tint = is_running || is_visible
+                ? ImGui::Style::color_accent_1
+                : ImGui::Style::color_text_muted;
             if (ImGuiSp::image_button(spartan::IconType::Mcp, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 if (assistant)
@@ -692,45 +717,42 @@ namespace
 
         bool draw_pause_button(float menubar_height, bool is_playing, bool is_active)
         {
-            ImGui::SetCursorPosY(centered_y(menubar_height, transport_button_height()));
-            ImVec2 btn_size = ImVec2(transport_button_width(), transport_button_height());
+            ImGui::SetCursorPosY(
+                centered_y(
+                    menubar_height,
+                    transport_button_height()
+                )
+            );
+            ImGui::PushStyleVar(
+                ImGuiStyleVar_FramePadding,
+                transport_padding()
+            );
+            ImGui::PushStyleVar(
+                ImGuiStyleVar_FrameRounding,
+                group_rounding()
+            );
+            push_button_colors(is_active);
 
-            ImGui::PushID("##pause_btn");
-            bool pressed = ImGui::InvisibleButton("##pause", btn_size);
-            bool hovered = ImGui::IsItemHovered();
-            bool held    = ImGui::IsItemActive();
-            ImGui::PopID();
-
-            ImVec2 min_pos      = ImGui::GetItemRectMin();
-            ImVec2 max_pos      = ImGui::GetItemRectMax();
-            const ImVec4 accent = ImGui::Style::color_accent_1;
-            ImVec4 bg           = ImVec4(0, 0, 0, 0);
-
-            if (is_active)
+            ImVec4 tint = is_active
+                ? ImGui::Style::color_accent_1
+                : ImGui::Style::color_text_muted;
+            if (!is_playing)
             {
-                bg = with_alpha(accent, held ? 0.54f : hovered ? 0.38f : 0.24f);
-            }
-            else if (hovered)
-            {
-                bg = ImVec4(1, 1, 1, held ? 0.16f : 0.09f);
-            }
-
-            if (bg.w > 0.0f)
-            {
-                ImGui::GetWindowDrawList()->AddRectFilled(min_pos, max_pos, ImGui::GetColorU32(bg), group_rounding());
+                tint.w = 0.45f;
             }
 
-            float icon_size = transport_icon_size();
-            float cx        = (min_pos.x + max_pos.x) * 0.5f;
-            float cy        = (min_pos.y + max_pos.y) * 0.5f;
-            float bar_h     = icon_size * 0.56f;
-            float bar_w     = max(2.0f * dpi(), icon_size * 0.13f);
-            float gap       = icon_size * 0.18f;
-            ImU32 col       = is_active ? ImGui::GetColorU32(accent) : ImGui::GetColorU32(ImVec4(0.86f, 0.86f, 0.86f, is_playing ? 1.0f : 0.45f));
+            const bool pressed = ImGuiSp::image_button(
+                spartan::IconType::Pause,
+                spartan::math::Vector2(
+                    transport_icon_size(),
+                    transport_icon_size()
+                ),
+                false,
+                tint
+            );
 
-            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cx - gap - bar_w, cy - bar_h * 0.5f), ImVec2(cx - gap, cy + bar_h * 0.5f), col);
-            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cx + gap, cy - bar_h * 0.5f), ImVec2(cx + gap + bar_w, cy + bar_h * 0.5f), col);
-
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
             ImGuiSp::tooltip(is_active ? "Resume (F6)" : "Pause (F6)");
             return pressed;
         }
@@ -946,14 +968,40 @@ namespace
             const float margin = 2.0f * dpi;  // small margin from edge
             float start_x = window_width - (3.0f * button_width) - margin;
             float separator_x = start_x - separator_gap * 0.5f * dpi;
-            ImGui::GetWindowDrawList()->AddLine(ImVec2(separator_x, ImGui::GetWindowPos().y + menubar_height * 0.24f), ImVec2(separator_x, ImGui::GetWindowPos().y + menubar_height * 0.76f), IM_COL32(255, 255, 255, 24), max(1.0f, dpi));
+            const float separator_height = min(
+                12.0f * dpi,
+                menubar_height - 8.0f * dpi
+            );
+            const float separator_center_y =
+                ImGui::GetWindowPos().y +
+                menubar_height * 0.5f;
+            ImGui::GetWindowDrawList()->AddLine(
+                ImVec2(
+                    separator_x,
+                    separator_center_y - separator_height * 0.5f
+                ),
+                ImVec2(
+                    separator_x,
+                    separator_center_y + separator_height * 0.5f
+                ),
+                ImGui::EditorUi::color(
+                    ImGui::Style::color_border_strong
+                ),
+                max(1.0f, dpi)
+            );
             ImGui::SetCursorPosX(start_x);
             ImGui::SetCursorPosY(offset_y);
 
             // minimize button
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
+            ImGui::PushStyleColor(
+                ImGuiCol_ButtonHovered,
+                ImGui::Style::color_surface_hover
+            );
+            ImGui::PushStyleColor(
+                ImGuiCol_ButtonActive,
+                ImGui::Style::color_surface_active
+            );
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(button_padding_x * dpi, button_padding_y * dpi));
 
             if (ImGuiSp::image_button(spartan::IconType::Minimize, icon_size, false))
@@ -1069,6 +1117,32 @@ void MenuBar::Tick()
             float menu_item_height = text_height + frame_padding_y * 2.0f;
             float menu_y           = (menubar_height - menu_item_height) * 0.5f;
             float icon_y           = (menubar_height - icon_size) * 0.5f;
+            auto draw_separator = [&]()
+            {
+                ImGui::SetCursorPosY(menu_y);
+                ImGui::Dummy(ImVec2(
+                    1.0f * dpi,
+                    menu_item_height
+                ));
+                const ImVec2 min_pos = ImGui::GetItemRectMin();
+                const ImVec2 max_pos = ImGui::GetItemRectMax();
+                const float x = (min_pos.x + max_pos.x) * 0.5f;
+                const float height = min(
+                    12.0f * dpi,
+                    menubar_height - 8.0f * dpi
+                );
+                const float center_y =
+                    ImGui::GetWindowPos().y +
+                    menubar_height * 0.5f;
+                ImGui::GetWindowDrawList()->AddLine(
+                    ImVec2(x, center_y - height * 0.5f),
+                    ImVec2(x, center_y + height * 0.5f),
+                    ImGui::EditorUi::color(
+                        ImGui::Style::color_border_strong
+                    ),
+                    max(1.0f, dpi)
+                );
+            };
 
             // logo
             ImGui::SetCursorPosX(padding_x);
@@ -1091,9 +1165,7 @@ void MenuBar::Tick()
             ImGui::MenuItem(title, nullptr, false, false);
             ImGui::SameLine(0, padding_x * 2.0f);
 
-            // separator between version and menus
-            ImGui::SetCursorPosY(menu_y);
-            ImGui::TextDisabled("|");
+            draw_separator();
             ImGui::SameLine(0, padding_x * 2.0f);
 
             // menus
@@ -1126,8 +1198,7 @@ void MenuBar::Tick()
                         float chip_y         = (menubar_height - chip_height) * 0.5f;
 
                         ImGui::SameLine(0, padding_x * 2.0f);
-                        ImGui::SetCursorPosY(menu_y);
-                        ImGui::TextDisabled("|");
+                        draw_separator();
                         ImGui::SameLine(0, padding_x);
                         ImGui::SetCursorPosY(chip_y);
                         ImGui::Dummy(ImVec2(chip_width, chip_height));
@@ -1135,12 +1206,31 @@ void MenuBar::Tick()
                         ImVec2 min_pos      = ImGui::GetItemRectMin();
                         ImVec2 max_pos      = ImGui::GetItemRectMax();
                         ImDrawList* draw    = ImGui::GetWindowDrawList();
-                        ImVec4 chip_color   = ImGui::Style::lerp(ImGui::Style::bg_color_1, ImGui::Style::color_accent_1, 0.18f);
+                        ImVec4 chip_color   = ImGui::Style::lerp(
+                            ImGui::Style::color_panel,
+                            ImGui::Style::color_accent_2,
+                            0.28f
+                        );
                         ImU32 text_color    = ImGui::GetColorU32(ImGui::Style::color_accent_1);
                         float text_y        = min_pos.y + (chip_height - text_height) * 0.5f;
 
-                        draw->AddRectFilled(min_pos, max_pos, ImGui::GetColorU32(ImVec4(chip_color.x, chip_color.y, chip_color.z, 0.78f)), 5.0f * dpi);
-                        draw->AddRect(min_pos, max_pos, ImGui::GetColorU32(ImVec4(ImGui::Style::color_accent_1.x, ImGui::Style::color_accent_1.y, ImGui::Style::color_accent_1.z, 0.24f)), 5.0f * dpi);
+                        draw->AddRectFilled(
+                            min_pos,
+                            max_pos,
+                            ImGui::GetColorU32(chip_color),
+                            6.0f * dpi
+                        );
+                        draw->AddRect(
+                            min_pos,
+                            max_pos,
+                            ImGui::EditorUi::color(
+                                ImGui::EditorUi::alpha(
+                                    ImGui::Style::color_accent_1,
+                                    0.34f
+                                )
+                            ),
+                            6.0f * dpi
+                        );
                         draw->PushClipRect(ImVec2(min_pos.x + chip_padding_x, min_pos.y), ImVec2(max_pos.x - chip_padding_x, max_pos.y), true);
                         draw->AddText(ImVec2(min_pos.x + chip_padding_x, text_y), text_color, world_name.c_str());
                         draw->PopClipRect();

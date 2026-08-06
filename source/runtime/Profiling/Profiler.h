@@ -113,7 +113,11 @@ namespace spartan
         }
 
         static void DrawPerformanceMetrics();
-        static TimeBlock* GetLastIncompleteTimeBlock(const TimeBlockType type, RHI_CommandList* cmd_list = nullptr);
+        static TimeBlock* GetLastIncompleteTimeBlock(
+            TimeBlockType type,
+            RHI_CommandList* cmd_list = nullptr,
+            bool allow_cpu_root = false
+        );
     };
 
     class ScopedTimeBlock

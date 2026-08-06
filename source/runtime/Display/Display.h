@@ -44,6 +44,7 @@ namespace spartan
         static bool GetHdr();
         static float GetLuminanceMax();
         static float GetSdrWhiteNits();
+        static void InvalidateProperties();
         static float GetGamma();
         static const char* GetName();
     };

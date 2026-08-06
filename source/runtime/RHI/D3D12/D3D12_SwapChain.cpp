@@ -246,6 +246,14 @@ namespace spartan
         m_sdl_window   = sdl_window;
         m_object_name  = name;
         m_present_mode = present_mode;
+        m_rhi_rt.resize(m_buffer_count, nullptr);
+        m_rhi_rtv.resize(m_buffer_count, nullptr);
+        m_image_acquired_semaphore.resize(
+            acquire_semaphore_count
+        );
+        m_rendering_complete_semaphore.resize(
+            m_buffer_count
+        );
 
         Create();
 

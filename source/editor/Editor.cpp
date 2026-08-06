@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Settings.h"
 #include "Core/Timer.h"
 #include "Input/Input.h"
+#include "ImGui/ImGui_EditorUi.h"
 #include "ImGui/ImGui_Extension.h"
+#include "ImGui/ImGui_Style.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl3.h"
 #include "Profiling/Profiler.h"
@@ -49,6 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Sequencer.h"
 #include "MCP/EditorMcpCommands.h"
 #include "MCP/McpAssistant.h"
+#include "World/World.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -57,13 +60,90 @@ using namespace std;
 
 namespace
 {
-    float font_size  = 18.0f;
+    float font_size  = 14.0f;
     float font_scale = 1.0f;
 
     void process_event(spartan::sp_variant data)
     {
         SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
         ImGui_ImplSDL3_ProcessEvent(event_sdl);
+    }
+
+    void draw_status_footer()
+    {
+        const float height = ImGui::EditorUi::scaled(24.0f);
+        const float width = ImGui::GetWindowWidth();
+        const float y = ImGui::GetWindowHeight() - height;
+        const ImVec2 window_pos = ImGui::GetWindowPos();
+        const ImVec2 min(
+            window_pos.x,
+            window_pos.y + y
+        );
+        const ImVec2 max(
+            min.x + width,
+            min.y + height
+        );
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(
+            min,
+            max,
+            ImGui::EditorUi::color(
+                ImGui::Style::color_panel
+            )
+        );
+        draw_list->AddLine(
+            min,
+            ImVec2(max.x, min.y),
+            ImGui::EditorUi::color(
+                ImGui::Style::color_border
+            )
+        );
+
+        ImGui::SetCursorPos(ImVec2(
+            ImGui::EditorUi::scaled(8.0f),
+            y + ImGui::EditorUi::scaled(4.0f)
+        ));
+
+        const bool playing = spartan::Engine::IsFlagSet(
+            spartan::EngineMode::Playing
+        );
+        const bool paused = spartan::Engine::IsFlagSet(
+            spartan::EngineMode::Paused
+        );
+        const ImVec4 status_color = playing
+            ? paused
+                ? ImGui::Style::color_warning
+                : ImGui::Style::color_ok
+            : ImGui::Style::color_text_muted;
+        ImGui::TextColored(
+            status_color,
+            "%s",
+            playing ? paused ? "Paused" : "Playing" : "Ready"
+        );
+        ImGui::SameLine();
+
+        const std::string& world_name = spartan::World::GetName();
+        ImGui::TextDisabled(
+            "%s",
+            world_name.empty() ? "No world loaded" : world_name.c_str()
+        );
+
+        const char* fps_label = "FPS";
+        char fps[32] = {};
+        snprintf(
+            fps,
+            sizeof(fps),
+            "%s %.0f",
+            fps_label,
+            ImGui::GetIO().Framerate
+        );
+        const float fps_width = ImGui::CalcTextSize(fps).x;
+        ImGui::SameLine(
+            width -
+            fps_width -
+            ImGui::EditorUi::scaled(10.0f)
+        );
+        ImGui::TextDisabled("%s", fps);
     }
 }
 
@@ -84,14 +164,26 @@ Editor::Editor(const vector<string>& args)
     io.ConfigWindowsResizeFromEdges  = true;
     io.IniFilename                   = "editor.ini";
 
-    // font_bold configuration
-    ImFontConfig config; // config for bold font (mainly for use in headers)
-    config.GlyphOffset.y = -2.0f;
+    ImFontConfig config;
+    config.GlyphOffset.y = -1.0f;
 
-    const string dir_fonts = spartan::ResourceCache::GetResourceDirectory(spartan::ResourceDirectory::Fonts) + "/";
-    font_normal                       = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), font_size * spartan::Window::GetDpiScale());
-    font_bold                         = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * spartan::Window::GetDpiScale(), &config);
-    ImGui::GetStyle().FontScaleMain   = font_scale;
+    const string dir_fonts =
+        spartan::ResourceCache::GetResourceDirectory(
+            spartan::ResourceDirectory::Fonts
+        ) + "/";
+    const float scaled_font_size =
+        font_size *
+        spartan::Window::GetDpiScale();
+    font_normal = io.Fonts->AddFontFromFileTTF(
+        (dir_fonts + "Inter/Inter-Regular.ttf").c_str(),
+        scaled_font_size
+    );
+    font_bold = io.Fonts->AddFontFromFileTTF(
+        (dir_fonts + "Inter/Inter-SemiBold.ttf").c_str(),
+        scaled_font_size,
+        &config
+    );
+    ImGui::GetStyle().FontScaleMain = font_scale;
 
     // initialize imgui backends, the rhi-aware sdl platform glue lives behind ImGui::RHI so the editor stays api-agnostic
     SP_ASSERT_MSG(ImGui::RHI::InitializePlatformBackend(spartan::Window::GetHandleSDL()), "Failed to initialize ImGui's SDL backend");
@@ -149,6 +241,9 @@ void Editor::Tick()
     while (!spartan::Window::WantsToClose())
     {
         bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible);
+        spartan::Renderer::SetPresentInRenderer(
+            !render_editor
+        );
 
         // logic
         {
@@ -196,10 +291,8 @@ void Editor::Tick()
 
             // record main imgui first, then create/present child viewports before presenting
             // the main swapchain, otherwise undocked content vanishes for a frame
-            if (spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
-            {
-                ImGui::RHI::render(ImGui::GetDrawData());
-            }
+            spartan::Renderer::AcquireSwapchainImage();
+            ImGui::RHI::render(ImGui::GetDrawData());
 
             if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             {
@@ -207,10 +300,7 @@ void Editor::Tick()
                 ImGui::RenderPlatformWindowsDefault();
             }
 
-            if (spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
-            {
-                spartan::Renderer::SubmitAndPresent();
-            }
+            spartan::Renderer::SubmitAndPresent();
         }
 
         spartan::Timer::PostTick();
@@ -240,7 +330,9 @@ void Editor::BeginWindow()
         ImDrawList* draw_list = ImGui::GetForegroundDrawList();
         ImVec2 min = viewport->Pos;
         ImVec2 max = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
-        ImU32 border_color = IM_COL32(40, 40, 42, 255);
+        ImU32 border_color = ImGui::ColorConvertFloat4ToU32(
+            ImGui::Style::color_border
+        );
         draw_list->AddRect(min, max, border_color, 0.0f, 1.0f);
     }
 
@@ -285,8 +377,14 @@ void Editor::BeginWindow()
             ImGui::DockBuilderFinish(dock_main_id);
         }
 
+        const float footer_height = ImGui::EditorUi::scaled(24.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+        ImGui::DockSpace(
+            window_id,
+            ImVec2(0.0f, -footer_height),
+            ImGuiDockNodeFlags_PassthruCentralNode
+        );
         ImGui::PopStyleVar();
+        draw_status_footer();
     }
 }

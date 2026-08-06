@@ -33,7 +33,7 @@ public:
     void OnTickVisible() override;
 private:
     void SaveStyleColors(const char* path);
-    void LoadStyleColors(const char* path);
+    bool LoadStyleColors(const char* path);
     bool m_show_imgui_style_editor = false;
     bool m_unsaved_changes = false;
     int m_style_preset_id = -1;

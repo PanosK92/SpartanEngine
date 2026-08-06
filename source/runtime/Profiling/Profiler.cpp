@@ -385,7 +385,12 @@ namespace spartan
         }
 
         // last incomplete block of the same type, is the parent
-        TimeBlock* time_block_parent = GetLastIncompleteTimeBlock(type, cmd_list);
+        TimeBlock* time_block_parent =
+            GetLastIncompleteTimeBlock(
+                type,
+                cmd_list,
+                true
+            );
 
         // get new time block
         TimeBlock& new_time_block = m_time_blocks_write[++m_time_block_index];
@@ -483,7 +488,11 @@ namespace spartan
         return is_visualized;
     }
 
-    TimeBlock* Profiler::GetLastIncompleteTimeBlock(const TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/)
+    TimeBlock* Profiler::GetLastIncompleteTimeBlock(
+        const TimeBlockType type,
+        RHI_CommandList* cmd_list,
+        const bool allow_cpu_root
+    )
     {
         for (int i = m_time_block_index; i >= 0; i--)
         {
@@ -494,7 +503,15 @@ namespace spartan
             {
                 if (!time_block.IsComplete())
                 {
-                    if (cmd_list == nullptr || time_block.GetCmdList() == cmd_list)
+                    const bool cpu_root =
+                        allow_cpu_root &&
+                        type == TimeBlockType::Cpu &&
+                        time_block.GetCmdList() == nullptr;
+                    if (
+                        cmd_list == nullptr ||
+                        cpu_root ||
+                        time_block.GetCmdList() == cmd_list
+                    )
                     {
                         return &time_block;
                     }

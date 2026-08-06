@@ -44,7 +44,7 @@ namespace spartan
         inline static bool m_logging_to_file_enabled         = false; // writes diagnostic and validation messages to a persistent log file
         inline static bool m_breadcrumbs_enabled             = false; // records gpu execution markers to help identify the cause of gpu crashes
         inline static bool m_renderdoc_enabled               = false; // enables integration with renderdoc for frame capture and gpu debugging
-        inline static bool m_gpu_marking_enabled             = true;  // labels gpu resources and command markers to improve debugging and profiling readability
+        inline static bool m_gpu_marking_enabled             = false; // enable only while capturing with an external gpu debugger
         inline static bool m_gpu_timing_enabled              = true;  // measures gpu execution times for profiling and performance analysis
         inline static bool m_shader_optimization_enabled     = true;  // enables shader compiler optimizations to improve performance and efficiency
         inline static bool m_steam_enabled                   = true;  // initializes steamworks, tick only runs cheap callback pumping when active

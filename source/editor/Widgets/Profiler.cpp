@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Profiler.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "Profiling/Profiler.h"
 #include "../RHI/RHI_Device.h"
@@ -269,6 +270,7 @@ void Profiler::OnTickVisible()
         }
 
         uint32_t visible_count = 0;
+        ImGui::EditorUi::push_table_style();
         if (ImGui::BeginTable("##profile_list", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp))
         {
             ImGui::TableSetupColumn("Block", ImGuiTableColumnFlags_WidthStretch, 0.55f);
@@ -306,6 +308,7 @@ void Profiler::OnTickVisible()
 
             ImGui::EndTable();
         }
+        ImGui::EditorUi::pop_table_style();
 
         if (visible_count == 0)
         {
@@ -474,22 +477,62 @@ void Profiler::OnTickVisible()
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         ImVec2 origin         = timeline_screen_origin;
+        const ImU32 panel_color = ImGui::EditorUi::color(
+            ImGui::Style::color_panel
+        );
+        const ImU32 canvas_color = ImGui::EditorUi::color(
+            ImGui::Style::color_canvas
+        );
+        const ImU32 canvas_alt_color = ImGui::EditorUi::color(
+            ImGui::Style::lerp(
+                ImGui::Style::color_canvas,
+                ImGui::Style::color_panel,
+                0.28f
+            )
+        );
+        const ImU32 border_color = ImGui::EditorUi::color(
+            ImGui::Style::color_border
+        );
+        const ImU32 muted_color = ImGui::EditorUi::color(
+            ImGui::Style::color_text_muted
+        );
+        const ImU32 text_color = ImGui::EditorUi::color(
+            ImGui::Style::color_text
+        );
 
         // draw ruler background
         {
             ImVec2 ruler_min = ImVec2(origin.x + label_width, origin.y);
             ImVec2 ruler_max = ImVec2(ruler_min.x + timeline_width, ruler_min.y + ruler_height);
-            draw_list->AddRectFilled(ruler_min, ruler_max, IM_COL32(35, 35, 40, 255));
+            draw_list->AddRectFilled(
+                ruler_min,
+                ruler_max,
+                panel_color
+            );
 
             // label area background
-            draw_list->AddRectFilled(origin, ImVec2(origin.x + label_width - 1.0f, ruler_max.y), IM_COL32(35, 35, 40, 255));
-            draw_list->AddText(ImVec2(origin.x + 8.0f * dpi, origin.y + 8.0f * dpi), IM_COL32(140, 140, 140, 255), "ms");
+            draw_list->AddRectFilled(
+                origin,
+                ImVec2(
+                    origin.x + label_width - 1.0f,
+                    ruler_max.y
+                ),
+                panel_color
+            );
+            draw_list->AddText(
+                ImVec2(
+                    origin.x + 8.0f * dpi,
+                    origin.y + 8.0f * dpi
+                ),
+                muted_color,
+                "ms"
+            );
 
             // vertical divider between labels and ruler
             draw_list->AddLine(
                 ImVec2(origin.x + label_width - 1.0f, origin.y),
                 ImVec2(origin.x + label_width - 1.0f, ruler_max.y),
-                IM_COL32(65, 65, 70, 255)
+                border_color
             );
 
             // tick marks
@@ -528,14 +571,14 @@ void Profiler::OnTickVisible()
                 draw_list->AddLine(
                     ImVec2(x, ruler_max.y),
                     ImVec2(x, origin.y + total_timeline_height),
-                    IM_COL32(50, 50, 55, 255)
+                    border_color
                 );
 
                 // tick line on ruler
                 draw_list->AddLine(
                     ImVec2(x, ruler_min.y + ruler_height * 0.55f),
                     ImVec2(x, ruler_max.y),
-                    IM_COL32(130, 130, 130, 255)
+                    muted_color
                 );
             }
 
@@ -567,12 +610,26 @@ void Profiler::OnTickVisible()
                     snprintf(tick_label, sizeof(tick_label), "%.2f", tick_ms);
                 }
 
-                draw_list->AddText(ImVec2(x + 3.0f * dpi, ruler_min.y + 4.0f * dpi), IM_COL32(180, 180, 180, 255), tick_label);
+                draw_list->AddText(
+                    ImVec2(
+                        x + 3.0f * dpi,
+                        ruler_min.y + 4.0f * dpi
+                    ),
+                    muted_color,
+                    tick_label
+                );
             }
             draw_list->PopClipRect();
 
             // ruler bottom border
-            draw_list->AddLine(ImVec2(origin.x, ruler_max.y), ImVec2(origin.x + content_width, ruler_max.y), IM_COL32(80, 80, 80, 255));
+            draw_list->AddLine(
+                ImVec2(origin.x, ruler_max.y),
+                ImVec2(
+                    origin.x + content_width,
+                    ruler_max.y
+                ),
+                border_color
+            );
         }
 
         // draw each lane
@@ -590,22 +647,31 @@ void Profiler::OnTickVisible()
             draw_list->AddRectFilled(
                 ImVec2(origin.x, y_cursor),
                 ImVec2(origin.x + label_width - 1.0f, y_cursor + total_lane_height),
-                IM_COL32(38, 38, 42, 255)
+                panel_color
             );
 
             // label text (vertically centered, with padding from the right edge)
             float text_y = y_cursor + (total_lane_height - ImGui::GetTextLineHeight()) * 0.5f;
-            draw_list->AddText(ImVec2(origin.x + 8.0f * dpi, text_y), IM_COL32(210, 210, 210, 255), lane.label);
+            draw_list->AddText(
+                ImVec2(
+                    origin.x + 8.0f * dpi,
+                    text_y
+                ),
+                text_color,
+                lane.label
+            );
 
             // vertical divider between labels and timeline
             draw_list->AddLine(
                 ImVec2(origin.x + label_width - 1.0f, y_cursor),
                 ImVec2(origin.x + label_width - 1.0f, y_cursor + total_lane_height),
-                IM_COL32(65, 65, 70, 255)
+                border_color
             );
 
             // lane background with alternating shade
-            ImU32 lane_bg = (lane_idx % 2 == 0) ? IM_COL32(22, 22, 28, 255) : IM_COL32(28, 28, 34, 255);
+            ImU32 lane_bg = lane_idx % 2 == 0
+                ? canvas_color
+                : canvas_alt_color;
             ImVec2 lane_origin = ImVec2(origin.x + label_width, y_cursor);
             draw_list->AddRectFilled(lane_origin, ImVec2(lane_origin.x + timeline_width, y_cursor + total_lane_height), lane_bg);
 
@@ -613,7 +679,7 @@ void Profiler::OnTickVisible()
             draw_list->AddLine(
                 ImVec2(origin.x, y_cursor + total_lane_height),
                 ImVec2(origin.x + content_width, y_cursor + total_lane_height),
-                IM_COL32(55, 55, 60, 255)
+                border_color
             );
 
             // draw time blocks for this lane
@@ -739,7 +805,15 @@ void Profiler::OnTickVisible()
         }
 
         // outer border around the entire timeline
-        draw_list->AddRect(origin, ImVec2(origin.x + content_width, origin.y + total_timeline_height), IM_COL32(70, 70, 75, 255));
+        draw_list->AddRect(
+            origin,
+            ImVec2(
+                origin.x + content_width,
+                origin.y + total_timeline_height
+            ),
+            border_color,
+            ImGui::EditorUi::scaled(4.0f)
+        );
 
         // info bar below the timeline
         ImGui::Text("%.2f - %.2f ms (%.2f ms visible)", m_timeline_offset_ms, m_timeline_offset_ms + m_timeline_range_ms, m_timeline_range_ms);

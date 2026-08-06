@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AssetBrowser.h"
 #include "Properties.h"
 #include "Geometry/Mesh.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../Widgets/FileDialog.h"
 #include "Viewport.h"
 //================================
@@ -104,10 +105,7 @@ namespace
             }
 
             ImGui::SameLine();
-            const ImVec4 accent = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(accent.x, accent.y, accent.z, 0.40f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(accent.x, accent.y, accent.z, 0.58f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(accent.x, accent.y, accent.z, 0.72f));
+            ImGui::EditorUi::push_primary_button();
             if (ImGui::Button("Import", ImVec2(button_width, 0.0f)))
             {
                 spartan::ThreadPool::AddTask([]()
@@ -116,7 +114,7 @@ namespace
                 });
                 mesh_import_dialog_is_visible = false;
             }
-            ImGui::PopStyleColor(3);
+            ImGui::EditorUi::pop_primary_button();
 
             if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
             {

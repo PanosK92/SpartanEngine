@@ -98,6 +98,17 @@ namespace spartan
             return false;
         }
 
+        for (uint16_t i = 0; i < skeleton.joint_count; i++)
+        {
+            skeleton.bind_local_matrices[i] =
+                math::Matrix(
+                    skeleton.bind_positions[i],
+                    skeleton.bind_rotations[i],
+                    skeleton.bind_scales[i]
+                );
+        }
+        skeleton.FinalizeBindPose();
+
         return true;
     }
 

@@ -65,9 +65,10 @@ namespace spartan
         bool SkinMesh(
             const SkeletalMeshBinding& binding,
             const std::vector<math::Matrix>& global_matrices,
-            const std::vector<math::Matrix>& bind_global_matrices,
+            const std::vector<math::Matrix>& bind_inverse_global_matrices,
             const std::vector<RHI_Vertex_PosTexNorTan>& bind_vertices,
-            std::vector<RHI_Vertex_PosTexNorTan>& out_vertices
+            std::vector<RHI_Vertex_PosTexNorTan>& out_vertices,
+            std::vector<math::Matrix>& skin_matrices
         );
     }
 }

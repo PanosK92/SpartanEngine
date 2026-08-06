@@ -61,11 +61,13 @@ namespace spartan
         }
 
         RHI_Tracked_Texture_Binding& binding = uav ? m_tracked_textures_uav[slot] : m_tracked_textures_srv[slot];
+        m_resources_dirty = true;
         binding = {};
         if (!texture)
         {
             return;
         }
+        m_resources_have_write_bindings |= uav;
 
         binding.texture     = texture;
         binding.mip_index   = mip_index == rhi_all_mips ? 0 : mip_index;
@@ -98,9 +100,28 @@ namespace spartan
     {
         if (slot < m_max_tracked_resource_slots)
         {
+            const RHI_Tracked_Buffer_Binding& previous =
+                m_tracked_buffers[slot];
+            m_resources_dirty |=
+                previous.buffer != buffer ||
+                previous.access !=
+                    (
+                        buffer
+                            ? access
+                            : RHI_Resource_Access::None
+                    ) ||
+                previous.usage !=
+                    (
+                        buffer
+                            ? RHI_Resource_Usage::Shader
+                            : RHI_Resource_Usage::None
+                    );
             m_tracked_buffers[slot].buffer = buffer;
             m_tracked_buffers[slot].access = buffer ? access : RHI_Resource_Access::None;
             m_tracked_buffers[slot].usage  = buffer ? RHI_Resource_Usage::Shader : RHI_Resource_Usage::None;
+            m_resources_have_write_bindings |=
+                buffer &&
+                resource_tracker::writes(access);
         }
     }
 
@@ -108,6 +129,22 @@ namespace spartan
     {
         if (slot < m_tracked_buffers_read.size())
         {
+            const RHI_Tracked_Buffer_Binding& previous =
+                m_tracked_buffers_read[slot];
+            m_resources_dirty |=
+                previous.buffer != buffer ||
+                previous.access !=
+                    (
+                        buffer
+                            ? RHI_Resource_Access::Read
+                            : RHI_Resource_Access::None
+                    ) ||
+                previous.usage !=
+                    (
+                        buffer
+                            ? usage
+                            : RHI_Resource_Usage::None
+                    );
             m_tracked_buffers_read[slot].buffer = buffer;
             m_tracked_buffers_read[slot].access = buffer ? RHI_Resource_Access::Read : RHI_Resource_Access::None;
             m_tracked_buffers_read[slot].usage  = buffer ? usage : RHI_Resource_Usage::None;
@@ -121,6 +158,7 @@ namespace spartan
             return;
         }
 
+        m_resources_dirty = true;
         auto& usages = m_tracked_texture_history[texture->GetObjectId()];
         for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
         {
@@ -180,6 +218,8 @@ namespace spartan
 
     void RHI_CommandList::ResetTrackedBindings()
     {
+        m_resources_dirty = true;
+        m_resources_have_write_bindings = false;
         m_tracked_textures_srv.fill(RHI_Tracked_Texture_Binding{});
         m_tracked_textures_uav.fill(RHI_Tracked_Texture_Binding{});
         m_tracked_attachments.fill(RHI_Tracked_Texture_Binding{});
@@ -231,23 +271,74 @@ namespace spartan
 
     bool RHI_CommandList::IsTextureBindingUsed(uint32_t slot, bool storage) const
     {
-        const uint32_t binding_slot = slot + (storage ? rhi_shader_register_shift_u : rhi_shader_register_shift_t);
-        const RHI_Descriptor_Type binding_type = storage ? RHI_Descriptor_Type::TextureStorage : RHI_Descriptor_Type::Image;
-        for (RHI_Shader* shader : m_pso.shaders)
+        const uint64_t pipeline_hash = m_pso.GetHash();
+        if (m_texture_bindings_hash != pipeline_hash)
         {
-            if (!shader)
+            m_texture_bindings_hash = pipeline_hash;
+            m_texture_bindings_srv  = 0;
+            m_texture_bindings_uav  = 0;
+
+            for (RHI_Shader* shader : m_pso.shaders)
             {
-                continue;
-            }
-            for (const RHI_Descriptor& descriptor : shader->GetDescriptors())
-            {
-                if (descriptor.slot == binding_slot && descriptor.type == binding_type)
+                if (!shader)
                 {
-                    return true;
+                    continue;
+                }
+
+                for (
+                    const RHI_Descriptor& descriptor :
+                    shader->GetDescriptors()
+                )
+                {
+                    uint32_t binding_slot = 0;
+                    uint64_t* binding_mask = nullptr;
+                    if (
+                        descriptor.type ==
+                        RHI_Descriptor_Type::Image
+                    )
+                    {
+                        binding_slot =
+                            descriptor.slot -
+                            rhi_shader_register_shift_t;
+                        binding_mask = &m_texture_bindings_srv;
+                    }
+                    else if (
+                        descriptor.type ==
+                        RHI_Descriptor_Type::TextureStorage
+                    )
+                    {
+                        binding_slot =
+                            descriptor.slot -
+                            rhi_shader_register_shift_u;
+                        binding_mask = &m_texture_bindings_uav;
+                    }
+
+                    if (
+                        binding_mask &&
+                        binding_slot <
+                            m_max_tracked_resource_slots
+                    )
+                    {
+                        *binding_mask |=
+                            uint64_t(1) << binding_slot;
+                    }
                 }
             }
         }
-        return false;
+
+        if (slot >= m_max_tracked_resource_slots)
+        {
+            return false;
+        }
+
+        const uint64_t binding_mask =
+            storage
+                ? m_texture_bindings_uav
+                : m_texture_bindings_srv;
+        return (
+            binding_mask &
+            (uint64_t(1) << slot)
+        ) != 0;
     }
 
     RHI_Resource_Access RHI_CommandList::GetBufferAccess(uint32_t slot) const
@@ -342,6 +433,15 @@ namespace spartan
 
     void RHI_CommandList::SynchronizeResources(const bool include_bindings)
     {
+        if (
+            include_bindings &&
+            !m_resources_dirty &&
+            !m_resources_have_write_bindings
+        )
+        {
+            return;
+        }
+
         m_batch_barrier_flush = true;
         m_current_texture_usage.clear();
         auto collect_texture = [&](const RHI_Tracked_Texture_Binding& binding)
@@ -518,6 +618,7 @@ namespace spartan
                 binding = {};
             }
         }
+        m_resources_dirty = false;
         m_batch_barrier_flush = false;
     }
 

@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_SyncPrimitive.h"
 #include "../XR/Xr.h"
 #include "../Core/ThreadPool.h"
 #include "../Core/Debugging.h"
@@ -1366,8 +1367,27 @@ namespace spartan
 
     void Renderer::RotateFrameBuffers()
     {
-        m_frame_resource_index = (m_frame_resource_index + 1) % renderer_draw_data_buffer_count;
-        const FrameResource& fr = m_frame_resources[m_frame_resource_index];
+        m_frame_resource_index =
+            (
+                m_frame_resource_index +
+                1
+            ) %
+            renderer_draw_data_buffer_count;
+        FrameResource& fr =
+            m_frame_resources[m_frame_resource_index];
+
+        if (
+            fr.completion_timeline &&
+            fr.completion_value != 0
+        )
+        {
+            fr.completion_timeline->Wait(
+                numeric_limits<uint64_t>::max(),
+                fr.completion_value
+            );
+            fr.completion_timeline = nullptr;
+            fr.completion_value    = 0;
+        }
 
         buffers[static_cast<uint8_t>(Renderer_Buffer::IndirectDrawArgs)]     = fr.indirect_draw_args;
         buffers[static_cast<uint8_t>(Renderer_Buffer::CpuIndirectDrawArgs)]  = fr.cpu_indirect_draw_args;

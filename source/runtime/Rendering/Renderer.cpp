@@ -110,6 +110,7 @@ namespace spartan
     math::Vector2             Renderer::m_resolution_output = math::Vector2::Zero;
     RHI_Viewport              Renderer::m_viewport          = RHI_Viewport(0, 0, 0, 0);
     shared_ptr<RHI_SwapChain> Renderer::m_swapchain;
+    bool                      Renderer::m_present_in_renderer = true;
     uint64_t                  Renderer::m_frame_num         = 0;
     math::Vector2             Renderer::m_jitter_offset     = math::Vector2::Zero;
 
@@ -644,8 +645,6 @@ namespace spartan
             Window::ProcessFullScreenToggle();
         }
 
-        m_swapchain->AcquireNextImage();
-        RHI_Device::Tick(m_frame_num);
         RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
         tick_dynamic_resolution_scale();
         if (Debugging::IsBreadcrumbsEnabled())
@@ -659,11 +658,15 @@ namespace spartan
         const bool resolution_valid         = m_resolution_render.x >= min_render_dimension && m_resolution_render.y >= min_render_dimension;
         const bool can_render               = !Window::IsMinimized() && m_initialized_resources && resolution_valid;
 
-        // prevent write after present hazards when idle, skip first frame
-        if (!can_render && m_frame_num > 0)
+        if (can_render)
+        {
+            RotateFrameBuffers();
+        }
+        else if (m_frame_num > 0)
         {
             RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Wait();
         }
+        RHI_Device::Tick(m_frame_num);
 
         m_cmd_list_present = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
         m_cmd_list_present->Begin();
@@ -704,7 +707,6 @@ namespace spartan
             if (GeometryBuffer::WasRebuilt())
             {
                 DestroyAccelerationStructures();
-                RHI_Device::DeletionQueueParse();
             }
 
             const bool secondary_request_pending =
@@ -857,15 +859,8 @@ namespace spartan
                 }
             }
 
-            RotateFrameBuffers();
             TickUploadMaterials(m_cmd_list_present);
             UpdateDrawCalls(m_cmd_list_present);
-
-            // frame based retirement, no gpu stall required
-            if (RHI_Device::DeletionQueueNeedsToParse())
-            {
-                RHI_Device::DeletionQueueParse();
-            }
 
             TickAdvanceFrameConstantBufferRing();
             TickUploadBindlessDependencies(m_cmd_list_present);
@@ -980,13 +975,18 @@ namespace spartan
             Xr::EndFrame();
         }
 
-        const bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
-        if (is_standalone && can_render)
+        if (m_present_in_renderer)
         {
-            BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
-        }
-        if (is_standalone)
-        {
+            AcquireSwapchainImage();
+            if (can_render)
+            {
+                BlitToBackBuffer(
+                    m_cmd_list_present,
+                    GetRenderTarget(
+                        Renderer_RenderTarget::frame_output
+                    )
+                );
+            }
             SubmitAndPresent();
         }
 
@@ -2304,6 +2304,19 @@ namespace spartan
         return m_swapchain.get();
     }
 
+    void Renderer::SetPresentInRenderer(const bool enabled)
+    {
+        m_present_in_renderer = enabled;
+    }
+
+    void Renderer::AcquireSwapchainImage()
+    {
+        if (m_swapchain)
+        {
+            m_swapchain->AcquireNextImage();
+        }
+    }
+
     void Renderer::BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture)
     {
         cmd_list->BeginMarker("blit_to_back_buffer");
@@ -2346,6 +2359,14 @@ namespace spartan
                     m_cross_queue_sync.pending_compute_timeline,
                     m_cross_queue_sync.pending_compute_timeline_value);
             }
+
+            FrameResource& frame_resource =
+                m_frame_resources[m_frame_resource_index];
+            frame_resource.completion_timeline =
+                m_cmd_list_present->GetTimelineSemaphore();
+            frame_resource.completion_value =
+                m_cmd_list_present->
+                    GetLastTimelineSignalValue();
 
             m_cross_queue_sync.pending_compute_timeline       = nullptr;
             m_cross_queue_sync.pending_compute_timeline_value = 0;
@@ -3787,6 +3808,8 @@ namespace spartan
                                            abs(cloud_coverage - m_pass_state.cloud_coverage) > 0.001f;
         const bool wind_changed          = (wind - m_pass_state.cloud_wind).LengthSquared() > 0.0001f;
         const bool cloud_state_changed   = m_pass_state.sky_first_frame || light_changed || wind_changed || time_discontinuous || camera_teleported;
+        m_pass_state.sky_state_changed_this_frame =
+            cloud_state_changed;
         if (cloud_state_changed)
         {
             m_pass_state.sky_frames_remaining   = temporal_convergence_frames;
@@ -3915,7 +3938,10 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, Light* directional_light)
+    void Renderer::Pass_ComputeBatchA(
+        RHI_CommandList* cmd_list,
+        bool update_skysphere
+    )
     {
         cmd_list->BeginMarker("compute_batch_a");
 
@@ -4063,34 +4089,6 @@ namespace spartan
             secondary_render_root_active
                 ? false
                 : UpdateSkysphereConvergenceState();
-        Light* directional_light = nullptr;
-        if (secondary_render_root_active)
-        {
-            for (Entity* entity : light_entities())
-            {
-                if (
-                    !is_secondary_view_entity(entity) ||
-                    !entity
-                )
-                {
-                    continue;
-                }
-                Light* light = entity->GetComponent<Light>();
-                if (
-                    light &&
-                    light->GetLightType() ==
-                        LightType::Directional
-                )
-                {
-                    directional_light = light;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            directional_light = World::GetDirectionalLight();
-        }
         RHI_Queue* queue_graphics      = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
         // submit uploads before compute batch a
@@ -4103,12 +4101,19 @@ namespace spartan
         m_cmd_list_present = cmd_list_graphics_present;
 
         // compute batch a, view independent prep, runs alongside graphics phase 1
-        Pass_ComputeBatchA(cmd_list_compute, update_skysphere, directional_light);
+        Pass_ComputeBatchA(
+            cmd_list_compute,
+            update_skysphere
+        );
 
         // after the upload flush so cluster assign sees this frame's matrices, before graphics phase 1 so the queues overlap
         cmd_list_compute->Submit(nullptr, false, nullptr, uploads_timeline, uploads_value);
         RHI_SyncPrimitive* batch_a_timeline = cmd_list_compute->GetTimelineSemaphore();
         const uint64_t batch_a_value        = cmd_list_compute->GetLastTimelineSignalValue();
+        m_cross_queue_sync.pending_compute_timeline =
+            batch_a_timeline;
+        m_cross_queue_sync.pending_compute_timeline_value =
+            batch_a_value;
 
         // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
         // recorded after the compute submit so the gpu compute queue is already kicked off by the time we record it
@@ -4136,12 +4141,38 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = cmd_list_compute_b->GetTimelineSemaphore();
             const uint64_t compute_b_value        = cmd_list_compute_b->GetLastTimelineSignalValue();
 
-            // graphics phase 2, runs parallel to batch b, waits on batch a so tlas is ready for the reflections trace that follows in per-eye
-            cmd_list_graphics_present = queue_graphics->NextCommandList();
-            cmd_list_graphics_present->Begin();
-            m_cmd_list_present        = cmd_list_graphics_present;
-            Pass_GraphicsPhase2_ShadowsAndRT(cmd_list_graphics_present);
-            cmd_list_graphics_present->Submit(nullptr, false, nullptr, batch_a_timeline, batch_a_value);
+            const bool ray_traced_shadows =
+                cvar_ray_traced_shadows.GetValueAs<bool>();
+            const bool tlas_available =
+                RHI_Device::IsSupportedRayTracing() &&
+                GetTopLevelAccelerationStructure() !=
+                    nullptr &&
+                !IsSecondaryViewActive();
+            const bool shadow_maps_required =
+                World::GetLightCount() > 0 &&
+                !(
+                    ray_traced_shadows &&
+                    tlas_available
+                );
+            if (shadow_maps_required)
+            {
+                // shadow maps overlap compute batch b
+                cmd_list_graphics_present =
+                    queue_graphics->NextCommandList();
+                cmd_list_graphics_present->Begin();
+                m_cmd_list_present =
+                    cmd_list_graphics_present;
+                Pass_GraphicsPhase2_ShadowsAndRT(
+                    cmd_list_graphics_present
+                );
+                cmd_list_graphics_present->Submit(
+                    nullptr,
+                    false,
+                    nullptr,
+                    batch_a_timeline,
+                    batch_a_value
+                );
+            }
 
             // graphics phase 3, opaque lighting + post-process, the present cmd list waits on batch b in SubmitAndPresent
             cmd_list_graphics_present = queue_graphics->NextCommandList();

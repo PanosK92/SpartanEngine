@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/ThreadPool.h"
 #include "Display/Display.h"
 #include "Source/imgui_internal.h"
+#include "ImGui_EditorUi.h"
 #include "../Editor.h"
 #include <Resource/ResourceCache.h>
 //=================================
@@ -194,6 +195,29 @@ namespace ImGuiSp
         }
 
         return result;
+    }
+
+    static bool icon_button(
+        const spartan::IconType icon,
+        const ImVec4& tint = ImVec4(1, 1, 1, 1)
+    )
+    {
+        const float icon_size = ImGui::EditorUi::toolbar_icon_size();
+        const float padding = (
+            ImGui::EditorUi::toolbar_button_size().x - icon_size
+        ) * 0.5f;
+        ImGui::PushStyleVar(
+            ImGuiStyleVar_FramePadding,
+            ImVec2(padding, padding)
+        );
+        const bool pressed = image_button(
+            icon,
+            spartan::math::Vector2(icon_size, icon_size),
+            false,
+            tint
+        );
+        ImGui::PopStyleVar();
+        return pressed;
     }
 
     static void image(spartan::RHI_Texture* texture, const spartan::math::Vector2& size, bool border = false)
@@ -388,12 +412,25 @@ namespace ImGuiSp
             // draw the slot, an empty slot is a dark grey placeholder, a filled slot shows the texture
             ImVec2 rect_min     = screen_pos;
             ImVec2 rect_max     = ImVec2(screen_pos.x + slot_size.x, screen_pos.y + slot_size.y);
-            ImU32 border_col    = is_hovered ? IM_COL32(102, 153, 255, 255) : IM_COL32(255, 255, 255, 128);
+            const ImVec4 border = is_hovered
+                ? ImGui::Style::color_accent_1
+                : ImGui::Style::color_border;
+            ImU32 border_col = ImGui::EditorUi::color(border);
             if (texture != nullptr)
             {
-                ImVec4 color_border = is_hovered ? ImVec4(0.4f, 0.6f, 1.0f, 1.0f) : ImVec4(1, 1, 1, 0.5f);
                 ImGui::SetCursorPos(pos_image);
-                image(texture, slot_size, ImVec4(1, 1, 1, 1), color_border);
+                image(
+                    texture,
+                    slot_size,
+                    ImVec4(1, 1, 1, 1),
+                    ImGui::Style::color_canvas_deep
+                );
+                ImGui::GetWindowDrawList()->AddRect(
+                    rect_min,
+                    rect_max,
+                    border_col,
+                    ImGui::EditorUi::scaled(6.0f)
+                );
 
                 // drag source
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
@@ -404,8 +441,20 @@ namespace ImGuiSp
             else
             {
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                draw_list->AddRectFilled(rect_min, rect_max, IM_COL32(30, 30, 30, 255));
-                draw_list->AddRect(rect_min, rect_max, border_col);
+                draw_list->AddRectFilled(
+                    rect_min,
+                    rect_max,
+                    ImGui::EditorUi::color(
+                        ImGui::Style::color_canvas_deep
+                    ),
+                    ImGui::EditorUi::scaled(6.0f)
+                );
+                draw_list->AddRect(
+                    rect_min,
+                    rect_max,
+                    border_col,
+                    ImGui::EditorUi::scaled(6.0f)
+                );
             }
 
             // draw x button (visual only - click handled above)
@@ -418,7 +467,17 @@ namespace ImGuiSp
                 bool x_hovered = ImGui::IsMouseHoveringRect(x_btn_screen_min, x_btn_screen_max);
                 if (x_hovered)
                 {
-                    ImGui::GetWindowDrawList()->AddRectFilled(x_btn_screen_min, x_btn_screen_max, IM_COL32(255, 80, 80, 180), 3.0f);
+                    ImGui::GetWindowDrawList()->AddRectFilled(
+                        x_btn_screen_min,
+                        x_btn_screen_max,
+                        ImGui::EditorUi::color(
+                            ImGui::EditorUi::alpha(
+                                ImGui::Style::color_error,
+                                0.72f
+                            )
+                        ),
+                        ImGui::EditorUi::scaled(3.0f)
+                    );
                 }
                 
                 // draw x icon
@@ -562,10 +621,11 @@ namespace ImGuiSp
 
         float* values[3]           = { &vector.x, &vector.y, &vector.z };
         const char* axis_labels[3] = { "X", "Y", "Z" };
-        const ImU32 axis_colors[3] = {
-            IM_COL32(168, 46, 2, 255),
-            IM_COL32(112, 162, 22, 255),
-            IM_COL32(51, 122, 210, 255)
+        const ImU32 axis_colors[3] =
+        {
+            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(0)),
+            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(1)),
+            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(2))
         };
 
         // components
@@ -644,28 +704,12 @@ namespace ImGuiSp
             ImGui::MarkItemEdited(id);
         }
 
-        // animation state (stored per widget id)
-        static std::unordered_map<ImGuiID, float> animation_state;
-        float& t = animation_state[id];
+        const float target = *v ? 1.0f : 0.0f;
+        const float t = ImGui::EditorUi::animate(id, target, 12.0f);
 
-        // target position: 0.0 = off (left), 1.0 = on (right)
-        float target = *v ? 1.0f : 0.0f;
-
-        // smooth interpolation
-        float animation_speed = 12.0f;
-        if (t < target)
-        {
-            t = ImMin(t + g.IO.DeltaTime * animation_speed, target);
-        }
-        else if (t > target)
-        {
-            t = ImMax(t - g.IO.DeltaTime * animation_speed, target);
-        }
-
-        // colors - use imgui style for the active color
-        ImU32 col_bg_off      = ImGui::GetColorU32(ImGuiCol_FrameBg);
-        ImU32 col_bg_on       = ImGui::GetColorU32(ImGuiCol_CheckMark);
-        ImU32 col_knob        = IM_COL32(255, 255, 255, 255);
+        ImU32 col_bg_off      = ImGui::EditorUi::color(ImGui::Style::color_surface);
+        ImU32 col_bg_on       = ImGui::EditorUi::color(ImGui::Style::color_accent_2);
+        ImU32 col_knob        = ImGui::EditorUi::color(ImGui::Style::color_text);
         ImU32 col_knob_shadow = IM_COL32(0, 0, 0, 40);
 
         // interpolate background color

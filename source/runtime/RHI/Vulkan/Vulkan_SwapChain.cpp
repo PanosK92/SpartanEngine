@@ -275,6 +275,19 @@ namespace spartan
         m_sdl_window   = sdl_window;
         m_object_name  = name;
         m_present_mode = present_mode;
+        m_rhi_rt.resize(m_buffer_count, nullptr);
+        m_rhi_rtv.resize(m_buffer_count, nullptr);
+        m_image_acquired_semaphore.resize(
+            max(
+                static_cast<uint32_t>(
+                    acquire_semaphore_count
+                ),
+                m_buffer_count + 1
+            )
+        );
+        m_rendering_complete_semaphore.resize(
+            m_buffer_count
+        );
     
         // create surface once
         {
@@ -381,6 +394,19 @@ namespace spartan
             RHI_Device::QueueWaitAll();
         }
 
+        for (void*& image_view : m_rhi_rtv)
+        {
+            if (image_view)
+            {
+                vkDestroyImageView(
+                    RHI_Context::device,
+                    static_cast<VkImageView>(image_view),
+                    nullptr
+                );
+                image_view = nullptr;
+            }
+        }
+
         // match the surface extent when the platform locks it, using logical sdl size here causes vk_suboptimal_khr recreate loops under dpi scaling
         if (capabilities.currentExtent.width != UINT32_MAX)
         {
@@ -397,7 +423,19 @@ namespace spartan
         VkSwapchainCreateInfoKHR create_info = {};
         create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         create_info.surface                  = static_cast<VkSurfaceKHR>(m_rhi_surface);
-        create_info.minImageCount            = m_buffer_count;
+        create_info.minImageCount            =
+            max(
+                m_buffer_count,
+                capabilities.minImageCount
+            );
+        if (capabilities.maxImageCount > 0)
+        {
+            create_info.minImageCount =
+                min(
+                    create_info.minImageCount,
+                    capabilities.maxImageCount
+                );
+        }
         create_info.imageFormat              = vulkan_format[rhi_format_to_index(m_format)];
         create_info.imageColorSpace          = color_space;
         create_info.imageExtent              = { m_width, m_height };
@@ -427,17 +465,26 @@ namespace spartan
         // get new images
         uint32_t image_count = 0;
         SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, nullptr));
+        m_buffer_count = image_count;
+        m_rhi_rt.assign(m_buffer_count, nullptr);
+        m_rhi_rtv.assign(m_buffer_count, nullptr);
+        m_image_acquired_semaphore.resize(
+            max(
+                static_cast<uint32_t>(
+                    acquire_semaphore_count
+                ),
+                m_buffer_count + 1
+            )
+        );
+        m_rendering_complete_semaphore.resize(
+            m_buffer_count
+        );
+        semaphore_index = 0;
         SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
     
         // create new image views
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
-            // delete old one, if it exists
-            if (m_rhi_rtv[i])
-            { 
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv[i]);
-            }
-
             VkImageViewCreateInfo view_info = {};
             view_info.sType                 = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             view_info.image                 = static_cast<VkImage>(m_rhi_rt[i]);
@@ -448,11 +495,29 @@ namespace spartan
             SP_ASSERT_VK(vkCreateImageView(RHI_Context::device, &view_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])));
         }
     
-        // sync primitives - per-image semaphores to avoid reuse conflicts
+        // acquire semaphores rotate independently to avoid in flight reuse
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_image_acquired_semaphore.size()); i++)
         {
-            m_image_acquired_semaphore[i]     = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_acquire_" + to_string(i)).c_str());
-            m_rendering_complete_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_present_" + to_string(i)).c_str());
+            m_image_acquired_semaphore[i] =
+                make_shared<RHI_SyncPrimitive>(
+                    RHI_SyncPrimitive_Type::Semaphore,
+                    (
+                        "swapchain_acquire_" +
+                        to_string(i)
+                    ).c_str()
+                );
+        }
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_rendering_complete_semaphore.size()); i++)
+        {
+            m_rendering_complete_semaphore[i] =
+                make_shared<RHI_SyncPrimitive>(
+                    RHI_SyncPrimitive_Type::Semaphore,
+                    (
+                        "swapchain_present_" +
+                        to_string(i)
+                    ).c_str()
+                );
         }
     
         // set HDR metadata only if HDR is enabled

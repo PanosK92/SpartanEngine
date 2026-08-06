@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <memory>
-#include <array>
+#include <vector>
 #include "RHI_Definitions.h"
 #include "../Core/SpartanObject.h"
 //================================
@@ -78,6 +78,7 @@ namespace spartan
         RHI_SyncPrimitive* GetRenderingCompleteSemaphore() const;
 
         static const uint8_t buffer_count  = 2;
+        static const uint8_t acquire_semaphore_count = 3;
         static const RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
         // d3d12 windowed hdr uses fp16 scrgb, vulkan uses hdr10 pq
         #if defined(API_GRAPHICS_D3D12)
@@ -105,13 +106,17 @@ namespace spartan
         uint32_t semaphore_index = 0;
         void* m_sdl_window       = nullptr;
         subscription_handle m_window_resize_event_handle;
-        std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_semaphore;
-        std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_rendering_complete_semaphore;
+        std::vector<
+            std::shared_ptr<RHI_SyncPrimitive>
+        > m_image_acquired_semaphore;
+        std::vector<
+            std::shared_ptr<RHI_SyncPrimitive>
+        > m_rendering_complete_semaphore;
 
         // rhi
         void* m_rhi_swapchain                     = nullptr;
         void* m_rhi_surface                       = nullptr;
-        std::array<void*, buffer_count> m_rhi_rt  = { nullptr };
-        std::array<void*, buffer_count> m_rhi_rtv = { nullptr };
+        std::vector<void*> m_rhi_rt;
+        std::vector<void*> m_rhi_rtv;
     };
 }

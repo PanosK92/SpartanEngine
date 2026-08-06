@@ -249,13 +249,13 @@ namespace spartan
             std::unordered_map<ID3D12Resource*, ResourceStateInfo> resource_states;
         };
 
-        unordered_map<const RHI_CommandList*, PendingBindings> bindings;
-        mutex bindings_mutex;
-
         PendingBindings& get(const RHI_CommandList* cmd)
         {
-            lock_guard<mutex> lock(bindings_mutex);
-            return bindings[cmd];
+            SP_ASSERT(cmd);
+            SP_ASSERT(cmd->GetRhiState());
+            return *static_cast<PendingBindings*>(
+                cmd->GetRhiState()
+            );
         }
 
         void reset(const RHI_CommandList* cmd)
@@ -274,7 +274,14 @@ namespace spartan
             b.is_compute_queue           = false;
             b.swapchain_bb_transitioned  = nullptr;
             b.pending_barriers.clear();
-            b.resource_states.clear();
+            for (auto& entry : b.resource_states)
+            {
+                ResourceStateInfo& state = entry.second;
+                state.uniform_state =
+                    D3D12_RESOURCE_STATE_COMMON;
+                state.per_subresource.clear();
+                state.initialized = false;
+            }
 
             // safe to release staging buffers now, Begin guarantees the previous submission completed on the gpu
             for (void* sb : b.staging_buffers_in_flight)
@@ -314,12 +321,12 @@ namespace spartan
             std::vector<D3D12_RESOURCE_BARRIER> unify;
             for (auto& kv : b.resource_states)
             {
-                if (!kv.first)
+                ResourceStateInfo& state_info = kv.second;
+                if (!kv.first || !state_info.initialized)
                 {
                     continue;
                 }
 
-                ResourceStateInfo& state_info = kv.second;
                 if (!state_info.per_subresource.empty())
                 {
                     // collapse divergent mips to subresource 0's state
@@ -974,12 +981,27 @@ namespace spartan
         if (b.srv_dirty)
         {
             uint32_t base = d3d12_descriptors::AllocateRing(d3d12_root_slot::srv_space0_count);
+            array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::srv_space0_count> sources = {};
             for (uint32_t i = 0; i < d3d12_root_slot::srv_space0_count; i++)
             {
-                D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base + i);
-                D3D12_CPU_DESCRIPTOR_HANDLE src = (b.srv[i].ptr != 0) ? b.srv[i] : cmd_state::ensure_null_srv(b);
-                RHI_Context::device->CopyDescriptorsSimple(1, dst, src, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+                sources[i] =
+                    b.srv[i].ptr != 0
+                        ? b.srv[i]
+                        : cmd_state::ensure_null_srv(b);
             }
+            D3D12_CPU_DESCRIPTOR_HANDLE destination =
+                d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base);
+            uint32_t descriptor_count =
+                d3d12_root_slot::srv_space0_count;
+            RHI_Context::device->CopyDescriptors(
+                1,
+                &destination,
+                &descriptor_count,
+                descriptor_count,
+                sources.data(),
+                nullptr,
+                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+            );
             D3D12_GPU_DESCRIPTOR_HANDLE gpu = d3d12_descriptors::GetCbvSrvUavGpuHandle(base);
             if (is_compute)
             {
@@ -995,12 +1017,27 @@ namespace spartan
         if (b.uav_dirty)
         {
             uint32_t base = d3d12_descriptors::AllocateRing(d3d12_root_slot::uav_space0_count);
+            array<D3D12_CPU_DESCRIPTOR_HANDLE, d3d12_root_slot::uav_space0_count> sources = {};
             for (uint32_t i = 0; i < d3d12_root_slot::uav_space0_count; i++)
             {
-                D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base + i);
-                D3D12_CPU_DESCRIPTOR_HANDLE src = (b.uav[i].ptr != 0) ? b.uav[i] : cmd_state::ensure_null_uav(b);
-                RHI_Context::device->CopyDescriptorsSimple(1, dst, src, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+                sources[i] =
+                    b.uav[i].ptr != 0
+                        ? b.uav[i]
+                        : cmd_state::ensure_null_uav(b);
             }
+            D3D12_CPU_DESCRIPTOR_HANDLE destination =
+                d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base);
+            uint32_t descriptor_count =
+                d3d12_root_slot::uav_space0_count;
+            RHI_Context::device->CopyDescriptors(
+                1,
+                &destination,
+                &descriptor_count,
+                descriptor_count,
+                sources.data(),
+                nullptr,
+                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+            );
             D3D12_GPU_DESCRIPTOR_HANDLE gpu = d3d12_descriptors::GetCbvSrvUavGpuHandle(base);
             if (is_compute)
             {
@@ -1022,6 +1059,8 @@ namespace spartan
         m_rhi_cmd_pool_resource = cmd_pool;
         m_queue                 = queue;
         m_object_name           = name;
+        m_rhi_state             =
+            new cmd_state::PendingBindings();
 
         D3D12_COMMAND_LIST_TYPE cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         if (queue->GetType() == RHI_Queue_Type::Compute)
@@ -1064,18 +1103,19 @@ namespace spartan
     {
         RHI_Device::QueueWaitAll();
 
+        cmd_state::PendingBindings& bindings =
+            cmd_state::get(this);
+        for (void* staging_buffer :
+            bindings.staging_buffers_in_flight)
         {
-            lock_guard<mutex> lock(cmd_state::bindings_mutex);
-            auto it = cmd_state::bindings.find(this);
-            if (it != cmd_state::bindings.end())
-            {
-                for (void* sb : it->second.staging_buffers_in_flight)
-                {
-                    RHI_Device::StagingBufferRelease(sb);
-                }
-                cmd_state::bindings.erase(it);
-            }
+            RHI_Device::StagingBufferRelease(
+                staging_buffer
+            );
         }
+        delete static_cast<cmd_state::PendingBindings*>(
+            m_rhi_state
+        );
+        m_rhi_state = nullptr;
 
         // tear down per-cmd-list query heaps + readback buffers
         queries::erase(this);
@@ -1109,11 +1149,6 @@ namespace spartan
 
     void RHI_CommandList::Begin()
     {
-        if (m_state == RHI_CommandListState::Submitted)
-        {
-            WaitForExecution();
-        }
-
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
@@ -2757,18 +2792,42 @@ namespace spartan
                 return;
             }
 
-            D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
-            desc.Shader4ComponentMapping        = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            desc.Format                         = DXGI_FORMAT_UNKNOWN;
-            desc.ViewDimension                  = D3D12_SRV_DIMENSION_BUFFER;
-            desc.Buffer.NumElements             = buffer->GetElementCount();
-            desc.Buffer.StructureByteStride     = buffer->GetStride();
-            uint32_t idx                        = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
-            D3D12_CPU_DESCRIPTOR_HANDLE h       = d3d12_descriptors::GetCbvSrvUavCpuHandle(idx);
-            RHI_Context::device->CreateShaderResourceView(resource, &desc, h);
+            D3D12_CPU_DESCRIPTOR_HANDLE h = {};
+            if (buffer->GetRhiSrv())
+            {
+                h.ptr = reinterpret_cast<SIZE_T>(
+                    buffer->GetRhiSrv()
+                );
+            }
+            else
+            {
+                D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+                desc.Shader4ComponentMapping =
+                    D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                desc.Format =
+                    DXGI_FORMAT_UNKNOWN;
+                desc.ViewDimension =
+                    D3D12_SRV_DIMENSION_BUFFER;
+                desc.Buffer.NumElements =
+                    buffer->GetElementCount();
+                desc.Buffer.StructureByteStride =
+                    buffer->GetStride();
+                uint32_t index =
+                    d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
+                h =
+                    d3d12_descriptors::GetCbvSrvUavCpuHandle(index);
+                RHI_Context::device->CreateShaderResourceView(
+                    resource,
+                    &desc,
+                    h
+                );
+            }
             cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            b.srv[slot] = h;
-            b.srv_dirty = true;
+            if (b.srv[slot].ptr != h.ptr)
+            {
+                b.srv[slot] = h;
+                b.srv_dirty = true;
+            }
             return;
         }
 
@@ -2777,20 +2836,44 @@ namespace spartan
             return;
         }
 
-        D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
-        desc.Format                     = DXGI_FORMAT_UNKNOWN;
-        desc.ViewDimension              = D3D12_UAV_DIMENSION_BUFFER;
-        desc.Buffer.NumElements         = buffer->GetElementCount();
-        desc.Buffer.StructureByteStride = buffer->GetStride();
-        uint32_t idx                    = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
-        D3D12_CPU_DESCRIPTOR_HANDLE h   = d3d12_descriptors::GetCbvSrvUavCpuHandle(idx);
+        D3D12_CPU_DESCRIPTOR_HANDLE h = {};
+        if (buffer->GetRhiUav())
+        {
+            h.ptr = reinterpret_cast<SIZE_T>(
+                buffer->GetRhiUav()
+            );
+        }
+        else
+        {
+            D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
+            desc.Format =
+                DXGI_FORMAT_UNKNOWN;
+            desc.ViewDimension =
+                D3D12_UAV_DIMENSION_BUFFER;
+            desc.Buffer.NumElements =
+                buffer->GetElementCount();
+            desc.Buffer.StructureByteStride =
+                buffer->GetStride();
+            uint32_t index =
+                d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
+            h =
+                d3d12_descriptors::GetCbvSrvUavCpuHandle(index);
 
-        RHI_Context::device->CreateUnorderedAccessView(resource, nullptr, &desc, h);
+            RHI_Context::device->CreateUnorderedAccessView(
+                resource,
+                nullptr,
+                &desc,
+                h
+            );
+        }
 
         cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        b.uav[slot]   = h;
-        b.uav_dirty   = true;
+        if (b.uav[slot].ptr != h.ptr)
+        {
+            b.uav[slot] = h;
+            b.uav_dirty = true;
+        }
     }
 
     // create a transient mip-specific view (uav or srv) for a texture in the cpu staging heap

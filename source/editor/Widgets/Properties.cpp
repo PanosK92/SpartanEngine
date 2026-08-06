@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "Window.h"
 #include "FileDialog.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../Widgets/ButtonColorPicker.h"
@@ -202,8 +203,10 @@ namespace
         {
             ImGui::AlignTextToFramePadding();
 
-            // subtle text color for labels
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.70f, 0.70f, 1.0f));
+            ImGui::PushStyleColor(
+                ImGuiCol_Text,
+                ImGui::Style::color_text_muted
+            );
             ImGui::TextUnformatted(label);
             ImGui::PopStyleColor();
 
@@ -248,7 +251,10 @@ namespace
             ImGui::GetWindowDrawList()->AddLine(
                 ImVec2(p.x, p.y),
                 ImVec2(p.x + ImGui::GetContentRegionAvail().x, p.y),
-                IM_COL32(255, 255, 255, 20), 1.0f
+                ImGui::EditorUi::color(
+                    ImGui::Style::color_border
+                ),
+                1.0f
             );
             ImGui::Dummy(ImVec2(0, design::spacing_md));
         }
@@ -257,7 +263,10 @@ namespace
         inline void section_header(const char* title)
         {
             ImGui::Dummy(ImVec2(0, design::spacing_sm));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
+            ImGui::PushStyleColor(
+                ImGuiCol_Text,
+                ImGui::Style::color_text
+            );
             ImGui::PushFont(Editor::font_bold, 0.0f);
             ImGui::TextUnformatted(title);
             ImGui::PopFont();
@@ -356,9 +365,21 @@ namespace
         ImGui::PushID(name);
 
         // header styling
-        ImVec4 header_bg       = design::dimmed(accent_color, 0.25f);
-        ImVec4 header_hovered  = design::dimmed(accent_color, 0.35f);
-        ImVec4 header_active   = design::dimmed(accent_color, 0.30f);
+        ImVec4 header_bg = ImGui::Style::lerp(
+            ImGui::Style::color_panel,
+            accent_color,
+            0.12f
+        );
+        ImVec4 header_hovered = ImGui::Style::lerp(
+            ImGui::Style::color_surface_hover,
+            accent_color,
+            0.18f
+        );
+        ImVec4 header_active = ImGui::Style::lerp(
+            ImGui::Style::color_surface_active,
+            accent_color,
+            0.20f
+        );
 
         ImGui::PushStyleColor(ImGuiCol_Header, header_bg);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, header_hovered);
@@ -405,7 +426,10 @@ namespace
 
             ImGui::SetCursorScreenPos(ImVec2(icon_x, icon_y));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
+            ImGui::PushStyleColor(
+                ImGuiCol_ButtonHovered,
+                ImGui::Style::color_surface_hover
+            );
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
             if (ImGuiSp::image_button(IconType::Gear, icon_size, false))
             {
@@ -427,8 +451,11 @@ namespace
             component_content_active = true;
 
             // content background
-            const ImVec4& bg = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
-            ImVec4 content_bg = ImVec4(bg.x + 0.02f, bg.y + 0.02f, bg.z + 0.02f, 1.0f);
+            const ImVec4 content_bg = ImGui::Style::lerp(
+                ImGui::Style::color_canvas,
+                ImGui::Style::color_panel,
+                0.35f
+            );
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, content_bg);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(design::spacing_lg, design::spacing_md));
@@ -511,7 +538,10 @@ namespace
         ImGui::PushID(label);
 
         // label in left column
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.70f, 0.70f, 1.0f));
+        ImGui::PushStyleColor(
+            ImGuiCol_Text,
+            ImGui::Style::color_text_muted
+        );
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(label);
         ImGui::PopStyleColor();
@@ -533,10 +563,11 @@ namespace
         float between_groups  = 8.0f;   // space between groups
         float input_width     = (total_avail - axis_label_w * 3 - label_to_input * 3 - between_groups * 2) / 3.0f;
 
-        const ImU32 colors[3] = {
-            IM_COL32(200, 60, 60, 255),   // x - red
-            IM_COL32(90, 160, 40, 255),   // y - green
-            IM_COL32(50, 120, 200, 255)   // z - blue
+        const ImU32 colors[3] =
+        {
+            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(0)),
+            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(1)),
+            ImGui::EditorUi::color(ImGui::EditorUi::axis_color(2))
         };
         const char* axis[3] = { "X", "Y", "Z" };
         float* values[3] = { &vec.x, &vec.y, &vec.z };
@@ -805,16 +836,16 @@ void Properties::ShowEntity(Entity* entity) const
         {
             ImGui::SameLine();
 
-            // badge styling
             bool is_code = entity->IsCodePrefab();
             bool is_file = entity->IsFilePrefab();
-            ImVec4 badge_color = is_code ? ImVec4(0.55f, 0.35f, 0.70f, 1.0f) : ImVec4(0.30f, 0.60f, 0.45f, 1.0f);
-
-            ImGui::PushStyleColor(ImGuiCol_Text, badge_color);
-            ImGui::PushFont(Editor::font_bold, 0.0f);
-            ImGui::TextUnformatted(is_code ? "[prefab:code]" : "[prefab:file]");
-            ImGui::PopFont();
-            ImGui::PopStyleColor();
+            const ImVec4 badge_color = is_code
+                ? design::accent_render()
+                : ImGui::Style::color_ok;
+            ImGui::EditorUi::draw_chip(
+                is_code ? "code prefab" : "file prefab",
+                ImGui::EditorUi::alpha(badge_color, 0.18f),
+                badge_color
+            );
 
             layout::group_spacing();
 

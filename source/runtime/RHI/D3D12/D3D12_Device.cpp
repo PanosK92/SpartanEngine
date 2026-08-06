@@ -1652,7 +1652,7 @@ namespace spartan
 
     void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
     {
-        pso.Prepare();
+        SP_ASSERT(pso.GetHash() != 0);
 
         lock_guard<mutex> lock(descriptors::pipeline_mutex);
 

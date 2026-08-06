@@ -47,9 +47,12 @@ namespace spartan
         RHI_Queue_Type GetType() const { return m_type; }
 
     private:
-        // 4 command lists: supports 3 submissions per frame (pre-gbuffer, shadows, lighting+present)
-        // plus slack for the previous frame's in-flight work to complete without stalling
+        // vulkan keeps submission slack, d3d12 relies on its four frame ring
+        #if defined(API_GRAPHICS_VULKAN)
+        std::array<std::shared_ptr<RHI_CommandList>, 6> m_cmd_lists = { nullptr };
+        #else
         std::array<std::shared_ptr<RHI_CommandList>, 4> m_cmd_lists = { nullptr };
+        #endif
         void* m_rhi_resource                                        = nullptr;
         std::atomic<uint32_t> m_index                               = 0;
         RHI_Queue_Type m_type                                       = RHI_Queue_Type::Max;

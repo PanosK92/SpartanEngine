@@ -104,6 +104,8 @@ namespace spartan
         uint32_t GetOffset()   const        { return m_offset; }
         void* GetMappedData() const         { return m_data_gpu; }
         void* GetRhiResource() const        { return m_rhi_resource; }
+        void* GetRhiSrv() const             { return m_rhi_srv; }
+        void* GetRhiUav() const             { return m_rhi_uav; }
         RHI_Buffer_Type GetType() const     { return m_type; }
         void DestroyResourceImmediate();
         uint64_t GetDeviceAddress() const   { return m_device_address; }
@@ -126,6 +128,10 @@ namespace spartan
         // rhi
         void RHI_DestroyResource();
         void RHI_CreateResource(const void* data);
+        uint32_t m_rhi_srv_index = UINT32_MAX;
+        uint32_t m_rhi_uav_index = UINT32_MAX;
         void* m_rhi_resource = nullptr;
+        void* m_rhi_srv      = nullptr;
+        void* m_rhi_uav      = nullptr;
     };
 }

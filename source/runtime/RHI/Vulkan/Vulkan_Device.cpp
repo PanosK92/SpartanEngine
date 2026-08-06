@@ -999,21 +999,14 @@ namespace spartan
 
             // search for a descriptor set layout which matches this hash
             auto it     = layouts.find(hash);
-            bool cached = it != layouts.end();
-
             // if there is no descriptor set layout for this particular hash, create one
-            if (!cached)
+            if (it == layouts.end())
             {
                 it = layouts.emplace(
                     make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, descriptor_count, pipeline_state.name))
                 ).first;
             }
             shared_ptr<RHI_DescriptorSetLayout> descriptor_set_layout = it->second;
-
-            if (cached)
-            {
-                descriptor_set_layout->ClearBindings();
-            }
 
             return descriptor_set_layout;
         }
@@ -1499,6 +1492,7 @@ namespace spartan
                 }
             }
         }
+
     }
 
     namespace device_physical
@@ -1869,6 +1863,8 @@ namespace spartan
                 }
             }
         }
+
+        DeletionQueueParse();
     }
 
     uint64_t RHI_Device::GetDescriptorSetFrame()
@@ -2373,7 +2369,19 @@ namespace spartan
         bool is_mappable = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
         if (is_mappable)
         {
-            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            const bool cpu_readback =
+                (
+                    flags_usage &
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                ) != 0 &&
+                (
+                    flags_usage &
+                    ~VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                ) == 0;
+            allocation_create_info.flags |=
+                cpu_readback
+                    ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT
+                    : VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // mappable
 
             if (Debugging::IsRenderdocEnabled())

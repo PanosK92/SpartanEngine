@@ -63,6 +63,7 @@ namespace spartan
         // exact bind locals/globals, no trs roundtrip
         std::vector<math::Matrix> bind_local_matrices;
         std::vector<math::Matrix> bind_global_matrices;
+        std::vector<math::Matrix> bind_inverse_global_matrices;
         std::vector<std::string> joint_names;
 
         // builder api - used by importers and deserialization to populate the skeleton
@@ -80,6 +81,7 @@ namespace spartan
             m_mutable_scales        = {};
             bind_local_matrices.clear();
             bind_global_matrices.clear();
+            bind_inverse_global_matrices.clear();
             joint_names.clear();
         }
 
@@ -121,6 +123,10 @@ namespace spartan
 
             bind_local_matrices.resize(joint_count, math::Matrix::Identity);
             bind_global_matrices.resize(joint_count, math::Matrix::Identity);
+            bind_inverse_global_matrices.resize(
+                joint_count,
+                math::Matrix::Identity
+            );
         }
 
         void FinalizeBindPose()
@@ -134,6 +140,8 @@ namespace spartan
 
             for (uint16_t i = 0; i < joint_count; ++i)
             {
+                bind_inverse_global_matrices[i] =
+                    bind_global_matrices[i].Inverted();
                 m_mutable_positions[i] = bind_local_matrices[i].GetTranslation();
                 m_mutable_rotations[i] = bind_local_matrices[i].GetRotation();
                 m_mutable_scales[i]    = bind_local_matrices[i].GetScale();

@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Render.h"
 #include "World/Components/Camera.h"
 #include "Math/Ray.h"
+#include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_Style.h"
 #include "../ImGui/ImGui_TransformGizmo.h"
@@ -222,17 +223,77 @@ void Viewport::OnTickVisible()
     if (Engine::IsFlagSet(EngineMode::Playing))
     {
         const bool paused = Engine::IsFlagSet(EngineMode::Paused);
-        const char* label = paused ? "PAUSED" : "PLAYING";
+        const char* label = paused ? "Paused" : "Playing";
         const ImVec4 status_color = paused ? ImGui::Style::color_warning : ImGui::Style::color_ok;
-        const float dpi = Window::GetDpiScale();
+        const ImVec4 border_color = ImGui::Style::color_accent_1;
         const ImVec2 text_size = ImGui::CalcTextSize(label);
-        const ImVec2 padding = ImVec2(10.0f * dpi, 5.0f * dpi);
-        const ImVec2 badge_min = ImVec2(image_rect_min.x + 12.0f * dpi, image_rect_min.y + 12.0f * dpi);
-        const ImVec2 badge_max = ImVec2(badge_min.x + text_size.x + padding.x * 2.0f, badge_min.y + text_size.y + padding.y * 2.0f);
+        const ImVec2 padding = ImGui::EditorUi::scaled(
+            ImVec2(9.0f, 4.0f)
+        );
+        const float dot_size = ImGui::EditorUi::scaled(6.0f);
+        const ImVec2 badge_min(
+            image_rect_min.x + ImGui::EditorUi::scaled(12.0f),
+            image_rect_min.y + ImGui::EditorUi::scaled(12.0f)
+        );
+        const ImVec2 badge_max(
+            badge_min.x +
+            text_size.x +
+            padding.x * 2.0f +
+            dot_size +
+            ImGui::EditorUi::scaled(6.0f),
+            badge_min.y + text_size.y + padding.y * 2.0f
+        );
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(badge_min, badge_max, ImGui::ColorConvertFloat4ToU32(ImVec4(0.02f, 0.02f, 0.02f, 0.82f)), 5.0f * dpi);
-        draw_list->AddRect(badge_min, badge_max, ImGui::ColorConvertFloat4ToU32(status_color), 5.0f * dpi);
-        draw_list->AddText(ImVec2(badge_min.x + padding.x, badge_min.y + padding.y), ImGui::ColorConvertFloat4ToU32(status_color), label);
+        draw_list->AddRect(
+            image_rect_min,
+            image_rect_max,
+            ImGui::EditorUi::color(
+                ImGui::EditorUi::alpha(border_color, 0.72f)
+            ),
+            0.0f,
+            ImGui::EditorUi::scaled(2.0f),
+            0
+        );
+        draw_list->AddRectFilled(
+            badge_min,
+            badge_max,
+            ImGui::EditorUi::color(
+                ImGui::EditorUi::alpha(
+                    ImGui::Style::color_panel,
+                    0.90f
+                )
+            ),
+            ImGui::EditorUi::scaled(8.0f)
+        );
+        draw_list->AddRect(
+            badge_min,
+            badge_max,
+            ImGui::EditorUi::color(
+                ImGui::EditorUi::alpha(status_color, 0.48f)
+            ),
+            ImGui::EditorUi::scaled(8.0f)
+        );
+        const ImVec2 dot_center(
+            badge_min.x + padding.x + dot_size * 0.5f,
+            (badge_min.y + badge_max.y) * 0.5f
+        );
+        draw_list->AddCircleFilled(
+            dot_center,
+            dot_size * 0.5f,
+            ImGui::EditorUi::color(status_color)
+        );
+        draw_list->AddText(
+            ImVec2(
+                dot_center.x +
+                dot_size * 0.5f +
+                ImGui::EditorUi::scaled(6.0f),
+                badge_min.y + padding.y
+            ),
+            ImGui::EditorUi::color(
+                ImGui::Style::color_text
+            ),
+            label
+        );
     }
 
     // let the input system know if the mouse is within the viewport

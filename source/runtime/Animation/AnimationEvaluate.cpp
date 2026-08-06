@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AnimationClip.h"
 #include "Skeleton.h"
 #include "SkeletalMeshBinding.h"
+#include "../Core/ThreadPool.h"
 #include <cmath>
 //================================
 
@@ -354,9 +355,10 @@ namespace spartan
         bool SkinMesh(
             const SkeletalMeshBinding& binding,
             const vector<Matrix>& global_matrices,
-            const vector<Matrix>& bind_global_matrices,
+            const vector<Matrix>& bind_inverse_global_matrices,
             const vector<RHI_Vertex_PosTexNorTan>& bind_vertices,
-            vector<RHI_Vertex_PosTexNorTan>& out_vertices
+            vector<RHI_Vertex_PosTexNorTan>& out_vertices,
+            vector<Matrix>& skin_matrices
         )
         {
             if (bind_vertices.empty() || global_matrices.empty())
@@ -364,7 +366,12 @@ namespace spartan
                 return false;
             }
 
-            out_vertices = bind_vertices;
+            if (out_vertices.size() != bind_vertices.size())
+            {
+                out_vertices = bind_vertices;
+            }
+
+            skin_matrices.resize(global_matrices.size());
 
             for (const SkeletalMeshSection& section : binding.GetSections())
             {
@@ -382,56 +389,132 @@ namespace spartan
                 // assimp column skin is G * offset * v; our row-vector form is offset * global
                 const bool use_assimp_offset =
                     section.inverse_bind_matrices.size() >= global_matrices.size();
-
-                for (uint32_t local_v = 0; local_v < section.vertex_count; ++local_v)
+                for (
+                    uint32_t bone_index = 0;
+                    bone_index <
+                        static_cast<uint32_t>(
+                            global_matrices.size()
+                        );
+                    bone_index++
+                )
                 {
-                    const uint32_t vertex_index = section.vertex_input_offset + local_v;
-                    const SkeletalVertexInfluence& influence = section.influences[local_v];
-                    const Vector3 bind_pos = bind_vertices[vertex_index].get_position();
-
-                    Vector3 skinned = Vector3::Zero;
-                    float weight_sum = 0.0f;
-
-                    for (uint32_t w = 0; w < 4; ++w)
+                    if (use_assimp_offset)
                     {
-                        const float weight = influence.bone_weights[w];
-                        if (weight <= 0.0f)
-                        {
-                            continue;
-                        }
-
-                        const uint16_t bone_index = influence.bone_indices[w];
-                        if (bone_index >= global_matrices.size())
-                        {
-                            continue;
-                        }
-
-                        Matrix skin;
-                        if (use_assimp_offset)
-                        {
-                            skin = section.inverse_bind_matrices[bone_index] *
-                                global_matrices[bone_index];
-                        }
-                        else if (bone_index < bind_global_matrices.size())
-                        {
-                            skin = global_matrices[bone_index] *
-                                bind_global_matrices[bone_index].Inverted();
-                        }
-                        else
-                        {
-                            continue;
-                        }
-
-                        skinned += (skin * bind_pos) * weight;
-                        weight_sum += weight;
+                        skin_matrices[bone_index] =
+                            section.inverse_bind_matrices[
+                                bone_index
+                            ] *
+                            global_matrices[bone_index];
                     }
-
-                    if (weight_sum <= 0.0f || !is_finite_vector(skinned) || skinned.LengthSquared() > 1.0e12f)
+                    else if (
+                        bone_index <
+                            bind_inverse_global_matrices.size()
+                    )
                     {
-                        continue;
+                        skin_matrices[bone_index] =
+                            global_matrices[bone_index] *
+                            bind_inverse_global_matrices[
+                                bone_index
+                            ];
                     }
+                }
 
-                    out_vertices[vertex_index].set_position(skinned);
+                auto skin_vertices =
+                    [&](
+                        const uint32_t vertex_start,
+                        const uint32_t vertex_end
+                    )
+                {
+                    for (
+                        uint32_t local_v = vertex_start;
+                        local_v < vertex_end;
+                        local_v++
+                    )
+                    {
+                        const uint32_t vertex_index =
+                            section.vertex_input_offset +
+                            local_v;
+                        const SkeletalVertexInfluence& influence =
+                            section.influences[local_v];
+                        const Vector3 bind_pos =
+                            bind_vertices[
+                                vertex_index
+                            ].get_position();
+
+                        Vector3 skinned = Vector3::Zero;
+                        float weight_sum = 0.0f;
+
+                        for (uint32_t w = 0; w < 4; ++w)
+                        {
+                            const float weight =
+                                influence.bone_weights[w];
+                            if (weight <= 0.0f)
+                            {
+                                continue;
+                            }
+
+                            const uint16_t bone_index =
+                                influence.bone_indices[w];
+                            if (
+                                bone_index >=
+                                global_matrices.size()
+                            )
+                            {
+                                continue;
+                            }
+
+                            if (
+                                !use_assimp_offset &&
+                                bone_index >=
+                                    bind_inverse_global_matrices.size()
+                            )
+                            {
+                                continue;
+                            }
+
+                            skinned +=
+                                (
+                                    skin_matrices[
+                                        bone_index
+                                    ] *
+                                    bind_pos
+                                ) *
+                                weight;
+                            weight_sum += weight;
+                        }
+
+                        if (
+                            weight_sum <= 0.0f ||
+                            !is_finite_vector(skinned) ||
+                            skinned.LengthSquared() >
+                                1.0e12f
+                        )
+                        {
+                            out_vertices[
+                                vertex_index
+                            ].set_position(bind_pos);
+                            continue;
+                        }
+
+                        out_vertices[
+                            vertex_index
+                        ].set_position(skinned);
+                    }
+                };
+
+                if (section.vertex_count >= 4096)
+                {
+                    ThreadPool::ParallelLoop(
+                        move(skin_vertices),
+                        section.vertex_count
+                    );
+                }
+                else
+                {
+                    skin_vertices(
+                        0,
+                        section.vertex_count
+                    );
                 }
             }
 

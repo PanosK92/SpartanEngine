@@ -45,6 +45,7 @@ namespace spartan
     class Light;
     class Render;
     class Water;
+    class RHI_SyncPrimitive;
     enum class MeshType;
     namespace math
     {
@@ -172,6 +173,8 @@ namespace spartan
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();
+        static void SetPresentInRenderer(bool enabled);
+        static void AcquireSwapchainImage();
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void BlitToXrSwapchain(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void SubmitAndPresent();
@@ -300,7 +303,10 @@ namespace spartan
         // passes - core
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute);
         static bool UpdateSkysphereConvergenceState();
-        static void Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, Light* directional_light);
+        static void Pass_ComputeBatchA(
+            RHI_CommandList* cmd_list,
+            bool update_skysphere
+        );
         static void Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list);
         static void Pass_ComputeBatchB(RHI_CommandList* cmd_list);
         static void Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list);
@@ -357,7 +363,7 @@ namespace spartan
         static void Pass_WindField(RHI_CommandList* cmd_list);
         // passes - fft ocean
         static void Pass_Ocean(RHI_CommandList* cmd_list);
-        static void ResolveOceanHeightReadback(
+        static bool ResolveOceanHeightReadback(
             uint32_t readback_index
         );
         static void ResetOceanHeightReadback();
@@ -449,6 +455,8 @@ namespace spartan
             std::shared_ptr<RHI_Buffer> cull_tasks;
             std::shared_ptr<RHI_Buffer> surviving_instances;    // phase a survivor list, one entry per visible instance
             std::shared_ptr<RHI_Buffer> instance_dispatch_args; // single-slot indirect dispatch args for the meshlet cull pass (phase b)
+            RHI_SyncPrimitive* completion_timeline = nullptr;
+            uint64_t completion_value = 0;
         };
         static std::array<FrameResource, renderer_draw_data_buffer_count> m_frame_resources;
         static uint32_t m_frame_resource_index;
@@ -487,6 +495,7 @@ namespace spartan
             bool     sky_had_directional_light = false;
             uint32_t sky_frames_remaining      = 0;
             bool     sky_warmup_this_frame     = false; // captured before sky_frames_remaining decrements
+            bool     sky_state_changed_this_frame = true;
             float    sky_warmup_blend          = 1.0f;
 
             bool     cloud_history_valid       = false;
@@ -574,6 +583,7 @@ namespace spartan
         static math::Vector2                 m_resolution_output;
         static RHI_Viewport                  m_viewport;
         static std::shared_ptr<RHI_SwapChain> m_swapchain;
+        static bool m_present_in_renderer;
         static uint64_t                      m_frame_num;
         static math::Vector2                 m_jitter_offset;
     };

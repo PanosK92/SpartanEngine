@@ -55,6 +55,8 @@ namespace spartan
         }
 
         m_device_address = 0;
+        m_rhi_srv        = nullptr;
+        m_rhi_uav        = nullptr;
     }
 
     void RHI_Buffer::DestroyResourceImmediate()
@@ -74,6 +76,8 @@ namespace spartan
         }
 
         m_device_address = 0;
+        m_rhi_srv        = nullptr;
+        m_rhi_uav        = nullptr;
     }
 
     void RHI_Buffer::RHI_CreateResource(const void* data)
@@ -217,6 +221,68 @@ namespace spartan
         d3d12_state::SetDecaysToCommon(buffer, heap_type == D3D12_HEAP_TYPE_DEFAULT);
         d3d12_state::SetIsBuffer(buffer, true);
         d3d12_state::SetSubresourceCount(buffer, 1);
+
+        if (m_type == RHI_Buffer_Type::Storage)
+        {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+            srv_desc.Shader4ComponentMapping         =
+                D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srv_desc.Format                          =
+                DXGI_FORMAT_UNKNOWN;
+            srv_desc.ViewDimension                   =
+                D3D12_SRV_DIMENSION_BUFFER;
+            srv_desc.Buffer.NumElements              =
+                m_element_count;
+            srv_desc.Buffer.StructureByteStride      =
+                m_stride;
+
+            if (m_rhi_srv_index == UINT32_MAX)
+            {
+                m_rhi_srv_index =
+                    d3d12_descriptors::
+                        AllocateCbvSrvUavCpu();
+            }
+            D3D12_CPU_DESCRIPTOR_HANDLE srv_handle =
+                d3d12_descriptors::GetCbvSrvUavCpuHandle(
+                    m_rhi_srv_index
+                );
+            RHI_Context::device->CreateShaderResourceView(
+                buffer,
+                &srv_desc,
+                srv_handle
+            );
+            m_rhi_srv =
+                reinterpret_cast<void*>(srv_handle.ptr);
+
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
+            uav_desc.Format                     =
+                DXGI_FORMAT_UNKNOWN;
+            uav_desc.ViewDimension              =
+                D3D12_UAV_DIMENSION_BUFFER;
+            uav_desc.Buffer.NumElements         =
+                m_element_count;
+            uav_desc.Buffer.StructureByteStride =
+                m_stride;
+
+            if (m_rhi_uav_index == UINT32_MAX)
+            {
+                m_rhi_uav_index =
+                    d3d12_descriptors::
+                        AllocateCbvSrvUavCpu();
+            }
+            D3D12_CPU_DESCRIPTOR_HANDLE uav_handle =
+                d3d12_descriptors::GetCbvSrvUavCpuHandle(
+                    m_rhi_uav_index
+                );
+            RHI_Context::device->CreateUnorderedAccessView(
+                buffer,
+                nullptr,
+                &uav_desc,
+                uav_handle
+            );
+            m_rhi_uav =
+                reinterpret_cast<void*>(uav_handle.ptr);
+        }
 
         if (!m_object_name.empty())
         {

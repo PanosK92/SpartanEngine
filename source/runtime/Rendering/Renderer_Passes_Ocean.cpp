@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Buffer.h"
+#include "../Core/ThreadPool.h"
 #include "../World/World.h"
 #include "../World/Components/Water.h"
 //===========================================
@@ -39,13 +40,12 @@ namespace spartan
 {
     namespace
     {
-        // cpu cache from the oldest completed gpu readback
-        vector<Vector4> ocean_heights_cache;
+        atomic<shared_ptr<const vector<Vector4>>>
+            ocean_heights_cache;
+        future<void> ocean_readback_copy_task;
+        uint32_t ocean_readback_copy_index =
+            numeric_limits<uint32_t>::max();
         uint32_t ocean_readback_written_mask = 0;
-        array<
-            RHI_CommandList*,
-            renderer_draw_data_buffer_count
-        > ocean_readback_command_lists = {};
 
         Renderer_Buffer ocean_height_readback_type(
             const uint32_t index
@@ -59,37 +59,6 @@ namespace spartan
             );
         }
 
-        uint32_t ocean_readback_index(
-            RHI_CommandList* cmd_list
-        )
-        {
-            for (
-                uint32_t i = 0;
-                i < renderer_draw_data_buffer_count;
-                i++
-            )
-            {
-                if (ocean_readback_command_lists[i] == cmd_list)
-                {
-                    return i;
-                }
-            }
-
-            for (
-                uint32_t i = 0;
-                i < renderer_draw_data_buffer_count;
-                i++
-            )
-            {
-                if (!ocean_readback_command_lists[i])
-                {
-                    ocean_readback_command_lists[i] = cmd_list;
-                    return i;
-                }
-            }
-
-            return numeric_limits<uint32_t>::max();
-        }
     }
 
     void Renderer::Pass_Ocean(RHI_CommandList* cmd_list)
@@ -139,10 +108,11 @@ namespace spartan
         }
 
         const uint32_t readback_index =
-            ocean_readback_index(cmd_list);
+            m_frame_resource_index;
+        bool readback_in_use = false;
         if (readback_index != numeric_limits<uint32_t>::max())
         {
-            ResolveOceanHeightReadback(
+            readback_in_use = ResolveOceanHeightReadback(
                 readback_index
             );
         }
@@ -290,7 +260,9 @@ namespace spartan
             }
 
             RHI_Buffer* buffer_readback =
-                readback_index != numeric_limits<uint32_t>::max() ?
+                readback_index !=
+                    numeric_limits<uint32_t>::max() &&
+                !readback_in_use ?
                 GetBuffer(
                     ocean_height_readback_type(
                         readback_index
@@ -316,7 +288,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::ResolveOceanHeightReadback(
+    bool Renderer::ResolveOceanHeightReadback(
         const uint32_t readback_index
     )
     {
@@ -328,7 +300,7 @@ namespace spartan
             0
         )
         {
-            return;
+            return false;
         }
 
         RHI_Buffer* buffer = GetBuffer(
@@ -338,7 +310,27 @@ namespace spartan
         );
         if (!buffer || !buffer->GetMappedData())
         {
-            return;
+            return false;
+        }
+
+        if (ocean_readback_copy_task.valid())
+        {
+            if (
+                ocean_readback_copy_task.wait_for(
+                    chrono::seconds(0)
+                ) !=
+                future_status::ready
+            )
+            {
+                return
+                    ocean_readback_copy_index ==
+                    readback_index;
+            }
+
+            ocean_readback_copy_task =
+                future<void>();
+            ocean_readback_copy_index =
+                numeric_limits<uint32_t>::max();
         }
 
         const size_t element_count =
@@ -347,25 +339,65 @@ namespace spartan
             ) *
             renderer_ocean_heights_resolution *
             renderer_ocean_max_cascades;
-        ocean_heights_cache.resize(element_count);
-        memcpy(
-            ocean_heights_cache.data(),
-            buffer->GetMappedData(),
-            buffer->GetObjectSize()
+        void* mapped_data = buffer->GetMappedData();
+        const size_t object_size = buffer->GetObjectSize();
+
+        ocean_readback_written_mask &=
+            ~(1u << readback_index);
+        ocean_readback_copy_index = readback_index;
+        ocean_readback_copy_task = ThreadPool::AddTask(
+            [
+                element_count,
+                mapped_data,
+                object_size
+            ]()
+            {
+                shared_ptr<vector<Vector4>> cache =
+                    make_shared<vector<Vector4>>(
+                        element_count
+                    );
+                memcpy(
+                    cache->data(),
+                    mapped_data,
+                    object_size
+                );
+                ocean_heights_cache.store(
+                    static_pointer_cast<
+                        const vector<Vector4>
+                    >(cache),
+                    memory_order_release
+                );
+            }
         );
+        return true;
     }
 
     void Renderer::ResetOceanHeightReadback()
     {
-        ocean_heights_cache.clear();
+        if (ocean_readback_copy_task.valid())
+        {
+            ocean_readback_copy_task.wait();
+            ocean_readback_copy_task =
+                future<void>();
+        }
+
+        ocean_heights_cache.store(
+            shared_ptr<const vector<Vector4>>(),
+            memory_order_release
+        );
+        ocean_readback_copy_index =
+            numeric_limits<uint32_t>::max();
         ocean_readback_written_mask = 0;
-        ocean_readback_command_lists.fill(nullptr);
     }
 
     bool Renderer::GetOceanHeight(const float x, const float z, float& height)
     {
         const Water* water = m_pass_state.ocean;
-        if (!water || ocean_heights_cache.empty())
+        shared_ptr<const vector<Vector4>> height_cache =
+            ocean_heights_cache.load(
+                memory_order_acquire
+            );
+        if (!water || !height_cache || height_cache->empty())
         {
             return false;
         }
@@ -382,7 +414,7 @@ namespace spartan
             [&](const uint32_t cascade, const float sample_x, const float sample_z)
             {
                 const Vector4* slice =
-                    ocean_heights_cache.data() +
+                    height_cache->data() +
                     cascade * n * n;
                 // samples come from full resolution texels zero four eight
                 const float fx =

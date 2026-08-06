@@ -41,33 +41,20 @@ This is what a codebase looks like when a single person owns every line for a de
 
 ## Worlds
 
-<img align="left" width="420" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection_4.png"/>
-
 Launch the engine and choose from a selection of default worlds. Nothing is a canned demo—every world is physics-enabled. Walk around, pick up objects with your mouse, or take a car for a spin.
 
-<br clear="left"/>
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection_4.png"/>
 
-### Forest
-
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/>
-
-The most demanding world: **256 million** procedurally generated grass blades (inspired by Ghost of Tsushima), spanning **64.1 km²** covered with thousands of trees and rocks.
-
-### More Worlds
-
-| Sponza 4K | Basic |
-|:-:|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>Classic Dubrovnik building—ideal for path tracing | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_cornell.jpg"/><br>Contains some render test objects |
-
-| Liminal Space | Showroom |
-|:-:|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_liminal_a.png"/><br>Reality shifts to a nearby frequency | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom_a.png"/><br>Clean showcase—no experimental tech |
-
-| [The Plan](plan.md) |
-|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_car_playground.png"/><br>A neon-soaked city, built to push the engine toward real-time path-traced driving through rain-slicked streets at 60fps, that's the plan. |
-
----
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg" width="100%"/></td>
+    <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png" width="100%"/></td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_liminal_a.png" width="100%"/></td>
+    <td><img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom_a.png" width="100%"/></td>
+  </tr>
+</table>
 
 ## Rendering
 
