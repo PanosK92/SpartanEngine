@@ -128,6 +128,7 @@ namespace spartan
     {
         Steam::Shutdown();
         McpServer::Shutdown();
+        Profiler::Shutdown();
 
         // the thread pool can hold state from other systems
         // so shut it down first (it waits) to avoid crashes due to race conditions

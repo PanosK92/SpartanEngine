@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_VendorTechnology.h"
 #include "../Core/Debugging.h"
 #include "../../Profiling/Breadcrumbs.h"
+#include "../../Profiling/Profiler.h"
 //==================================
 
 //= NAMESPACES =====
@@ -43,6 +44,57 @@ namespace spartan
         mutex& get_mutex(RHI_Queue* queue)
         {
             return mutexes[static_cast<uint32_t>(queue->GetType())];
+        }
+
+        uint32_t command_list_count(
+            const RHI_Queue_Type type
+        )
+        {
+            if (type == RHI_Queue_Type::Graphics)
+            {
+                return 16;
+            }
+
+            if (type == RHI_Queue_Type::Compute)
+            {
+                return 8;
+            }
+
+            return 4;
+        }
+
+        const char* wait_name(const RHI_Queue_Type type)
+        {
+            switch (type)
+            {
+                case RHI_Queue_Type::Graphics:
+                    return "cmd_wait_graphics";
+                case RHI_Queue_Type::Compute:
+                    return "cmd_wait_compute";
+                case RHI_Queue_Type::Copy:
+                    return "cmd_wait_copy";
+                case RHI_Queue_Type::Present:
+                    return "cmd_wait_present";
+                default:
+                    return "cmd_wait";
+            }
+        }
+
+        const char* submit_name(const RHI_Queue_Type type)
+        {
+            switch (type)
+            {
+                case RHI_Queue_Type::Graphics:
+                    return "queue_submit_graphics";
+                case RHI_Queue_Type::Compute:
+                    return "queue_submit_compute";
+                case RHI_Queue_Type::Copy:
+                    return "queue_submit_copy";
+                case RHI_Queue_Type::Present:
+                    return "queue_submit_present";
+                default:
+                    return "queue_submit";
+            }
         }
     }
 
@@ -67,6 +119,12 @@ namespace spartan
         }
 
         // command lists
+        m_cmd_lists.resize(
+            command_list_count(queue_type)
+        );
+        m_index = static_cast<uint32_t>(
+            m_cmd_lists.size() - 1
+        );
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
         {
             m_cmd_lists[i] = make_shared<RHI_CommandList>(this, m_rhi_resource, (("cmd_list_") + to_string(i)).c_str());
@@ -93,28 +151,90 @@ namespace spartan
 
     RHI_CommandList* RHI_Queue::NextCommandList()
     {
-        m_index        = (m_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
-        auto& cmd_list = m_cmd_lists[m_index];
+        const uint32_t count =
+            static_cast<uint32_t>(m_cmd_lists.size());
+        const uint32_t first_index =
+            (
+                m_index.load() +
+                1
+            ) %
+            count;
+        uint32_t submitted_index = count;
 
-        // submit any pending work (toggling between fullscreen and windowed mode can leave work)
-        if (cmd_list->GetState() == RHI_CommandListState::Recording)
+        for (uint32_t offset = 0; offset < count; offset++)
         {
-            cmd_list->Submit(0, false);
+            const uint32_t index =
+                (
+                    first_index +
+                    offset
+                ) %
+                count;
+            auto& cmd_list = m_cmd_lists[index];
+
+            if (
+                cmd_list->GetState() ==
+                RHI_CommandListState::Idle
+            )
+            {
+                m_index = index;
+                return cmd_list.get();
+            }
+
+            if (
+                cmd_list->GetState() ==
+                RHI_CommandListState::Submitted
+            )
+            {
+                if (cmd_list->IsExecutionComplete())
+                {
+                    cmd_list->WaitForExecution();
+                    m_index = index;
+                    return cmd_list.get();
+                }
+
+                if (submitted_index == count)
+                {
+                    submitted_index = index;
+                }
+            }
         }
 
-        // with enough command lists available, there is no wait time
-        if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+        uint32_t index =
+            submitted_index != count
+                ? submitted_index
+                : first_index;
+        auto& cmd_list = m_cmd_lists[index];
+        if (
+            cmd_list->GetState() ==
+            RHI_CommandListState::Recording
+        )
         {
+            cmd_list->Submit(nullptr, false);
+        }
+
+        if (
+            cmd_list->GetState() ==
+            RHI_CommandListState::Submitted
+        )
+        {
+            ScopedTimeBlock time_block(
+                wait_name(m_type)
+            );
             cmd_list->WaitForExecution();
         }
 
         SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Idle);
 
+        m_index = index;
         return cmd_list.get();
     }
 
     void RHI_Queue::Wait(const bool flush)
     {
+        ScopedTimeBlock time_block(
+            "queue_wait_idle"
+        );
+
         // ensure that any submitted command lists have completed execution
         for (auto& cmd_list : m_cmd_lists)
         {
@@ -149,6 +269,9 @@ namespace spartan
         RHI_SyncPrimitive* semaphore_timeline_wait, uint64_t timeline_wait_value
     )
     {
+        ScopedTimeBlock time_block(
+            submit_name(m_type)
+        );
         lock_guard<mutex> lock(get_mutex(this));
         uint64_t timeline_signal_value = 0;
     
@@ -232,6 +355,9 @@ namespace spartan
 
     bool RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
     {
+        ScopedTimeBlock time_block(
+            "queue_present"
+        );
         lock_guard<mutex> lock(get_mutex(this));
 
         // get semaphore vulkan resources

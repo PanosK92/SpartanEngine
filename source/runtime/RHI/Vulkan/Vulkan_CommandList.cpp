@@ -1393,6 +1393,18 @@ namespace spartan
         }
     }
 
+    bool RHI_CommandList::IsExecutionComplete()
+    {
+        if (m_state != RHI_CommandListState::Submitted)
+        {
+            return m_state == RHI_CommandListState::Idle;
+        }
+
+        return
+            m_rendering_complete_semaphore_timeline->
+                IsSignaled();
+    }
+
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -2975,6 +2987,18 @@ namespace spartan
     uint32_t RHI_CommandList::BeginTimestamp()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (
+            !Debugging::IsGpuTimingEnabled() ||
+            !m_rhi_query_pool_timestamps
+        )
+        {
+            return 0;
+        }
+        if (m_timestamp_index >= m_max_timestamps)
+        {
+            Profiler::m_rhi_timestamps_dropped++;
+            return 0;
+        }
 
         // timestamp writes must not happen inside an active render pass
         if (m_render_pass_active)
@@ -2998,6 +3022,18 @@ namespace spartan
     uint32_t RHI_CommandList::EndTimestamp()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (
+            !Debugging::IsGpuTimingEnabled() ||
+            !m_rhi_query_pool_timestamps
+        )
+        {
+            return 0;
+        }
+        if (m_timestamp_index >= m_max_timestamps)
+        {
+            Profiler::m_rhi_timestamps_dropped++;
+            return 0;
+        }
 
         // timestamp writes must not happen inside an active render pass
         if (m_render_pass_active)

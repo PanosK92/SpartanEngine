@@ -1277,6 +1277,20 @@ namespace spartan
         m_state = RHI_CommandListState::Idle;
     }
 
+    bool RHI_CommandList::IsExecutionComplete()
+    {
+        if (m_state != RHI_CommandListState::Submitted)
+        {
+            return m_state == RHI_CommandListState::Idle;
+        }
+
+        ID3D12Fence* fence =
+            static_cast<ID3D12Fence*>(m_rhi_fence);
+        return
+            fence->GetCompletedValue() >=
+            m_rhi_fence_value;
+    }
+
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
         pso.Prepare();
@@ -3161,6 +3175,7 @@ namespace spartan
         }
         if (m_timestamp_index >= m_max_timestamps)
         {
+            Profiler::m_rhi_timestamps_dropped++;
             return 0;
         }
 
@@ -3186,6 +3201,7 @@ namespace spartan
         }
         if (m_timestamp_index >= m_max_timestamps)
         {
+            Profiler::m_rhi_timestamps_dropped++;
             return 0;
         }
 

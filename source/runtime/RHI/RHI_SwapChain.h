@@ -104,6 +104,7 @@ namespace spartan
         bool m_image_acquired    = false;
         uint32_t m_image_index   = 0;
         uint32_t semaphore_index = 0;
+        uint32_t m_acquired_semaphore_index = 0;
         void* m_sdl_window       = nullptr;
         subscription_handle m_window_resize_event_handle;
         std::vector<

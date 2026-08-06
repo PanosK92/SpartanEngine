@@ -1358,6 +1358,18 @@ namespace spartan::d3d12_descriptors
     ID3D12CommandAllocator* GetGraphicsAllocator() { return spartan::queues::allocator_graphics; }
     ID3D12Fence*            GetGraphicsFence()     { return spartan::queues::fence_graphics; }
     uint64_t&               GetGraphicsFenceValue(){ return spartan::queues::fence_value_graphics; }
+    ID3D12Fence* GetQueueFence(
+        const spartan::RHI_Queue_Type type
+    )
+    {
+        return spartan::queues::get_fence(type);
+    }
+    uint64_t& GetQueueFenceValue(
+        const spartan::RHI_Queue_Type type
+    )
+    {
+        return spartan::queues::get_fence_value(type);
+    }
     HANDLE                  GetFenceEvent()        { return spartan::queues::fence_event; }
 }
 

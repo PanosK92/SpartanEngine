@@ -240,6 +240,12 @@ void Editor::Tick()
     // main loop
     while (!spartan::Window::WantsToClose())
     {
+        spartan::Profiler::FrameStart();
+        spartan::Profiler::TimeBlockStart(
+            "frame_active",
+            spartan::TimeBlockType::Cpu
+        );
+
         bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible);
         spartan::Renderer::SetPresentInRenderer(
             !render_editor
@@ -303,6 +309,9 @@ void Editor::Tick()
             spartan::Renderer::SubmitAndPresent();
         }
 
+        spartan::Profiler::TimeBlockEnd(
+            spartan::TimeBlockType::Cpu
+        );
         spartan::Timer::PostTick();
         spartan::Profiler::PostTick();
     }

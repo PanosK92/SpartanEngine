@@ -43,14 +43,24 @@ namespace spartan
         TimeBlock() = default;
         ~TimeBlock();
 
-        void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, RHI_Queue_Type queue_type = RHI_Queue_Type::Max);
+        void Begin(
+            uint32_t id,
+            const char* name,
+            TimeBlockType type,
+            uint32_t parent_id = 0,
+            uint32_t parent_tree_depth = 0,
+            RHI_CommandList* cmd_list = nullptr,
+            RHI_Queue_Type queue_type =
+                RHI_Queue_Type::Max
+        );
         void End();
         void ResolveGpuTimestamps(uint64_t global_reference_tick, float timestamp_period, uint64_t end_tick_override = 0);
         void ResolveGpuDuration(uint64_t end_tick_override = 0);
 
         TimeBlockType GetType()        const { return m_type; }
         const char* GetName()          const { return m_name; }
-        const TimeBlock* GetParent()   const { return m_parent; }
+        bool HasParent()               const { return m_parent_id != 0; }
+        uint32_t GetParentId()         const { return m_parent_id; }
         uint32_t GetTreeDepth()        const { return m_tree_depth; }
         uint32_t GetTreeDepthMax()     const { return m_max_tree_depth; }
         float GetDuration()            const { return m_duration; }
@@ -64,13 +74,12 @@ namespace spartan
         uint32_t GetTimestampIndexEnd()   const { return m_timestamp_index_end; }
 
     private:    
-        static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
         static uint32_t m_max_tree_depth;
 
         const char* m_name         = nullptr;
         TimeBlockType m_type       = TimeBlockType::Max;
         float m_duration           = 0.0f;
-        const TimeBlock* m_parent  = nullptr;
+        uint32_t m_parent_id       = 0;
         uint32_t m_tree_depth      = 0;
         bool m_is_complete         = false;
         uint32_t m_id                   = 0;

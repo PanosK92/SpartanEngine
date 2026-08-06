@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SyncPrimitive.h"
+#include "../Profiling/Profiler.h"
 #include "../XR/Xr.h"
 #include "../Core/ThreadPool.h"
 #include "../Core/Debugging.h"
@@ -1381,6 +1382,9 @@ namespace spartan
             fr.completion_value != 0
         )
         {
+            ScopedTimeBlock time_block(
+                "frame_slot_wait"
+            );
             fr.completion_timeline->Wait(
                 numeric_limits<uint64_t>::max(),
                 fr.completion_value

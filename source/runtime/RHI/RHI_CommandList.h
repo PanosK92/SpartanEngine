@@ -100,6 +100,7 @@ namespace spartan
         void Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal = nullptr,
                     RHI_SyncPrimitive* semaphore_timeline_wait = nullptr, uint64_t timeline_wait_value = 0);
         void WaitForExecution(const bool log_wait_time = false);
+        bool IsExecutionComplete();
         void SetPipelineState(RHI_PipelineState& pso);
 
         // immediate execution

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/SpartanObject.h"
 #include "RHI_Definitions.h"
 #include "RHI_CommandList.h"
-#include <array>
+#include <vector>
 //================================
 
 namespace spartan
@@ -47,12 +47,9 @@ namespace spartan
         RHI_Queue_Type GetType() const { return m_type; }
 
     private:
-        // vulkan keeps submission slack, d3d12 relies on its four frame ring
-        #if defined(API_GRAPHICS_VULKAN)
-        std::array<std::shared_ptr<RHI_CommandList>, 6> m_cmd_lists = { nullptr };
-        #else
-        std::array<std::shared_ptr<RHI_CommandList>, 4> m_cmd_lists = { nullptr };
-        #endif
+        std::vector<
+            std::shared_ptr<RHI_CommandList>
+        > m_cmd_lists;
         void* m_rhi_resource                                        = nullptr;
         std::atomic<uint32_t> m_index                               = 0;
         RHI_Queue_Type m_type                                       = RHI_Queue_Type::Max;

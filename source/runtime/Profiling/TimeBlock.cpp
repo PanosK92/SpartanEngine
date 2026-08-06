@@ -40,11 +40,19 @@ namespace spartan
 
     }
 
-    void TimeBlock::Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, RHI_Queue_Type queue_type /*= RHI_Queue_Type::Max*/)
+    void TimeBlock::Begin(
+        const uint32_t id,
+        const char* name,
+        const TimeBlockType type,
+        const uint32_t parent_id,
+        const uint32_t parent_tree_depth,
+        RHI_CommandList* cmd_list,
+        const RHI_Queue_Type queue_type
+    )
     {
         m_id                    = id;
         m_name                  = name;
-        m_parent                = parent;
+        m_parent_id             = parent_id;
         m_type                  = type;
         m_queue_type            = queue_type;
         m_duration              = 0.0f;
@@ -54,7 +62,10 @@ namespace spartan
         m_timestamp_index_end   = 0;
         m_start_ms              = 0.0f;
         m_end_ms                = 0.0f;
-        m_tree_depth            = FindTreeDepth(this);
+        m_tree_depth            =
+            parent_id != 0 ?
+                parent_tree_depth + 1 :
+                0;
         m_max_tree_depth        = max(m_max_tree_depth, m_tree_depth);
 
         // record cpu time for timeline position
@@ -143,15 +154,5 @@ namespace spartan
         }
 
         m_end_ms   = m_start_ms + m_duration;
-    }
-
-    uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)
-    {
-        if (time_block && time_block->GetParent())
-        {
-            depth = FindTreeDepth(time_block->GetParent(), ++depth);
-        }
-
-        return depth;
     }
 }

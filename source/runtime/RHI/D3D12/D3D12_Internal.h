@@ -24,6 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <d3d12.h>
 
+namespace spartan
+{
+    enum class RHI_Queue_Type;
+}
+
 // agility sdk redist, returns 0 when the build falls back to the in-box d3d12 runtime
 namespace spartan::d3d12_agility
 {
@@ -104,6 +109,8 @@ namespace spartan::d3d12_descriptors
     ID3D12CommandAllocator* GetGraphicsAllocator();
     ID3D12Fence*            GetGraphicsFence();
     uint64_t&               GetGraphicsFenceValue();
+    ID3D12Fence*            GetQueueFence(RHI_Queue_Type type);
+    uint64_t&               GetQueueFenceValue(RHI_Queue_Type type);
     HANDLE                  GetFenceEvent();
 }
 

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../Display/Display.h"
 #include "../Rendering/Renderer.h"
+#include "../../Profiling/Profiler.h"
 #ifdef _WIN32
 #include <tlhelp32.h>
 #endif
@@ -342,7 +343,12 @@ namespace spartan
     RHI_SyncPrimitive* RHI_SwapChain::GetImageAcquiredSemaphore() const
     {
         // only return the semaphore if we actually acquired an image
-        return m_image_acquired ? m_image_acquired_semaphore[m_image_index].get() : nullptr;
+        return
+            m_image_acquired
+                ? m_image_acquired_semaphore[
+                    m_acquired_semaphore_index
+                ].get()
+                : nullptr;
     }
 
     RHI_SyncPrimitive* RHI_SwapChain::GetRenderingCompleteSemaphore() const
@@ -536,9 +542,10 @@ namespace spartan
         );
 
         // reset state after swapchain recreation
-        m_image_index    = 0;
-        semaphore_index  = 0;
-        m_image_acquired = false;
+        m_image_index               = 0;
+        semaphore_index             = 0;
+        m_acquired_semaphore_index  = 0;
+        m_image_acquired            = false;
     }
 
     void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -583,35 +590,53 @@ namespace spartan
         // try to acquire, with retry after swapchain recreation
         for (uint32_t attempt = 0; attempt < 2; attempt++)
         {
-            // use per-image semaphores indexed by the current semaphore_index
-            // this avoids reusing a semaphore that may still be in use by presentation
+            // rotate acquire semaphores independently from swapchain images
             RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
 
             // ensure the semaphore is free; wait for any command list that used this semaphore
             if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
             {
                 if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-                { 
+                {
+                    ScopedTimeBlock time_block(
+                        "acquire_semaphore_wait"
+                    );
                     cmd_list->WaitForExecution();
                 }
                 signal_semaphore->SetUserCmdList(nullptr);
             }
 
             // acquire with a reasonable timeout
-            VkResult result = vkAcquireNextImageKHR(
-                RHI_Context::device,
-                static_cast<VkSwapchainKHR>(m_rhi_swapchain),
-                100000000, // 100ms timeout
-                static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()),
-                nullptr,
-                &m_image_index
-            );
+            VkResult result;
+            {
+                ScopedTimeBlock time_block(
+                    "acquire_image_wait"
+                );
+                result = vkAcquireNextImageKHR(
+                    RHI_Context::device,
+                    static_cast<VkSwapchainKHR>(
+                        m_rhi_swapchain
+                    ),
+                    100000000,
+                    static_cast<VkSemaphore>(
+                        signal_semaphore->
+                            GetRhiResource()
+                    ),
+                    nullptr,
+                    &m_image_index
+                );
+            }
 
             if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
             {
-                // move the semaphore we used to the acquired image's slot for proper per-image tracking
-                swap(m_image_acquired_semaphore[m_image_index], m_image_acquired_semaphore[semaphore_index]);
-                semaphore_index = (semaphore_index + 1) % m_image_acquired_semaphore.size();
+                m_acquired_semaphore_index =
+                    semaphore_index;
+                semaphore_index =
+                    (
+                        semaphore_index +
+                        1
+                    ) %
+                    m_image_acquired_semaphore.size();
                 m_image_acquired = true;
                 return;
             }

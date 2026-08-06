@@ -83,4 +83,6 @@ private:
     std::vector<spartan::TimeBlock> m_frozen_time_blocks;
     float m_frozen_time_cpu  = 0.0f;
     float m_frozen_time_gpu  = 0.0f;
+    float m_frozen_time_frame = 0.0f;
+    float m_frozen_time_pacing = 0.0f;
 };

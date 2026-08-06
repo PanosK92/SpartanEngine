@@ -40,6 +40,7 @@ namespace spartan
         double time_ms                = 0.0f;
         double delta_time_ms          = 0.0f;
         double delta_time_smoothed_ms = 0.0f;
+        double pacing_time_ms         = 0.0f;
 
         // fps
         float fps_min            = 30.0f;
@@ -67,10 +68,17 @@ namespace spartan
 
         // fps limit
         double target_ms = 1000.0 / fps_limit;
+        const chrono::steady_clock::time_point pacing_start =
+            chrono::steady_clock::now();
         while (delta_time_ms < target_ms)
         {
             delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
         }
+        pacing_time_ms =
+            chrono::duration<double, milli>(
+                chrono::steady_clock::now() -
+                pacing_start
+            ).count();
 
         // compute delta time based timings
         delta_time_smoothed_ms  = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
@@ -117,6 +125,11 @@ namespace spartan
         }
 
         return FpsLimitType::Fixed;
+    }
+
+    double Timer::GetPacingTimeMs()
+    {
+        return pacing_time_ms;
     }
 
     void Timer::OnVsyncToggled(const bool enabled)

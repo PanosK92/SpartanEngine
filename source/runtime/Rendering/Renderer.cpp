@@ -636,8 +636,6 @@ namespace spartan
 
     void Renderer::Tick()
     {
-        Profiler::FrameStart();
-
         // process deferred fullscreen toggle at a safe point with no command lists in flight
         if (Window::IsFullScreenTogglePending())
         {
@@ -661,6 +659,7 @@ namespace spartan
         if (can_render)
         {
             RotateFrameBuffers();
+            AcquireSwapchainImage();
         }
         else if (m_frame_num > 0)
         {
@@ -978,7 +977,10 @@ namespace spartan
         if (m_present_in_renderer)
         {
             AcquireSwapchainImage();
-            if (can_render)
+            if (
+                can_render &&
+                m_swapchain->IsImageAcquired()
+            )
             {
                 BlitToBackBuffer(
                     m_cmd_list_present,
@@ -2311,8 +2313,14 @@ namespace spartan
 
     void Renderer::AcquireSwapchainImage()
     {
-        if (m_swapchain)
+        if (
+            m_swapchain &&
+            !m_swapchain->IsImageAcquired()
+        )
         {
+            ScopedTimeBlock time_block(
+                "frame_acquire"
+            );
             m_swapchain->AcquireNextImage();
         }
     }
@@ -2342,16 +2350,31 @@ namespace spartan
                 m_cmd_list_present->RenderPassEnd();
                 m_cmd_list_present->PrepareForPresent(m_swapchain.get());
 
-                m_cmd_list_present->Submit(
-                    m_swapchain->GetImageAcquiredSemaphore(),
-                    false,
-                    m_swapchain->GetRenderingCompleteSemaphore(),
-                    m_cross_queue_sync.pending_compute_timeline,
-                    m_cross_queue_sync.pending_compute_timeline_value);
-                m_swapchain->Present(m_cmd_list_present);
+                {
+                    ScopedTimeBlock time_block(
+                        "frame_submit"
+                    );
+                    m_cmd_list_present->Submit(
+                        m_swapchain->GetImageAcquiredSemaphore(),
+                        false,
+                        m_swapchain->GetRenderingCompleteSemaphore(),
+                        m_cross_queue_sync.pending_compute_timeline,
+                        m_cross_queue_sync.pending_compute_timeline_value);
+                }
+                {
+                    ScopedTimeBlock time_block(
+                        "frame_present"
+                    );
+                    m_swapchain->Present(
+                        m_cmd_list_present
+                    );
+                }
             }
             else
             {
+                ScopedTimeBlock time_block(
+                    "frame_submit"
+                );
                 m_cmd_list_present->Submit(
                     nullptr,
                     true,

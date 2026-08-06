@@ -46,6 +46,7 @@ namespace spartan
     {
     public:
         static void Initialize();
+        static void Shutdown();
         static void FrameStart();
         static void PostTick();
 
@@ -59,6 +60,8 @@ namespace spartan
         static float GetTimeGpuLast();
         static float GetTimeFrameLast();
         static float GetFrameDurationMs();
+        static float GetCapturedFrameDurationMs();
+        static float GetCapturedPacingTimeMs();
         static float GetFps();
         static float GetUpdateInterval();
         static void SetUpdateInterval(float interval);
@@ -66,6 +69,15 @@ namespace spartan
         static bool IsGpuStuttering();
         static void SetVisualized(bool value);
         static bool IsVisualized();
+
+        // csv capture
+        static bool StartRecording();
+        static void StopRecording();
+        static bool IsRecording();
+        static bool IsRecordingStopping();
+        static uint64_t GetRecordedFrameCount();
+        static const std::string& GetRecordingFilePath();
+        static const std::string& GetRecordingError();
 
         // timeline helpers
         static float GetCpuOffsetMs(const std::chrono::high_resolution_clock::time_point& time_point);
@@ -88,6 +100,7 @@ namespace spartan
         static uint32_t m_rhi_bindings_texture_storage;
         static uint32_t m_rhi_bindings_pipeline;
         static uint32_t m_rhi_descriptor_set_count;
+        static uint32_t m_rhi_timestamps_dropped;
 
     private:
         static void ReadTimeBlocks();
@@ -110,6 +123,8 @@ namespace spartan
             m_rhi_bindings_render_target     = 0;
             m_rhi_bindings_texture_storage   = 0;
             m_rhi_bindings_pipeline          = 0;
+            m_rhi_descriptor_set_count       = 0;
+            m_rhi_timestamps_dropped         = 0;
         }
 
         static void DrawPerformanceMetrics();

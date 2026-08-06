@@ -178,9 +178,80 @@ void Profiler::OnTickVisible()
     ImGui::SameLine();
     if (toggle_button("Freeze", m_frozen))
     {
+        if (!m_frozen)
+        {
+            m_frozen_time_blocks =
+                spartan::Profiler::GetTimeBlocks();
+            m_frozen_time_cpu =
+                spartan::Profiler::GetTimeCpuLast();
+            m_frozen_time_gpu =
+                spartan::Profiler::GetTimeGpuLast();
+            m_frozen_time_frame =
+                spartan::Profiler::
+                    GetCapturedFrameDurationMs();
+            m_frozen_time_pacing =
+                spartan::Profiler::
+                    GetCapturedPacingTimeMs();
+        }
         m_frozen = !m_frozen;
     }
     ImGuiSp::tooltip(m_frozen ? "Resume live capture" : "Freeze the current capture");
+
+    ImGui::SameLine();
+    ImGui::SeparatorEx(
+        ImGuiSeparatorFlags_Vertical
+    );
+    ImGui::SameLine();
+    const bool is_recording =
+        spartan::Profiler::IsRecording();
+    const bool is_recording_stopping =
+        spartan::Profiler::IsRecordingStopping();
+    if (is_recording)
+    {
+        ImGui::PushStyleColor(
+            ImGuiCol_Button,
+            ImGui::Style::color_error
+        );
+        ImGui::PushStyleColor(
+            ImGuiCol_ButtonHovered,
+            ImGui::EditorUi::alpha(
+                ImGui::Style::color_error,
+                0.85f
+            )
+        );
+        if (ImGuiSp::button("Stop"))
+        {
+            spartan::Profiler::StopRecording();
+        }
+        ImGui::PopStyleColor(2);
+    }
+    else if (is_recording_stopping)
+    {
+        ImGui::BeginDisabled();
+        ImGuiSp::button("Stopping...");
+        ImGui::EndDisabled();
+    }
+    else if (ImGuiSp::button("Record"))
+    {
+        spartan::Profiler::StartRecording();
+    }
+    ImGuiSp::tooltip(
+        is_recording ?
+            "Stop and save the CSV capture" :
+            "Record every profiler block per frame, "
+            "recording never waits for GPU completion "
+            "or changes frame pacing"
+    );
+
+    if (is_recording || is_recording_stopping)
+    {
+        ImGui::SameLine();
+        ImGui::TextDisabled(
+            "%llu frames",
+            spartan::Profiler::
+                GetRecordedFrameCount()
+        );
+    }
 
     if (mode_view == 1)
     {
@@ -210,7 +281,10 @@ void Profiler::OnTickVisible()
         }
     }
 
-    const bool show_interval = !m_frozen;
+    const bool show_interval =
+        !m_frozen &&
+        !is_recording &&
+        !is_recording_stopping;
     const float interval_controls_width = 210.0f * dpi;
     const bool interval_on_same_row = show_interval && ImGui::GetContentRegionAvail().x >= 420.0f * dpi;
     ImGui::SetNextItemWidth(interval_on_same_row ? ImGui::GetContentRegionAvail().x - interval_controls_width : -FLT_MIN);
@@ -230,12 +304,52 @@ void Profiler::OnTickVisible()
         ImGui::SameLine();
         float interval = spartan::Profiler::GetUpdateInterval();
         ImGui::SetNextItemWidth(-FLT_MIN);
-        if (ImGui::SliderFloat("##update_interval", &interval, 0.0f, 0.5f, "%.2f s"))
+        if (
+            ImGui::SliderFloat(
+                "##update_interval",
+                &interval,
+                0.05f,
+                2.0f,
+                "%.2f s"
+            )
+        )
         {
             spartan::Profiler::SetUpdateInterval(interval);
         }
     }
     ImGui::Separator();
+
+    const string& recording_error =
+        spartan::Profiler::GetRecordingError();
+    const string& recording_path =
+        spartan::Profiler::GetRecordingFilePath();
+    if (!recording_error.empty())
+    {
+        ImGui::TextColored(
+            ImGui::Style::color_error,
+            "%s",
+            recording_error.c_str()
+        );
+    }
+    else if (!recording_path.empty())
+    {
+        ImGui::TextDisabled(
+            "%s",
+            is_recording ?
+                "Recording CSV" :
+                "Last CSV"
+        );
+        ImGui::SameLine();
+        if (ImGuiSp::button("Copy path"))
+        {
+            ImGui::SetClipboardText(
+                recording_path.c_str()
+            );
+        }
+        ImGuiSp::tooltip(
+            recording_path.c_str()
+        );
+    }
 
     spartan::TimeBlockType type = mode_hardware == 0 ? spartan::TimeBlockType::Gpu : spartan::TimeBlockType::Cpu;
 
@@ -245,25 +359,156 @@ void Profiler::OnTickVisible()
         m_frozen_time_blocks = spartan::Profiler::GetTimeBlocks();
         m_frozen_time_cpu    = spartan::Profiler::GetTimeCpuLast();
         m_frozen_time_gpu    = spartan::Profiler::GetTimeGpuLast();
+        m_frozen_time_frame  =
+            spartan::Profiler::GetCapturedFrameDurationMs();
+        m_frozen_time_pacing =
+            spartan::Profiler::GetCapturedPacingTimeMs();
     }
 
     vector<spartan::TimeBlock>& time_blocks = m_frozen_time_blocks;
     uint32_t time_block_count               = static_cast<uint32_t>(time_blocks.size());
-    float time_last                         = type == spartan::TimeBlockType::Cpu ? m_frozen_time_cpu : m_frozen_time_gpu;
+
+    auto block_duration =
+        [&](const char* name)
+        {
+            float duration = 0.0f;
+            for (const spartan::TimeBlock& block : time_blocks)
+            {
+                if (
+                    block.GetType() ==
+                        spartan::TimeBlockType::Cpu &&
+                    block.IsComplete() &&
+                    strcmp(block.GetName(), name) == 0
+                )
+                {
+                    duration += block.GetDuration();
+                }
+            }
+            return duration;
+        };
+
+    float wait_time =
+        block_duration("frame_slot_wait") +
+        block_duration("cmd_wait_graphics") +
+        block_duration("cmd_wait_compute") +
+        block_duration("cmd_wait_copy") +
+        block_duration("cmd_wait_present") +
+        block_duration("queue_wait_idle");
+    const float acquire_time =
+        block_duration("frame_acquire");
+    const float submit_time =
+        block_duration("queue_submit_graphics") +
+        block_duration("queue_submit_compute") +
+        block_duration("queue_submit_copy") +
+        block_duration("queue_submit_present") +
+        block_duration("queue_submit");
+    const float present_time =
+        block_duration("frame_present");
+
+    auto draw_metric =
+        [&](
+            const char* label,
+            float value,
+            const ImVec4& color,
+            const char* tooltip
+        )
+        {
+            char text[64];
+            snprintf(
+                text,
+                sizeof(text),
+                "%s %.2f ms",
+                label,
+                value
+            );
+            ImGui::EditorUi::draw_chip(
+                text,
+                ImGui::EditorUi::alpha(color, 0.24f),
+                ImGui::Style::color_text
+            );
+            ImGuiSp::tooltip(tooltip);
+        };
+
+    draw_metric(
+        "Wall",
+        m_frozen_time_frame,
+        ImGui::Style::color_surface_active,
+        "Last sampled frame, total elapsed time from frame start through "
+        "frame-rate pacing, excludes profiler readback and CSV overhead"
+    );
+    ImGui::SameLine();
+    draw_metric(
+        "CPU",
+        m_frozen_time_cpu,
+        ImGui::Style::color_accent_2,
+        "Elapsed main-thread frame work, includes CPU work and "
+        "blocking inside the active frame, excludes frame-rate pacing"
+    );
+    ImGui::SameLine();
+    draw_metric(
+        "GPU span",
+        m_frozen_time_gpu,
+        ImGui::Style::color_accent_1,
+        "Elapsed GPU span from the earliest root GPU marker to "
+        "the latest root GPU marker across queues, not a sum of every pass"
+    );
+    ImGui::SameLine();
+    draw_metric(
+        "Pacing",
+        m_frozen_time_pacing,
+        ImGui::Style::color_text_muted,
+        "CPU time spent enforcing the configured FPS limit after "
+        "frame work completed"
+    );
+
+    draw_metric(
+        "Wait",
+        wait_time,
+        ImGui::Style::color_warning,
+        "CPU time blocked waiting for frame resources, command-list "
+        "reuse, fences, timelines, or an idle queue"
+    );
+    ImGui::SameLine();
+    draw_metric(
+        "Acquire",
+        acquire_time,
+        ImGui::Style::color_accent_1,
+        "CPU time acquiring the next swapchain image, Vulkan can block "
+        "until an image is available while D3D12 is typically immediate"
+    );
+    ImGui::SameLine();
+    draw_metric(
+        "Submit",
+        submit_time,
+        ImGui::Style::color_accent_2,
+        "CPU time issuing command buffers to graphics, compute, "
+        "copy, and present queues, excludes GPU execution time"
+    );
+    ImGui::SameLine();
+    draw_metric(
+        "Present",
+        present_time,
+        ImGui::Style::color_surface_active,
+        "CPU time handing the completed swapchain image to the "
+        "display system, this can block because of VSync or backpressure"
+    );
+    ImGui::Separator();
 
     if (mode_view == 0)
     {
         // list view
+        vector<spartan::TimeBlock> list_blocks =
+            time_blocks;
         if (mode_sort == 1)
         {
-            sort(time_blocks.begin(), time_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
+            sort(list_blocks.begin(), list_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
             {
                 return a.GetDuration() > b.GetDuration();
             });
         }
         else if (mode_sort == 0)
         {
-            sort(time_blocks.begin(), time_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
+            sort(list_blocks.begin(), list_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
             {
                 return string_view(a.GetName()) < string_view(b.GetName());
             });
@@ -275,12 +520,12 @@ void Profiler::OnTickVisible()
         {
             ImGui::TableSetupColumn("Block", ImGuiTableColumnFlags_WidthStretch, 0.55f);
             ImGui::TableSetupColumn("Duration", ImGuiTableColumnFlags_WidthFixed, 100.0f * dpi);
-            ImGui::TableSetupColumn("Frame", ImGuiTableColumnFlags_WidthStretch, 0.25f);
+            ImGui::TableSetupColumn("% Wall", ImGuiTableColumnFlags_WidthStretch, 0.25f);
             ImGui::TableHeadersRow();
 
             for (uint32_t i = 0; i < time_block_count; i++)
             {
-                const spartan::TimeBlock& block = time_blocks[i];
+                const spartan::TimeBlock& block = list_blocks[i];
                 if (block.GetType() != type || !block.IsComplete() || !m_block_filter.PassFilter(block.GetName()))
                 {
                     continue;
@@ -299,7 +544,15 @@ void Profiler::OnTickVisible()
                 ImGui::Text("%.3f ms", block.GetDuration());
 
                 ImGui::TableSetColumnIndex(2);
-                const float fraction = time_last > 0.0f ? ImClamp(block.GetDuration() / time_last, 0.0f, 1.0f) : 0.0f;
+                const float fraction =
+                    m_frozen_time_frame > 0.0f ?
+                        ImClamp(
+                            block.GetDuration() /
+                                m_frozen_time_frame,
+                            0.0f,
+                            1.0f
+                        ) :
+                        0.0f;
                 char percentage[16];
                 snprintf(percentage, sizeof(percentage), "%.1f%%", fraction * 100.0f);
                 ImGui::ProgressBar(fraction, ImVec2(-FLT_MIN, 0.0f), percentage);
@@ -347,6 +600,7 @@ void Profiler::OnTickVisible()
         {
             lanes.push_back({"Graphics", spartan::TimeBlockType::Gpu, spartan::RHI_Queue_Type::Graphics, false});
             lanes.push_back({"Compute",  spartan::TimeBlockType::Gpu, spartan::RHI_Queue_Type::Compute,  false});
+            lanes.push_back({"Copy",     spartan::TimeBlockType::Gpu, spartan::RHI_Queue_Type::Copy,     false});
         }
         else
         {
@@ -821,22 +1075,24 @@ void Profiler::OnTickVisible()
         ImGui::TextDisabled("scroll: zoom | right-drag: pan");
     }
 
-    // plot (always uses live data regardless of freeze)
+    // wall time plot
     ImGui::Separator();
     {
-        float time_live = type == spartan::TimeBlockType::Cpu ? spartan::Profiler::GetTimeCpuLast() : spartan::Profiler::GetTimeGpuLast();
+        float time_live =
+            m_frozen ?
+                m_frozen_time_frame :
+                spartan::Profiler::GetFrameDurationMs();
 
         if (previous_item_type != mode_hardware)
         {
-            m_plot.fill(0.0f);
-            m_timings.Clear();
+            m_timeline_needs_fit = true;
         }
 
         if (time_live == 0.0f)
         {
             time_live = m_plot.back();
         }
-        else
+        else if (!m_frozen)
         {
             m_timings.AddSample(time_live);
         }
@@ -848,17 +1104,33 @@ void Profiler::OnTickVisible()
                 m_timings.Clear();
             }
             ImGui::SameLine();
-            ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_live, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
-            bool is_stuttering = type == spartan::TimeBlockType::Cpu ? spartan::Profiler::IsCpuStuttering() : spartan::Profiler::IsGpuStuttering();
+            ImGui::Text(
+                "Live wall  Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f",
+                time_live,
+                m_timings.m_avg,
+                m_timings.m_min,
+                m_timings.m_max
+            );
+            bool is_stuttering =
+                m_timings.m_sample_count > 1 &&
+                time_live >
+                m_timings.m_avg + 1.0f;
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
         }
 
-        for (uint32_t i = 0; i < m_plot.size() - 1; i++)
+        if (!m_frozen)
         {
-            m_plot[i] = m_plot[i + 1];
+            for (
+                uint32_t i = 0;
+                i < m_plot.size() - 1;
+                i++
+            )
+            {
+                m_plot[i] = m_plot[i + 1];
+            }
+            m_plot[m_plot.size() - 1] = time_live;
         }
-        m_plot[m_plot.size() - 1] = time_live;
 
         ImGui::PlotLines("##performance_plot", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGui::GetContentRegionAvail().x, 80));
     }

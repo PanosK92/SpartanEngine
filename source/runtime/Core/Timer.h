@@ -49,5 +49,6 @@ namespace spartan
         static double GetDeltaTimeSec();
         static double GetDeltaTimeSmoothedMs();
         static double GetDeltaTimeSmoothedSec();
+        static double GetPacingTimeMs();
     };
 }
