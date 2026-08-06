@@ -1744,7 +1744,7 @@ namespace spartan
                 static_cast<uint32_t>(m_rhi_descriptor_set_count),
                 static_cast<uint32_t>(rhi_max_descriptor_set_count));
             SP_ASSERT(offset < sizeof(metrics_buffer));
-        
+        }
 
         // draw directly from the static buffer
         Renderer::DrawString(metrics_buffer, math::Vector2(0.005f, 0.02f));
