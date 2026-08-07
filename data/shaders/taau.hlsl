@@ -23,12 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float reset_history() { return pass_get_f3_value().x; }
 
-static const float blend_static      = 1.0f / 16.0f;
+static const float blend_static      = 1.0f / 24.0f;
 static const float blend_motion      = 1.0f / 4.0f;
 static const float blend_flicker_min = 0.3f;
 static const float motion_px_full    = 24.0f;
+static const float box_widen_static  = 0.5f;
 static const float box_pad_relative  = 0.08f;
 static const float box_pad_absolute  = 0.002f;
+static const float box_pad_hdr       = 0.2f;
 
 float3 tonemap_for_taa(float3 c)
 {
@@ -152,8 +154,10 @@ float3 taau(uint2 px_out, float2 res_out)
         reconstruct_weight(d_base.y * d_base.y),
         reconstruct_weight((d_base.y + 1.0f) * (d_base.y + 1.0f)));
 
-    float3 rgb_min        =  FLT_MAX_16U.xxx;
-    float3 rgb_max        = -FLT_MAX_16U.xxx;
+    float3 rgb_min_near   =  FLT_MAX_16U.xxx;
+    float3 rgb_max_near   = -FLT_MAX_16U.xxx;
+    float3 rgb_min_wide   =  FLT_MAX_16U.xxx;
+    float3 rgb_max_wide   = -FLT_MAX_16U.xxx;
     float3 current_rgb_tm = 0.0f.xxx;
     float  weight_sum     = 0.0f;
 
@@ -161,10 +165,10 @@ float3 taau(uint2 px_out, float2 res_out)
     float closest_depth = -1.0f;
 
     [unroll]
-    for (int i = 0; i < 9; ++i)
+    for (int i = 0; i < 25; ++i)
     {
-        int  dx  = (i % 3) - 1;
-        int  dy  = (i / 3) - 1;
+        int  dx  = (i % 5) - 2;
+        int  dy  = (i / 5) - 2;
         int2 tap = center + int2(dx, dy);
         if (any(tap < 0) || any(tap > px_render_max))
         {
@@ -178,8 +182,16 @@ float3 taau(uint2 px_out, float2 res_out)
         }
 
         float3 s_tm = tonemap_for_taa(clamp(s_rgb_raw, 0.0f.xxx, FLT_MAX_16U.xxx));
-        rgb_min     = min(rgb_min, s_tm);
-        rgb_max     = max(rgb_max, s_tm);
+        rgb_min_wide = min(rgb_min_wide, s_tm);
+        rgb_max_wide = max(rgb_max_wide, s_tm);
+
+        if (abs(dx) > 1 || abs(dy) > 1)
+        {
+            continue;
+        }
+
+        rgb_min_near = min(rgb_min_near, s_tm);
+        rgb_max_near = max(rgb_max_near, s_tm);
 
         float w         = wx[dx + 1] * wy[dy + 1];
         current_rgb_tm += s_tm * w;
@@ -195,10 +207,6 @@ float3 taau(uint2 px_out, float2 res_out)
 
     bool current_valid = weight_sum > 0.0f;
     current_rgb_tm     = current_valid ? current_rgb_tm * rcp(weight_sum) : 0.0f.xxx;
-
-    float3 box_pad = max((rgb_max - rgb_min) * box_pad_relative, box_pad_absolute.xxx);
-    rgb_min       -= box_pad;
-    rgb_max       += box_pad;
 
     // center velocity, closest depth dilation pulls panel gap motion into paint
     float  center_depth = tex_depth[center].r;
@@ -233,14 +241,29 @@ float3 taau(uint2 px_out, float2 res_out)
         return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
     }
 
+    float motion = saturate(length(velocity_uv * res_out) * rcp(motion_px_full));
+
+    float  widen   = box_widen_static * (1.0f - motion);
+    float3 rgb_min = lerp(rgb_min_near, rgb_min_wide, widen);
+    float3 rgb_max = lerp(rgb_max_near, rgb_max_wide, widen);
+
+    // the reinhard curve compresses highlights, so a fixed tolerance in tonemapped space is a
+    // tiny tolerance in linear space, this restores a constant relative tolerance for bright taps
+    float  box_level = max3(rgb_max);
+    float  pad_hdr   = box_pad_hdr * box_level * (1.0f - box_level);
+    float3 box_pad   = max((rgb_max - rgb_min) * box_pad_relative, max(box_pad_absolute, pad_hdr));
+    rgb_min         -= box_pad;
+    rgb_max         += box_pad;
+
     float3 history_rgb_tm     = tonemap_for_taa(max(history_rgb, 0.0f.xxx));
     float3 history_clipped_tm = clip_to_aabb(rgb_min, rgb_max, history_rgb_tm);
 
-    float motion     = saturate(length(velocity_uv * res_out) * rcp(motion_px_full));
     float blend_base = lerp(blend_static, blend_motion, motion);
 
-    float curr_l    = max3(current_rgb_tm);
-    float hist_l    = max3(history_clipped_tm);
+    // measured back in linear, a small wobble at the top of the reinhard curve is a large
+    // brightness swing and that is what makes saturated highlights read as unstable
+    float curr_l    = max3(tonemap_for_taa_inv(current_rgb_tm));
+    float hist_l    = max3(tonemap_for_taa_inv(history_clipped_tm));
     float disagree  = abs(curr_l - hist_l) * rcp(max(max(curr_l, hist_l), 0.1f));
     float stability = 1.0f - saturate(disagree);
     stability       = stability * stability;
