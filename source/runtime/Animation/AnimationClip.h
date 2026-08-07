@@ -69,6 +69,20 @@ namespace spartan
     using RotationTrackStream = AnimationTrackStream<math::Quaternion, ConstantRotation>;
     using ScaleTrackStream    = AnimationTrackStream<math::Vector3, ConstantScale>;
 
+    // per bone stream lookup, built once. without it every sampled bone linear scans all six
+    // channel and constant lists, which makes sampling cost bones times channels
+    struct ClipSampleIndex
+    {
+        // index into the matching stream's channels / constants, -1 when the bone has none
+        std::vector<int32_t> position_channel;
+        std::vector<int32_t> position_constant;
+        std::vector<int32_t> rotation_channel;
+        std::vector<int32_t> rotation_constant;
+        std::vector<int32_t> scale_channel;
+        std::vector<int32_t> scale_constant;
+        bool built = false;
+    };
+
     struct AnimationClip
     {
         std::string name;
@@ -88,5 +102,8 @@ namespace spartan
         PositionTrackStream position_stream;
         RotationTrackStream rotation_stream;
         ScaleTrackStream scale_stream;
+
+        // derived, not serialized. build it on the main thread before any parallel sampling
+        mutable ClipSampleIndex sample_index;
     };
 }

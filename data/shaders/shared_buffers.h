@@ -525,7 +525,9 @@ struct EmitterParams
     SHARED_UINT   flipbook_columns     SHARED_DEFAULT(1);
     SHARED_FLOAT  flipbook_fps         SHARED_DEFAULT(0.0f);
     SHARED_FLOAT3 emitter_velocity;
-    SHARED_FLOAT  padding1            SHARED_DEFAULT(0.0f);
+    // splat every nth particle into the volume grid, each one scatters into hundreds of voxels so the
+    // cost is unbounded in live particle count, the survivors carry the dropped density
+    SHARED_UINT   volume_splat_stride SHARED_DEFAULT(1);
 };
 
 // c++ backward compatibility aliases

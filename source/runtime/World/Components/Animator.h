@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "Component.h"
+#include "../../Animation/AnimationEvaluate.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Quaternion.h"
 #include "../../Math/Vector3.h"
@@ -96,6 +97,12 @@ namespace spartan
         // restore bind joint entities and mesh skin, used when leaving play or ragdoll
         void ApplyBindPose();
 
+        // bone entities mirror the skeleton into the scene graph so the editor and attachment
+        // code can see it, skinning itself runs off matrices, so crowds turn this off and save
+        // both the entities and the per frame transform writes
+        void SetBoneEntitiesEnabled(bool enabled);
+        bool GetBoneEntitiesEnabled() const { return m_bone_entities_enabled; }
+
     private:
         struct FootIkLeg
         {
@@ -113,6 +120,8 @@ namespace spartan
             // bind hip-to-ankle height, restores standing length when planting
             float bind_hip_foot_y = 0.85f;
             float ankle_height = 0.11f;
+            // smoothed in world space, model space moves with the character and adds plant lag
+            math::Vector3 smooth_target_world = math::Vector3::Zero;
             math::Vector3 smooth_target = math::Vector3::Zero;
             math::Vector3 smooth_normal = math::Vector3::Up;
             math::Vector3 smooth_forward = math::Vector3(0.0f, 0.0f, -1.0f);
@@ -161,8 +170,7 @@ namespace spartan
             std::vector<math::Matrix>& local_matrices
         );
         void UpdateFootIkLegTarget(
-            const Skeleton& skeleton,
-            const std::vector<math::Matrix>& local_matrices,
+            const std::vector<math::Matrix>& globals,
             FootIkLeg& leg,
             const math::Matrix& model_to_world,
             const math::Matrix& world_to_model,
@@ -171,6 +179,7 @@ namespace spartan
         bool SolveFootIkLeg(
             const Skeleton& skeleton,
             std::vector<math::Matrix>& local_matrices,
+            const std::vector<math::Matrix>& globals,
             FootIkLeg& leg
         );
         int32_t FindJointIndex(const Skeleton& skeleton, const std::string& name) const;
@@ -190,16 +199,13 @@ namespace spartan
         HandAttach m_hand_r;
         std::string m_current_clip;
         int32_t m_clip_index = -1;
-        int32_t m_prev_clip_index = -1;
         float m_time              = 0.0f;
-        float m_prev_time         = 0.0f;
-        float m_blend_weight      = 1.0f;
         float m_blend_duration    = 0.2f;
         float m_speed             = 1.0f;
         bool m_playing            = false;
         bool m_loop               = true;
-        bool m_blending           = false;
         bool m_bind_captured = false;
+        bool m_bone_entities_enabled = true;
         bool m_joints_resolved = false;
         bool m_joints_resolve_attempted = false;
         bool m_hands_attached = false;
@@ -208,6 +214,8 @@ namespace spartan
         bool m_foot_ik_enabled = false;
         bool m_foot_ik_resolved = false;
         float m_foot_ik_weight = 1.0f;
+        // eased master weight, toggling ik must not pop the feet on takeoff and landing
+        float m_foot_ik_blend = 0.0f;
         float m_foot_ik_ground_offset = 0.0f;
         float m_foot_ik_pelvis_offset = 0.0f;
         float m_foot_ik_support_ground_y = 0.0f;
@@ -215,7 +223,16 @@ namespace spartan
         FootIkLeg m_foot_ik_l;
         FootIkLeg m_foot_ik_r;
         std::vector<math::Matrix> m_last_local_matrices;
+        // animation layer only, sampled and inertialized but before foot ik. transitions blend this
+        // layer, ik is a post process with its own smoothing and re-applies every frame, so folding
+        // it into the transition source would count it twice
+        std::vector<math::Matrix> m_anim_pose;
+        std::vector<math::Matrix> m_anim_pose_previous;
         std::vector<math::Matrix> m_external_local_matrices;
+        // per frame scratch, kept alive so the tick and the ik never touch the heap
+        std::vector<math::Matrix> m_tick_locals;
+        std::vector<math::Matrix> m_ik_globals;
+        animation_evaluate::PoseInertializer m_inertializer;
         bool m_external_pose_active = false;
     };
 }

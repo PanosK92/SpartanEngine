@@ -48,6 +48,157 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        // every authoring tool names leg joints differently: thigh_l, thigh.L, UpperLeg.L,
+        // LeftUpLeg, mixamorig:LeftUpLeg. strip the namespace, case, separators and trailing
+        // numbering so one matcher covers all of them
+        string normalize_joint_name(const string& name)
+        {
+            size_t start = name.rfind(':');
+            start = (start == string::npos) ? 0 : start + 1;
+
+            string out;
+            out.reserve(name.size());
+            for (size_t i = start; i < name.size(); ++i)
+            {
+                const unsigned char c = static_cast<unsigned char>(name[i]);
+                if (c == '_' || c == '.' || c == '-' || c == ' ')
+                {
+                    continue;
+                }
+                out.push_back(static_cast<char>(::tolower(c)));
+            }
+
+            // thigh_l_01 and thigh_l are the same joint
+            while (!out.empty() && out.back() >= '0' && out.back() <= '9')
+            {
+                out.pop_back();
+            }
+
+            return out;
+        }
+
+        // -1 unknown, 0 right, 1 left. runs on the raw name because an isolated side token, as in
+        // the biped style "Bip01 L Thigh", becomes invisible once separators are stripped
+        int32_t joint_side_from_tokens(const string& name)
+        {
+            string token;
+            token.reserve(name.size());
+
+            for (size_t i = 0; i <= name.size(); ++i)
+            {
+                const bool at_end = i == name.size();
+                const unsigned char c = at_end ? 0 : static_cast<unsigned char>(name[i]);
+                if (!at_end && c != '_' && c != '.' && c != '-' && c != ':' && c != ' ')
+                {
+                    token.push_back(static_cast<char>(::tolower(c)));
+                    continue;
+                }
+
+                if (token == "l" || token == "left")
+                {
+                    return 1;
+                }
+                if (token == "r" || token == "right")
+                {
+                    return 0;
+                }
+                token.clear();
+            }
+
+            return -1;
+        }
+
+        // true when the joint belongs to the requested side
+        bool joint_matches_side(
+            const string& raw,
+            const string& normalized,
+            const bool want_left
+        )
+        {
+            if (const int32_t side = joint_side_from_tokens(raw); side >= 0)
+            {
+                return want_left == (side == 1);
+            }
+
+            if (normalized.find("left") != string::npos)
+            {
+                return want_left;
+            }
+            if (normalized.find("right") != string::npos)
+            {
+                return !want_left;
+            }
+            if (normalized.empty())
+            {
+                return false;
+            }
+
+            // glued side tag, thighl or lthigh
+            const char tag = normalized.back() == 'l' || normalized.back() == 'r'
+                ? normalized.back()
+                : normalized.front();
+            if (tag != 'l' && tag != 'r')
+            {
+                return false;
+            }
+
+            return want_left ? tag == 'l' : tag == 'r';
+        }
+
+        // first keyword that hits wins, so order the list most specific first
+        int32_t find_joint_by_role(
+            const Skeleton& skeleton,
+            const vector<const char*>& include,
+            const vector<const char*>& exclude,
+            const bool want_left
+        )
+        {
+            if (skeleton.joint_names.size() != skeleton.joint_count)
+            {
+                return -1;
+            }
+
+            vector<string> normalized(skeleton.joint_count);
+            for (uint32_t i = 0; i < skeleton.joint_count; ++i)
+            {
+                normalized[i] = normalize_joint_name(skeleton.joint_names[i]);
+            }
+
+            for (const char* keyword : include)
+            {
+                for (uint32_t i = 0; i < skeleton.joint_count; ++i)
+                {
+                    const string& candidate = normalized[i];
+                    if (candidate.find(keyword) == string::npos)
+                    {
+                        continue;
+                    }
+
+                    bool rejected = false;
+                    for (const char* banned : exclude)
+                    {
+                        if (candidate.find(banned) != string::npos)
+                        {
+                            rejected = true;
+                            break;
+                        }
+                    }
+                    if (rejected ||
+                        !joint_matches_side(skeleton.joint_names[i], candidate, want_left))
+                    {
+                        continue;
+                    }
+
+                    return static_cast<int32_t>(i);
+                }
+            }
+
+            return -1;
+        }
+    }
+
     Animator::Animator(Entity* entity) : Component(entity)
     {
     }
@@ -63,6 +214,9 @@ namespace spartan
         m_mesh = nullptr;
         m_bind_vertices.clear();
         m_skinned_vertices.clear();
+        m_anim_pose.clear();
+        m_anim_pose_previous.clear();
+        m_inertializer.Reset();
         m_global_matrices.clear();
         m_skin_matrices.clear();
         m_joint_entities.clear();
@@ -76,6 +230,7 @@ namespace spartan
         m_hands_attach_attempted = false;
         m_dynamic_blas_ready = false;
         m_foot_ik_resolved = false;
+        m_foot_ik_blend = 0.0f;
         m_foot_ik_ground_offset = 0.0f;
         m_foot_ik_pelvis_offset = 0.0f;
         m_foot_ik_support_ground_y = 0.0f;
@@ -261,6 +416,48 @@ namespace spartan
             m_foot_ik_r.foot = FindJointIndex(skeleton, "Foot.R");
         }
 
+        // generic fallback so foot ik survives any rig, not just the two naming conventions above.
+        // twist joints are excluded, they sit on the same limb and would win the name match
+        {
+            static const vector<const char*> thigh_words = { "upperleg", "upleg", "thigh" };
+            static const vector<const char*> calf_words  = { "lowerleg", "calf", "shin", "leg" };
+            static const vector<const char*> foot_words  = { "foot", "ankle" };
+            static const vector<const char*> ball_words  = { "toebase", "ball", "toe" };
+            static const vector<const char*> no_twist    = { "twist" };
+            static const vector<const char*> no_upper    = { "twist", "upperleg", "upleg", "thigh" };
+            static const vector<const char*> no_toe      = { "twist", "toe", "ball" };
+            static const vector<const char*> no_end      = { "twist", "end" };
+
+            struct RoleLookup
+            {
+                int32_t* target;
+                const vector<const char*>* include;
+                const vector<const char*>* exclude;
+                bool left;
+            };
+
+            const RoleLookup lookups[] =
+            {
+                { &m_foot_ik_l.thigh, &thigh_words, &no_twist, true  },
+                { &m_foot_ik_l.calf,  &calf_words,  &no_upper, true  },
+                { &m_foot_ik_l.foot,  &foot_words,  &no_toe,   true  },
+                { &m_foot_ik_l.ball,  &ball_words,  &no_end,   true  },
+                { &m_foot_ik_r.thigh, &thigh_words, &no_twist, false },
+                { &m_foot_ik_r.calf,  &calf_words,  &no_upper, false },
+                { &m_foot_ik_r.foot,  &foot_words,  &no_toe,   false },
+                { &m_foot_ik_r.ball,  &ball_words,  &no_end,   false }
+            };
+
+            for (const RoleLookup& lookup : lookups)
+            {
+                if (*lookup.target < 0)
+                {
+                    *lookup.target = find_joint_by_role(
+                        skeleton, *lookup.include, *lookup.exclude, lookup.left);
+                }
+            }
+        }
+
         // bind pose in skeleton space (same space as animated globals).
         // do not take the first skin section ibm blindly: multi-primitive meshes
         // leave unused bones as identity, which makes toes map to up.
@@ -412,8 +609,7 @@ namespace spartan
     }
 
     void Animator::UpdateFootIkLegTarget(
-        const Skeleton& skeleton,
-        const vector<Matrix>& local_matrices,
+        const vector<Matrix>& globals,
         FootIkLeg& leg,
         const Matrix& model_to_world,
         const Matrix& world_to_model,
@@ -433,14 +629,29 @@ namespace spartan
         const float dt_clamped = dt > 0.0f ? dt : 0.016f;
         const float blend = 1.0f - expf(-6.0f * dt_clamped);
 
-        vector<Matrix> globals(skeleton.joint_count);
-        skeleton.ComputeGlobalPose(local_matrices, globals);
-
         const uint32_t foot_i = static_cast<uint32_t>(leg.foot);
         const uint32_t thigh_i = static_cast<uint32_t>(leg.thigh);
         const Vector3 foot_model = globals[foot_i].GetTranslation();
         const Vector3 thigh_model = globals[thigh_i].GetTranslation();
         const Vector3 foot_world = model_to_world * foot_model;
+
+        // foot ik only owns a flat footed stance, heel strike and toe off are the clip pitching the
+        // sole on purpose, fade out there so the toe curl baked in the clip survives
+        Vector3 sole_up_model = globals[foot_i].GetRotation() * leg.sole_up_local;
+        if (sole_up_model.LengthSquared() > 1.0e-8f)
+        {
+            sole_up_model.Normalize();
+        }
+        else
+        {
+            sole_up_model = Vector3::Up;
+        }
+        // full weight up to 25 deg of sole pitch, gone by 50 deg
+        const float stance = clamp(
+            (sole_up_model.Dot(Vector3::Up) - 0.643f) / 0.263f,
+            0.0f,
+            1.0f
+        );
 
         constexpr float ray_up = 0.8f;
         constexpr float ray_down = 1.5f;
@@ -489,9 +700,9 @@ namespace spartan
             leg.use_for_pelvis = !true_swing;
 
             const bool airborne = above_ground > leg.ankle_height + contact_band;
-            if (!airborne && ankle_lift <= max_lift && ankle_lift >= -max_drop)
+            if (!airborne && ankle_lift <= max_lift && ankle_lift >= -max_drop && stance > 0.0f)
             {
-                target_weight = m_foot_ik_weight;
+                target_weight = m_foot_ik_weight * stance * m_foot_ik_blend;
                 target_model = ankle_model;
                 leg.contact_active = true;
 
@@ -503,16 +714,21 @@ namespace spartan
             }
         }
 
+        // smooth the target in world space, model space translates with the walking character so
+        // smoothing there bakes a speed dependent lag into every plant
+        const Vector3 target_world = model_to_world * target_model;
+
         if (!leg.has_smooth)
         {
-            leg.smooth_target = foot_model;
+            leg.smooth_target_world = foot_world;
             leg.smooth_normal = Vector3::Up;
             leg.smooth_forward = forward_model;
             leg.smooth_weight = 0.0f;
             leg.has_smooth = true;
         }
 
-        leg.smooth_target = Vector3::Lerp(leg.smooth_target, target_model, blend);
+        leg.smooth_target_world = Vector3::Lerp(leg.smooth_target_world, target_world, blend);
+        leg.smooth_target = world_to_model * leg.smooth_target_world;
         leg.smooth_normal = Vector3::Lerp(leg.smooth_normal, normal_model, blend).Normalized();
         leg.smooth_forward = Vector3::Lerp(leg.smooth_forward, forward_model, blend).Normalized();
         leg.smooth_weight = leg.smooth_weight + (target_weight - leg.smooth_weight) * blend;
@@ -521,6 +737,7 @@ namespace spartan
     bool Animator::SolveFootIkLeg(
         const Skeleton& skeleton,
         vector<Matrix>& local_matrices,
+        const vector<Matrix>& globals,
         FootIkLeg& leg
     )
     {
@@ -528,9 +745,6 @@ namespace spartan
         {
             return false;
         }
-
-        vector<Matrix> globals(skeleton.joint_count);
-        skeleton.ComputeGlobalPose(local_matrices, globals);
 
         const uint32_t foot_i = static_cast<uint32_t>(leg.foot);
         const uint32_t calf_i = static_cast<uint32_t>(leg.calf);
@@ -585,8 +799,7 @@ namespace spartan
             leg.smooth_forward,
             leg.sole_up_local,
             leg.toe_fwd_local,
-            leg.smooth_weight,
-            leg.ball
+            leg.smooth_weight
         );
         return true;
     }
@@ -596,11 +809,25 @@ namespace spartan
         vector<Matrix>& local_matrices
     )
     {
-        if (!m_foot_ik_enabled || m_foot_ik_weight <= 0.0f)
+        const float ik_dt = static_cast<float>(Timer::GetDeltaTimeSec());
+        const float ik_dt_clamped = ik_dt > 0.0f ? ik_dt : 0.016f;
+
+        // ease the master weight, the lua toggles ik on every takeoff and landing and a hard switch
+        // drops the leg corrections in a single frame
+        const float want = (m_foot_ik_enabled && m_foot_ik_weight > 0.0f) ? 1.0f : 0.0f;
+        m_foot_ik_blend += (want - m_foot_ik_blend) * (1.0f - expf(-8.0f * ik_dt_clamped));
+
+        if (m_foot_ik_blend <= 0.002f)
         {
-            const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
-            const float dt_clamped = dt > 0.0f ? dt : 0.016f;
-            const float blend = 1.0f - expf(-6.0f * dt_clamped);
+            m_foot_ik_blend = 0.0f;
+            m_foot_ik_has_support = false;
+            // next enable re-seeds the smoothing from the live foot instead of a stale target
+            m_foot_ik_l.has_smooth = false;
+            m_foot_ik_r.has_smooth = false;
+            m_foot_ik_l.smooth_weight = 0.0f;
+            m_foot_ik_r.smooth_weight = 0.0f;
+
+            const float blend = 1.0f - expf(-6.0f * ik_dt_clamped);
             m_foot_ik_pelvis_offset += (0.0f - m_foot_ik_pelvis_offset) * blend;
             if (fabsf(m_foot_ik_pelvis_offset) > 1.0e-4f && !local_matrices.empty())
             {
@@ -632,10 +859,14 @@ namespace spartan
         const Matrix model_to_world = root->GetMatrix();
         const Matrix world_to_model = model_to_world.Inverted();
 
+        // both legs read the same pose, walk the hierarchy once instead of once per leg
+        m_ik_globals.resize(skeleton.joint_count);
+        skeleton.ComputeGlobalPose(local_matrices, m_ik_globals);
+
         UpdateFootIkLegTarget(
-            skeleton, local_matrices, m_foot_ik_l, model_to_world, world_to_model, root);
+            m_ik_globals, m_foot_ik_l, model_to_world, world_to_model, root);
         UpdateFootIkLegTarget(
-            skeleton, local_matrices, m_foot_ik_r, model_to_world, world_to_model, root);
+            m_ik_globals, m_foot_ik_r, model_to_world, world_to_model, root);
 
         // support = lowest ground under either foot (split steps stay on the lower one)
         m_foot_ik_has_support = false;
@@ -682,9 +913,9 @@ namespace spartan
         {
             pelvis_target = 0.0f;
         }
+        pelvis_target *= m_foot_ik_blend;
 
-        const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
-        const float dt_clamped = dt > 0.0f ? dt : 0.016f;
+        const float dt_clamped = ik_dt_clamped;
         const float blend = 1.0f - expf(-5.0f * dt_clamped);
         m_foot_ik_pelvis_offset += (pelvis_target - m_foot_ik_pelvis_offset) * blend;
 
@@ -698,8 +929,10 @@ namespace spartan
             );
         }
 
-        SolveFootIkLeg(skeleton, local_matrices, m_foot_ik_l);
-        SolveFootIkLeg(skeleton, local_matrices, m_foot_ik_r);
+        // the legs are sibling chains, so one refresh after the pelvis edit serves both solves
+        skeleton.ComputeGlobalPose(local_matrices, m_ik_globals);
+        SolveFootIkLeg(skeleton, local_matrices, m_ik_globals, m_foot_ik_l);
+        SolveFootIkLeg(skeleton, local_matrices, m_ik_globals, m_foot_ik_r);
     }
 
     bool Animator::AttachHand(Entity* hand, Entity* arm, HandAttach& out_attach)
@@ -781,8 +1014,44 @@ namespace spartan
         m_hands_attach_attempted = false;
     }
 
+    void Animator::SetBoneEntitiesEnabled(bool enabled)
+    {
+        if (m_bone_entities_enabled == enabled)
+        {
+            return;
+        }
+
+        m_bone_entities_enabled = enabled;
+
+        if (enabled)
+        {
+            // resolve lazily on the next tick
+            m_joints_resolve_attempted = false;
+            m_hands_attach_attempted   = false;
+            return;
+        }
+
+        RestoreHands();
+        RestoreBindEntityPoses();
+        m_joint_entities.clear();
+        m_bind_entity_poses.clear();
+        m_joints_resolved = false;
+
+        // mark both as done so nothing retries the lookups every frame
+        m_joints_resolve_attempted = true;
+        m_hands_attach_attempted   = true;
+    }
+
     void Animator::ResolveJointEntities(const Skeleton& skeleton)
     {
+        if (!m_bone_entities_enabled)
+        {
+            m_joints_resolved          = false;
+            m_joints_resolve_attempted = true;
+            m_hands_attach_attempted   = true;
+            return;
+        }
+
         m_joint_entities.assign(skeleton.joint_count, nullptr);
         m_bind_entity_poses.assign(skeleton.joint_count, {});
 
@@ -1040,22 +1309,44 @@ namespace spartan
             return false;
         }
 
+        // build the lookup here, play is main thread only so sampling never has to write to the clip
+        animation_evaluate::EnsureSampleIndex(clips[found]);
+
         if (m_clip_index != found || m_current_clip != clips[found].name)
         {
-            // crossfade from current clip into the new one
-            if (m_playing && m_clip_index >= 0 && m_blend_duration > 0.0f)
+            // inertialize out of whatever is on screen: a running clip, a held one shot, the bind
+            // pose, or a transition still in flight. the source is a pose, so none of those need a
+            // case of their own
+            const shared_ptr<Skeleton>& skeleton = mesh->GetSkeleton();
+            const float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+            const float dt_clamped = dt > 1.0e-5f ? dt : 0.016f;
+
+            bool transitioned = false;
+            if (skeleton && m_blend_duration > 0.0f && !m_anim_pose.empty())
             {
-                m_prev_clip_index = m_clip_index;
-                m_prev_time       = m_time;
-                m_blend_weight    = 0.0f;
-                m_blending        = true;
+                vector<Matrix> dst;
+                vector<Matrix> dst_next;
+
+                // m_loop already describes the incoming clip, the caller sets it before Play
+                if (animation_evaluate::SampleLocals(
+                        clips[found], *skeleton, 0.0f, dst, m_loop) &&
+                    animation_evaluate::SampleLocals(
+                        clips[found], *skeleton, dt_clamped * m_speed, dst_next, m_loop))
+                {
+                    m_inertializer.Transition(
+                        m_anim_pose,
+                        m_anim_pose_previous,
+                        dst,
+                        dst_next,
+                        dt_clamped
+                    );
+                    transitioned = true;
+                }
             }
-            else
+
+            if (!transitioned)
             {
-                m_prev_clip_index = -1;
-                m_prev_time       = 0.0f;
-                m_blend_weight    = 1.0f;
-                m_blending        = false;
+                m_inertializer.Reset();
             }
 
             m_clip_index   = found;
@@ -1079,14 +1370,13 @@ namespace spartan
     {
         RestoreHands();
         ClearExternalPose();
+        m_inertializer.Reset();
+        m_anim_pose_previous.clear();
         m_playing         = false;
-        m_blending        = false;
         m_time            = 0.0f;
-        m_prev_time       = 0.0f;
-        m_prev_clip_index = -1;
         m_clip_index      = -1;
-        m_blend_weight    = 1.0f;
         m_current_clip.clear();
+        m_foot_ik_blend   = 0.0f;
         m_foot_ik_pelvis_offset = 0.0f;
         m_foot_ik_has_support = false;
         m_foot_ik_l.has_smooth = false;
@@ -1120,7 +1410,10 @@ namespace spartan
 
         RestoreBindEntityPoses();
         SkinFromLocalPose(mesh, *skeleton, skeleton->bind_local_matrices);
+        // keep bind as the transition source, a later Play eases out of it instead of cutting
         m_last_local_matrices = skeleton->bind_local_matrices;
+        m_anim_pose = skeleton->bind_local_matrices;
+        m_anim_pose_previous.clear();
     }
 
     void Animator::Pause()
@@ -1159,6 +1452,10 @@ namespace spartan
     {
         m_external_local_matrices = local_pose;
         m_last_local_matrices = local_pose;
+        // ragdoll owns the pose now, a later Play eases out of wherever the body ended up
+        m_anim_pose = local_pose;
+        m_anim_pose_previous.clear();
+        m_inertializer.Reset();
         m_external_pose_active = !m_external_local_matrices.empty();
         if (m_external_pose_active)
         {
@@ -1287,7 +1584,8 @@ namespace spartan
             ResolveJointEntities(*skeleton);
         }
 
-        const float dt = static_cast<float>(Timer::GetDeltaTimeSec()) * m_speed;
+        const float dt_real = static_cast<float>(Timer::GetDeltaTimeSec());
+        const float dt = dt_real * m_speed;
         m_time += dt;
 
         if (!m_loop && clip.duration_seconds > 0.0f && m_time >= clip.duration_seconds)
@@ -1295,63 +1593,40 @@ namespace spartan
             m_time = clip.duration_seconds;
             m_playing = false;
         }
-
-        if (m_blending)
+        else if (m_loop && clip.duration_seconds > 0.0f)
         {
-            m_prev_time += dt;
-            if (m_blend_duration <= 0.0f)
+            // wrap here, an unbounded clock loses float resolution and quantizes the sampled frame
+            m_time = fmodf(m_time, clip.duration_seconds);
+            if (m_time < 0.0f)
             {
-                m_blend_weight = 1.0f;
-                m_blending = false;
-            }
-            else
-            {
-                m_blend_weight += dt / m_blend_duration;
-                if (m_blend_weight >= 1.0f)
-                {
-                    m_blend_weight = 1.0f;
-                    m_blending = false;
-                    m_prev_clip_index = -1;
-                }
+                m_time += clip.duration_seconds;
             }
         }
 
-        vector<Matrix> local_matrices;
-        if (!animation_evaluate::SampleLocals(clip, *skeleton, m_time, local_matrices))
+        // member scratch, a local vector would heap allocate the whole pose every frame
+        vector<Matrix>& local_matrices = m_tick_locals;
+        if (!animation_evaluate::SampleLocals(clip, *skeleton, m_time, local_matrices, m_loop))
         {
             return;
         }
 
-        if (m_blending &&
-            m_prev_clip_index >= 0 &&
-            m_prev_clip_index < static_cast<int32_t>(clips.size()))
-        {
-            vector<Matrix> prev_locals;
-            if (animation_evaluate::SampleLocals(
-                clips[m_prev_clip_index],
-                *skeleton,
-                m_prev_time,
-                prev_locals))
-            {
-                // smoothstep ease for less linear-looking transitions
-                const float w = m_blend_weight;
-                const float eased = w * w * (3.0f - 2.0f * w);
-                vector<Matrix> blended;
-                if (animation_evaluate::BlendLocals(
-                    prev_locals,
-                    local_matrices,
-                    eased,
-                    blended))
-                {
-                    local_matrices = move(blended);
-                }
-            }
-        }
+        // the transition offset decays on top of the live clip, blend duration is wall clock so it
+        // uses real dt, not the clip scaled one
+        m_inertializer.Apply(
+            local_matrices,
+            dt_real,
+            max(0.01f, m_blend_duration * 0.25f)
+        );
 
         if (!m_hands_attach_attempted)
         {
             AttachHandsToArms();
         }
+
+        // rotate the two buffers instead of moving, a move empties the target and the next assign
+        // has to allocate the pose again
+        m_anim_pose.swap(m_anim_pose_previous);
+        m_anim_pose = local_matrices;
 
         ApplyFootIk(*skeleton, local_matrices);
         m_last_local_matrices = local_matrices;

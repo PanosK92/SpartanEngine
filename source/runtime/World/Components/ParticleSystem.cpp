@@ -678,7 +678,30 @@ namespace spartan
         m_emission_remainder = emit - static_cast<float>(count);
         m_pending_burst = 0.0f;
 
+        if (count > 0)
+        {
+            m_time_since_emission = 0.0f;
+        }
+
         return min(count, m_max_particles);
+    }
+
+    bool ParticleSystem::HasLiveParticles() const
+    {
+        // the emit shader jitters lifetime by up to 1.3, match it so the last puffs are not cut short
+        return m_time_since_emission < m_lifetime * 1.3f;
+    }
+
+    uint32_t ParticleSystem::GetEstimatedLiveParticles() const
+    {
+        if (!HasLiveParticles())
+        {
+            return 0;
+        }
+
+        const float estimate = max(m_emission_rate, 0.0f) * max(m_lifetime, 0.0f) * 1.3f;
+
+        return min(static_cast<uint32_t>(estimate), m_max_particles);
     }
 
     void ParticleSystem::UpdateRuntime(const Vector3& position, float delta_time)
@@ -703,6 +726,8 @@ namespace spartan
 
         m_last_position     = position;
         m_has_last_position = true;
+
+        m_time_since_emission = min(m_time_since_emission + max(delta_time, 0.0f), 1e9f);
     }
 
     const Vector3& ParticleSystem::GetEmitterVelocity() const

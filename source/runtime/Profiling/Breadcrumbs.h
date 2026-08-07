@@ -194,5 +194,11 @@ namespace spartan
         inline static std::array<uint32_t, queue_count> m_gpu_marker_counts       = { 0, 0, 0 };
         inline static std::array<std::array<const char*, max_gpu_markers>, queue_count> m_gpu_marker_names = {};
         inline static std::array<int32_t, max_gpu_markers> m_gpu_marker_begin_to_slot                      = {};
+
+        // snapshot taken right before each reset, a device loss is only reported on the next
+        // frame's submit, by which point StartFrame has already wiped the live slots
+        inline static std::array<std::array<const char*, max_gpu_markers>, queue_count> m_gpu_marker_names_prev  = {};
+        inline static std::array<std::array<uint32_t, max_gpu_markers>, queue_count> m_gpu_marker_values_prev    = {};
+        inline static bool m_has_prev_frame = false;
     };
 }

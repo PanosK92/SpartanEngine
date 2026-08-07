@@ -523,7 +523,10 @@ float trace_particle_shadow_ray(Light light, Surface surface)
 }
 #endif
 
-float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface)
+// a smoke quad covers a large part of the screen and puffs stack many deep, so a ray query per light
+// per pixel multiplies into billions of traversals, only the primary light is allowed to trace and
+// the local lights fall back to the shadow atlas
+float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface, bool allow_ray_traced_shadow)
 {
     Light light;
     light.Build(light_index, surface);
@@ -532,7 +535,7 @@ float3 evaluate_particle_light(uint light_index, uint2 pixel, Surface surface)
     {
         float shadow = 1.0;
     #ifdef RAY_TRACING_ENABLED
-        if (is_ray_traced_shadows_enabled())
+        if (allow_ray_traced_shadow && is_ray_traced_shadows_enabled())
         {
             shadow = trace_particle_shadow_ray(light, surface);
         }
@@ -564,7 +567,7 @@ float3 evaluate_particle_lighting(uint2 pixel, Surface surface)
 
     if (total_lights > 0u)
     {
-        result += evaluate_particle_light(0u, pixel, surface);
+        result += evaluate_particle_light(0u, pixel, surface, true);
     }
 
     if (total_lights > 1u)
@@ -579,10 +582,15 @@ float3 evaluate_particle_lighting(uint2 pixel, Surface surface)
             uint   flat_id   = cluster_flat(cid);
             uint2  range     = cluster_light_grid[flat_id];
 
-            for (uint k = 0u; k < range.y; k++)
+            // a dense city cluster holds dozens of lights, each one costs a shadow lookup on every
+            // overlapping smoke pixel, the nearest few carry the look so the tail is dropped
+            const uint max_local_lights = 4u;
+            uint light_count = min(range.y, max_local_lights);
+
+            for (uint k = 0u; k < light_count; k++)
             {
                 uint light_index = cluster_light_indices[range.x + k];
-                result += evaluate_particle_light(light_index, pixel, surface);
+                result += evaluate_particle_light(light_index, pixel, surface, false);
             }
         }
     }

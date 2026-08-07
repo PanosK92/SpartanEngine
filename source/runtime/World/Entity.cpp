@@ -143,6 +143,33 @@ namespace spartan
             return clone_self;
         };
 
+        // clones descendants that carry components straight onto clone_root, component-less
+        // nodes are dropped and their transform is folded into each surviving child
+        void clone_components_flattened(Entity* source, Entity* clone_root, const Matrix& source_to_root)
+        {
+            for (Entity* child : source->GetChildren())
+            {
+                if (!child)
+                {
+                    continue;
+                }
+
+                // row vector convention, child_world = child_local * parent_world
+                const Matrix child_to_root = child->GetLocalMatrix() * source_to_root;
+
+                if (child->GetComponentCount() > 0)
+                {
+                    Entity* child_clone = clone_entity(child);
+                    child_clone->SetParent(clone_root);
+                    child_clone->SetPositionLocal(child_to_root.GetTranslation());
+                    child_clone->SetRotationLocal(child_to_root.GetRotation());
+                    child_clone->SetScaleLocal(child_to_root.GetScale());
+                }
+
+                clone_components_flattened(child, clone_root, child_to_root);
+            }
+        };
+
     }
 
     Entity::Entity()
@@ -173,6 +200,14 @@ namespace spartan
     Entity* Entity::Clone()
     {
         return clone_entity_and_descendants(this);
+    }
+
+    Entity* Entity::CloneVisualOnly()
+    {
+        Entity* clone_root = clone_entity(this);
+        clone_components_flattened(this, clone_root, Matrix::Identity);
+
+        return clone_root;
     }
 
     void Entity::AddTag(const string& tag)

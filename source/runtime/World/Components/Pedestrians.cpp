@@ -408,8 +408,10 @@ namespace spartan
         Vector3 heading;
         FindSpawnPosition(index, position, heading);
 
+        // skeleton joints are dropped, a walker only needs its root and the skinned mesh nodes,
+        // for the mannequiny that is 2 entities instead of 48
         Entity* template_root = m_source_mesh->GetRootEntity();
-        Entity* entity = template_root->Clone();
+        Entity* entity = template_root->CloneVisualOnly();
         if (!entity)
         {
             return false;
@@ -460,6 +462,7 @@ namespace spartan
             return false;
         }
 
+        animator->SetBoneEntitiesEnabled(false);
         animator->SetSpeed(0.9f + NextFloat() * 0.3f);
         animator->SetBlendDuration(0.15f);
         animator->SetFootIkEnabled(false);

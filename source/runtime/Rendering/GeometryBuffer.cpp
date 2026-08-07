@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GeometryBuffer.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
+#include <algorithm>
 #include <mutex>
 //===============================
 
@@ -72,6 +73,78 @@ namespace spartan
 
         // growth factor applied when allocating gpu buffers
         constexpr float growth_factor = 1.25f;
+
+        // deferred vertex uploads
+        //
+        // UploadSubRegion on a device local buffer stages and submits an immediate copy, which
+        // costs a queue submit and a wait. one skinned character per frame is fine, a crowd is not,
+        // so writes only touch the cpu mirror and record a range. the frame flush coalesces them
+        // into a handful of copies
+        struct DirtyRange
+        {
+            uint32_t offset = 0;
+            uint32_t count  = 0;
+        };
+        vector<DirtyRange> vertex_dirty_ranges;
+
+        // two ranges closer than this merge into one, re-uploading the untouched gap is far cheaper
+        // than a second submit
+        constexpr uint32_t dirty_merge_slack = 4096;
+
+        void flush_vertex_updates()
+        {
+            if (vertex_dirty_ranges.empty())
+            {
+                return;
+            }
+
+            if (!vertex_buffer)
+            {
+                vertex_dirty_ranges.clear();
+                return;
+            }
+
+            sort(
+                vertex_dirty_ranges.begin(),
+                vertex_dirty_ranges.end(),
+                [](const DirtyRange& a, const DirtyRange& b)
+                {
+                    return a.offset < b.offset;
+                }
+            );
+
+            uint32_t begin = vertex_dirty_ranges[0].offset;
+            uint32_t end   = begin + vertex_dirty_ranges[0].count;
+
+            auto upload = [](const uint32_t first, const uint32_t last)
+            {
+                if (last <= first || last > vertex_count_committed)
+                {
+                    return;
+                }
+
+                const uint64_t byte_offset = static_cast<uint64_t>(first) * sizeof(RHI_Vertex_PosTexNorTan);
+                const uint64_t byte_size   = static_cast<uint64_t>(last - first) * sizeof(RHI_Vertex_PosTexNorTan);
+                vertex_buffer->UploadSubRegion(vertices.data() + first, byte_offset, byte_size);
+            };
+
+            for (size_t i = 1; i < vertex_dirty_ranges.size(); ++i)
+            {
+                const DirtyRange& range = vertex_dirty_ranges[i];
+                if (range.offset <= end + dirty_merge_slack)
+                {
+                    end = max(end, range.offset + range.count);
+                    continue;
+                }
+
+                upload(begin, end);
+                begin = range.offset;
+                end   = range.offset + range.count;
+            }
+
+            upload(begin, end);
+            vertex_dirty_ranges.clear();
+        }
     }
 
     uint32_t GeometryBuffer::AppendVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t count)
@@ -146,11 +219,10 @@ namespace spartan
         SP_ASSERT(offset + count <= static_cast<uint32_t>(vertices.size()));
         memcpy(vertices.data() + offset, data, count * sizeof(RHI_Vertex_PosTexNorTan));
 
-        if (vertex_buffer && offset + count <= vertex_count_committed)
+        // queued, the frame flush coalesces every deformable mesh into a few copies
+        if (count > 0 && vertex_buffer && offset + count <= vertex_count_committed)
         {
-            uint64_t byte_offset = static_cast<uint64_t>(offset) * sizeof(RHI_Vertex_PosTexNorTan);
-            uint64_t byte_size   = static_cast<uint64_t>(count) * sizeof(RHI_Vertex_PosTexNorTan);
-            vertex_buffer->UploadSubRegion(data, byte_offset, byte_size);
+            vertex_dirty_ranges.push_back({ offset, count });
         }
     }
 
@@ -187,6 +259,10 @@ namespace spartan
     void GeometryBuffer::BuildIfDirty()
     {
         lock_guard<mutex> lock(buffer_mutex);
+
+        // once per frame sync point for skinning and other deformables, must run before the dirty
+        // early out because deformable writes do not mark the buffer dirty
+        flush_vertex_updates();
 
         if (!dirty || vertices.empty() || indices.empty())
         {
@@ -423,6 +499,8 @@ namespace spartan
         meshlet_bounds.shrink_to_fit();
         instances.clear();
         instances.shrink_to_fit();
+        vertex_dirty_ranges.clear();
+        vertex_dirty_ranges.shrink_to_fit();
         vertex_count_committed         = 0;
         index_count_committed          = 0;
         meshlet_bounds_count_committed = 0;

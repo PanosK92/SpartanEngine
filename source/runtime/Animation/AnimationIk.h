@@ -47,8 +47,7 @@ namespace spartan
 
         // pitch/roll sole_up_local onto ground normal, then yaw toe_fwd_local onto toe forward
         // local vectors come from bind pose (filled ibm or skeleton bind globals)
-        // ball_index: child toe joint, -1 to skip. plant changes foot world rot, so ball local
-        // is compensated to keep the clip toe world rot (no bind lock, no l/r freeze)
+        // toe locals are left alone, the toes ride the plant delta as part of the same sole
         bool PlantFoot(
             const Skeleton& skeleton,
             std::vector<math::Matrix>& local_matrices,
@@ -57,8 +56,7 @@ namespace spartan
             const math::Vector3& toe_forward_model,
             const math::Vector3& sole_up_local,
             const math::Vector3& toe_fwd_local,
-            float weight,
-            int32_t ball_index = -1
+            float weight
         );
     }
 }

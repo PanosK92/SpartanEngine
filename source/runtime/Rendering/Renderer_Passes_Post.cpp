@@ -787,14 +787,26 @@ namespace spartan
             }
         };
 
+        // a spawn hitch can hand us a multi hundred millisecond frame, every other simulation in the
+        // engine clamps to 0.1 and the particle sim has to match or it integrates one huge step
+        const float delta_time = std::clamp(m_cb_frame_cpu.delta_time, 0.0f, 0.1f);
+
         // one params entry per emitter, the ring size and frame data are shared so every entry carries the same copy
         vector<Sb_EmitterParams> emitter_params(emitter_count);
+        vector<float> emitter_distance(emitter_count, 0.0f);
+        math::Vector3 camera_position = math::Vector3::Zero;
+        if (Camera* camera = World::GetCamera())
+        {
+            camera_position = camera->GetEntity()->GetPosition();
+        }
+
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             ParticleSystem* emitter = emitters[i];
             math::Vector3 position = emitter->GetEntity()->GetPosition();
-            emitter->UpdateRuntime(position, m_cb_frame_cpu.delta_time);
-            emit_counts[i] = std::min(emitter->ConsumeEmissionCount(m_cb_frame_cpu.delta_time), range_counts[i]);
+            emitter->UpdateRuntime(position, delta_time);
+            emit_counts[i]      = std::min(emitter->ConsumeEmissionCount(delta_time), range_counts[i]);
+            emitter_distance[i] = math::Vector3::Distance(position, camera_position);
 
             Sb_EmitterParams& params    = emitter_params[i];
             params.position             = position;
@@ -807,7 +819,7 @@ namespace spartan
             params.end_color            = emitter->GetEndColor();
             params.gravity_modifier     = emitter->GetGravityModifier();
             params.radius               = emitter->GetEmissionRadius();
-            params.delta_time           = m_cb_frame_cpu.delta_time;
+            params.delta_time           = delta_time;
             params.max_particles        = total_particles;
             params.range_start          = range_starts[i];
             params.range_count          = range_counts[i];
@@ -834,7 +846,79 @@ namespace spartan
             params.flipbook_columns     = emitter->GetFlipbookColumns();
             params.flipbook_fps         = emitter->GetFlipbookFps();
             params.emitter_velocity     = emitter->GetEmitterVelocity();
-            volume_present = volume_present || (range_counts[i] > 0 && emitter->GetRenderMode() == ParticleRenderMode::Volumetric);
+        }
+
+        // the volumetric path costs a clear, a scatter, a full grid resolve and a full resolution ray
+        // march every frame, and that cost is the same whether one emitter is smoking or forty are, a
+        // world full of cars hands us dozens of volumetric emitters and the pass then overruns the
+        // driver watchdog, so only the closest few live emitters keep it and the rest fall back to billboards
+        {
+            const float volume_max_distance    = 96.0f; // must match volume_max_distance in particles_volumetric.hlsl
+            const uint32_t volumetric_budget   = 8;
+
+            vector<uint32_t> candidates;
+            candidates.reserve(emitter_count);
+            for (uint32_t i = 0; i < emitter_count; i++)
+            {
+                bool eligible =
+                    range_counts[i] > 0 &&
+                    emitters[i]->GetRenderMode() == ParticleRenderMode::Volumetric &&
+                    emitters[i]->HasLiveParticles() &&
+                    emitter_distance[i] < volume_max_distance;
+
+                if (eligible)
+                {
+                    candidates.push_back(i);
+                }
+            }
+
+            std::sort(candidates.begin(), candidates.end(), [&emitter_distance](uint32_t a, uint32_t b)
+            {
+                return emitter_distance[a] < emitter_distance[b];
+            });
+
+            if (candidates.size() > volumetric_budget)
+            {
+                candidates.resize(volumetric_budget);
+            }
+
+            // demote everything that did not win a slot, the splat and the render loop both key off this
+            for (uint32_t i = 0; i < emitter_count; i++)
+            {
+                if (emitter_params[i].render_mode == static_cast<uint32_t>(ParticleRenderMode::Volumetric))
+                {
+                    emitter_params[i].render_mode = static_cast<uint32_t>(ParticleRenderMode::Billboard);
+                }
+            }
+
+            for (uint32_t index : candidates)
+            {
+                emitter_params[index].render_mode = static_cast<uint32_t>(ParticleRenderMode::Volumetric);
+            }
+
+            volume_present = !candidates.empty();
+
+            // every splatted particle scatters into up to fifteen by fifteen by eleven voxels with four
+            // atomics each, so a drifting car at six hundred particles per second per wheel alone runs
+            // into the tens of billions, splat a fixed size subset and let it carry the missing density
+            const uint32_t splat_budget = 3000;
+
+            uint32_t live_estimate = 0;
+            for (uint32_t index : candidates)
+            {
+                live_estimate += emitters[index]->GetEstimatedLiveParticles();
+            }
+
+            uint32_t splat_stride = 1;
+            if (live_estimate > splat_budget)
+            {
+                splat_stride = (live_estimate + splat_budget - 1) / splat_budget;
+            }
+
+            for (uint32_t index : candidates)
+            {
+                emitter_params[index].volume_splat_stride = splat_stride;
+            }
         }
 
         buf_emitter->ResetOffset();
@@ -845,6 +929,7 @@ namespace spartan
         cmd_list->BeginTimeblock("particles");
 
         // emit, one dispatch per emitter so each spawns from its own position and rate
+        cmd_list->BeginMarker("particle_emit");
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             if (emit_counts[i] == 0 || range_counts[i] == 0)
@@ -866,8 +951,10 @@ namespace spartan
 
             cmd_list->Dispatch((emit_counts[i] + thread_group - 1) / thread_group, 1, 1);
         }
+        cmd_list->EndMarker();
 
         // simulate
+        cmd_list->BeginMarker("particle_simulate");
         {
             RHI_PipelineState pso;
             pso.name             = "particle_simulate";
@@ -881,18 +968,21 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
             cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
+        cmd_list->EndMarker();
 
         // render, each particle becomes a camera facing quad with the emitter selected blend mode
         // one draw per emitter so each can bind its own smoke texture and only its own range is drawn
         RHI_Texture* tex_white  = GetStandardTexture(Renderer_StandardTexture::White);
         RHI_Texture* tex_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        cmd_list->BeginMarker("particle_render");
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             if (range_counts[i] == 0)
             {
                 continue;
             }
-            if (volume_shaders_ready && emitters[i]->GetRenderMode() == ParticleRenderMode::Volumetric)
+            // demoted emitters draw as billboards, only the ones that kept a volumetric slot are skipped here
+            if (volume_shaders_ready && emitter_params[i].render_mode == static_cast<uint32_t>(ParticleRenderMode::Volumetric))
             {
                 continue;
             }
@@ -939,10 +1029,13 @@ namespace spartan
             cmd_list->Draw(range_counts[i] * 6);
         }
 
+        cmd_list->EndMarker();
+
         if (volume_shaders_ready && volume_present)
         {
             const uint32_t voxel_count = renderer_particle_volume_width * renderer_particle_volume_height * renderer_particle_volume_depth;
 
+            cmd_list->BeginMarker("particle_volume_clear");
             {
                 RHI_PipelineState pso;
                 pso.name             = "particle_volume_clear";
@@ -952,7 +1045,9 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_color,   buf_volume_color);
                 cmd_list->Dispatch((voxel_count + thread_group - 1) / thread_group, 1, 1);
             }
+            cmd_list->EndMarker();
 
+            cmd_list->BeginMarker("particle_volume_splat");
             {
                 RHI_PipelineState pso;
                 pso.name             = "particle_volume_splat";
@@ -964,7 +1059,9 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::particle_volume_color,    buf_volume_color);
                 cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
             }
+            cmd_list->EndMarker();
 
+            cmd_list->BeginMarker("particle_volume_resolve");
             {
                 RHI_PipelineState pso;
                 pso.name             = "particle_volume_resolve";
@@ -987,7 +1084,9 @@ namespace spartan
 
                 cmd_list->Dispatch((renderer_particle_volume_width + 7) / 8, (renderer_particle_volume_height + 7) / 8, (renderer_particle_volume_depth + 3) / 4);
             }
+            cmd_list->EndMarker();
 
+            cmd_list->BeginMarker("particle_volume_composite");
             {
                 RHI_PipelineState pso;
                 pso.name             = "particle_volume_composite";
@@ -1002,6 +1101,7 @@ namespace spartan
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(tex_render);
             }
+            cmd_list->EndMarker();
         }
 
         cmd_list->EndTimeblock();

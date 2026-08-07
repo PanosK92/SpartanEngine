@@ -49,6 +49,11 @@ namespace spartan
 
         Entity* Clone();
 
+        // clone that keeps only nodes carrying components, pure transform nodes such as
+        // skeleton joints are dropped and survivors are flattened onto the root with their
+        // accumulated transform baked in, for crowds that animate from bone matrices alone
+        Entity* CloneVisualOnly();
+
         static void RegisterForScripting(sol::state_view State);
 
         // core

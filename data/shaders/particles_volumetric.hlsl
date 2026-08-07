@@ -163,6 +163,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         return;
     }
 
+    // one splat scatters into hundreds of voxels, so the cost grows without bound as the emitter fills
+    // up, take an evenly spaced subset and scale it up to carry the density the skipped ones would have
+    uint stride = max(emitter.volume_splat_stride, 1u);
+    if (stride > 1u && (index % stride) != 0u)
+    {
+        return;
+    }
+
     float4 clip = mul(float4(particle.position, 1.0f), buffer_frame.view_projection);
     if (clip.w <= 0.0f)
     {
@@ -224,7 +232,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                 float fine_noise = volume_hash(voxel_u, particle_seed ^ 0x9e3779b9u);
                 float falloff = (1.0f - dist_sq) * (1.0f - dist_sq);
                 falloff *= lerp(0.55f, 1.18f, fine_noise);
-                splat_voxel((uint3)v, particle, emitter, falloff);
+                splat_voxel((uint3)v, particle, emitter, falloff * (float)stride);
             }
         }
     }
@@ -375,8 +383,13 @@ float3 evaluate_volume_lighting(float3 sample_pos, float3 ray_direction, uint2 p
         uint flat_id = cluster_flat(cid);
         uint2 range  = cluster_light_grid[flat_id];
 
+        // this runs once per ray march step per pixel, so an uncapped cluster multiplies the whole
+        // composite by the local light count, the nearest few carry the look
+        const uint max_local_lights = 4u;
+        uint light_count = min(range.y, max_local_lights);
+
         [loop]
-        for (uint k = 0u; k < range.y; k++)
+        for (uint k = 0u; k < light_count; k++)
         {
             uint light_index = cluster_light_indices[range.x + k];
             lighting += evaluate_volume_light(light_index, sample_pos, ray_direction, pixel, uv);

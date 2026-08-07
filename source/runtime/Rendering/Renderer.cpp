@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <unordered_set>
 #include <future>
+#include <cmath>
 #include "Renderer.h"
 #include "Material.h"
 #include "GeometryBuffer.h"
@@ -3243,6 +3244,50 @@ namespace spartan
         UpdateDrawCalls_SelectOccluders();
     }
 
+    // an instance transform that is not finite, or large enough to swamp the scene bounds, gives that
+    // instance an effectively infinite aabb, the bvh built around it degenerates and every ray then
+    // tests every instance, which reads as a hang and gets the device killed by the driver watchdog
+    static bool is_transform_traceable(const math::Matrix& m)
+    {
+        const float limit = 1e9f;
+        const float values[12] =
+        {
+            m.m00, m.m10, m.m20, m.m30,
+            m.m01, m.m11, m.m21, m.m31,
+            m.m02, m.m12, m.m22, m.m32
+        };
+
+        for (float value : values)
+        {
+            if (!std::isfinite(value) || fabsf(value) > limit)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // a skinned mesh whose deformed vertices went bad takes its blas with it, the world box is the
+    // cheapest place to notice, checking it per instance costs nothing next to checking every vertex
+    static bool is_bounding_box_traceable(const math::BoundingBox& box)
+    {
+        const float limit        = 1e9f;
+        const math::Vector3& min = box.GetMin();
+        const math::Vector3& max = box.GetMax();
+        const float values[6]    = { min.x, min.y, min.z, max.x, max.y, max.z };
+
+        for (float value : values)
+        {
+            if (!std::isfinite(value) || fabsf(value) > limit)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
     {
         bool ray_tracing_enabled = cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>();
@@ -3365,6 +3410,9 @@ namespace spartan
             instances.clear();
             geometry_infos.clear();
 
+            uint32_t invalid_transforms   = 0;
+            const char* first_invalid_name = nullptr;
+
             for (Entity* entity : render_entities())
             {
                 if (!entity || !entity->GetActive())
@@ -3418,6 +3466,19 @@ namespace spartan
 
                 // row-major 3x4 transform (transpose 3x3 because vulkan uses column vectors)
                 const Matrix& m = render->GetEntity()->GetMatrix();
+
+                // one bad matrix is enough to wreck traversal for the whole scene, drop the instance
+                // rather than let it into the tlas, the entity loses its ray traced shadow and nothing else
+                if (!is_transform_traceable(m) || !is_bounding_box_traceable(render->GetBoundingBox()))
+                {
+                    invalid_transforms++;
+                    if (!first_invalid_name)
+                    {
+                        first_invalid_name = entity->GetObjectName().c_str();
+                    }
+                    continue;
+                }
+
                 instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
                 instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
                 instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
@@ -3431,6 +3492,22 @@ namespace spartan
                 geometry_infos.push_back(geo_info);
             }
     
+            // log only when the count moves so a persistent bad entity does not spam every frame
+            static uint32_t last_invalid_transforms = 0;
+            if (invalid_transforms != last_invalid_transforms)
+            {
+                if (invalid_transforms > 0)
+                {
+                    SP_LOG_WARNING(
+                        "Ray tracing: %u instances have a non finite or out of range transform and were excluded from the tlas, first is '%s'",
+                        invalid_transforms,
+                        first_invalid_name ? first_invalid_name : "unknown"
+                    );
+                }
+
+                last_invalid_transforms = invalid_transforms;
+            }
+
             // the table is written and read in lockstep with the instances, so a scene that outgrows the
             // buffer drops the tail of both rather than writing past the end of the allocation
             RHI_Buffer* geometry_info_buffer =

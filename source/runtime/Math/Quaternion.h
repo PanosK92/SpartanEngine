@@ -118,9 +118,10 @@ namespace spartan::math
         {
             const Vector3 start_normalized = start.Normalized();
             const Vector3 end_normalized   = end.Normalized();
-            const float dot                = start_normalized.Dot(end_normalized);
+            const float dot                = std::clamp(start_normalized.Dot(end_normalized), -1.0f, 1.0f);
 
-            if (dot > -1.0f + std::numeric_limits<float>::epsilon())
+            // 1 + dot cancels catastrophically near antiparallel, bail out well before float epsilon
+            if (dot > -1.0f + 1.0e-6f)
             {
                 const Vector3 cross    = start_normalized.Cross(end_normalized);
                 const float scale      = sqrtf((1.0f + dot) * 2.0f);
@@ -136,10 +137,12 @@ namespace spartan::math
             {
                 // the vectors are opposite, any perpendicular axis gives a valid 180 degree turn
                 Vector3 axis = Vector3::Right.Cross(start_normalized);
-                if (axis.Length() < std::numeric_limits<float>::epsilon())
+                if (axis.LengthSquared() < 1.0e-6f)
                 {
                     axis = Vector3::Up.Cross(start_normalized);
                 }
+                // from axis angle assumes a unit axis, a cross of unit vectors is not one
+                axis.Normalize();
 
                 return FromAxisAngle(axis, 180.0f * deg_to_rad);
             }

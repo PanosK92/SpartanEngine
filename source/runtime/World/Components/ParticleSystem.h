@@ -197,6 +197,14 @@ namespace spartan
         void UpdateRuntime(const math::Vector3& position, float delta_time);
         const math::Vector3& GetEmitterVelocity() const;
 
+        // true while particles emitted recently enough to still be alive, the renderer uses this to
+        // keep the volumetric path off for emitters that hold buffer space but spawn nothing
+        bool HasLiveParticles() const;
+
+        // rate times lifetime is what the buffer settles at, the renderer budgets volumetric work
+        // against this because the real count only exists on the gpu
+        uint32_t GetEstimatedLiveParticles() const;
+
     private:
         void SaveProperties(pugi::xml_node& node) const;
         void LoadProperties(pugi::xml_node& node);
@@ -240,5 +248,8 @@ namespace spartan
         math::Vector3 m_last_position       = math::Vector3::Zero;
         math::Vector3 m_emitter_velocity    = math::Vector3::Zero;
         bool m_has_last_position            = false;
+
+        // starts large so an emitter that never emits is never treated as live
+        float m_time_since_emission         = 1e9f;
     };
 }

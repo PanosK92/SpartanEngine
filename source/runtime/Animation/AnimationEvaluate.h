@@ -35,12 +35,20 @@ namespace spartan
 
     namespace animation_evaluate
     {
+        // build the clip's bone to channel lookup if it is missing. sampling calls this itself, but
+        // the table is written into the clip, so call it on the main thread before sampling a clip
+        // from worker threads
+        void EnsureSampleIndex(const AnimationClip& clip);
+
         // sample clip into joint local matrices (bind for unanimated joints)
+        // loop=false holds the last frame past the end instead of wrapping to the start, a one shot
+        // clip that wraps mid crossfade blends out of its first frame and snaps
         bool SampleLocals(
             const AnimationClip& clip,
             const Skeleton& skeleton,
             float time_seconds,
-            std::vector<math::Matrix>& out_local_matrices
+            std::vector<math::Matrix>& out_local_matrices,
+            bool loop = true
         );
 
         // sample clip into joint global matrices
@@ -58,6 +66,47 @@ namespace spartan
             float t,
             std::vector<math::Matrix>& out_local_matrices
         );
+
+        // inertialization
+        //
+        // a transition records the difference between the pose already on screen and where the new
+        // clip starts, then decays that difference to zero on top of the live clip. the outgoing
+        // clip is never sampled again, so nothing freezes, and because the difference is measured
+        // against whatever was displayed, a transition taken mid transition is just another
+        // difference, no special case. matches position and velocity, so joints do not kink
+        class PoseInertializer
+        {
+        public:
+            void Reset();
+            bool IsActive() const { return m_active; }
+
+            // src is the pose displayed last frame, src_previous the frame before it (may be empty
+            // on a first transition, that only costs velocity matching). dst is the incoming clip at
+            // its start, dst_next the same clip one displayed frame later
+            void Transition(
+                const std::vector<math::Matrix>& src,
+                const std::vector<math::Matrix>& src_previous,
+                const std::vector<math::Matrix>& dst,
+                const std::vector<math::Matrix>& dst_next,
+                float delta_time
+            );
+
+            // decay the stored difference and add it on top of pose, in place
+            void Apply(std::vector<math::Matrix>& pose, float delta_time, float halflife);
+
+        private:
+            struct JointOffset
+            {
+                math::Vector3 position          = math::Vector3::Zero;
+                math::Vector3 position_velocity = math::Vector3::Zero;
+                // scaled angle axis, a rotation decays as a plain vector in this form
+                math::Vector3 rotation          = math::Vector3::Zero;
+                math::Vector3 rotation_velocity = math::Vector3::Zero;
+            };
+
+            std::vector<JointOffset> m_offsets;
+            bool m_active = false;
+        };
 
         bool HasCurve(const AnimationClip& clip, uint32_t bone_index);
 
