@@ -1134,6 +1134,11 @@
   <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.461521 0.0278618 -0.886573 0.0145039" scale="1 1 1">
    <light flags="3" light_type="0" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="120000" range="3.40282347e+38" angle="0.52359879" index="0" preset="4" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.300000012" />
   </Entity>
+  <Entity name="ocean" id="9001000000000000006" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <water>
+    <water cascade_count="4" amplitude="1" choppiness="0.600000024" displacement_scale="1" normal_strength="1" sea_level="0" turbidity="1" caustics_intensity="1" />
+   </water>
+  </Entity>
   <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="229.889 3.37231 -162.847" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
    <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="0.00616032 0.99118 -0.0489511 0.122992" scale="1 1 1">
