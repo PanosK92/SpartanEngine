@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AssetBrowser.h"
 #include "WorldViewer.h"
 #include "Properties.h"
+#include "TerrainEditor.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/Material.h"
@@ -389,7 +390,7 @@ void Viewport::OnTickVisible()
     Camera* camera = World::GetCamera();
 
     // double-click to focus on entity
-    if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
+    if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
         camera->Pick();
         m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
@@ -399,7 +400,7 @@ void Viewport::OnTickVisible()
         }
     }
     // mouse picking (with multi-select via Ctrl handled in Pick())
-    else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
+    else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking() && !TerrainEditor::IsSculptActive())
     {
         camera->Pick();
 

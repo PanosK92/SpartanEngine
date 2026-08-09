@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Debugging.h"
 #include "ScriptEditor.h"
 #include "Sequencer.h"
+#include "TerrainEditor.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
 #include "Commands/CommandStack.h"
@@ -330,6 +331,7 @@ namespace
                     menu_entry<Profiler>();
                     menu_entry<ShaderEditor>();
                     menu_entry<ScriptEditor>();
+                    menu_entry<TerrainEditor>();
                     menu_entry<RenderOptions>();
                     menu_entry<TextureViewer>();
                     menu_entry<ResourceViewer>();

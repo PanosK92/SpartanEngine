@@ -77,6 +77,7 @@ namespace spartan
         void BeginPreload();
         void CancelPreload();
         bool FinishPreloadOnMainThread();
+        void AdoptTemplateRoot();
         void SpawnNext();
         bool SpawnWalker(uint32_t index);
         bool FindSpawnPosition(uint32_t index, math::Vector3& position, math::Vector3& heading);

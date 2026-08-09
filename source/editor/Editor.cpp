@@ -49,6 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/ScriptEditor.h"
 #include "Widgets/AssetViewer.h"
 #include "Widgets/Sequencer.h"
+#include "Widgets/TerrainEditor.h"
 #include "MCP/EditorMcpCommands.h"
 #include "MCP/McpAssistant.h"
 #include "World/World.h"
@@ -197,6 +198,7 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<ResourceViewer>(this));
     m_widgets.emplace_back(make_shared<ShaderEditor>(this));
     m_widgets.emplace_back(make_shared<ScriptEditor>(this));
+    m_widgets.emplace_back(make_shared<TerrainEditor>(this));
     m_widgets.emplace_back(make_shared<McpAssistant>(this));
     m_widgets.emplace_back(make_shared<AssetViewer>(this));
     m_widgets.emplace_back(make_shared<RenderOptions>(this));

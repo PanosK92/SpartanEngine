@@ -78,9 +78,25 @@ namespace
     float reorder_line_x_max      = 0.0f;    // x end of insertion line
 
     // helper function to collect all active entities in tree display order (depth-first)
+    bool should_show_in_tree(Entity* entity)
+    {
+        if (!entity)
+        {
+            return false;
+        }
+
+        // transient entities stay visible even when inactive (e.g. pedestrian template)
+        if (entity->IsTransient())
+        {
+            return true;
+        }
+
+        return entity->GetActive();
+    }
+
     void CollectEntitiesInTreeOrder(Entity* entity, vector<Entity*>& out_entities)
     {
-        if (!entity || !entity->GetActive())
+        if (!should_show_in_tree(entity))
         {
             return;
         }
@@ -109,14 +125,15 @@ namespace
 
     bool collect_filtered_entities(Entity* entity)
     {
-        if (!entity || !entity->GetActive())
+        if (!should_show_in_tree(entity))
         {
             return false;
         }
 
         entity_count++;
 
-        const bool matches = entity_filter.PassFilter(entity->GetObjectName().c_str());
+        const bool matches = entity_filter.PassFilter(entity->GetObjectName().c_str()) ||
+            (entity->IsTransient() && entity_filter.PassFilter("transient"));
         if (matches)
         {
             filter_match_count++;
@@ -469,7 +486,7 @@ void WorldViewer::TreeShow()
         // iterate over root entities directly, omitting the root node
         for (Entity* entity : root_entities)
         {
-            if (entity->GetActive())
+            if (should_show_in_tree(entity))
             {
                 TreeAddEntity(entity);
             }
@@ -601,7 +618,7 @@ void WorldViewer::OnTreeEnd()
 void WorldViewer::TreeAddEntity(Entity* entity)
 {
     // early exit if entity is null
-    if (!entity)
+    if (!should_show_in_tree(entity))
     {
         return;
     }
@@ -614,12 +631,16 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     // set up tree node flags - we handle highlighting manually, so no SpanFullWidth or Selected
     ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_OpenOnArrow;
     const vector<Entity*> children = entity->GetChildren();
-    bool has_children = !children.empty();
+    bool has_children = any_of(children.begin(), children.end(), [](Entity* child)
+    {
+        return should_show_in_tree(child);
+    });
     if (entity_filter.IsActive())
     {
         has_children = any_of(children.begin(), children.end(), [](Entity* child)
         {
-            return child && filtered_entity_ids.find(child->GetObjectId()) != filtered_entity_ids.end();
+            return should_show_in_tree(child) &&
+                   filtered_entity_ids.find(child->GetObjectId()) != filtered_entity_ids.end();
         });
     }
     if (!has_children)
@@ -683,7 +704,11 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     // calculate content width (icon + text only)
     const float padding      = ImGui::GetStyle().FramePadding.y * 2.0f;
     const float icon_size    = ImGui::GetTextLineHeightWithSpacing() - padding;
-    const float text_width   = ImGui::CalcTextSize(entity->GetObjectName().c_str()).x;
+    const bool is_transient  = entity->IsTransient();
+    const string display_name = is_transient
+        ? (entity->GetObjectName() + " (transient)")
+        : entity->GetObjectName();
+    const float text_width   = ImGui::CalcTextSize(display_name.c_str()).x;
     const float content_width = max(icon_size + ImGui::GetStyle().ItemSpacing.x + text_width, ImGui::GetContentRegionAvail().x);
     
     // calculate content rect (icon + text area only) for hover detection and highlighting
@@ -859,7 +884,11 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     );
     if (!is_renaming_this)
     {
-        dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, ImGui::GetColorU32(ImGuiCol_Text), entity->GetObjectName().c_str());
+        // muted label so runtime-only entities are easy to spot
+        const ImU32 text_color = is_transient
+            ? IM_COL32(150, 150, 160, 200)
+            : ImGui::GetColorU32(ImGuiCol_Text);
+        dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, text_color, display_name.c_str());
     }
 
     // merge channels before processing children (they will have their own channel splits)

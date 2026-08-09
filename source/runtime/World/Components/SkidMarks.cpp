@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Render.h"
 #include "../Entity.h"
 #include "../World.h"
+#include "../../Core/Engine.h"
 #include "../../Geometry/Mesh.h"
 #include "../../Math/Vector2.h"
 #include "../../Rendering/Material.h"
@@ -75,9 +76,15 @@ namespace spartan
 
     void SkidMarks::Tick()
     {
-        if (!m_initialized)
+        // editor idle must not spawn trail entities from settle slip
+        if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
         {
-            EnsureInitialized();
+            return;
+        }
+
+        if (!m_physics)
+        {
+            m_physics = GetEntity()->GetComponent<Physics>();
         }
 
         if (!m_physics || m_physics->GetBodyType() != BodyType::Vehicle)
@@ -110,6 +117,12 @@ namespace spartan
                 trail.active     = false;
                 trail.has_smooth = false;
                 continue;
+            }
+
+            // create trail meshes only when a tire actually starts skidding
+            if (!m_initialized)
+            {
+                EnsureInitialized();
             }
 
             Vector3 normal  = m_physics->GetWheelContactNormal(wheel);

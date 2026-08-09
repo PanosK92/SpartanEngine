@@ -48,6 +48,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/CarReset.h"
 #include "World/Components/Text3D.h"
 #include "World/Prefab.h"
+#include "TerrainEditor.h"
+#include "../Editor.h"
 //==========================================
 
 //= NAMESPACES =========
@@ -737,6 +739,22 @@ void Properties::OnTickVisible()
                 }
             }
             ImGui::PopStyleColor();
+
+            layout::separator();
+            layout::section_header("Transform");
+
+            const bool has_terrain = Terrain::FindActive() != nullptr;
+            ImGui::BeginDisabled(!has_terrain);
+            if (ImGuiSp::button("Snap Selected", ImVec2(-1, 0)))
+            {
+                Terrain::SnapEntitiesToTerrain(selected);
+            }
+            ImGuiSp::tooltip("snap each selected entity to the ground height at its xz");
+            ImGui::EndDisabled();
+            if (!has_terrain)
+            {
+                ImGui::TextDisabled("no ground heightfield in the world");
+            }
         }
         else if (Entity* entity = get_selected_entity())
         {
@@ -822,7 +840,7 @@ void Properties::ClearMaterialInspection()
 
 void Properties::ShowEntity(Entity* entity) const
 {
-    if (component_begin("Entity", design::accent_entity(), nullptr, true, false, true))
+    if (component_begin("Transform", design::accent_entity(), nullptr, true, false, true))
     {
         // entity name display
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -941,10 +959,34 @@ void Properties::ShowEntity(Entity* entity) const
         }
 
         layout::separator();
-        layout::section_header("Transform");
 
-        // transform properties
+        // position, rotation, scale
         property_transform(entity);
+
+        layout::separator();
+
+        const float snap_button_width = ImGui::GetContentRegionAvail().x;
+        const bool has_terrain = Terrain::FindActive() != nullptr;
+        ImGui::BeginDisabled(!has_terrain);
+        if (ImGuiSp::button("Snap", ImVec2(snap_button_width, 0)))
+        {
+            Terrain::SnapEntityToTerrain(entity);
+        }
+        ImGuiSp::tooltip("set world y to the ground height at this xz");
+
+        if (entity->HasChildren())
+        {
+            if (ImGuiSp::button("Snap Children", ImVec2(snap_button_width, 0)))
+            {
+                Terrain::SnapChildrenToTerrain(entity);
+            }
+            ImGuiSp::tooltip("snap each direct child to the ground, nested locals stay relative");
+        }
+        ImGui::EndDisabled();
+        if (!has_terrain)
+        {
+            ImGui::TextDisabled("no ground heightfield in the world");
+        }
     }
     component_end();
 }
@@ -2483,6 +2525,23 @@ void Properties::ShowTerrain(Terrain* terrain) const
             spartan::ThreadPool::AddTask([terrain]() {
                 terrain->Generate();
             });
+        }
+
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
+        if (ImGuiSp::button("Regenerate", ImVec2(button_width, 0)))
+        {
+            spartan::ThreadPool::AddTask([terrain]() {
+                terrain->Regenerate();
+            });
+        }
+
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
+        if (ImGuiSp::button("Open Sculpt", ImVec2(button_width, 0)))
+        {
+            if (TerrainEditor* sculpt = m_editor->GetWidget<TerrainEditor>())
+            {
+                sculpt->SetVisible(true);
+            }
         }
 
         layout::separator();

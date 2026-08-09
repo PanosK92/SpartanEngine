@@ -25,8 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include <atomic>
 #include <unordered_map>
+#include <vector>
 #include "../../RHI/RHI_Definitions.h"
 #include "../../Math/Quaternion.h"
+#include "../../Math/Ray.h"
+#include "../TerrainSystem.h"
 //====================================
 
 namespace spartan
@@ -123,6 +126,17 @@ namespace spartan
 
         // generation
         void Generate();
+        void CreateFlat(uint32_t base_width = 128, uint32_t base_height = 128);
+        void RebuildSurface(bool update_placement = false);
+        // wipe sculpt and rebuild from heightmap or flat params
+        void Regenerate();
+        // restore one tile region from the pre-sculpt baseline
+        bool RegenerateTile(uint32_t tile_index);
+        // tile_N child -> 0-based index, or -1
+        static int ParseTileIndex(Entity* entity);
+        uint32_t GetTileCountAxis() const { return m_tile_count; }
+        void SetTileCountAxis(uint32_t count);
+        uint32_t GetTileEntityCount() const { return static_cast<uint32_t>(m_tile_offsets.size()); }
         void FindTransforms(
             const uint32_t tile_index,
             const TerrainProp terrain_prop,
@@ -131,6 +145,21 @@ namespace spartan
             const float scale,
             std::vector<math::Matrix>& transforms_out
         );
+
+        // sculpting
+        bool HasHeightfield() const { return !m_positions.empty() && m_dense_width > 1 && m_dense_height > 1; }
+        bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
+        bool SampleHeight(float world_x, float world_z, float& height_out) const;
+        void ApplyBrush(const math::Vector3& world_center, const TerrainBrush& brush);
+        TerrainGridMapping GetGridMapping() const;
+
+        // find the first terrain with a heightfield in the loaded world
+        static Terrain* FindActive();
+        // snap entity world y to the terrain height at its xz, returns false if no terrain/hit
+        static bool SnapEntityToTerrain(Entity* entity, float offset = 0.0f);
+        // snap direct children only, parents move and nested locals stay intact
+        static uint32_t SnapChildrenToTerrain(Entity* parent, float offset = 0.0f);
+        static uint32_t SnapEntitiesToTerrain(const std::vector<Entity*>& entities, float offset = 0.0f);
 
         // component io
         void Save(pugi::xml_node& node) override;
@@ -145,6 +174,10 @@ namespace spartan
 
     private:
         void Clear();
+        void ClearTileEntities();
+        void CreateTileEntities();
+        void BakeHeightMapTexture();
+        void SnapshotBaseline();
         uint64_t ComputeCacheHash() const;
 
         // textures
@@ -159,6 +192,7 @@ namespace spartan
         uint32_t m_smoothing   = 0;
         uint32_t m_density     = 3;
         uint32_t m_scale       = 6;
+        uint32_t m_tile_count  = 16;
         bool m_create_border   = true;
 
         // runtime state
@@ -183,6 +217,8 @@ namespace spartan
         std::shared_ptr<Material> m_material;
         std::vector<math::Vector3> m_tile_offsets;
         std::vector<math::Vector3> m_positions;
+        // heights right after generate/create flat, used to undo sculpt
+        std::vector<math::Vector3> m_positions_baseline;
 
         // placement data (per-terrain, not static)
         std::unordered_map<uint64_t, std::vector<TriangleData>> m_triangle_data;

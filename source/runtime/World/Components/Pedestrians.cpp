@@ -197,6 +197,12 @@ namespace spartan
 
     void Pedestrians::Tick()
     {
+        // finish editor preload so the mannequin template is hidden under this manager
+        if (!m_spawn_ready)
+        {
+            FinishPreloadOnMainThread();
+        }
+
         if (!Engine::IsFlagSet(EngineMode::Playing) || Engine::IsFlagSet(EngineMode::Paused))
         {
             return;
@@ -269,6 +275,17 @@ namespace spartan
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale);
         flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
 
+        // sync claim if the mesh is already cached so it never sits as a top-level orphan
+        if (shared_ptr<Mesh> existing = ResourceCache::GetByPath<Mesh>(m_model_file))
+        {
+            if (existing->GetRootEntity() && existing->GetSkeleton() && existing->GetAnimationClipCount() > 0)
+            {
+                m_source_mesh = existing;
+                AdoptTemplateRoot();
+                return;
+            }
+        }
+
         m_preload_state = std::make_shared<PreloadState>();
         const shared_ptr<PreloadState> state = m_preload_state;
         const string model_file = m_model_file;
@@ -282,6 +299,12 @@ namespace spartan
                     && mesh->GetRootEntity()
                     && mesh->GetSkeleton()
                     && mesh->GetAnimationClipCount() > 0;
+                // hide immediately so the hierarchy never shows a free-floating mannequin
+                if (mesh && mesh->GetRootEntity())
+                {
+                    mesh->GetRootEntity()->SetTransient(true);
+                    mesh->GetRootEntity()->SetActive(false);
+                }
             }
             state->succeeded.store(succeeded, memory_order_release);
             state->completed.store(true, memory_order_release);
@@ -323,6 +346,14 @@ namespace spartan
         if (!m_preload_state->succeeded.load(memory_order_acquire))
         {
             SP_LOG_ERROR("Pedestrians failed to load model: %s", m_model_file.c_str());
+            if (shared_ptr<Mesh> failed = ResourceCache::GetByPath<Mesh>(m_model_file))
+            {
+                if (Entity* root = failed->GetRootEntity())
+                {
+                    root->SetTransient(true);
+                    root->SetActive(false);
+                }
+            }
             m_preload_state.reset();
             return false;
         }
@@ -343,15 +374,34 @@ namespace spartan
         if (!m_source_mesh->GetSkeleton() || m_source_mesh->GetAnimationClipCount() == 0)
         {
             SP_LOG_ERROR("Pedestrians model has no skeleton/clips: %s", m_model_file.c_str());
+            Entity* root = m_source_mesh->GetRootEntity();
+            root->SetTransient(true);
+            root->SetActive(false);
             m_source_mesh.reset();
             return false;
         }
 
+        AdoptTemplateRoot();
+        return true;
+    }
+
+    void Pedestrians::AdoptTemplateRoot()
+    {
+        if (!m_source_mesh)
+        {
+            return;
+        }
+
         Entity* template_root = m_source_mesh->GetRootEntity();
+        if (!template_root)
+        {
+            return;
+        }
+
         template_root->SetTransient(true);
         template_root->SetActive(false);
+        template_root->SetParent(GetEntity());
         m_spawn_ready = true;
-        return true;
     }
 
     void Pedestrians::SpawnNext()
@@ -866,5 +916,6 @@ namespace spartan
 
         // warm the mannequin on a worker while the editor is still open
         BeginPreload();
+        FinishPreloadOnMainThread();
     }
 }
