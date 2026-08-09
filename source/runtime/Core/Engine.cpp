@@ -157,18 +157,25 @@ namespace spartan
         McpServer::Tick();
         Steam::Tick();
 
-        // ctrl+0 toggles xr on demand, once xr is up the openxr session state machine
-        // in Xr::ProcessEvents handles headset on/off transitions automatically
+        // ctrl+0 toggles openxr for whatever runtime/headset is active (steamvr, psvr2 via stvr, etc)
         if ((Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right)) && Input::GetKeyDown(KeyCode::Alpha0))
         {
             if (!Xr::IsAvailable())
             {
+                SP_LOG_INFO("openxr: enabling (any connected openxr headset)");
                 Xr::Initialize();
             }
             else
             {
+                SP_LOG_INFO("openxr: disabling");
                 Xr::Shutdown();
             }
+        }
+
+        // f12 takes a screenshot, usable with the headset on
+        if (Input::GetKeyDown(KeyCode::F12))
+        {
+            Renderer::Screenshot();
         }
 
         // tick

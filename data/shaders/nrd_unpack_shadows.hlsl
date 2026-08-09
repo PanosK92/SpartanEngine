@@ -38,7 +38,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
-    float depth = get_depth(thread_id.xy);
+    const float2 uv = (thread_id.xy + 0.5f) / float2(resolution);
+    float depth = get_depth(uv);
     if (depth <= 0.0f)
     {
         tex_uav[thread_id.xy] = float4(1.0f, 0.0f, 0.0f, 1.0f);

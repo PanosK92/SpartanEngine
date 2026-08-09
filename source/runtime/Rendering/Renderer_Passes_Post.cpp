@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_VendorTechnology.h"
+#include "../XR/Xr.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -68,6 +69,12 @@ namespace spartan
     void Renderer::Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list)
     {
         if (!cvar_ssao.GetValueAs<bool>())
+        {
+            return;
+        }
+
+        // ssao uses a single depth view, skip in stereo so the right eye is not darkened by left eye occlusion
+        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
         {
             return;
         }
@@ -236,10 +243,16 @@ namespace spartan
 
         RHI_Texture* tex_pre_tonemap = tex_in;
 
-        Pass_Tonemap(cmd_list, tex_in, tex_out);
+        // hmd swapchain is sdr srgb, desktop hdr encode (pq/scrgb) reads as washed out in the headset
+        const bool xr_stereo = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        Pass_Tonemap(cmd_list, tex_in, tex_out, xr_stereo);
         swap(tex_in, tex_out);
 
-        Pass_Screenshot(cmd_list, tex_pre_tonemap);
+        // vr captures after both eyes from the stereo buffer, mid eye would race the right eye overwrite
+        if (!xr_stereo)
+        {
+            Pass_Screenshot(cmd_list, tex_pre_tonemap);
+        }
 
         Pass_PostProcess_DisplayEffects(cmd_list, tex_in, tex_out);
 
@@ -314,7 +327,11 @@ namespace spartan
 
         cmd_list->BeginMarker("post_process");
         Pass_PostProcess_Color(cmd_list, tex_in, tex_out, eye_layer);
-        Pass_PostProcess_EditorOverlays(cmd_list, rt_frame_output);
+        // grid, lines, icons and editor overlays stay on the desktop mirror, not in the hmd
+        if (!(Xr::IsSessionRunning() && Xr::GetStereoMode()))
+        {
+            Pass_PostProcess_EditorOverlays(cmd_list, rt_frame_output);
+        }
         cmd_list->EndMarker();
     }
 
@@ -481,7 +498,12 @@ namespace spartan
                 method = Renderer_AntiAliasing_Upsampling::AA_Off_Upscale_Linear;
             }
 
-            // taau/xess don't support array textures, fall back to fxaa or blit in stereo
+            // xess keeps one global temporal context, cannot run twice per frame for two eyes
+            if (is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+            {
+                method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
+            }
+
             if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
@@ -492,7 +514,7 @@ namespace spartan
                     tex_out
                 );
             }
-            else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
+            else if (method == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
             {
                 RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTarget::taau_history);
 
@@ -501,19 +523,51 @@ namespace spartan
                 pso.shaders[Compute] = GetShader(Renderer_Shader::taau_c);
                 cmd_list->SetPipelineState(pso);
 
-                SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, tex_velocity);
+                SetCommonTextures(cmd_list, eye_layer);
+                cmd_list->SetTexture(
+                    static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity),
+                    tex_velocity,
+                    rhi_all_mips,
+                    0,
+                    false,
+                    eye_layer
+                );
                 m_pcb_pass_cpu.set_f3_value(m_taau_reset_history ? 1.0f : 0.0f, 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_history);
+                cmd_list->SetTexture(
+                    static_cast<uint32_t>(Renderer_BindingsSrv::tex),
+                    tex_history,
+                    rhi_all_mips,
+                    0,
+                    false,
+                    eye_layer
+                );
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_in);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
+                cmd_list->SetTexture(
+                    static_cast<uint32_t>(Renderer_BindingsSrv::tex3),
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous),
+                    rhi_all_mips,
+                    0,
+                    false,
+                    eye_layer
+                );
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
                 cmd_list->Dispatch(tex_out);
 
-                cmd_list->Copy(tex_out, tex_history, false);
-
-                m_taau_reset_history = false;
+                if (is_stereo)
+                {
+                    cmd_list->BlitToArrayLayer(tex_out, tex_history, eye_layer);
+                    if (eye_layer + 1 >= Xr::eye_count)
+                    {
+                        m_taau_reset_history = false;
+                    }
+                }
+                else
+                {
+                    cmd_list->Copy(tex_out, tex_history, false);
+                    m_taau_reset_history = false;
+                }
             }
             else if (method == Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upscale_Linear)
             {
@@ -603,44 +657,84 @@ namespace spartan
 
     void Renderer::Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter)
     {
-        // amd fidelityfx spd, single pass downsampler, dispatch math from spd integration guide
-        const uint32_t mip_start             = 0;
-        const uint32_t output_mip_count      = tex->GetMipCount() - (mip_start + 1);
-        const uint32_t width                 = tex->GetWidth();
-        const uint32_t height                = tex->GetHeight() >> mip_start;
-        const uint32_t thread_group_count_x_ = (width  + 63) >> 6;
-        const uint32_t thread_group_count_y_ = (height + 63) >> 6;
-
+        // amd fidelityfx spd caps at 4096 and 12 mips per dispatch, chain passes and
+        // fall back to a 2x2 reduce for any source mip that still exceeds that size
         SP_ASSERT(tex->HasPerMipViews());
-        SP_ASSERT(width <= 4096 && height <= 4096 && output_mip_count <= 12);
-        SP_ASSERT(mip_start < output_mip_count);
+        SP_ASSERT(tex->GetMipCount() > 1);
 
-        Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
-        shader                 = filter == Renderer_DownsampleFilter::Min ? Renderer_Shader::ffx_spd_min_c: shader;
-        shader                 = filter == Renderer_DownsampleFilter::Max ? Renderer_Shader::ffx_spd_max_c: shader;
-        RHI_Shader* shader_c   = GetShader(shader);
+        constexpr uint32_t spd_max_size = 4096;
+        constexpr uint32_t spd_max_mips = 12;
+
+        Renderer_Shader shader_spd = Renderer_Shader::ffx_spd_average_c;
+        shader_spd = filter == Renderer_DownsampleFilter::Min ? Renderer_Shader::ffx_spd_min_c : shader_spd;
+        shader_spd = filter == Renderer_DownsampleFilter::Max ? Renderer_Shader::ffx_spd_max_c : shader_spd;
+
+        Renderer_Shader shader_one = Renderer_Shader::ffx_spd_average_one_c;
+        shader_one = filter == Renderer_DownsampleFilter::Min ? Renderer_Shader::ffx_spd_min_one_c : shader_one;
+        shader_one = filter == Renderer_DownsampleFilter::Max ? Renderer_Shader::ffx_spd_max_one_c : shader_one;
+
+        RHI_Buffer* spd_counter = (cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Compute)
+            ? GetBuffer(Renderer_Buffer::SpdCounterCompute)
+            : GetBuffer(Renderer_Buffer::SpdCounter);
 
         cmd_list->BeginMarker("downscale");
+
+        uint32_t mip_start         = 0;
+        const uint32_t mip_count   = tex->GetMipCount();
+
+        while (mip_start + 1 < mip_count)
         {
-            // graphics and compute queues can run spd concurrently, each needs its own atomic counter
-            RHI_Buffer* spd_counter = (cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Compute)
-                ? GetBuffer(Renderer_Buffer::SpdCounterCompute)
-                : GetBuffer(Renderer_Buffer::SpdCounter);
+            const uint32_t width  = max(tex->GetWidth()  >> mip_start, 1u);
+            const uint32_t height = max(tex->GetHeight() >> mip_start, 1u);
+
+            if (width > spd_max_size || height > spd_max_size)
+            {
+                const uint32_t dst_w = max(width  >> 1, 1u);
+                const uint32_t dst_h = max(height >> 1, 1u);
+
+                RHI_PipelineState pso;
+                pso.name             = "downscale_one_mip";
+                pso.shaders[Compute] = GetShader(shader_one);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex, mip_start, 1);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex, mip_start + 1, 1);
+                constexpr uint32_t thread_group = 8;
+                cmd_list->Dispatch(
+                    (dst_w + thread_group - 1) / thread_group,
+                    (dst_h + thread_group - 1) / thread_group
+                );
+
+                mip_start++;
+                continue;
+            }
+
+            const uint32_t remaining        = mip_count - (mip_start + 1);
+            const uint32_t output_mip_count = min(remaining, spd_max_mips);
+            const uint32_t thread_group_x   = (width  + 63) >> 6;
+            const uint32_t thread_group_y   = (height + 63) >> 6;
 
             RHI_PipelineState pso;
             pso.name             = "downscale";
-            pso.shaders[Compute] = shader_c;
+            pso.shaders[Compute] = GetShader(shader_spd);
             cmd_list->SetPipelineState(pso);
 
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
-            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()), 0.0f);
+            m_pcb_pass_cpu.set_f3_value(
+                static_cast<float>(output_mip_count),
+                static_cast<float>(thread_group_x * thread_group_y),
+                0.0f
+            );
+            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(width), static_cast<float>(height), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,   spd_counter);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     tex, mip_start, 1);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count);
-            cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+            cmd_list->Dispatch(thread_group_x, thread_group_y);
+
+            mip_start += output_mip_count;
         }
+
         cmd_list->EndMarker();
     }
 

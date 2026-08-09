@@ -96,6 +96,16 @@ namespace spartan
         static void SetStereoMode(bool enabled);
         static bool GetStereoMode();
 
+        // settings persistence must write the desktop snapshot while hmd res is active
+        static bool TryGetPersistedDesktopResolution(
+            uint32_t& output_w,
+            uint32_t& output_h,
+            uint32_t& render_w,
+            uint32_t& render_h,
+            float& viewport_w,
+            float& viewport_h
+        );
+
     private:
         static void InitializeWorker();
         static bool CreateSession();
@@ -105,6 +115,12 @@ namespace spartan
         static bool CreateReferenceSpace();
         static void ProcessEvents();
         static void UpdateViews();
+
+        // shared by SetStereoMode and ProcessEvents so ctrl+0 always restores desktop res
+        static void SaveDesktopResolutionIfNeeded();
+        static void ClampResolutionScaleForVr();
+        static void ApplyHmdResolution();
+        static void RestoreDesktopResolution(bool restore_resolution_scale);
 
         // this state is declared here rather than in a .cpp because the lifecycle and frame methods
         // live in the per-rhi files (Vulkan_Xr.cpp, D3D12_Xr.cpp) and write to it

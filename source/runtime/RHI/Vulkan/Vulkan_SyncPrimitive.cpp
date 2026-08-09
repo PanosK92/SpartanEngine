@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Implementation.h"
+#include "../../Core/Debugging.h"
+#include "../../Profiling/Breadcrumbs.h"
 //================================
 
 namespace spartan
@@ -93,6 +95,18 @@ namespace spartan
             if (result == VK_ERROR_DEVICE_LOST)
             {
                 RHI_Device::SetDeviceLost();
+            }
+            if (result == VK_TIMEOUT)
+            {
+                // full hmd frames can exceed the wait without a hard device loss, dump breadcrumbs then fail soft
+                Log::SetLogToFile(true);
+                SP_LOG_ERROR("VK_TIMEOUT waiting on timeline semaphore (value %llu)", static_cast<unsigned long long>(value));
+                if (Debugging::IsBreadcrumbsEnabled())
+                {
+                    Breadcrumbs::OnDeviceLost();
+                }
+                RHI_Device::SetDeviceLost();
+                return;
             }
             SP_ASSERT_VK(result);
         }

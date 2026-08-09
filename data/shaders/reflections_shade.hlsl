@@ -27,14 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // shades ray traced reflection hits with analytical lights and a sky visibility tested ibl term
 
 // small shadow ray budget, the reflection ray already spreads noise and the denoiser handles the rest
-static const uint k_shadow_spp = 4;
+static const uint k_shadow_spp = 1;
 
-static const float2 k_halton_2_3[4] =
+static const float2 k_halton_2_3[1] =
 {
-    float2(0.500000f, 0.333333f),
-    float2(0.250000f, 0.666667f),
-    float2(0.750000f, 0.111111f),
-    float2(0.125000f, 0.444444f)
+    float2(0.500000f, 0.333333f)
 };
 
 float reflections_spatial_hash_unit(float2 pixel_xy)
@@ -392,8 +389,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     float mip_count = pass_get_f3_value().y;
 
-    // sky based diffuse ibl, gated by a sky visibility ray so enclosed hits stay dark
-    float  sky_visibility = reflections_trace_sky_visibility(position, normal, normal);
+    // one sky visibility ray shared by diffuse and specular ibl, bias toward the reflection
+    // direction on metals where specular ibl dominates
+    float3 reflect_dir    = reflect(-view_dir, normal);
+    float3 sky_vis_dir    = normalize(lerp(normal, reflect_dir, metallic));
+    float  sky_visibility = reflections_trace_sky_visibility(position, normal, sky_vis_dir);
     float2 sky_uv         = direction_sphere_uv(normal);
     float3 ibl_sample     = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, mip_count - 1.0f).rgb;
     float3 ibl_diffuse    = albedo * ibl_sample * (1.0f - metallic) * sky_visibility * 0.3f;
@@ -401,15 +401,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // specular environment at the hit, without this reflective hit surfaces (metal car, glossy
     // black tiles) shade to near black inside the reflection since their diffuse is killed by
     // metalness or a dark albedo, this is the term that makes a reflected car look like a car
-    // and not a silhouette, single bounce sky approximation gated by a visibility ray along the
-    // hit reflection direction so enclosed geometry does not leak sky
-    float3 reflect_dir    = reflect(-view_dir, normal);
+    // and not a silhouette, single bounce sky approximation gated by the shared visibility ray
     float  env_roughness  = saturate(max(roughness, source_roughness * rough_reflection));
     float  spec_mip       = env_roughness * env_roughness * (mip_count - 1.0f);
     float3 env_spec       = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(reflect_dir), spec_mip).rgb;
     float2 env_brdf       = reflections_env_brdf_approx(env_roughness, n_dot_v_brdf);
-    float  spec_vis       = reflections_trace_sky_visibility(position, normal, reflect_dir);
-    float3 ibl_specular   = env_spec * (F0 * env_brdf.x + env_brdf.y) * spec_vis;
+    float3 ibl_specular   = env_spec * (F0 * env_brdf.x + env_brdf.y) * sky_visibility;
 
     // emissive at the hit, the showroom is lit almost entirely by emissive light strips, without
     // this the emitters never appear in reflections so reflective surfaces have nothing to show,

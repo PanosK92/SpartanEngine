@@ -43,8 +43,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     const float2 uv = (thread_id.xy + 0.5f) / float2(resolution);
-    float depth = get_depth(thread_id.xy);
-    float view_z = abs(get_position_view_space(thread_id.xy).z);
+    // uv sample so half-res sigma can read full-res gbuffer depth
+    float depth = get_depth(uv);
+    float view_z = abs(get_position_view_space(uv).z);
     const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
     const float tan_light_angular_radius = pass_get_f3_value().x;
 

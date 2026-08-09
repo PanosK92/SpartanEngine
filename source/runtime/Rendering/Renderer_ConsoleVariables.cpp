@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_VendorTechnology.h"
+#include "../XR/Xr.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -49,8 +50,12 @@ namespace spartan
 
         void on_resolution_scale_change(const CVarVariant& value)
         {
-            float v = clamp(get<float>(value), 0.5f, 1.0f);
+            float v = clamp(get<float>(value), 0.25f, 1.0f);
             *ConsoleRegistry::Get().Find("r.resolution_scale")->m_value_ptr = v;
+            if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+            {
+                Renderer::RecreateRenderTargets();
+            }
         }
 
         void on_restir_pt_scale_change(const CVarVariant& value)
@@ -180,14 +185,14 @@ namespace spartan
     // quality settings
     TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering level (0-16)",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
-    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,                                                    "aa/upsampling method index",              on_antialiasing_change); // int value from Renderer_AntiAliasing_Upsampling
+    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        1.0f,                                                    "aa/upsampling method index",              on_antialiasing_change); // int value from Renderer_AntiAliasing_Upsampling
     // display
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
     TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");
     TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,                                                    "vertical sync",                           on_vsync_change);
     // resolution
     TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,                                                    "variable rate shading",                   on_vrs_change);
-    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.5-1.0)",       on_resolution_scale_change);
+    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.25-1.0)",       on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
     // misc
     TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");

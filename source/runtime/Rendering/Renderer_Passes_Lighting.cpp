@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../Core/Window.h"
+#include "../XR/Xr.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 SP_WARNINGS_ON
@@ -103,7 +104,7 @@ namespace spartan
         {
             return;
         }
-        // rt reflections owns the whole primary specular lobe, so there is no blend band and no roughness cutoff
+        // rt reflections owns primary specular below roughness 0.9, rougher pixels skip the trace
         // a secondary view is excluded, it is not in the tlas and its denoiser history belongs to the primary
         const bool rt_reflections_active =
             cvar_ray_traced_reflections.GetValueAs<bool>() &&
@@ -1037,6 +1038,17 @@ namespace spartan
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)
     {
         RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss);
+
+        // bend sss is screen space from one depth view, applying left eye contacts to the right eye
+        // darkens half the frame, clear to lit and skip until a stereo aware path exists
+        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        {
+            if (tex_sss)
+            {
+                cmd_list->ClearTexture(tex_sss, Color(1.0f, 1.0f, 1.0f, 1.0f));
+            }
+            return;
+        }
 
         // the rt trace already captures exact contact occlusion, a secondary view never traces
         const bool rt_shadows_active =

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../../XR/Xr.h"
 #include "../../Rendering/Renderer.h"
+#include "../../Commands/Console/ConsoleCommands.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../../World/World.h"
@@ -62,6 +63,7 @@ namespace spartan
         vector<XrSwapchainImageD3D12KHR> swapchain_images;
 
         // xrEndFrame must submit zero layers when no image was released, or the runtime returns XR_ERROR_LAYER_INVALID
+        bool swapchain_image_acquired_this_frame = false;
         bool swapchain_image_released_this_frame = false;
 
         // views for stereo rendering
@@ -438,16 +440,28 @@ namespace spartan
         vector<int64_t> formats(format_count);
         xrEnumerateSwapchainFormats(xr_session, format_count, &format_count, formats.data());
 
-        // prefer srgb format for correct gamma
-        int64_t selected_format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        // tonemap already writes display referred srgb, unorm avoids a second encode on blit
+        int64_t selected_format = DXGI_FORMAT_R8G8B8A8_UNORM;
         bool format_found = false;
         for (int64_t format : formats)
         {
-            if (format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
+            if (format == DXGI_FORMAT_R8G8B8A8_UNORM || format == DXGI_FORMAT_B8G8R8A8_UNORM)
             {
                 selected_format = format;
                 format_found = true;
                 break;
+            }
+        }
+        if (!format_found)
+        {
+            for (int64_t format : formats)
+            {
+                if (format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
+                {
+                    selected_format = format;
+                    format_found = true;
+                    break;
+                }
             }
         }
         if (!format_found && !formats.empty())
@@ -598,6 +612,16 @@ namespace spartan
         const bool stereo_active_after = m_session_running && m_stereo_3d;
         if (stereo_active_before != stereo_active_after)
         {
+            if (stereo_active_after)
+            {
+                ApplyHmdResolution();
+            }
+            else
+            {
+                // headset off keeps stereo mode, restore monitor size but leave vr scale until ctrl+0
+                RestoreDesktopResolution(false);
+            }
+
             Renderer::RecreateRenderTargets();
         }
     }
@@ -634,23 +658,29 @@ namespace spartan
             return;
         }
 
-        // calculate head position (average of both eyes), still in rig-local / openxr space
-        XrVector3f head_pos = {
-            (xr_views[0].pose.position.x + xr_views[1].pose.position.x) * 0.5f,
-            (xr_views[0].pose.position.y + xr_views[1].pose.position.y) * 0.5f,
-            (xr_views[0].pose.position.z + xr_views[1].pose.position.z) * 0.5f
-        };
-        m_head_position = math::Vector3(head_pos.x, head_pos.y, head_pos.z);
+        // tracking space positions, openxr is right-handed (-z forward), engine is left-handed (+z forward)
+        const math::Vector3 eye0_pos(
+            xr_views[0].pose.position.x,
+            xr_views[0].pose.position.y,
+            -xr_views[0].pose.position.z
+        );
+        const math::Vector3 eye1_pos(
+            xr_views[1].pose.position.x,
+            xr_views[1].pose.position.y,
+            -xr_views[1].pose.position.z
+        );
+        const math::Vector3 head_tracking = (eye0_pos + eye1_pos) * 0.5f;
 
-        // use first eye orientation as head orientation (they're nearly identical)
         m_head_orientation = math::Quaternion(
             xr_views[0].pose.orientation.x,
             xr_views[0].pose.orientation.y,
-            xr_views[0].pose.orientation.z,
-            xr_views[0].pose.orientation.w
+            -xr_views[0].pose.orientation.z,
+            -xr_views[0].pose.orientation.w
         );
 
-        // the camera entity is the rig root, per-eye views are built with CreateLookAtLH exactly like the mono path
+        // camera entity is the eye of the 1.8m person, not the floor
+        // steamvr/psvr2 often report floor-relative y even in LOCAL, so strip absolute head
+        // translation and keep only per-eye ipd offsets around the camera eye
         math::Vector3    camera_pos = math::Vector3::Zero;
         math::Quaternion camera_rot = math::Quaternion::Identity;
         float            near_z     = 0.1f;
@@ -662,18 +692,21 @@ namespace spartan
             near_z     = camera->GetNearPlane();
             far_z      = camera->GetFarPlane();
         }
+        const math::Matrix camera_world(camera_pos, camera_rot, math::Vector3::One);
+        m_head_position = camera_pos;
 
         // update per-eye data
         for (uint32_t i = 0; i < eye_count; i++)
         {
             const XrView& view = xr_views[i];
 
-            // openxr is right-handed with -z forward, mirroring z means negating qz and qw
-            const math::Vector3 rig_local_pos(
+            const math::Vector3 eye_tracking(
                 view.pose.position.x,
                 view.pose.position.y,
                 -view.pose.position.z
             );
+            // ipd only, pin height and room position to the game camera eye
+            const math::Vector3 rig_local_pos = eye_tracking - head_tracking;
             const math::Quaternion rig_local_rot(
                 view.pose.orientation.x,
                 view.pose.orientation.y,
@@ -681,19 +714,14 @@ namespace spartan
                 -view.pose.orientation.w
             );
 
-            // the rig-local offset is rotated by the camera rotation and added to its position, orientation composes as usual
-            const math::Vector3    world_eye_pos = camera_pos + camera_rot * rig_local_pos;
-            const math::Quaternion world_eye_rot = camera_rot * rig_local_rot;
+            // row vector parenting: eye_world = eye_local * camera_world
+            const math::Matrix eye_local(rig_local_pos, rig_local_rot, math::Vector3::One);
+            const math::Matrix eye_world = eye_local * camera_world;
 
-            // built with the same call the mono camera uses, so xr and non-xr view matrices share one convention
-            const math::Vector3 forward = world_eye_rot * math::Vector3::Forward;
-            const math::Vector3 up      = world_eye_rot * math::Vector3::Up;
+            m_eye_views[i].view        = eye_world.Inverted();
+            m_eye_views[i].position    = eye_world.GetTranslation();
+            m_eye_views[i].orientation = eye_world.GetRotation();
 
-            m_eye_views[i].view        = math::Matrix::CreateLookAtLH(world_eye_pos, world_eye_pos + forward, up);
-            m_eye_views[i].position    = world_eye_pos;
-            m_eye_views[i].orientation = world_eye_rot;
-
-            // store fov angles
             m_eye_views[i].fov_left  = view.fov.angleLeft;
             m_eye_views[i].fov_right = view.fov.angleRight;
             m_eye_views[i].fov_up    = view.fov.angleUp;
@@ -728,6 +756,7 @@ namespace spartan
         }
 
         m_frame_began                         = true;
+        swapchain_image_acquired_this_frame   = false;
         swapchain_image_released_this_frame   = false;
         xr_predicted_display_time             = xr_frame_state.predictedDisplayTime;
 
@@ -801,12 +830,13 @@ namespace spartan
             return false;
         }
 
+        swapchain_image_acquired_this_frame = true;
         return true;
     }
 
     void Xr::ReleaseSwapchainImage()
     {
-        if (xr_swapchain == XR_NULL_HANDLE)
+        if (xr_swapchain == XR_NULL_HANDLE || !swapchain_image_acquired_this_frame)
         {
             return;
         }
@@ -818,6 +848,7 @@ namespace spartan
             // is valid to submit a projection layer referencing it.
             swapchain_image_released_this_frame = true;
         }
+        swapchain_image_acquired_this_frame = false;
     }
 
     bool Xr::IsAvailable()

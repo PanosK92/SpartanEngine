@@ -177,6 +177,7 @@ namespace spartan
         static void AcquireSwapchainImage();
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void BlitToXrSwapchain(RHI_CommandList* cmd_list, RHI_Texture* texture);
+        static void EndXrFrame();
         static void SubmitAndPresent();
 
         // misc
@@ -301,7 +302,11 @@ namespace spartan
         static void CreateStandardMaterials();
 
         // passes - core
-        static void ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute);
+        static void ProduceFrame(
+            RHI_CommandList* cmd_list_graphics_present,
+            RHI_CommandList* cmd_list_compute,
+            RHI_CommandList* cmd_list_compute_b
+        );
         static bool UpdateSkysphereConvergenceState();
         static void Pass_ComputeBatchA(
             RHI_CommandList* cmd_list,
@@ -417,6 +422,7 @@ namespace spartan
         static void TickAdvanceFrameConstantBufferRing();
         static void TickLogClusterOverflowRateLimited();
         static void Pass_Screenshot(RHI_CommandList* cmd_list, RHI_Texture* tex_pre_tonemap);
+        static void Pass_ScreenshotXr(RHI_CommandList* cmd_list);
         static void FinalizeScreenshotReadback();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
         static void UpdateDrawCalls_ResetCounts();
@@ -561,6 +567,7 @@ namespace spartan
         static bool m_taau_reset_history;
         static RHI_CommandList* m_cmd_list_present;
         static RHI_CommandList* m_cmd_list_compute;
+        static RHI_CommandList* m_cmd_list_compute_b;
 
         // cross-queue and cross-frame timeline sync, see CrossQueueSync member fields for the contract
         struct CrossQueueSync

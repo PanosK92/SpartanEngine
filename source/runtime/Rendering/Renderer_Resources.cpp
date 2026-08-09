@@ -636,8 +636,16 @@ namespace spartan
 
         // avoid combining uav + rtv on frequently accessed targets (forces suboptimal layouts on amd)
 
-        // vr stereo uses 2-layer array textures for multiview rendering
+        // vr stereo: render and present at the eye swapchain aspect (beamng ground truth).
+        // using the desktop window aspect here then stretching into the hmd causes stereo distortion.
         bool xr_stereo           = Xr::IsSessionRunning() && Xr::GetStereoMode();
+        if (xr_stereo && Xr::GetRecommendedWidth() > 0 && Xr::GetRecommendedHeight() > 0)
+        {
+            width_output  = Xr::GetRecommendedWidth();
+            height_output = Xr::GetRecommendedHeight();
+            width_render  = GetScaledDimension(width_output);
+            height_render = GetScaledDimension(height_output);
+        }
         RHI_Texture_Type rt_type = xr_stereo ? RHI_Texture_Type::Type2DArray : RHI_Texture_Type::Type2D;
         uint32_t rt_layers       = xr_stereo ? Xr::eye_count : 1;
 
@@ -705,6 +713,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
 
             // nrd screen guides and signals for reflections (reblur specular) and shadows (sigma)
+            // must share one resolution: both presets use the same nrd pool_screen
             at(render_targets, Renderer_RenderTarget::nrd_screen_mv)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_screen_mv");
             at(render_targets, Renderer_RenderTarget::nrd_screen_normal_roughness) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R10G10B10A2_Unorm, flags, "nrd_screen_normal_roughness");
             at(render_targets, Renderer_RenderTarget::nrd_screen_viewz)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_screen_viewz");
@@ -737,7 +746,33 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
             at(render_targets, Renderer_RenderTarget::screenshot_sdr)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,       RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_sdr");
             at(render_targets, Renderer_RenderTarget::screenshot_sdr_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,       RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "screenshot_sdr_2");
-            at(render_targets, Renderer_RenderTarget::taau_history)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "taau_history");
+            // stereo needs one history layer per eye, frame_render and frame_output stay 2d and are reused per eye
+            if (xr_stereo)
+            {
+                at(render_targets, Renderer_RenderTarget::taau_history) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2DArray,
+                    width_output,
+                    height_output,
+                    Xr::eye_count,
+                    1,
+                    RHI_Format::R16G16B16A16_Float,
+                    RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,
+                    "taau_history"
+                );
+            }
+            else
+            {
+                at(render_targets, Renderer_RenderTarget::taau_history) = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    width_output,
+                    height_output,
+                    1,
+                    1,
+                    RHI_Format::R16G16B16A16_Float,
+                    RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,
+                    "taau_history"
+                );
+            }
 
             // stereo output, 2-layer array for xr swapchain blit (only when vr is active)
             if (xr_stereo)
@@ -854,7 +889,8 @@ namespace spartan
             bool async             = true,
             RHI_Vertex_Type vtype  = RHI_Vertex_Type::Max,
             const char* define     = nullptr,
-            const char* define_ext = nullptr
+            const char* define_ext = nullptr,
+            const char* define2    = nullptr
         )
         {
             auto& slot = shaders[static_cast<uint8_t>(id)];
@@ -866,6 +902,10 @@ namespace spartan
             if (define_ext)
             {
                 slot->AddDefine(define_ext);
+            }
+            if (define2)
+            {
+                slot->AddDefine(define2);
             }
             slot->Compile(type, path, async, vtype);
         }
@@ -885,6 +925,7 @@ namespace spartan
             const char*     define  = nullptr;
             bool            async   = true;
             bool            rt_only = false;
+            const char*     define2 = nullptr;
         };
 
         const bool rt = RHI_Device::IsSupportedRayTracing();
@@ -942,6 +983,9 @@ namespace spartan
             { Renderer_Shader::ffx_spd_average_c,                     RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "AVERAGE" },
             { Renderer_Shader::ffx_spd_min_c,                         RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MIN"     },
             { Renderer_Shader::ffx_spd_max_c,                         RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MAX"     },
+            { Renderer_Shader::ffx_spd_average_one_c,                 RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "AVERAGE", true, false, "ONE_MIP" },
+            { Renderer_Shader::ffx_spd_min_one_c,                     RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MIN",     true, false, "ONE_MIP" },
+            { Renderer_Shader::ffx_spd_max_one_c,                     RHI_Shader_Type::Compute, "amd_fidelity_fx/spd.hlsl",                   RHI_Vertex_Type::Max, "MAX",     true, false, "ONE_MIP" },
 
             // sky
             { Renderer_Shader::skysphere_c,                           RHI_Shader_Type::Compute, "sky/skysphere.hlsl"                                                         },
@@ -1060,7 +1104,7 @@ namespace spartan
                 e.id == Renderer_Shader::particle_volume_resolve_c ||
                 e.id == Renderer_Shader::particle_volume_composite_c;
             const char* define_ext = (rt && needs_ray_tracing_define) ? "RAY_TRACING_ENABLED" : nullptr;
-            compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define, define_ext);
+            compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define, define_ext, e.define2);
         }
     }
 

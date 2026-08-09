@@ -73,6 +73,20 @@ void ray_gen()
     MaterialParameters mat = material_parameters[material_index];
     float roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     roughness       = lerp(roughness, mat.clearcoat_roughness, saturate(mat.clearcoat));
+
+    // skip near-diffuse lobes, apply fades them out and ibl covers the rest
+    if (roughness >= 0.9f)
+    {
+#if DEBUG_RAY_TRACING == 1
+        tex_uav[launch_id] = float4(0, 0, 1, 1);
+#else
+        tex_uav[launch_id]  = float4(0.0f, 0.0f, 0.0f, -1.0f);
+        tex_uav2[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav3[launch_id] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+#endif
+        return;
+    }
+
     float alpha     = min(ggx_alpha_from_roughness(roughness), k_reflection_alpha_max);
 
     // per pixel per frame low discrepancy sample, r2 frame rotation for the denoiser to accumulate

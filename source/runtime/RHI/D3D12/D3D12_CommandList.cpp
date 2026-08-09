@@ -2545,7 +2545,7 @@ namespace spartan
         InsertBarrier(source, source_layout_initial, 0, source->GetMipCount());
         FlushBarriers();
 
-        Xr::ReleaseSwapchainImage();
+        // release after gpu submit in Renderer::Tick, ending the frame before submit caused hmd judder
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)

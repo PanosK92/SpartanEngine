@@ -23,14 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float reset_history() { return pass_get_f3_value().x; }
 
-static const float blend_static      = 1.0f / 24.0f;
-static const float blend_motion      = 1.0f / 4.0f;
-static const float blend_flicker_min = 0.3f;
-static const float motion_px_full    = 24.0f;
-static const float box_widen_static  = 0.5f;
-static const float box_pad_relative  = 0.08f;
-static const float box_pad_absolute  = 0.002f;
-static const float box_pad_hdr       = 0.2f;
+static const float blend_static       = 1.0f / 24.0f;
+static const float blend_motion       = 1.0f / 4.0f;
+static const float blend_flicker_min  = 0.3f;
+static const float blend_disocclusion = 0.5f;
+static const float motion_px_full     = 24.0f;
+static const float box_widen_static   = 0.5f;
+static const float box_pad_relative   = 0.08f;
+static const float box_pad_absolute   = 0.002f;
+static const float box_pad_hdr        = 0.2f;
+static const float reuse_depth_tol_lo = 0.02f;
+static const float reuse_depth_tol_hi = 0.10f;
 
 float3 tonemap_for_taa(float3 c)
 {
@@ -129,6 +132,51 @@ float2 compute_sky_velocity(float2 uv)
     float4 curr_clip = mul(float4(sky_curr, 1.0f), vp_curr);
     float4 prev_clip = mul(float4(sky_prev, 1.0f), vp_prev);
     return curr_clip.xy / max(curr_clip.w, 1e-6f) - prev_clip.xy / max(prev_clip.w, 1e-6f);
+}
+
+// the depth this surface should have had last frame versus the depth that was actually there,
+// a mismatch means the pixel was hidden and its history belongs to whatever was occluding it
+float compute_history_reuse(int2 px_render, float2 res_render, float2 uv_prev, int2 px_render_max)
+{
+    float depth_raw   = tex_depth[px_render].r;
+    bool  is_sky_now  = depth_raw < 1e-4f;
+    int2  prev_center = clamp(int2(uv_prev * res_render), int2(0, 0), px_render_max);
+
+    float expected = 0.0f;
+    if (!is_sky_now)
+    {
+        float2 uv_render = (float2(px_render) + 0.5f) / res_render;
+        float3 position  = get_position(depth_raw, uv_render);
+        float4 prev_clip = mul(float4(position, 1.0f), get_view_projection_previous());
+        if (prev_clip.w < 1e-6f)
+        {
+            return 0.0f;
+        }
+
+        expected = linearize_depth(prev_clip.z / prev_clip.w);
+    }
+
+    // best match in the neighbourhood, a single tap straddles silhouettes and flips with the jitter
+    float delta_best = FLT_MAX_16U;
+
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        int2  tap            = clamp(prev_center + int2((i % 3) - 1, (i / 3) - 1), int2(0, 0), px_render_max);
+        float prev_depth_raw = tex3[tap].r;
+        bool  is_sky_prev    = prev_depth_raw < 1e-4f;
+
+        if (is_sky_now || is_sky_prev)
+        {
+            delta_best = min(delta_best, (is_sky_now == is_sky_prev) ? 0.0f : FLT_MAX_16U);
+            continue;
+        }
+
+        float actual = linearize_depth(prev_depth_raw);
+        delta_best   = min(delta_best, abs(actual - expected) * rcp(max(expected, 1e-3f)));
+    }
+
+    return 1.0f - saturate((delta_best - reuse_depth_tol_lo) * rcp(reuse_depth_tol_hi - reuse_depth_tol_lo));
 }
 
 float3 taau(uint2 px_out, float2 res_out)
@@ -242,8 +290,9 @@ float3 taau(uint2 px_out, float2 res_out)
     }
 
     float motion = saturate(length(velocity_uv * res_out) * rcp(motion_px_full));
+    float reuse  = compute_history_reuse(closest_px, active_render_f, uv_prev, px_render_max);
 
-    float  widen   = box_widen_static * (1.0f - motion);
+    float  widen   = box_widen_static * (1.0f - motion) * reuse;
     float3 rgb_min = lerp(rgb_min_near, rgb_min_wide, widen);
     float3 rgb_max = lerp(rgb_max_near, rgb_max_wide, widen);
 
@@ -270,6 +319,7 @@ float3 taau(uint2 px_out, float2 res_out)
 
     float blend_flicker = lerp(blend_base * blend_flicker_min, blend_base, stability);
     float blend         = lerp(blend_flicker, blend_base, motion);
+    blend               = lerp(blend_disocclusion, blend, reuse);
 
     float3 result_rgb_tm = max(lerp(history_clipped_tm, current_rgb_tm, blend), 0.0f.xxx);
 

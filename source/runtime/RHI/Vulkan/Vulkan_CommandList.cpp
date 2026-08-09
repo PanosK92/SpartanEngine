@@ -1380,8 +1380,12 @@ namespace spartan
             start_time = std::chrono::high_resolution_clock::now();
         }
 
-        // wait
+        // wait, xr stereo at high eye resolution can exceed 10s on the first frames after rt recreate
         uint64_t timeout_nanoseconds = 10'000'000'000; // 10 seconds
+        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        {
+            timeout_nanoseconds = 60'000'000'000; // 60 seconds
+        }
         m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds, m_last_timeline_signal_value);
         m_state = RHI_CommandListState::Idle;
 
@@ -2380,7 +2384,7 @@ namespace spartan
         // restore source layout
         source->SetLayout(source_layout_initial, this);
 
-        Xr::ReleaseSwapchainImage();
+        // release after gpu submit in Renderer::Tick, ending the frame before submit caused hmd judder
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)

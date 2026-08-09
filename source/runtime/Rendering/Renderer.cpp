@@ -96,8 +96,9 @@ namespace spartan
     bool Renderer::m_is_hiz_suppressed             = false;
     bool Renderer::m_taau_reset_history            = true;
     bool Renderer::m_bindless_samplers_dirty       = true;
-    RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
-    RHI_CommandList* Renderer::m_cmd_list_compute  = nullptr;
+    RHI_CommandList* Renderer::m_cmd_list_present   = nullptr;
+    RHI_CommandList* Renderer::m_cmd_list_compute   = nullptr;
+    RHI_CommandList* Renderer::m_cmd_list_compute_b = nullptr;
     Renderer::CrossQueueSync Renderer::m_cross_queue_sync;
     vector<ShadowSlice> Renderer::m_shadow_slices;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
@@ -343,7 +344,7 @@ namespace spartan
 
         float sanitize_resolution_scale(float scale)
         {
-            return clamp(scale, 0.5f, 1.0f);
+            return clamp(scale, 0.25f, 1.0f);
         }
 
         shared_ptr<RHI_Buffer> copy_texture_to_staging(RHI_Texture* texture)
@@ -671,11 +672,16 @@ namespace spartan
         m_cmd_list_present = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
         m_cmd_list_present->Begin();
 
-        m_cmd_list_compute = nullptr;
+        // pre-acquire both compute lists before any submit so batch b never stalls mid-frame
+        m_cmd_list_compute   = nullptr;
+        m_cmd_list_compute_b = nullptr;
         if (can_render)
         {
-            m_cmd_list_compute = RHI_Device::GetQueue(RHI_Queue_Type::Compute)->NextCommandList();
+            RHI_Queue* queue_compute = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
+            m_cmd_list_compute = queue_compute->NextCommandList();
             m_cmd_list_compute->Begin();
+            m_cmd_list_compute_b = queue_compute->NextCommandList();
+            m_cmd_list_compute_b->Begin();
         }
 
         m_draw_data_count      = 0;
@@ -882,7 +888,11 @@ namespace spartan
         if (can_render)
         {
             UpdateFrameConstantBuffer(m_cmd_list_present);
-            ProduceFrame(m_cmd_list_present, m_cmd_list_compute);
+            ProduceFrame(
+                m_cmd_list_present,
+                m_cmd_list_compute,
+                m_cmd_list_compute_b
+            );
             if (render_secondary_view)
             {
                 // runs on the display ready frame, after post process, so the backdrop stays flat
@@ -970,11 +980,7 @@ namespace spartan
             BlitToXrSwapchain(m_cmd_list_present, stereo_output ? stereo_output : GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
 
-        if (Xr::IsSessionRunning())
-        {
-            Xr::EndFrame();
-        }
-
+        // submit gpu work before xrEndFrame so the compositor does not read a stale swapchain image
         if (m_present_in_renderer)
         {
             AcquireSwapchainImage();
@@ -991,6 +997,44 @@ namespace spartan
                 );
             }
             SubmitAndPresent();
+            EndXrFrame();
+        }
+        else if (Xr::IsSessionRunning())
+        {
+            if (xr_should_render && can_render)
+            {
+                // editor ui would otherwise delay endframe by a full imgui frame, that is the hmd judder
+                m_cmd_list_present->Submit(
+                    nullptr,
+                    false,
+                    nullptr,
+                    m_cross_queue_sync.pending_compute_timeline,
+                    m_cross_queue_sync.pending_compute_timeline_value
+                );
+
+                FrameResource& frame_resource =
+                    m_frame_resources[m_frame_resource_index];
+                frame_resource.completion_timeline =
+                    m_cmd_list_present->GetTimelineSemaphore();
+                frame_resource.completion_value =
+                    m_cmd_list_present->GetLastTimelineSignalValue();
+
+                // editor submit samples frame_output, wait for this graphics work first
+                m_cross_queue_sync.pending_compute_timeline =
+                    frame_resource.completion_timeline;
+                m_cross_queue_sync.pending_compute_timeline_value =
+                    frame_resource.completion_value;
+
+                EndXrFrame();
+
+                m_cmd_list_present =
+                    RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
+                m_cmd_list_present->Begin();
+            }
+            else
+            {
+                EndXrFrame();
+            }
         }
 
         m_lines_vertices.clear();
@@ -2340,6 +2384,17 @@ namespace spartan
         cmd_list->EndMarker();
     }
 
+    void Renderer::EndXrFrame()
+    {
+        if (!Xr::IsSessionRunning())
+        {
+            return;
+        }
+
+        Xr::ReleaseSwapchainImage();
+        Xr::EndFrame();
+    }
+
     void Renderer::SubmitAndPresent()
     {
         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
@@ -2420,9 +2475,11 @@ namespace spartan
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth),    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, false, eye_layer);
 
         // ssao is written on async compute, skip binding it during graphics phase 2
+        // stereo skips the ssao pass, bind white so left eye occlusion does not hit the right eye
         if (bind_ssao)
         {
-            RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
+            const bool xr_stereo = Xr::IsSessionRunning() && Xr::GetStereoMode();
+            RHI_Texture* tex_ssao = (!xr_stereo) ? GetRenderTarget(Renderer_RenderTarget::ssao) : nullptr;
             cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
         }
     }
@@ -3821,6 +3878,51 @@ namespace spartan
         }
     }
 
+    void Renderer::Pass_ScreenshotXr(RHI_CommandList* cmd_list)
+    {
+        {
+            lock_guard<mutex> lock(screenshot_mutex);
+            if (
+                !screenshot.pending ||
+                screenshot.ready ||
+                screenshot.secondary_view ||
+                secondary_render_root_active
+            )
+            {
+                return;
+            }
+        }
+
+        RHI_Texture* tex_stereo = GetRenderTarget(Renderer_RenderTarget::frame_output_stereo);
+        RHI_Texture* tex_sdr    = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        if (!tex_stereo || !tex_sdr)
+        {
+            return;
+        }
+
+        // stereo buffer is already tonemapped per eye, copy left eye for an hmd matched debug shot
+        cmd_list->BeginMarker("screenshot_xr");
+        {
+            RHI_Shader* shader_c = GetShader(Renderer_Shader::blit_c);
+            RHI_PipelineState pso;
+            pso.name             = "screenshot_xr_left";
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_sdr);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
+            cmd_list->Dispatch(tex_sdr);
+        }
+        cmd_list->EndMarker();
+
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (screenshot.pending)
+        {
+            screenshot.pending = false;
+            screenshot.ready   = true;
+        }
+    }
+
     void Renderer::FinalizeScreenshotReadback()
     {
         screenshot_request request;
@@ -3835,6 +3937,9 @@ namespace spartan
             screenshot = {};
         }
 
+        // present submitted the capture work, wait so the readback sees finished pixels
+        RHI_Device::QueueWaitAll(true);
+
         RHI_Texture* tex_sdr =
             request.secondary_view
                 ? secondary_view_output.get()
@@ -3848,7 +3953,7 @@ namespace spartan
 
         shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
         shared_ptr<RHI_Buffer> exr_staging;
-        if (request.save_exr && !request.secondary_view)
+        if (request.save_exr && !request.secondary_view && !Xr::IsSessionRunning())
         {
             exr_staging = copy_texture_to_staging(GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
@@ -4168,7 +4273,11 @@ namespace spartan
         }
     }
 
-    void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute)
+    void Renderer::ProduceFrame(
+        RHI_CommandList* cmd_list_graphics_present,
+        RHI_CommandList* cmd_list_compute,
+        RHI_CommandList* cmd_list_compute_b
+    )
     {
         SP_PROFILE_CPU();
 
@@ -4180,8 +4289,30 @@ namespace spartan
                 continue;
             }
             const RHI_ShaderCompilationState state = shader->GetCompilationState();
-            if (state == RHI_ShaderCompilationState::Idle || state == RHI_ShaderCompilationState::Compiling)
+            if (
+                state == RHI_ShaderCompilationState::Idle ||
+                state == RHI_ShaderCompilationState::Compiling
+            )
+            {
+                // release pre-acquired compute lists so they do not stay recording
+                if (
+                    cmd_list_compute &&
+                    cmd_list_compute->GetState() ==
+                        RHI_CommandListState::Recording
+                )
+                {
+                    cmd_list_compute->Submit(nullptr, false);
+                }
+                if (
+                    cmd_list_compute_b &&
+                    cmd_list_compute_b->GetState() ==
+                        RHI_CommandListState::Recording
+                )
+                {
+                    cmd_list_compute_b->Submit(nullptr, false);
+                }
                 return;
+            }
         }
 
         RHI_Texture* rt_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
@@ -4232,14 +4363,19 @@ namespace spartan
             const uint64_t gfx_phase1_timeline_value = cmd_list_graphics_present->GetLastTimelineSignalValue();
             RHI_SyncPrimitive* gfx_timeline          = cmd_list_graphics_present->GetTimelineSemaphore();
 
-            // compute batch b, the gbuffer consumers, waits on phase 1 and overlaps graphics phase 2
-            RHI_Queue* queue_compute            = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
-            RHI_CommandList* cmd_list_compute_b = queue_compute->NextCommandList();
-            cmd_list_compute_b->Begin();
+            // compute batch b was pre-acquired at tick, waits on phase 1 and overlaps graphics phase 2
             Pass_ComputeBatchB(cmd_list_compute_b);
-            cmd_list_compute_b->Submit(nullptr, false, nullptr, gfx_timeline, gfx_phase1_timeline_value);
-            RHI_SyncPrimitive* compute_b_timeline = cmd_list_compute_b->GetTimelineSemaphore();
-            const uint64_t compute_b_value        = cmd_list_compute_b->GetLastTimelineSignalValue();
+            cmd_list_compute_b->Submit(
+                nullptr,
+                false,
+                nullptr,
+                gfx_timeline,
+                gfx_phase1_timeline_value
+            );
+            RHI_SyncPrimitive* compute_b_timeline =
+                cmd_list_compute_b->GetTimelineSemaphore();
+            const uint64_t compute_b_value =
+                cmd_list_compute_b->GetLastTimelineSignalValue();
 
             const bool ray_traced_shadows =
                 cvar_ray_traced_shadows.GetValueAs<bool>();
@@ -4256,6 +4392,7 @@ namespace spartan
                 );
             if (shadow_maps_required)
             {
+                // once per frame for stereo too, both eyes sample the same atlas
                 // shadow maps overlap compute batch b
                 cmd_list_graphics_present =
                     queue_graphics->NextCommandList();
@@ -4312,6 +4449,11 @@ namespace spartan
                 ProduceFrame_PerEye(cmd_list_graphics_present, eye, eye_layer);
             }
 
+            if (xr_stereo)
+            {
+                Pass_ScreenshotXr(cmd_list_graphics_present);
+            }
+
             if (auto_exposure_enabled)
             {
                 cmd_list_graphics_present->Blit(
@@ -4326,6 +4468,15 @@ namespace spartan
         }
         else
         {
+            // batch b was pre-acquired but phase 1 never ran, release it
+            if (
+                cmd_list_compute_b &&
+                cmd_list_compute_b->GetState() ==
+                    RHI_CommandListState::Recording
+            )
+            {
+                cmd_list_compute_b->Submit(nullptr, false);
+            }
             cmd_list_graphics_present->ClearTexture(rt_output, Color::standard_black);
         }
 

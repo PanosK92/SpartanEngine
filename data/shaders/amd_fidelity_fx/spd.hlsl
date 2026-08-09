@@ -90,6 +90,35 @@ void SpdResetAtomicCounter(AU1 slice)
     g_atomic_counter[0] = 0;
 }
 
+#if ONE_MIP
+// 2x2 reduce for a single mip when the source exceeds the spd 4096 limit
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    uint2 dst_res;
+    tex_uav.GetDimensions(dst_res.x, dst_res.y);
+    if (any(thread_id.xy >= dst_res))
+    {
+        return;
+    }
+
+    uint2 src_res;
+    tex.GetDimensions(src_res.x, src_res.y);
+
+    int2 s   = int2(thread_id.xy) * 2;
+    int2 s00 = s;
+    int2 s10 = int2(min(s.x + 1, int(src_res.x) - 1), s.y);
+    int2 s01 = int2(s.x, min(s.y + 1, int(src_res.y) - 1));
+    int2 s11 = int2(min(s.x + 1, int(src_res.x) - 1), min(s.y + 1, int(src_res.y) - 1));
+
+    AF4 v00 = tex.Load(int3(s00, 0));
+    AF4 v10 = tex.Load(int3(s10, 0));
+    AF4 v01 = tex.Load(int3(s01, 0));
+    AF4 v11 = tex.Load(int3(s11, 0));
+
+    tex_uav[thread_id.xy] = SpdReduce4(v00, v10, v01, v11);
+}
+#else
 #include "ffx_spd.h"
 
 [numthreads(256, 1, 1)]
@@ -100,3 +129,4 @@ void main_cs(uint3 work_group_id : SV_GroupID, uint local_thread_index : SV_Grou
     float work_group_count = f3_value.y;
     SpdDownsample(work_group_id.xy, local_thread_index, mip_count, work_group_count, work_group_id.z);
 }
+#endif

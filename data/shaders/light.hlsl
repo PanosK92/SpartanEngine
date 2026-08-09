@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "light_cluster.hlsl"
 //============================
 
-// samples the denoised ray traced shadow texture without crossing geometry edges
+// samples the denoised half-res ray traced shadow with bilinear upsample
 float sample_ray_traced_shadow(float2 uv)
 {
     if (!is_ray_traced_shadows_enabled())
@@ -37,7 +37,7 @@ float sample_ray_traced_shadow(float2 uv)
 
     return saturate(
         tex4.SampleLevel(
-            GET_SAMPLER(sampler_point_clamp),
+            GET_SAMPLER(sampler_bilinear_clamp),
             uv,
             0
         ).r
@@ -46,7 +46,7 @@ float sample_ray_traced_shadow(float2 uv)
 
 // inline ray traced shadow for any light type, deterministic hammersley disk
 #ifdef RAY_TRACING_ENABLED
-static const uint k_inline_shadow_spp = 2;
+static const uint k_inline_shadow_spp = 1;
 
 float radical_inverse_vdc(uint bits)
 {
