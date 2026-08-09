@@ -164,9 +164,11 @@ namespace spartan
         float m_caustics_intensity  = 1.0f; // brightness of the sun caustics on submerged geometry
 
         // clipmap geometry
+        // near levels stay fine for waves, a flat skirt past the outer ring hides the rim from altitude
         uint32_t m_clipmap_resolution = 128;
         uint32_t m_clipmap_levels     = 8;
-        float m_clipmap_base_cell     = 0.5f; // finer cells so the geometry carries the sub-meter ripples the foam forms on, same vertex budget
+        float m_clipmap_base_cell     = 0.5f; // meters at the finest ring around the camera
+        float m_horizon_extent        = 150000.0f; // flat skirt half-extent in meters
 
         // owned resources, kept alive beyond any single frame
         std::shared_ptr<Mesh> m_mesh         = nullptr;

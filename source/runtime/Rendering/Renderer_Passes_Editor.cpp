@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "../Geometry/Mesh.h"
 #include "../World/Entity.h"
+#include "../World/Components/Component.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/AudioSource.h"
@@ -41,6 +42,61 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        // pick one gizmo for an entity, lights win, render-only meshes are skipped
+        RHI_Texture* entity_gizmo_texture(Entity* entity)
+        {
+            if (Light* light = entity->GetComponent<Light>())
+            {
+                if (light->GetLightType() == LightType::Directional)
+                {
+                    return Renderer::GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
+                }
+                if (light->GetLightType() == LightType::Point)
+                {
+                    return Renderer::GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
+                }
+                if (light->GetLightType() == LightType::Spot)
+                {
+                    return Renderer::GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
+                }
+            }
+
+            static const pair<ComponentType, Renderer_StandardTexture> priority[] =
+            {
+                { ComponentType::Camera,         Renderer_StandardTexture::Gizmo_camera          },
+                { ComponentType::AudioSource,    Renderer_StandardTexture::Gizmo_audio_source    },
+                { ComponentType::ParticleSystem, Renderer_StandardTexture::Gizmo_particle        },
+                { ComponentType::Volume,         Renderer_StandardTexture::Gizmo_volume          },
+                { ComponentType::SpawnPoint,     Renderer_StandardTexture::Gizmo_spawn_point     },
+                { ComponentType::Terrain,        Renderer_StandardTexture::Gizmo_terrain         },
+                { ComponentType::Water,          Renderer_StandardTexture::Gizmo_water           },
+                { ComponentType::Physics,        Renderer_StandardTexture::Gizmo_physics         },
+                { ComponentType::Spline,         Renderer_StandardTexture::Gizmo_spline          },
+                { ComponentType::SplineFollower, Renderer_StandardTexture::Gizmo_spline_follower },
+                { ComponentType::Traffic,        Renderer_StandardTexture::Gizmo_traffic         },
+                { ComponentType::Pedestrians,    Renderer_StandardTexture::Gizmo_pedestrians     },
+                { ComponentType::Animator,       Renderer_StandardTexture::Gizmo_animator        },
+                { ComponentType::Ragdoll,        Renderer_StandardTexture::Gizmo_ragdoll         },
+                { ComponentType::SkidMarks,      Renderer_StandardTexture::Gizmo_skid_marks      },
+                { ComponentType::CarReset,       Renderer_StandardTexture::Gizmo_car_reset       },
+                { ComponentType::Text3D,         Renderer_StandardTexture::Gizmo_text_3d         },
+                { ComponentType::Script,         Renderer_StandardTexture::Gizmo_script          },
+            };
+
+            for (const auto& entry : priority)
+            {
+                if (entity->GetComponentByType(entry.first))
+                {
+                    return Renderer::GetStandardTexture(entry.second);
+                }
+            }
+
+            return nullptr;
+        }
+    }
+
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         static uint64_t icons_frame = ~0ull;
@@ -59,38 +115,9 @@ namespace spartan
                         continue;
                     }
 
-                    if (entity->GetComponent<AudioSource>())
+                    if (RHI_Texture* texture = entity_gizmo_texture(entity))
                     {
-                        m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
-                    }
-                    else if (entity->GetComponent<Camera>())
-                    {
-                        m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_camera), entity->GetPosition()));
-                    }
-                    else if (entity->GetComponent<ParticleSystem>())
-                    {
-                        m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_particle), entity->GetPosition()));
-                    }
-                    else if (Light* light = entity->GetComponent<Light>())
-                    {
-                        RHI_Texture* texture = nullptr;
-                        if (light->GetLightType() == LightType::Directional)
-                        {
-                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
-                        }
-                        else if (light->GetLightType() == LightType::Point)
-                        {
-                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
-                        }
-                        else if (light->GetLightType() == LightType::Spot)
-                        {
-                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
-                        }
-
-                        if (texture)
-                        {
-                            m_icons.emplace_back(make_tuple(texture, entity->GetPosition()));
-                        }
+                        m_icons.emplace_back(make_tuple(texture, entity->GetPosition()));
                     }
                 }
             }

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "Core/Timer.h"
 #include "Math/Helper.h"
+#include "../ImGui/ImGui_Extension.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -102,7 +103,7 @@ void TerrainEditor::OnTickVisible()
         {
             terrain->SetTileCountAxis(max(tiles, 1u));
         }
-        ImGui::TextDisabled("density/scale/tiles apply on regenerate");
+        ImGui::TextDisabled("density/scale/tiles apply on generate");
     }
 
     if (ImGui::Button("Create flat terrain", ImVec2(-1, 0)))
@@ -125,27 +126,45 @@ void TerrainEditor::OnTickVisible()
         }
     }
 
-    if (terrain && ImGui::Button("Regenerate all", ImVec2(-1, 0)))
+    if (terrain && ImGui::Button("Generate", ImVec2(-1, 0)))
     {
         terrain->Regenerate();
         m_heights_dirty = false;
+    }
+    ImGuiSp::tooltip("rebuild from heightmap or flat grid, clears sculpt");
+
+    if (terrain)
+    {
+        float shore_width = terrain->GetShoreWidth();
+        ImGui::DragFloat("Shore width", &shore_width, 10.0f, 1.0f, 50000.0f, "%.0f m");
+        if (shore_width != terrain->GetShoreWidth())
+        {
+            terrain->SetShoreWidth(shore_width);
+        }
+        if (ImGui::Button("Make Island", ImVec2(-1, 0)))
+        {
+            terrain->MakeIslandShore();
+            m_heights_dirty = false;
+        }
+        ImGui::TextDisabled("slopes borders down to sea level");
     }
 
     const int selected_tile = ResolveSelectedTileIndex();
     if (terrain && selected_tile >= 0)
     {
         ImGui::Text("Selected tile: tile_%d", selected_tile + 1);
-        if (ImGui::Button("Regenerate selected tile", ImVec2(-1, 0)))
+        if (ImGui::Button("Reset selected tile", ImVec2(-1, 0)))
         {
             if (terrain->RegenerateTile(static_cast<uint32_t>(selected_tile)))
             {
                 m_heights_dirty = false;
             }
         }
+        ImGuiSp::tooltip("restore this tile from the pre-sculpt baseline");
     }
     else
     {
-        ImGui::TextDisabled("Select a tile_* child to regenerate one tile");
+        ImGui::TextDisabled("Select a tile_* child to reset one tile");
     }
 
     if (terrain && ImGui::Button("Rebuild mesh", ImVec2(-1, 0)))
@@ -153,12 +172,7 @@ void TerrainEditor::OnTickVisible()
         terrain->RebuildSurface(true);
         m_heights_dirty = false;
     }
-
-    if (terrain && ImGui::Button("Finalize placement data", ImVec2(-1, 0)))
-    {
-        terrain->RebuildSurface(true);
-        m_heights_dirty = false;
-    }
+    ImGuiSp::tooltip("rebuild gpu mesh and placement data from current heights");
 
     ImGui::Separator();
     ImGui::Checkbox("Enable sculpt", &m_sculpt_enabled);
@@ -183,9 +197,9 @@ void TerrainEditor::OnTickVisible()
 
     ImGui::Separator();
     ImGui::TextWrapped(
-        "Regenerate all resets sculpt from the heightmap or flat grid. "
-        "Select a tile_* entity to reset only that region. "
-        "Generate from a heightmap in Properties when you have one."
+        "Generate rebuilds from the heightmap or flat grid and clears sculpt. "
+        "Density, scale, and tiles in Properties apply on Generate. "
+        "Select a tile_* entity to reset only that region."
     );
 }
 

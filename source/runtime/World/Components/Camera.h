@@ -275,7 +275,8 @@ namespace spartan
         float m_fov_horizontal_rad                   = 90.0f * math::deg_to_rad;
         float m_aspect_ratio_override                = 0.0f;
         float m_near_plane                           = 0.1f;
-        float m_far_plane                            = 10'000.0f; // a good maximum for a 32 bit reverse-z depth buffer
+        // reverse-z float depth keeps precision near the camera, 100 km covers a tdu-scale island
+        float m_far_plane                            = 100'000.0f;
         ProjectionType m_projection_type             = Projection_Perspective;
         math::Matrix m_view                          = math::Matrix::Identity;
         math::Matrix m_projection                    = math::Matrix::Identity;

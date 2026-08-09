@@ -128,7 +128,27 @@ namespace spartan
         {
             vector<RHI_Vertex_PosTexNorTan> vertices;
             vector<uint32_t> indices;
-            geometry_generation::generate_ocean_clipmap(&vertices, &indices, m_clipmap_resolution, m_clipmap_levels, m_clipmap_base_cell);
+            geometry_generation::generate_ocean_clipmap(
+                &vertices,
+                &indices,
+                m_clipmap_resolution,
+                m_clipmap_levels,
+                m_clipmap_base_cell
+            );
+
+            // flat skirt past the clipmap so altitude never reveals a hard ocean edge
+            const float clipmap_half =
+                static_cast<float>(m_clipmap_resolution) *
+                m_clipmap_base_cell *
+                static_cast<float>(1u << (m_clipmap_levels - 1)) *
+                0.5f;
+            geometry_generation::generate_ocean_horizon_skirt(
+                &vertices,
+                &indices,
+                clipmap_half * 0.98f,
+                m_horizon_extent
+            );
+
             m_mesh->AddGeometry(vertices, indices, false);
             m_mesh->CreateGpuBuffers();
         }
@@ -202,6 +222,8 @@ namespace spartan
         m_turbidity          = water.attribute("turbidity").as_float(m_turbidity);
         m_caustics_intensity = water.attribute("caustics_intensity").as_float(m_caustics_intensity);
 
+        // rebuild so clipmap/skirt changes apply when the world reloads
+        BuildSurface();
         PushToRenderer(true);
     }
 }

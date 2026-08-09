@@ -188,7 +188,7 @@ namespace spartan
         );
         m_fov_horizontal_rad = node.attribute("fov_horizontal").as_float(90.0f * math::deg_to_rad);
         m_near_plane         = node.attribute("near_plane").as_float(0.1f);
-        m_far_plane          = node.attribute("far_plane").as_float(10'000.0f);
+        m_far_plane          = node.attribute("far_plane").as_float(100'000.0f);
         m_projection_type    = static_cast<ProjectionType>(node.attribute("projection").as_int(static_cast<int>(Projection_Perspective)));
         int preset           = node.attribute("preset").as_int(static_cast<int>(CameraPreset::custom));
         m_preset             = (preset >= static_cast<int>(CameraPreset::custom) && preset <= static_cast<int>(CameraPreset::cinematic)) ?
@@ -449,10 +449,27 @@ namespace spartan
             }
 
             // only entities that draw an icon, matches the icon pass
-            bool draws_icon = entity->GetComponent<AudioSource>() != nullptr ||
-                              entity->GetComponent<Camera>() != nullptr ||
-                              entity->GetComponent<Light>() != nullptr ||
-                              entity->GetComponent<ParticleSystem>() != nullptr;
+            // render-only meshes are skipped, they are already visible
+            bool draws_icon =
+                entity->GetComponent<Light>() != nullptr ||
+                entity->GetComponent<Camera>() != nullptr ||
+                entity->GetComponent<AudioSource>() != nullptr ||
+                entity->GetComponent<ParticleSystem>() != nullptr ||
+                entity->GetComponentByType(ComponentType::Volume) != nullptr ||
+                entity->GetComponentByType(ComponentType::SpawnPoint) != nullptr ||
+                entity->GetComponentByType(ComponentType::Terrain) != nullptr ||
+                entity->GetComponentByType(ComponentType::Water) != nullptr ||
+                entity->GetComponentByType(ComponentType::Physics) != nullptr ||
+                entity->GetComponentByType(ComponentType::Spline) != nullptr ||
+                entity->GetComponentByType(ComponentType::SplineFollower) != nullptr ||
+                entity->GetComponentByType(ComponentType::Traffic) != nullptr ||
+                entity->GetComponentByType(ComponentType::Pedestrians) != nullptr ||
+                entity->GetComponentByType(ComponentType::Animator) != nullptr ||
+                entity->GetComponentByType(ComponentType::Ragdoll) != nullptr ||
+                entity->GetComponentByType(ComponentType::SkidMarks) != nullptr ||
+                entity->GetComponentByType(ComponentType::CarReset) != nullptr ||
+                entity->GetComponentByType(ComponentType::Text3D) != nullptr ||
+                entity->GetComponentByType(ComponentType::Script) != nullptr;
             if (!draws_icon)
             {
                 continue;

@@ -36,6 +36,8 @@ namespace spartan::geometry_generation
 
     // camera centered ocean clipmap, each outer level doubles the cell size and skips the inner block so the rings tile
     void generate_ocean_clipmap(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution, uint32_t levels, float base_cell_size);
+    // flat square ring past the clipmap so the ocean never shows a hard rim from altitude
+    void generate_ocean_horizon_skirt(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float inner_half_extent, float outer_half_extent);
     void generate_sphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20);
     void generate_cylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius_top = 1.0f, float radius_bottom = 1.0f, float height = 1.0f, int slices = 64, int stacks = 1);
     void generate_cone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, float height = 2.0f);

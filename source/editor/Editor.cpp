@@ -70,82 +70,6 @@ namespace
         ImGui_ImplSDL3_ProcessEvent(event_sdl);
     }
 
-    void draw_status_footer()
-    {
-        const float height = ImGui::EditorUi::scaled(24.0f);
-        const float width = ImGui::GetWindowWidth();
-        const float y = ImGui::GetWindowHeight() - height;
-        const ImVec2 window_pos = ImGui::GetWindowPos();
-        const ImVec2 min(
-            window_pos.x,
-            window_pos.y + y
-        );
-        const ImVec2 max(
-            min.x + width,
-            min.y + height
-        );
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(
-            min,
-            max,
-            ImGui::EditorUi::color(
-                ImGui::Style::color_panel
-            )
-        );
-        draw_list->AddLine(
-            min,
-            ImVec2(max.x, min.y),
-            ImGui::EditorUi::color(
-                ImGui::Style::color_border
-            )
-        );
-
-        ImGui::SetCursorPos(ImVec2(
-            ImGui::EditorUi::scaled(8.0f),
-            y + ImGui::EditorUi::scaled(4.0f)
-        ));
-
-        const bool playing = spartan::Engine::IsFlagSet(
-            spartan::EngineMode::Playing
-        );
-        const bool paused = spartan::Engine::IsFlagSet(
-            spartan::EngineMode::Paused
-        );
-        const ImVec4 status_color = playing
-            ? paused
-                ? ImGui::Style::color_warning
-                : ImGui::Style::color_ok
-            : ImGui::Style::color_text_muted;
-        ImGui::TextColored(
-            status_color,
-            "%s",
-            playing ? paused ? "Paused" : "Playing" : "Ready"
-        );
-        ImGui::SameLine();
-
-        const std::string& world_name = spartan::World::GetName();
-        ImGui::TextDisabled(
-            "%s",
-            world_name.empty() ? "No world loaded" : world_name.c_str()
-        );
-
-        const char* fps_label = "FPS";
-        char fps[32] = {};
-        snprintf(
-            fps,
-            sizeof(fps),
-            "%s %.0f",
-            fps_label,
-            ImGui::GetIO().Framerate
-        );
-        const float fps_width = ImGui::CalcTextSize(fps).x;
-        ImGui::SameLine(
-            width -
-            fps_width -
-            ImGui::EditorUi::scaled(10.0f)
-        );
-        ImGui::TextDisabled("%s", fps);
-    }
 }
 
 Editor::Editor(const vector<string>& args)
@@ -388,14 +312,12 @@ void Editor::BeginWindow()
             ImGui::DockBuilderFinish(dock_main_id);
         }
 
-        const float footer_height = ImGui::EditorUi::scaled(24.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         ImGui::DockSpace(
             window_id,
-            ImVec2(0.0f, -footer_height),
+            ImVec2(0.0f, 0.0f),
             ImGuiDockNodeFlags_PassthruCentralNode
         );
         ImGui::PopStyleVar();
-        draw_status_footer();
     }
 }

@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/Material.h"
 #include "../../Rendering/GeometryBuffer.h"
+#include "../../Geometry/Mesh.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
@@ -46,6 +47,25 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        const MeshLod* get_mesh_lod(Mesh* mesh, uint32_t sub_mesh_index, uint32_t lod)
+        {
+            if (!mesh || sub_mesh_index >= mesh->GetSubMeshCount())
+            {
+                return nullptr;
+            }
+
+            const SubMesh& sub_mesh = mesh->GetSubMesh(sub_mesh_index);
+            if (lod >= sub_mesh.lods.size())
+            {
+                return nullptr;
+            }
+
+            return &sub_mesh.lods[lod];
+        }
+    }
+
     Render::Render(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
@@ -555,44 +575,77 @@ namespace spartan
 
     uint32_t Render::GetIndexOffset(const uint32_t lod) const
     {
-        // global base offset + lod-relative offset within the mesh
-        return m_mesh->GetGlobalIndexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_offset;
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        {
+            return m_mesh->GetGlobalIndexOffset() + mesh_lod->index_offset;
+        }
+
+        return 0;
     }
 
     uint32_t Render::GetIndexCount(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_count;
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        {
+            return mesh_lod->index_count;
+        }
+
+        return 0;
     }
 
     uint32_t Render::GetVertexOffset(const uint32_t lod) const
     {
-        // global base offset + lod-relative offset within the mesh
-        return m_mesh->GetGlobalVertexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_offset;
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        {
+            return m_mesh->GetGlobalVertexOffset() + mesh_lod->vertex_offset;
+        }
+
+        return 0;
     }
 
     uint32_t Render::GetVertexCount(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_count;
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        {
+            return mesh_lod->vertex_count;
+        }
+
+        return 0;
     }
 
     uint32_t Render::GetMeshletOffset(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].meshlet_offset;
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        {
+            return mesh_lod->meshlet_offset;
+        }
+
+        return 0;
     }
 
     uint32_t Render::GetMeshletCount(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].meshlet_count;
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        {
+            return mesh_lod->meshlet_count;
+        }
+
+        return 0;
     }
 
     uint32_t Render::GetGlobalMeshletOffset() const
     {
-        return m_mesh->GetGlobalMeshletOffset();
+        return m_mesh ? m_mesh->GetGlobalMeshletOffset() : 0;
     }
 
     const BoundingBox& Render::GetLodAabb(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].aabb;
+        if (const MeshLod* mesh_lod = get_mesh_lod(m_mesh, m_sub_mesh_index, lod))
+        {
+            return mesh_lod->aabb;
+        }
+
+        return BoundingBox::Unit;
     }
 
     RHI_Buffer* Render::GetIndexBuffer() const

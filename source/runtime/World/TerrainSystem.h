@@ -154,6 +154,16 @@ namespace spartan
             const TerrainGridMapping& mapping
         );
 
+        // unit normal in terrain local space from neighboring height samples
+        static math::Vector3 SampleNormal(
+            const std::vector<math::Vector3>& positions,
+            uint32_t width,
+            uint32_t height,
+            float world_x,
+            float world_z,
+            const TerrainGridMapping& mapping
+        );
+
         static bool RaycastHeightfield(
             const math::Ray& ray,
             const std::vector<math::Vector3>& positions,
@@ -173,6 +183,17 @@ namespace spartan
             const TerrainGridMapping& mapping,
             const math::Vector3& world_center,
             const TerrainBrush& brush
+        );
+
+        // bend samples near the map border down toward edge_height_local (smooth shore)
+        static void ApplyIslandShore(
+            std::vector<math::Vector3>& positions,
+            std::vector<float>* height_data,
+            uint32_t width,
+            uint32_t height,
+            const TerrainGridMapping& mapping,
+            float shore_width,
+            float edge_height_local
         );
 
         static void SyncHeightDataFromPositions(

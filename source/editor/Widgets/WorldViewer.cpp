@@ -334,48 +334,43 @@ namespace
     {
         IconType type   = IconType::Undefined;
         int match_count = 0;
-    
-        if (entity->GetComponent<Light>())
-        {
-            type = IconType::Light;
-            ++match_count;
-        }
-    
-        if (entity->GetComponent<Camera>())
-        {
-            type = IconType::Camera;
-            ++match_count;
-        }
 
-        if (entity->GetComponent<ParticleSystem>())
+        auto consider = [&](bool present, IconType icon)
         {
-            type = IconType::Particle;
+            if (!present)
+            {
+                return;
+            }
+            type = icon;
             ++match_count;
-        }
-    
-        if (entity->GetComponent<AudioSource>())
-        {
-            type = IconType::Audio;
-            ++match_count;
-        }
+        };
 
-        if (entity->GetComponent<Terrain>())
-        {
-            type = IconType::Terrain;
-            ++match_count;
-        }
-
-        if (entity->GetComponent<Render>())
-        {
-            type = IconType::Model;
-            ++match_count;
-        }
+        consider(entity->GetComponent<Light>() != nullptr, IconType::Light);
+        consider(entity->GetComponent<Camera>() != nullptr, IconType::Camera);
+        consider(entity->GetComponent<ParticleSystem>() != nullptr, IconType::Particle);
+        consider(entity->GetComponent<AudioSource>() != nullptr, IconType::Audio);
+        consider(entity->GetComponent<Terrain>() != nullptr, IconType::Terrain);
+        consider(entity->GetComponentByType(ComponentType::Physics) != nullptr, IconType::Physics);
+        consider(entity->GetComponentByType(ComponentType::Volume) != nullptr, IconType::Volume);
+        consider(entity->GetComponentByType(ComponentType::Script) != nullptr, IconType::Script);
+        consider(entity->GetComponentByType(ComponentType::Spline) != nullptr, IconType::Spline);
+        consider(entity->GetComponentByType(ComponentType::SplineFollower) != nullptr, IconType::SplineFollower);
+        consider(entity->GetComponentByType(ComponentType::SkidMarks) != nullptr, IconType::SkidMarks);
+        consider(entity->GetComponentByType(ComponentType::Water) != nullptr, IconType::Water);
+        consider(entity->GetComponentByType(ComponentType::Traffic) != nullptr, IconType::Traffic);
+        consider(entity->GetComponentByType(ComponentType::Pedestrians) != nullptr, IconType::Pedestrians);
+        consider(entity->GetComponentByType(ComponentType::SpawnPoint) != nullptr, IconType::SpawnPoint);
+        consider(entity->GetComponentByType(ComponentType::CarReset) != nullptr, IconType::CarReset);
+        consider(entity->GetComponentByType(ComponentType::Text3D) != nullptr, IconType::Text3D);
+        consider(entity->GetComponentByType(ComponentType::Animator) != nullptr, IconType::Animator);
+        consider(entity->GetComponentByType(ComponentType::Ragdoll) != nullptr, IconType::Ragdoll);
+        consider(entity->GetComponent<Render>() != nullptr, IconType::Model);
 
         if (match_count > 1)
         {
             return ResourceCache::GetIcon(IconType::Hybrid);
         }
-    
+
         return ResourceCache::GetIcon(match_count == 1 ? type : IconType::Entity);
     }
 }

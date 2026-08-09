@@ -105,6 +105,8 @@ namespace spartan
         void SetSeaLevel(float level)      { m_level_sea = level; }
         float GetSnowLevel() const         { return m_level_snow; }
         void SetSnowLevel(float level)     { m_level_snow = level; }
+        float GetShoreWidth() const        { return m_shore_width; }
+        void SetShoreWidth(float width)    { m_shore_width = width; }
 
         // parameters - mesh generation
         uint32_t GetSmoothingPasses() const       { return m_smoothing; }
@@ -123,6 +125,8 @@ namespace spartan
         uint64_t GetHeightSampleCount() const   { return m_height_samples; }
         float* GetHeightData()                  { return !m_height_data.empty() ? &m_height_data[0] : nullptr; }
         std::shared_ptr<Material> GetMaterial() { return m_material; }
+        // forest-style grass/rock/sand slope blend, used by island and procedural forest
+        void ApplyDefaultMaterial();
 
         // generation
         void Generate();
@@ -150,15 +154,17 @@ namespace spartan
         bool HasHeightfield() const { return !m_positions.empty() && m_dense_width > 1 && m_dense_height > 1; }
         bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
         bool SampleHeight(float world_x, float world_z, float& height_out) const;
+        // world-space unit normal at xz, returns false if no heightfield
+        bool SampleNormal(float world_x, float world_z, math::Vector3& normal_out) const;
         void ApplyBrush(const math::Vector3& world_center, const TerrainBrush& brush);
         TerrainGridMapping GetGridMapping() const;
+        // bend map borders down to sea level so the ocean meets land
+        void MakeIslandShore();
 
         // find the first terrain with a heightfield in the loaded world
         static Terrain* FindActive();
-        // snap entity world y to the terrain height at its xz, returns false if no terrain/hit
+        // snap this entity and any mesh descendants onto the surface below each one
         static bool SnapEntityToTerrain(Entity* entity, float offset = 0.0f);
-        // snap direct children only, parents move and nested locals stay intact
-        static uint32_t SnapChildrenToTerrain(Entity* parent, float offset = 0.0f);
         static uint32_t SnapEntitiesToTerrain(const std::vector<Entity*>& entities, float offset = 0.0f);
 
         // component io
@@ -174,6 +180,8 @@ namespace spartan
 
     private:
         void Clear();
+        // clear mesh refs on tile renders before deferred entity delete frees geometry
+        void DetachTileMeshes();
         void ClearTileEntities();
         void CreateTileEntities();
         void BakeHeightMapTexture();
@@ -183,17 +191,20 @@ namespace spartan
         // textures
         RHI_Texture* m_height_map_seed                  = nullptr;
         std::shared_ptr<RHI_Texture> m_height_map_final = nullptr;
+        // previous bake kept alive so imgui cannot reference a destroyed texture mid-frame
+        std::shared_ptr<RHI_Texture> m_height_map_final_retired;
 
         // configurable parameters
-        float m_min_y          = -64.0f;
-        float m_max_y          = 256.0f;
+        float m_min_y          = 0.0f;
+        float m_max_y          = 755.0f;
         float m_level_sea      = 0.0f;
         float m_level_snow     = 400.0f;
+        float m_shore_width    = 2000.0f;
         uint32_t m_smoothing   = 0;
-        uint32_t m_density     = 3;
-        uint32_t m_scale       = 6;
+        uint32_t m_density     = 1;
+        uint32_t m_scale       = 25;
         uint32_t m_tile_count  = 16;
-        bool m_create_border   = true;
+        bool m_create_border   = false;
 
         // runtime state
         uint32_t m_width                  = 0;

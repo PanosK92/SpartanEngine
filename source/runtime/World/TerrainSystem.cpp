@@ -748,6 +748,49 @@ namespace spartan
         return (h00 + fx * (h10 - h00)) + fz * ((h01 + fx * (h11 - h01)) - (h00 + fx * (h10 - h00)));
     }
 
+    Vector3 TerrainSystem::SampleNormal(
+        const vector<Vector3>& positions,
+        uint32_t width,
+        uint32_t height,
+        float world_x,
+        float world_z,
+        const TerrainGridMapping& mapping
+    )
+    {
+        if (positions.empty() || width < 2 || height < 2)
+        {
+            return Vector3::Up;
+        }
+
+        const float step_x = max(mapping.scale_x, epsilon);
+        const float step_z = max(mapping.scale_z, epsilon);
+
+        const float h_left = SampleHeight(
+            positions, width, height, world_x - step_x, world_z, mapping
+        );
+        const float h_right = SampleHeight(
+            positions, width, height, world_x + step_x, world_z, mapping
+        );
+        const float h_bottom = SampleHeight(
+            positions, width, height, world_x, world_z - step_z, mapping
+        );
+        const float h_top = SampleHeight(
+            positions, width, height, world_x, world_z + step_z, mapping
+        );
+
+        const float dh_dx = (h_right - h_left) / (2.0f * step_x);
+        const float dh_dz = (h_top - h_bottom) / (2.0f * step_z);
+
+        Vector3 normal(-dh_dx, 1.0f, -dh_dz);
+        if (normal.LengthSquared() < epsilon)
+        {
+            return Vector3::Up;
+        }
+
+        normal.Normalize();
+        return normal;
+    }
+
     bool TerrainSystem::RaycastHeightfield(
         const Ray& ray,
         const vector<Vector3>& positions,
@@ -910,5 +953,55 @@ namespace spartan
                 }
             }
         }
+    }
+
+    void TerrainSystem::ApplyIslandShore(
+        vector<Vector3>& positions,
+        vector<float>* height_data,
+        uint32_t width,
+        uint32_t height,
+        const TerrainGridMapping& mapping,
+        float shore_width,
+        float edge_height_local
+    )
+    {
+        if (positions.empty() || width < 2 || height < 2 || shore_width <= 0.0f)
+        {
+            return;
+        }
+
+        const float cell_x = max(mapping.scale_x, 0.001f);
+        const float cell_z = max(mapping.scale_z, 0.001f);
+
+        auto bend = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                const uint32_t x = i % width;
+                const uint32_t z = i / width;
+
+                // meters to nearest map border
+                const float dist_x = static_cast<float>(min(x, width - 1 - x)) * cell_x;
+                const float dist_z = static_cast<float>(min(z, height - 1 - z)) * cell_z;
+                const float dist_edge = min(dist_x, dist_z);
+
+                if (dist_edge >= shore_width)
+                {
+                    continue;
+                }
+
+                // 0 at border, 1 inland past shore_width
+                float t = dist_edge / shore_width;
+                t = t * t * (3.0f - 2.0f * t);
+
+                positions[i].y = lerp(edge_height_local, positions[i].y, t);
+
+                if (height_data && i < height_data->size())
+                {
+                    (*height_data)[i] = positions[i].y;
+                }
+            }
+        };
+        ThreadPool::ParallelLoop(bend, static_cast<uint32_t>(positions.size()));
     }
 }

@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "pch.h"
 #include <fstream>
+#include <unordered_set>
 #include "Terrain.h"
 #include "Render.h"
 #include "Water.h"
@@ -36,6 +37,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/ThreadPool.h"
 #include "../../Core/ProgressTracker.h"
 #include "../../FileSystem/FileSystem.h"
+#include "../../Physics/PhysicsWorld.h"
+#include "../../Math/Ray.h"
+#include "../../Math/BoundingBox.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -48,6 +52,300 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        bool is_entity_or_descendant(Entity* candidate, Entity* root)
+        {
+            if (!candidate || !root)
+            {
+                return false;
+            }
+
+            return candidate == root || candidate->IsDescendantOf(root);
+        }
+
+        bool is_terrain_tile_or_water(Entity* entity)
+        {
+            if (!entity)
+            {
+                return false;
+            }
+
+            if (entity->GetComponent<Water>())
+            {
+                return true;
+            }
+
+            for (Entity* current = entity; current; current = current->GetParent())
+            {
+                if (current->GetComponent<Terrain>())
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool entity_has_snappable_mesh(Entity* entity)
+        {
+            if (!entity)
+            {
+                return false;
+            }
+
+            if (entity->GetComponent<Terrain>() || entity->GetComponent<Water>())
+            {
+                return false;
+            }
+
+            Render* render = entity->GetComponent<Render>();
+            return render && render->GetMesh();
+        }
+
+        void collect_snappable_entities(Entity* root, vector<Entity*>& out)
+        {
+            if (!root)
+            {
+                return;
+            }
+
+            if (entity_has_snappable_mesh(root))
+            {
+                out.push_back(root);
+            }
+
+            vector<Entity*> descendants;
+            root->GetDescendants(&descendants);
+            for (Entity* descendant : descendants)
+            {
+                if (entity_has_snappable_mesh(descendant))
+                {
+                    out.push_back(descendant);
+                }
+            }
+        }
+
+        void apply_surface_alignment(Entity* entity, const Vector3& normal)
+        {
+            Vector3 forward = entity->GetForward();
+            forward.y = 0.0f;
+            if (forward.LengthSquared() < epsilon)
+            {
+                forward = Vector3::Forward;
+            }
+            else
+            {
+                forward.Normalize();
+            }
+
+            const Quaternion yaw = Quaternion::FromLookRotation(forward, Vector3::Up);
+            const Quaternion align = Quaternion::FromRotation(Vector3::Up, normal.Normalized());
+            entity->SetRotation(align * yaw);
+        }
+
+        // drop a vertical ray from above the entity, prefer the closest surface
+        bool find_snap_surface(
+            Entity* entity,
+            Terrain* terrain,
+            float offset,
+            Vector3& position_out,
+            Vector3& normal_out
+        )
+        {
+            const Vector3 position = entity->GetPosition();
+
+            float start_y = position.y + 1.0f;
+            if (Render* render = entity->GetComponent<Render>())
+            {
+                start_y = max(start_y, render->GetBoundingBox().GetMax().y + 0.05f);
+            }
+
+            const Vector3 origin(position.x, start_y, position.z);
+            const float max_distance = max(start_y - position.y, 1.0f) + 100000.0f;
+
+            bool found = false;
+            float best_distance = numeric_limits<float>::max();
+            Vector3 best_position = position;
+            Vector3 best_normal = Vector3::Up;
+
+            // static physics first, buildings and props with colliders
+            {
+                PhysicsRaycastHit physics_hit;
+                if (PhysicsWorld::RaycastStatic(
+                    origin,
+                    Vector3::Down,
+                    max_distance,
+                    physics_hit,
+                    entity
+                ))
+                {
+                    found = true;
+                    best_distance = physics_hit.distance;
+                    best_position = physics_hit.position;
+                    best_normal = physics_hit.normal.LengthSquared() > epsilon
+                        ? physics_hit.normal.Normalized()
+                        : Vector3::Up;
+                }
+            }
+
+            // render meshes without physics, same idea as viewport picking
+            {
+                const Ray ray(origin, Vector3::Down);
+                vector<uint32_t> indices;
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+
+                for (Entity* candidate : World::GetEntities())
+                {
+                    if (!candidate || is_entity_or_descendant(candidate, entity))
+                    {
+                        continue;
+                    }
+
+                    // terrain uses the heightfield path below, skip huge tile meshes
+                    if (is_terrain_tile_or_water(candidate))
+                    {
+                        continue;
+                    }
+
+                    Render* render = candidate->GetComponent<Render>();
+                    if (!render)
+                    {
+                        continue;
+                    }
+
+                    const float aabb_distance = ray.HitDistance(render->GetBoundingBox());
+                    if (aabb_distance == numeric_limits<float>::infinity() ||
+                        aabb_distance >= best_distance)
+                    {
+                        continue;
+                    }
+
+                    indices.clear();
+                    vertices.clear();
+                    render->GetGeometry(&indices, &vertices);
+                    if (indices.size() < 3 || vertices.empty())
+                    {
+                        continue;
+                    }
+
+                    const Matrix& transform = candidate->GetMatrix();
+                    for (size_t i = 0; i + 2 < indices.size(); i += 3)
+                    {
+                        Vector3 p1(vertices[indices[i]].pos);
+                        Vector3 p2(vertices[indices[i + 1]].pos);
+                        Vector3 p3(vertices[indices[i + 2]].pos);
+                        p1 = p1 * transform;
+                        p2 = p2 * transform;
+                        p3 = p3 * transform;
+
+                        Vector3 triangle_normal;
+                        const float distance = ray.HitDistance(
+                            p1, p2, p3, &triangle_normal
+                        );
+                        if (distance == numeric_limits<float>::infinity() ||
+                            distance >= best_distance)
+                        {
+                            continue;
+                        }
+
+                        found = true;
+                        best_distance = distance;
+                        best_position = origin + Vector3::Down * distance;
+                        best_normal = triangle_normal.LengthSquared() > epsilon
+                            ? triangle_normal.Normalized()
+                            : Vector3::Up;
+                    }
+                }
+            }
+
+            // heightfield fallback when nothing else is under the entity
+            if (terrain)
+            {
+                float terrain_height = 0.0f;
+                if (terrain->SampleHeight(position.x, position.z, terrain_height))
+                {
+                    const float distance = start_y - terrain_height;
+                    if (distance >= 0.0f && distance < best_distance)
+                    {
+                        found = true;
+                        best_distance = distance;
+                        best_position = Vector3(position.x, terrain_height, position.z);
+
+                        Vector3 terrain_normal = Vector3::Up;
+                        if (terrain->SampleNormal(position.x, position.z, terrain_normal))
+                        {
+                            best_normal = terrain_normal;
+                        }
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            position_out = best_position;
+            position_out.y += offset;
+            normal_out = best_normal;
+            return true;
+        }
+
+        bool snap_mesh_entity(Entity* entity, Terrain* terrain, float offset)
+        {
+            if (!entity || !entity_has_snappable_mesh(entity))
+            {
+                return false;
+            }
+
+            Vector3 snap_position;
+            Vector3 snap_normal = Vector3::Up;
+            if (!find_snap_surface(entity, terrain, offset, snap_position, snap_normal))
+            {
+                return false;
+            }
+
+            entity->SetPosition(snap_position);
+            apply_surface_alignment(entity, snap_normal);
+            return true;
+        }
+
+        string get_terrain_cache_directory()
+        {
+            const string& world_path = World::GetFilePath();
+            string directory;
+
+            if (!world_path.empty())
+            {
+                directory = World::GetResourceDirectory(world_path);
+            }
+            else
+            {
+                directory = string(ResourceCache::GetProjectDirectory());
+            }
+
+            replace(directory.begin(), directory.end(), '\\', '/');
+            if (!directory.empty() && directory.back() != '/')
+            {
+                directory += '/';
+            }
+
+            FileSystem::CreateDirectory_(directory);
+            return directory;
+        }
+
+        string get_terrain_cache_bin_path()
+        {
+            return get_terrain_cache_directory() + "terrain_cache.bin";
+        }
+
+        string get_terrain_mesh_cache_path()
+        {
+            return get_terrain_cache_directory() + "terrain_mesh_cache.mesh";
+        }
+    }
+
     namespace placement
     {
         struct ClusterData
@@ -464,11 +762,54 @@ namespace spartan
 
         m_material = make_shared<Material>();
         m_material->SetObjectName("terrain");
+        ApplyDefaultMaterial();
     }
 
     Terrain::~Terrain()
     {
         m_height_map_seed = nullptr;
+        m_height_map_final_retired.reset();
+        m_height_map_final.reset();
+    }
+
+    void Terrain::ApplyDefaultMaterial()
+    {
+        if (!m_material)
+        {
+            m_material = make_shared<Material>();
+            m_material->SetObjectName("terrain");
+        }
+
+        // same grass/rock/sand slope blend as the forest world
+        const char* material_path = "project/materials/terrain.xml";
+        if (FileSystem::Exists(material_path))
+        {
+            m_material->LoadFromFile(material_path);
+            return;
+        }
+
+        m_material->SetResourceName(string("terrain") + EXTENSION_MATERIAL);
+        m_material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
+        // texture repeats per meter, matches forest
+        m_material->SetProperty(MaterialProperty::TextureTilingX, 0.33f);
+        m_material->SetProperty(MaterialProperty::TextureTilingY, 0.33f);
+
+        m_material->SetTexture(MaterialTextureType::Color,     "project/materials/whispy_grass_meadow/albedo.png",    0);
+        m_material->SetTexture(MaterialTextureType::Normal,    "project/materials/whispy_grass_meadow/normal.png",    0);
+        m_material->SetTexture(MaterialTextureType::Roughness, "project/materials/whispy_grass_meadow/roughness.png", 0);
+        m_material->SetTexture(MaterialTextureType::Occlusion, "project/materials/whispy_grass_meadow/occlusion.png", 0);
+
+        m_material->SetTexture(MaterialTextureType::Color,     "project/materials/rock/albedo.png",    1);
+        m_material->SetTexture(MaterialTextureType::Normal,    "project/materials/rock/normal.png",    1);
+        m_material->SetTexture(MaterialTextureType::Roughness, "project/materials/rock/roughness.png", 1);
+        m_material->SetTexture(MaterialTextureType::Occlusion, "project/materials/rock/occlusion.png", 1);
+        m_material->SetTexture(MaterialTextureType::Height,    "project/materials/rock/height.png",    1);
+
+        m_material->SetTexture(MaterialTextureType::Color,     "project/materials/sand/albedo.png",    2);
+        m_material->SetTexture(MaterialTextureType::Normal,    "project/materials/sand/normal.png",    2);
+        m_material->SetTexture(MaterialTextureType::Roughness, "project/materials/sand/roughness.png", 2);
+        m_material->SetTexture(MaterialTextureType::Occlusion, "project/materials/sand/occlusion.png", 2);
+        m_material->SetProperty(MaterialProperty::Tessellation, 0.0f);
     }
 
     void Terrain::Save(pugi::xml_node& node)
@@ -484,6 +825,7 @@ namespace spartan
         node.append_attribute("max_y")         = m_max_y;
         node.append_attribute("level_sea")     = m_level_sea;
         node.append_attribute("level_snow")    = m_level_snow;
+        node.append_attribute("shore_width")   = m_shore_width;
         node.append_attribute("smoothing")     = m_smoothing;
         node.append_attribute("density")       = m_density;
         node.append_attribute("scale")         = m_scale;
@@ -511,15 +853,19 @@ namespace spartan
         }
 
         // configurable parameters
-        m_min_y         = node.attribute("min_y").as_float(-64.0f);
-        m_max_y         = node.attribute("max_y").as_float(256.0f);
+        m_min_y         = node.attribute("min_y").as_float(0.0f);
+        m_max_y         = node.attribute("max_y").as_float(755.0f);
         m_level_sea     = node.attribute("level_sea").as_float(0.0f);
         m_level_snow    = node.attribute("level_snow").as_float(400.0f);
+        m_shore_width   = node.attribute("shore_width").as_float(2000.0f);
         m_smoothing     = node.attribute("smoothing").as_uint(0);
-        m_density       = node.attribute("density").as_uint(3);
-        m_scale         = node.attribute("scale").as_uint(6);
+        m_density       = max(node.attribute("density").as_uint(1), 1u);
+        m_scale         = max(node.attribute("scale").as_uint(25), 1u);
         m_tile_count    = max(node.attribute("tile_count").as_uint(16), 1u);
-        m_create_border = node.attribute("create_border").as_bool(true);
+        m_create_border = node.attribute("create_border").as_bool(false);
+
+        // forest grass/rock/sand slope material
+        ApplyDefaultMaterial();
 
         // regenerate terrain if we have a height map
         if (m_height_map_seed)
@@ -805,12 +1151,23 @@ namespace spartan
             m_is_generating.store(false);
             return;
         }
+
+        // min == max collapses every pixel to one height, looks like a flat plane
+        if (abs(m_max_y - m_min_y) < epsilon)
+        {
+            SP_LOG_WARNING(
+                "terrain min height (%.1f) equals max height, using 0 to 755 for zakynthos-scale relief",
+                m_min_y
+            );
+            m_min_y = 0.0f;
+            m_max_y = 755.0f;
+        }
     
         uint32_t job_count = 9;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
     
-        // try loading from cache
-        const string cache_file = "terrain_cache.bin";
+        // try loading from cache in the world resource directory
+        const string cache_file = get_terrain_cache_bin_path();
         bool loaded_from_cache  = false;
 
         LoadFromFile(cache_file.c_str());
@@ -895,8 +1252,12 @@ namespace spartan
         // 9. create tile entities and gpu buffers
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
 
+        // tile remove is deferred, detach draws before the old mesh pointer is replaced
+        DetachTileMeshes();
+        ClearTileEntities();
+
         // try to load the prebuilt mesh (lods + meshlets) from disk so cached loads skip simplify + build_meshlets
-        const string cache_file_mesh = "terrain_mesh_cache.mesh";
+        const string cache_file_mesh = get_terrain_mesh_cache_path();
         bool mesh_loaded_from_cache  = false;
         if (loaded_from_cache && FileSystem::Exists(cache_file_mesh))
         {
@@ -904,6 +1265,7 @@ namespace spartan
             mesh_from_cache->LoadFromFile(cache_file_mesh);
             if (mesh_from_cache->GetVertexCount() > 0)
             {
+                ResourceCache::Remove(m_mesh);
                 m_mesh                 = mesh_from_cache;
                 mesh_loaded_from_cache = true;
             }
@@ -911,6 +1273,7 @@ namespace spartan
 
         if (!mesh_loaded_from_cache)
         {
+            ResourceCache::Remove(m_mesh);
             m_mesh = make_shared<Mesh>();
             m_mesh->SetObjectName("terrain_mesh");
             m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
@@ -1028,6 +1391,42 @@ namespace spartan
         return true;
     }
 
+    bool Terrain::SampleNormal(float world_x, float world_z, Vector3& normal_out) const
+    {
+        if (!HasHeightfield())
+        {
+            return false;
+        }
+
+        float local_x = world_x;
+        float local_z = world_z;
+        Quaternion terrain_rotation = Quaternion::Identity;
+        if (Entity* entity = GetEntity())
+        {
+            Vector3 local = entity->GetMatrix().Inverted() * Vector3(world_x, 0.0f, world_z);
+            local_x = local.x;
+            local_z = local.z;
+            terrain_rotation = entity->GetRotation();
+        }
+
+        Vector3 local_normal = TerrainSystem::SampleNormal(
+            m_positions,
+            m_dense_width,
+            m_dense_height,
+            local_x,
+            local_z,
+            GetGridMapping()
+        );
+
+        normal_out = (terrain_rotation * local_normal).Normalized();
+        if (normal_out.LengthSquared() < math::epsilon)
+        {
+            normal_out = Vector3::Up;
+        }
+
+        return true;
+    }
+
     Terrain* Terrain::FindActive()
     {
         for (Entity* entity : World::GetEntities())
@@ -1056,55 +1455,45 @@ namespace spartan
             return false;
         }
 
-        // never snap the terrain or ocean surface itself
-        if (entity->GetComponent<Terrain>() || entity->GetComponent<Water>())
-        {
-            return false;
-        }
-
         Terrain* terrain = FindActive();
-        if (!terrain)
-        {
-            return false;
-        }
-
-        Vector3 position = entity->GetPosition();
-        float height = 0.0f;
-        if (!terrain->SampleHeight(position.x, position.z, height))
-        {
-            return false;
-        }
-
-        position.y = height + offset;
-        entity->SetPosition(position);
-        return true;
-    }
-
-    uint32_t Terrain::SnapChildrenToTerrain(Entity* parent, float offset)
-    {
-        if (!parent)
-        {
-            return 0;
-        }
+        vector<Entity*> targets;
+        collect_snappable_entities(entity, targets);
 
         uint32_t count = 0;
-        for (Entity* child : parent->GetChildren())
+        for (Entity* target : targets)
         {
-            if (SnapEntityToTerrain(child, offset))
+            if (snap_mesh_entity(target, terrain, offset))
             {
                 count++;
             }
         }
 
-        return count;
+        return count > 0;
     }
 
     uint32_t Terrain::SnapEntitiesToTerrain(const vector<Entity*>& entities, float offset)
     {
-        uint32_t count = 0;
+        Terrain* terrain = FindActive();
+        unordered_set<Entity*> unique_targets;
+        vector<Entity*> targets;
+
         for (Entity* entity : entities)
         {
-            if (SnapEntityToTerrain(entity, offset))
+            vector<Entity*> collected;
+            collect_snappable_entities(entity, collected);
+            for (Entity* target : collected)
+            {
+                if (unique_targets.insert(target).second)
+                {
+                    targets.push_back(target);
+                }
+            }
+        }
+
+        uint32_t count = 0;
+        for (Entity* target : targets)
+        {
+            if (snap_mesh_entity(target, terrain, offset))
             {
                 count++;
             }
@@ -1138,6 +1527,56 @@ namespace spartan
         );
     }
 
+    void Terrain::MakeIslandShore()
+    {
+        if (!HasHeightfield())
+        {
+            SP_LOG_WARNING("no heightfield to turn into an island");
+            return;
+        }
+
+        float sea_world = m_level_sea;
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity)
+            {
+                continue;
+            }
+
+            if (Water* water = entity->GetComponent<Water>())
+            {
+                sea_world = water->GetSeaLevel();
+                break;
+            }
+        }
+
+        // local height at the rim so world y lands at sea level
+        float entity_y = 0.0f;
+        if (Entity* entity = GetEntity())
+        {
+            entity_y = entity->GetPosition().y;
+        }
+        const float edge_local = sea_world - entity_y;
+
+        // shore must cover at least a couple of grid cells or the slope is invisible
+        const TerrainGridMapping mapping = GetGridMapping();
+        const float min_shore = max(mapping.scale_x, mapping.scale_z) * 2.0f;
+        const float shore = max(m_shore_width, min_shore);
+
+        TerrainSystem::ApplyIslandShore(
+            m_positions,
+            m_height_data.empty() ? nullptr : &m_height_data,
+            m_dense_width,
+            m_dense_height,
+            mapping,
+            shore,
+            edge_local
+        );
+
+        RebuildSurface(true);
+        SnapshotBaseline();
+    }
+
     void Terrain::BakeHeightMapTexture()
     {
         if (m_positions.empty() || m_dense_width == 0 || m_dense_height == 0)
@@ -1145,26 +1584,72 @@ namespace spartan
             return;
         }
 
+        // imgui samples as rgba8, so bake a normalized grayscale preview, not raw r32 heights
+        float height_min = m_positions[0].y;
+        float height_max = m_positions[0].y;
+        for (const Vector3& position : m_positions)
+        {
+            height_min = min(height_min, position.y);
+            height_max = max(height_max, position.y);
+        }
+
+        const float height_range = max(height_max - height_min, epsilon);
         vector<RHI_Texture_Slice> slices(1);
         slices[0].mips.resize(1);
-        slices[0].mips[0].bytes.resize(m_dense_width * m_dense_height * sizeof(float));
+        slices[0].mips[0].bytes.resize(m_dense_width * m_dense_height * 4);
 
-        float* height_ptr = reinterpret_cast<float*>(slices[0].mips[0].bytes.data());
-        auto copy_heights = [this, height_ptr](uint32_t start, uint32_t end)
+        uint8_t* pixels = reinterpret_cast<uint8_t*>(slices[0].mips[0].bytes.data());
+        auto copy_heights = [this, pixels, height_min, height_range](uint32_t start, uint32_t end)
         {
             for (uint32_t i = start; i < end; i++)
             {
-                height_ptr[i] = m_positions[i].y;
+                const float t = saturate((m_positions[i].y - height_min) / height_range);
+                const uint8_t value = static_cast<uint8_t>(t * 255.0f + 0.5f);
+                const uint32_t offset = i * 4;
+                pixels[offset + 0] = value;
+                pixels[offset + 1] = value;
+                pixels[offset + 2] = value;
+                pixels[offset + 3] = 255;
             }
         };
         ThreadPool::ParallelLoop(copy_heights, m_dense_width * m_dense_height);
 
+        // retire the previous bake first, imgui may still draw it this frame
+        m_height_map_final_retired = m_height_map_final;
         m_height_map_final = make_shared<RHI_Texture>(
             RHI_Texture_Type::Type2D,
             m_dense_width, m_dense_height, 1, 1,
-            RHI_Format::R32_Float, RHI_Texture_Srv,
+            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
             "terrain_baked", slices
         );
+    }
+
+    void Terrain::DetachTileMeshes()
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        // removeentity is deferred to world tick, clear draws now so the renderer
+        // cannot touch a mesh that generate is about to free
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            if (!child)
+            {
+                continue;
+            }
+
+            if (child->GetObjectName().rfind("tile_", 0) != 0)
+            {
+                continue;
+            }
+
+            if (Render* render = child->GetComponent<Render>())
+            {
+                render->ClearMesh();
+            }
+        }
     }
 
     void Terrain::ClearTileEntities()
@@ -1173,6 +1658,8 @@ namespace spartan
         {
             return;
         }
+
+        DetachTileMeshes();
 
         vector<Entity*> children = m_entity_ptr->GetChildren();
         for (Entity* child : children)
@@ -1256,6 +1743,10 @@ namespace spartan
         m_triangle_count = m_index_count / 3;
         m_area_km2       = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
 
+        // drop tile draws before freeing the mesh they still reference
+        DetachTileMeshes();
+        ClearTileEntities();
+
         ResourceCache::Remove(m_mesh);
         m_mesh = make_shared<Mesh>();
         m_mesh->SetObjectName("terrain_mesh");
@@ -1287,7 +1778,6 @@ namespace spartan
         }
 
         Clear();
-        ClearTileEntities();
 
         TerrainSystem::CreateFlatHeightfield(
             m_height_data,
@@ -1347,10 +1837,9 @@ namespace spartan
     {
         if (m_height_map_seed)
         {
-            FileSystem::Delete("terrain_cache.bin");
-            FileSystem::Delete("terrain_mesh_cache.mesh");
+            FileSystem::Delete(get_terrain_cache_bin_path());
+            FileSystem::Delete(get_terrain_mesh_cache_path());
             Clear();
-            ClearTileEntities();
             Generate();
             return;
         }
@@ -1422,6 +1911,9 @@ namespace spartan
 
     void Terrain::Clear()
     {
+        // detach and queue tile removal before freeing geometry they pointed at
+        ClearTileEntities();
+
         m_vertices.clear();
         m_indices.clear();
         m_tile_vertices.clear();
@@ -1430,13 +1922,5 @@ namespace spartan
         m_positions_baseline.clear();
         ResourceCache::Remove(m_mesh);
         m_mesh = nullptr;
-
-        for (Entity* child : m_entity_ptr->GetChildren())
-        {
-            if (Render* render = child->AddComponent<Render>())
-            {
-                render->SetMesh(nullptr);
-            }
-        }
     }
 }

@@ -234,6 +234,65 @@ namespace spartan::geometry_generation
     
     }
 
+    void generate_ocean_horizon_skirt(
+        std::vector<RHI_Vertex_PosTexNorTan>* vertices,
+        std::vector<uint32_t>* indices,
+        float inner_half_extent,
+        float outer_half_extent
+    )
+    {
+        using namespace math;
+
+        if (!vertices || !indices || outer_half_extent <= inner_half_extent)
+        {
+            return;
+        }
+
+        const Vector3 normal(0, 1, 0);
+        const Vector3 tangent(1, 0, 0);
+        const float i = inner_half_extent;
+        const float o = outer_half_extent;
+        const uint32_t v_base = static_cast<uint32_t>(vertices->size());
+
+        // inner square then outer square, four quads between them
+        const Vector3 corners[8] =
+        {
+            Vector3(-i, 0, -i), Vector3( i, 0, -i), Vector3( i, 0,  i), Vector3(-i, 0,  i),
+            Vector3(-o, 0, -o), Vector3( o, 0, -o), Vector3( o, 0,  o), Vector3(-o, 0,  o)
+        };
+
+        for (uint32_t c = 0; c < 8; ++c)
+        {
+            const Vector2 uv(
+                (corners[c].x / o) * 0.5f + 0.5f,
+                (corners[c].z / o) * 0.5f + 0.5f
+            );
+            vertices->emplace_back(corners[c], uv, normal, tangent);
+        }
+
+        const uint32_t quads[4][4] =
+        {
+            { 0, 1, 5, 4 },
+            { 1, 2, 6, 5 },
+            { 2, 3, 7, 6 },
+            { 3, 0, 4, 7 }
+        };
+
+        for (uint32_t q = 0; q < 4; ++q)
+        {
+            const uint32_t a = v_base + quads[q][0];
+            const uint32_t b = v_base + quads[q][1];
+            const uint32_t c = v_base + quads[q][2];
+            const uint32_t d = v_base + quads[q][3];
+            indices->emplace_back(a);
+            indices->emplace_back(c);
+            indices->emplace_back(d);
+            indices->emplace_back(a);
+            indices->emplace_back(b);
+            indices->emplace_back(c);
+        }
+    }
+
     void generate_sphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius, int slices, int stacks)
     {
 

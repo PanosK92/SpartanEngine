@@ -41,6 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
 #include "Rendering/Renderer.h"
+#include "Resource/IResource.h"
+#include "RHI/RHI_Texture.h"
 #include "World/Components/Script.h"
 #include "World/Components/ParticleSystem.h"
 #include "World/Components/Water.h"
@@ -499,6 +501,32 @@ namespace
         return ImGuiSp::draw_float_wrap(("##" + string(label)).c_str(), value, speed, min, max, format);
     }
 
+    // styled uint input with drag
+    bool property_uint(
+        const char* label,
+        uint32_t* value,
+        float speed = 1.0f,
+        uint32_t min = 0,
+        uint32_t max = 0,
+        const char* tooltip = nullptr
+    )
+    {
+        layout::begin_property(label, tooltip);
+        int v = static_cast<int>(*value);
+        const bool changed = ImGui::DragInt(
+            ("##" + string(label)).c_str(),
+            &v,
+            speed,
+            static_cast<int>(min),
+            static_cast<int>(max)
+        );
+        if (changed)
+        {
+            *value = static_cast<uint32_t>(v < 0 ? 0 : v);
+        }
+        return changed;
+    }
+
     // styled toggle switch
     bool property_toggle(const char* label, bool* value, const char* tooltip = nullptr)
     {
@@ -743,18 +771,11 @@ void Properties::OnTickVisible()
             layout::separator();
             layout::section_header("Transform");
 
-            const bool has_terrain = Terrain::FindActive() != nullptr;
-            ImGui::BeginDisabled(!has_terrain);
             if (ImGuiSp::button("Snap Selected", ImVec2(-1, 0)))
             {
                 Terrain::SnapEntitiesToTerrain(selected);
             }
-            ImGuiSp::tooltip("snap each selected entity to the ground height at its xz");
-            ImGui::EndDisabled();
-            if (!has_terrain)
-            {
-                ImGui::TextDisabled("no ground heightfield in the world");
-            }
+            ImGuiSp::tooltip("drop onto the first surface below, building or prop, else terrain");
         }
         else if (Entity* entity = get_selected_entity())
         {
@@ -966,27 +987,11 @@ void Properties::ShowEntity(Entity* entity) const
         layout::separator();
 
         const float snap_button_width = ImGui::GetContentRegionAvail().x;
-        const bool has_terrain = Terrain::FindActive() != nullptr;
-        ImGui::BeginDisabled(!has_terrain);
         if (ImGuiSp::button("Snap", ImVec2(snap_button_width, 0)))
         {
             Terrain::SnapEntityToTerrain(entity);
         }
-        ImGuiSp::tooltip("set world y to the ground height at this xz");
-
-        if (entity->HasChildren())
-        {
-            if (ImGuiSp::button("Snap Children", ImVec2(snap_button_width, 0)))
-            {
-                Terrain::SnapChildrenToTerrain(entity);
-            }
-            ImGuiSp::tooltip("snap each direct child to the ground, nested locals stay relative");
-        }
-        ImGui::EndDisabled();
-        if (!has_terrain)
-        {
-            ImGui::TextDisabled("no ground heightfield in the world");
-        }
+        ImGuiSp::tooltip("snap this entity and every mesh descendant to the surface below each one");
     }
     component_end();
 }
@@ -2468,25 +2473,39 @@ void Properties::ShowTerrain(Terrain* terrain) const
 
     if (component_begin("Terrain", design::accent_terrain(), terrain))
     {
-        //= REFLECT =====================
-        float min_y = terrain->GetMinY();
-        float max_y = terrain->GetMaxY();
-        //===============================
+        float min_y         = terrain->GetMinY();
+        float max_y         = terrain->GetMaxY();
+        float sea_level     = terrain->GetSeaLevel();
+        float shore_width   = terrain->GetShoreWidth();
+        uint32_t density    = terrain->GetDensity();
+        uint32_t scale      = terrain->GetScale();
+        uint32_t tiles      = terrain->GetTileCountAxis();
+        uint32_t smoothing  = terrain->GetSmoothingPasses();
+        bool create_border  = terrain->GetCreateBorder();
+        const bool has_field = terrain->HasHeightfield();
+        const bool can_generate =
+            terrain->GetHeightMapSeed() != nullptr ||
+            (terrain->GetWidth() > 1 && terrain->GetHeight() > 1);
 
         layout::section_header("Height Map");
 
-        // height map texture slot and preview
         ImGui::BeginGroup();
         {
-            auto height_map_setter = [&terrain](spartan::RHI_Texture* texture) {
+            auto height_map_setter = [&terrain](spartan::RHI_Texture* texture)
+            {
                 terrain->SetHeightMapSeed(texture);
             };
 
-            // source height map
             ImGui::TextUnformatted("Source");
+            ImGuiSp::tooltip(
+                "input heightmap image. use 8-bit grayscale. "
+                "black becomes min height, white becomes max height. "
+                "click to browse or drag a texture from the asset viewer"
+            );
             if (ImGuiSp::image_slot(terrain->GetHeightMapSeed(), height_map_setter))
             {
-                file_selection::open([terrain](const std::string& path) {
+                file_selection::open([terrain](const std::string& path)
+                {
                     if (FileSystem::IsSupportedImageFile(path))
                     {
                         if (const auto tex = ResourceCache::Load<RHI_Texture>(path).get())
@@ -2496,72 +2515,218 @@ void Properties::ShowTerrain(Terrain* terrain) const
                     }
                 });
             }
+            ImGuiSp::tooltip(
+                "input heightmap image. use 8-bit grayscale. "
+                "black becomes min height, white becomes max height. "
+                "click to browse or drag a texture from the asset viewer"
+            );
         }
         ImGui::EndGroup();
 
         ImGui::SameLine(0, design::spacing_xl);
 
-        // generated preview
         ImGui::BeginGroup();
         {
-            ImGui::TextUnformatted("Generated");
-            ImGuiSp::image(terrain->GetHeightMapFinal(), ImVec2(80, 80));
+            ImGui::TextUnformatted("Preview");
+            ImGuiSp::tooltip(
+                "grayscale preview of the generated heightfield after generate. "
+                "empty until you run generate at least once"
+            );
+            RHI_Texture* baked = terrain->GetHeightMapFinal();
+            if (baked && baked->GetResourceState() == ResourceState::PreparedForGpu)
+            {
+                ImGuiSp::image(baked, ImVec2(80, 80));
+            }
+            else
+            {
+                ImGui::Dummy(ImVec2(80, 80));
+                ImGui::TextDisabled("empty");
+            }
+            ImGuiSp::tooltip(
+                "grayscale preview of the generated heightfield after generate. "
+                "empty until you run generate at least once"
+            );
         }
         ImGui::EndGroup();
 
         layout::group_spacing();
+        layout::section_header("Heights");
 
-        // height range
-        property_float("Min Height", &min_y, 0.1f, -1000.0f, 1000.0f, "minimum terrain height", "%.1f m");
-        property_float("Max Height", &max_y, 0.1f, -1000.0f, 1000.0f, "maximum terrain height", "%.1f m");
+        property_float(
+            "Min Height",
+            &min_y,
+            0.1f,
+            -1000.0f,
+            1000.0f,
+            "world y for black heightmap pixels. must differ from max height or the terrain will be flat",
+            "%.1f m"
+        );
+        property_float(
+            "Max Height",
+            &max_y,
+            0.1f,
+            -1000.0f,
+            1000.0f,
+            "world y for white heightmap pixels. zakynthos peak is about 755 m",
+            "%.1f m"
+        );
+        if (abs(max_y - min_y) < 0.001f)
+        {
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.55f, 0.2f, 1.0f),
+                "min and max are equal, generate will be flat"
+            );
+            ImGuiSp::tooltip(
+                "set max height higher than min height before generate. "
+                "equal values collapse every pixel to one height"
+            );
+        }
+        property_float(
+            "Sea Level",
+            &sea_level,
+            0.1f,
+            -1000.0f,
+            1000.0f,
+            "world y of the ocean. used by erosion, border, and make island so shores meet the water",
+            "%.1f m"
+        );
 
         layout::group_spacing();
+        layout::section_header("Mesh");
 
-        // generate button
-        float button_width = 120.0f * spartan::Window::GetDpiScale();
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
-        if (ImGuiSp::button("Generate Terrain", ImVec2(button_width, 0)))
+        if (property_uint(
+            "Density",
+            &density,
+            1.0f,
+            1,
+            16,
+            "extra samples between each heightmap pixel. 1 is 1:1 with the image. "
+            "higher is smoother but heavier. applied on generate"
+        ))
         {
-            spartan::ThreadPool::AddTask([terrain]() {
-                terrain->Generate();
-            });
+            terrain->SetDensity(max(density, 1u));
+        }
+        if (property_uint(
+            "Scale",
+            &scale,
+            1.0f,
+            1,
+            1000,
+            "meters between heightmap samples. world width is about (samples_x - 1) * scale. "
+            "25 fits zakynthos into roughly 36 km. applied on generate"
+        ))
+        {
+            terrain->SetScale(max(scale, 1u));
+        }
+        if (property_uint(
+            "Tiles",
+            &tiles,
+            1.0f,
+            1,
+            64,
+            "splits the mesh into an n by n grid of tile_* children for culling and streaming. "
+            "applied on generate"
+        ))
+        {
+            terrain->SetTileCountAxis(max(tiles, 1u));
+        }
+        if (property_uint(
+            "Smoothing",
+            &smoothing,
+            1.0f,
+            0,
+            32,
+            "blur passes on the heightmap before meshing. softens hard dem edges. 0 keeps raw data"
+        ))
+        {
+            terrain->SetSmoothingPasses(smoothing);
+        }
+        if (property_toggle(
+            "Border",
+            &create_border,
+            "during generate, raise or seal map edges so the player cannot walk off the heightfield. "
+            "usually off for islands, use make island instead"
+        ))
+        {
+            terrain->SetCreateBorder(create_border);
         }
 
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
-        if (ImGuiSp::button("Regenerate", ImVec2(button_width, 0)))
+        layout::group_spacing();
+        layout::section_header("Actions");
+
+        ImGui::BeginDisabled(!can_generate);
+        if (ImGuiSp::button("Generate", ImVec2(-1, 0)))
         {
-            spartan::ThreadPool::AddTask([terrain]() {
+            spartan::ThreadPool::AddTask([terrain]()
+            {
+                // clears cache and rebuilds from heightmap or flat params
                 terrain->Regenerate();
             });
         }
+        ImGui::EndDisabled();
+        ImGuiSp::tooltip(
+            can_generate
+                ? "build or rebuild the mesh from the source heightmap. "
+                  "clears sculpt edits and the terrain cache. click again anytime to regenerate"
+                : "assign a heightmap in source first, or create a flat terrain from the sculpt window"
+        );
 
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
-        if (ImGuiSp::button("Open Sculpt", ImVec2(button_width, 0)))
+        layout::group_spacing();
+        layout::section_header("Island");
+
+        property_float(
+            "Shore Width",
+            &shore_width,
+            1.0f,
+            1.0f,
+            50000.0f,
+            "how far inland make island bends the rim down to sea level. wider is a gentler beach",
+            "%.0f m"
+        );
+
+        ImGui::BeginDisabled(!has_field);
+        if (ImGuiSp::button("Make Island", ImVec2(-1, 0)))
+        {
+            terrain->MakeIslandShore();
+        }
+        ImGui::EndDisabled();
+        ImGuiSp::tooltip(
+            has_field
+                ? "bend the map borders down to sea level so the ocean clips the shore cleanly. "
+                  "run generate first"
+                : "generate a heightfield first, then use make island"
+        );
+
+        if (ImGuiSp::button("Sculpt", ImVec2(-1, 0)))
         {
             if (TerrainEditor* sculpt = m_editor->GetWidget<TerrainEditor>())
             {
                 sculpt->SetVisible(true);
             }
         }
+        ImGuiSp::tooltip(
+            "open the terrain sculpt window. raise, lower, smooth, or flatten with a brush in the viewport"
+        );
 
         layout::separator();
         layout::section_header("Statistics");
 
-        // stats in a compact format
         char stat_buf[128];
         std::snprintf(stat_buf, sizeof(stat_buf), "%.1f km²", terrain->GetArea());
-        property_text("Area", stat_buf);
+        property_text("Area", stat_buf, "surface area of the generated mesh in square kilometers");
 
-        std::snprintf(stat_buf, sizeof(stat_buf), "%llu", static_cast<unsigned long long>(terrain->GetHeightSampleCount()));
-        property_text("Height Samples", stat_buf);
+        std::snprintf(stat_buf, sizeof(stat_buf), "%u x %u", terrain->GetWidth(), terrain->GetHeight());
+        property_text("Samples", stat_buf, "base heightmap resolution in samples before density densify");
 
         std::snprintf(stat_buf, sizeof(stat_buf), "%llu", static_cast<unsigned long long>(terrain->GetVertexCount()));
-        property_text("Vertices", stat_buf);
+        property_text("Vertices", stat_buf, "vertex count of the generated terrain mesh");
 
         std::snprintf(stat_buf, sizeof(stat_buf), "%llu", static_cast<unsigned long long>(terrain->GetIndexCount()));
-        property_text("Indices", stat_buf);
+        property_text("Indices", stat_buf, "index count of the generated terrain mesh");
 
-        //= MAP =================================================
+        std::snprintf(stat_buf, sizeof(stat_buf), "%u x %u", tiles, tiles);
+        property_text("Tile Grid", stat_buf, "current tile split, number of tile_* child entities is n times n");
+
         if (min_y != terrain->GetMinY())
         {
             terrain->SetMinY(min_y);
@@ -2570,7 +2735,14 @@ void Properties::ShowTerrain(Terrain* terrain) const
         {
             terrain->SetMaxY(max_y);
         }
-        //=======================================================
+        if (sea_level != terrain->GetSeaLevel())
+        {
+            terrain->SetSeaLevel(sea_level);
+        }
+        if (shore_width != terrain->GetShoreWidth())
+        {
+            terrain->SetShoreWidth(shore_width);
+        }
     }
     component_end();
 }
