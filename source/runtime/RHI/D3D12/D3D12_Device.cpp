@@ -765,6 +765,12 @@ namespace spartan
 
             // xess requires shader model 6.4 or newer
             m_xess_supported = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;
+
+            m_is_mesh_shaders_supported = (caps::mesh_shader_tier >= D3D12_MESH_SHADER_TIER_1);
+            if (m_is_mesh_shaders_supported)
+            {
+                SP_LOG_INFO("D3D12 mesh shader tier %d supported", static_cast<int>(caps::mesh_shader_tier));
+            }
         }
 
         // queue timestamp period: d3d12 uses GetTimestampFrequency on the queue (ticks/second)

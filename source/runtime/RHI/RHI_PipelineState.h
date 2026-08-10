@@ -43,6 +43,7 @@ namespace spartan
         bool IsCompute() const;
         bool IsRayTracing() const;
         bool HasTessellation();
+        bool HasMeshShaders() const;
 
         //= STATE =========================================================================
         RHI_RasterizerState* rasterizer_state      = nullptr;

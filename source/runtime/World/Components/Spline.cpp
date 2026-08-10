@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spline.h"
 #include "Physics.h"
 #include "Render.h"
+#include "Terrain.h"
 #include "../Entity.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Resource/ResourceCache.h"
@@ -45,6 +46,39 @@ namespace spartan
     // prefix used to identify control point child entities
     static const string prefix_control_point = "spline_point_";
     static const string prefix_instance      = "spline_instance_";
+
+    // drop from the entity origin to the lowest point of its meshes, pivots are rarely at the base
+    static float pivot_to_bottom(Entity* entity)
+    {
+        if (!entity)
+        {
+            return 0.0f;
+        }
+
+        vector<Entity*> parts;
+        parts.push_back(entity);
+        entity->GetDescendants(&parts);
+
+        float lowest = numeric_limits<float>::max();
+        for (Entity* part : parts)
+        {
+            Render* render = part ? part->GetComponent<Render>() : nullptr;
+            if (!render || !render->GetMesh())
+            {
+                continue;
+            }
+
+            const BoundingBox box = render->GetBoundingBoxMesh() * part->GetMatrix();
+            lowest                = min(lowest, box.GetMin().y);
+        }
+
+        if (lowest == numeric_limits<float>::max())
+        {
+            return 0.0f;
+        }
+
+        return entity->GetPosition().y - lowest;
+    }
 
     Spline::Spline(Entity* entity) : Component(entity)
     {
@@ -219,10 +253,10 @@ namespace spartan
         uint32_t control_point_count = GetControlPointCount();
         bool has_mesh_input = IsAttached() ? (m_source_spline_entity != nullptr) : (control_point_count >= 2);
 
-        if (m_mesh_enabled && has_mesh_input)
+        if (has_mesh_input)
         {
             vector<Vector3> current_points = GetControlPointsLocal();
-            bool mesh_missing              = !HasRoadMesh();
+            bool mesh_missing              = m_mesh_enabled && !HasRoadMesh();
             uint64_t source_hash           = ComputeSourceHash();
 
             bool dirty = (m_closed_loop                != m_prev_closed_loop)
@@ -251,7 +285,17 @@ namespace spartan
 
             if (dirty || mesh_missing)
             {
-                GenerateRoadMesh();
+                if (m_mesh_enabled)
+                {
+                    GenerateRoadMesh();
+                }
+
+                // instances ride the same frames as the road, they have to move with it
+                if (HasSpawnedInstances())
+                {
+                    SpawnInstances();
+                }
+
                 SnapshotState();
             }
         }
@@ -755,6 +799,9 @@ namespace spartan
             sides.push_back(+1);
         }
 
+        const Matrix instance_world_matrix   = m_entity_ptr->GetMatrix();
+        const Matrix instance_inverse_matrix = instance_world_matrix.Inverted();
+
         float next_spawn_distance = 0.0f;
         uint32_t spawned          = 0;
 
@@ -806,6 +853,7 @@ namespace spartan
                     float jitter   = math::random<float>(-m_instance_random_offset, m_instance_random_offset);
                     final_position = final_position + right * jitter;
                 }
+
                 instance->SetPositionLocal(final_position);
 
                 // rotation: face inward overrides align-to-spline; optional random yaw on top
@@ -848,6 +896,43 @@ namespace spartan
                     instance->SetScaleLocal(Vector3(scale, scale, scale));
                 }
 
+                // the lateral offset moves the instance off the centerline, so it needs its own ground
+                // sample, and it has to rest on its base rather than on whatever the pivot happens to be
+                if (m_conform_to_terrain)
+                {
+                    Vector3 world_position = instance_world_matrix * final_position;
+                    float ground_height    = 0.0f;
+                    bool grounded          = false;
+
+                    if (Terrain* terrain = Terrain::FindActive())
+                    {
+                        grounded = terrain->SampleHeight(world_position.x, world_position.z, ground_height);
+                    }
+
+                    if (!grounded)
+                    {
+                        PhysicsRaycastHit hit;
+                        if (PhysicsWorld::RaycastStatic(
+                            Vector3(world_position.x, world_position.y + 500.0f, world_position.z),
+                            Vector3::Down,
+                            5000.0f,
+                            hit,
+                            m_entity_ptr
+                        ))
+                        {
+                            ground_height = hit.position.y;
+                            grounded      = true;
+                        }
+                    }
+
+                    if (grounded)
+                    {
+                        world_position.y = ground_height + m_terrain_offset + pivot_to_bottom(instance);
+                        final_position   = instance_inverse_matrix * world_position;
+                        instance->SetPositionLocal(final_position);
+                    }
+                }
+
                 spawned++;
             }
 
@@ -855,6 +940,28 @@ namespace spartan
         }
 
         SP_LOG_INFO("spawned %u instances along spline (%.1f m, spacing %.1f m)", spawned, spline_length, m_instance_spacing);
+    }
+
+    bool Spline::HasSpawnedInstances() const
+    {
+        if (!m_entity_ptr)
+        {
+            return false;
+        }
+
+        const uint32_t child_count = m_entity_ptr->GetChildrenCount();
+        for (uint32_t i = 0; i < child_count; i++)
+        {
+            if (Entity* child = m_entity_ptr->GetChildByIndex(i))
+            {
+                if (child->GetObjectName().find(prefix_instance) == 0)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     void Spline::ClearInstances()
@@ -1106,6 +1213,37 @@ namespace spartan
 
                 Vector3 offset_world = world_pos + world_right * lateral + Vector3::Up * m_attach_vertical_offset;
 
+                // the source path is a curve through its control points, it does not know about the ground
+                if (m_conform_to_terrain)
+                {
+                    bool grounded = false;
+
+                    if (Terrain* terrain = Terrain::FindActive())
+                    {
+                        float terrain_height = 0.0f;
+                        if (terrain->SampleHeight(offset_world.x, offset_world.z, terrain_height))
+                        {
+                            offset_world.y = terrain_height + m_terrain_offset + m_attach_vertical_offset;
+                            grounded       = true;
+                        }
+                    }
+
+                    if (!grounded)
+                    {
+                        PhysicsRaycastHit hit;
+                        if (PhysicsWorld::RaycastStatic(
+                            Vector3(offset_world.x, offset_world.y + 500.0f, offset_world.z),
+                            Vector3::Down,
+                            5000.0f,
+                            hit,
+                            m_entity_ptr
+                        ))
+                        {
+                            offset_world.y = hit.position.y + m_terrain_offset + m_attach_vertical_offset;
+                        }
+                    }
+                }
+
                 // transform position and direction vectors into this entity local space
                 Vector3 local_pos = world_inv * offset_world;
                 Vector3 local_origin = world_inv * Vector3::Zero;
@@ -1165,31 +1303,131 @@ namespace spartan
         Matrix world_matrix   = m_entity_ptr ? m_entity_ptr->GetMatrix() : Matrix::Identity;
         Matrix inverse_matrix = world_matrix.Inverted();
 
-        frames.reserve(total_samples + 1);
+        // direction transforms, the matrices carry translation so the origin has to be subtracted
+        const Vector3 world_origin   = world_matrix * Vector3::Zero;
+        const Vector3 inverse_origin = inverse_matrix * Vector3::Zero;
 
-        float accumulated_distance = 0.0f;
-        Vector3 prev_position;
+        Terrain* terrain = m_conform_to_terrain ? Terrain::FindActive() : nullptr;
+        Entity* self     = m_entity_ptr;
 
+        // ground under a world xz, heightfield first, static colliders as a fallback
+        auto sample_ground = [terrain, self](float world_x, float world_z, float reference_y, float& height_out)
+        {
+            if (terrain)
+            {
+                float terrain_height = 0.0f;
+                if (terrain->SampleHeight(world_x, world_z, terrain_height))
+                {
+                    height_out = terrain_height;
+                    return true;
+                }
+            }
+
+            PhysicsRaycastHit hit;
+            if (PhysicsWorld::RaycastStatic(
+                Vector3(world_x, reference_y + 500.0f, world_z),
+                Vector3::Down,
+                5000.0f,
+                hit,
+                self
+            ))
+            {
+                height_out = hit.position.y;
+                return true;
+            }
+
+            return false;
+        };
+
+        // parametric positions to sample, uniform to start with
+        vector<float> sample_ts;
+        sample_ts.reserve(total_samples + 1);
         for (uint32_t i = 0; i <= total_samples; i++)
         {
-            float t = static_cast<float>(i) / static_cast<float>(total_samples);
+            sample_ts.push_back(static_cast<float>(i) / static_cast<float>(total_samples));
+        }
+
+        // how far a chord between two samples is allowed to drift from the ground, the surface
+        // is lifted by the same amount later so the remaining sag cannot break through
+        const float conform_sag = 0.05f;
+
+        // the surface is linear between samples, so a straight chord over a ridge ends up buried,
+        // keep splitting segments whose midpoint drifts from the ground until they all fit
+        if (m_conform_to_terrain)
+        {
+            const float tolerance      = conform_sag;
+            const uint32_t pass_count  = 6;
+            const size_t sample_budget = 8192;
+
+            auto ground_at_t = [this, &spline_points, &world_matrix, &sample_ground](float t, float& height_out)
+            {
+                const Vector3 world_pos = world_matrix * EvaluatePoint(spline_points, t);
+                return sample_ground(world_pos.x, world_pos.z, world_pos.y, height_out);
+            };
+
+            for (uint32_t pass = 0; pass < pass_count && sample_ts.size() < sample_budget; pass++)
+            {
+                vector<float> refined;
+                refined.reserve(sample_ts.size() * 2);
+
+                bool inserted = false;
+                for (size_t i = 0; i + 1 < sample_ts.size(); i++)
+                {
+                    refined.push_back(sample_ts[i]);
+
+                    const float t_mid = (sample_ts[i] + sample_ts[i + 1]) * 0.5f;
+
+                    float height_a   = 0.0f;
+                    float height_b   = 0.0f;
+                    float height_mid = 0.0f;
+                    if (!ground_at_t(sample_ts[i], height_a) ||
+                        !ground_at_t(sample_ts[i + 1], height_b) ||
+                        !ground_at_t(t_mid, height_mid))
+                    {
+                        continue;
+                    }
+
+                    if (fabsf(height_mid - (height_a + height_b) * 0.5f) > tolerance)
+                    {
+                        refined.push_back(t_mid);
+                        inserted = true;
+                    }
+                }
+
+                refined.push_back(sample_ts.back());
+                sample_ts = move(refined);
+
+                if (!inserted)
+                {
+                    break;
+                }
+            }
+        }
+
+        // half of the widest part of the cross section, the edges have to clear the ground too
+        float half_extent = max(m_road_width, m_road_width_end) * 0.5f;
+        if (m_profile == SplineProfile::Road && m_sidewalk_enabled)
+        {
+            half_extent += m_sidewalk_width;
+        }
+        half_extent = max(half_extent, 0.01f);
+
+        const size_t sample_count = sample_ts.size();
+        vector<Vector3> positions(sample_count);
+        vector<Vector3> rights(sample_count);
+
+        // first pass, place every sample and bank its cross section along the ground slope
+        for (size_t i = 0; i < sample_count; i++)
+        {
+            const float t = sample_ts[i];
 
             Vector3 position = EvaluatePoint(spline_points, t);
             Vector3 tangent  = EvaluateTangent(spline_points, t);
-            tangent.Normalize();
-
-            // terrain conforming, raycast downward and snap the sample to ground
-            if (m_conform_to_terrain)
+            if (tangent.LengthSquared() < 1e-12f)
             {
-                Vector3 world_pos = world_matrix * position;
-                Vector3 ray_origin(world_pos.x, world_pos.y + 500.0f, world_pos.z);
-                Vector3 hit_pos;
-                if (PhysicsWorld::RaycastStatic(ray_origin, Vector3::Down, 1000.0f, hit_pos))
-                {
-                    hit_pos.y += m_terrain_offset;
-                    position = inverse_matrix * hit_pos;
-                }
+                tangent = Vector3::Forward;
             }
+            tangent.Normalize();
 
             Vector3 up = Vector3::Up;
             if (abs(tangent.Dot(Vector3::Up)) > 0.99f)
@@ -1199,21 +1437,129 @@ namespace spartan
 
             Vector3 right = tangent.Cross(up);
             right.Normalize();
-            up = right.Cross(tangent);
+
+            if (m_conform_to_terrain)
+            {
+                Vector3 world_pos   = world_matrix * position;
+                Vector3 world_right = (world_matrix * right) - world_origin;
+                world_right.y       = 0.0f;
+                if (world_right.LengthSquared() < 1e-6f)
+                {
+                    world_right = Vector3::Right;
+                }
+                world_right.Normalize();
+
+                // walk the full width, sampling only the two edges misses a crown between them
+                const uint32_t cross_count = 7;
+                float cross_lateral[cross_count];
+                float cross_height[cross_count];
+                bool cross_valid[cross_count];
+                int32_t first_valid = -1;
+                int32_t last_valid  = -1;
+
+                for (uint32_t s = 0; s < cross_count; s++)
+                {
+                    const float u   = -half_extent + (2.0f * half_extent) * (static_cast<float>(s) / static_cast<float>(cross_count - 1));
+                    const Vector3 p = world_pos + world_right * u;
+
+                    float ground_height = 0.0f;
+                    cross_lateral[s]    = u;
+                    cross_valid[s]      = sample_ground(p.x, p.z, world_pos.y, ground_height);
+                    cross_height[s]     = ground_height;
+
+                    if (cross_valid[s])
+                    {
+                        first_valid = (first_valid < 0) ? static_cast<int32_t>(s) : first_valid;
+                        last_valid  = static_cast<int32_t>(s);
+                    }
+                }
+
+                if (first_valid >= 0)
+                {
+                    // roll the cross section along the ground slope instead of keeping it horizontal
+                    float slope = 0.0f;
+                    if (last_valid > first_valid)
+                    {
+                        const float run = cross_lateral[last_valid] - cross_lateral[first_valid];
+                        if (fabsf(run) > 1e-4f)
+                        {
+                            slope = (cross_height[last_valid] - cross_height[first_valid]) / run;
+                        }
+                    }
+
+                    // lift the rolled plane until every sample across the width sits under it
+                    float base = -numeric_limits<float>::max();
+                    for (uint32_t s = 0; s < cross_count; s++)
+                    {
+                        if (cross_valid[s])
+                        {
+                            base = max(base, cross_height[s] - slope * cross_lateral[s]);
+                        }
+                    }
+
+                    // the chord between two samples may sag by up to the refinement tolerance
+                    world_pos.y = base + m_terrain_offset + conform_sag;
+
+                    Vector3 banked = world_right + Vector3::Up * slope;
+                    banked.Normalize();
+
+                    position = inverse_matrix * world_pos;
+                    right    = (inverse_matrix * banked) - inverse_origin;
+                    if (right.LengthSquared() < 1e-6f)
+                    {
+                        right = tangent.Cross(Vector3::Up);
+                    }
+                    right.Normalize();
+                }
+            }
+
+            positions[i] = position;
+            rights[i]    = right;
+        }
+
+        // second pass, tangents come from the conformed positions so the frames follow the real slope
+        frames.reserve(sample_count);
+
+        float accumulated_distance = 0.0f;
+
+        for (size_t i = 0; i < sample_count; i++)
+        {
+            const size_t i_prev = (i == 0) ? 0 : i - 1;
+            const size_t i_next = (i + 1 < sample_count) ? i + 1 : i;
+
+            Vector3 tangent = positions[i_next] - positions[i_prev];
+            if (tangent.LengthSquared() < 1e-12f)
+            {
+                tangent = EvaluateTangent(spline_points, sample_ts[i]);
+            }
+            if (tangent.LengthSquared() < 1e-12f)
+            {
+                tangent = Vector3::Forward;
+            }
+            tangent.Normalize();
+
+            // keep the banked roll but make it perpendicular to the new tangent
+            Vector3 right = rights[i] - tangent * rights[i].Dot(tangent);
+            if (right.LengthSquared() < 1e-6f)
+            {
+                right = tangent.Cross(Vector3::Up);
+            }
+            right.Normalize();
+
+            Vector3 up = right.Cross(tangent);
             up.Normalize();
 
             if (i > 0)
             {
-                accumulated_distance += position.Distance(prev_position);
+                accumulated_distance += positions[i].Distance(positions[i - 1]);
             }
-            prev_position = position;
 
             SplineFrame frame;
-            frame.position = position;
+            frame.position = positions[i];
             frame.tangent  = tangent;
             frame.right    = right;
             frame.up       = up;
-            frame.t        = t;
+            frame.t        = sample_ts[i];
             frame.distance = accumulated_distance;
             frames.push_back(frame);
         }

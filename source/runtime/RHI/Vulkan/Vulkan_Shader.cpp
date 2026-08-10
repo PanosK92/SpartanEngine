@@ -109,11 +109,22 @@ namespace spartan
                 arguments.emplace_back("-D");
                 arguments.emplace_back("SP_SHADER_STAGE_COMPUTE=1");
             }
+            if (m_shader_type == RHI_Shader_Type::MeshShader)
+            {
+                arguments.emplace_back("-D");
+                arguments.emplace_back("SP_SHADER_STAGE_MESH=1");
+            }
 
             // spir-v
             {
                 arguments.emplace_back("-spirv");                     // generate SPIR-V code
                 arguments.emplace_back("-fspv-target-env=vulkan1.3"); // specify the target environment
+                if (m_shader_type == RHI_Shader_Type::MeshShader)
+                {
+                    // listing any -fspv-extension disables dxc defaults, so keep descriptor indexing
+                    arguments.emplace_back("-fspv-extension=SPV_EXT_mesh_shader");
+                    arguments.emplace_back("-fspv-extension=SPV_EXT_descriptor_indexing");
+                }
 
                 // this prevents all sorts of issues with constant buffers having random data
                 arguments.emplace_back("-fspv-preserve-bindings");  // preserves all bindings declared within the module, even when those bindings are unused
@@ -129,8 +140,10 @@ namespace spartan
                 arguments.emplace_back("-fvk-use-dx-layout");     // use DirectX memory layout for Vulkan resources
                 arguments.emplace_back("-fvk-use-dx-position-w"); // reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
-                // negate SV_Position.y before writing to stage output in vs/ds/gs to accommodate vulkan's coordinate system
-                if (m_shader_type == RHI_Shader_Type::Vertex || m_shader_type == RHI_Shader_Type::Domain)
+                // negate SV_Position.y before writing to stage output in vs/ds/ms to accommodate vulkan's coordinate system
+                if (m_shader_type == RHI_Shader_Type::Vertex ||
+                    m_shader_type == RHI_Shader_Type::Domain ||
+                    m_shader_type == RHI_Shader_Type::MeshShader)
                 {
                     arguments.emplace_back("-fvk-invert-y");
                 }

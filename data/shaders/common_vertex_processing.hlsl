@@ -144,6 +144,20 @@ struct gbuffer_vertex
     float2 ocean_world_xz               : TEXCOORD7; // undisplaced clipmap world xz, fft normal/foam are indexed in this domain
 };
 
+// slim mesh-shader depth payload, opaque prepass uses position only via depth_mesh_position
+struct depth_mesh_position
+{
+    precise float4 position : SV_POSITION;
+};
+
+struct depth_mesh_vertex
+{
+    precise float4 position             : SV_POSITION;
+    float4 uv_misc                      : TEXCOORD;
+    nointerpolation uint material_index : TEXCOORD3;
+    nointerpolation uint view_id        : TEXCOORD4;
+};
+
 float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
 {
     // compose position

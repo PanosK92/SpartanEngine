@@ -92,6 +92,8 @@ namespace spartan
             12u * 1024u * 1024u, // ~12M vertices
             32u * 1024u * 1024u, // ~32M indices
             128u * 1024u,        // ~128K meshlet bounds
+            10u * 1024u * 1024u, // ~10M unique verts (~index/3)
+            32u * 1024u * 1024u, // ~32M micro indices (~index count)
             256u * 1024u         // ~256K instances
         );
 

@@ -160,7 +160,8 @@ RWStructuredBuffer<uint> visible_triangles              : register(u34);
 StructuredBuffer<MeshletInstance> meshlet_instances     : register(t33);
 StructuredBuffer<uint> visible_triangles                : register(t34);
 #endif
-// triangle_dispatch_args is the indirect dispatch args for the triangle cull, group_count_x is the meshlet survivor count
+// triangle_dispatch_args drives triangle cull (vs) or mesh draws (mesh), group_count_x is the survivor count
+// mesh path uses two slots: [0] opaque, [1] alpha, written by the meshlet cull when split is enabled
 RWStructuredBuffer<IndirectDispatchArgs> triangle_dispatch_args : register(u35);
 
 RWStructuredBuffer<Particle>      particle_buffer_a : register(u36);
@@ -172,7 +173,7 @@ RWStructuredBuffer<uint>  tex_compress_in      : register(u40);
 RWStructuredBuffer<uint4> tex_compress_out     : register(u41); // bc3, bc5 (16 bytes per block)
 RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u42); // bc1 (8 bytes per block)
 
-// the struct is compressed to 16 bytes, see shared_buffers.h MeshletBounds and the meshlet_decode_* helpers below for the dequant
+// the struct is compressed to 24 bytes, see shared_buffers.h MeshletBounds and the meshlet_decode_* helpers below for the dequant
 StructuredBuffer<MeshletBounds> meshlet_bounds   : register(t43);
 
 // dequant helpers, kept in one place so the meshlet cull, triangle cull and the visible-triangle vertex pull stay in lockstep
@@ -200,6 +201,27 @@ uint meshlet_decode_first_index(MeshletBounds mb)
 uint meshlet_decode_triangle_count(MeshletBounds mb)
 {
     return (mb.first_index_tri_count >> MESHLET_TRI_COUNT_SHIFT) & MESHLET_TRI_COUNT_MASK;
+}
+
+uint meshlet_decode_first_vertex(MeshletBounds mb)
+{
+    return mb.first_vertex_vert_count & MESHLET_FIRST_VERTEX_MASK;
+}
+
+uint meshlet_decode_vertex_count(MeshletBounds mb)
+{
+    return (mb.first_vertex_vert_count >> MESHLET_VERT_COUNT_SHIFT) & MESHLET_VERT_COUNT_MASK;
+}
+
+// unique vertex remaps + micro indices for the mesh shader path
+StructuredBuffer<uint> meshlet_vertices      : register(t58);
+StructuredBuffer<uint> meshlet_micro_indices : register(t59);
+
+// micro indices are packed four corners per uint, a corner is a meshlet local vertex id below MESHLET_MAX_VERTICES so a byte is enough
+// the cpu packer pads each mesh block to a multiple of four corners so a block never straddles a uint
+uint meshlet_micro_index_load(uint corner)
+{
+    return (meshlet_micro_indices[corner >> 2u] >> ((corner & 3u) * 8u)) & 0xFFu;
 }
 
 // per-instance cull tasks (read-only, declared as rw to keep slot management uniform with other indirect buffers)

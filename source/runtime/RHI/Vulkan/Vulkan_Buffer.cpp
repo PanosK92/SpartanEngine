@@ -284,7 +284,7 @@ namespace spartan
             case RHI_Buffer_Type::Vertex:
             case RHI_Buffer_Type::Instance:           dst_access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT; break;
             case RHI_Buffer_Type::Index:              dst_access = VK_ACCESS_2_INDEX_READ_BIT;            break;
-            case RHI_Buffer_Type::Storage:            dst_access = VK_ACCESS_2_SHADER_READ_BIT;           break;
+            case RHI_Buffer_Type::Storage:            dst_access = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT; break;
             case RHI_Buffer_Type::Constant:           dst_access = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_UNIFORM_READ_BIT; break;
             case RHI_Buffer_Type::ShaderBindingTable: dst_access = VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR; break;
             case RHI_Buffer_Type::Upload:             dst_access = VK_ACCESS_2_TRANSFER_READ_BIT;         break;

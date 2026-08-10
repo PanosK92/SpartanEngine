@@ -51,6 +51,7 @@ namespace spartan
     bool RHI_Device::m_is_shading_rate_supported                    = false;
     bool RHI_Device::m_xess_supported                               = false;
     bool RHI_Device::m_is_ray_tracing_supported                     = false;
+    bool RHI_Device::m_is_mesh_shaders_supported                    = false;
 
     // misc
     bool RHI_Device::m_wide_lines                = false;

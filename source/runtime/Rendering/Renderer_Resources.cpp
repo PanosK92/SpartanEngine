@@ -163,10 +163,10 @@ namespace spartan
                 (string("visible_triangles_") + to_string(i)).c_str()
             );
 
-            // single-slot indirect dispatch args for the triangle cull pass, group_count_x is bumped atomically by the meshlet cull
+            // single-slot for vs triangle cull, two-slot for mesh path (0 opaque, 1 alpha)
             fr.triangle_dispatch_args = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDispatchArgs)),
-                1, nullptr, true,
+                2, nullptr, true,
                 (string("triangle_dispatch_args_") + to_string(i)).c_str()
             );
 
@@ -915,7 +915,7 @@ namespace spartan
     {
         const string sd = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/";
 
-        // shader compile table, set rt_only for shaders that should only compile when ray tracing is supported
+        // shader compile table, set rt_only / ms_only for shaders that need optional device features
         struct ShaderEntry
         {
             Renderer_Shader id;
@@ -926,9 +926,11 @@ namespace spartan
             bool            async   = true;
             bool            rt_only = false;
             const char*     define2 = nullptr;
+            bool            ms_only = false;
         };
 
         const bool rt = RHI_Device::IsSupportedRayTracing();
+        const bool ms = RHI_Device::IsSupportedMeshShaders();
 
         const ShaderEntry table[] =
         {
@@ -1026,6 +1028,11 @@ namespace spartan
             { Renderer_Shader::gbuffer_indirect_p,                    RHI_Shader_Type::Pixel,   "g_buffer.hlsl",                              RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
             { Renderer_Shader::depth_prepass_indirect_v,              RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "INDIRECT_DRAW"        },
             { Renderer_Shader::depth_prepass_indirect_alpha_test_p,   RHI_Shader_Type::Pixel,   "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "ALPHA_TEST_INDIRECT"  },
+            { Renderer_Shader::depth_prepass_mesh_alpha_p,            RHI_Shader_Type::Pixel,   "depth_prepass.hlsl",                         RHI_Vertex_Type::Max, "ALPHA_TEST_INDIRECT", true, false, "DEPTH_MESH_ALPHA", true },
+            { Renderer_Shader::meshlet_mesh_m,                        RHI_Shader_Type::MeshShader,    "meshlet_mesh.hlsl",                          RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
+            { Renderer_Shader::meshlet_mesh_alpha_m,                  RHI_Shader_Type::MeshShader,    "meshlet_mesh.hlsl",                          RHI_Vertex_Type::Max, "GBUFFER_ALPHA", true, false, nullptr, true },
+            { Renderer_Shader::meshlet_mesh_depth_m,                  RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, nullptr, true, false, nullptr, true },
+            { Renderer_Shader::meshlet_mesh_depth_alpha_m,            RHI_Shader_Type::MeshShader,    "meshlet_mesh_depth.hlsl",                    RHI_Vertex_Type::Max, "DEPTH_ALPHA", true, false, nullptr, true },
             { Renderer_Shader::meshlet_visualize_v,                   RHI_Shader_Type::Vertex,  "meshlet_visualize.hlsl"                                                     },
             { Renderer_Shader::meshlet_visualize_p,                   RHI_Shader_Type::Pixel,   "meshlet_visualize.hlsl"                                                     },
 
@@ -1093,6 +1100,10 @@ namespace spartan
         for (const ShaderEntry& e : table)
         {
             if (e.rt_only && !rt)
+            {
+                continue;
+            }
+            if (e.ms_only && !ms)
             {
                 continue;
             }

@@ -118,8 +118,8 @@ namespace spartan::d3d12_descriptors
 namespace spartan::d3d12_root_slot
 {
     // buffers bound through Renderer_BindingsUav are declared as t registers in the stages that only read them, so the srv table must span the same index range as the uav table
-    constexpr uint32_t srv_space0_count   = 57; // t0..t56
-    constexpr uint32_t uav_space0_count   = 57; // u0..u56
+    constexpr uint32_t srv_space0_count   = 60; // t0..t59
+    constexpr uint32_t uav_space0_count   = 60; // u0..u59
     constexpr uint32_t cbv_frame          = 0;  // CBV b0 space0
     constexpr uint32_t push_constants     = 1;  // 32-bit root constants b1 space0
     constexpr uint32_t srv_table_space0   = 2;  // t0..t56 space0

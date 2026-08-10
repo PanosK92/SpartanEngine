@@ -206,6 +206,7 @@ namespace spartan
         PFN_vkCmdSetFragmentShadingRateKHR    set_fragment_shading_rate      = nullptr;
         PFN_vkGetBufferDeviceAddress          get_buffer_device_address      = nullptr;
         PFN_vkDestroyAccelerationStructureKHR destroy_acceleration_structure = nullptr;
+        PFN_vkCmdDrawMeshTasksIndirectEXT     draw_mesh_tasks_indirect       = nullptr;
 
         void load(void** out_func, const char* name)
         {
@@ -213,6 +214,15 @@ namespace spartan
             if (!*out_func)
             {
                 SP_LOG_ERROR("Failed to get function pointer for %s", name);
+            }
+        }
+
+        void load_device(void** out_func, const char* name)
+        {
+            *out_func = reinterpret_cast<void*>(vkGetDeviceProcAddr(static_cast<VkDevice>(RHI_Context::device), name));
+            if (!*out_func)
+            {
+                SP_LOG_ERROR("Failed to get device function pointer for %s", name);
             }
         }
     
@@ -243,6 +253,14 @@ namespace spartan
 
             // acceleration structure
             load(reinterpret_cast<void**>(&destroy_acceleration_structure), "vkDestroyAccelerationStructureKHR");
+        }
+
+        void get_pointers_from_device()
+        {
+            if (RHI_Device::IsSupportedMeshShaders())
+            {
+                load_device(reinterpret_cast<void**>(&draw_mesh_tasks_indirect), "vkCmdDrawMeshTasksIndirectEXT");
+            }
         }
     }
 
@@ -282,7 +300,9 @@ namespace spartan
             "VK_KHR_ray_tracing_pipeline",
             "VK_KHR_deferred_host_operations",
             "VK_KHR_ray_query",
-            "VK_KHR_ray_tracing_maintenance1"
+            "VK_KHR_ray_tracing_maintenance1",
+            // mesh shaders
+            VK_EXT_MESH_SHADER_EXTENSION_NAME
         };
         bool memory_priority_supported              = false;
         bool memory_priority_enabled                = false;
@@ -929,19 +949,27 @@ namespace spartan
                 }
                 else if (pipeline_state.IsGraphics())
                 {
-                    SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                    merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetDescriptors());
-        
+                    if (pipeline_state.HasMeshShaders())
+                    {
+                        SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::MeshShader]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::MeshShader]->GetDescriptors());
+                    }
+                    else
+                    {
+                        SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetDescriptors());
+                    }
+
                     if (pipeline_state.shaders[RHI_Shader_Type::Pixel])
                     {
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::Pixel]->GetDescriptors());
                     }
-        
+
                     if (pipeline_state.shaders[RHI_Shader_Type::Hull])
                     {
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::Hull]->GetDescriptors());
                     }
-        
+
                     if (pipeline_state.shaders[RHI_Shader_Type::Domain])
                     {
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::Domain]->GetDescriptors());
@@ -956,7 +984,7 @@ namespace spartan
                     {
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayMiss]->GetDescriptors());
                     }
-        
+
                     if (pipeline_state.shaders[RHI_Shader_Type::RayHit])
                     {
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayHit]->GetDescriptors());
@@ -1063,6 +1091,8 @@ namespace spartan
                 layout_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT |
                                                               VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                                               VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                                              VK_SHADER_STAGE_TASK_BIT_EXT |
+                                                              VK_SHADER_STAGE_MESH_BIT_EXT |
                                                               VK_SHADER_STAGE_FRAGMENT_BIT |
                                                               VK_SHADER_STAGE_COMPUTE_BIT |
                                                               VK_SHADER_STAGE_RAYGEN_BIT_KHR |
@@ -1222,8 +1252,9 @@ namespace spartan
         VkPhysicalDeviceRayQueryFeaturesKHR features_ray_query                       = {};
         VkPhysicalDeviceAccelerationStructureFeaturesKHR features_accel_struct       = {};
         VkPhysicalDeviceRayTracingPipelineFeaturesKHR features_ray_tracing_pipeline  = {};
+        VkPhysicalDeviceMeshShaderFeaturesEXT features_mesh_shader                   = {};
 
-        void detect(bool* is_shading_rate_supported, bool* is_xess_supported, bool* is_ray_tracing_supported)
+        void detect(bool* is_shading_rate_supported, bool* is_xess_supported, bool* is_ray_tracing_supported, bool* is_mesh_shaders_supported)
         {
             // features that will be enabled
             features_vrs.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
@@ -1244,8 +1275,10 @@ namespace spartan
             features_1_3.pNext                  = &features_1_2;
             features_mutable_descriptor.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
             features_mutable_descriptor.pNext   = &features_1_3;
+            features_mesh_shader.sType          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+            features_mesh_shader.pNext          = &features_mutable_descriptor;
             features_accel_struct.sType         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-            features_accel_struct.pNext         = &features_mutable_descriptor;
+            features_accel_struct.pNext         = &features_mesh_shader;
             features_ray_query.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
             features_ray_query.pNext            = &features_accel_struct;
             features_ray_tracing_pipeline.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
@@ -1280,9 +1313,12 @@ namespace spartan
             VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT support_mutable_descriptor = {};
             support_mutable_descriptor.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
             support_mutable_descriptor.pNext                                            = &support_1_3;
+            VkPhysicalDeviceMeshShaderFeaturesEXT support_mesh_shader                   = {};
+            support_mesh_shader.sType                                                   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+            support_mesh_shader.pNext                                                   = &support_mutable_descriptor;
             VkPhysicalDeviceAccelerationStructureFeaturesKHR support_accel_struct       = {};
             support_accel_struct.sType                                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-            support_accel_struct.pNext                                                  = &support_mutable_descriptor;
+            support_accel_struct.pNext                                                  = &support_mesh_shader;
             VkPhysicalDeviceRayQueryFeaturesKHR support_ray_query                       = {};
             support_ray_query.sType                                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
             support_ray_query.pNext                                                     = &support_accel_struct;
@@ -1484,6 +1520,25 @@ namespace spartan
                         features.pNext = features_ray_tracing_pipeline.pNext;
                     }
                 }
+
+                // mesh shaders
+                {
+                    *is_mesh_shaders_supported = support_mesh_shader.meshShader == VK_TRUE;
+
+                    if (*is_mesh_shaders_supported)
+                    {
+                        features_mesh_shader.meshShader = VK_TRUE;
+                        features_mesh_shader.taskShader = support_mesh_shader.taskShader;
+                        SP_LOG_INFO("VK_EXT_mesh_shader supported (task shader: %s)",
+                            support_mesh_shader.taskShader == VK_TRUE ? "yes" : "no");
+                    }
+                    else
+                    {
+                        // remove from chain
+                        features_accel_struct.pNext = features_mesh_shader.pNext;
+                    }
+                }
+
                 // directx shader compiler spir-v output automatically enables certain capabilities
                 {
                     // geometry
@@ -1796,7 +1851,7 @@ namespace spartan
             }
   
             vector<const char*> extensions_supported = extensions::get_extensions_device();
-            device_features::detect(&m_is_shading_rate_supported, &m_xess_supported, &m_is_ray_tracing_supported);
+            device_features::detect(&m_is_shading_rate_supported, &m_xess_supported, &m_is_ray_tracing_supported, &m_is_mesh_shaders_supported);
 
             // create
             {
@@ -1810,6 +1865,7 @@ namespace spartan
 
                 SP_ASSERT_VK(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device));
                 SP_LOG_INFO("Vulkan %s", vulkan_version::to_c_str(vulkan_version::used));
+                functions::get_pointers_from_device();
             }
         }
 

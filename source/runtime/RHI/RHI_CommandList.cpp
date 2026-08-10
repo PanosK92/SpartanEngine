@@ -697,6 +697,15 @@ namespace spartan
         }
     }
 
+    void RHI_CommandList::PrepareBufferForGraphics(RHI_Buffer* buffer)
+    {
+        if (buffer)
+        {
+            InsertBarrier(RHI_Barrier::buffer_sync(buffer).from(RHI_Barrier_Scope::Compute).to(RHI_Barrier_Scope::Graphics));
+            FlushBarriers();
+        }
+    }
+
     void RHI_CommandList::Dispatch(RHI_Texture* texture, float resolution_scale /*= 1.0f*/)
     {
         const uint32_t thread_group_size = 8;

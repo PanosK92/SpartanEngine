@@ -400,9 +400,44 @@ struct MeshletInstance
     SHARED_UINT padding0       SHARED_DEFAULT(0);
 };
 
+// per-meshlet bounding sphere and topology ranges
+// center/radius are quantized into the lod's local aabb (drawdata.lod_aabb_min, drawdata.lod_aabb_extent), the cull shader dequantizes on read
+// first_index is relative to the lod's index_offset within the global index buffer, triangle_count is packed into the high 7 bits
+// first_vertex indexes the packed unique-vertex remap buffer used by mesh shaders, vertex_count is packed into the high 7 bits
+// first_micro indexes the packed micro-index buffer (one uint local index per corner, 3 * triangle_count entries)
+// the bounds are conservative, the cpu-side packer pads radius to cover center/radius quantization error so culling can never reject a sphere that the true geometry occupied
+struct MeshletBounds
+{
+    // [u16 cx | u16 cy] center x/y as unorm quantized into the lod aabb
+    SHARED_UINT center_xy             SHARED_DEFAULT(0);
+    // [u16 cz | u16 r] center z as unorm into the lod aabb, radius as unorm into the lod aabb diagonal length
+    SHARED_UINT center_z_radius       SHARED_DEFAULT(0);
+    // backface cone, [s8 ax | s8 ay | s8 az | s8 cutoff], snorm, cutoff = 127 means degenerate cone -> no backface cull
+    SHARED_UINT cone_axis_cutoff      SHARED_DEFAULT(0);
+    // [bits 0..24 first_index] + [bits 25..31 triangle_count], first_index max 32m (33,554,432), triangle_count max 127 (engine cap 124)
+    SHARED_UINT first_index_tri_count SHARED_DEFAULT(0);
+    // [bits 0..24 first_vertex] + [bits 25..31 vertex_count], first_vertex into the unique remap buffer, vertex_count max 64
+    SHARED_UINT first_vertex_vert_count SHARED_DEFAULT(0);
+    // byte/element offset into the micro-index buffer, one uint local index per triangle corner
+    SHARED_UINT first_micro           SHARED_DEFAULT(0);
+};
+// packing helpers for the meshlet bounds, kept here so cpu builder and gpu cull stay in lockstep
+#define MESHLET_FIRST_INDEX_BITS   25u
+#define MESHLET_FIRST_INDEX_MAX    ((1u << MESHLET_FIRST_INDEX_BITS) - 1u)
+#define MESHLET_FIRST_INDEX_MASK   MESHLET_FIRST_INDEX_MAX
+#define MESHLET_TRI_COUNT_SHIFT    MESHLET_FIRST_INDEX_BITS
+#define MESHLET_TRI_COUNT_MASK     0x7Fu
+#define MESHLET_FIRST_VERTEX_BITS  25u
+#define MESHLET_FIRST_VERTEX_MAX   ((1u << MESHLET_FIRST_VERTEX_BITS) - 1u)
+#define MESHLET_FIRST_VERTEX_MASK  MESHLET_FIRST_VERTEX_MAX
+#define MESHLET_VERT_COUNT_SHIFT   MESHLET_FIRST_VERTEX_BITS
+#define MESHLET_VERT_COUNT_MASK    0x7Fu
+
 // must mirror meshlet_max_triangles in GeometryProcessing.h, 124 triangles -> 372 indices
 #define MESHLET_MAX_TRIANGLES 124
 #define MESHLET_MAX_INDICES   (MESHLET_MAX_TRIANGLES * 3)
+#define MESHLET_MAX_VERTICES  64
+#define MESH_SHADER_NUMTHREADS 32
 
 // clustered lighting grid dimensions, 16x9 matches a 16:9 aspect ratio and 24 exponential z slices
 // keep these in sync with the cluster_z_scale, cluster_z_bias compute on the cpu
@@ -418,28 +453,6 @@ struct MeshletInstance
 #define VISIBLE_TRI_PACK(mi, tri) (((mi) << 8u) | ((tri) & 0xffu))
 #define VISIBLE_TRI_MI(packed)    ((packed) >> 8u)
 #define VISIBLE_TRI_IDX(packed)   ((packed) & 0xffu)
-
-// per-meshlet bounding sphere and local index range (16 bytes, compressed)
-// center/radius are quantized into the lod's local aabb (drawdata.lod_aabb_min, drawdata.lod_aabb_extent), the cull shader dequantizes on read
-// first_index is relative to the lod's index_offset within the global index buffer, triangle_count is packed into the high 7 bits
-// the bounds are conservative, the cpu-side packer pads radius to cover center/radius quantization error so culling can never reject a sphere that the true geometry occupied
-struct MeshletBounds
-{
-    // [u16 cx | u16 cy] center x/y as unorm quantized into the lod aabb
-    SHARED_UINT center_xy             SHARED_DEFAULT(0);
-    // [u16 cz | u16 r] center z as unorm into the lod aabb, radius as unorm into the lod aabb diagonal length
-    SHARED_UINT center_z_radius       SHARED_DEFAULT(0);
-    // backface cone, [s8 ax | s8 ay | s8 az | s8 cutoff], snorm, cutoff = 127 means degenerate cone -> no backface cull
-    SHARED_UINT cone_axis_cutoff      SHARED_DEFAULT(0);
-    // [bits 0..24 first_index] + [bits 25..31 triangle_count], first_index max 32m (33,554,432), triangle_count max 127 (engine cap 124)
-    SHARED_UINT first_index_tri_count SHARED_DEFAULT(0);
-};
-// packing helpers for the meshlet bounds, kept here so cpu builder and gpu cull stay in lockstep
-#define MESHLET_FIRST_INDEX_BITS   25u
-#define MESHLET_FIRST_INDEX_MAX    ((1u << MESHLET_FIRST_INDEX_BITS) - 1u)
-#define MESHLET_FIRST_INDEX_MASK   MESHLET_FIRST_INDEX_MAX
-#define MESHLET_TRI_COUNT_SHIFT    MESHLET_FIRST_INDEX_BITS
-#define MESHLET_TRI_COUNT_MASK     0x7Fu
 
 // vertex pulling - global geometry buffer exposed as a structured buffer (24 bytes)
 // uv is half2, normal/tangent are octahedral snorm 16:16, decoded in shader via unpack_vertex_*
@@ -553,6 +566,7 @@ namespace spartan
     using Sb_GrassInstance    = GrassInstance;
 
     static_assert(sizeof(Sb_IndirectDrawArgs) == sizeof(uint32_t) * 5);
+    static_assert(sizeof(Sb_MeshletBounds) == sizeof(uint32_t) * 6);
 }
 #else
 // hlsl backward compatibility alias

@@ -128,6 +128,10 @@ namespace spartan
             {
                 stage_flags |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
             }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::MeshShader))
+            {
+                stage_flags |= VK_SHADER_STAGE_MESH_BIT_EXT;
+            }
 
             auto& binding              = layout_bindings[i];
             binding.binding            = desc.slot;

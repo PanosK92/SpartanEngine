@@ -534,6 +534,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("AABBs", "r.aabb");
                     option_check_box("Wireframe", "r.wireframe");
                     option_check_box("Occlusion culling", "r.hiz_occlusion", "For development purposes");
+                    option_check_box("Mesh shaders", "r.mesh_shaders", "Primary opaque path when supported, otherwise vertex-shader pull");
                 }
 
                 ImGui::EndTable();

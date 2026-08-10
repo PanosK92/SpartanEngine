@@ -135,9 +135,11 @@ namespace spartan
         RHI_Buffer* GetVertexBuffer();
 
         // global geometry buffer offsets
-        uint32_t GetGlobalVertexOffset() const  { return m_global_vertex_offset; }
-        uint32_t GetGlobalIndexOffset() const   { return m_global_index_offset; }
-        uint32_t GetGlobalMeshletOffset() const { return m_global_meshlet_offset; }
+        uint32_t GetGlobalVertexOffset() const           { return m_global_vertex_offset; }
+        uint32_t GetGlobalIndexOffset() const            { return m_global_index_offset; }
+        uint32_t GetGlobalMeshletOffset() const          { return m_global_meshlet_offset; }
+        uint32_t GetGlobalMeshletVertexOffset() const    { return m_global_meshlet_vertex_offset; }
+        uint32_t GetGlobalMeshletMicroOffset() const     { return m_global_meshlet_micro_offset; }
 
         // root entity
         Entity* GetRootEntity() { return m_root_entity; }
@@ -182,14 +184,20 @@ namespace spartan
         std::vector<uint32_t> m_indices;                 // all indices of a model file
         std::vector<SubMesh> m_sub_meshes;               // tracks sub-meshes and lods within the above vectors
         std::vector<Sb_MeshletBounds> m_meshlets;        // per-lod meshlet bounding spheres + index ranges
+        std::vector<uint32_t> m_meshlet_vertices;        // packed unique-vertex remaps across all lods
+        std::vector<uint32_t> m_meshlet_micro_indices;   // packed micro-indices across all lods
 
         // global geometry buffer offsets (base offsets into the shared vertex/index/meshlet buffers)
-        uint32_t m_global_vertex_offset  = 0;
-        uint32_t m_global_index_offset   = 0;
-        uint32_t m_global_meshlet_offset = 0;
-        uint32_t m_global_vertex_capacity  = 0;
-        uint32_t m_global_index_capacity   = 0;
-        uint32_t m_global_meshlet_capacity = 0;
+        uint32_t m_global_vertex_offset         = 0;
+        uint32_t m_global_index_offset          = 0;
+        uint32_t m_global_meshlet_offset        = 0;
+        uint32_t m_global_meshlet_vertex_offset = 0;
+        uint32_t m_global_meshlet_micro_offset  = 0;
+        uint32_t m_global_vertex_capacity         = 0;
+        uint32_t m_global_index_capacity          = 0;
+        uint32_t m_global_meshlet_capacity        = 0;
+        uint32_t m_global_meshlet_vertex_capacity = 0;
+        uint32_t m_global_meshlet_micro_capacity  = 0;
 
         // acceleration structures
         std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh

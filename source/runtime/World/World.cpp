@@ -1186,6 +1186,10 @@ namespace spartan
         }
 
         pending_remove.clear();
+
+        // the tracked lists still point at the entities that were just freed, RemoveEntity
+        // only flagged a resolve for the frame that queued the removal, not for this one
+        resolve = true;
     }
 
     void World::ProcessPendingAdditions()

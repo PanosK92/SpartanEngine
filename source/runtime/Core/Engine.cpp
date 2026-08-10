@@ -114,6 +114,7 @@ namespace spartan
                 bool ray_tracing_supported = RHI_Device::IsSupportedRayTracing();
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", std::to_string(static_cast<float>(ray_tracing_supported)));
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_shadows", std::to_string(static_cast<float>(ray_tracing_supported)));
+                ConsoleRegistry::Get().SetValueFromString("r.mesh_shaders", std::to_string(static_cast<float>(RHI_Device::IsSupportedMeshShaders())));
             }
 
             Window::PumpEvents();

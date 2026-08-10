@@ -93,6 +93,11 @@ namespace spartan
                 arguments.emplace_back("-D");
                 arguments.emplace_back("SP_SHADER_STAGE_COMPUTE=1");
             }
+            if (m_shader_type == RHI_Shader_Type::MeshShader)
+            {
+                arguments.emplace_back("-D");
+                arguments.emplace_back("SP_SHADER_STAGE_MESH=1");
+            }
             #ifdef DEBUG                                                    
             arguments.emplace_back("-Od");                      // disable optimizations
             arguments.emplace_back("-Zi");                      // enable debug information

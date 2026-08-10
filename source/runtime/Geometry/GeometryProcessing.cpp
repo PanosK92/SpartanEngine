@@ -328,10 +328,14 @@ namespace spartan::geometry_processing
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,
         std::vector<Sb_MeshletBounds>& meshlets_out,
+        std::vector<uint32_t>& unique_vertices_out,
+        std::vector<uint32_t>& micro_indices_out,
         math::BoundingBox& lod_aabb_out
     )
     {
         meshlets_out.clear();
+        unique_vertices_out.clear();
+        micro_indices_out.clear();
         lod_aabb_out = math::BoundingBox::Zero;
 
         const size_t index_count  = indices.size();
@@ -394,20 +398,32 @@ namespace spartan::geometry_processing
         meshlet_triangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
         meshlets.resize(meshlet_count);
 
-        // repack the lod's index buffer so each meshlet occupies a contiguous range
+        // repack the lod's index buffer so each meshlet occupies a contiguous range (vs fallback path)
+        // also keep unique verts + micro indices for the mesh shader path
         std::vector<uint32_t> repacked;
         repacked.reserve(index_count);
+        unique_vertices_out.reserve(meshlet_vertices.size());
+        micro_indices_out.reserve(index_count);
         meshlets_out.reserve(meshlet_count);
 
         for (size_t m = 0; m < meshlet_count; ++m)
         {
             const meshopt_Meshlet& meshlet = meshlets[m];
 
-            Sb_MeshletBounds bounds      = {};
-            const uint32_t first_index   = static_cast<uint32_t>(repacked.size());
+            Sb_MeshletBounds bounds       = {};
+            const uint32_t first_index    = static_cast<uint32_t>(repacked.size());
+            const uint32_t first_vertex   = static_cast<uint32_t>(unique_vertices_out.size());
+            const uint32_t first_micro    = static_cast<uint32_t>(micro_indices_out.size());
             const uint32_t triangle_count = meshlet.triangle_count;
+            const uint32_t vertex_count_m = meshlet.vertex_count;
 
-            // emit triangles for this meshlet
+            // unique vertex remap for mesh shaders
+            for (uint32_t v = 0; v < vertex_count_m; ++v)
+            {
+                unique_vertices_out.push_back(meshlet_vertices[meshlet.vertex_offset + v]);
+            }
+
+            // emit absolute indices for the vs fallback and micro indices for the mesh path
             for (uint32_t t = 0; t < triangle_count; ++t)
             {
                 const uint8_t i0 = meshlet_triangles[meshlet.triangle_offset + t * 3 + 0];
@@ -417,6 +433,10 @@ namespace spartan::geometry_processing
                 repacked.push_back(meshlet_vertices[meshlet.vertex_offset + i0]);
                 repacked.push_back(meshlet_vertices[meshlet.vertex_offset + i1]);
                 repacked.push_back(meshlet_vertices[meshlet.vertex_offset + i2]);
+
+                micro_indices_out.push_back(i0);
+                micro_indices_out.push_back(i1);
+                micro_indices_out.push_back(i2);
             }
 
             // bounding sphere for hi-z meshlet culling
@@ -454,10 +474,16 @@ namespace spartan::geometry_processing
             const uint32_t cc = static_cast<uint32_t>(static_cast<uint8_t>(meshlet_bounds.cone_cutoff_s8));
             bounds.cone_axis_cutoff = ax | (ay << 8) | (az << 16) | (cc << 24);
 
-            // pack first_index (25 bits, max ~33m) and triangle_count (7 bits, engine cap 124) into one uint
+            // pack first_index (25 bits) and triangle_count (7 bits)
             SP_ASSERT_MSG(first_index <= MESHLET_FIRST_INDEX_MAX,    "Meshlet first_index exceeds the 25-bit pack budget");
             SP_ASSERT_MSG(triangle_count <= MESHLET_TRI_COUNT_MASK,  "Meshlet triangle_count exceeds the 7-bit pack budget");
             bounds.first_index_tri_count = (first_index & MESHLET_FIRST_INDEX_MASK) | ((triangle_count & MESHLET_TRI_COUNT_MASK) << MESHLET_TRI_COUNT_SHIFT);
+
+            // pack first_vertex (25 bits) and vertex_count (7 bits)
+            SP_ASSERT_MSG(first_vertex <= MESHLET_FIRST_VERTEX_MAX,  "Meshlet first_vertex exceeds the 25-bit pack budget");
+            SP_ASSERT_MSG(vertex_count_m <= MESHLET_VERT_COUNT_MASK, "Meshlet vertex_count exceeds the 7-bit pack budget");
+            bounds.first_vertex_vert_count = (first_vertex & MESHLET_FIRST_VERTEX_MASK) | ((vertex_count_m & MESHLET_VERT_COUNT_MASK) << MESHLET_VERT_COUNT_SHIFT);
+            bounds.first_micro             = first_micro;
 
             meshlets_out.push_back(bounds);
         }

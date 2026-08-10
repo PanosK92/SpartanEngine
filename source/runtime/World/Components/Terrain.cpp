@@ -26,6 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Terrain.h"
 #include "Render.h"
 #include "Water.h"
+#include "Spline.h"
+#include "Light.h"
+#include "Camera.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../TerrainSystem.h"
@@ -87,6 +90,14 @@ namespace spartan
             return false;
         }
 
+        // control points and spawned props are created and placed by the spline itself, moving
+        // them from the outside would only be undone on the next regeneration
+        bool is_spline_owned(Entity* entity)
+        {
+            const string& name = entity->GetObjectName();
+            return name.find("spline_point_") == 0 || name.find("spline_instance_") == 0;
+        }
+
         bool entity_has_snappable_mesh(Entity* entity)
         {
             if (!entity)
@@ -99,8 +110,47 @@ namespace spartan
                 return false;
             }
 
+            // roads and other splines snap via control points, not as a rigid mesh, and whatever
+            // the spline spawned is placed by the spline itself, but a hand placed wall parented
+            // to a road is ordinary geometry and has to land like everything else
+            if (entity->GetComponent<Spline>())
+            {
+                return false;
+            }
+
+            for (Entity* current = entity; current; current = current->GetParent())
+            {
+                if (is_spline_owned(current))
+                {
+                    return false;
+                }
+            }
+
             Render* render = entity->GetComponent<Render>();
             return render && render->GetMesh();
+        }
+
+        void collect_spline_entities(Entity* root, vector<Entity*>& out)
+        {
+            if (!root)
+            {
+                return;
+            }
+
+            if (root->GetComponent<Spline>())
+            {
+                out.push_back(root);
+            }
+
+            vector<Entity*> descendants;
+            root->GetDescendants(&descendants);
+            for (Entity* descendant : descendants)
+            {
+                if (descendant && descendant->GetComponent<Spline>())
+                {
+                    out.push_back(descendant);
+                }
+            }
         }
 
         void collect_snappable_entities(Entity* root, vector<Entity*>& out)
@@ -126,6 +176,58 @@ namespace spartan
             }
         }
 
+        // topmost entities whose whole subtree missed the snap, moving one of these cannot
+        // disturb anything that has already been placed
+        void collect_unsnapped_roots(
+            Entity* root,
+            const unordered_set<Entity*>& snapped,
+            const unordered_set<Entity*>& has_snapped_below,
+            vector<Entity*>& out
+        )
+        {
+            if (!root || is_terrain_tile_or_water(root))
+            {
+                return;
+            }
+
+            // a spline rides its own path, but a camera or marker parented to it is just cargo
+            // and still has to come down with everything else
+            if (root->GetComponent<Spline>())
+            {
+                const uint32_t spline_child_count = root->GetChildrenCount();
+                for (uint32_t i = 0; i < spline_child_count; i++)
+                {
+                    Entity* child = root->GetChildByIndex(i);
+                    if (!child || is_spline_owned(child))
+                    {
+                        continue;
+                    }
+
+                    collect_unsnapped_roots(child, snapped, has_snapped_below, out);
+                }
+
+                return;
+            }
+
+            // everything under something that snapped already came along for the ride
+            if (snapped.count(root) > 0)
+            {
+                return;
+            }
+
+            if (has_snapped_below.count(root) == 0)
+            {
+                out.push_back(root);
+                return;
+            }
+
+            const uint32_t child_count = root->GetChildrenCount();
+            for (uint32_t i = 0; i < child_count; i++)
+            {
+                collect_unsnapped_roots(root->GetChildByIndex(i), snapped, has_snapped_below, out);
+            }
+        }
+
         void apply_surface_alignment(Entity* entity, const Vector3& normal)
         {
             Vector3 forward = entity->GetForward();
@@ -144,11 +246,49 @@ namespace spartan
             entity->SetRotation(align * yaw);
         }
 
-        // drop a vertical ray from above the entity, prefer the closest surface
+        // world aabb recomputed here, the cached one lags a tick behind transform changes
+        bool get_world_aabb(Entity* entity, BoundingBox& aabb_out)
+        {
+            Render* render = entity ? entity->GetComponent<Render>() : nullptr;
+            if (!render || !render->GetMesh())
+            {
+                return false;
+            }
+
+            aabb_out = render->HasInstancing()
+                ? render->GetBoundingBox()
+                : render->GetBoundingBoxMesh() * entity->GetMatrix();
+
+            return true;
+        }
+
+        // a probe grid coarser than the heightfield steps straight over ridges, and the mesh that
+        // lands between two probes ends up under the ground, so follow the grid rather than a
+        // fixed spacing, the cap only bites on the kilometre wide ground slabs
+        uint32_t footprint_samples(float span, float grid_step)
+        {
+            const float step     = max(grid_step, 0.5f);
+            const uint32_t count = static_cast<uint32_t>(max(span, 0.0f) / step) + 2;
+            return min(count, 128u);
+        }
+
+        // lowest point of the entity in world space, its origin when it carries no mesh
+        float entity_bottom(Entity* entity)
+        {
+            BoundingBox aabb;
+            if (entity && get_world_aabb(entity, aabb))
+            {
+                return aabb.GetMin().y;
+            }
+
+            return entity ? entity->GetPosition().y : 0.0f;
+        }
+
+        // drop a vertical ray from the top of the entity, the heightfield is always the floor
         bool find_snap_surface(
             Entity* entity,
             Terrain* terrain,
-            float offset,
+            const unordered_set<Entity*>& ignored,
             Vector3& position_out,
             Vector3& normal_out
         )
@@ -156,18 +296,34 @@ namespace spartan
             const Vector3 position = entity->GetPosition();
 
             float start_y = position.y + 1.0f;
-            if (Render* render = entity->GetComponent<Render>())
+            BoundingBox entity_aabb;
+            const bool has_aabb = get_world_aabb(entity, entity_aabb);
+            if (has_aabb)
             {
-                start_y = max(start_y, render->GetBoundingBox().GetMax().y + 0.05f);
+                start_y = max(start_y, entity_aabb.GetMax().y + 0.05f);
             }
 
             const Vector3 origin(position.x, start_y, position.z);
             const float max_distance = max(start_y - position.y, 1.0f) + 100000.0f;
 
             bool found = false;
-            float best_distance = numeric_limits<float>::max();
-            Vector3 best_position = position;
+            float best_y = -numeric_limits<float>::max();
             Vector3 best_normal = Vector3::Up;
+
+            // keep the highest surface that is still at or below the entity
+            auto consider = [&start_y, &found, &best_y, &best_normal](float hit_y, const Vector3& hit_normal)
+            {
+                if (hit_y > start_y || hit_y <= best_y)
+                {
+                    return;
+                }
+
+                found       = true;
+                best_y      = hit_y;
+                best_normal = hit_normal.LengthSquared() > epsilon
+                    ? hit_normal.Normalized()
+                    : Vector3::Up;
+            };
 
             // static physics first, buildings and props with colliders
             {
@@ -180,12 +336,16 @@ namespace spartan
                     entity
                 ))
                 {
-                    found = true;
-                    best_distance = physics_hit.distance;
-                    best_position = physics_hit.position;
-                    best_normal = physics_hit.normal.LengthSquared() > epsilon
-                        ? physics_hit.normal.Normalized()
-                        : Vector3::Up;
+                    // never rest on a member of the same snap batch, it may still be floating,
+                    // and let the heightfield speak for the terrain, its collider can be a rebuild behind
+                    const bool usable =
+                        ignored.find(physics_hit.entity) == ignored.end() &&
+                        !is_terrain_tile_or_water(physics_hit.entity);
+
+                    if (usable)
+                    {
+                        consider(physics_hit.position.y, physics_hit.normal);
+                    }
                 }
             }
 
@@ -208,15 +368,26 @@ namespace spartan
                         continue;
                     }
 
+                    if (ignored.find(candidate) != ignored.end())
+                    {
+                        continue;
+                    }
+
                     Render* render = candidate->GetComponent<Render>();
                     if (!render)
                     {
                         continue;
                     }
 
-                    const float aabb_distance = ray.HitDistance(render->GetBoundingBox());
-                    if (aabb_distance == numeric_limits<float>::infinity() ||
-                        aabb_distance >= best_distance)
+                    BoundingBox candidate_aabb;
+                    if (!get_world_aabb(candidate, candidate_aabb))
+                    {
+                        continue;
+                    }
+
+                    // cheap reject, the box must sit under the ray and reach above the current best
+                    if (ray.HitDistance(candidate_aabb) == numeric_limits<float>::infinity() ||
+                        candidate_aabb.GetMax().y <= best_y)
                     {
                         continue;
                     }
@@ -243,40 +414,67 @@ namespace spartan
                         const float distance = ray.HitDistance(
                             p1, p2, p3, &triangle_normal
                         );
-                        if (distance == numeric_limits<float>::infinity() ||
-                            distance >= best_distance)
+                        if (distance == numeric_limits<float>::infinity())
                         {
                             continue;
                         }
 
-                        found = true;
-                        best_distance = distance;
-                        best_position = origin + Vector3::Down * distance;
-                        best_normal = triangle_normal.LengthSquared() > epsilon
-                            ? triangle_normal.Normalized()
-                            : Vector3::Up;
+                        consider(start_y - distance, triangle_normal);
                     }
                 }
             }
 
-            // heightfield fallback when nothing else is under the entity
+            // the heightfield is the floor, it also lifts entities that ended up buried, probed
+            // across the whole footprint so a wide flat mesh never gets half swallowed by a rise
             if (terrain)
             {
-                float terrain_height = 0.0f;
-                if (terrain->SampleHeight(position.x, position.z, terrain_height))
+                float span_min_x = position.x;
+                float span_max_x = position.x;
+                float span_min_z = position.z;
+                float span_max_z = position.z;
+                if (has_aabb)
                 {
-                    const float distance = start_y - terrain_height;
-                    if (distance >= 0.0f && distance < best_distance)
-                    {
-                        found = true;
-                        best_distance = distance;
-                        best_position = Vector3(position.x, terrain_height, position.z);
+                    span_min_x = entity_aabb.GetMin().x;
+                    span_max_x = entity_aabb.GetMax().x;
+                    span_min_z = entity_aabb.GetMin().z;
+                    span_max_z = entity_aabb.GetMax().z;
+                }
 
-                        Vector3 terrain_normal = Vector3::Up;
-                        if (terrain->SampleNormal(position.x, position.z, terrain_normal))
+                const TerrainGridMapping mapping = terrain->GetGridMapping();
+                const uint32_t samples_x         = footprint_samples(span_max_x - span_min_x, mapping.scale_x);
+                const uint32_t samples_z         = footprint_samples(span_max_z - span_min_z, mapping.scale_z);
+
+                float terrain_height = -numeric_limits<float>::max();
+                bool has_terrain     = false;
+
+                for (uint32_t iz = 0; iz < samples_z; iz++)
+                {
+                    for (uint32_t ix = 0; ix < samples_x; ix++)
+                    {
+                        const float u = (samples_x > 1) ? static_cast<float>(ix) / static_cast<float>(samples_x - 1) : 0.5f;
+                        const float v = (samples_z > 1) ? static_cast<float>(iz) / static_cast<float>(samples_z - 1) : 0.5f;
+                        const float x = span_min_x + (span_max_x - span_min_x) * u;
+                        const float z = span_min_z + (span_max_z - span_min_z) * v;
+
+                        float sampled = 0.0f;
+                        if (terrain->SampleHeight(x, z, sampled) && sampled > terrain_height)
                         {
-                            best_normal = terrain_normal;
+                            terrain_height = sampled;
+                            has_terrain    = true;
                         }
+                    }
+                }
+
+                if (has_terrain && (!found || terrain_height > best_y))
+                {
+                    found  = true;
+                    best_y = terrain_height;
+
+                    // the normal still comes from under the pivot, the highest corner is a poor guide
+                    Vector3 terrain_normal = Vector3::Up;
+                    if (terrain->SampleNormal(position.x, position.z, terrain_normal))
+                    {
+                        best_normal = terrain_normal;
                     }
                 }
             }
@@ -286,13 +484,17 @@ namespace spartan
                 return false;
             }
 
-            position_out = best_position;
-            position_out.y += offset;
-            normal_out = best_normal;
+            position_out = Vector3(position.x, best_y, position.z);
+            normal_out   = best_normal;
             return true;
         }
 
-        bool snap_mesh_entity(Entity* entity, Terrain* terrain, float offset)
+        bool snap_mesh_entity(
+            Entity* entity,
+            Terrain* terrain,
+            const unordered_set<Entity*>& ignored,
+            float offset
+        )
         {
             if (!entity || !entity_has_snappable_mesh(entity))
             {
@@ -301,13 +503,136 @@ namespace spartan
 
             Vector3 snap_position;
             Vector3 snap_normal = Vector3::Up;
-            if (!find_snap_surface(entity, terrain, offset, snap_position, snap_normal))
+            if (!find_snap_surface(entity, terrain, ignored, snap_position, snap_normal))
             {
                 return false;
             }
 
-            entity->SetPosition(snap_position);
+            // a wide slab has to stay level, tilting a three kilometre plane by a single degree
+            // swings its far corner twenty six metres, so only small props follow the slope
+            float span = 0.0f;
+            BoundingBox pre_alignment_aabb;
+            if (get_world_aabb(entity, pre_alignment_aabb))
+            {
+                const float span_x = pre_alignment_aabb.GetMax().x - pre_alignment_aabb.GetMin().x;
+                const float span_z = pre_alignment_aabb.GetMax().z - pre_alignment_aabb.GetMin().z;
+                span               = max(span_x, span_z);
+                if (span > 50.0f)
+                {
+                    snap_normal = Vector3::Up;
+                }
+            }
+
+            // rotate first, tilting moves the lowest point of the mesh
             apply_surface_alignment(entity, snap_normal);
+
+            // rest the base of the mesh on the surface, the pivot is rarely at the bottom
+            float pivot_to_bottom = 0.0f;
+            BoundingBox aabb;
+            if (get_world_aabb(entity, aabb))
+            {
+                pivot_to_bottom = entity->GetPosition().y - aabb.GetMin().y;
+            }
+
+            // a surface resting exactly on the ground loses the depth fight and the terrain shows
+            // through it, and the bigger the slab the further away it is seen from, so the gap has
+            // to grow with it or the far end starts flickering through
+            const float clearance = min(max(span * 0.001f, 0.05f), 0.5f);
+
+            entity->SetPosition(Vector3(
+                snap_position.x,
+                snap_position.y + pivot_to_bottom + offset + clearance,
+                snap_position.z
+            ));
+
+            return true;
+        }
+
+        bool snap_entity_position(
+            Entity* entity,
+            Terrain* terrain,
+            const unordered_set<Entity*>& ignored,
+            float offset
+        )
+        {
+            if (!entity)
+            {
+                return false;
+            }
+
+            Vector3 snap_position;
+            Vector3 snap_normal = Vector3::Up;
+            if (!find_snap_surface(entity, terrain, ignored, snap_position, snap_normal))
+            {
+                return false;
+            }
+
+            snap_position.y += offset;
+            entity->SetPosition(snap_position);
+            return true;
+        }
+
+        bool snap_spline_to_terrain(
+            Entity* entity,
+            Terrain* terrain,
+            const unordered_set<Entity*>& ignored,
+            float offset
+        )
+        {
+            if (!entity)
+            {
+                return false;
+            }
+
+            Spline* spline = entity->GetComponent<Spline>();
+            if (!spline)
+            {
+                return false;
+            }
+
+            // dropping only the control points leaves the pivot where it was authored, and every
+            // wall, light and camera parented to the road keeps riding it, so land the pivot too,
+            // the control points are set in world space right after and do not care where it sits
+            if (terrain)
+            {
+                const Vector3 pivot = entity->GetPosition();
+                float pivot_ground  = 0.0f;
+                if (terrain->SampleHeight(pivot.x, pivot.z, pivot_ground))
+                {
+                    entity->SetPosition(Vector3(pivot.x, pivot_ground + offset, pivot.z));
+                }
+            }
+
+            const uint32_t child_count = entity->GetChildrenCount();
+            for (uint32_t i = 0; i < child_count; i++)
+            {
+                Entity* child = entity->GetChildByIndex(i);
+                if (!child)
+                {
+                    continue;
+                }
+
+                if (child->GetObjectName().find("spline_point_") != 0)
+                {
+                    continue;
+                }
+
+                snap_entity_position(child, terrain, ignored, offset);
+            }
+
+            // denser samples between points follow the heightfield
+            spline->SetConformToTerrain(true);
+            if (spline->GetMeshEnabled())
+            {
+                spline->GenerateRoadMesh();
+            }
+
+            // props and lights ride the spline frames, rebuild them onto the new path
+            if (spline->HasSpawnedInstances())
+            {
+                spline->SpawnInstances();
+            }
+
             return true;
         }
 
@@ -1450,35 +1775,200 @@ namespace spartan
 
     bool Terrain::SnapEntityToTerrain(Entity* entity, float offset)
     {
-        if (!entity)
+        return SnapEntitiesToTerrain({ entity }, offset) > 0;
+    }
+
+    bool Terrain::SnapEntityToFlatTerrain(Entity* entity, float offset)
+    {
+        return SnapEntitiesToFlatTerrain({ entity }, offset) > 0;
+    }
+
+    uint32_t Terrain::SnapEntitiesToFlatTerrain(const vector<Entity*>& entities, float offset)
+    {
+        Terrain* terrain = FindActive();
+        if (!terrain)
         {
-            return false;
+            SP_LOG_WARNING("no terrain with a heightfield to flatten");
+            return 0;
         }
 
-        Terrain* terrain = FindActive();
-        vector<Entity*> targets;
-        collect_snappable_entities(entity, targets);
+        // horizontal footprint of everything the snap is about to move
+        float min_x          = numeric_limits<float>::max();
+        float max_x          = -numeric_limits<float>::max();
+        float min_z          = numeric_limits<float>::max();
+        float max_z          = -numeric_limits<float>::max();
+        Entity* driver_min_x = nullptr;
+        Entity* driver_max_x = nullptr;
+        Entity* driver_min_z = nullptr;
+        Entity* driver_max_z = nullptr;
+        bool has_footprint   = false;
+        uint32_t mesh_count  = 0;
 
-        uint32_t count = 0;
-        for (Entity* target : targets)
+        auto grow = [&](const Vector3& point, Entity* part)
         {
-            if (snap_mesh_entity(target, terrain, offset))
+            if (point.x < min_x)
             {
-                count++;
+                min_x        = point.x;
+                driver_min_x = part;
+            }
+            if (point.x > max_x)
+            {
+                max_x        = point.x;
+                driver_max_x = part;
+            }
+            if (point.z < min_z)
+            {
+                min_z        = point.z;
+                driver_min_z = part;
+            }
+            if (point.z > max_z)
+            {
+                max_z        = point.z;
+                driver_max_z = part;
+            }
+
+            has_footprint = true;
+        };
+
+        // only real geometry defines the footprint, a marker or a control point out on the
+        // horizon would otherwise stretch the rectangle across the whole map
+        auto grow_by_entity = [&grow, &mesh_count](Entity* part)
+        {
+            BoundingBox aabb;
+            if (!part || !get_world_aabb(part, aabb))
+            {
+                return;
+            }
+
+            const Vector3 box_min = aabb.GetMin();
+            const Vector3 box_max = aabb.GetMax();
+
+            // an empty or non finite box would drag the rectangle out to infinity
+            const bool usable =
+                isfinite(box_min.x) && isfinite(box_min.z) &&
+                isfinite(box_max.x) && isfinite(box_max.z) &&
+                box_min.x <= box_max.x && box_min.z <= box_max.z;
+
+            if (!usable)
+            {
+                return;
+            }
+
+            mesh_count++;
+            grow(box_min, part);
+            grow(box_max, part);
+        };
+
+        for (Entity* entity : entities)
+        {
+            vector<Entity*> meshes;
+            collect_snappable_entities(entity, meshes);
+            for (Entity* part : meshes)
+            {
+                grow_by_entity(part);
+            }
+
+            // a spline only counts once it has an actual road mesh
+            vector<Entity*> splines;
+            collect_spline_entities(entity, splines);
+            for (Entity* spline_entity : splines)
+            {
+                grow_by_entity(spline_entity);
             }
         }
 
-        return count > 0;
+        if (!has_footprint)
+        {
+            SP_LOG_WARNING("nothing snappable in the selection, no footprint to flatten");
+            return 0;
+        }
+
+        // level the pad at the average ground height under the footprint, least cut and fill
+        const uint32_t axis_samples = 16;
+        float height_sum            = 0.0f;
+        uint32_t height_count       = 0;
+
+        for (uint32_t iz = 0; iz < axis_samples; iz++)
+        {
+            for (uint32_t ix = 0; ix < axis_samples; ix++)
+            {
+                const float u = static_cast<float>(ix) / static_cast<float>(axis_samples - 1);
+                const float v = static_cast<float>(iz) / static_cast<float>(axis_samples - 1);
+                const float x = min_x + (max_x - min_x) * u;
+                const float z = min_z + (max_z - min_z) * v;
+
+                float sampled_height = 0.0f;
+                if (terrain->SampleHeight(x, z, sampled_height))
+                {
+                    height_sum += sampled_height;
+                    height_count++;
+                }
+            }
+        }
+
+        if (height_count == 0)
+        {
+            SP_LOG_WARNING("the selection footprint does not overlap the terrain");
+            return 0;
+        }
+
+        const float pad_height = height_sum / static_cast<float>(height_count);
+
+        // the ramp begins where the pad ends, so a rectangle drawn tight around the geometry puts
+        // rising ground right under the outer edge of every ground plane and buries it, the pad
+        // has to reach past the footprint before it starts climbing back
+        const float overhang = min(max(max(max_x - min_x, max_z - min_z) * 0.02f, 10.0f), 100.0f);
+        min_x -= overhang;
+        max_x += overhang;
+        min_z -= overhang;
+        max_z += overhang;
+
+        // the pad itself stays a hard rectangle, the ramp only lives outside it
+        const float footprint = max(max_x - min_x, max_z - min_z);
+        const float margin    = min(max(footprint * 0.15f, 25.0f), 500.0f);
+
+        auto driver_name = [](Entity* part)
+        {
+            return part ? part->GetObjectName().c_str() : "none";
+        };
+
+        SP_LOG_INFO(
+            "snap flat: %u meshes, rect %.0f x %.0f, pad at %.1f, ramp %.0f",
+            mesh_count, max_x - min_x, max_z - min_z, pad_height, margin
+        );
+        SP_LOG_INFO(
+            "snap flat: extents from -x '%s', +x '%s', -z '%s', +z '%s'",
+            driver_name(driver_min_x),
+            driver_name(driver_max_x),
+            driver_name(driver_min_z),
+            driver_name(driver_max_z)
+        );
+
+        terrain->FlattenRegion(min_x, min_z, max_x, max_z, pad_height, margin);
+
+        return SnapEntitiesToTerrain(entities, offset);
     }
 
     uint32_t Terrain::SnapEntitiesToTerrain(const vector<Entity*>& entities, float offset)
     {
         Terrain* terrain = FindActive();
+        unordered_set<Entity*> unique_splines;
         unordered_set<Entity*> unique_targets;
+        vector<Entity*> splines;
         vector<Entity*> targets;
 
         for (Entity* entity : entities)
         {
+            vector<Entity*> collected_splines;
+            collect_spline_entities(entity, collected_splines);
+            for (Entity* spline_entity : collected_splines)
+            {
+                if (unique_splines.insert(spline_entity).second)
+                {
+                    splines.push_back(spline_entity);
+                }
+            }
+
             vector<Entity*> collected;
             collect_snappable_entities(entity, collected);
             for (Entity* target : collected)
@@ -1490,12 +1980,287 @@ namespace spartan
             }
         }
 
-        uint32_t count = 0;
-        for (Entity* target : targets)
+        // an entity that has not been snapped yet may still be floating, so it cannot serve as
+        // ground, once it lands it becomes a valid surface for whatever sits on top of it
+        unordered_set<Entity*> pending = unique_targets;
+        for (Entity* spline_entity : splines)
         {
-            if (snap_mesh_entity(target, terrain, offset))
+            pending.insert(spline_entity);
+
+            vector<Entity*> spline_descendants;
+            spline_entity->GetDescendants(&spline_descendants);
+            for (Entity* descendant : spline_descendants)
+            {
+                pending.insert(descendant);
+            }
+        }
+
+        uint32_t count = 0;
+        for (Entity* spline_entity : splines)
+        {
+            if (snap_spline_to_terrain(spline_entity, terrain, pending, offset))
             {
                 count++;
+            }
+        }
+
+        // work from the ground up, the lowest entity settles first and then counts as a surface,
+        // so a platform lands on the terrain and everything standing on it stacks onto the platform
+        struct snap_order
+        {
+            Entity* entity;
+            float bottom;
+            uint32_t depth;
+        };
+
+        vector<snap_order> ordered;
+        ordered.reserve(targets.size());
+
+        for (Entity* target : targets)
+        {
+            uint32_t depth = 0;
+            for (Entity* parent = target->GetParent(); parent; parent = parent->GetParent())
+            {
+                depth++;
+            }
+
+            // a parent sorts with its lowest batch descendant, it must never move after they settle
+            float bottom = entity_bottom(target);
+            vector<Entity*> descendants;
+            target->GetDescendants(&descendants);
+            for (Entity* descendant : descendants)
+            {
+                if (unique_targets.count(descendant) > 0)
+                {
+                    bottom = min(bottom, entity_bottom(descendant));
+                }
+            }
+
+            ordered.push_back({ target, bottom, depth });
+        }
+
+        sort(ordered.begin(), ordered.end(), [](const snap_order& a, const snap_order& b)
+        {
+            if (a.bottom != b.bottom)
+            {
+                return a.bottom < b.bottom;
+            }
+
+            return a.depth < b.depth;
+        });
+
+        struct snap_shift
+        {
+            Vector3 position;
+            float delta_y;
+        };
+
+        vector<snap_shift> shifts;
+        unordered_set<Entity*> snapped;
+
+        for (const snap_order& item : ordered)
+        {
+            // it has had its turn, from now on it is ground for whatever sits above it
+            pending.erase(item.entity);
+
+            const float y_before = item.entity->GetPosition().y;
+            if (snap_mesh_entity(item.entity, terrain, pending, offset))
+            {
+                const Vector3 landed = item.entity->GetPosition();
+                shifts.push_back({ landed, landed.y - y_before });
+                snapped.insert(item.entity);
+                count++;
+            }
+        }
+
+        // lights, markers and other mesh free entities cannot be raycast against anything, so they
+        // take the vertical shift of the nearest thing that did move and keep their local layout
+        if (!shifts.empty())
+        {
+            unordered_set<Entity*> has_snapped_below;
+            for (Entity* entity : snapped)
+            {
+                for (Entity* ancestor = entity; ancestor; ancestor = ancestor->GetParent())
+                {
+                    if (!has_snapped_below.insert(ancestor).second)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            vector<Entity*> orphans;
+            for (Entity* entity : entities)
+            {
+                collect_unsnapped_roots(entity, snapped, has_snapped_below, orphans);
+            }
+
+            for (Entity* orphan : orphans)
+            {
+                const Vector3 position = orphan->GetPosition();
+
+                float best_distance = numeric_limits<float>::max();
+                float best_delta    = 0.0f;
+                for (const snap_shift& shift : shifts)
+                {
+                    const float delta_x  = shift.position.x - position.x;
+                    const float delta_z  = shift.position.z - position.z;
+                    const float distance = delta_x * delta_x + delta_z * delta_z;
+
+                    if (distance < best_distance)
+                    {
+                        best_distance = distance;
+                        best_delta    = shift.delta_y;
+                    }
+                }
+
+                orphan->SetPosition(Vector3(position.x, position.y + best_delta, position.z));
+                count++;
+            }
+
+            SP_LOG_INFO(
+                "snap: %zu entities snapped, %zu mesh free entities carried by their neighbours",
+                shifts.size(),
+                orphans.size()
+            );
+        }
+
+        // anything visible left hanging in the air, or swallowed by the ground, is a bug, name the
+        // worst offenders rather than leaving them to be spotted by eye
+        {
+            struct offender
+            {
+                Entity* entity;
+                float amount;
+            };
+
+            vector<offender> floating;
+            vector<offender> buried;
+
+            for (Entity* entity : entities)
+            {
+                vector<Entity*> parts;
+                parts.push_back(entity);
+                entity->GetDescendants(&parts);
+
+                for (Entity* part : parts)
+                {
+                    if (!part || is_terrain_tile_or_water(part))
+                    {
+                        continue;
+                    }
+
+                    // a bare group node has no business on the ground, only things you can see
+                    Render* render    = part->GetComponent<Render>();
+                    const bool meshed = render && render->GetMesh();
+                    const bool visible =
+                        meshed ||
+                        part->GetComponent<Light>() ||
+                        part->GetComponent<Camera>();
+
+                    if (!visible)
+                    {
+                        continue;
+                    }
+
+                    const Vector3 position = part->GetPosition();
+                    float ground           = 0.0f;
+                    if (!terrain->SampleHeight(position.x, position.z, ground))
+                    {
+                        continue;
+                    }
+
+                    // a spline pivot sits far from its own road mesh, so geometry is judged by its
+                    // box and only a light or a camera has to fall back on the pivot
+                    BoundingBox aabb;
+                    const bool has_box = meshed && get_world_aabb(part, aabb);
+                    const float bottom = has_box ? aabb.GetMin().y : position.y;
+
+                    if (bottom - ground > 50.0f)
+                    {
+                        floating.push_back({ part, bottom - ground });
+                    }
+
+                    if (!has_box)
+                    {
+                        continue;
+                    }
+
+                    const Vector3 box_min            = aabb.GetMin();
+                    const Vector3 box_max            = aabb.GetMax();
+                    const TerrainGridMapping mapping = terrain->GetGridMapping();
+                    const uint32_t samples_x         = footprint_samples(box_max.x - box_min.x, mapping.scale_x);
+                    const uint32_t samples_z         = footprint_samples(box_max.z - box_min.z, mapping.scale_z);
+
+                    float highest = ground;
+                    for (uint32_t iz = 0; iz < samples_z; iz++)
+                    {
+                        for (uint32_t ix = 0; ix < samples_x; ix++)
+                        {
+                            const float u = (samples_x > 1) ? static_cast<float>(ix) / static_cast<float>(samples_x - 1) : 0.5f;
+                            const float v = (samples_z > 1) ? static_cast<float>(iz) / static_cast<float>(samples_z - 1) : 0.5f;
+
+                            float sampled = 0.0f;
+                            if (terrain->SampleHeight(
+                                box_min.x + (box_max.x - box_min.x) * u,
+                                box_min.z + (box_max.z - box_min.z) * v,
+                                sampled
+                            ))
+                            {
+                                highest = max(highest, sampled);
+                            }
+                        }
+                    }
+
+                    if (box_max.y < highest - 0.5f)
+                    {
+                        buried.push_back({ part, highest - box_max.y });
+                    }
+                }
+            }
+
+            auto worst_first = [](vector<offender>& list)
+            {
+                sort(list.begin(), list.end(), [](const offender& a, const offender& b)
+                {
+                    return a.amount > b.amount;
+                });
+
+                return min<size_t>(list.size(), 12);
+            };
+
+            if (!floating.empty())
+            {
+                const size_t reported = worst_first(floating);
+                SP_LOG_WARNING("snap: %zu visible entities are still over 50 m above the ground", floating.size());
+
+                for (size_t i = 0; i < reported; i++)
+                {
+                    Entity* parent = floating[i].entity->GetParent();
+                    SP_LOG_WARNING(
+                        "snap: '%s' floats %.0f m, parent '%s'",
+                        floating[i].entity->GetObjectName().c_str(),
+                        floating[i].amount,
+                        parent ? parent->GetObjectName().c_str() : "none"
+                    );
+                }
+            }
+
+            if (!buried.empty())
+            {
+                const size_t reported = worst_first(buried);
+                SP_LOG_WARNING("snap: %zu meshes are completely under the terrain", buried.size());
+
+                for (size_t i = 0; i < reported; i++)
+                {
+                    Entity* parent = buried[i].entity->GetParent();
+                    SP_LOG_WARNING(
+                        "snap: '%s' is buried %.1f m, parent '%s'",
+                        buried[i].entity->GetObjectName().c_str(),
+                        buried[i].amount,
+                        parent ? parent->GetObjectName().c_str() : "none"
+                    );
+                }
             }
         }
 
@@ -1525,6 +2290,69 @@ namespace spartan
             local_center,
             brush
         );
+    }
+
+    bool Terrain::FlattenRegion(
+        float world_min_x,
+        float world_min_z,
+        float world_max_x,
+        float world_max_z,
+        float world_height,
+        float blend_margin
+    )
+    {
+        if (!HasHeightfield())
+        {
+            return false;
+        }
+
+        // the grid lives in terrain local space
+        Vector3 local_min(world_min_x, world_height, world_min_z);
+        Vector3 local_max(world_max_x, world_height, world_max_z);
+        if (Entity* entity = GetEntity())
+        {
+            const Matrix inverse = entity->GetMatrix().Inverted();
+            local_min = inverse * local_min;
+            local_max = inverse * local_max;
+        }
+
+        const float min_x    = min(local_min.x, local_max.x);
+        const float max_x    = max(local_min.x, local_max.x);
+        const float min_z    = min(local_min.z, local_max.z);
+        const float max_z    = max(local_min.z, local_max.z);
+        const float target_y = (local_min.y + local_max.y) * 0.5f;
+        const float margin   = max(blend_margin, 0.0f);
+
+        for (Vector3& position : m_positions)
+        {
+            // how far outside the rectangle the sample sits, zero anywhere inside it
+            const float distance_x = max(max(min_x - position.x, position.x - max_x), 0.0f);
+            const float distance_z = max(max(min_z - position.z, position.z - max_z), 0.0f);
+            const float distance   = sqrtf(distance_x * distance_x + distance_z * distance_z);
+
+            if (distance > margin)
+            {
+                continue;
+            }
+
+            // dead flat inside the rectangle, smooth ramp back to the original ground outside it
+            float weight = 1.0f;
+            if (distance > 0.0f && margin > 0.0f)
+            {
+                const float t = distance / margin;
+                weight        = 1.0f - (t * t * (3.0f - 2.0f * t));
+            }
+
+            position.y += (target_y - position.y) * weight;
+        }
+
+        if (!m_height_data.empty() && m_height_data.size() == m_positions.size())
+        {
+            TerrainSystem::SyncHeightDataFromPositions(m_height_data, m_positions);
+        }
+
+        RebuildSurface(true);
+        return true;
     }
 
     void Terrain::MakeIslandShore()

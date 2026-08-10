@@ -206,6 +206,9 @@ namespace spartan
         compress_output_bc1    = 42,
         // per-meshlet bounds for gpu-driven culling
         meshlet_bounds         = 43,
+        // meshlet unique vertex remaps + micro indices for mesh shaders
+        meshlet_vertices       = 58,
+        meshlet_micro_indices  = 59,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
         // two-phase culling: phase a survivor list + its indirect dispatch args
@@ -342,6 +345,11 @@ namespace spartan
         gbuffer_indirect_v,
         gbuffer_indirect_p,
         depth_prepass_indirect_v,
+        depth_prepass_mesh_alpha_p,
+        meshlet_mesh_m,
+        meshlet_mesh_alpha_m,
+        meshlet_mesh_depth_m,
+        meshlet_mesh_depth_alpha_m,
         meshlet_visualize_v,
         meshlet_visualize_p,
         // gpu-driven particles
@@ -510,7 +518,7 @@ namespace spartan
         IndirectDrawData,          // per render component lod draw data
         MeshletInstances,          // meshlet-cull survivor list, the triangle cull pass dispatches one workgroup per entry
         VisibleTriangles,          // triangle-cull survivor list, one packed (meshlet_instance, triangle_in_meshlet) per entry
-        TriangleDispatchArgs,      // single-slot indirect dispatch args buffer driving the triangle cull pass
+        TriangleDispatchArgs,      // vs: single-slot triangle cull dispatch, mesh: two-slot opaque/alpha mesh task counts
         CullTasks,                 // per (render, instance) cull tasks consumed by the instance cull compute shader (phase a)
         SurvivingInstances,        // phase a survivor list, phase b dispatches one workgroup per entry
         InstanceDispatchArgs,      // single-slot indirect dispatch args buffer driving the meshlet cull pass (phase b)

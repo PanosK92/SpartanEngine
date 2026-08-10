@@ -78,12 +78,22 @@ float hiz_min_depth_over_box(Texture2D hiz_tex, float2 min_uv, float2 max_uv, fl
     return min(min(d0, d1), min(d2, d3));
 }
 
-// fast analytical hi-z for a world-space sphere
-// projects the center once and derives a conservative ndc rectangle from the row-axis sensitivities of view_projection
+// projection status for a world space sphere against the current view projection
+#define SPHERE_PROJECT_BEHIND   0u
+#define SPHERE_PROJECT_STRADDLE 1u
+#define SPHERE_PROJECT_VALID    2u
+
+// conservative ndc bounds for a world-space sphere
+// projects the center once and derives the rectangle from the row-axis sensitivities of view_projection
 // this replaces the per-thread 8-corner cube projection in the meshlet path, the bound is also tighter than the cube
 // projection that surrounds the sphere, so it culls more aggressively and chooses a smaller hi-z footprint
-bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_world, float max_mip_level)
+// shared by the hi-z and contribution tests so both agree on the projected footprint
+uint sphere_project_ndc(float3 center_world, float radius_world, out float2 min_ndc, out float2 max_ndc, out float closest_z)
 {
+    min_ndc   = 0.0f;
+    max_ndc   = 0.0f;
+    closest_z = 0.0f;
+
     matrix vp = buffer_frame.view_projection;
 
     // partials of clip-space output w.r.t. world-space input, wave uniform so dxc keeps these in scalar registers
@@ -92,28 +102,23 @@ bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_wor
     float3 ax_z = float3(vp._m02, vp._m12, vp._m22);
     float3 ax_w = float3(vp._m03, vp._m13, vp._m23);
 
-    float ax_x_len = length(ax_x);
-    float ax_y_len = length(ax_y);
-    float ax_z_len = length(ax_z);
-    float ax_w_len = length(ax_w);
-
     float cx = dot(center_world, ax_x) + vp._m30;
     float cy = dot(center_world, ax_y) + vp._m31;
     float cz = dot(center_world, ax_z) + vp._m32;
     float cw = dot(center_world, ax_w) + vp._m33;
 
-    float rx = radius_world * ax_x_len;
-    float ry = radius_world * ax_y_len;
-    float rz = radius_world * ax_z_len;
-    float rw = radius_world * ax_w_len;
+    float rx = radius_world * length(ax_x);
+    float ry = radius_world * length(ax_y);
+    float rz = radius_world * length(ax_z);
+    float rw = radius_world * length(ax_w);
 
-    // sphere entirely behind the camera, side-frustum has already rejected this so this is a paranoia branch
+    // sphere entirely behind the camera
     if (cw + rw <= 0.0f)
-        return false;
+        return SPHERE_PROJECT_BEHIND;
 
-    // sphere straddles the near plane, the perspective divide is unstable so skip occlusion conservatively
+    // sphere straddles the near plane, the perspective divide is unstable there
     if (cw - rw <= 0.0f)
-        return true;
+        return SPHERE_PROJECT_STRADDLE;
 
     // each ndc extreme is one of four (numerator extreme) * (1 / denominator extreme), enumerate and reduce
     float inv_w_close = 1.0f / (cw - rw);
@@ -128,11 +133,29 @@ bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_wor
     float yhc = (cy + ry) * inv_w_close;
     float yhf = (cy + ry) * inv_w_far;
 
-    float2 min_ndc = float2(min(min(xlc, xlf), min(xhc, xhf)), min(min(ylc, ylf), min(yhc, yhf)));
-    float2 max_ndc = float2(max(max(xlc, xlf), max(xhc, xhf)), max(max(ylc, ylf), max(yhc, yhf)));
+    min_ndc = float2(min(min(xlc, xlf), min(xhc, xhf)), min(min(ylc, ylf), min(yhc, yhf)));
+    max_ndc = float2(max(max(xlc, xlf), max(xhc, xhf)), max(max(ylc, ylf), max(yhc, yhf)));
 
     // closest sphere depth in reverse-z is max numerator over min positive denominator
-    float closest_box_z = (cz + rz) * inv_w_close;
+    closest_z = (cz + rz) * inv_w_close;
+
+    return SPHERE_PROJECT_VALID;
+}
+
+// fast analytical hi-z for a world-space sphere
+bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_world, float max_mip_level)
+{
+    float2 min_ndc, max_ndc;
+    float  closest_box_z;
+    uint   status = sphere_project_ndc(center_world, radius_world, min_ndc, max_ndc, closest_box_z);
+
+    // the side-frustum has already rejected the behind case so that branch is paranoia
+    if (status == SPHERE_PROJECT_BEHIND)
+        return false;
+
+    // straddling the near plane skips occlusion conservatively
+    if (status == SPHERE_PROJECT_STRADDLE)
+        return true;
 
     if (max_ndc.x < -1.0f || min_ndc.x > 1.0f || max_ndc.y < -1.0f || min_ndc.y > 1.0f)
         return false;
@@ -144,6 +167,35 @@ bool sphere_hiz_visible(Texture2D hiz_tex, float3 center_world, float radius_wor
 
     float furthest_z = hiz_min_depth_over_box(hiz_tex, min_uv, max_uv, max_mip_level);
     return closest_box_z > furthest_z - 0.01f;
+}
+
+// contribution thresholds in pixels
+// meshes and meshlets are tuned apart because meshlet screen size is far more uniform than mesh screen size
+// the meshlet threshold stays the lower of the two, over-culling meshlets punches sub-pixel holes in solid surfaces
+// while over-culling an instance only removes a speck
+#define CULL_CONTRIBUTION_MESH_PX    2.0f
+#define CULL_CONTRIBUTION_MESHLET_PX 1.0f
+
+// contribution cull, rejects a sphere whose projected footprint is thinner than min_extent_pixels on both axes
+// min_extent_pixels <= 0 disables the test, spheres crossing the near plane always contribute
+bool sphere_contributes(float3 center_world, float radius_world, float min_extent_pixels)
+{
+    if (min_extent_pixels <= 0.0f)
+        return true;
+
+    float2 min_ndc, max_ndc;
+    float  closest_z;
+    uint   status = sphere_project_ndc(center_world, radius_world, min_ndc, max_ndc, closest_z);
+
+    if (status == SPHERE_PROJECT_BEHIND)
+        return false;
+
+    if (status == SPHERE_PROJECT_STRADDLE)
+        return true;
+
+    // ndc spans two units across the viewport, so half the resolution converts an ndc extent into pixels
+    float2 extent_pixels = (max_ndc - min_ndc) * get_render_resolution_active() * 0.5f;
+    return max(extent_pixels.x, extent_pixels.y) >= min_extent_pixels;
 }
 
 // largest world-axis scale of the upper 3x3, used to lift a local-space radius into world units

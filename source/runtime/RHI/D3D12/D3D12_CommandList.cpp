@@ -1886,6 +1886,63 @@ namespace spartan
         Profiler::m_rhi_draw++;
     }
 
+    void RHI_CommandList::DrawMeshTasksIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT_MSG(RHI_Device::IsSupportedMeshShaders(), "Mesh shaders are not supported on this device");
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
+        auto& b = cmd_state::get(this);
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        cmd_state::flush(cmd_list, b);
+
+        if (!args_buffer)
+        {
+            return;
+        }
+
+        if (!b.has_root_signature_graphics)
+        {
+            return;
+        }
+
+        SynchronizeResources();
+        static ID3D12CommandSignature* command_signature = nullptr;
+        if (!command_signature)
+        {
+            D3D12_INDIRECT_ARGUMENT_DESC arg_desc = {};
+            arg_desc.Type                         = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+
+            D3D12_COMMAND_SIGNATURE_DESC desc = {};
+            desc.ByteStride        = sizeof(D3D12_DISPATCH_MESH_ARGUMENTS);
+            desc.NumArgumentDescs  = 1;
+            desc.pArgumentDescs    = &arg_desc;
+            if (FAILED(RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature))))
+            {
+                SP_LOG_ERROR("Failed to create draw mesh tasks indirect command signature");
+                return;
+            }
+        }
+
+        ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
+        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
+        // cull writes uavs on compute, mesh reads them, renderdoc serializes this path
+        {
+            D3D12_RESOURCE_BARRIER uav_barrier = {};
+            uav_barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            uav_barrier.UAV.pResource = nullptr;
+            cmd_list->ResourceBarrier(1, &uav_barrier);
+        }
+
+        flush_pending_bindings(cmd_list, this, false);
+        cmd_list->ExecuteIndirect(
+            command_signature, 1u,
+            args_resource, static_cast<UINT64>(args_offset),
+            nullptr, 0
+        );
+        Profiler::m_rhi_draw++;
+    }
+
     void RHI_CommandList::DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

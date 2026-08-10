@@ -94,6 +94,23 @@ namespace spartan
         pso_subobject<D3D12_VIEW_INSTANCING_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING> view_instancing;
     };
 
+    // mesh pipelines cannot use the classic graphics desc, they require an ms subobject and no vs/input layout
+    struct pso_stream_mesh
+    {
+        pso_subobject<ID3D12RootSignature*, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE> root_signature;
+        pso_subobject<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS> ms;
+        pso_subobject<D3D12_SHADER_BYTECODE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS> ps;
+        pso_subobject<D3D12_BLEND_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND> blend;
+        pso_subobject<UINT, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK> sample_mask;
+        pso_subobject<D3D12_RASTERIZER_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER> rasterizer;
+        pso_subobject<D3D12_DEPTH_STENCIL_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL> depth_stencil;
+        pso_subobject<D3D12_PRIMITIVE_TOPOLOGY_TYPE, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY> topology;
+        pso_subobject<D3D12_RT_FORMAT_ARRAY, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS> rtv_formats;
+        pso_subobject<DXGI_FORMAT, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT> dsv_format;
+        pso_subobject<DXGI_SAMPLE_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC> sample_desc;
+        pso_subobject<D3D12_VIEW_INSTANCING_DESC, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING> view_instancing;
+    };
+
     RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_state = pipeline_state;
@@ -368,6 +385,71 @@ namespace spartan
         void* resource = nullptr;
         ID3D12PipelineLibrary* lib = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
 
+        // mesh shader pipelines require a dedicated stream with an ms subobject
+        if (state.HasMeshShaders())
+        {
+            Microsoft::WRL::ComPtr<ID3D12Device2> device2;
+            if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device2))))
+            {
+                SP_LOG_ERROR("Mesh pipeline '%s' requires ID3D12Device2", state.name ? state.name : "?");
+                return;
+            }
+
+            D3D12_VIEW_INSTANCE_LOCATION view_locations[2] = { { 0, 0 }, { 0, 1 } };
+            D3D12_SHADER_BYTECODE ms_bytecode = {};
+            if (state.shaders[RHI_Shader_Type::MeshShader])
+            {
+                ms_bytecode.pShaderBytecode = state.shaders[RHI_Shader_Type::MeshShader]->GetRhiResource();
+                ms_bytecode.BytecodeLength  = state.shaders[RHI_Shader_Type::MeshShader]->GetObjectSize();
+            }
+
+            pso_stream_mesh stream                                  = {};
+            stream.root_signature.value                             = desc.pRootSignature;
+            stream.ms.value                                         = ms_bytecode;
+            stream.ps.value                                         = desc.PS;
+            stream.blend.value                                      = desc.BlendState;
+            stream.sample_mask.value                                = desc.SampleMask;
+            stream.rasterizer.value                                 = desc.RasterizerState;
+            stream.depth_stencil.value                              = desc.DepthStencilState;
+            stream.topology.value                                   = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            stream.rtv_formats.value.NumRenderTargets               = desc.NumRenderTargets;
+            for (uint32_t i = 0; i < desc.NumRenderTargets; i++)
+            {
+                stream.rtv_formats.value.RTFormats[i] = desc.RTVFormats[i];
+            }
+            stream.dsv_format.value                                 = desc.DSVFormat;
+            stream.sample_desc.value                                = desc.SampleDesc;
+            stream.view_instancing.value.ViewInstanceCount          = state.is_multiview ? 2 : 1;
+            stream.view_instancing.value.pViewInstanceLocations     = view_locations;
+            stream.view_instancing.value.Flags                      = D3D12_VIEW_INSTANCING_FLAG_NONE;
+
+            D3D12_PIPELINE_STATE_STREAM_DESC stream_desc = {};
+            stream_desc.SizeInBytes                      = sizeof(stream);
+            stream_desc.pPipelineStateSubobjectStream    = &stream;
+
+            Microsoft::WRL::ComPtr<ID3D12PipelineLibrary1> lib1;
+            if (lib && SUCCEEDED(lib->QueryInterface(IID_PPV_ARGS(&lib1))) && d3d12_pipeline_library::can_load())
+            {
+                if (SUCCEEDED(lib1->LoadPipeline(pso_name, &stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)))))
+                {
+                    pipeline->SetRhiResource(resource);
+                    return;
+                }
+            }
+
+            HRESULT hr = device2->CreatePipelineState(&stream_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&resource)));
+            if (FAILED(hr))
+            {
+                SP_LOG_ERROR("Failed to create mesh pipeline state '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
+            }
+            else if (lib && resource)
+            {
+                lib->StorePipeline(pso_name, static_cast<ID3D12PipelineState*>(resource));
+            }
+            pipeline->SetRhiResource(resource);
+            return;
+        }
+
         // stream-based creation declares view instancing, required by shaders reading sv_viewid (vulkan multiview parity)
         Microsoft::WRL::ComPtr<ID3D12Device2> device2;
         if (view_instancing_supported() && SUCCEEDED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device2))))
@@ -514,8 +596,8 @@ namespace spartan
         params[1].Constants.Num32BitValues = 16; // PassBufferData = 64 bytes
         params[1].ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 2: SRV table t0..t56 space0
-        // highest srv used is t43 (meshlet_bounds), the range is padded to the uav count so read only buffer slots stay covered
+        // 2: SRV table t0..t59 space0
+        // highest srv used is t59 (meshlet_micro_indices)
         static D3D12_DESCRIPTOR_RANGE1 srv0_range = {};
         srv0_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         srv0_range.NumDescriptors                    = d3d12_root_slot::srv_space0_count;

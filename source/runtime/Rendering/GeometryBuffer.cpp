@@ -37,27 +37,57 @@ namespace spartan
     namespace
     {
         // cpu-side accumulators
+        // meshlet_micro_indices stays one corner per element here, the gpu copy packs four corners per uint
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
         vector<Sb_MeshletBounds> meshlet_bounds;
+        vector<uint32_t> meshlet_vertices;
+        vector<uint32_t> meshlet_micro_indices;
         vector<Instance> instances;
+
+        // micro index packing, a corner is a meshlet local vertex id below MESHLET_MAX_VERTICES so a byte is enough
+        // every append pads to a multiple of this so a mesh block never straddles a uint and sub-region uploads stay aligned
+        constexpr uint32_t micro_indices_per_uint = 4;
+
+        uint32_t packed_micro_count(const uint32_t corner_count)
+        {
+            return (corner_count + micro_indices_per_uint - 1) / micro_indices_per_uint;
+        }
+
+        void pack_micro_indices(const uint32_t* corners, const uint32_t corner_count, vector<uint32_t>& packed_out)
+        {
+            const uint32_t packed_count = packed_micro_count(corner_count);
+            packed_out.assign(packed_count, 0);
+
+            for (uint32_t i = 0; i < corner_count; i++)
+            {
+                packed_out[i / micro_indices_per_uint] |=
+                    (corners[i] & 0xFFu) << ((i % micro_indices_per_uint) * 8u);
+            }
+        }
 
         // gpu buffers
         unique_ptr<RHI_Buffer> vertex_buffer;
         unique_ptr<RHI_Buffer> index_buffer;
         unique_ptr<RHI_Buffer> meshlet_bounds_buffer;
+        unique_ptr<RHI_Buffer> meshlet_vertex_buffer;
+        unique_ptr<RHI_Buffer> meshlet_micro_index_buffer;
         unique_ptr<RHI_Buffer> instance_buffer;
 
         // element counts already uploaded to the gpu
-        uint32_t vertex_count_committed         = 0;
-        uint32_t index_count_committed          = 0;
-        uint32_t meshlet_bounds_count_committed = 0;
-        uint32_t instance_count_committed       = 0;
+        uint32_t vertex_count_committed              = 0;
+        uint32_t index_count_committed               = 0;
+        uint32_t meshlet_bounds_count_committed      = 0;
+        uint32_t meshlet_vertex_count_committed      = 0;
+        uint32_t meshlet_micro_count_committed       = 0;
+        uint32_t instance_count_committed            = 0;
 
         // total gpu buffer capacity
         uint32_t vertex_capacity         = 0;
         uint32_t index_capacity          = 0;
         uint32_t meshlet_bounds_capacity = 0;
+        uint32_t meshlet_vertex_capacity = 0;
+        uint32_t meshlet_micro_capacity  = 0;
         uint32_t instance_capacity       = 0;
 
         bool dirty       = false;
@@ -183,6 +213,42 @@ namespace spartan
         return base_offset;
     }
 
+    uint32_t GeometryBuffer::AppendMeshletVertices(const uint32_t* data, uint32_t count)
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+
+        uint32_t base_offset = static_cast<uint32_t>(meshlet_vertices.size());
+        if (count > 0)
+        {
+            meshlet_vertices.insert(meshlet_vertices.end(), data, data + count);
+            dirty = true;
+        }
+
+        return base_offset;
+    }
+
+    uint32_t GeometryBuffer::AppendMeshletMicroIndices(const uint32_t* data, uint32_t count)
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+
+        uint32_t base_offset = static_cast<uint32_t>(meshlet_micro_indices.size());
+        if (count > 0)
+        {
+            meshlet_micro_indices.insert(meshlet_micro_indices.end(), data, data + count);
+
+            // pad so the next block starts on a uint boundary, the padding corners are never indexed by a meshlet
+            const size_t remainder = meshlet_micro_indices.size() % micro_indices_per_uint;
+            if (remainder != 0)
+            {
+                meshlet_micro_indices.resize(meshlet_micro_indices.size() + (micro_indices_per_uint - remainder), 0u);
+            }
+
+            dirty = true;
+        }
+
+        return base_offset;
+    }
+
     uint32_t GeometryBuffer::AppendInstances(const Instance* data, uint32_t count)
     {
         lock_guard<mutex> lock(buffer_mutex);
@@ -256,6 +322,44 @@ namespace spartan
         }
     }
 
+    void GeometryBuffer::UpdateMeshletVertices(const uint32_t* data, const uint32_t offset, const uint32_t count)
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+
+        SP_ASSERT(offset + count <= static_cast<uint32_t>(meshlet_vertices.size()));
+        memcpy(meshlet_vertices.data() + offset, data, count * sizeof(uint32_t));
+
+        if (meshlet_vertex_buffer && offset + count <= meshlet_vertex_count_committed)
+        {
+            const uint64_t byte_offset = static_cast<uint64_t>(offset) * sizeof(uint32_t);
+            const uint64_t byte_size   = static_cast<uint64_t>(count) * sizeof(uint32_t);
+            meshlet_vertex_buffer->UploadSubRegion(data, byte_offset, byte_size);
+        }
+    }
+
+    void GeometryBuffer::UpdateMeshletMicroIndices(const uint32_t* data, const uint32_t offset, const uint32_t count)
+    {
+        lock_guard<mutex> lock(buffer_mutex);
+
+        SP_ASSERT(offset + count <= static_cast<uint32_t>(meshlet_micro_indices.size()));
+        memcpy(meshlet_micro_indices.data() + offset, data, count * sizeof(uint32_t));
+
+        if (count > 0 && meshlet_micro_index_buffer && offset + count <= meshlet_micro_count_committed)
+        {
+            // repack from the cpu array rather than from data, so the tail uint keeps the block padding that lives past count
+            const uint32_t aligned_offset = (offset / micro_indices_per_uint) * micro_indices_per_uint;
+            const uint32_t aligned_count  = packed_micro_count(offset + count - aligned_offset) * micro_indices_per_uint;
+            const uint32_t clamped_count  = min(aligned_count, static_cast<uint32_t>(meshlet_micro_indices.size()) - aligned_offset);
+
+            vector<uint32_t> packed;
+            pack_micro_indices(meshlet_micro_indices.data() + aligned_offset, clamped_count, packed);
+
+            const uint64_t byte_offset = static_cast<uint64_t>(packed_micro_count(aligned_offset)) * sizeof(uint32_t);
+            const uint64_t byte_size   = static_cast<uint64_t>(packed.size()) * sizeof(uint32_t);
+            meshlet_micro_index_buffer->UploadSubRegion(packed.data(), byte_offset, byte_size);
+        }
+    }
+
     void GeometryBuffer::BuildIfDirty()
     {
         lock_guard<mutex> lock(buffer_mutex);
@@ -272,6 +376,8 @@ namespace spartan
         uint32_t vertex_count         = static_cast<uint32_t>(vertices.size());
         uint32_t index_count          = static_cast<uint32_t>(indices.size());
         uint32_t meshlet_bounds_count = static_cast<uint32_t>(meshlet_bounds.size());
+        uint32_t meshlet_vertex_count = static_cast<uint32_t>(meshlet_vertices.size());
+        uint32_t meshlet_micro_count  = static_cast<uint32_t>(meshlet_micro_indices.size());
         uint32_t instance_count       = static_cast<uint32_t>(instances.size());
 
         // ensure slot 0 always has an identity entry so non-instanced indirect draws read identity
@@ -283,10 +389,13 @@ namespace spartan
         }
 
         was_rebuilt             = false;
-        bool needs_full_rebuild = !vertex_buffer || !index_buffer || !meshlet_bounds_buffer || !instance_buffer ||
+        bool needs_full_rebuild = !vertex_buffer || !index_buffer || !meshlet_bounds_buffer ||
+                                  !meshlet_vertex_buffer || !meshlet_micro_index_buffer || !instance_buffer ||
                                   vertex_count > vertex_capacity ||
                                   index_count > index_capacity ||
                                   meshlet_bounds_count > meshlet_bounds_capacity ||
+                                  meshlet_vertex_count > meshlet_vertex_capacity ||
+                                  meshlet_micro_count > meshlet_micro_capacity ||
                                   instance_count > instance_capacity;
 
         if (needs_full_rebuild)
@@ -309,6 +418,8 @@ namespace spartan
             uint32_t new_vertex_capacity         = max(add_headroom(vertex_count,         sizeof(RHI_Vertex_PosTexNorTan), max_slack_bytes), vertex_capacity);
             uint32_t new_index_capacity          = max(add_headroom(index_count,          sizeof(uint32_t),                max_slack_bytes), index_capacity);
             uint32_t new_meshlet_bounds_capacity = max(add_headroom(meshlet_bounds_count, sizeof(Sb_MeshletBounds),        max_slack_bytes), max(meshlet_bounds_capacity, 1u));
+            uint32_t new_meshlet_vertex_capacity = max(add_headroom(max(meshlet_vertex_count, 1u), sizeof(uint32_t),       max_slack_bytes), max(meshlet_vertex_capacity, 1u));
+            uint32_t new_meshlet_micro_capacity  = max(add_headroom(max(meshlet_micro_count, 1u),  sizeof(uint32_t),       max_slack_bytes), max(meshlet_micro_capacity, 1u));
             uint32_t new_instance_capacity       = max(add_headroom(instance_count,       sizeof(Instance),                max_slack_bytes), max(instance_capacity, 1u));
 
             // allocate into temporaries so a failure leaves the previously working buffers in place
@@ -339,6 +450,24 @@ namespace spartan
                 "geometry_buffer_meshlet_bounds"
             );
 
+            auto new_meshlet_vertex_buffer = make_unique<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,
+                sizeof(uint32_t),
+                new_meshlet_vertex_capacity,
+                nullptr,
+                false,
+                "geometry_buffer_meshlet_vertices"
+            );
+
+            auto new_meshlet_micro_index_buffer = make_unique<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,
+                sizeof(uint32_t),
+                packed_micro_count(new_meshlet_micro_capacity),
+                nullptr,
+                false,
+                "geometry_buffer_meshlet_micro_indices"
+            );
+
             auto new_instance_buffer = make_unique<RHI_Buffer>(
                 RHI_Buffer_Type::Instance,
                 sizeof(Instance),
@@ -348,9 +477,11 @@ namespace spartan
                 "geometry_buffer_instances"
             );
 
-            bool allocation_failed = !new_vertex_buffer->GetRhiResource()         ||
-                                     !new_index_buffer->GetRhiResource()          ||
-                                     !new_meshlet_bounds_buffer->GetRhiResource() ||
+            bool allocation_failed = !new_vertex_buffer->GetRhiResource()              ||
+                                     !new_index_buffer->GetRhiResource()               ||
+                                     !new_meshlet_bounds_buffer->GetRhiResource()      ||
+                                     !new_meshlet_vertex_buffer->GetRhiResource()      ||
+                                     !new_meshlet_micro_index_buffer->GetRhiResource() ||
                                      !new_instance_buffer->GetRhiResource();
             if (allocation_failed)
             {
@@ -358,8 +489,8 @@ namespace spartan
                 // Shutdown() resets the flag so the next world-load gets its own fresh log
                 if (!oom_logged)
                 {
-                    SP_LOG_ERROR("Failed to allocate global geometry buffer (vertex_capacity=%u, index_capacity=%u, meshlet_capacity=%u, instance_capacity=%u), the world is too large for the available device memory, dropping further appends",
-                        new_vertex_capacity, new_index_capacity, new_meshlet_bounds_capacity, new_instance_capacity);
+                    SP_LOG_ERROR("Failed to allocate global geometry buffer (vertex_capacity=%u, index_capacity=%u, meshlet_capacity=%u, meshlet_vertex_capacity=%u, meshlet_micro_capacity=%u, instance_capacity=%u), the world is too large for the available device memory, dropping further appends",
+                        new_vertex_capacity, new_index_capacity, new_meshlet_bounds_capacity, new_meshlet_vertex_capacity, new_meshlet_micro_capacity, new_instance_capacity);
                     oom_logged = true;
                 }
 
@@ -385,47 +516,69 @@ namespace spartan
             {
                 new_meshlet_bounds_buffer->UploadSubRegion(meshlet_bounds.data(), 0, meshlet_bounds_count * sizeof(Sb_MeshletBounds));
             }
+            if (meshlet_vertex_count > 0)
+            {
+                new_meshlet_vertex_buffer->UploadSubRegion(meshlet_vertices.data(), 0, meshlet_vertex_count * sizeof(uint32_t));
+            }
+            if (meshlet_micro_count > 0)
+            {
+                vector<uint32_t> packed;
+                pack_micro_indices(meshlet_micro_indices.data(), meshlet_micro_count, packed);
+                new_meshlet_micro_index_buffer->UploadSubRegion(packed.data(), 0, packed.size() * sizeof(uint32_t));
+            }
             new_instance_buffer->UploadSubRegion(instances.data(), 0, instance_count * sizeof(Instance));
 
             // commit, the old buffers go through the deletion queue here so frames in flight finish using them
-            vertex_buffer         = std::move(new_vertex_buffer);
-            index_buffer          = std::move(new_index_buffer);
-            meshlet_bounds_buffer = std::move(new_meshlet_bounds_buffer);
-            instance_buffer       = std::move(new_instance_buffer);
+            vertex_buffer              = std::move(new_vertex_buffer);
+            index_buffer               = std::move(new_index_buffer);
+            meshlet_bounds_buffer      = std::move(new_meshlet_bounds_buffer);
+            meshlet_vertex_buffer      = std::move(new_meshlet_vertex_buffer);
+            meshlet_micro_index_buffer = std::move(new_meshlet_micro_index_buffer);
+            instance_buffer            = std::move(new_instance_buffer);
 
             vertex_capacity         = new_vertex_capacity;
             index_capacity          = new_index_capacity;
             meshlet_bounds_capacity = new_meshlet_bounds_capacity;
+            meshlet_vertex_capacity = new_meshlet_vertex_capacity;
+            meshlet_micro_capacity  = new_meshlet_micro_capacity;
             instance_capacity       = new_instance_capacity;
 
             vertex_count_committed         = vertex_count;
             index_count_committed          = index_count;
             meshlet_bounds_count_committed = meshlet_bounds_count;
+            meshlet_vertex_count_committed = meshlet_vertex_count;
+            meshlet_micro_count_committed  = meshlet_micro_count;
             instance_count_committed       = instance_count;
 
             was_rebuilt = true;
 
-            SP_LOG_INFO("Global geometry buffer built: %u vertices (%.2f MB), %u indices (%.2f MB), %u meshlets (%.2f MB), %u instances, capacity: %u vertices, %u indices, %u meshlets, %u instances",
+            SP_LOG_INFO("Global geometry buffer built: %u vertices (%.2f MB), %u indices (%.2f MB), %u meshlets (%.2f MB), %u meshlet verts, %u micro indices, %u instances, capacity: %u/%u/%u/%u/%u/%u",
                 vertex_count,
                 (vertex_count * sizeof(RHI_Vertex_PosTexNorTan)) / (1024.0f * 1024.0f),
                 index_count,
                 (index_count * sizeof(uint32_t)) / (1024.0f * 1024.0f),
                 meshlet_bounds_count,
                 (meshlet_bounds_count * sizeof(Sb_MeshletBounds)) / (1024.0f * 1024.0f),
+                meshlet_vertex_count,
+                meshlet_micro_count,
                 instance_count,
                 vertex_capacity,
                 index_capacity,
                 meshlet_bounds_capacity,
+                meshlet_vertex_capacity,
+                meshlet_micro_capacity,
                 instance_capacity
             );
         }
         else
         {
             // the new data fits within the pre-allocated capacity, upload only the new portion
-            uint32_t new_vertices  = vertex_count - vertex_count_committed;
-            uint32_t new_indices   = index_count - index_count_committed;
-            uint32_t new_meshlets  = meshlet_bounds_count - meshlet_bounds_count_committed;
-            uint32_t new_instances = instance_count - instance_count_committed;
+            uint32_t new_vertices        = vertex_count - vertex_count_committed;
+            uint32_t new_indices         = index_count - index_count_committed;
+            uint32_t new_meshlets        = meshlet_bounds_count - meshlet_bounds_count_committed;
+            uint32_t new_meshlet_verts   = meshlet_vertex_count - meshlet_vertex_count_committed;
+            uint32_t new_meshlet_micros  = meshlet_micro_count - meshlet_micro_count_committed;
+            uint32_t new_instances       = instance_count - instance_count_committed;
 
             if (new_vertices > 0)
             {
@@ -448,6 +601,24 @@ namespace spartan
                 meshlet_bounds_buffer->UploadSubRegion(meshlet_bounds.data() + meshlet_bounds_count_committed, offset, size);
             }
 
+            if (new_meshlet_verts > 0)
+            {
+                uint64_t offset = static_cast<uint64_t>(meshlet_vertex_count_committed) * sizeof(uint32_t);
+                uint64_t size   = static_cast<uint64_t>(new_meshlet_verts) * sizeof(uint32_t);
+                meshlet_vertex_buffer->UploadSubRegion(meshlet_vertices.data() + meshlet_vertex_count_committed, offset, size);
+            }
+
+            if (new_meshlet_micros > 0)
+            {
+                // the committed count is always a multiple of the pack width, appends pad to keep it there
+                vector<uint32_t> packed;
+                pack_micro_indices(meshlet_micro_indices.data() + meshlet_micro_count_committed, new_meshlet_micros, packed);
+
+                uint64_t offset = static_cast<uint64_t>(packed_micro_count(meshlet_micro_count_committed)) * sizeof(uint32_t);
+                uint64_t size   = static_cast<uint64_t>(packed.size()) * sizeof(uint32_t);
+                meshlet_micro_index_buffer->UploadSubRegion(packed.data(), offset, size);
+            }
+
             if (new_instances > 0)
             {
                 uint64_t offset = static_cast<uint64_t>(instance_count_committed) * sizeof(Instance);
@@ -458,10 +629,12 @@ namespace spartan
             vertex_count_committed         = vertex_count;
             index_count_committed          = index_count;
             meshlet_bounds_count_committed = meshlet_bounds_count;
+            meshlet_vertex_count_committed = meshlet_vertex_count;
+            meshlet_micro_count_committed  = meshlet_micro_count;
             instance_count_committed       = instance_count;
 
-            SP_LOG_INFO("Global geometry buffer updated: +%u vertices, +%u indices, +%u meshlets, +%u instances (sub-region upload, no rebuild)",
-                new_vertices, new_indices, new_meshlets, new_instances
+            SP_LOG_INFO("Global geometry buffer updated: +%u vertices, +%u indices, +%u meshlets, +%u meshlet verts, +%u micro indices, +%u instances (sub-region upload, no rebuild)",
+                new_vertices, new_indices, new_meshlets, new_meshlet_verts, new_meshlet_micros, new_instances
             );
         }
 
@@ -475,28 +648,43 @@ namespace spartan
         return result;
     }
 
-    void GeometryBuffer::Reserve(uint32_t vertex_count, uint32_t index_count, uint32_t meshlet_bounds_count, uint32_t instance_count)
+    void GeometryBuffer::Reserve(
+        uint32_t vertex_count,
+        uint32_t index_count,
+        uint32_t meshlet_bounds_count,
+        uint32_t meshlet_vertex_count,
+        uint32_t meshlet_micro_count,
+        uint32_t instance_count
+    )
     {
         lock_guard<mutex> lock(buffer_mutex);
 
         vertex_capacity         = max(vertex_capacity,         vertex_count);
         index_capacity          = max(index_capacity,          index_count);
         meshlet_bounds_capacity = max(meshlet_bounds_capacity, meshlet_bounds_count);
+        meshlet_vertex_capacity = max(meshlet_vertex_capacity, meshlet_vertex_count);
+        meshlet_micro_capacity  = max(meshlet_micro_capacity,  meshlet_micro_count);
         instance_capacity       = max(instance_capacity,       instance_count);
     }
 
     void GeometryBuffer::Shutdown()
     {
-        vertex_buffer         = nullptr;
-        index_buffer          = nullptr;
-        meshlet_bounds_buffer = nullptr;
-        instance_buffer       = nullptr;
+        vertex_buffer              = nullptr;
+        index_buffer               = nullptr;
+        meshlet_bounds_buffer      = nullptr;
+        meshlet_vertex_buffer      = nullptr;
+        meshlet_micro_index_buffer = nullptr;
+        instance_buffer            = nullptr;
         vertices.clear();
         vertices.shrink_to_fit();
         indices.clear();
         indices.shrink_to_fit();
         meshlet_bounds.clear();
         meshlet_bounds.shrink_to_fit();
+        meshlet_vertices.clear();
+        meshlet_vertices.shrink_to_fit();
+        meshlet_micro_indices.clear();
+        meshlet_micro_indices.shrink_to_fit();
         instances.clear();
         instances.shrink_to_fit();
         vertex_dirty_ranges.clear();
@@ -504,10 +692,14 @@ namespace spartan
         vertex_count_committed         = 0;
         index_count_committed          = 0;
         meshlet_bounds_count_committed = 0;
+        meshlet_vertex_count_committed = 0;
+        meshlet_micro_count_committed  = 0;
         instance_count_committed       = 0;
         vertex_capacity                = 0;
         index_capacity                 = 0;
         meshlet_bounds_capacity        = 0;
+        meshlet_vertex_capacity        = 0;
+        meshlet_micro_capacity         = 0;
         instance_capacity              = 0;
         instance_capacity_failed_at    = 0;
         dirty                          = false;
@@ -528,6 +720,16 @@ namespace spartan
     RHI_Buffer* GeometryBuffer::GetMeshletBoundsBuffer()
     {
         return meshlet_bounds_buffer.get();
+    }
+
+    RHI_Buffer* GeometryBuffer::GetMeshletVertexBuffer()
+    {
+        return meshlet_vertex_buffer.get();
+    }
+
+    RHI_Buffer* GeometryBuffer::GetMeshletMicroIndexBuffer()
+    {
+        return meshlet_micro_index_buffer.get();
     }
 
     RHI_Buffer* GeometryBuffer::GetInstanceBuffer()

@@ -157,6 +157,16 @@ namespace spartan
         // world-space unit normal at xz, returns false if no heightfield
         bool SampleNormal(float world_x, float world_z, math::Vector3& normal_out) const;
         void ApplyBrush(const math::Vector3& world_center, const TerrainBrush& brush);
+        // level the heightfield inside a world space xz rectangle, ramped back to the original
+        // ground over blend_margin so the pad does not end in a cliff
+        bool FlattenRegion(
+            float world_min_x,
+            float world_min_z,
+            float world_max_x,
+            float world_max_z,
+            float world_height,
+            float blend_margin
+        );
         TerrainGridMapping GetGridMapping() const;
         // bend map borders down to sea level so the ocean meets land
         void MakeIslandShore();
@@ -166,6 +176,9 @@ namespace spartan
         // snap this entity and any mesh descendants onto the surface below each one
         static bool SnapEntityToTerrain(Entity* entity, float offset = 0.0f);
         static uint32_t SnapEntitiesToTerrain(const std::vector<Entity*>& entities, float offset = 0.0f);
+        // flatten the ground under the horizontal footprint of the selection, then snap onto it
+        static bool SnapEntityToFlatTerrain(Entity* entity, float offset = 0.0f);
+        static uint32_t SnapEntitiesToFlatTerrain(const std::vector<Entity*>& entities, float offset = 0.0f);
 
         // component io
         void Save(pugi::xml_node& node) override;

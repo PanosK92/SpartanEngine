@@ -26,7 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // each workgroup rebuilds its instance's world transform once into groupshared then expands that instance's meshlets across its threads
 // per meshlet: sphere side-frustum, cone backface (sqrt-free), hi-z via analytical sphere projection, skinned instances keep every meshlet since deformation invalidates the static bounds
 // survivors are wave-aggregated into meshlet_instances and triangle_dispatch_args.group_count_x is bumped by the same amount in lockstep
-// flags bit 0 skinned, bit 1 per_instance, bit 3 two_sided (read by the triangle pass)
+// when f4_value.z > 0 the mesh path splits opaque into [0..) / args[0] and alpha into [cap/2..) / args[1]
+// flags bit 0 skinned, bit 1 per_instance, bit 3 two_sided, bit 4 alpha-tested
 //
 // the old single-phase kernel emitted one task per (meshlet x instance) which exploded into millions of threads for consolidated forest entities
 // the instance prepass collapses that to one workgroup per visible instance, only the meshlets of survivors are ever projected here
@@ -52,6 +53,7 @@ groupshared float4x4 gs_world;
 groupshared float    gs_scale_max;
 groupshared bool     gs_skinned;
 groupshared bool     gs_two_sided;
+groupshared bool     gs_is_alpha;
 groupshared uint     gs_meshlet_offset;
 groupshared uint     gs_meshlet_count;
 
@@ -63,6 +65,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 
     float max_mip_level         = pass_get_f4_value().x;
     uint  max_meshlet_instances = (uint)pass_get_f4_value().y;
+    bool  split_opaque_alpha    = pass_get_f4_value().z > 0.5f;
+    uint  region_cap            = max_meshlet_instances / 2u;
 
     // wave-uniform, the compiler scalarizes the plane extraction across the wave
     float4 plane_l, plane_r, plane_b, plane_t;
@@ -82,6 +86,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         gs_scale_max          = max_world_scale(gs_world);
         gs_skinned            = (gs_draw.flags & 1u) != 0u;
         gs_two_sided          = (gs_draw.flags & 8u) != 0u;
+        gs_is_alpha           = (gs_draw.flags & 16u) != 0u;
         gs_meshlet_offset     = gs_draw.lod_meshlet_offset;
         gs_meshlet_count      = gs_draw.lod_meshlet_count;
     }
@@ -120,6 +125,10 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 
                 is_visible = sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t);
 
+                // per-meshlet contribution, drops meshlets too thin on screen to touch a sample point
+                if (is_visible)
+                    is_visible = sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESHLET_PX);
+
                 // per-meshlet backface cone, skipped for two-sided materials and degenerate cones, sqrt-free form
                 if (is_visible && !gs_two_sided)
                 {
@@ -149,22 +158,25 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
         uint lane_off   = WavePrefixCountBits(is_visible);
         uint wave_base  = 0u;
         uint overflow_u = 0u;
+        uint args_slot  = (split_opaque_alpha && gs_is_alpha) ? 1u : 0u;
+        uint write_base = (split_opaque_alpha && gs_is_alpha) ? region_cap : 0u;
+        uint half_cap   = split_opaque_alpha ? region_cap : max_meshlet_instances;
         if (WaveIsFirstLane() && wave_count > 0u)
         {
-            InterlockedAdd(triangle_dispatch_args[0].group_count_x, wave_count, wave_base);
-            overflow_u = (wave_base + wave_count) > max_meshlet_instances ? 1u : 0u;
+            InterlockedAdd(triangle_dispatch_args[args_slot].group_count_x, wave_count, wave_base);
+            overflow_u = (wave_base + wave_count) > half_cap ? 1u : 0u;
         }
         wave_base  = WaveReadLaneFirst(wave_base);
         overflow_u = WaveReadLaneFirst(overflow_u);
 
         // clamp group_count_x to the survivor cap, the triangle pass guards on mi_idx but a runaway dispatch can still hit the hw ceiling
         if (overflow_u != 0u && WaveIsFirstLane())
-            InterlockedMin(triangle_dispatch_args[0].group_count_x, max_meshlet_instances);
+            InterlockedMin(triangle_dispatch_args[args_slot].group_count_x, half_cap);
 
         if (is_visible)
         {
-            uint slot = wave_base + lane_off;
-            if (slot < max_meshlet_instances)
+            uint slot = write_base + wave_base + lane_off;
+            if (wave_base + lane_off < half_cap)
                 meshlet_instances[slot] = out_mi;
         }
     }

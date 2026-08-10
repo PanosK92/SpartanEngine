@@ -851,7 +851,10 @@ namespace
 
                 ImGui::SameLine(0, button_gap());
 
-                static auto renderdoc_visible = [](Widget*) { return false; };
+                static auto renderdoc_visible = [](Widget*)
+                {
+                    return spartan::Debugging::IsRenderdocEnabled();
+                };
                 static auto renderdoc_press   = [](Widget*)
                 {
                     if (spartan::Debugging::IsRenderdocEnabled())
@@ -860,7 +863,7 @@ namespace
                     }
                     else
                     {
-                        SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
+                        SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"m_renderdoc_enabled\" to \"true\"");
                     }
                 };
                 toolbar_button(spartan::IconType::RenderDoc, "RenderDoc capture", renderdoc_visible, renderdoc_press, nullptr);

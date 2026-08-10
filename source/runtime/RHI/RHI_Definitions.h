@@ -297,6 +297,7 @@ namespace spartan
         RayGeneration,
         RayMiss,
         RayHit,
+        MeshShader, // not Mesh, that shadows the geometry Mesh class
         Max
     };
 
@@ -312,6 +313,7 @@ namespace spartan
             case RHI_Shader_Type::RayGeneration: return 1 << 5;
             case RHI_Shader_Type::RayMiss:       return 1 << 6;
             case RHI_Shader_Type::RayHit:        return 1 << 7;
+            case RHI_Shader_Type::MeshShader:    return 1 << 8;
             default:                             return 0;
         }
     }

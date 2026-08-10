@@ -107,6 +107,7 @@ namespace spartan
         // instanced mesh placement along the spline
         void SpawnInstances();
         void ClearInstances();
+        bool HasSpawnedInstances() const;
 
         // spline properties
         bool GetClosedLoop() const              { return m_closed_loop; }

@@ -281,6 +281,7 @@ namespace spartan
             case RHI_Shader_Type::Domain:        return "main_ds";
             case RHI_Shader_Type::Pixel:         return "main_ps";
             case RHI_Shader_Type::Compute:       return "main_cs";
+            case RHI_Shader_Type::MeshShader:          return "main_ms";
             case RHI_Shader_Type::RayGeneration: return "ray_gen";
             case RHI_Shader_Type::RayMiss:       return "miss";
             case RHI_Shader_Type::RayHit:        return "closest_hit";
@@ -297,6 +298,7 @@ namespace spartan
             case RHI_Shader_Type::Domain:        return "ds_6_8";
             case RHI_Shader_Type::Pixel:         return "ps_6_8";
             case RHI_Shader_Type::Compute:       return "cs_6_8";
+            case RHI_Shader_Type::MeshShader:          return "ms_6_8";
             case RHI_Shader_Type::RayGeneration:
             case RHI_Shader_Type::RayMiss:
             case RHI_Shader_Type::RayHit:        return "lib_6_8";

@@ -72,7 +72,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
 #ifdef ALPHA_TEST_INDIRECT
 // indirect path discards based on material flags read from the bindless material parameters
 // non-alpha-tested materials early out so they only pay vertex cost in the prepass
+#ifdef DEPTH_MESH_ALPHA
+void main_ps(depth_mesh_vertex vertex)
+#else
 void main_ps(gbuffer_vertex vertex)
+#endif
 {
     pass_load_draw_data_from_vertex(vertex.material_index);
 

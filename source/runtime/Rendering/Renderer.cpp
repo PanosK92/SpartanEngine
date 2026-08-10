@@ -578,6 +578,8 @@ namespace spartan
             4u  * 1024u * 1024u, // vertices, ~128mb at 32b each
             12u * 1024u * 1024u, // indices,  ~48mb
             64u * 1024u,         // meshlet bounds
+            4u  * 1024u * 1024u, // meshlet unique verts (~index/3)
+            12u * 1024u * 1024u, // meshlet micro indices (~index count)
             16u * 1024u          // instances
         );
 
@@ -1238,13 +1240,16 @@ namespace spartan
         args_buffer->ResetOffset();
         args_buffer->Update(cmd_list, &draw_args[0], sizeof(draw_args));
 
-        // single slot indirect dispatch args for triangle cull, group_count_x bumped by the meshlet cull
-        Sb_IndirectDispatchArgs dispatch_args = {};
-        dispatch_args.group_count_y           = 1;
-        dispatch_args.group_count_z           = 1;
-        RHI_Buffer* dispatch_args_buffer      = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
+        // two-slot indirect dispatch args, slot 0 opaque (or full list for vs path), slot 1 alpha for mesh path
+        // group_count_x is bumped by the meshlet cull, group_count_y/z fixed at 1
+        Sb_IndirectDispatchArgs dispatch_args[2] = {};
+        dispatch_args[0].group_count_y           = 1;
+        dispatch_args[0].group_count_z           = 1;
+        dispatch_args[1].group_count_y           = 1;
+        dispatch_args[1].group_count_z           = 1;
+        RHI_Buffer* dispatch_args_buffer         = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
         dispatch_args_buffer->ResetOffset();
-        dispatch_args_buffer->Update(cmd_list, &dispatch_args, sizeof(Sb_IndirectDispatchArgs));
+        dispatch_args_buffer->Update(cmd_list, &dispatch_args[0], sizeof(dispatch_args));
 
         // single slot indirect dispatch args for the meshlet cull (phase b), group_count_x bumped by the instance cull (phase a)
         Sb_IndirectDispatchArgs instance_dispatch = {};

@@ -116,6 +116,15 @@ namespace spartan
             }
         }
 
+        void on_mesh_shaders_change(const CVarVariant& value)
+        {
+            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedMeshShaders())
+            {
+                SP_LOG_WARNING("This GPU doesn't support mesh shaders");
+                *ConsoleRegistry::Get().Find("r.mesh_shaders")->m_value_ptr = 0.0f;
+            }
+        }
+
         void on_antialiasing_change(const CVarVariant& value)
         {
             float v = get<float>(value);
@@ -192,6 +201,7 @@ namespace spartan
     TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,                                                    "vertical sync",                           on_vsync_change);
     // resolution
     TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,                                                    "variable rate shading",                   on_vrs_change);
+    TConsoleVar<float> cvar_mesh_shaders                   ("r.mesh_shaders",                   1.0f,                                                    "mesh shaders for opaque/alpha depth+gbuffer, on by default and falls back to vertex pull when the device or the shaders are unavailable", on_mesh_shaders_change);
     TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.25-1.0)",       on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
     // misc

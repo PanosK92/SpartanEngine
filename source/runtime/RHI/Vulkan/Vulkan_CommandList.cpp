@@ -169,6 +169,8 @@ namespace spartan
                            VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
                            VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
                            VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                           VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                           VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
                            (is_depth ? (VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT) : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
                 case RHI_Barrier_Scope::Compute:
@@ -230,6 +232,8 @@ namespace spartan
                         VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
                         VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
                         VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                        VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                        VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
                         VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
                         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
                         VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
@@ -905,15 +909,16 @@ namespace spartan
                     {
                         vk_barrier.srcAccessMask = VK_ACCESS_2_NONE;
                     }
+                    // or usage stages into the scope mask, replacing used to drop mesh/task when args also needed draw_indirect
                     if (VkPipelineStageFlags2 stage = usage_to_stage(pending.barrier.usage_src))
                     {
-                        vk_barrier.srcStageMask  = stage;
-                        vk_barrier.srcAccessMask = usage_to_access(pending.barrier.usage_src, pending.barrier.access_src);
+                        vk_barrier.srcStageMask  |= stage;
+                        vk_barrier.srcAccessMask |= usage_to_access(pending.barrier.usage_src, pending.barrier.access_src);
                     }
                     if (VkPipelineStageFlags2 stage = usage_to_stage(pending.barrier.usage_dst))
                     {
-                        vk_barrier.dstStageMask  = stage;
-                        vk_barrier.dstAccessMask = usage_to_access(pending.barrier.usage_dst, pending.barrier.access_dst);
+                        vk_barrier.dstStageMask  |= stage;
+                        vk_barrier.dstAccessMask |= usage_to_access(pending.barrier.usage_dst, pending.barrier.access_dst);
                     }
 
                     buffer_barriers.push_back(vk_barrier);
@@ -1957,6 +1962,61 @@ namespace spartan
             static_cast<VkDeviceSize>(args_offset),
             1u,
             sizeof(uint32_t) * 4
+        );
+
+        Profiler::m_rhi_draw++;
+    }
+
+    void RHI_CommandList::DrawMeshTasksIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(args_buffer != nullptr);
+        SP_ASSERT_MSG(RHI_Device::IsSupportedMeshShaders(), "Mesh shaders are not supported on this device");
+        TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
+
+        // cull writes survivors + group counts on compute, mesh reads them
+        // renderdoc serializes this path which is why captures look fine while freestanding runs race
+        RenderPassEnd();
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_HOST_BIT;
+            memory_barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT |
+                                           VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT |
+                                           VK_ACCESS_2_HOST_WRITE_BIT;
+            memory_barrier.dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+                                           VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                                           VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
+                                           VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+            memory_barrier.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT |
+                                           VK_ACCESS_2_SHADER_READ_BIT |
+                                           VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+
+            VkDependencyInfo dependency_info = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
+            Profiler::m_rhi_pipeline_barriers++;
+        }
+
+        PreDraw();
+
+        static PFN_vkCmdDrawMeshTasksIndirectEXT pfn_draw_mesh_tasks_indirect = nullptr;
+        if (!pfn_draw_mesh_tasks_indirect)
+        {
+            pfn_draw_mesh_tasks_indirect = reinterpret_cast<PFN_vkCmdDrawMeshTasksIndirectEXT>(
+                vkGetDeviceProcAddr(RHI_Context::device, "vkCmdDrawMeshTasksIndirectEXT"));
+            SP_ASSERT(pfn_draw_mesh_tasks_indirect != nullptr);
+        }
+
+        // single indirect mesh dispatch, args layout matches VkDrawMeshTasksIndirectCommandEXT
+        pfn_draw_mesh_tasks_indirect(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkBuffer>(args_buffer->GetRhiResource()),
+            static_cast<VkDeviceSize>(args_offset),
+            1u,
+            sizeof(uint32_t) * 3
         );
 
         Profiler::m_rhi_draw++;

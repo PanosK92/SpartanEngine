@@ -84,9 +84,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             passes_distance         = dot(to_camera, to_camera) <= draw.max_render_distance_squared;
         }
 
-        // frustum then hi-z, the hi-z test also rejects instances entirely behind the camera (the side planes alone do not)
+        // frustum, then contribution, then hi-z, the hi-z test also rejects instances entirely behind the camera (the side planes alone do not)
+        // contribution runs before hi-z because it reuses the same projection without sampling the hi-z pyramid
         survives = passes_distance
             && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t)
+            && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX)
             && sphere_hiz_visible(tex, center_world, radius_world, max_mip_level);
     }
 

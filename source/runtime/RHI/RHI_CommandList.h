@@ -123,6 +123,8 @@ namespace spartan
         void DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count = 1);
         void DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count);
         void DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset);
+        // one mesh workgroup per IndirectDispatchArgs.group_count_x, args layout matches VkDrawMeshTasksIndirectCommandEXT / D3D12_DISPATCH_MESH_ARGUMENTS
+        void DrawMeshTasksIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
 
         // dispatch
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
@@ -142,6 +144,8 @@ namespace spartan
         void PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
         void PrepareBufferForCompute(RHI_Buffer* buffer);
         void PrepareBufferForReadback(RHI_Buffer* buffer);
+        // compute writes then mesh/vs reads, renderdoc serializes this so freestanding runs race without it
+        void PrepareBufferForGraphics(RHI_Buffer* buffer);
 
         // copy
         void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);

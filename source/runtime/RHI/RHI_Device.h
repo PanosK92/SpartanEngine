@@ -114,6 +114,7 @@ namespace spartan
         static bool IsSupportedVrs()                                      { return m_is_shading_rate_supported; }
         static bool IsSupportedXess()                                     { return m_xess_supported; }
         static bool IsSupportedRayTracing()                               { return m_is_ray_tracing_supported; }
+        static bool IsSupportedMeshShaders()                              { return m_is_mesh_shaders_supported; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color);
@@ -157,6 +158,7 @@ namespace spartan
         static bool m_is_shading_rate_supported;
         static bool m_xess_supported;
         static bool m_is_ray_tracing_supported;
+        static bool m_is_mesh_shaders_supported;
 
         // misc
         static bool m_wide_lines;

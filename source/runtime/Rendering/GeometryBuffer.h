@@ -44,6 +44,12 @@ namespace spartan
         // append meshlet bounds to the global buffer, returns the base meshlet offset
         static uint32_t AppendMeshletBounds(const Sb_MeshletBounds* data, uint32_t count);
 
+        // append meshlet unique-vertex remaps, returns the base offset
+        static uint32_t AppendMeshletVertices(const uint32_t* data, uint32_t count);
+
+        // append meshlet micro-indices, returns the base offset
+        static uint32_t AppendMeshletMicroIndices(const uint32_t* data, uint32_t count);
+
         // append instances to the global instance buffer, returns the base instance offset
         // index 0 is reserved for the identity instance used by non-instanced draws
         static uint32_t AppendInstances(const Instance* data, uint32_t count);
@@ -53,13 +59,22 @@ namespace spartan
         static void UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count);
         static void UpdateIndices(const uint32_t* data, uint32_t offset, uint32_t count);
         static void UpdateMeshletBounds(const Sb_MeshletBounds* data, uint32_t offset, uint32_t count);
+        static void UpdateMeshletVertices(const uint32_t* data, uint32_t offset, uint32_t count);
+        static void UpdateMeshletMicroIndices(const uint32_t* data, uint32_t offset, uint32_t count);
 
         // uploads only the new portion when it fits the existing capacity, otherwise recreates with headroom
         static void BuildIfDirty();
 
         // bump capacity floors so the next BuildIfDirty allocates large enough buffers up-front
         // can be called before world load with a budget so we avoid mid-load rebuilds
-        static void Reserve(uint32_t vertex_count, uint32_t index_count, uint32_t meshlet_bounds_count, uint32_t instance_count);
+        static void Reserve(
+            uint32_t vertex_count,
+            uint32_t index_count,
+            uint32_t meshlet_bounds_count,
+            uint32_t meshlet_vertex_count,
+            uint32_t meshlet_micro_count,
+            uint32_t instance_count
+        );
 
         // destroy gpu buffers and clear cpu data
         static void Shutdown();
@@ -67,6 +82,8 @@ namespace spartan
         static RHI_Buffer* GetVertexBuffer();
         static RHI_Buffer* GetIndexBuffer();
         static RHI_Buffer* GetMeshletBoundsBuffer();
+        static RHI_Buffer* GetMeshletVertexBuffer();
+        static RHI_Buffer* GetMeshletMicroIndexBuffer();
         static RHI_Buffer* GetInstanceBuffer();
 
         // true when capacity was exceeded and the buffers moved, invalidates address dependent caches, cleared on read

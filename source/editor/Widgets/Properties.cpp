@@ -776,6 +776,12 @@ void Properties::OnTickVisible()
                 Terrain::SnapEntitiesToTerrain(selected);
             }
             ImGuiSp::tooltip("drop onto the first surface below, building or prop, else terrain");
+
+            if (ImGuiSp::button("Snap Selected Flat", ImVec2(-1, 0)))
+            {
+                Terrain::SnapEntitiesToFlatTerrain(selected);
+            }
+            ImGuiSp::tooltip("flatten the terrain inside the rectangle enclosing the selection, then drop onto it");
         }
         else if (Entity* entity = get_selected_entity())
         {
@@ -991,7 +997,13 @@ void Properties::ShowEntity(Entity* entity) const
         {
             Terrain::SnapEntityToTerrain(entity);
         }
-        ImGuiSp::tooltip("snap this entity and every mesh descendant to the surface below each one");
+        ImGuiSp::tooltip("snap mesh entities to the surface below; spline roads drop control points and conform to terrain");
+
+        if (ImGuiSp::button("Snap Flat", ImVec2(snap_button_width, 0)))
+        {
+            Terrain::SnapEntityToFlatTerrain(entity);
+        }
+        ImGuiSp::tooltip("flatten the terrain inside the rectangle enclosing this entity and its children, then snap onto it");
     }
     component_end();
 }

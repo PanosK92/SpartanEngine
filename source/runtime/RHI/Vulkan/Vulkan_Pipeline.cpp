@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_VendorTechnology.h"
 #include "../Core/Debugging.h"
 #include "../World/Components/Render.h"
+#include "../Rendering/Renderer_Buffers.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -83,6 +84,10 @@ namespace spartan
             else if (shader->GetShaderStage() == RHI_Shader_Type::RayHit)
             {
                 shader_stage_info.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::MeshShader)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_MESH_BIT_EXT;
             }
             SP_ASSERT(shader_stage_info.stage != 0);
             SP_ASSERT(shader_stage_info.module != nullptr);
@@ -136,6 +141,7 @@ namespace spartan
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))        ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))         ? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute))       ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
+                    push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::MeshShader))          ? VK_SHADER_STAGE_MESH_BIT_EXT                 : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayGeneration)) ? VK_SHADER_STAGE_RAYGEN_BIT_KHR              : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))       ? VK_SHADER_STAGE_MISS_BIT_KHR                : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayHit))        ? VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR         : 0;
@@ -144,6 +150,32 @@ namespace spartan
                     m_push_constant_stages |= push_constant_range.stageFlags;
 
                     push_constant_ranges.emplace_back(push_constant_range);
+                }
+            }
+
+            // mesh shaders need pass push constants, spirv reflection can miss the block on some dxc builds
+            if (pipeline_state.HasMeshShaders())
+            {
+                if (push_constant_ranges.empty())
+                {
+                    VkPushConstantRange range = {};
+                    range.offset     = 0;
+                    range.size       = static_cast<uint32_t>(sizeof(Pcb_Pass));
+                    range.stageFlags = VK_SHADER_STAGE_MESH_BIT_EXT;
+                    if (pipeline_state.shaders[RHI_Shader_Type::Pixel])
+                    {
+                        range.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+                    }
+                    push_constant_ranges.emplace_back(range);
+                    m_push_constant_stages |= range.stageFlags;
+                }
+                else
+                {
+                    for (VkPushConstantRange& range : push_constant_ranges)
+                    {
+                        range.stageFlags |= VK_SHADER_STAGE_MESH_BIT_EXT;
+                    }
+                    m_push_constant_stages |= VK_SHADER_STAGE_MESH_BIT_EXT;
                 }
             }
 
@@ -463,14 +495,17 @@ namespace spartan
                 
                 // create
                 {
+                    const bool is_mesh = m_state.HasMeshShaders();
+
                     VkGraphicsPipelineCreateInfo pipeline_info = {};
                     pipeline_info.pNext                        = &pipeline_rendering_create_info;
                     pipeline_info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
                     pipeline_info.stageCount                   = static_cast<uint32_t>(shader_stages.size());
                     pipeline_info.pStages                      = shader_stages.data();
-                    pipeline_info.pVertexInputState            = &vertex_input_state;
-                    pipeline_info.pInputAssemblyState          = &input_assembly_state;
-                    pipeline_info.pTessellationState           = &tesselation_state;
+                    // mesh pipelines pull geometry in-shader, no fixed-function vertex fetch
+                    pipeline_info.pVertexInputState            = is_mesh ? nullptr : &vertex_input_state;
+                    pipeline_info.pInputAssemblyState          = is_mesh ? nullptr : &input_assembly_state;
+                    pipeline_info.pTessellationState           = is_mesh ? nullptr : &tesselation_state;
                     pipeline_info.pDynamicState                = &dynamic_state;
                     pipeline_info.pViewportState               = &viewport_state;
                     pipeline_info.pRasterizationState          = &rasterizer_state;

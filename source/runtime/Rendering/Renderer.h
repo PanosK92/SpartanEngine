@@ -94,6 +94,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_gamma;
     extern TConsoleVar<float> cvar_vsync;
     extern TConsoleVar<float> cvar_variable_rate_shading;
+    extern TConsoleVar<float> cvar_mesh_shaders;
     extern TConsoleVar<float> cvar_resolution_scale;
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_hiz_occlusion;
@@ -457,7 +458,7 @@ namespace spartan
             std::shared_ptr<RHI_Buffer> indirect_draw_data;     // per-render lod draw data
             std::shared_ptr<RHI_Buffer> meshlet_instances;      // meshlet-cull survivor list
             std::shared_ptr<RHI_Buffer> visible_triangles;      // triangle-cull survivor list (packed meshlet_instance + triangle index)
-            std::shared_ptr<RHI_Buffer> triangle_dispatch_args; // single-slot indirect dispatch args for the triangle cull pass
+            std::shared_ptr<RHI_Buffer> triangle_dispatch_args; // vs: triangle cull dispatch, mesh: opaque+alpha mesh task counts
             std::shared_ptr<RHI_Buffer> cull_tasks;
             std::shared_ptr<RHI_Buffer> surviving_instances;    // phase a survivor list, one entry per visible instance
             std::shared_ptr<RHI_Buffer> instance_dispatch_args; // single-slot indirect dispatch args for the meshlet cull pass (phase b)

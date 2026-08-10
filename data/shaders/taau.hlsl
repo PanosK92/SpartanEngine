@@ -26,7 +26,7 @@ float reset_history() { return pass_get_f3_value().x; }
 static const float blend_static       = 1.0f / 24.0f;
 static const float blend_motion       = 1.0f / 4.0f;
 static const float blend_flicker_min  = 0.3f;
-static const float blend_disocclusion = 0.5f;
+static const float blend_disocclusion = 1.0f;
 static const float motion_px_full     = 24.0f;
 static const float box_widen_static   = 0.5f;
 static const float box_pad_relative   = 0.08f;
@@ -289,8 +289,10 @@ float3 taau(uint2 px_out, float2 res_out)
         return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
     }
 
+    // the test runs on the shaded pixel, not on closest_px, that one belongs to the dilated
+    // occluder and its history always validates, which is what hides the disocclusion
     float motion = saturate(length(velocity_uv * res_out) * rcp(motion_px_full));
-    float reuse  = compute_history_reuse(closest_px, active_render_f, uv_prev, px_render_max);
+    float reuse  = compute_history_reuse(center, active_render_f, uv_prev, px_render_max);
 
     float  widen   = box_widen_static * (1.0f - motion) * reuse;
     float3 rgb_min = lerp(rgb_min_near, rgb_min_wide, widen);
@@ -319,7 +321,10 @@ float3 taau(uint2 px_out, float2 res_out)
 
     float blend_flicker = lerp(blend_base * blend_flicker_min, blend_base, stability);
     float blend         = lerp(blend_flicker, blend_base, motion);
-    blend               = lerp(blend_disocclusion, blend, reuse);
+
+    // squared so a partial depth mismatch leans towards rejection, a still camera reprojects
+    // exactly and reuse stays at one, so this curve cannot touch the static case
+    blend = lerp(blend_disocclusion, blend, reuse * reuse);
 
     float3 result_rgb_tm = max(lerp(history_clipped_tm, current_rgb_tm, blend), 0.0f.xxx);
 

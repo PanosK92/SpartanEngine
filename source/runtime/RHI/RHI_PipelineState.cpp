@@ -46,17 +46,20 @@ namespace spartan
             bool has_shader_hull        = pso.shaders[RHI_Shader_Type::Hull]          ? pso.shaders[RHI_Shader_Type::Hull]->IsCompiled()          : false;
             bool has_shader_domain      = pso.shaders[RHI_Shader_Type::Domain]        ? pso.shaders[RHI_Shader_Type::Domain]->IsCompiled()        : false;
             bool has_shader_pixel       = pso.shaders[RHI_Shader_Type::Pixel]         ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()         : false;
+            bool has_shader_mesh        = pso.shaders[RHI_Shader_Type::MeshShader]          ? pso.shaders[RHI_Shader_Type::MeshShader]->IsCompiled()          : false;
             bool has_shader_raygen      = pso.shaders[RHI_Shader_Type::RayGeneration] ? pso.shaders[RHI_Shader_Type::RayGeneration]->IsCompiled() : false;
             bool has_shader_miss        = pso.shaders[RHI_Shader_Type::RayMiss]       ? pso.shaders[RHI_Shader_Type::RayMiss]->IsCompiled()       : false;
             bool has_shader_closest_hit = pso.shaders[RHI_Shader_Type::RayHit]        ? pso.shaders[RHI_Shader_Type::RayHit]->IsCompiled()        : false;
         
-            bool has_some_shader = has_shader_compute || has_shader_vertex || has_shader_hull || has_shader_domain || has_shader_pixel || has_shader_raygen || has_shader_miss || has_shader_closest_hit;
+            bool has_some_shader = has_shader_compute || has_shader_vertex || has_shader_hull || has_shader_domain || has_shader_pixel || has_shader_mesh || has_shader_raygen || has_shader_miss || has_shader_closest_hit;
             SP_ASSERT_MSG(has_some_shader, "There is no shader set, ensure that it compiled successfully and that it has been set");
         
-            bool is_graphics    = (has_shader_vertex || has_shader_hull || has_shader_domain || has_shader_pixel) && !has_shader_compute && !has_shader_raygen && !has_shader_miss && !has_shader_closest_hit;
-            bool is_compute     = has_shader_compute && !has_shader_vertex && !has_shader_hull && !has_shader_domain && !has_shader_pixel && !has_shader_raygen && !has_shader_miss && !has_shader_closest_hit;
-            bool is_ray_tracing = (has_shader_raygen || has_shader_miss || has_shader_closest_hit) && !has_shader_compute && !has_shader_vertex && !has_shader_hull && !has_shader_domain && !has_shader_pixel;
+            bool is_graphics    = (has_shader_vertex || has_shader_hull || has_shader_domain || has_shader_pixel || has_shader_mesh) && !has_shader_compute && !has_shader_raygen && !has_shader_miss && !has_shader_closest_hit;
+            bool is_compute     = has_shader_compute && !has_shader_vertex && !has_shader_hull && !has_shader_domain && !has_shader_pixel && !has_shader_mesh && !has_shader_raygen && !has_shader_miss && !has_shader_closest_hit;
+            bool is_ray_tracing = (has_shader_raygen || has_shader_miss || has_shader_closest_hit) && !has_shader_compute && !has_shader_vertex && !has_shader_hull && !has_shader_domain && !has_shader_pixel && !has_shader_mesh;
             SP_ASSERT_MSG(is_graphics || is_compute || is_ray_tracing, "Invalid pipeline state type, must be graphics, compute, or ray tracing");
+            SP_ASSERT_MSG(!(has_shader_mesh && has_shader_vertex), "Mesh and vertex shaders cannot be combined");
+            SP_ASSERT_MSG(!(has_shader_mesh && (has_shader_hull || has_shader_domain)), "Mesh shaders cannot be combined with tessellation");
         
             if (is_graphics)
             {
@@ -240,7 +243,7 @@ namespace spartan
 
     bool RHI_PipelineState::IsGraphics() const
     {
-        return (HasShader(RHI_Shader_Type::Vertex) || HasShader(RHI_Shader_Type::Hull) || HasShader(RHI_Shader_Type::Domain) || HasShader(RHI_Shader_Type::Pixel)) &&
+        return (HasShader(RHI_Shader_Type::Vertex) || HasShader(RHI_Shader_Type::Hull) || HasShader(RHI_Shader_Type::Domain) || HasShader(RHI_Shader_Type::Pixel) || HasShader(RHI_Shader_Type::MeshShader)) &&
                !HasShader(RHI_Shader_Type::Compute) &&
                !HasShader(RHI_Shader_Type::RayGeneration) &&
                !HasShader(RHI_Shader_Type::RayMiss) &&
@@ -254,6 +257,7 @@ namespace spartan
                !HasShader(RHI_Shader_Type::Hull) &&
                !HasShader(RHI_Shader_Type::Domain) &&
                !HasShader(RHI_Shader_Type::Pixel) &&
+               !HasShader(RHI_Shader_Type::MeshShader) &&
                !HasShader(RHI_Shader_Type::RayGeneration) &&
                !HasShader(RHI_Shader_Type::RayMiss) &&
                !HasShader(RHI_Shader_Type::RayHit);
@@ -266,7 +270,13 @@ namespace spartan
                !HasShader(RHI_Shader_Type::Hull) &&
                !HasShader(RHI_Shader_Type::Domain) &&
                !HasShader(RHI_Shader_Type::Pixel) &&
+               !HasShader(RHI_Shader_Type::MeshShader) &&
                !HasShader(RHI_Shader_Type::Compute);
+    }
+
+    bool RHI_PipelineState::HasMeshShaders() const
+    {
+        return HasShader(RHI_Shader_Type::MeshShader);
     }
 
     bool RHI_PipelineState::HasTessellation()

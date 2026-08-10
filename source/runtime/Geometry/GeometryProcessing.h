@@ -51,11 +51,15 @@ namespace spartan::geometry_processing
         std::vector<uint32_t>& indices
     );
 
-    // builds per-lod meshlets and repacks the indices in meshlet order, the returned bounds match that order
+    // builds per-lod meshlets and repacks the indices in meshlet order
+    // also emits unique vertex remaps + micro-indices for the mesh shader path
+    // the returned bounds match that order and reference the packed unique/micro outputs
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,
         std::vector<Sb_MeshletBounds>& meshlets_out,
+        std::vector<uint32_t>& unique_vertices_out,
+        std::vector<uint32_t>& micro_indices_out,
         math::BoundingBox& lod_aabb_out
     );
 
