@@ -61,7 +61,7 @@ namespace spartan
             r.name                 = "rock";
             r.slope_min            = 32.0f;
             r.slope_max            = 90.0f;
-            r.flags                = TerrainLayerFlags_Biplanar | TerrainLayerFlags_Pom;
+            r.flags                = TerrainLayerFlags_Biplanar;
             r.curvature_influence  = -0.35f;
             r.wear_influence       = 0.5f;
             r.deposition_influence = -0.3f;

@@ -34,15 +34,16 @@ static const float sea_level  = 0.0f;
 static const float snow_level = 400.0f;
 
 // hex tiling, mikkelsen jcgt 2022
-static const float terrain_hex_exponent          = 7.0f;
-static const float terrain_hex_falloff           = 0.6f;
-static const float terrain_hex_gain              = 0.7f;
-static const float terrain_hex_rotation_strength = 0.4f;
+// soft blend, a high exponent paints a diamond waffle across mid distance hills
+static const float terrain_hex_exponent          = 4.0f;
+static const float terrain_hex_falloff           = 0.5f;
+static const float terrain_hex_gain              = 0.5f;
+static const float terrain_hex_rotation_strength = 0.55f;
 // the two tiling scales share no harmonics, so their repeats never line up, this takes over from the
 // hex lattice where that stops and is the only thing breaking the repeat in the far field
 static const float terrain_macro_scale_ratio = 8.7f;
-static const float terrain_macro_fade_start  = 280.0f;
-static const float terrain_macro_fade_end    = 800.0f;
+static const float terrain_macro_fade_start  = 120.0f;
+static const float terrain_macro_fade_end    = 600.0f;
 
 // noise_perlin already scales its input by 0.1, so a wavelength of w meters needs 10 / w
 static const float terrain_noise_rcp_scale = 10.0f;
@@ -55,7 +56,7 @@ static const uint terrain_layer_pick_max   = 4;
 static const float terrain_detail_distance = 45.0f;
 // the hex lattice has to outlive the layer blend by a long way, the repeat is most obvious at exactly
 // the mid distances where it is still resolvable, and on one layer three taps is cheap
-static const float terrain_hex_distance = 320.0f;
+static const float terrain_hex_distance = 500.0f;
 
 // debug views, must match TerrainDebugView in TerrainLayer.h
 static const uint terrain_debug_off        = 0;
@@ -811,22 +812,28 @@ TerrainSurface terrain_evaluate(
 
     // dual scale tiling on the dominant layer's albedo, a second copy at a non integer scale
     // ratio breaks the mid distance repeat that no amount of per tile randomization can hide
-    float macro_fade = saturate((distance_to_camera - terrain_macro_fade_start) / (terrain_macro_fade_end - terrain_macro_fade_start));
+    float macro_fade = saturate(
+        (distance_to_camera - terrain_macro_fade_start) /
+        max(terrain_macro_fade_end - terrain_macro_fade_start, 1.0f)
+    );
     if (macro_fade > 0.0f)
     {
         MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
         float scale                 = dominant.terrain_tiling_scale / terrain_macro_scale_ratio;
-        float4 far_albedo           = 1.0f;
-
-        // this second scale exists to break the repeat, one tap is enough at every distance
-        far_albedo = material_textures[NonUniformResourceIndex(pick.index[0] + material_texture_index_albedo)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv * scale, duvdx * scale, duvdy * scale);
+        float4 far_albedo           = material_textures[NonUniformResourceIndex(pick.index[0] + material_texture_index_albedo)]
+            .SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), uv * scale, duvdx * scale, duvdy * scale);
 
         if (dominant.is_albedo_srgb())
         {
             far_albedo.rgb = srgb_to_linear(far_albedo.rgb);
         }
 
-        albedo.rgb = lerp(albedo.rgb, albedo.rgb * far_albedo.rgb * 2.0f, macro_fade * 0.65f);
+        // keep luminance so the layer colour does not drift
+        float3 mixed   = albedo.rgb * far_albedo.rgb * 2.0f;
+        float  lum_src = max(luminance(albedo.rgb), 1e-4f);
+        float  lum_dst = max(luminance(mixed), 1e-4f);
+        mixed         *= lum_src / lum_dst;
+        albedo.rgb     = lerp(albedo.rgb, mixed, macro_fade * 0.55f);
     }
 
     // large scale colour and roughness breakup
