@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "pch.h"
 #include <fstream>
+#include <functional>
 #include <unordered_set>
 #include "Terrain.h"
 #include "Render.h"
@@ -45,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/PhysicsWorld.h"
 #include "../../Math/Ray.h"
 #include "../../Math/BoundingBox.h"
+#include "../WorldHelpers.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -748,7 +750,8 @@ namespace spartan
             const float density_fraction,
             uint32_t tile_index,
             vector<Matrix>& transforms_out,
-            unordered_map<uint64_t, vector<TriangleData>>& triangle_data
+            unordered_map<uint64_t, vector<TriangleData>>& triangle_data,
+            const function<float(float, float)>& sample_biome_weight = {}
         )
         {
             auto it = triangle_data.find(tile_index);
@@ -825,12 +828,34 @@ namespace spartan
                     continue;
                 }
 
-                if (tri.slope_radians <= prop_desc.max_slope_angle_rad &&
-                    tri.height_min >= prop_desc.min_spawn_height &&
-                    tri.height_max <= prop_desc.max_spawn_height)
+                if (tri.slope_radians > prop_desc.max_slope_angle_rad ||
+                    tri.height_min < prop_desc.min_spawn_height ||
+                    tri.height_max > prop_desc.max_spawn_height)
                 {
-                    acceptable_triangles.push_back(i);
+                    continue;
                 }
+
+                // biome mask, stochastic so soft edges match the painted layer blend
+                if (sample_biome_weight && prop_desc.prop_mask_channel >= 0)
+                {
+                    const float weight = sample_biome_weight(tri.centroid.x, tri.centroid.z);
+                    if (weight < prop_desc.prop_mask_min)
+                    {
+                        continue;
+                    }
+
+                    uint32_t h = i * 747796405u + 2891336453u;
+                    h = (h ^ (h >> 16)) * 0x7feb352du;
+                    h = (h ^ (h >> 15)) * 0x846ca68bu;
+                    h = h ^ (h >> 16);
+                    const float roll = static_cast<float>(h & 0xffffu) * (1.0f / 65535.0f);
+                    if (roll > weight)
+                    {
+                        continue;
+                    }
+                }
+
+                acceptable_triangles.push_back(i);
             }
             if (acceptable_triangles.empty())
             {
@@ -1119,10 +1144,14 @@ namespace spartan
         m_height_map_seed = nullptr;
         m_height_map_final_retired.reset();
         m_height_map_final.reset();
+        m_height_map_gpu_retired.reset();
+        m_height_map_gpu.reset();
         m_map_a_retired.reset();
         m_map_b_retired.reset();
+        m_prop_mask_retired.reset();
         m_map_a.reset();
         m_map_b.reset();
+        m_prop_mask.reset();
     }
 
     void Terrain::ApplyDefaultMaterial()
@@ -1271,6 +1300,7 @@ namespace spartan
         node.append_attribute("scale")         = m_scale;
         node.append_attribute("tile_count")    = m_tile_count;
         node.append_attribute("create_border") = m_create_border;
+        node.append_attribute("spawn_biome_props") = m_spawn_biome_props;
 
         // flat terrain dims, used when there is no height map seed
         if (!m_height_map_seed && m_width > 1 && m_height > 1)
@@ -1303,6 +1333,7 @@ namespace spartan
         m_scale         = max(node.attribute("scale").as_uint(25), 1u);
         m_tile_count    = max(node.attribute("tile_count").as_uint(16), 1u);
         m_create_border = node.attribute("create_border").as_bool(false);
+        m_spawn_biome_props = node.attribute("spawn_biome_props").as_bool(true);
 
         // forest grass/rock/sand slope material
         ApplyDefaultMaterial();
@@ -1334,7 +1365,7 @@ namespace spartan
         };
 
         // bump when cache format or the generation algorithms change so old caches get invalidated
-        const uint64_t cache_format_version = 5;
+        const uint64_t cache_format_version = 11;
         hash_combine(cache_format_version);
 
         hash_combine(static_cast<uint64_t>(m_min_y * 1000));
@@ -1374,6 +1405,8 @@ namespace spartan
             description.max_spawn_height     = m_level_snow + 20;
             description.min_scale            = scale * 0.4f;
             description.max_scale            = scale * 1.0f;
+            description.prop_mask_channel    = 1; // g, forest + meadow scatter
+            description.prop_mask_min        = 0.08f;
         }
         else if (terrain_prop == TerrainProp::Grass)
         {
@@ -1383,6 +1416,8 @@ namespace spartan
             description.max_spawn_height        = m_level_snow;
             description.min_scale               = scale * 1.0f;
             description.max_scale               = scale * 1.5f;
+            description.prop_mask_channel       = 0;
+            description.prop_mask_min           = 0.35f;
         }
         else if (terrain_prop == TerrainProp::Flower)
         {
@@ -1394,23 +1429,46 @@ namespace spartan
             description.max_scale               = scale * 1.2f;
             description.instances_per_cluster   = 1000;
             description.cluster_radius          = 30.0f;
+            description.prop_mask_channel       = 0;
+            description.prop_mask_min           = 0.4f;
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
-            description.max_slope_angle_rad     = 45.0f * math::deg_to_rad;
+            // cliffs only, sparse accents
+            description.max_slope_angle_rad     = 80.0f * math::deg_to_rad;
             description.align_to_surface_normal = true;
             description.min_spawn_height        = m_level_sea - 10.0f;
             description.max_spawn_height        = numeric_limits<float>::max();
             description.min_scale               = scale * 0.1f;
             description.max_scale               = scale * 1.0f;
             description.scale_adjust_by_slope   = true;
+            description.prop_mask_channel       = 2;
+            description.prop_mask_min           = 0.22f;
         }
         else
         {
             SP_ASSERT_MSG(false, "unknown terrain prop type");
         }
 
-        placement::find_transforms(description, density_fraction, tile_index, transforms_out, m_triangle_data);
+        function<float(float, float)> biome_sample;
+        if (description.prop_mask_channel >= 0 && !m_prop_mask_pixels.empty())
+        {
+            const int channel = description.prop_mask_channel;
+            const Vector3 tile_offset = (tile_index < m_tile_offsets.size()) ?
+                m_tile_offsets[tile_index] :
+                Vector3::Zero;
+            // triangle centroids are tile-local, the prop mask is authored in world xz
+            biome_sample = [this, channel, tile_offset](float x, float z) -> float
+            {
+                return SamplePropMaskChannel(
+                    x + tile_offset.x,
+                    z + tile_offset.z,
+                    channel
+                );
+            };
+        }
+
+        placement::find_transforms(description, density_fraction, tile_index, transforms_out, m_triangle_data, biome_sample);
 
         // compensate for entity scale
         if (entity && entity->GetScale() != Vector3::One && entity->GetScale() != Vector3::Zero)
@@ -1749,6 +1807,10 @@ namespace spartan
         m_tile_indices.clear();
 
         SnapshotBaseline();
+
+        // biome props need tiles + analysis maps, both ready at this point
+        WorldHelpers::PopulateTerrainBiomeProps(this);
+
         m_is_generating = false;
     }
 
@@ -2533,26 +2595,74 @@ namespace spartan
             return;
         }
 
-        // imgui samples as rgba8, so bake a normalized grayscale preview, not raw r32 heights
-        float height_min = m_positions[0].y;
-        float height_max = m_positions[0].y;
-        for (const Vector3& position : m_positions)
+        const uint32_t sample_count = m_dense_width * m_dense_height;
+
+        // r32 world heights for grass_populate, the shader samples .r as meters
         {
-            height_min = min(height_min, position.y);
-            height_max = max(height_max, position.y);
+            vector<RHI_Texture_Slice> slices(1);
+            slices[0].mips.resize(1);
+            slices[0].mips[0].bytes.resize(static_cast<size_t>(sample_count) * sizeof(float));
+            float* heights = reinterpret_cast<float*>(slices[0].mips[0].bytes.data());
+            auto copy_world_y = [this, heights](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    heights[i] = m_positions[i].y;
+                }
+            };
+            ThreadPool::ParallelLoop(copy_world_y, sample_count);
+
+            m_height_map_gpu_retired = m_height_map_gpu;
+            m_height_map_gpu = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                m_dense_width, m_dense_height, 1, 1,
+                RHI_Format::R32_Float, RHI_Texture_Srv,
+                "terrain_height_gpu", move(slices)
+            );
         }
 
-        const float height_range = max(height_max - height_min, epsilon);
+        // imgui samples as rgba8, so bake a normalized grayscale preview separately
+        m_height_bake_min = m_positions[0].y;
+        m_height_bake_max = m_positions[0].y;
+        for (const Vector3& position : m_positions)
+        {
+            m_height_bake_min = min(m_height_bake_min, position.y);
+            m_height_bake_max = max(m_height_bake_max, position.y);
+        }
+
+        const float height_range = max(m_height_bake_max - m_height_bake_min, epsilon);
+
+        // keep world mapping in sync even if analysis bake is skipped later
+        {
+            float min_x = m_positions[0].x;
+            float max_x = m_positions[0].x;
+            float min_z = m_positions[0].z;
+            float max_z = m_positions[0].z;
+            for (const Vector3& position : m_positions)
+            {
+                min_x = min(min_x, position.x);
+                max_x = max(max_x, position.x);
+                min_z = min(min_z, position.z);
+                max_z = max(max_z, position.z);
+            }
+            m_world_mapping = Vector4(
+                min_x,
+                min_z,
+                1.0f / max(max_x - min_x, epsilon),
+                1.0f / max(max_z - min_z, epsilon)
+            );
+        }
+
         vector<RHI_Texture_Slice> slices(1);
         slices[0].mips.resize(1);
-        slices[0].mips[0].bytes.resize(m_dense_width * m_dense_height * 4);
+        slices[0].mips[0].bytes.resize(static_cast<size_t>(sample_count) * 4);
 
         uint8_t* pixels = reinterpret_cast<uint8_t*>(slices[0].mips[0].bytes.data());
-        auto copy_heights = [this, pixels, height_min, height_range](uint32_t start, uint32_t end)
+        auto copy_heights = [this, pixels, height_range](uint32_t start, uint32_t end)
         {
             for (uint32_t i = start; i < end; i++)
             {
-                const float t = saturate((m_positions[i].y - height_min) / height_range);
+                const float t = saturate((m_positions[i].y - m_height_bake_min) / height_range);
                 const uint8_t value = static_cast<uint8_t>(t * 255.0f + 0.5f);
                 const uint32_t offset = i * 4;
                 pixels[offset + 0] = value;
@@ -2561,7 +2671,7 @@ namespace spartan
                 pixels[offset + 3] = 255;
             }
         };
-        ThreadPool::ParallelLoop(copy_heights, m_dense_width * m_dense_height);
+        ThreadPool::ParallelLoop(copy_heights, sample_count);
 
         // retire the previous bake first, imgui may still draw it this frame
         m_height_map_final_retired = m_height_map_final;
@@ -2569,7 +2679,7 @@ namespace spartan
             RHI_Texture_Type::Type2D,
             m_dense_width, m_dense_height, 1, 1,
             RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
-            "terrain_baked", slices
+            "terrain_baked", move(slices)
         );
     }
 
@@ -2596,13 +2706,16 @@ namespace spartan
         const size_t byte_count = static_cast<size_t>(width) * height * 4;
         m_map_a_pixels.resize(byte_count);
         m_map_b_pixels.resize(byte_count);
+        m_prop_mask_pixels.resize(byte_count);
         file.read(reinterpret_cast<char*>(m_map_a_pixels.data()), byte_count);
         file.read(reinterpret_cast<char*>(m_map_b_pixels.data()), byte_count);
+        file.read(reinterpret_cast<char*>(m_prop_mask_pixels.data()), byte_count);
 
         if (!file)
         {
             m_map_a_pixels.clear();
             m_map_b_pixels.clear();
+            m_prop_mask_pixels.clear();
             return false;
         }
 
@@ -2613,7 +2726,7 @@ namespace spartan
 
     void Terrain::SaveTerrainMapsToCache() const
     {
-        if (m_map_a_pixels.empty() || m_map_b_pixels.empty())
+        if (m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_prop_mask_pixels.empty())
         {
             return;
         }
@@ -2630,6 +2743,7 @@ namespace spartan
         file.write(reinterpret_cast<const char*>(&m_map_height), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(m_map_a_pixels.data()), m_map_a_pixels.size());
         file.write(reinterpret_cast<const char*>(m_map_b_pixels.data()), m_map_b_pixels.size());
+        file.write(reinterpret_cast<const char*>(m_prop_mask_pixels.data()), m_prop_mask_pixels.size());
     }
 
     void Terrain::BakeTerrainMaps()
@@ -2706,6 +2820,12 @@ namespace spartan
             };
             ThreadPool::ParallelLoop(encode, static_cast<uint32_t>(cell_count));
 
+            BakePropMask();
+            SaveTerrainMapsToCache();
+        }
+        else if (m_prop_mask_pixels.empty())
+        {
+            BakePropMask();
             SaveTerrainMapsToCache();
         }
 
@@ -2717,6 +2837,7 @@ namespace spartan
         // retire the previous pair, an in flight frame may still hold their descriptors
         m_map_a_retired = m_map_a;
         m_map_b_retired = m_map_b;
+        m_prop_mask_retired = m_prop_mask;
 
         m_map_a = make_shared<RHI_Texture>(
             RHI_Texture_Type::Type2D,
@@ -2732,10 +2853,217 @@ namespace spartan
             "terrain_analysis_b", to_single_mip_slice(m_map_b_pixels)
         );
 
+        if (!m_prop_mask_pixels.empty())
+        {
+            m_prop_mask = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                m_map_width, m_map_height, 1, 1,
+                RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
+                "terrain_prop_mask", to_single_mip_slice(m_prop_mask_pixels)
+            );
+            m_prop_mask->PrepareForGpu();
+        }
+
         m_map_a->PrepareForGpu();
         m_map_b->PrepareForGpu();
 
         PushToRenderer();
+    }
+
+    void Terrain::BakePropMask()
+    {
+        if (m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_positions.empty() ||
+            m_map_width == 0 || m_map_height == 0 || m_dense_width < 2 || m_dense_height < 2)
+        {
+            m_prop_mask_pixels.clear();
+            return;
+        }
+
+        // cpu port of terrain_layer_weight, scores each biome then packs grass/tree/rock channels
+        auto band = [](float value, float low, float high, float feather_max) -> float
+        {
+            const float feather = clamp((high - low) * 0.25f, 1e-4f, feather_max);
+            const float rise = saturate((value - (low - feather)) / max(2.0f * feather, 1e-4f));
+            const float fall = 1.0f - saturate((value - (high - feather)) / max(2.0f * feather, 1e-4f));
+            // smoothstep-ish
+            const float r = rise * rise * (3.0f - 2.0f * rise);
+            const float f = fall * fall * (3.0f - 2.0f * fall);
+            return r * f;
+        };
+
+        auto layer_weight = [&](const TerrainLayerRule& rule, float height, float slope_rad,
+            float curvature, float flow, float occlusion, float deposition,
+            float wear, float insolation, float talus) -> float
+        {
+            if (rule.weight_bias <= 0.0f || (rule.flags & TerrainLayerFlags_Snow))
+            {
+                return 0.0f;
+            }
+
+            const float height_for_band = (rule.flags & TerrainLayerFlags_BelowSea) ?
+                (height - m_level_sea) : height;
+
+            float weight = band(slope_rad, rule.slope_min * math::deg_to_rad, rule.slope_max * math::deg_to_rad, 0.35f);
+            weight *= band(height_for_band, rule.height_min, rule.height_max, 30.0f);
+            if (weight <= 0.0f)
+            {
+                return 0.0f;
+            }
+
+            float push = 0.0f;
+            push += rule.curvature_influence  * (curvature * 2.0f - 1.0f);
+            push += rule.flow_influence       * (flow * 2.0f - 1.0f);
+            push += rule.occlusion_influence  * (1.0f - occlusion * 2.0f);
+            push += rule.insolation_influence * (insolation * 2.0f - 1.0f);
+            push += rule.wear_influence       * (wear * 2.0f - 1.0f);
+            push += rule.deposition_influence * (deposition * 2.0f - 1.0f);
+            push += rule.talus_influence      * (talus * 2.0f - 1.0f);
+
+            return weight * exp2f(push * 2.0f) * rule.weight_bias;
+        };
+
+        // find layer indices by name so a reordered rule table still maps correctly
+        int grass_i = -1;
+        int rock_i = -1;
+        int gravel_i = -1;
+        int forest_i = -1;
+        for (uint32_t i = 0; i < terrain_layer_max; i++)
+        {
+            if (m_layer_rules[i].name == "whispy_grass_meadow") grass_i = static_cast<int>(i);
+            if (m_layer_rules[i].name == "rock") rock_i = static_cast<int>(i);
+            if (m_layer_rules[i].name == "gravel") gravel_i = static_cast<int>(i);
+            if (m_layer_rules[i].name == "forest_floor") forest_i = static_cast<int>(i);
+        }
+
+        const size_t cell_count = static_cast<size_t>(m_map_width) * m_map_height;
+        m_prop_mask_pixels.resize(cell_count * 4);
+
+        const uint32_t dense_w = m_dense_width;
+        const uint32_t dense_h = m_dense_height;
+        float cell_x = 1.0f;
+        float cell_z = 1.0f;
+        if (m_positions.size() > 1)
+        {
+            cell_x = max(fabsf(m_positions[1].x - m_positions[0].x), 1e-3f);
+        }
+        if (m_positions.size() > dense_w)
+        {
+            cell_z = max(fabsf(m_positions[dense_w].z - m_positions[0].z), 1e-3f);
+        }
+
+        auto bake = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                const uint32_t ax = i % m_map_width;
+                const uint32_t az = i / m_map_width;
+
+                const uint32_t dx = min(
+                    static_cast<uint32_t>((static_cast<float>(ax) + 0.5f) / static_cast<float>(m_map_width) * dense_w),
+                    dense_w - 1u
+                );
+                const uint32_t dz = min(
+                    static_cast<uint32_t>((static_cast<float>(az) + 0.5f) / static_cast<float>(m_map_height) * dense_h),
+                    dense_h - 1u
+                );
+
+                const Vector3& pos = m_positions[static_cast<size_t>(dz) * dense_w + dx];
+                const uint32_t dx1 = min(dx + 1u, dense_w - 1u);
+                const uint32_t dz1 = min(dz + 1u, dense_h - 1u);
+                const float y_c = pos.y;
+                const float y_r = m_positions[static_cast<size_t>(dz) * dense_w + dx1].y;
+                const float y_u = m_positions[static_cast<size_t>(dz1) * dense_w + dx].y;
+                Vector3 normal = Vector3(-(y_r - y_c) / cell_x, 1.0f, -(y_u - y_c) / cell_z).Normalized();
+                const float slope = acosf(clamp(normal.y, -1.0f, 1.0f));
+
+                const size_t offset = static_cast<size_t>(i) * 4;
+                const float curvature   = m_map_a_pixels[offset + 0] * (1.0f / 255.0f);
+                const float flow        = m_map_a_pixels[offset + 1] * (1.0f / 255.0f);
+                const float occlusion   = m_map_a_pixels[offset + 2] * (1.0f / 255.0f);
+                const float deposition  = m_map_a_pixels[offset + 3] * (1.0f / 255.0f);
+                const float wear        = m_map_b_pixels[offset + 0] * (1.0f / 255.0f);
+                const float insolation  = m_map_b_pixels[offset + 1] * (1.0f / 255.0f);
+                const float talus       = m_map_b_pixels[offset + 3] * (1.0f / 255.0f);
+
+                auto score = [&](int layer_index) -> float
+                {
+                    if (layer_index < 0)
+                    {
+                        return 0.0f;
+                    }
+                    return layer_weight(
+                        m_layer_rules[static_cast<size_t>(layer_index)],
+                        y_c, slope, curvature, flow, occlusion, deposition, wear, insolation, talus
+                    );
+                };
+
+                // prop mask mirrors layer ownership, lushness is tuned in TerrainLayer rules
+                float grass  = score(grass_i);
+                float forest = score(forest_i);
+                float rock   = score(rock_i) + score(gravel_i) * 0.85f;
+                float trees  = forest + grass * 0.15f;
+
+                const float sum = max(grass + trees + rock, 1e-4f);
+                grass = saturate(grass / sum);
+                trees = saturate(trees / sum);
+                rock  = saturate(rock / sum);
+
+                m_prop_mask_pixels[offset + 0] = static_cast<uint8_t>(grass * 255.0f + 0.5f);
+                m_prop_mask_pixels[offset + 1] = static_cast<uint8_t>(trees * 255.0f + 0.5f);
+                m_prop_mask_pixels[offset + 2] = static_cast<uint8_t>(rock * 255.0f + 0.5f);
+                m_prop_mask_pixels[offset + 3] = 255;
+            }
+        };
+        ThreadPool::ParallelLoop(bake, static_cast<uint32_t>(cell_count));
+    }
+
+    Vector3 Terrain::SamplePropMask(float world_x, float world_z) const
+    {
+        if (m_prop_mask_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        {
+            return Vector3(1.0f, 1.0f, 1.0f);
+        }
+
+        float u = (world_x - m_world_mapping.x) * m_world_mapping.z;
+        float v = (world_z - m_world_mapping.y) * m_world_mapping.w;
+        u = clamp(u, 0.0f, 1.0f);
+        v = clamp(v, 0.0f, 1.0f);
+
+        const float fx = u * static_cast<float>(m_map_width - 1);
+        const float fz = v * static_cast<float>(m_map_height - 1);
+        const uint32_t x0 = static_cast<uint32_t>(fx);
+        const uint32_t z0 = static_cast<uint32_t>(fz);
+        const uint32_t x1 = min(x0 + 1u, m_map_width - 1u);
+        const uint32_t z1 = min(z0 + 1u, m_map_height - 1u);
+        const float tx = fx - static_cast<float>(x0);
+        const float tz = fz - static_cast<float>(z0);
+
+        auto fetch = [&](uint32_t x, uint32_t z) -> Vector3
+        {
+            const size_t offset = (static_cast<size_t>(z) * m_map_width + x) * 4;
+            return Vector3(
+                m_prop_mask_pixels[offset + 0] * (1.0f / 255.0f),
+                m_prop_mask_pixels[offset + 1] * (1.0f / 255.0f),
+                m_prop_mask_pixels[offset + 2] * (1.0f / 255.0f)
+            );
+        };
+
+        const Vector3 c00 = fetch(x0, z0);
+        const Vector3 c10 = fetch(x1, z0);
+        const Vector3 c01 = fetch(x0, z1);
+        const Vector3 c11 = fetch(x1, z1);
+        const Vector3 c0 = c00 * (1.0f - tx) + c10 * tx;
+        const Vector3 c1 = c01 * (1.0f - tx) + c11 * tx;
+        return c0 * (1.0f - tz) + c1 * tz;
+    }
+
+    float Terrain::SamplePropMaskChannel(float world_x, float world_z, int channel) const
+    {
+        const Vector3 mask = SamplePropMask(world_x, world_z);
+        if (channel == 0) return mask.x;
+        if (channel == 1) return mask.y;
+        if (channel == 2) return mask.z;
+        return 1.0f;
     }
 
     void Terrain::DetachTileMeshes()
@@ -2956,6 +3284,9 @@ namespace spartan
 
         RebuildSurface(true);
         SnapshotBaseline();
+
+        WorldHelpers::PopulateTerrainBiomeProps(this);
+
         m_is_generating = false;
     }
 

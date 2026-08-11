@@ -2182,7 +2182,13 @@ namespace spartan
         World::SetWind(wind);
     }
 
-    void Renderer::EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params)
+    void Renderer::EnableProceduralGrass(
+        Mesh* grass_mesh,
+        Material* grass_material,
+        RHI_Texture* terrain_heightmap,
+        const ProceduralGrassParams& params,
+        RHI_Texture* terrain_prop_mask
+    )
     {
         // every required input must be present, otherwise the populate compute will read garbage
         // from a freed heightmap, the indirect args would point past the global geometry buffer, etc
@@ -2195,6 +2201,7 @@ namespace spartan
         m_pass_state.grass_mesh      = grass_mesh;
         m_pass_state.grass_material  = grass_material;
         m_pass_state.grass_heightmap = terrain_heightmap;
+        m_pass_state.grass_prop_mask = terrain_prop_mask;
         m_pass_state.grass_params    = params;
         m_pass_state.grass_enabled   = true;
 
@@ -2256,6 +2263,7 @@ namespace spartan
         m_pass_state.grass_mesh       = nullptr;
         m_pass_state.grass_material   = nullptr;
         m_pass_state.grass_heightmap  = nullptr;
+        m_pass_state.grass_prop_mask  = nullptr;
         m_pass_state.grass_args_baked = false;
     }
 

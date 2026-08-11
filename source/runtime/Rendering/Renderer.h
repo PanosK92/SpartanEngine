@@ -154,7 +154,11 @@ namespace spartan
             float height_min         = 0.0f;
             float height_max         = 400.0f;
             float max_slope_deg      = 45.0f;
-            math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f); // terrain xz world-space extent, centered at origin
+            float biome_min_weight   = 0.2f;
+            float height_bake_min    = 0.0f; // remap 0-1 height preview to world y
+            float height_bake_max    = 1.0f;
+            math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f);
+            math::Vector4 terrain_world_mapping = math::Vector4::Zero; // xy min xz, zw 1/size
         };
 
         // everything the terrain surface evaluator needs, pushed by the Terrain component
@@ -223,7 +227,13 @@ namespace spartan
         static void SetWind(const math::Vector3& wind);
 
         // gpu procedural grass, the caller keeps ownership of the mesh, material and heightmap and must outlive the renderer's use
-        static void EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params);
+        static void EnableProceduralGrass(
+            Mesh* grass_mesh,
+            Material* grass_material,
+            RHI_Texture* terrain_heightmap,
+            const ProceduralGrassParams& params,
+            RHI_Texture* terrain_prop_mask = nullptr
+        );
         static void DisableProceduralGrass();
         static bool IsProceduralGrassEnabled();
 
@@ -561,6 +571,7 @@ namespace spartan
             Mesh*                 grass_mesh       = nullptr;
             Material*             grass_material   = nullptr;
             RHI_Texture*          grass_heightmap  = nullptr;
+            RHI_Texture*          grass_prop_mask  = nullptr;
             ProceduralGrassParams grass_params;
             // one entry per lod, the args build shader adds the dynamic instance_count from grass_count
             std::array<Sb_IndirectDrawArgs, renderer_max_grass_lod_count> grass_indirect_args_static{};

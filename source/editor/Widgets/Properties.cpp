@@ -38,6 +38,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Spline.h"
 #include "World/Components/SplineFollower.h"
 #include "World/Components/Terrain.h"
+#include "World/WorldHelpers.h"
+#include "Core/ThreadPool.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
 #include "Rendering/Renderer.h"
@@ -2661,6 +2663,21 @@ void Properties::ShowTerrain(Terrain* terrain) const
         ))
         {
             terrain->SetCreateBorder(create_border);
+        }
+
+        bool spawn_biome_props = terrain->GetSpawnBiomeProps();
+        if (property_toggle(
+            "Spawn Biome Props",
+            &spawn_biome_props,
+            "spawn gpu grass, trees, rocks and flowers from the terrain biome mask. "
+            "off clears them. on regenerates after analysis maps exist"
+        ))
+        {
+            terrain->SetSpawnBiomeProps(spawn_biome_props);
+            spartan::ThreadPool::AddTask([terrain]()
+            {
+                spartan::WorldHelpers::PopulateTerrainBiomeProps(terrain);
+            });
         }
 
         layout::group_spacing();

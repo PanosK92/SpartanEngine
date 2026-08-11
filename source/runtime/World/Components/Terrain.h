@@ -65,6 +65,9 @@ namespace spartan
         bool  scale_adjust_by_slope    = false;
         uint32_t instances_per_cluster = 0;
         float cluster_radius           = 0.0f;
+        // biome prop mask, -1 ignores the mask, 0=r grass, 1=g trees, 2=b rocks
+        int   prop_mask_channel        = -1;
+        float prop_mask_min            = 0.2f;
     };
 
     // precomputed per-triangle data for prop placement
@@ -92,6 +95,12 @@ namespace spartan
         RHI_Texture* GetHeightMapSeed() const          { return m_height_map_seed; }
         void SetHeightMapSeed(RHI_Texture* height_map) { m_height_map_seed = height_map;}
         RHI_Texture* GetHeightMapFinal() const         { return m_height_map_final.get(); }
+        // r32 world-space heights for gpu grass populate, not the r8 imgui preview
+        RHI_Texture* GetHeightMapGpu() const           { return m_height_map_gpu.get(); }
+        // xy = world min xz, zw = 1 / world size, matches analysis and height sampling
+        const math::Vector4& GetWorldMapping() const   { return m_world_mapping; }
+        float GetHeightBakeMin() const                 { return m_height_bake_min; }
+        float GetHeightBakeMax() const                 { return m_height_bake_max; }
 
         // dimensions
         uint32_t GetWidth() const  { return m_width; }
@@ -147,6 +156,14 @@ namespace spartan
         void SetDebugView(TerrainDebugView view);
         RHI_Texture* GetAnalysisMapA() const    { return m_map_a.get(); }
         RHI_Texture* GetAnalysisMapB() const    { return m_map_b.get(); }
+        RHI_Texture* GetPropMask() const        { return m_prop_mask.get(); }
+
+        // r=grass, g=trees, b=rocks, bilinear sample in world xz
+        math::Vector3 SamplePropMask(float world_x, float world_z) const;
+        float SamplePropMaskChannel(float world_x, float world_z, int channel) const;
+
+        bool GetSpawnBiomeProps() const         { return m_spawn_biome_props; }
+        void SetSpawnBiomeProps(bool enabled)   { m_spawn_biome_props = enabled; }
         // reload the layer materials from project/materials and hand the whole set to the renderer
         void RefreshLayers();
         // hand the current layer set, analysis maps and world mapping to the renderer
@@ -230,6 +247,7 @@ namespace spartan
         void BakeHeightMapTexture();
         // curvature, flow, occlusion, insolation, wear, deposition and talus into two rgba8 textures
         void BakeTerrainMaps();
+        void BakePropMask();
         bool LoadTerrainMapsFromCache();
         void SaveTerrainMapsToCache() const;
         void SnapshotBaseline();
@@ -240,16 +258,25 @@ namespace spartan
         std::shared_ptr<RHI_Texture> m_height_map_final = nullptr;
         // previous bake kept alive so imgui cannot reference a destroyed texture mid-frame
         std::shared_ptr<RHI_Texture> m_height_map_final_retired;
+        // world-space y in r32, consumed by grass_populate
+        std::shared_ptr<RHI_Texture> m_height_map_gpu = nullptr;
+        std::shared_ptr<RHI_Texture> m_height_map_gpu_retired;
 
         // baked heightfield analysis, see the tex_terrain_map_a/b comment in common_resources.hlsl
         std::shared_ptr<RHI_Texture> m_map_a;
         std::shared_ptr<RHI_Texture> m_map_b;
+        std::shared_ptr<RHI_Texture> m_prop_mask;
         std::shared_ptr<RHI_Texture> m_map_a_retired;
         std::shared_ptr<RHI_Texture> m_map_b_retired;
+        std::shared_ptr<RHI_Texture> m_prop_mask_retired;
         std::vector<uint8_t> m_map_a_pixels; // mip 0 rgba8, kept so the cache write does not re-derive it
         std::vector<uint8_t> m_map_b_pixels;
+        std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
         uint32_t m_map_width  = 0;
         uint32_t m_map_height = 0;
+        bool m_spawn_biome_props = true;
+        float m_height_bake_min = 0.0f;
+        float m_height_bake_max = 1.0f;
 
         // configurable parameters
         float m_min_y          = 0.0f;

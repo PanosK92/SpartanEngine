@@ -40,6 +40,9 @@ namespace spartan
         // builds the procedural forest world, terrain, water, props and gpu grass
         static void BuildForest(Entity* builder_entity);
 
+        // spawn biome-masked grass, rocks and trees on an existing terrain
+        static void PopulateTerrainBiomeProps(class Terrain* terrain);
+
         // releases the long lived meshes and materials owned by the builders, called from world shutdown
         static void Clear();
     };

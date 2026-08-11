@@ -1079,7 +1079,6 @@ namespace spartan
                 cmd_list->EndTimeblock();
                 return;
             }
-            const Vector3 camera_pos = camera->GetEntity()->GetPosition();
 
             // populate dispatches, one per lod ring, each fills its slot in grass_instances and grass_count
             {
@@ -1090,12 +1089,21 @@ namespace spartan
 
                 cmd_list->SetBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
                 cmd_list->SetBuffer(Renderer_BindingsUav::grass_count,     buf_count);
-                // the populate shader samples the terrain heightmap (R32_Float) through the tex slot
+                // the populate shader samples the terrain heightmap through the tex slot
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, m_pass_state.grass_heightmap);
                 // occluder hi-z on tex2 drives the per-blade frustum + occlusion cull, built by Pass_HiZ which runs earlier this frame
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz));
+                // biome prop mask on tex3, r = grass suitability, white when unrestricted
+                cmd_list->SetTexture(
+                    Renderer_BindingsSrv::tex3,
+                    m_pass_state.grass_prop_mask ?
+                        m_pass_state.grass_prop_mask :
+                        GetStandardTexture(Renderer_StandardTexture::White)
+                );
 
                 const float max_slope_cos = cosf(m_pass_state.grass_params.max_slope_deg * (math::pi / 180.0f));
+                const float biome_min = m_pass_state.grass_prop_mask ?
+                    m_pass_state.grass_params.biome_min_weight : -1.0f;
 
                 for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
                 {
@@ -1117,26 +1125,27 @@ namespace spartan
                     const uint32_t lod_base   = renderer_grass_lod_base(lod);
                     const uint32_t lod_cap    = renderer_max_grass_per_lod[lod];
 
-                    // layout mirrors grass_populate.hlsl values[0..2]
-                    // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
-                    // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
-                    // values[2] = (camera_xz.x, camera_xz.z, terrain_extent.x, terrain_extent.z)
-                    m_pcb_pass_cpu.material_index = 0;
-                    m_pcb_pass_cpu.is_transparent = 0;
-                    m_pcb_pass_cpu.draw_index     = lod;
-                    m_pcb_pass_cpu.v[0]  = cell_size;
-                    m_pcb_pass_cpu.v[1]  = ring_radius;
-                    m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
-                    m_pcb_pass_cpu.v[3]  = static_cast<float>(lod_cap);
-                    m_pcb_pass_cpu.v[4]  = m_pass_state.grass_params.height_min;
-                    m_pcb_pass_cpu.v[5]  = m_pass_state.grass_params.height_max;
-                    m_pcb_pass_cpu.v[6]  = max_slope_cos;
-                    m_pcb_pass_cpu.v[7]  = inner_radius;
-                    m_pcb_pass_cpu.v[8]  = camera_pos.x;
-                    m_pcb_pass_cpu.v[9]  = camera_pos.z;
-                    m_pcb_pass_cpu.v[10] = m_pass_state.grass_params.terrain_extent_m.x;
-                    m_pcb_pass_cpu.v[11] = m_pass_state.grass_params.terrain_extent_m.y;
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                // layout mirrors grass_populate.hlsl values[0..2]
+                // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
+                // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
+                // values[2] = (map_origin_x, map_origin_z, map_inv_x, map_inv_z)
+                // heightmap is r32 world y, no bake remap
+                // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
+                m_pcb_pass_cpu.is_transparent = *reinterpret_cast<const uint32_t*>(&biome_min);
+                m_pcb_pass_cpu.draw_index     = lod;
+                m_pcb_pass_cpu.v[0]  = cell_size;
+                m_pcb_pass_cpu.v[1]  = ring_radius;
+                m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
+                m_pcb_pass_cpu.v[3]  = static_cast<float>(lod_cap);
+                m_pcb_pass_cpu.v[4]  = m_pass_state.grass_params.height_min;
+                m_pcb_pass_cpu.v[5]  = m_pass_state.grass_params.height_max;
+                m_pcb_pass_cpu.v[6]  = max_slope_cos;
+                m_pcb_pass_cpu.v[7]  = inner_radius;
+                m_pcb_pass_cpu.v[8]  = m_pass_state.grass_params.terrain_world_mapping.x;
+                m_pcb_pass_cpu.v[9]  = m_pass_state.grass_params.terrain_world_mapping.y;
+                m_pcb_pass_cpu.v[10] = m_pass_state.grass_params.terrain_world_mapping.z;
+                m_pcb_pass_cpu.v[11] = m_pass_state.grass_params.terrain_world_mapping.w;
+                cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the blade index, the shader recomputes blades_per_cell so both formulas must match
                     const uint32_t cells_per_axis =

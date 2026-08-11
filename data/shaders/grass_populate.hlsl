@@ -43,9 +43,10 @@ static const float grass_cull_radius      = 1.5f;
 // push constant layout (PassBufferData.values, 12 floats total):
 //   values[0] = (cell_size, ring_radius, lod_base_in_instances, max_instances_per_lod)
 //   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
-//   values[2] = (camera_xz_anchor.x, camera_xz_anchor.z, terrain_extent_x, terrain_extent_z)
-// terrain heightmap is bound to tex (t7), R32_Float, world-space y per texel
-// terrain is centered at origin in xz, so world_xz to uv is (world_xz / terrain_extent) + 0.5
+//   values[2] = (map_origin_x, map_origin_z, map_inv_size_x, map_inv_size_z)
+// camera xz comes from buffer_frame
+// terrain height is r32 world y bound to tex (t7), no remap
+// biome_min arrives asfloat(is_transparent), negative disables the gate
 
 // 32-bit integer hash, takes the cell's integer world coords and returns a uniform 32-bit value
 // keyed off coordinates that do not move with the camera, so blade placement is stable
@@ -65,12 +66,18 @@ float hash_unit(uint h)
     return float(h) * (1.0f / 4294967296.0f);
 }
 
+float2 terrain_world_to_uv(float2 world_xz)
+{
+    float2 origin   = buffer_pass.values[2].xy;
+    float2 inv_size = buffer_pass.values[2].zw;
+    return (world_xz - origin) * inv_size;
+}
+
 // single centre sample, gates the cheap height reject and the frustum/hi-z visibility cull
 // before the four neighbor taps that the slope reject needs, so off-screen blades pay one tap not five
-float sample_terrain_height(float2 world_xz, float2 terrain_extent, out float valid)
+float sample_terrain_height(float2 world_xz, out float valid)
 {
-    // terrain is centered at origin in xz, so a world position maps to uv = world_xz / extent + 0.5
-    float2 uv = world_xz / terrain_extent + 0.5f;
+    float2 uv = terrain_world_to_uv(world_xz);
 
     if (any(uv < 0.0f) || any(uv > 1.0f))
     {
@@ -86,27 +93,24 @@ float sample_terrain_height(float2 world_xz, float2 terrain_extent, out float va
 // samples total (one centre in sample_terrain_height plus these two) instead of five
 float3 sample_terrain_normal(
     float2 world_xz,
-    float2 terrain_extent,
     float y_c
 )
 {
-    float2 uv = world_xz / terrain_extent + 0.5f;
+    float2 uv = terrain_world_to_uv(world_xz);
 
-    // sample exactly one texel apart for the slope, sub-texel offsets get smeared by the bilinear filter
-    // and starve the difference of any signal, query the heightmap dimensions so the offsets are
-    // correct regardless of how the terrain component sized the dense heightmap
     uint width;
     uint height;
     tex.GetDimensions(width, height);
-    float texel_uv_x        = 1.0f / float(max(width,  1u));
-    float texel_uv_z        = 1.0f / float(max(height, 1u));
-    float world_per_texel_x = terrain_extent.x * texel_uv_x;
-    float world_per_texel_z = terrain_extent.y * texel_uv_z;
+    float texel_uv_x = 1.0f / float(max(width,  1u));
+    float texel_uv_z = 1.0f / float(max(height, 1u));
+
+    float2 inv_size = buffer_pass.values[2].zw;
+    float world_per_texel_x = texel_uv_x / max(inv_size.x, 1e-8f);
+    float world_per_texel_z = texel_uv_z / max(inv_size.y, 1e-8f);
 
     float y_r = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(texel_uv_x, 0.0f), 0).r;
     float y_u = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, texel_uv_z), 0).r;
 
-    // forward differences in world units, world height delta divided by the world distance to the forward sample
     float dy_dx = (y_r - y_c) / world_per_texel_x;
     float dy_dz = (y_u - y_c) / world_per_texel_z;
 
@@ -161,8 +165,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float inner_radius  = buffer_pass.values[1].w;
     uint  lod_index     = buffer_pass.draw_index;
 
-    float2 camera_xz_anchor = buffer_pass.values[2].xy;
-    float2 terrain_extent   = buffer_pass.values[2].zw;
+    float2 camera_xz_anchor = get_camera_position().xz;
 
     // stratified scatter: the world is divided into a grid of cells, each cell holds blades_per_cell
     // blades, and each blade is placed at a uniformly random position INSIDE the cell, independently of
@@ -260,7 +263,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // height reject, single centre tap, also yields world_y for the visibility cull below
     float valid;
-    float world_y = sample_terrain_height(world_xz, terrain_extent, valid);
+    float world_y = sample_terrain_height(world_xz, valid);
     if (valid < 0.5f || world_y < height_min || world_y > height_max)
         return;
 
@@ -283,12 +286,29 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // slope reject, two forward taps reusing the centre height, paid only by visible blades
     float3 surface_normal = sample_terrain_normal(
         world_xz,
-        terrain_extent,
         world_y
     );
     if (surface_normal.y < max_slope_cos)
     {
         return;
+    }
+
+    // biome grass mask, same uv as the heightfield, r channel is grass suitability
+    // is_transparent carries biome_min as float bits, negative disables the gate
+    float biome_min = asfloat(buffer_pass.is_transparent);
+    if (biome_min >= 0.0f)
+    {
+        float2 mask_uv = terrain_world_to_uv(world_xz);
+        float grass_w  = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0).r;
+        if (grass_w < biome_min)
+        {
+            return;
+        }
+        float biome_roll = hash_unit(h0 ^ 0x27d4eb2du);
+        if (biome_roll > grass_w)
+        {
+            return;
+        }
     }
 
     // keep the authored blade proportions within a natural range
