@@ -985,6 +985,10 @@ namespace spartan
             {
                 return BodyType::Cloth;
             }
+            if (name == "heightfield")
+            {
+                return BodyType::Heightfield;
+            }
 
             return std::nullopt;
         }
@@ -1029,6 +1033,8 @@ namespace spartan
                 return "vehicle";
             case BodyType::Cloth:
                 return "cloth";
+            case BodyType::Heightfield:
+                return "heightfield";
             default:
                 return "unknown";
             }

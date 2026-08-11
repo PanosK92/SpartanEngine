@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Physics.h"
 #include "Render.h"
 #include "Camera.h"
+#include "Terrain.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../Physics/PhysicsWorld.h"
@@ -343,6 +344,17 @@ namespace spartan
             m_material = nullptr;
         }
 
+        // terrain regenerates often, a leaked grid holds tens of megabytes per rebuild
+        if (m_mesh && m_mesh_is_heightfield)
+        {
+            if (PhysicsWorld::GetPhysics())
+            {
+                static_cast<PxHeightField*>(m_mesh)->release();
+            }
+            m_mesh                 = nullptr;
+            m_mesh_is_heightfield  = false;
+        }
+
         // release cloth state
         m_cloth_particles.clear();
         m_cloth_constraints.clear();
@@ -420,7 +432,11 @@ namespace spartan
         }
 
         // distance-based activation/deactivation for static actors
-        if (m_body_type != BodyType::Controller && m_body_type != BodyType::Cloth && m_is_static)
+        if (
+            m_body_type != BodyType::Controller &&
+            m_body_type != BodyType::Cloth &&
+            m_is_static
+        )
         {
             TickDistanceActivation();
         }
@@ -437,6 +453,13 @@ namespace spartan
 
         if (is_playing)
         {
+            // the editor camera can end up under the terrain, lift the capsule out so it falls onto the surface instead of being trapped
+            if (!m_controller_was_playing)
+            {
+                LiftControllerAboveTerrain();
+            }
+            m_controller_was_playing = true;
+
             // apply gravity
             m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
 
@@ -485,8 +508,41 @@ namespace spartan
             // editor mode: sync entity -> physx
             Vector3 entity_pos = GetEntity()->GetPosition();
             controller->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
-            m_velocity = Vector3::Zero;
+            m_velocity               = Vector3::Zero;
+            m_controller_was_playing = false;
         }
+    }
+
+    void Physics::LiftControllerAboveTerrain()
+    {
+        Terrain* terrain = Terrain::FindActive();
+        if (!m_controller || !terrain)
+        {
+            return;
+        }
+
+        PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+        PxExtendedVec3 position         = controller->getPosition();
+        float terrain_height            = 0.0f;
+        if (!terrain->SampleHeight(static_cast<float>(position.x), static_cast<float>(position.z), terrain_height))
+        {
+            return;
+        }
+
+        // the controller position is the capsule center, its feet sit half the height plus one radius below it
+        const float feet_offset = controller->getHeight() * 0.5f + controller->getRadius();
+        const float minimum_y   = terrain_height + feet_offset;
+        if (static_cast<float>(position.y) >= minimum_y)
+        {
+            return;
+        }
+
+        // a small lift keeps the capsule from resolving against the surface it just left
+        const float clearance = 0.1f;
+        const Vector3 lifted  = Vector3(static_cast<float>(position.x), minimum_y + clearance, static_cast<float>(position.z));
+        controller->setPosition(PxExtendedVec3(lifted.x, lifted.y, lifted.z));
+        GetEntity()->SetPosition(lifted);
+        m_velocity = Vector3::Zero;
     }
 
     void Physics::TickVehicle(bool is_playing)
@@ -1049,6 +1105,7 @@ namespace spartan
             "Controller",   BodyType::Controller,
             "Vehicle",      BodyType::Vehicle,
             "Cloth",        BodyType::Cloth,
+            "Heightfield",  BodyType::Heightfield,
             "Max",          BodyType::Max);
 
 
@@ -3503,6 +3560,22 @@ namespace spartan
             CreateCloth();
             return;
         }
+        else if (m_body_type == BodyType::Heightfield)
+        {
+            // a terrain grid is never anything but immovable ground
+            m_is_static    = true;
+            m_is_kinematic = false;
+
+            CreateHeightfield();
+            if (!m_mesh)
+            {
+                return;
+            }
+
+            CreateBodies();
+            m_scale_previous = GetEntity()->GetScale();
+            return;
+        }
         else if (m_body_type == BodyType::MeshConvex)
         {
             // compound shape built from convex hulls of entity hierarchy meshes
@@ -3953,6 +4026,127 @@ namespace spartan
         }
     }
 
+    void Physics::CreateHeightfield()
+    {
+        // the component sits on a tile child of the terrain, so each body covers only the slice of the
+        // grid its tile draws, that keeps distance activation able to drop the ones far from the camera
+        Entity* entity   = GetEntity();
+        Terrain* terrain = entity->GetComponent<Terrain>();
+        int tile_index   = -1;
+        if (!terrain && entity->GetParent())
+        {
+            terrain    = entity->GetParent()->GetComponent<Terrain>();
+            tile_index = Terrain::ParseTileIndex(entity);
+        }
+
+        if (!terrain || !terrain->HasHeightfield())
+        {
+            // a saved world can restore this component before the terrain has generated, the terrain
+            // rebuilds the body itself once its grid exists
+            SP_LOG_WARNING("a heightfield body needs a generated terrain component on itself or its parent");
+            return;
+        }
+
+        const vector<Vector3>& positions = terrain->GetPositions();
+        const uint32_t grid_width        = terrain->GetDenseWidth();  // samples along local x
+        const uint32_t grid_height       = terrain->GetDenseHeight(); // samples along local z
+        if (positions.size() < static_cast<size_t>(grid_width) * static_cast<size_t>(grid_height))
+        {
+            SP_LOG_ERROR("terrain grid holds fewer positions than its dimensions declare");
+            return;
+        }
+
+        // the sample window, neighbouring tiles share their boundary row and column so the surfaces
+        // meet without a seam and without overlapping each other
+        uint32_t x_start = 0;
+        uint32_t z_start = 0;
+        uint32_t x_count = grid_width;
+        uint32_t z_count = grid_height;
+        if (tile_index >= 0)
+        {
+            const uint32_t n  = max(terrain->GetTileCountAxis(), 1u);
+            const uint32_t tx = static_cast<uint32_t>(tile_index) % n;
+            const uint32_t tz = static_cast<uint32_t>(tile_index) / n;
+
+            x_start = (tx * (grid_width - 1)) / n;
+            z_start = (tz * (grid_height - 1)) / n;
+            x_count = ((tx + 1) * (grid_width - 1)) / n - x_start + 1;
+            z_count = ((tz + 1) * (grid_height - 1)) / n - z_start + 1;
+        }
+
+        if (x_count < 2 || z_count < 2)
+        {
+            SP_LOG_WARNING("terrain tile %d is too small to build a heightfield from", tile_index);
+            return;
+        }
+
+        float height_min = positions[static_cast<size_t>(z_start) * grid_width + x_start].y;
+        float height_max = height_min;
+        for (uint32_t z = 0; z < z_count; z++)
+        {
+            const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
+            for (uint32_t x = 0; x < x_count; x++)
+            {
+                const float height = positions[source_row + x].y;
+                height_min         = min(height_min, height);
+                height_max         = max(height_max, height);
+            }
+        }
+
+        // heights are int16, mapping the window's own range onto the full range keeps the step near a
+        // millimetre, a fixed scale would cost metres of precision on a tall map
+        const float height_centre = (height_max + height_min) * 0.5f;
+        const float height_scale  = max((height_max - height_min) / 65534.0f, 1e-4f);
+
+        // physx rows run along local x and columns along local z, the terrain grid is stored row major
+        // in z, so the two indices swap on the way in
+        const uint32_t sample_count = x_count * z_count;
+        vector<PxHeightFieldSample> samples(sample_count);
+        for (uint32_t z = 0; z < z_count; z++)
+        {
+            const size_t source_row = static_cast<size_t>(z_start + z) * grid_width + x_start;
+            for (uint32_t x = 0; x < x_count; x++)
+            {
+                const float quantised = (positions[source_row + x].y - height_centre) / height_scale;
+                samples[x * z_count + z].height = static_cast<PxI16>(clamp(quantised, -32767.0f, 32767.0f));
+            }
+        }
+
+        PxHeightFieldDesc desc;
+        desc.nbRows         = x_count;
+        desc.nbColumns      = z_count;
+        desc.format         = PxHeightFieldFormat::eS16_TM;
+        desc.samples.data   = samples.data();
+        desc.samples.stride = sizeof(PxHeightFieldSample);
+
+        m_mesh = PxCreateHeightField(desc, *PxGetStandaloneInsertionCallback());
+        if (!m_mesh)
+        {
+            SP_LOG_ERROR("failed to create the terrain heightfield");
+            return;
+        }
+        m_mesh_is_heightfield = true;
+
+        // a physx grid grows out of its corner, so the shape is pushed back to where the window starts
+        // in terrain space and then lifted to the middle of the height range
+        const TerrainGridMapping mapping = terrain->GetGridMapping();
+        m_heightfield_scale_row          = mapping.scale_x;
+        m_heightfield_scale_column       = mapping.scale_z;
+        m_heightfield_scale_height       = height_scale;
+        m_heightfield_offset             = Vector3(
+            -mapping.offset_x + static_cast<float>(x_start) * mapping.scale_x,
+            height_centre,
+            -mapping.offset_z + static_cast<float>(z_start) * mapping.scale_z
+        );
+
+        // the shape pose is relative to the tile entity, which already carries the tile's own offset
+        if (tile_index >= 0)
+        {
+            m_heightfield_offset.x -= entity->GetPositionLocal().x;
+            m_heightfield_offset.z -= entity->GetPositionLocal().z;
+        }
+    }
+
     void Physics::CreateBodies()
     {
         PxPhysics* physics      = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
@@ -4046,6 +4240,22 @@ namespace spartan
                             PxConvexMeshGeometry geometry(static_cast<PxConvexMesh*>(m_mesh));
                             shape = physics->createShape(geometry, *material);
                         }
+                    }
+                    break;
+                }
+                case BodyType::Heightfield:
+                {
+                    if (m_mesh)
+                    {
+                        PxHeightFieldGeometry geometry(
+                            static_cast<PxHeightField*>(m_mesh),
+                            PxMeshGeometryFlags(),
+                            m_heightfield_scale_height,
+                            m_heightfield_scale_row,
+                            m_heightfield_scale_column
+                        );
+                        shape = physics->createShape(geometry, *material);
+                        shape->setLocalPose(PxTransform(PxVec3(m_heightfield_offset.x, m_heightfield_offset.y, m_heightfield_offset.z)));
                     }
                     break;
                 }

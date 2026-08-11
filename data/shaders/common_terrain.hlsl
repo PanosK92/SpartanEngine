@@ -38,10 +38,11 @@ static const float terrain_hex_exponent          = 7.0f;
 static const float terrain_hex_falloff           = 0.6f;
 static const float terrain_hex_gain              = 0.7f;
 static const float terrain_hex_rotation_strength = 0.4f;
-// the two tiling scales share no harmonics, so their repeats never line up
+// the two tiling scales share no harmonics, so their repeats never line up, this takes over from the
+// hex lattice where that stops and is the only thing breaking the repeat in the far field
 static const float terrain_macro_scale_ratio = 8.7f;
-static const float terrain_macro_fade_start  = 45.0f;
-static const float terrain_macro_fade_end    = 160.0f;
+static const float terrain_macro_fade_start  = 280.0f;
+static const float terrain_macro_fade_end    = 800.0f;
 
 // noise_perlin already scales its input by 0.1, so a wavelength of w meters needs 10 / w
 static const float terrain_noise_rcp_scale = 10.0f;
@@ -49,10 +50,12 @@ static const float terrain_noise_rcp_scale = 10.0f;
 static const uint terrain_layer_max_shader = 8;
 static const uint terrain_layer_pick_max   = 4;
 
-// past this range a blend of several layers and the three tap hex lattice are both below a pixel,
-// so the surface collapses to the dominant layer sampled straight, which is the bulk of the savings
+// past this range the blend band between layers is below a pixel, so the surface collapses to the
+// dominant layer, which is where the bulk of the savings are
 static const float terrain_detail_distance = 45.0f;
-static const float terrain_hex_distance    = 32.0f;
+// the hex lattice has to outlive the layer blend by a long way, the repeat is most obvious at exactly
+// the mid distances where it is still resolvable, and on one layer three taps is cheap
+static const float terrain_hex_distance = 320.0f;
 
 // debug views, must match TerrainDebugView in TerrainLayer.h
 static const uint terrain_debug_off        = 0;
@@ -336,10 +339,24 @@ TerrainLayerPick terrain_pick_layers(
 
 //= hex tiling ===================================================================================
 
-float2 terrain_hash2(float2 p)
+// integer bit mix, a multi kilometre terrain pushes lattice indices into the thousands, where the
+// usual frac(sin(x) * large) hash has no entropy left in fp32 and every site gets the same offset
+uint terrain_hash_bits(int2 vertex)
 {
-    float2 r = mul(float2x2(127.1f, 311.7f, 269.5f, 183.3f), p);
-    return frac(sin(r) * 43758.5453f);
+    uint h = asuint(vertex.x) * 0x9E3779B1u ^ asuint(vertex.y) * 0x85EBCA77u;
+    h ^= h >> 15;
+    h *= 0x2545F491u;
+    h ^= h >> 13;
+    h *= 0xC2B2AE35u;
+    h ^= h >> 16;
+    return h;
+}
+
+// per site uv offset, the two halves of one mix are independent enough to use as a pair
+float2 terrain_hash2(int2 vertex)
+{
+    uint h = terrain_hash_bits(vertex);
+    return float2(h & 0xFFFFu, (h >> 16) & 0xFFFFu) * (1.0f / 65536.0f);
 }
 
 // hex lattice barycentrics, the three nearest lattice sites and their coverage
@@ -347,7 +364,9 @@ void terrain_hex_lattice(float2 uv, out float3 weights, out int2 vertex1, out in
 {
     uv *= 3.4641016f; // 2 * sqrt(3)
 
-    const float2x2 grid_to_skewed = float2x2(1.0f, 0.0f, -0.57735027f, 1.15470054f);
+    // must stay the exact inverse of terrain_hex_center's matrix, a transposed pair still produces a
+    // lattice but the reconstructed centre drifts with distance and shears the texture into streaks
+    const float2x2 grid_to_skewed = float2x2(1.0f, -0.57735027f, 0.0f, 1.15470054f);
     float2 skewed                 = mul(grid_to_skewed, uv);
 
     int2 base   = int2(floor(skewed));
@@ -378,10 +397,10 @@ float2 terrain_hex_center(int2 vertex)
 
 float2x2 terrain_hex_rotation(int2 vertex, float strength)
 {
-    float angle = abs(float(vertex.x * vertex.y)) + abs(float(vertex.x + vertex.y)) + PI;
-    angle       = fmod(angle, PI2);
-    angle       = angle > PI ? angle - PI2 : angle;
-    angle      *= strength;
+    // hashed so the angle stays uniform however far out the site sits, deriving it from
+    // vertex.x * vertex.y and folding with fmod quantizes as soon as the product outgrows fp32
+    uint  h     = terrain_hash_bits(vertex + int2(0x51, 0x2D));
+    float angle = (float(h >> 8) * (1.0f / 16777216.0f) * PI2 - PI) * strength;
 
     float c = cos(angle);
     float s = sin(angle);
@@ -426,9 +445,9 @@ TerrainHexSetup terrain_hex_setup(float2 uv, float2 duvdx, float2 duvdy)
     TerrainHexSetup setup;
     setup.weights = weights;
 
-    setup.uv[0] = mul(uv - center1, rotation1) + center1 + terrain_hash2(float2(vertex1));
-    setup.uv[1] = mul(uv - center2, rotation2) + center2 + terrain_hash2(float2(vertex2));
-    setup.uv[2] = mul(uv - center3, rotation3) + center3 + terrain_hash2(float2(vertex3));
+    setup.uv[0] = mul(uv - center1, rotation1) + center1 + terrain_hash2(vertex1);
+    setup.uv[1] = mul(uv - center2, rotation2) + center2 + terrain_hash2(vertex2);
+    setup.uv[2] = mul(uv - center3, rotation3) + center3 + terrain_hash2(vertex3);
 
     setup.duvdx[0] = mul(duvdx, rotation1);
     setup.duvdx[1] = mul(duvdx, rotation2);
@@ -807,7 +826,7 @@ TerrainSurface terrain_evaluate(
             far_albedo.rgb = srgb_to_linear(far_albedo.rgb);
         }
 
-        albedo.rgb = lerp(albedo.rgb, albedo.rgb * far_albedo.rgb * 2.0f, macro_fade * 0.5f);
+        albedo.rgb = lerp(albedo.rgb, albedo.rgb * far_albedo.rgb * 2.0f, macro_fade * 0.65f);
     }
 
     // large scale colour and roughness breakup

@@ -419,6 +419,36 @@ namespace spartan
         }
     }
 
+    namespace
+    {
+        // physx builds its debug render buffer inside fetchResults for every visualised shape, so these
+        // stay off until something actually draws them, a terrain grid is millions of triangles and
+        // generating lines for it stalls every simulation step even when nobody reads the buffer
+        void set_visualization_enabled(bool enabled)
+        {
+            if (!scene)
+            {
+                return;
+            }
+
+            const float value = enabled ? 1.0f : 0.0f;
+            scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCULL_BOX, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eWORLD_AXES, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AXES, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_COMPOUNDS, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_ERROR, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_FORCE, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, value);
+            scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, value);
+        }
+    }
+
     void PhysicsWorld::Initialize()
     {
         // foundation
@@ -443,20 +473,8 @@ namespace spartan
         // store dispatcher
         dispatcher = static_cast<PxDefaultCpuDispatcher*>(scene_desc.cpuDispatcher);
 
-        // enable all debug visualization parameters
-        scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eWORLD_AXES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AXES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_COMPOUNDS, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_ERROR, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_FORCE, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, 1.0f);
+        // debug visualization parameters are enabled on demand, see DrawDebugVisualization
+        set_visualization_enabled(false);
     }
 
     void PhysicsWorld::Shutdown()
@@ -588,12 +606,46 @@ namespace spartan
 
     void PhysicsWorld::DrawDebugVisualization()
     {
-        if (!cvar_physics.GetValueAs<bool>() || Engine::IsFlagSet(EngineMode::Playing) || ProgressTracker::IsLoading())
+        const bool wants_visualization =
+            cvar_physics.GetValueAs<bool>() &&
+            !Engine::IsFlagSet(EngineMode::Playing) &&
+            !ProgressTracker::IsLoading();
+
+        // the parameters have to be live before the simulate call that fills the buffer, and off again
+        // the moment they are not needed, they are not free
+        static bool visualization_enabled = false;
+        if (visualization_enabled != wants_visualization)
+        {
+            lock_guard<recursive_mutex> lock(physx_mutex);
+            set_visualization_enabled(wants_visualization);
+            visualization_enabled = wants_visualization;
+        }
+
+        if (!wants_visualization)
         {
             return;
         }
 
         lock_guard<recursive_mutex> lock(physx_mutex);
+
+        // physx emits a line per triangle of every visualised shape, so a terrain grid has to be clipped
+        // to what is around the camera, the horizontal reach matches the distance at which static bodies
+        // deactivate so the box shows everything that is actually simulating near you
+        {
+            Vector3 centre = Vector3::Zero;
+            if (Camera* camera = World::GetCamera())
+            {
+                centre = camera->GetEntity()->GetPosition();
+            }
+
+            const float reach_horizontal = 80.0f;
+            const float reach_vertical   = 300.0f; // the editor camera often sits well above the ground
+            scene->setVisualizationCullingBox(PxBounds3(
+                PxVec3(centre.x - reach_horizontal, centre.y - reach_vertical, centre.z - reach_horizontal),
+                PxVec3(centre.x + reach_horizontal, centre.y + reach_vertical, centre.z + reach_horizontal)
+            ));
+        }
+
         scene->simulate(numeric_limits<float>::min());
         scene->fetchResults(true);
 

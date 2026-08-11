@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_set>
 #include "Terrain.h"
 #include "Render.h"
+#include "Physics.h"
 #include "Water.h"
 #include "Spline.h"
 #include "Light.h"
@@ -1136,9 +1137,10 @@ namespace spartan
         // holds the uv scale, everything visible comes from the layer materials
         m_material->SetResourceName(string("terrain") + EXTENSION_MATERIAL);
         m_material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-        // texture repeats per meter, the shader maps planar world xz
-        m_material->SetProperty(MaterialProperty::TextureTilingX, 0.33f);
-        m_material->SetProperty(MaterialProperty::TextureTilingY, 0.33f);
+        // texture repeats per meter, the shader maps planar world xz, a 4k albedo over 7 meters still
+        // leaves close to 600 texels per meter, so the density costs nothing and the repeat halves
+        m_material->SetProperty(MaterialProperty::TextureTilingX, 0.15f);
+        m_material->SetProperty(MaterialProperty::TextureTilingY, 0.15f);
         m_material->SetProperty(MaterialProperty::Tessellation, 0.0f);
 
         RefreshLayers();
@@ -1736,6 +1738,7 @@ namespace spartan
         }
 
         CreateTileEntities();
+        RefreshPhysics();
 
         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
@@ -2788,6 +2791,50 @@ namespace spartan
         }
     }
 
+    void Terrain::RefreshPhysics()
+    {
+        if (!m_entity_ptr)
+        {
+            return;
+        }
+
+        // the surface itself never carries a body, the tiles do
+        m_entity_ptr->RemoveComponent<Physics>();
+
+        if (!HasHeightfield())
+        {
+            return;
+        }
+
+        // one static grid per tile, physx samples the heights directly so there is nothing to cook and
+        // the collision matches the rendered mesh exactly, cooked per tile meshes did neither, keeping
+        // it per tile is what lets the distance activation drop everything but the tiles around you
+        for (Entity* child : m_entity_ptr->GetChildren())
+        {
+            if (ParseTileIndex(child) < 0)
+            {
+                continue;
+            }
+
+            Physics* physics = child->GetComponent<Physics>();
+            if (!physics)
+            {
+                physics = child->AddComponent<Physics>();
+            }
+
+            physics->SetStatic(true);
+            if (physics->GetBodyType() == BodyType::Heightfield)
+            {
+                // the type setter is a no op when the type already matches, so the stale grid needs forcing out
+                physics->Rebuild();
+            }
+            else
+            {
+                physics->SetBodyType(BodyType::Heightfield);
+            }
+        }
+    }
+
     void Terrain::CreateTileEntities()
     {
         ClearTileEntities();
@@ -2873,6 +2920,7 @@ namespace spartan
         m_mesh->CreateGpuBuffers();
 
         CreateTileEntities();
+        RefreshPhysics();
 
         m_vertices.clear();
         m_indices.clear();

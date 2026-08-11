@@ -252,18 +252,8 @@ namespace spartan
                 height_map->PrepareForGpu();
             }
             terrain->SetHeightMapSeed(height_map.get());
+            // generate also stands up the static heightfield collision for the whole surface
             terrain->Generate();
-
-            // terrain physics
-            vector<Entity*> terrain_tiles = terrain->GetEntity()->GetChildren();
-            ThreadPool::ParallelLoop([&terrain_tiles](uint32_t start, uint32_t end)
-            {
-                for (uint32_t i = start; i < end; i++)
-                {
-                    Physics* physics_body = terrain_tiles[i]->AddComponent<Physics>();
-                    physics_body->SetBodyType(BodyType::Mesh);
-                }
-            }, static_cast<uint32_t>(terrain_tiles.size()));
         }
 
         // water

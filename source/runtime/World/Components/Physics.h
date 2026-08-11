@@ -66,6 +66,7 @@ namespace spartan
         Controller,
         Vehicle,
         Cloth,      // deformable surface simulated via verlet integration
+        Heightfield,// terrain grid, exact and far cheaper than a cooked mesh of the same surface
         Max
     };
 
@@ -95,6 +96,8 @@ namespace spartan
         // component
         void Initialize() override;
         void Remove() override;
+        // discard the current actors and build them again from the component's current state
+        void Rebuild() { Create(); }
         void PreTick() override;
         void Tick() override;
         void Save(pugi::xml_node& node) override;
@@ -321,6 +324,8 @@ namespace spartan
     private:
         // tick helpers (broken out for readability)
         void TickController(bool is_playing, float delta_time);
+        void LiftControllerAboveTerrain();
+        void CreateHeightfield();
         void TickVehicle(bool is_playing);
         void TickVehicleSubstep(float dt); // vehicle force model, runs once per fixed physics step in lockstep with integration
         void TickVehicleCheapSubstep(float dt);
@@ -352,7 +357,16 @@ namespace spartan
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
         math::Vector3 m_velocity       = math::Vector3::Zero;
         BodyType m_body_type           = BodyType::Max;
+        bool m_controller_was_playing  = false; // tracks the edit to play transition of the character controller
         void* m_controller               = nullptr;
+
+        // heightfield shape placement, physx grids start at their corner and store heights as scaled integers
+        bool          m_mesh_is_heightfield      = false;
+        math::Vector3 m_heightfield_offset       = math::Vector3::Zero;
+        float         m_heightfield_scale_height = 1.0f;
+        float         m_heightfield_scale_row    = 1.0f;
+        float         m_heightfield_scale_column = 1.0f;
+
         void* m_material                 = nullptr;
         void* m_mesh                     = nullptr;
         std::vector<void*> m_actors      = { nullptr };

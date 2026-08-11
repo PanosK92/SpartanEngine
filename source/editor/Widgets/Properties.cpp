@@ -1614,7 +1614,7 @@ void Properties::ShowPhysics(Physics* body) const
         // body type
         static vector<string> body_types = {
             "Box", "Sphere", "Plane", "Capsule",
-            "Mesh", "Mesh (Convex)", "Controller", "Vehicle", "Cloth", "Unset"
+            "Mesh", "Mesh (Convex)", "Controller", "Vehicle", "Cloth", "Heightfield", "Unset"
         };
 
         uint32_t body_type_index = static_cast<uint32_t>(body->GetBodyType());

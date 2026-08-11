@@ -59,6 +59,8 @@ namespace spartan
         std::mutex car_list_mutex;
         std::once_flag audio_synthesizers_once;
         constexpr float car_spawn_margin = 1.0f;
+        // how far from the car surface the player can be and still get in
+        constexpr float car_enter_reach = 2.5f;
 
         float get_car_lower_extent(const car::car_preset& preset)
         {
@@ -2180,6 +2182,35 @@ namespace spartan
         delete this;
     }
 
+    bool Car::IsPlayerInRange() const
+    {
+        Entity* car_reference = m_vehicle_entity ? m_vehicle_entity : m_body_entity;
+        if (!default_camera || !car_reference)
+        {
+            return false;
+        }
+
+        const math::Vector3 player_position = default_camera->GetPosition();
+        const math::BoundingBox aabb        = GetCarAABB();
+        const math::Vector3 aabb_min        = aabb.GetMin();
+        const math::Vector3 aabb_max        = aabb.GetMax();
+
+        // no renderable bounds, fall back to the car origin
+        if (aabb.IsInfinite() || aabb_min.x > aabb_max.x)
+        {
+            return (player_position - car_reference->GetPosition()).Length() <= car_enter_reach;
+        }
+
+        // distance to the closest point on the car bounds, so a long car is not harder to enter than a short one
+        const math::Vector3 closest_point = math::Vector3(
+            std::clamp(player_position.x, aabb_min.x, aabb_max.x),
+            std::clamp(player_position.y, aabb_min.y, aabb_max.y),
+            std::clamp(player_position.z, aabb_min.z, aabb_max.z)
+        );
+
+        return (player_position - closest_point).Length() <= car_enter_reach;
+    }
+
     void Car::Enter()
     {
         if (m_is_occupied || !m_is_drivable || m_externally_controlled)
@@ -3354,10 +3385,12 @@ namespace spartan
                 ResetToSpawn();
             }
 
+            // only take the wheel if the player is standing next to the car, otherwise they stay on foot
             if (
                 m_camera_follows &&
                 !m_is_occupied &&
-                play_started
+                play_started &&
+                IsPlayerInRange()
             )
             {
                 Enter();
@@ -3930,7 +3963,7 @@ namespace spartan
 
                 Exit();
             }
-            else
+            else if (IsPlayerInRange())
             {
                 Enter();
             }

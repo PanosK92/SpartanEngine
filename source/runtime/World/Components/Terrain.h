@@ -176,6 +176,10 @@ namespace spartan
 
         // sculpting
         bool HasHeightfield() const { return !m_positions.empty() && m_dense_width > 1 && m_dense_height > 1; }
+        // dense grid in entity local space, indexed as row_z * dense_width + column_x
+        const std::vector<math::Vector3>& GetPositions() const { return m_positions; }
+        uint32_t GetDenseWidth() const  { return m_dense_width; }
+        uint32_t GetDenseHeight() const { return m_dense_height; }
         bool Raycast(const math::Ray& ray, math::Vector3& hit_out) const;
         bool SampleHeight(float world_x, float world_z, float& height_out) const;
         // world-space unit normal at xz, returns false if no heightfield
@@ -221,6 +225,8 @@ namespace spartan
         void DetachTileMeshes();
         void ClearTileEntities();
         void CreateTileEntities();
+        // static heightfield body covering the whole surface, rebuilt whenever the grid changes
+        void RefreshPhysics();
         void BakeHeightMapTexture();
         // curvature, flow, occlusion, insolation, wear, deposition and talus into two rgba8 textures
         void BakeTerrainMaps();

@@ -110,6 +110,8 @@ namespace spartan
         void Exit(bool position_player = true);
         bool IsOccupied() const { return m_is_occupied; }
         bool IsDrivable() const { return m_is_drivable; }
+        // true when the player controller is close enough to get in
+        bool IsPlayerInRange() const;
 
         // controls (only effective when occupied)
         void SetThrottle(float value);
