@@ -950,7 +950,7 @@ namespace spartan
             "row_type,capture_frame,engine_frame,elapsed_ms,"
             "block_index,block_id,parent_id,tree_depth,"
             "name,block_type,queue,start_ms,end_ms,"
-            "duration_ms,wall_ms,cpu_active_ms,gpu_span_ms,"
+            "duration_ms,wall_ms,cpu_active_ms,gpu_busy_ms,"
             "pacing_ms,wait_ms,acquire_ms,submit_ms,"
             "present_ms,profiler_readback_ms,"
             "profiler_block_serialize_ms,"
@@ -1041,10 +1041,14 @@ namespace spartan
             capture_reset_metrics_pending = false;
         }
         capture_this_frame = capture_requested;
+        // sample gpu periodically during capture so csv busy time stays honest without stalling every frame
         capture_gpu_sample_this_frame =
             capture_this_frame &&
-            capture_frame_count == 0 &&
-            Debugging::IsGpuTimingEnabled();
+            Debugging::IsGpuTimingEnabled() &&
+            (
+                capture_frame_count == 0 ||
+                (capture_frame_count % 30) == 0
+            );
         if (capture_this_frame)
         {
             poll = true;
@@ -1108,9 +1112,7 @@ namespace spartan
         // compute timings
         {
             time_cpu_last     = 0.0f;
-            time_gpu_last     = 0.0f;
-            float gpu_start_ms = numeric_limits<float>::max();
-            float gpu_end_ms   = numeric_limits<float>::lowest();
+            float time_gpu_busy = 0.0f;
             vector<pair<float, float>> cpu_wait_intervals;
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
@@ -1140,22 +1142,15 @@ namespace spartan
                         );
                     }
                 }
+                // top-level gpu busy time, not first-to-last span which counts bubbles between submits
                 if (
                     !time_block.HasParent() &&
                     time_block.GetType() ==
                         TimeBlockType::Gpu
                 )
                 {
-                    gpu_start_ms =
-                        min(
-                            gpu_start_ms,
-                            time_block.GetStartMs()
-                        );
-                    gpu_end_ms =
-                        max(
-                            gpu_end_ms,
-                            time_block.GetEndMs()
-                        );
+                    time_gpu_busy +=
+                        time_block.GetDuration();
                 }
             }
 
@@ -1182,11 +1177,13 @@ namespace spartan
             time_cpu_last =
                 max(time_cpu_last, 0.0f);
 
-            if (gpu_end_ms >= gpu_start_ms)
+            // csv low-overhead frames skip gpu blocks, keep the last real sample instead of blending zeros
+            const bool has_gpu_sample =
+                time_gpu_busy > 0.0f ||
+                capture_gpu_sample_this_frame;
+            if (has_gpu_sample)
             {
-                time_gpu_last =
-                    gpu_end_ms -
-                    gpu_start_ms;
+                time_gpu_last = time_gpu_busy;
             }
 
             time_frame_last = frame_duration_ms;
@@ -1201,6 +1198,7 @@ namespace spartan
                 );
             is_stuttering_gpu =
                 has_history &&
+                has_gpu_sample &&
                 time_gpu_last >
                 (
                     time_gpu_avg +
@@ -1212,9 +1210,12 @@ namespace spartan
                 time_cpu_avg = time_cpu_last;
                 time_cpu_min = time_cpu_last;
                 time_cpu_max = time_cpu_last;
-                time_gpu_avg = time_gpu_last;
-                time_gpu_min = time_gpu_last;
-                time_gpu_max = time_gpu_last;
+                if (has_gpu_sample)
+                {
+                    time_gpu_avg = time_gpu_last;
+                    time_gpu_min = time_gpu_last;
+                    time_gpu_max = time_gpu_last;
+                }
                 time_frame_avg = time_frame_last;
                 time_frame_min = time_frame_last;
                 time_frame_max = time_frame_last;
@@ -1228,13 +1229,16 @@ namespace spartan
                     min(time_cpu_min, time_cpu_last);
                 time_cpu_max =
                     max(time_cpu_max, time_cpu_last);
-                time_gpu_avg =
-                    time_gpu_avg * weight_history +
-                    time_gpu_last * weight_delta;
-                time_gpu_min =
-                    min(time_gpu_min, time_gpu_last);
-                time_gpu_max =
-                    max(time_gpu_max, time_gpu_last);
+                if (has_gpu_sample)
+                {
+                    time_gpu_avg =
+                        time_gpu_avg * weight_history +
+                        time_gpu_last * weight_delta;
+                    time_gpu_min =
+                        min(time_gpu_min, time_gpu_last);
+                    time_gpu_max =
+                        max(time_gpu_max, time_gpu_last);
+                }
                 time_frame_avg =
                     time_frame_avg * weight_history +
                     time_frame_last * weight_delta;

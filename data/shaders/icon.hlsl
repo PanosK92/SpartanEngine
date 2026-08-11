@@ -23,6 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+struct vertex_in
+{
+    float3 position : POSITION;
+    float2 uv       : TEXCOORD;
+};
+
 struct PixelInput
 {
     float4 position : SV_POSITION;
@@ -30,23 +36,13 @@ struct PixelInput
     nointerpolation float visible : TEXCOORD1;
 };
 
-PixelInput main_vs(uint vertex_id : SV_VertexID)
+PixelInput main_vs(vertex_in input)
 {
-    static const float2 positions[6] =
-    {
-        float2(-1.0f, -1.0f),
-        float2(-1.0f,  1.0f),
-        float2( 1.0f, -1.0f),
-        float2( 1.0f, -1.0f),
-        float2(-1.0f,  1.0f),
-        float2( 1.0f,  1.0f)
-    };
-
     PixelInput output;
-    const float2 corner         = positions[vertex_id];
+    const float2 corner         = input.uv;
     const float2 icon_size      = pass_get_f2_value();
     const float2 resolution     = max(pass_get_f4_value().xy, float2(1.0f, 1.0f));
-    float3 world_position       = pass_get_f3_value() + buffer_frame.camera_forward.xyz * 0.001f;
+    float3 world_position       = input.position + buffer_frame.camera_forward.xyz * 0.001f;
     const float3 camera_to_icon = normalize(world_position - buffer_frame.camera_position.xyz);
     output.visible              = dot(buffer_frame.camera_forward.xyz, camera_to_icon) > 0.5f ? 1.0f : 0.0f;
     output.position             = mul(float4(world_position, 1.0f), buffer_frame.view_projection_unjittered);

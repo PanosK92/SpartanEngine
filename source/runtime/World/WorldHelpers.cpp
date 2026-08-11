@@ -242,32 +242,8 @@ namespace spartan
         // terrain component
         Terrain* terrain = terrain_entity->AddComponent<Terrain>();
         {
-            // terrain material
-            {
-                shared_ptr<Material> material = terrain->GetMaterial();
-                material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
-                material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                // terrain tiling is texture repeats per meter, the shader maps planar world xz
-                material->SetProperty(MaterialProperty::TextureTilingX, 0.33f);
-                material->SetProperty(MaterialProperty::TextureTilingY, 0.33f);
-
-                material->SetTexture(MaterialTextureType::Color,     "project/materials/whispy_grass_meadow/albedo.png",    0);
-                material->SetTexture(MaterialTextureType::Normal,    "project/materials/whispy_grass_meadow/normal.png",    0);
-                material->SetTexture(MaterialTextureType::Roughness, "project/materials/whispy_grass_meadow/roughness.png", 0);
-                material->SetTexture(MaterialTextureType::Occlusion, "project/materials/whispy_grass_meadow/occlusion.png", 0);
-
-                material->SetTexture(MaterialTextureType::Color,     "project/materials/rock/albedo.png",    1);
-                material->SetTexture(MaterialTextureType::Normal,    "project/materials/rock/normal.png",    1);
-                material->SetTexture(MaterialTextureType::Roughness, "project/materials/rock/roughness.png", 1);
-                material->SetTexture(MaterialTextureType::Occlusion, "project/materials/rock/occlusion.png", 1);
-                material->SetTexture(MaterialTextureType::Height,    "project/materials/rock/height.png",    1);
-
-                material->SetTexture(MaterialTextureType::Color,     "project/materials/sand/albedo.png",    2);
-                material->SetTexture(MaterialTextureType::Normal,    "project/materials/sand/normal.png",    2);
-                material->SetTexture(MaterialTextureType::Roughness, "project/materials/sand/roughness.png", 2);
-                material->SetTexture(MaterialTextureType::Occlusion, "project/materials/sand/occlusion.png", 2);
-                material->SetProperty(MaterialProperty::Tessellation, 0.0f);
-            }
+            // terrain material, the layer set is built by the component from project/materials
+            terrain->ApplyDefaultMaterial();
 
             // height map generation
             shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project/height_maps/height_map.png");

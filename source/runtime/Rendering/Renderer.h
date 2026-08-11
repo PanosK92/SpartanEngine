@@ -34,6 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <string>
 #include "../Math/Rectangle.h"
+#include "../Math/Vector4.h"
+#include "../World/TerrainLayer.h"
 //==============================================
 
 namespace spartan
@@ -155,6 +157,27 @@ namespace spartan
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f); // terrain xz world-space extent, centered at origin
         };
 
+        // everything the terrain surface evaluator needs, pushed by the Terrain component
+        // the layer materials are registered as a contiguous block in the bindless table so the
+        // shader can walk them from a single base index
+        struct TerrainParams
+        {
+            Material*    surface = nullptr;
+            RHI_Texture* map_a   = nullptr;
+            RHI_Texture* map_b   = nullptr;
+
+            std::array<Material*, terrain_layer_max>        layer_materials{};
+            std::array<TerrainLayerRule, terrain_layer_max> layer_rules{};
+
+            math::Vector4 world_mapping = math::Vector4::Zero; // xy = world min xz, zw = 1 / world size xz
+            float sea_level             = 0.0f;
+            float snow_level            = 400.0f;
+            float snow_amount           = 1.0f;
+            float wetness               = 0.0f;
+            uint32_t quality            = 2; // top n layers sampled per pixel
+            uint32_t debug_view         = 0; // TerrainDebugView, 0 is off
+        };
+
         // core
         static void Initialize();
         static void Shutdown();
@@ -203,6 +226,10 @@ namespace spartan
         static void EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params);
         static void DisableProceduralGrass();
         static bool IsProceduralGrassEnabled();
+
+        // terrain surface, the Terrain component keeps ownership of the materials and maps and must outlive their use
+        static void SetTerrain(const TerrainParams& params);
+        static void ClearTerrain(Material* surface);
 
         // fft ocean, the water component stays the owner of the simulation parameters and must outlive its use
         static void EnableOcean(
@@ -511,6 +538,8 @@ namespace spartan
             bool     ssao_history_valid        = false;
             uint32_t ssao_history_index        = 0;
             bool     cloud_environment_dirty   = true;
+            uint32_t cloud_environment_strip   = 0; // 0..3 progressive bake strips
+            bool     cloud_environment_baking  = false;
             Light*   cloud_light               = nullptr;
             math::Quaternion cloud_light_rotation = math::Quaternion::Identity;
             math::Vector3 cloud_wind            = math::Vector3::Zero;
@@ -537,6 +566,11 @@ namespace spartan
             std::array<Sb_IndirectDrawArgs, renderer_max_grass_lod_count> grass_indirect_args_static{};
             bool                  grass_args_baked = false;
 
+            // terrain surface, captured on SetTerrain, the material update pass registers the layer
+            // block first so the layer indices are contiguous and known before anything else lands
+            bool          terrain_enabled = false;
+            TerrainParams terrain;
+
             // fft ocean, the registered water component owns the parameters, null means disabled
             Water*        ocean                              = nullptr;
             bool          ocean_spectrum_dirty               = true;
@@ -560,6 +594,8 @@ namespace spartan
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;
         static std::vector<RHI_Vertex_PosCol> m_lines_vertices;
         static std::vector<PersistentLine> m_persistent_lines;
+        static std::shared_ptr<RHI_Buffer> m_icons_vertex_buffer;
+        static std::vector<RHI_Vertex_PosTex> m_icons_vertices;
         static std::vector<std::tuple<RHI_Texture*, math::Vector3>> m_icons;
         static uint32_t m_frame_cb_ring_slot;
         static std::atomic<bool> m_initialized_resources;

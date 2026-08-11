@@ -60,6 +60,41 @@ namespace spartan
         float extent_z = 0.0f;
     };
 
+    // what the erosion simulation moved, in world units, on the dense grid
+    // this is the single most useful signal for texturing and it used to be thrown away
+    struct TerrainErosionMaps
+    {
+        std::vector<float> wear;       // material removed, exposes bedrock
+        std::vector<float> deposition; // sediment at rest, buries rock detail
+
+        bool IsValid(size_t cell_count) const { return wear.size() == cell_count && deposition.size() == cell_count; }
+    };
+
+    // heightfield analysis baked once per generate, every channel is autoleveled to 0..1
+    // resolution is independent of the dense grid, these are macro signals and do not need texel parity
+    struct TerrainAnalysisMaps
+    {
+        uint32_t width  = 0;
+        uint32_t height = 0;
+
+        std::vector<float> curvature;   // 0.5 flat, below convex (ridges), above concave (gullies)
+        std::vector<float> flow;        // topographic wetness, high in channels
+        std::vector<float> occlusion;   // sky visibility, 1 open, 0 buried
+        std::vector<float> deposition;  // sediment accumulation
+        std::vector<float> wear;        // bedrock exposure
+        std::vector<float> insolation;  // fraction of the sun path that reaches the surface
+        std::vector<float> height_norm; // normalized altitude
+        std::vector<float> talus;       // scree, slope just under the angle of repose
+
+        bool IsValid() const
+        {
+            const size_t n = static_cast<size_t>(width) * height;
+            return n > 0 && curvature.size() == n && flow.size() == n && occlusion.size() == n &&
+                   deposition.size() == n && wear.size() == n && insolation.size() == n &&
+                   height_norm.size() == n && talus.size() == n;
+        }
+    };
+
     // core terrain algorithms, heightfield ops, and brush sculpting
     class TerrainSystem
     {
@@ -96,23 +131,40 @@ namespace spartan
             uint32_t scale
         );
 
+        // noise is faded out towards the water line so it can never move the coastline
         static void ApplyPerlinNoise(
             std::vector<math::Vector3>& positions,
             uint32_t width,
             uint32_t height,
+            float level_sea,
             float amplitude = 5.0f,
             float frequency = 0.01f,
             uint32_t octaves = 4,
             float persistence = 1.0f
         );
 
+        // hydraulic droplet erosion, thermal weathering and differential rock hardness
+        // maps_out, when supplied, receives what the simulation moved so texturing can key off it
         static void ApplyErosion(
             std::vector<math::Vector3>& positions,
             uint32_t width,
             uint32_t height,
             float level_sea,
-            uint32_t iterations = 1'000'000,
-            uint32_t wind_interval = 50'000
+            float intensity = 1.0f,
+            TerrainErosionMaps* maps_out = nullptr
+        );
+
+        // curvature, flow accumulation, sky occlusion, sun path insolation and talus
+        // runs on a capped grid because every channel here is a macro signal, the cost of the
+        // horizon marches is what sets the cap
+        static void ComputeAnalysisMaps(
+            TerrainAnalysisMaps& maps_out,
+            const std::vector<math::Vector3>& positions,
+            uint32_t width,
+            uint32_t height,
+            float level_sea,
+            const TerrainErosionMaps* erosion       = nullptr,
+            uint32_t resolution_max                 = 1024
         );
 
         static void GenerateVerticesAndIndices(

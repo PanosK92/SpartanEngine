@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../World.h"
 #include "../../IO/pugixml.hpp"
+#include <unordered_set>
 
 using namespace std;
 using namespace spartan::math;
@@ -174,6 +175,7 @@ namespace spartan
 
         const float delta_time = std::clamp(static_cast<float>(Timer::GetDeltaTimeSec()), 0.0f, 0.1f);
         const vector<Car*> cars = Car::GetAll();
+        unordered_set<Car*> car_set(cars.begin(), cars.end());
         Vector3 player_position;
         Vector3 player_velocity;
         const bool has_player = GetPlayerState(player_position, player_velocity);
@@ -182,7 +184,7 @@ namespace spartan
         physics_candidates.reserve(m_drivers.size());
         for (Driver& driver : m_drivers)
         {
-            if (!driver.car || find(cars.begin(), cars.end(), driver.car) == cars.end())
+            if (!driver.car || car_set.find(driver.car) == car_set.end())
             {
                 driver.car = nullptr;
                 driver.entity = nullptr;
@@ -227,6 +229,13 @@ namespace spartan
             physics_candidates.resize(max_physics_cars);
         }
 
+        unordered_set<Driver*> physics_selected_set;
+        physics_selected_set.reserve(physics_candidates.size() * 2 + 1);
+        for (const auto& candidate : physics_candidates)
+        {
+            physics_selected_set.insert(candidate.second);
+        }
+
         for (Driver& driver : m_drivers)
         {
             if (!driver.car || !driver.entity || !driver.physics)
@@ -234,14 +243,7 @@ namespace spartan
                 continue;
             }
 
-            const bool physics_selected = any_of(
-                physics_candidates.begin(),
-                physics_candidates.end(),
-                [&driver](const auto& candidate)
-                {
-                    return candidate.second == &driver;
-                }
-            );
+            const bool physics_selected = physics_selected_set.find(&driver) != physics_selected_set.end();
             SetPhysicsActive(driver, physics_selected);
 
             if (!driver.physics_active)

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "../World/Entity.h"
+#include "../World/World.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../RHI/RHI_CommandList.h"
@@ -430,15 +431,11 @@ namespace spartan
         // sigma must use the same solar angular radius as the shadow rays
         Vector3 light_direction = Vector3::Down;
         const float tan_light_angular_radius = tanf(0.00465f);
-        for (Entity* entity : World::GetEntities())
+        if (Light* sun = World::GetDirectionalLight())
         {
-            if (Light* light = entity->GetComponent<Light>())
+            if (sun->GetFlag(LightFlags::Shadows) && sun->GetIntensityRadiometric() > 0.0f)
             {
-                if (light->GetLightType() == LightType::Directional && light->GetFlag(LightFlags::Shadows) && light->GetIntensityRadiometric() > 0.0f)
-                {
-                    light_direction = -light->GetEntity()->GetForward();
-                    break;
-                }
+                light_direction = -sun->GetEntity()->GetForward();
             }
         }
 

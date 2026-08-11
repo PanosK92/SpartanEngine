@@ -66,6 +66,12 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
+        bool materials_uploaded_this_frame = false;
+    }
+
     // constant and push constant buffers
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_pcb_pass_cpu;
@@ -87,6 +93,8 @@ namespace spartan
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
     vector<PersistentLine> Renderer::m_persistent_lines;
+    shared_ptr<RHI_Buffer> Renderer::m_icons_vertex_buffer;
+    vector<RHI_Vertex_PosTex> Renderer::m_icons_vertices;
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
@@ -607,6 +615,7 @@ namespace spartan
             GeometryBuffer::Shutdown();
             m_swapchain           = nullptr;
             m_lines_vertex_buffer = nullptr;
+            m_icons_vertex_buffer = nullptr;
             m_tlas                = nullptr;
             secondary_view_output.reset();
             secondary_view_primary_backup.reset();
@@ -1141,6 +1150,7 @@ namespace spartan
             return;
         }
         uploaded_for_secondary = is_secondary;
+        materials_uploaded_this_frame = true;
 
         UpdateMaterials(cmd_list);
         cmd_list->PrepareTexturesForSampling(&m_bindless_textures);
@@ -2254,6 +2264,30 @@ namespace spartan
         return m_pass_state.grass_enabled;
     }
 
+    void Renderer::SetTerrain(const TerrainParams& params)
+    {
+        if (!params.surface)
+        {
+            return;
+        }
+
+        m_pass_state.terrain         = params;
+        m_pass_state.terrain_enabled = true;
+    }
+
+    void Renderer::ClearTerrain(Material* surface)
+    {
+        // only the terrain that registered may clear, otherwise a second terrain being destroyed
+        // takes the live one's binding with it
+        if (surface && m_pass_state.terrain.surface != surface)
+        {
+            return;
+        }
+
+        m_pass_state.terrain         = TerrainParams();
+        m_pass_state.terrain_enabled = false;
+    }
+
     void Renderer::EnableOcean(
         Water* water,
         const bool spectrum_dirty
@@ -2694,6 +2728,79 @@ namespace spartan
         properties.fill(Sb_Material{});
         m_bindless_textures.fill(nullptr);
         unique_material_ids.clear();
+
+        // terrain goes first so the enabled layers land as one contiguous block, the surface
+        // material then only has to carry the base index and the shader can walk the rest
+        // a layer whose folder was missing has a null material and is simply skipped, its weight
+        // redistributes across the layers that do exist
+        if (m_pass_state.terrain_enabled && m_pass_state.terrain.surface)
+        {
+            const TerrainParams& terrain = m_pass_state.terrain;
+
+            uint32_t layer_base  = count;
+            uint32_t layer_count = 0;
+            for (uint32_t i = 0; i < terrain_layer_max; i++)
+            {
+                Material* layer = terrain.layer_materials[i];
+                if (!layer || terrain.layer_rules[i].weight_bias <= 0.0f)
+                {
+                    continue;
+                }
+
+                const uint32_t index_before = count;
+                update_material(layer);
+                if (count == index_before)
+                {
+                    // already registered through an entity, which would break contiguity
+                    continue;
+                }
+
+                const TerrainLayerRule& rule = terrain.layer_rules[i];
+                Sb_Material& entry           = properties[index_before];
+
+                entry.terrain_slope_range         = Vector2(rule.slope_min * math::deg_to_rad, rule.slope_max * math::deg_to_rad);
+                entry.terrain_height_range        = Vector2(rule.height_min, rule.height_max);
+                entry.terrain_curvature_influence = rule.curvature_influence;
+                entry.terrain_flow_influence      = rule.flow_influence;
+                entry.terrain_occlusion_influence = rule.occlusion_influence;
+                entry.terrain_insolation_influence= rule.insolation_influence;
+                entry.terrain_wear_influence      = rule.wear_influence;
+                entry.terrain_deposition_influence= rule.deposition_influence;
+                entry.terrain_talus_influence     = rule.talus_influence;
+                entry.terrain_weight_bias         = rule.weight_bias;
+                entry.terrain_tiling_scale        = rule.tiling_scale;
+                entry.terrain_blend_contrast      = rule.blend_contrast;
+                entry.terrain_porosity            = rule.porosity;
+                entry.terrain_macro_strength      = rule.macro_strength;
+                entry.terrain_flags               = rule.flags;
+
+                layer_count++;
+            }
+
+            // the surface material follows the block, its own entry points back at the base
+            const uint32_t surface_index = count;
+            update_material(terrain.surface);
+            if (count != surface_index)
+            {
+                Sb_Material& entry = properties[surface_index];
+
+                entry.terrain_world_mapping = terrain.world_mapping;
+                entry.terrain_sea_level     = terrain.sea_level;
+                entry.terrain_snow_level    = terrain.snow_level;
+                entry.terrain_layer_base    = layer_base;
+                entry.terrain_layer_count   = layer_count;
+                entry.terrain_layer_stride  = material_slot_count;
+                entry.terrain_snow_amount   = terrain.snow_amount;
+                entry.terrain_wetness       = terrain.wetness;
+                entry.terrain_flags         = (terrain.map_a && terrain.map_b) ? TerrainLayerFlags_HasMaps : 0u;
+
+                // quality rides in the bits above the flag range, 1 to 4 layers per pixel, and the
+                // debug view sits above that, see terrain_layer_quality in shared_buffers.h
+                entry.terrain_flags |= (min(max(terrain.quality, 1u), 4u) << 8);
+                entry.terrain_flags |= (min(terrain.debug_view, 15u) << 12);
+            }
+        }
+
         update_entities();
 
         // procedural grass material is not attached to any entity, register it here so it lands in the
@@ -2710,7 +2817,12 @@ namespace spartan
 
     void Renderer::UpdateLights(RHI_CommandList* cmd_list)
     {
-        m_bindless_lights.fill(Sb_Light());
+        // only clear slots we wrote last frame, full 16k fill is pure cpu waste
+        static uint32_t prev_light_count = 0;
+        for (uint32_t i = 0; i < prev_light_count; i++)
+        {
+            m_bindless_lights[i] = Sb_Light();
+        }
 
         m_count_active_lights         = 0;
         uint32_t volumetric_count     = 0;
@@ -2904,11 +3016,17 @@ namespace spartan
             vol_buffer->ResetOffset();
             vol_buffer->Update(cmd_list, &volumetric_indices[0], vol_buffer->GetStride() * volumetric_count);
         }
+
+        prev_light_count = m_count_active_lights;
     }
 
     void Renderer::UpdateBoundingBoxes(RHI_CommandList* cmd_list)
     {
-        m_bindless_aabbs.fill(Sb_Aabb());
+        static uint32_t prev_aabb_count = 0;
+        for (uint32_t i = 0; i < prev_aabb_count; i++)
+        {
+            m_bindless_aabbs[i] = Sb_Aabb();
+        }
 
         // prepass aabbs come first in the buffer, slot index is the prepass draw index
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
@@ -2952,6 +3070,7 @@ namespace spartan
             uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_Aabb)) * total_aabb_count;
             cmd_list->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_bindless_aabbs[0]);
         }
+        prev_aabb_count = total_aabb_count;
     }
 
     void Renderer::UpdateDrawCalls_ResetCounts()
@@ -2968,6 +3087,17 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
+        const bool tlas_available =
+            RHI_Device::IsSupportedRayTracing() &&
+            GetTopLevelAccelerationStructure() != nullptr &&
+            !IsSecondaryViewActive();
+        const bool shadow_maps_required =
+            World::GetLightCount() > 0 &&
+            !(
+                cvar_ray_traced_shadows.GetValueAs<bool>() &&
+                tlas_available
+            );
+
         for (Entity* entity : render_entities())
         {
             if (!entity || !entity->GetActive())
@@ -2996,6 +3126,23 @@ namespace spartan
             if (!material)
             {
                 continue;
+            }
+
+            // off-screen geometry is only kept when classic shadow maps need the caster
+            if (!render->IsVisible())
+            {
+                if (material->IsTransparent())
+                {
+                    m_transparents_present = true;
+                }
+
+                if (
+                    !shadow_maps_required ||
+                    !render->HasFlag(RenderFlags::CastsShadows)
+                )
+                {
+                    continue;
+                }
             }
 
             if (material->IsTransparent())
@@ -3247,16 +3394,22 @@ namespace spartan
     void Renderer::UpdateDrawCalls_SelectOccluders()
     {
         // top n by screen area with temporal hysteresis, the prior occluder set gets a 1.5x area bonus
+        // recently moved meshes are excluded, otherwise a rotating prop writes hi-z that meshlet-culls itself next frame
         static unordered_set<Render*> previous_occluders;
 
-        auto compute_screen_space_area = [](const BoundingBox& aabb_world) -> float
+        Camera* camera = World::GetCamera();
+        if (!camera)
         {
-            if (Camera* camera = World::GetCamera())
-            {
-                math::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
-                return clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
-            }
-            return 0.0f;
+            return;
+        }
+
+        const float move_window_sec =
+            static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f + 0.0001f;
+
+        auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
+        {
+            math::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
+            return clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
         };
 
         struct DrawCallArea { uint32_t index; float area; };
@@ -3275,6 +3428,12 @@ namespace spartan
                 continue;
             }
 
+            Entity* entity = render->GetEntity();
+            if (entity && entity->GetTimeSinceLastTransform() <= move_window_sec)
+            {
+                continue;
+            }
+
             float screen_area = compute_screen_space_area(render->GetBoundingBox());
             if (previous_occluders.find(render) != previous_occluders.end())
             {
@@ -3284,10 +3443,23 @@ namespace spartan
             areas.push_back({ i, screen_area });
         }
 
-        sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b) { return a.area > b.area; });
+        const uint32_t max_occluders = 64;
+        if (areas.size() > max_occluders)
+        {
+            partial_sort(
+                areas.begin(),
+                areas.begin() + max_occluders,
+                areas.end(),
+                [](const DrawCallArea& a, const DrawCallArea& b) { return a.area > b.area; }
+            );
+            areas.resize(max_occluders);
+        }
+        else
+        {
+            sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b) { return a.area > b.area; });
+        }
 
-        const uint32_t max_occluders  = 64;
-        const uint32_t occluder_count = min(max_occluders, static_cast<uint32_t>(areas.size()));
+        const uint32_t occluder_count = static_cast<uint32_t>(areas.size());
 
         previous_occluders.clear();
         for (uint32_t i = 0; i < occluder_count; i++)
@@ -3379,6 +3551,8 @@ namespace spartan
 
         // blas builds are capped per frame, recording thousands onto one command list hits driver tdr
         bool blas_burst_done = false;
+        bool blas_refit_done = false;
+        bool blas_built_this_frame = false;
         {
             cmd_list->BeginMarker("blas_build");
 
@@ -3434,10 +3608,12 @@ namespace spartan
                 {
                     render->RefitAccelerationStructure(cmd_list);
                     render->SetNeedsBlasRefit(false);
+                    blas_refit_done = true;
                 }
             }
 
             blas_burst_done = (blas_remaining == 0);
+            blas_built_this_frame = blas_built > 0;
 
             // free the shared static scratch only once the burst fully completes
             // freeing mid-burst would force a reallocation on next frame
@@ -3454,6 +3630,54 @@ namespace spartan
         if (!blas_burst_done)
         {
             return;
+        }
+
+        // static scenes keep a valid tlas, only rebuild when transforms, materials, or blas move
+        {
+            bool needs_tlas_rebuild =
+                !m_tlas ||
+                materials_uploaded_this_frame ||
+                blas_refit_done ||
+                blas_built_this_frame;
+            materials_uploaded_this_frame = false;
+
+            if (!needs_tlas_rebuild)
+            {
+                const float move_window_sec =
+                    static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f + 0.0001f;
+
+                for (Entity* entity : render_entities())
+                {
+                    if (!entity || !entity->GetActive())
+                    {
+                        continue;
+                    }
+                    if (!is_secondary_view_entity(entity))
+                    {
+                        continue;
+                    }
+
+                    Render* render = entity->GetComponent<Render>();
+                    if (
+                        !render ||
+                        render->HasFlag(RenderFlags::ExcludeFromRayTracing)
+                    )
+                    {
+                        continue;
+                    }
+
+                    if (entity->GetTimeSinceLastTransform() <= move_window_sec)
+                    {
+                        needs_tlas_rebuild = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!needs_tlas_rebuild)
+            {
+                return;
+            }
         }
 
         // tlas
@@ -4072,6 +4296,23 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
         }
 
+        // terrain analysis maps, bound globally because the raster, reflection and gi paths all
+        // evaluate the same terrain surface and must agree on it
+        // the slots always get a descriptor, the shader gates the read on the has_maps flag but the
+        // binding itself must stay valid whether or not a terrain exists
+        {
+            RHI_Texture* map_a = m_pass_state.terrain_enabled ? m_pass_state.terrain.map_a : nullptr;
+            RHI_Texture* map_b = m_pass_state.terrain_enabled ? m_pass_state.terrain.map_b : nullptr;
+            const bool ready =
+                map_a && map_b &&
+                map_a->GetResourceState() == ResourceState::PreparedForGpu &&
+                map_b->GetResourceState() == ResourceState::PreparedForGpu;
+
+            RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Noise_perlin);
+            cmd_list->SetTexture(Renderer_BindingsSrv::terrain_map_a, ready ? map_a : fallback);
+            cmd_list->SetTexture(Renderer_BindingsSrv::terrain_map_b, ready ? map_b : fallback);
+        }
+
         Renderer_RenderTarget ocean_displacement_current =
             m_pass_state.ocean_displacement_index == 0 ?
             Renderer_RenderTarget::ocean_displacement :
@@ -4287,37 +4528,42 @@ namespace spartan
         SP_PROFILE_CPU();
 
         // wait until every shader has finished compiling, null entries are safe to skip
-        for (const auto& shader : GetShaders())
+        static bool shaders_ready = false;
+        if (!shaders_ready)
         {
-            if (!shader)
+            for (const auto& shader : GetShaders())
             {
-                continue;
-            }
-            const RHI_ShaderCompilationState state = shader->GetCompilationState();
-            if (
-                state == RHI_ShaderCompilationState::Idle ||
-                state == RHI_ShaderCompilationState::Compiling
-            )
-            {
-                // release pre-acquired compute lists so they do not stay recording
+                if (!shader)
+                {
+                    continue;
+                }
+                const RHI_ShaderCompilationState state = shader->GetCompilationState();
                 if (
-                    cmd_list_compute &&
-                    cmd_list_compute->GetState() ==
-                        RHI_CommandListState::Recording
+                    state == RHI_ShaderCompilationState::Idle ||
+                    state == RHI_ShaderCompilationState::Compiling
                 )
                 {
-                    cmd_list_compute->Submit(nullptr, false);
+                    // release pre-acquired compute lists so they do not stay recording
+                    if (
+                        cmd_list_compute &&
+                        cmd_list_compute->GetState() ==
+                            RHI_CommandListState::Recording
+                    )
+                    {
+                        cmd_list_compute->Submit(nullptr, false);
+                    }
+                    if (
+                        cmd_list_compute_b &&
+                        cmd_list_compute_b->GetState() ==
+                            RHI_CommandListState::Recording
+                    )
+                    {
+                        cmd_list_compute_b->Submit(nullptr, false);
+                    }
+                    return;
                 }
-                if (
-                    cmd_list_compute_b &&
-                    cmd_list_compute_b->GetState() ==
-                        RHI_CommandListState::Recording
-                )
-                {
-                    cmd_list_compute_b->Submit(nullptr, false);
-                }
-                return;
             }
+            shaders_ready = true;
         }
 
         RHI_Texture* rt_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);

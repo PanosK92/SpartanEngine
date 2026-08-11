@@ -214,8 +214,24 @@ namespace spartan
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
 
-        const CompilerHLSL compiler = CompilerHLSL(ptr, size);
-        ShaderResources resources   = compiler.get_shader_resources();
+        CompilerHLSL compiler = CompilerHLSL(ptr, size);
+
+        // ray tracing shaders are compiled as libraries, so a single module carries every entry point
+        // from spir-v 1.4 onwards reflection is filtered by the active entry point interface, which
+        // defaults to the first one in the module, so select ours or we reflect another stage resources
+        if (const char* entry_point = GetEntryPoint())
+        {
+            for (const EntryPoint& candidate : compiler.get_entry_points_and_stages())
+            {
+                if (candidate.name == entry_point)
+                {
+                    compiler.set_entry_point(candidate.name, candidate.execution_model);
+                    break;
+                }
+            }
+        }
+
+        ShaderResources resources = compiler.get_shader_resources();
 
         spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,         RHI_Descriptor_Type::Image,                 shader_stage); // srv
         spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_images,          RHI_Descriptor_Type::TextureStorage,        shader_stage); // uav

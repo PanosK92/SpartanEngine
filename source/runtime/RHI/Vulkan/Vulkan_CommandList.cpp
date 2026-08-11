@@ -346,6 +346,35 @@ namespace spartan
             VkPipelineStageFlags2 filtered = stages & compute_valid;
             return filtered ? filtered : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
         }
+
+        // attachment and vertex input access is only reachable from graphics stages, on a compute queue
+        // all commands expands without them, so the access bits have to collapse to generic memory access
+        VkAccessFlags2 sanitize_compute_access(VkAccessFlags2 access)
+        {
+            const VkAccessFlags2 graphics_only_read =
+                VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT         |
+                VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT         |
+                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                VK_ACCESS_2_INDEX_READ_BIT                    |
+                VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT         |
+                VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR;
+
+            const VkAccessFlags2 graphics_only_write =
+                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+            VkAccessFlags2 sanitized = access & ~(graphics_only_read | graphics_only_write);
+            if (access & graphics_only_read)
+            {
+                sanitized |= VK_ACCESS_2_MEMORY_READ_BIT;
+            }
+            if (access & graphics_only_write)
+            {
+                sanitized |= VK_ACCESS_2_MEMORY_WRITE_BIT;
+            }
+
+            return sanitized;
+        }
     }
 
     RHI_Image_Layout RHI_CommandList::GetTrackedImageLayout(void* image, uint32_t mip_index)
@@ -953,13 +982,17 @@ namespace spartan
         {
             for (auto& b : image_barriers)
             {
-                b.srcStageMask = barrier_helpers::sanitize_compute_stages(b.srcStageMask);
-                b.dstStageMask = barrier_helpers::sanitize_compute_stages(b.dstStageMask);
+                b.srcStageMask  = barrier_helpers::sanitize_compute_stages(b.srcStageMask);
+                b.dstStageMask  = barrier_helpers::sanitize_compute_stages(b.dstStageMask);
+                b.srcAccessMask = barrier_helpers::sanitize_compute_access(b.srcAccessMask);
+                b.dstAccessMask = barrier_helpers::sanitize_compute_access(b.dstAccessMask);
             }
             for (auto& b : buffer_barriers)
             {
-                b.srcStageMask = barrier_helpers::sanitize_compute_stages(b.srcStageMask);
-                b.dstStageMask = barrier_helpers::sanitize_compute_stages(b.dstStageMask);
+                b.srcStageMask  = barrier_helpers::sanitize_compute_stages(b.srcStageMask);
+                b.dstStageMask  = barrier_helpers::sanitize_compute_stages(b.dstStageMask);
+                b.srcAccessMask = barrier_helpers::sanitize_compute_access(b.srcAccessMask);
+                b.dstAccessMask = barrier_helpers::sanitize_compute_access(b.dstAccessMask);
             }
         }
 
@@ -1324,6 +1357,7 @@ namespace spartan
         m_dynamic_pipeline_type    = static_cast<uint8_t>(-1);
         m_dynamic_offset_count     = 0;
         m_pipeline_state_dirty     = false;
+        m_mesh_cull_barrier_satisfied = false;
     
         // queries
         if (m_queue->GetType() != RHI_Queue_Type::Copy)
@@ -1975,29 +2009,33 @@ namespace spartan
         TrackBufferRead(3, args_buffer, RHI_Resource_Usage::Indirect);
 
         // cull writes survivors + group counts on compute, mesh reads them
-        // renderdoc serializes this path which is why captures look fine while freestanding runs race
-        RenderPassEnd();
+        // one barrier covers every mesh draw until the next compute write
+        if (!m_mesh_cull_barrier_satisfied)
         {
-            VkMemoryBarrier2 memory_barrier = {};
-            memory_barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
-            memory_barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_HOST_BIT;
-            memory_barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT |
-                                           VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT |
-                                           VK_ACCESS_2_HOST_WRITE_BIT;
-            memory_barrier.dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
-                                           VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
-                                           VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
-                                           VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-            memory_barrier.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT |
-                                           VK_ACCESS_2_SHADER_READ_BIT |
-                                           VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+            RenderPassEnd();
+            {
+                VkMemoryBarrier2 memory_barrier = {};
+                memory_barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+                memory_barrier.srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_HOST_BIT;
+                memory_barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT |
+                                               VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT |
+                                               VK_ACCESS_2_HOST_WRITE_BIT;
+                memory_barrier.dstStageMask  = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+                                               VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                                               VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
+                                               VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                memory_barrier.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT |
+                                               VK_ACCESS_2_SHADER_READ_BIT |
+                                               VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
 
-            VkDependencyInfo dependency_info = {};
-            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-            dependency_info.memoryBarrierCount = 1;
-            dependency_info.pMemoryBarriers    = &memory_barrier;
-            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
-            Profiler::m_rhi_pipeline_barriers++;
+                VkDependencyInfo dependency_info = {};
+                dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                dependency_info.memoryBarrierCount = 1;
+                dependency_info.pMemoryBarriers    = &memory_barrier;
+                vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
+                Profiler::m_rhi_pipeline_barriers++;
+            }
+            m_mesh_cull_barrier_satisfied = true;
         }
 
         PreDraw();
@@ -2029,6 +2067,7 @@ namespace spartan
         PreDraw();
 
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
+        m_mesh_cull_barrier_satisfied = false;
     }
 
     void RHI_CommandList::DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset /*= 0*/)
@@ -2045,6 +2084,7 @@ namespace spartan
             static_cast<VkBuffer>(args_buffer->GetRhiResource()),
             static_cast<VkDeviceSize>(args_offset)
         );
+        m_mesh_cull_barrier_satisfied = false;
     }
 
     void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)

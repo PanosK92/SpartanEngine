@@ -202,6 +202,8 @@ namespace spartan
         uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
+        uint32_t GetRevision() const        { return m_revision; }
+        static uint32_t GetGlobalRevision() { return m_global_revision; }
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
         void ClearPackedTextures();
 
@@ -210,10 +212,17 @@ namespace spartan
         void SetColorInternal(const Color& color, bool save);
         void ResetPresetProperties(bool save);
         bool IsPackableTextureType(MaterialTextureType type) const;
+        void bump_revision()
+        {
+            m_revision++;
+            m_global_revision++;
+        }
 
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index        = 0;
+        uint32_t m_revision     = 1; // bumps on texture/property edits so the renderer can skip full hashing
+        inline static uint32_t m_global_revision = 1;
         bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         // recursive, PrepareForGpu holds this while pack_textures calls SetTexture
         // GetTexture stays unlocked, draw/sort call it every frame

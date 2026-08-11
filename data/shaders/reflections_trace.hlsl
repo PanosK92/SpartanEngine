@@ -242,8 +242,17 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float distance_mip      = log2(max(hit_distance, 1.0f));
     float mip_level         = clamp(distance_mip + grazing_mip_boost, 0.0f, 7.0f);
 
+    // terrain, evaluated with the same layer weights the raster pass uses so a reflection of a
+    // cliff shows rock rather than the grass that slot zero used to hand back
+    bool terrain_shaded = mat.is_terrain() && mat.terrain_layer_count > 0;
+    TerrainSurface terrain = (TerrainSurface)0;
+    if (terrain_shaded)
+    {
+        terrain = terrain_shade_lod(mat, hit_pos, normal_world, texcoord, mip_level);
+    }
+
     // normal mapping, mild mip bias to avoid specular sparkle on detailed normal maps
-    if (mat.has_texture_normal())
+    if (!terrain_shaded && mat.has_texture_normal())
     {
         uint  normal_texture_index = material_index + material_texture_index_normal;
         float normal_mip           = clamp(distance_mip + lerp(1.5f, 0.0f, n_dot_v_hit), 0.0f, 5.0f);
@@ -257,7 +266,11 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     
     // albedo, mip biased by hit distance and grazing angle to avoid texture moire
     float3 albedo = mat.color.rgb;
-    if (mat.has_texture_albedo())
+    if (terrain_shaded)
+    {
+        albedo = terrain.albedo;
+    }
+    else if (mat.has_texture_albedo())
     {
         uint  albedo_texture_index = material_index + material_texture_index_albedo;
         float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
@@ -272,7 +285,11 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     }
 
     float roughness = mat.roughness;
-    if (mat.has_texture_roughness())
+    if (terrain_shaded)
+    {
+        roughness = terrain.roughness;
+    }
+    else if (mat.has_texture_roughness())
     {
         uint roughness_texture_index = material_index + material_texture_index_roughness;
         roughness *= material_textures[roughness_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).g;

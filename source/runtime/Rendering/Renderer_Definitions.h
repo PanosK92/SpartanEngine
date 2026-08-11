@@ -136,6 +136,12 @@ namespace spartan
         // noise
         tex_perlin = 14,
 
+        // baked terrain heightfield analysis, sampled by the terrain surface evaluator
+        // kept clear of t15 to t23, spirv reflection ignores the register space so the bindless
+        // buffers below collide with anything sharing their index
+        terrain_map_a = 35,
+        terrain_map_b = 36,
+
         // bindless
         bindless_material_textures   = 15,
         bindless_material_parameters = 16,

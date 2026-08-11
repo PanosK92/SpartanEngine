@@ -205,8 +205,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
     
+    // bloom can be half-res, sample by uv so it covers the full frame
+    float2 uv                        = (thread_id.xy + 0.5f) / resolution_out;
     float4 color_frame               = tex[thread_id.xy];
-    float4 color_bloom               = tex2[thread_id.xy];
+    float4 color_bloom               = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
     const float INTENSITY_CORRECTION = 0.0025f;
     float bloom_intensity            = pass_get_f3_value().x;
     float3 result                    = color_frame.rgb + (color_bloom.rgb * INTENSITY_CORRECTION * bloom_intensity);

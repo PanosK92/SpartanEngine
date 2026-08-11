@@ -242,15 +242,58 @@ float shoreline_intersection_mask(
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // get output resolution and build surface data
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    float2 uv = (thread_id.xy + 0.5f) / resolution_out;
+
+    // cheap gbuffer probes before Surface.Build, most pixels are opaque and skip or take the add-only path
+    float4 sample_albedo   = tex_albedo.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+    float  alpha           = sample_albedo.a;
+    if (alpha == 0.0f)
+    {
+        return; // sky
+    }
+
+    float4 sample_normal   = tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+    float4 sample_material = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+    MaterialParameters mat = material_parameters[uint(sample_normal.a)];
+    bool is_water_pixel    = (mat.flags & uint(1U << 13)) != 0;
+    bool is_glass_pixel    = alpha > 0.0f && alpha < 1.0f;
+
+    if (!is_water_pixel && !is_glass_pixel)
+    {
+        float coat = saturate(mat.clearcoat);
+        float reflection_roughness = lerp(sample_material.r, mat.clearcoat_roughness, coat);
+        if (reflection_roughness >= reflection_roughness_fade_end)
+        {
+            return;
+        }
+
+        float3 reflection = tex[thread_id.xy].rgb;
+        if (dot(reflection, reflection) < 1e-8f)
+        {
+            return;
+        }
+
+        // opaque add-only path, matches the bottom branch without ssao or refraction work
+        float  depth               = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
+        float3 position            = get_position(depth, render_uv_to_screen_uv(uv));
+        float3 camera_to_pixel     = normalize(position - get_camera_position());
+        float3 normal              = sample_normal.xyz;
+        float  n_dot_v             = saturate(dot(normal, -camera_to_pixel));
+        float2 brdf                = reflection_env_brdf(reflection_roughness, n_dot_v);
+        float3 albedo              = sample_albedo.rgb;
+        float  metallic            = sample_material.g;
+        float3 F0                  = lerp(0.04f, albedo, metallic);
+        float3 F0_brdf             = lerp(F0, float3(0.04f, 0.04f, 0.04f), coat);
+        float  roughness_fade      = 1.0f - smoothstep(reflection_roughness_fade_start, reflection_roughness_fade_end, reflection_roughness);
+        float3 specular_reflection = reflection * roughness_fade * (F0_brdf * brdf.x + brdf.y);
+        tex_uav[thread_id.xy]     += float4(specular_reflection, 0.0f);
+        return;
+    }
+
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
-    
-    // skip sky pixels
-    if (surface.is_sky())
-        return;
 
     // fft ocean foam, the water color below is built purely from reflection and refraction so the diffuse
     // foam written into the g-buffer never surfaces, it has to be injected here from the same cascade map

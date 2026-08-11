@@ -45,68 +45,61 @@ static const float3 flower_yellow       = float3(0.9f, 0.8f, 0.1f);
 static const float3 snow_color          = float3(0.95f, 0.95f, 0.95f);
 
 // parallax occlusion mapping
-static const uint  POM_MAX_STEPS         = 96;
-static const uint  POM_MIN_STEPS         = 16;
+static const uint  POM_MAX_STEPS         = 40;
+static const uint  POM_MIN_STEPS         = 12;
 static const uint  POM_REFINE_ITERATIONS = 6;
 static const float POM_FADE_START        = 25.0f;
 static const float POM_FADE_END          = 50.0f;
 static const float POM_HEIGHT_SCALE      = 0.04f;
 
-// breaks visible tiling by blending four randomly offset and mirrored texture repeats
-// derivatives come from the continuous uv and feed SampleGrad, so mip selection stays
-// correct across cell seams, mirroring keeps the anisotropic footprint axis aligned so
-// grazing angles blur uniformly instead of streaking per cell, after inigo quilez
-static float4 sample_reduce_tiling(uint texture_index, float2 uv)
+// terrain fills the screen at grazing angles, which is the case that picks the highest step count,
+// so it marches on its own much smaller budget and fades out far sooner than prop surfaces do
+static const uint  TERRAIN_POM_MAX_STEPS  = 32;
+static const uint  TERRAIN_POM_MIN_STEPS  = 8;
+static const float TERRAIN_POM_FADE_START = 12.0f;
+static const float TERRAIN_POM_FADE_END   = 25.0f;
+
+// parallax march against the dominant terrain layer, terrain_shade hands back the height scale of
+// whichever layer won this pixel so only the layers flagged for it ever pay for the march
+static float2 terrain_parallax(
+    float2 uv,
+    float2 dx,
+    float2 dy,
+    uint   layer_index,
+    float  tiling_scale,
+    float  height_scale,
+    float3 v_tangent,
+    float  fade
+)
 {
-    float2 cell   = floor(uv);
-    float2 local  = frac(uv);
-    float2 ddx_uv = ddx(uv);
-    float2 ddy_uv = ddy(uv);
-    float2 blend  = smoothstep(0.25f, 0.75f, local);
+    float max_displacement = height_scale * POM_HEIGHT_SCALE * fade;
+    uint  step_count       = (uint)lerp(TERRAIN_POM_MAX_STEPS, TERRAIN_POM_MIN_STEPS, saturate(v_tangent.z));
 
-    float4 sum = 0.0f;
-    [unroll]
-    for (int j = 0; j < 2; j++)
+    float2 layer_uv = uv * tiling_scale;
+    float2 layer_dx = dx * tiling_scale;
+    float2 layer_dy = dy * tiling_scale;
+    float2 delta_uv = v_tangent.xy * max_displacement / step_count;
+    float  layer_h  = 1.0f / step_count;
+
+    float2 cur_uv    = layer_uv;
+    float  cur_layer = 1.0f;
+    float  cur_samp  = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, layer_dx, layer_dy).a;
+
+    [loop]
+    while (cur_layer > cur_samp && cur_layer > 0.0f)
     {
-        [unroll]
-        for (int i = 0; i < 2; i++)
-        {
-            float2 corner = cell + float2(i, j);
-            float2 offset = float2(hash(corner), hash(corner + 23.13f));
-            float2 mirror = sign(float2(hash(corner + 71.70f), hash(corner + 51.30f)) - 0.5f);
-
-            float2 muv = uv * mirror + offset;
-            float  w   = ((i == 0) ? 1.0f - blend.x : blend.x) * ((j == 0) ? 1.0f - blend.y : blend.y);
-
-            sum += w * GET_TEXTURE(texture_index).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), muv, ddx_uv * mirror, ddy_uv * mirror);
-        }
+        cur_uv    -= delta_uv;
+        cur_layer -= layer_h;
+        cur_samp   = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, layer_dx, layer_dy).a;
     }
 
-    return sum;
+    // the intersection is found in the layer's own uv space, hand the offset back in the shared one
+    return uv + (cur_uv - layer_uv) / max(tiling_scale, 1e-4f);
 }
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface, float3 world_pos)
 {
-    float4 color;
-    
-    if (surface.is_terrain())
-    {
-        color               = sample_reduce_tiling(texture_index, vertex.uv_misc.xy);
-        float4 tex_rock     = sample_reduce_tiling(texture_index + 1, vertex.uv_misc.xy);
-        float4 tex_sand     = sample_reduce_tiling(texture_index + 2, vertex.uv_misc.xy);
-
-        float surface_angle = acos(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f)));
-        float slope         = saturate((surface_angle - 50.0f * DEG_TO_RAD) * 5.0f);
-        float sand_factor   = saturate((world_pos.y - sea_level) * 1.333f);
-
-        color = lerp(lerp(tex_rock, color, 1.0f - slope), tex_sand, 1.0f - sand_factor);
-    }
-    else
-    {
-        color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
-    }
-    
-    return color;
+    return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
 }
 
 // compute grass blade color with variation
@@ -244,6 +237,62 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         vertex.uv_misc.xy = uv_world;
     }
 
+    // terrain
+    // one evaluator produces albedo, normal and orm from the same layer weights, the old path
+    // blended three maps three separate times with the weights recomputed for each
+    bool terrain_shaded = false;
+    if (surface.is_terrain() && material.terrain_layer_count > 0)
+    {
+        float3 dpdx = ddx(position_world);
+        float3 dpdy = ddy(position_world);
+
+        // planar world xz, tiling is repeats per meter, the ray tracing passes derive the same uv
+        // from the hit position so raster and gi cannot drift apart
+        float2 tiling = vertex.uv_xform_ts.xy;
+        float2 uv     = position_world.xz * tiling + vertex.uv_xform_ts.zw;
+        float2 duvdx  = dpdx.xz * tiling;
+        float2 duvdy  = dpdy.xz * tiling;
+        vertex.uv_misc.xy = uv;
+
+        // the analysis maps are low frequency, a distance driven mip is all they need and it keeps
+        // the evaluator usable from the ray tracing passes which have no derivatives at all
+        float analysis_lod = clamp(log2(max(distance, 1.0f) * 0.015625f), 0.0f, 6.0f);
+
+        TerrainAnalysis analysis = terrain_sample_analysis(material, position_world, analysis_lod);
+        float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));
+        TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians);
+
+        // parallax against the dominant layer only, and only when that layer asked for it
+        MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
+        if (dominant.terrain_layer_pom() && dominant.has_texture_height())
+        {
+            float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
+            float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
+
+            float distance_fade = saturate((TERRAIN_POM_FADE_END - distance) / (TERRAIN_POM_FADE_END - TERRAIN_POM_FADE_START));
+            float grazing_fade  = smoothstep(0.1f, 0.4f, saturate(v_tangent.z));
+            float fade          = distance_fade * grazing_fade * pick.weight[0];
+
+            // the derivatives are kept, the march only shifts the uv by a fraction of a tile so
+            // recomputing them inside a branch would cost more than the mip error it removes
+            if (fade > 0.0f)
+            {
+                uv = terrain_parallax(uv, duvdx, duvdy, pick.index[0], dominant.terrain_tiling_scale, dominant.height, v_tangent, fade);
+            }
+        }
+
+        TerrainSurface terrain = terrain_evaluate(
+            material, pick, analysis, position_world, vertex.normal, uv, duvdx, duvdy, dpdx, dpdy, distance
+        );
+
+        albedo.rgb     *= terrain.albedo;
+        normal          = terrain.normal;
+        roughness       = terrain.roughness;
+        metalness       = terrain.metalness;
+        occlusion       = terrain.occlusion;
+        terrain_shaded  = true;
+    }
+
     // parallax occlusion mapping, gated on height texture
     // uses offset limiting (no v.z divide), a grazing fade to kill warp at glancing angles,
     // and an analytical sub-step intersection that removes residual contour stepping
@@ -270,7 +319,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float  layer_h   = 1.0f / num_steps;
             float2 cur_uv    = vertex.uv_misc.xy;
             float  cur_layer = 1.0f;
-            float  cur_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), cur_uv, dx, dy).a;
+            float  cur_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, dx, dy).a;
 
             // track the previous straddling sample so we can solve the exact intersection at the end
             float2 prev_uv    = cur_uv;
@@ -287,7 +336,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
                 cur_uv    -= delta_uv;
                 cur_layer -= layer_h;
-                cur_samp   = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), cur_uv, dx, dy).a;
+                cur_samp   = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, dx, dy).a;
             }
 
             // binary search refinement, narrows the bracket while preserving the above/below invariant
@@ -296,7 +345,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             {
                 float2 mid_uv    = (cur_uv + prev_uv)       * 0.5f;
                 float  mid_layer = (cur_layer + prev_layer) * 0.5f;
-                float  mid_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), mid_uv, dx, dy).a;
+                float  mid_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), mid_uv, dx, dy).a;
                 bool   above     = mid_layer > mid_samp;
 
                 cur_uv     = above ? mid_uv     : cur_uv;
@@ -318,7 +367,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
     // albedo sampling
     float4 albedo_sample = 1.0f;
-    if (surface.has_texture_albedo())
+    if (!terrain_shaded && surface.has_texture_albedo())
     {
         albedo_sample     = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
         if (material.is_albedo_srgb())
@@ -352,9 +401,12 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         albedo.rgb            = lerp(albedo.rgb, variation_tint, 0.15f);
     }
 
-    // snow blending (applies to all surfaces)
-    float snow_factor = get_snow_blend_factor(position_world, vertex.normal);
-    albedo.rgb        = lerp(albedo.rgb, snow_color, snow_factor);
+    // snow blending, terrain is excluded because it carries snow as a real height blended layer
+    if (!terrain_shaded)
+    {
+        float snow_factor = get_snow_blend_factor(position_world, vertex.normal);
+        albedo.rgb        = lerp(albedo.rgb, snow_color, snow_factor);
+    }
 
     // alpha: opaque pass forces alpha to 1 for non-transparent pixels
     albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
@@ -376,7 +428,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     
     // normal mapping
     float distance_fade = 1.0f;
-    if (surface.has_texture_normal())
+    if (!terrain_shaded && surface.has_texture_normal())
     {
         float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, surface, position_world).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
@@ -407,6 +459,14 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
     
     // packed material texture (occlusion, roughness, metalness)
+    if (
+        !terrain_shaded &&
+        (
+            material.has_texture_occlusion() ||
+            material.has_texture_roughness() ||
+            material.has_texture_metalness()
+        )
+    )
     {
         float4 packed = sample_texture(vertex, material_texture_index_packed, surface, position_world);
         occlusion     = lerp(occlusion, packed.r, (float)material.has_texture_occlusion());
@@ -457,16 +517,20 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         metalness         = saturate(metalness + sparkle * 0.12f);
     }
     
-    // specular anti-aliasing, water has analytic normals rather than a normal texture so it is admitted explicitly
-    if (surface.has_texture_normal() || surface.is_water())
+    // geometric specular antialiasing, yamada 2018, the screen space normal variance is folded
+    // into the ggx width so sub pixel detail rolls off into roughness instead of shimmering
+    // water has analytic normals rather than a normal texture so it is admitted explicitly
+    if (surface.has_texture_normal() || surface.is_water() || terrain_shaded)
     {
+        const float SPECULAR_AA_SIGMA2 = 0.25f;
+        const float SPECULAR_AA_KAPPA  = 0.18f;
+
         float3 dndu = ddx(normal);
         float3 dndv = ddy(normal);
-        
-        float variance        = (dot(dndu, dndu) + dot(dndv, dndv)) / max(0.001f, dot(normal, normal));
-        float adaptive        = lerp(1.0f, 0.3f, saturate(distance * 0.1f));
-        float roughness2      = roughness * roughness;
-        roughness             = fast_sqrt(saturate(roughness2 + min(variance * adaptive, 0.02f)));
+
+        float variance  = SPECULAR_AA_SIGMA2 * (dot(dndu, dndu) + dot(dndv, dndv));
+        float kernel    = min(2.0f * variance, SPECULAR_AA_KAPPA);
+        roughness       = fast_sqrt(saturate(roughness * roughness + kernel));
     }
 
     // output

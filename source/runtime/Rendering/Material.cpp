@@ -940,6 +940,7 @@ namespace spartan
                 m_properties[i] = property_node.text().as_float();
             }
         }
+        bump_revision();
     
         // load textures (skip packed textures as they're regenerated from source textures during PrepareForGpu)
         pugi::xml_node textures_node = node_material.child("textures");
@@ -1067,6 +1068,11 @@ namespace spartan
             bool texture_changed = (previous_texture != texture);
 
             m_textures[array_index] = texture;
+
+            if (texture_changed)
+            {
+                bump_revision();
+            }
 
             // mark for repacking if this texture type contributes to the packed texture and actually changed
             if (texture_changed && IsPackableTextureType(texture_type))
@@ -1282,6 +1288,7 @@ namespace spartan
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
+        bump_revision();
 
         // save on change
         if (save)

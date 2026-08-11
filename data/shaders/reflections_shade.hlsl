@@ -219,16 +219,20 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= resolution_out.x || thread_id.y >= resolution_out.y)
         return;
     
-    // reflection g-buffer layout
-    // tex  = position.xyz + hit_distance
-    // tex2 = normal.xyz + material_index
-    // tex3 = albedo.rgb + roughness
     float4 gbuffer_position = tex[thread_id.xy];
+    float  hit_distance     = gbuffer_position.w;
+
+    // skip pixels marked as no reflection needed (roughness >= 0.9) before any texture/material work
+    if (hit_distance < 0.0f)
+    {
+        tex_uav[thread_id.xy] = float4(0, 0, 0, 0);
+        return;
+    }
+
     float4 gbuffer_normal   = tex2[thread_id.xy];
     float4 gbuffer_albedo   = tex3[thread_id.xy];
     float2 uv_source        = (thread_id.xy + 0.5f) / resolution_out;
-    
-    float  hit_distance   = gbuffer_position.w;
+
     float3 position       = gbuffer_position.xyz;
     float3 normal         = gbuffer_normal.xyz;
     uint   material_index = uint(gbuffer_normal.w);
@@ -240,13 +244,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     source_roughness = lerp(source_roughness, source_mat.clearcoat_roughness, saturate(source_mat.clearcoat));
     float  source_alpha     = min(ggx_alpha_from_roughness(source_roughness), 0.6f);
     float  rough_reflection = smoothstep(0.03f, 0.45f, source_alpha);
-    
-    // skip pixels marked as no reflection needed (roughness >= 0.9)
-    if (hit_distance < 0.0f)
-    {
-        tex_uav[thread_id.xy] = float4(0, 0, 0, 0);
-        return;
-    }
 
     // miss returns sky color, prefiltered by source surface roughness so smooth metals get sharp sky
     if (hit_distance == 0.0f)

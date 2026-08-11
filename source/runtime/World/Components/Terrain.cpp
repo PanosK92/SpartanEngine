@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceCache.h"
 #include "../../Geometry/Mesh.h"
 #include "../../Rendering/Material.h"
+#include "../../Rendering/Renderer.h"
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Core/ThreadPool.h"
 #include "../../Core/ProgressTracker.h"
@@ -669,6 +670,24 @@ namespace spartan
         {
             return get_terrain_cache_directory() + "terrain_mesh_cache.mesh";
         }
+
+        string get_terrain_maps_cache_path()
+        {
+            return get_terrain_cache_directory() + "terrain_maps_cache.bin";
+        }
+
+        // a single mip, rhi_texture::prepareforgpu box downsamples the rest because the analysis
+        // maps qualify as material textures, building a chain here would append a second one on
+        // top of that and push the mip count past rhi_max_mip_count
+        vector<RHI_Texture_Slice> to_single_mip_slice(const vector<uint8_t>& pixels)
+        {
+            vector<RHI_Texture_Slice> slices(1);
+            slices[0].mips.resize(1);
+            slices[0].mips[0].bytes.resize(pixels.size());
+            memcpy(slices[0].mips[0].bytes.data(), pixels.data(), pixels.size());
+
+            return slices;
+        }
     }
 
     namespace placement
@@ -1085,6 +1104,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index_count, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_triangle_count, uint32_t);
 
+        m_layer_rules = TerrainLayerDefaults::Get();
+
         m_material = make_shared<Material>();
         m_material->SetObjectName("terrain");
         ApplyDefaultMaterial();
@@ -1092,9 +1113,15 @@ namespace spartan
 
     Terrain::~Terrain()
     {
+        Renderer::ClearTerrain(m_material.get());
+
         m_height_map_seed = nullptr;
         m_height_map_final_retired.reset();
         m_height_map_final.reset();
+        m_map_a_retired.reset();
+        m_map_b_retired.reset();
+        m_map_a.reset();
+        m_map_b.reset();
     }
 
     void Terrain::ApplyDefaultMaterial()
@@ -1105,36 +1132,122 @@ namespace spartan
             m_material->SetObjectName("terrain");
         }
 
-        // same grass/rock/sand slope blend as the forest world
-        const char* material_path = "project/materials/terrain.xml";
-        if (FileSystem::Exists(material_path))
+        // the surface material carries no layer textures, it only marks the draw as terrain and
+        // holds the uv scale, everything visible comes from the layer materials
+        m_material->SetResourceName(string("terrain") + EXTENSION_MATERIAL);
+        m_material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
+        // texture repeats per meter, the shader maps planar world xz
+        m_material->SetProperty(MaterialProperty::TextureTilingX, 0.33f);
+        m_material->SetProperty(MaterialProperty::TextureTilingY, 0.33f);
+        m_material->SetProperty(MaterialProperty::Tessellation, 0.0f);
+
+        RefreshLayers();
+    }
+
+    Material* Terrain::GetLayerMaterial(uint32_t index) const
+    {
+        return index < terrain_layer_max ? m_layer_materials[index].get() : nullptr;
+    }
+
+    bool Terrain::IsLayerEnabled(uint32_t index) const
+    {
+        return index < terrain_layer_max &&
+               m_layer_materials[index] != nullptr &&
+               m_layer_rules[index].weight_bias > 0.0f;
+    }
+
+    void Terrain::SetLayerQuality(uint32_t quality)
+    {
+        m_layer_quality = clamp(quality, 1u, 4u);
+        PushToRenderer();
+    }
+
+    void Terrain::SetDebugView(TerrainDebugView view)
+    {
+        m_debug_view = view;
+        PushToRenderer();
+    }
+
+    void Terrain::RefreshLayers()
+    {
+        // a layer is only built when its folder holds an albedo, anything else it is missing just
+        // falls back to a material property, so a partial folder still produces a usable layer
+        for (uint32_t i = 0; i < terrain_layer_max; i++)
         {
-            m_material->LoadFromFile(material_path);
+            const TerrainLayerRule& rule = m_layer_rules[i];
+            const string folder          = "project/materials/" + rule.name + "/";
+            const string albedo          = folder + "albedo.png";
+
+            if (rule.name.empty() || !FileSystem::Exists(albedo))
+            {
+                m_layer_materials[i] = nullptr;
+                continue;
+            }
+
+            if (!m_layer_materials[i])
+            {
+                m_layer_materials[i] = make_shared<Material>();
+            }
+
+            shared_ptr<Material>& layer = m_layer_materials[i];
+            layer->SetObjectName("terrain_layer_" + rule.name);
+            layer->SetResourceName("terrain_layer_" + rule.name + EXTENSION_MATERIAL);
+            layer->SetProperty(MaterialProperty::IsTerrain, 1.0f);
+            // a fresh material defaults both of these to zero, which would flatten every layer
+            // normal and disable the parallax march, the layer rule carries the artistic control
+            layer->SetProperty(MaterialProperty::Normal, 1.0f);
+            layer->SetProperty(MaterialProperty::Height, 1.0f);
+
+            layer->SetTexture(MaterialTextureType::Color, albedo, 0);
+
+            auto set_optional = [&layer, &folder](MaterialTextureType type, const char* file)
+            {
+                const string path = folder + file;
+                if (FileSystem::Exists(path))
+                {
+                    layer->SetTexture(type, path, 0);
+                }
+            };
+
+            set_optional(MaterialTextureType::Normal,    "normal.png");
+            set_optional(MaterialTextureType::Roughness, "roughness.png");
+            set_optional(MaterialTextureType::Occlusion, "occlusion.png");
+            set_optional(MaterialTextureType::Height,    "height.png");
+
+            // no render component owns a layer, so nothing else would ever pack its orm, compress
+            // it or upload it, the call guards itself against a second pass
+            layer->PrepareForGpu();
+        }
+
+        PushToRenderer();
+    }
+
+    void Terrain::PushToRenderer() const
+    {
+        if (!m_material)
+        {
             return;
         }
 
-        m_material->SetResourceName(string("terrain") + EXTENSION_MATERIAL);
-        m_material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-        // texture repeats per meter, matches forest
-        m_material->SetProperty(MaterialProperty::TextureTilingX, 0.33f);
-        m_material->SetProperty(MaterialProperty::TextureTilingY, 0.33f);
+        Renderer::TerrainParams params;
+        params.surface       = m_material.get();
+        params.map_a         = m_map_a.get();
+        params.map_b         = m_map_b.get();
+        params.world_mapping = m_world_mapping;
+        params.sea_level     = m_level_sea;
+        params.snow_level    = m_level_snow;
+        params.snow_amount   = m_snow_amount;
+        params.wetness       = m_wetness;
+        params.quality       = m_layer_quality;
+        params.debug_view    = static_cast<uint32_t>(m_debug_view);
 
-        m_material->SetTexture(MaterialTextureType::Color,     "project/materials/whispy_grass_meadow/albedo.png",    0);
-        m_material->SetTexture(MaterialTextureType::Normal,    "project/materials/whispy_grass_meadow/normal.png",    0);
-        m_material->SetTexture(MaterialTextureType::Roughness, "project/materials/whispy_grass_meadow/roughness.png", 0);
-        m_material->SetTexture(MaterialTextureType::Occlusion, "project/materials/whispy_grass_meadow/occlusion.png", 0);
+        for (uint32_t i = 0; i < terrain_layer_max; i++)
+        {
+            params.layer_materials[i] = m_layer_materials[i].get();
+            params.layer_rules[i]     = m_layer_rules[i];
+        }
 
-        m_material->SetTexture(MaterialTextureType::Color,     "project/materials/rock/albedo.png",    1);
-        m_material->SetTexture(MaterialTextureType::Normal,    "project/materials/rock/normal.png",    1);
-        m_material->SetTexture(MaterialTextureType::Roughness, "project/materials/rock/roughness.png", 1);
-        m_material->SetTexture(MaterialTextureType::Occlusion, "project/materials/rock/occlusion.png", 1);
-        m_material->SetTexture(MaterialTextureType::Height,    "project/materials/rock/height.png",    1);
-
-        m_material->SetTexture(MaterialTextureType::Color,     "project/materials/sand/albedo.png",    2);
-        m_material->SetTexture(MaterialTextureType::Normal,    "project/materials/sand/normal.png",    2);
-        m_material->SetTexture(MaterialTextureType::Roughness, "project/materials/sand/roughness.png", 2);
-        m_material->SetTexture(MaterialTextureType::Occlusion, "project/materials/sand/occlusion.png", 2);
-        m_material->SetProperty(MaterialProperty::Tessellation, 0.0f);
+        Renderer::SetTerrain(params);
     }
 
     void Terrain::Save(pugi::xml_node& node)
@@ -1218,8 +1331,8 @@ namespace spartan
             hash *= 1099511628211ull; // fnv-1a prime
         };
 
-        // bump when cache format changes so old caches get invalidated
-        const uint64_t cache_format_version = 3;
+        // bump when cache format or the generation algorithms change so old caches get invalidated
+        const uint64_t cache_format_version = 5;
         hash_combine(cache_format_version);
 
         hash_combine(static_cast<uint64_t>(m_min_y * 1000));
@@ -1526,12 +1639,12 @@ namespace spartan
 
             // 3. apply perlin noise
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying perlin noise...");
-            TerrainSystem::ApplyPerlinNoise(m_positions, m_dense_width, m_dense_height);
+            TerrainSystem::ApplyPerlinNoise(m_positions, m_dense_width, m_dense_height, m_level_sea);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
-            // 4. apply erosion
+            // 4. apply erosion, keeping what it moved so the texturing can key off it
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying erosion...");
-            TerrainSystem::ApplyErosion(m_positions, m_dense_width, m_dense_height, m_level_sea);
+            TerrainSystem::ApplyErosion(m_positions, m_dense_width, m_dense_height, m_level_sea, 1.0f, &m_erosion_maps);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             // 5. generate vertices and indices
@@ -1561,7 +1674,12 @@ namespace spartan
         }
 
         BakeHeightMapTexture();
-    
+        BakeTerrainMaps();
+
+        // the dense erosion grid is only needed for the analysis bake above, it is tens of
+        // megabytes and nothing reads it afterwards
+        m_erosion_maps = TerrainErosionMaps();
+
         // compute stats
         m_height_samples = m_dense_width * m_dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
@@ -2452,6 +2570,171 @@ namespace spartan
         );
     }
 
+    bool Terrain::LoadTerrainMapsFromCache()
+    {
+        ifstream file(get_terrain_maps_cache_path(), ios::binary);
+        if (!file.is_open())
+        {
+            return false;
+        }
+
+        uint64_t stored_hash = 0;
+        uint32_t width       = 0;
+        uint32_t height      = 0;
+        file.read(reinterpret_cast<char*>(&stored_hash), sizeof(uint64_t));
+        file.read(reinterpret_cast<char*>(&width),  sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&height), sizeof(uint32_t));
+
+        if (!file || stored_hash != ComputeCacheHash() || width == 0 || height == 0 || width > 8192 || height > 8192)
+        {
+            return false;
+        }
+
+        const size_t byte_count = static_cast<size_t>(width) * height * 4;
+        m_map_a_pixels.resize(byte_count);
+        m_map_b_pixels.resize(byte_count);
+        file.read(reinterpret_cast<char*>(m_map_a_pixels.data()), byte_count);
+        file.read(reinterpret_cast<char*>(m_map_b_pixels.data()), byte_count);
+
+        if (!file)
+        {
+            m_map_a_pixels.clear();
+            m_map_b_pixels.clear();
+            return false;
+        }
+
+        m_map_width  = width;
+        m_map_height = height;
+        return true;
+    }
+
+    void Terrain::SaveTerrainMapsToCache() const
+    {
+        if (m_map_a_pixels.empty() || m_map_b_pixels.empty())
+        {
+            return;
+        }
+
+        ofstream file(get_terrain_maps_cache_path(), ios::binary);
+        if (!file.is_open())
+        {
+            return;
+        }
+
+        const uint64_t hash = ComputeCacheHash();
+        file.write(reinterpret_cast<const char*>(&hash),         sizeof(uint64_t));
+        file.write(reinterpret_cast<const char*>(&m_map_width),  sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&m_map_height), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(m_map_a_pixels.data()), m_map_a_pixels.size());
+        file.write(reinterpret_cast<const char*>(m_map_b_pixels.data()), m_map_b_pixels.size());
+    }
+
+    void Terrain::BakeTerrainMaps()
+    {
+        if (m_positions.empty() || m_dense_width < 16 || m_dense_height < 16)
+        {
+            return;
+        }
+
+        // world mapping first, the shader needs it even if the analysis itself comes from cache
+        {
+            float min_x = m_positions[0].x;
+            float max_x = m_positions[0].x;
+            float min_z = m_positions[0].z;
+            float max_z = m_positions[0].z;
+            for (const Vector3& position : m_positions)
+            {
+                min_x = min(min_x, position.x);
+                max_x = max(max_x, position.x);
+                min_z = min(min_z, position.z);
+                max_z = max(max_z, position.z);
+            }
+
+            m_world_mapping = Vector4(
+                min_x,
+                min_z,
+                1.0f / max(max_x - min_x, epsilon),
+                1.0f / max(max_z - min_z, epsilon)
+            );
+        }
+
+        if (!LoadTerrainMapsFromCache())
+        {
+            TerrainAnalysisMaps analysis;
+            TerrainSystem::ComputeAnalysisMaps(
+                analysis,
+                m_positions,
+                m_dense_width,
+                m_dense_height,
+                m_level_sea,
+                m_erosion_maps.IsValid(m_positions.size()) ? &m_erosion_maps : nullptr
+            );
+
+            if (!analysis.IsValid())
+            {
+                return;
+            }
+
+            m_map_width  = analysis.width;
+            m_map_height = analysis.height;
+
+            const size_t cell_count = static_cast<size_t>(m_map_width) * m_map_height;
+            m_map_a_pixels.resize(cell_count * 4);
+            m_map_b_pixels.resize(cell_count * 4);
+
+            auto to_byte = [](float value) { return static_cast<uint8_t>(saturate(value) * 255.0f + 0.5f); };
+
+            auto encode = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    const size_t offset = static_cast<size_t>(i) * 4;
+
+                    m_map_a_pixels[offset + 0] = to_byte(analysis.curvature[i]);
+                    m_map_a_pixels[offset + 1] = to_byte(analysis.flow[i]);
+                    m_map_a_pixels[offset + 2] = to_byte(analysis.occlusion[i]);
+                    m_map_a_pixels[offset + 3] = to_byte(analysis.deposition[i]);
+
+                    m_map_b_pixels[offset + 0] = to_byte(analysis.wear[i]);
+                    m_map_b_pixels[offset + 1] = to_byte(analysis.insolation[i]);
+                    m_map_b_pixels[offset + 2] = to_byte(analysis.height_norm[i]);
+                    m_map_b_pixels[offset + 3] = to_byte(analysis.talus[i]);
+                }
+            };
+            ThreadPool::ParallelLoop(encode, static_cast<uint32_t>(cell_count));
+
+            SaveTerrainMapsToCache();
+        }
+
+        if (m_map_a_pixels.empty() || m_map_b_pixels.empty())
+        {
+            return;
+        }
+
+        // retire the previous pair, an in flight frame may still hold their descriptors
+        m_map_a_retired = m_map_a;
+        m_map_b_retired = m_map_b;
+
+        m_map_a = make_shared<RHI_Texture>(
+            RHI_Texture_Type::Type2D,
+            m_map_width, m_map_height, 1, 1,
+            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
+            "terrain_analysis_a", to_single_mip_slice(m_map_a_pixels)
+        );
+
+        m_map_b = make_shared<RHI_Texture>(
+            RHI_Texture_Type::Type2D,
+            m_map_width, m_map_height, 1, 1,
+            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
+            "terrain_analysis_b", to_single_mip_slice(m_map_b_pixels)
+        );
+
+        m_map_a->PrepareForGpu();
+        m_map_b->PrepareForGpu();
+
+        PushToRenderer();
+    }
+
     void Terrain::DetachTileMeshes()
     {
         if (!m_entity_ptr)
@@ -2564,6 +2847,7 @@ namespace spartan
         }
 
         BakeHeightMapTexture();
+        BakeTerrainMaps();
 
         m_height_samples = m_dense_width * m_dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
@@ -2667,6 +2951,7 @@ namespace spartan
         {
             FileSystem::Delete(get_terrain_cache_bin_path());
             FileSystem::Delete(get_terrain_mesh_cache_path());
+            FileSystem::Delete(get_terrain_maps_cache_path());
             Clear();
             Generate();
             return;

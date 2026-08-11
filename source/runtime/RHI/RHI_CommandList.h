@@ -303,6 +303,8 @@ namespace spartan
         mutable bool m_vrs_valid                             = false;
         bool m_render_pass_active                            = false;
         bool m_render_pass_pending                           = false;
+        // compute cull writes then mesh draws read, one barrier per dirty window is enough
+        bool m_mesh_cull_barrier_satisfied                   = false;
         std::stack<const char*> m_active_timeblocks;
         std::stack<const char*> m_debug_label_stack;
         std::stack<int32_t> m_breadcrumb_gpu_slots;

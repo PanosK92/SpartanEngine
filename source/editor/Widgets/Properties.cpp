@@ -2684,6 +2684,209 @@ void Properties::ShowTerrain(Terrain* terrain) const
         );
 
         layout::group_spacing();
+        layout::section_header("Surface Layers");
+
+        {
+            uint32_t quality = terrain->GetLayerQuality();
+            float snow       = terrain->GetSnowAmount();
+            float wetness    = terrain->GetWetness();
+
+            if (property_uint(
+                "Quality",
+                &quality,
+                1.0f,
+                1,
+                4,
+                "how many of the highest weighted layers get sampled per pixel. "
+                "2 is the sweet spot, 3 and 4 soften transitions on complex ground at real cost"
+            ))
+            {
+                terrain->SetLayerQuality(quality);
+            }
+
+            if (property_float(
+                "Snow Amount",
+                &snow,
+                0.01f,
+                0.0f,
+                1.0f,
+                "global multiplier on the snow layer. 0 removes snow entirely regardless of altitude",
+                "%.2f"
+            ))
+            {
+                terrain->SetSnowAmount(snow);
+                terrain->PushToRenderer();
+            }
+
+            if (property_float(
+                "Wetness",
+                &wetness,
+                0.01f,
+                0.0f,
+                1.0f,
+                "global wetness floor added on top of the flow driven amount. rain and storms drive this",
+                "%.2f"
+            ))
+            {
+                terrain->SetWetness(wetness);
+                terrain->PushToRenderer();
+            }
+
+            static const std::vector<std::string> debug_views =
+            {
+                "Off", "Layer Weights", "Dominant Layer", "Curvature", "Flow",
+                "Occlusion", "Insolation", "Deposition", "Wear", "Talus", "Wetness"
+            };
+
+            uint32_t debug_view = static_cast<uint32_t>(terrain->GetDebugView());
+            if (property_combo(
+                "Debug View",
+                debug_views,
+                &debug_view,
+                "paint the terrain with what the rule system is actually reading. "
+                "layer weights shows the top three picks as rgb, the rest show one analysis channel"
+            ))
+            {
+                terrain->SetDebugView(static_cast<spartan::TerrainDebugView>(debug_view));
+            }
+
+            if (ImGuiSp::button("Reload Layer Textures", ImVec2(-1, 0)))
+            {
+                terrain->RefreshLayers();
+            }
+            ImGuiSp::tooltip(
+                "rescan project/materials for each layer folder. a layer whose folder is missing is "
+                "disabled and its weight goes to the layers that do exist"
+            );
+
+            // analysis maps, without these the rules fall back to slope and altitude alone
+            ImGui::BeginGroup();
+            {
+                auto preview = [](const char* label, spartan::RHI_Texture* texture, const char* tooltip)
+                {
+                    ImGui::BeginGroup();
+                    ImGui::TextUnformatted(label);
+                    if (texture && texture->GetResourceState() == ResourceState::PreparedForGpu)
+                    {
+                        ImGuiSp::image(texture, ImVec2(80, 80));
+                    }
+                    else
+                    {
+                        ImGui::Dummy(ImVec2(80, 80));
+                        ImGui::TextDisabled("empty");
+                    }
+                    ImGuiSp::tooltip(tooltip);
+                    ImGui::EndGroup();
+                };
+
+                preview(
+                    "Curv/Flow/AO",
+                    terrain->GetAnalysisMapA(),
+                    "baked heightfield analysis. red is curvature, green is flow accumulation, "
+                    "blue is sky occlusion, alpha is sediment deposition"
+                );
+                ImGui::SameLine(0, design::spacing_xl);
+                preview(
+                    "Wear/Sun/Talus",
+                    terrain->GetAnalysisMapB(),
+                    "baked heightfield analysis. red is bedrock wear, green is insolation, "
+                    "blue is normalized height, alpha is talus scree"
+                );
+            }
+            ImGui::EndGroup();
+
+            if (!terrain->GetAnalysisMapA())
+            {
+                ImGui::TextColored(
+                    ImVec4(1.0f, 0.55f, 0.2f, 1.0f),
+                    "no analysis maps, run generate"
+                );
+                ImGuiSp::tooltip(
+                    "without the analysis bake the layer rules can only see slope and altitude, "
+                    "which is what the old three layer system did"
+                );
+            }
+        }
+
+        layout::group_spacing();
+        layout::section_header("Layer Rules");
+
+        {
+            std::array<spartan::TerrainLayerRule, spartan::terrain_layer_max>& rules = terrain->GetLayerRules();
+            bool rules_changed = false;
+
+            for (uint32_t i = 0; i < spartan::terrain_layer_max; i++)
+            {
+                spartan::TerrainLayerRule& rule = rules[i];
+                const bool enabled              = terrain->IsLayerEnabled(i);
+
+                char header[128];
+                std::snprintf(
+                    header,
+                    sizeof(header),
+                    "%u  %s%s###terrain_layer_%u",
+                    i,
+                    rule.name.empty() ? "(unused)" : rule.name.c_str(),
+                    enabled ? "" : "  [missing]",
+                    i
+                );
+
+                ImGui::PushStyleColor(ImGuiCol_Text, enabled ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.55f, 0.55f, 0.55f, 1.0f));
+                const bool open = ImGui::TreeNode(header);
+                ImGui::PopStyleColor();
+
+                if (!open)
+                {
+                    continue;
+                }
+
+                ImGui::PushID(static_cast<int>(i));
+
+                rules_changed |= property_float("Slope Min",   &rule.slope_min,   0.5f, 0.0f, 90.0f, "lower edge of the slope band this layer covers", "%.0f deg");
+                rules_changed |= property_float("Slope Max",   &rule.slope_max,   0.5f, 0.0f, 90.0f, "upper edge of the slope band this layer covers", "%.0f deg");
+                rules_changed |= property_float("Height Min",  &rule.height_min,  1.0f, -2000.0f, 2000.0f, "lower edge of the altitude band, measured against sea level for shore layers", "%.0f m");
+                rules_changed |= property_float("Height Max",  &rule.height_max,  1.0f, -2000.0f, 2000.0f, "upper edge of the altitude band", "%.0f m");
+
+                rules_changed |= property_float("Curvature",   &rule.curvature_influence,  0.01f, -1.0f, 1.0f, "positive favours concave gullies, negative favours convex ridges", "%.2f");
+                rules_changed |= property_float("Flow",        &rule.flow_influence,       0.01f, -1.0f, 1.0f, "positive favours water channels", "%.2f");
+                rules_changed |= property_float("Occlusion",   &rule.occlusion_influence,  0.01f, -1.0f, 1.0f, "positive favours crevices and valley floors", "%.2f");
+                rules_changed |= property_float("Insolation",  &rule.insolation_influence, 0.01f, -1.0f, 1.0f, "positive favours sun facing slopes, negative favours shaded ones", "%.2f");
+                rules_changed |= property_float("Wear",        &rule.wear_influence,       0.01f, -1.0f, 1.0f, "positive favours scoured bedrock", "%.2f");
+                rules_changed |= property_float("Deposition",  &rule.deposition_influence, 0.01f, -1.0f, 1.0f, "positive favours accumulated sediment", "%.2f");
+                rules_changed |= property_float("Talus",       &rule.talus_influence,      0.01f, -1.0f, 1.0f, "positive favours scree fans below cliffs", "%.2f");
+
+                rules_changed |= property_float("Tiling",      &rule.tiling_scale,   0.01f, 0.05f, 8.0f,  "multiplies the terrain uv, higher is finer texel density", "%.2f");
+                rules_changed |= property_float("Blend",       &rule.blend_contrast, 0.01f, 0.01f, 1.0f,  "height blend band width, smaller is a sharper material interface", "%.2f");
+                rules_changed |= property_float("Porosity",    &rule.porosity,       0.01f, 0.0f,  1.0f,  "how much the layer darkens when wet, sand is high, rock is low", "%.2f");
+                rules_changed |= property_float("Macro",       &rule.macro_strength, 0.01f, 0.0f,  1.0f,  "large scale colour breakup amount", "%.2f");
+                rules_changed |= property_float("Priority",    &rule.weight_bias,    0.01f, 0.0f,  4.0f,  "overall priority against the other layers, 0 disables the layer", "%.2f");
+
+                auto flag_toggle = [&rule, &rules_changed](const char* label, uint32_t bit, const char* tooltip)
+                {
+                    bool value = (rule.flags & bit) != 0;
+                    if (property_toggle(label, &value, tooltip))
+                    {
+                        rule.flags     = value ? (rule.flags | bit) : (rule.flags & ~bit);
+                        rules_changed  = true;
+                    }
+                };
+
+                flag_toggle("Biplanar",  spartan::TerrainLayerFlags_Biplanar, "project on the two dominant axes, this is what stops cliff faces from smearing");
+                flag_toggle("Parallax",  spartan::TerrainLayerFlags_Pom,      "march the height map when this layer dominates up close");
+                flag_toggle("Snow",      spartan::TerrainLayerFlags_Snow,     "weight comes from the snow accumulation model instead of the slope and altitude bands");
+                flag_toggle("Below Sea", spartan::TerrainLayerFlags_BelowSea, "the height band is measured against sea level rather than absolute world y");
+
+                ImGui::PopID();
+                ImGui::TreePop();
+            }
+
+            if (rules_changed)
+            {
+                terrain->PushToRenderer();
+            }
+        }
+
+        layout::group_spacing();
         layout::section_header("Island");
 
         property_float(

@@ -145,10 +145,10 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     {
         // height displacement is now handled by parallax occlusion mapping in g_buffer.hlsl
 
-        // terrain noise
+        // terrain, the dominant layer's height map drives the displacement
         if (surface.is_terrain())
         {
-            float height       = noise_perlin(position.xz * 8.0f) * 0.1f;
+            float height       = terrain_displacement(material, position, vertex.normal, vertex.uv_misc.xy);
             float3 disp        = vertex.normal * height * fade_factor;
             position          += disp;
             position_previous += disp;

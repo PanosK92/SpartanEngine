@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/Physics.h"
+#include "Components/Render.h"
 #include "Components/Script.h"
 #include "Components/Spline.h"
 #include "Components/SplineFollower.h"
@@ -403,17 +404,34 @@ namespace spartan
 
     void Entity::PreTick()
     {
-        for (shared_ptr<Component>& component : m_components)
+        // only these components override pretick, skip the full component array walk
+        if (Physics* physics = GetComponent<Physics>())
         {
-            if (component)
-            {
-                component->PreTick();
-            }
+            physics->PreTick();
+        }
+        if (Script* script = GetComponent<Script>())
+        {
+            script->PreTick();
+        }
+        if (Ragdoll* ragdoll = GetComponent<Ragdoll>())
+        {
+            ragdoll->PreTick();
         }
     }
 
     void Entity::Tick()
     {
+        // render-only entities are the common case on big maps, avoid scanning empty slots
+        if (m_component_count == 1)
+        {
+            if (Render* render = GetComponent<Render>())
+            {
+                render->Tick();
+                m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
+                return;
+            }
+        }
+
         for (shared_ptr<Component>& component : m_components)
         {
             if (component)
@@ -423,6 +441,30 @@ namespace spartan
         }
 
         m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
+    }
+
+    void Entity::TickAfterParallelRender()
+    {
+        if (m_component_count == 1 && GetComponent<Render>())
+        {
+            m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
+            return;
+        }
+
+        for (shared_ptr<Component>& component : m_components)
+        {
+            if (component && component->GetType() != ComponentType::Render)
+            {
+                component->Tick();
+            }
+        }
+
+        m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
+    }
+
+    uint32_t Entity::GetComponentCount() const
+    {
+        return m_component_count;
     }
 
     void Entity::Save(pugi::xml_node& node)
@@ -869,6 +911,7 @@ namespace spartan
         }
 
         m_components[static_cast<uint32_t>(Type)] = component;
+        m_component_count++;
 
         component->SetType(Type);
         component->Initialize();
@@ -878,7 +921,14 @@ namespace spartan
 
     void Entity::RemoveComponentByType(ComponentType Type)
     {
-        m_components[static_cast<uint32_t>(Type)] = nullptr;
+        if (m_components[static_cast<uint32_t>(Type)])
+        {
+            m_components[static_cast<uint32_t>(Type)] = nullptr;
+            if (m_component_count > 0)
+            {
+                m_component_count--;
+            }
+        }
     }
 
     Component* Entity::AddComponent(const ComponentType type)
@@ -909,24 +959,14 @@ namespace spartan
                 {
                     component->Remove();
                     component = nullptr;
+                    if (m_component_count > 0)
+                    {
+                        m_component_count--;
+                    }
                     break;
                 }
             }
         }
-    }
-
-    uint32_t Entity::GetComponentCount() const
-    {
-        uint32_t count = 0;
-        for (const shared_ptr<Component>& component : m_components)
-        {
-            if (component)
-            {
-                count++;
-            }
-        }
-
-        return count;
     }
 
     void Entity::UpdateTransform()

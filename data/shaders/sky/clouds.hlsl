@@ -1354,23 +1354,26 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     uint width;
     uint height;
     tex_uav.GetDimensions(width, height);
-    if (any(tid.xy >= uint2(width, height)))
+
+    // progressive strip bake, cpu packs the pixel y offset into pass f3.x
+    uint2 pixel = tid.xy + uint2(0, (uint)pass_get_f3_value().x);
+    if (any(pixel >= uint2(width, height)))
     {
         return;
     }
 
-    float2 uv       = (float2(tid.xy) + 0.5) / float2(width, height);
+    float2 uv       = (float2(pixel) + 0.5) / float2(width, height);
     float3 view_dir = cloud_panorama_direction(uv);
     float3 clear_sky = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).rgb;
 
     float3 sun_dir = normalize(-light_parameters[0].direction);
-    uint hash      = cloud_hash_uint(tid.x + cloud_hash_uint(tid.y));
+    uint hash      = cloud_hash_uint(pixel.x + cloud_hash_uint(pixel.y));
     float jitter   = float(hash) / 4294967295.0;
     float3 radiance;
     float transmittance;
     float representative_distance;
     clouds_evaluate_detailed(get_camera_position(), view_dir, sun_dir, tex3d, tex2, GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp), jitter, 1e30, radiance, transmittance, representative_distance);
-    tex_uav[tid.xy] = float4(clear_sky * transmittance + radiance, 1.0);
+    tex_uav[pixel] = float4(clear_sky * transmittance + radiance, 1.0);
 }
 #endif
 

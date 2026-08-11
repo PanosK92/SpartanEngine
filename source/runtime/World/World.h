@@ -97,6 +97,9 @@ namespace spartan
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
         static const std::vector<Entity*>& GetEntitiesWithRender();
+        // editor gizmo icons, excludes render-only props
+        static const std::vector<Entity*>& GetEntitiesWithIcon();
+        static const std::vector<Entity*>& GetEntitiesWithParticles();
 
         // true while play mode is still spreading Entity::Start across frames
         static bool IsPlayBooting();

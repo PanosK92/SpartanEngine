@@ -61,6 +61,8 @@ namespace spartan
         void Stop();
         void PreTick();
         void Tick();
+        // render already ticked on a worker, finish the rest on the main thread
+        void TickAfterParallelRender();
 
         // io
         void Save(pugi::xml_node& node);
@@ -92,6 +94,7 @@ namespace spartan
 
             // save new component
             m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
+            m_component_count++;
 
             // initialize component
             component->SetType(type);
@@ -116,7 +119,14 @@ namespace spartan
         void RemoveComponent()
         {
             const ComponentType component_type = Component::TypeToEnum<T>();
-            m_components[static_cast<uint32_t>(component_type)] = nullptr;
+            if (m_components[static_cast<uint32_t>(component_type)])
+            {
+                m_components[static_cast<uint32_t>(component_type)] = nullptr;
+                if (m_component_count > 0)
+                {
+                    m_component_count--;
+                }
+            }
         }
 
         bool IsActive() const { return m_is_active; }
@@ -222,6 +232,7 @@ namespace spartan
         std::atomic<bool> m_is_active = true;
         bool m_transient              = false; // transient entities are not serialized
         std::array<std::shared_ptr<Component>, static_cast<uint32_t>(ComponentType::Max)> m_components;
+        uint32_t m_component_count = 0;
 
         void UpdateTransform();
         math::Matrix GetParentTransformMatrix();

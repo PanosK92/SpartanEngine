@@ -287,13 +287,27 @@ namespace spartan
             if (m_pass_state.cloud_environment_dirty)
             {
                 cmd_list->ClearTexture(tex_environment, Color::standard_black);
-                m_pass_state.cloud_environment_dirty = false;
+                m_pass_state.cloud_environment_dirty  = false;
+                m_pass_state.cloud_environment_baking = false;
+                m_pass_state.cloud_environment_strip  = 0;
             }
             return;
         }
 
         const bool cadence_frame = (m_cb_frame_cpu.frame & 31u) == 0u;
-        if (!m_pass_state.cloud_environment_dirty && !cadence_frame)
+        if (m_pass_state.cloud_environment_dirty)
+        {
+            m_pass_state.cloud_environment_baking = true;
+            m_pass_state.cloud_environment_strip  = 0;
+            m_pass_state.cloud_environment_dirty  = false;
+        }
+        else if (cadence_frame && !m_pass_state.cloud_environment_baking)
+        {
+            m_pass_state.cloud_environment_baking = true;
+            m_pass_state.cloud_environment_strip  = 0;
+        }
+
+        if (!m_pass_state.cloud_environment_baking)
         {
             return;
         }
@@ -304,6 +318,21 @@ namespace spartan
             return;
         }
 
+        const uint32_t width  = tex_environment->GetWidth();
+        const uint32_t height = tex_environment->GetHeight();
+        const uint32_t strips = 4;
+        const uint32_t strip_h = (height + strips - 1) / strips;
+        const uint32_t strip   = m_pass_state.cloud_environment_strip;
+        const uint32_t y0      = strip * strip_h;
+        const uint32_t y1      = min(height, y0 + strip_h);
+        const uint32_t rows    = y1 > y0 ? (y1 - y0) : 0;
+        if (rows == 0)
+        {
+            m_pass_state.cloud_environment_baking = false;
+            m_pass_state.cloud_environment_strip  = 0;
+            return;
+        }
+
         cmd_list->BeginTimeblock("clouds_environment");
         {
             RHI_PipelineState pso;
@@ -311,32 +340,41 @@ namespace spartan
             pso.shaders[Compute] = shader;
             cmd_list->SetPipelineState(pso);
 
+            // x = pixel y offset for this strip, y unused
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(y0), 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, GetRenderTarget(Renderer_RenderTarget::cloud_noise));
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, 0, 1);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->Dispatch(tex_environment);
-            Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+            cmd_list->Dispatch((width + 7) / 8, (rows + 7) / 8);
 
-            RHI_PipelineState filter_pso;
-            filter_pso.name             = "clouds_environment_filter";
-            filter_pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
-            cmd_list->SetPipelineState(filter_pso);
-            const uint32_t mip_count = tex_environment->GetMipCount();
-            const uint32_t base_w    = tex_environment->GetWidth();
-            const uint32_t base_h    = tex_environment->GetHeight();
-            for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++)
+            m_pass_state.cloud_environment_strip++;
+            if (m_pass_state.cloud_environment_strip >= strips)
             {
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_environment, 0, mip_level);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-                m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch((max(1u, base_w >> mip_level) + 7) / 8, (max(1u, base_h >> mip_level) + 7) / 8);
+                Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+
+                RHI_PipelineState filter_pso;
+                filter_pso.name             = "clouds_environment_filter";
+                filter_pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
+                cmd_list->SetPipelineState(filter_pso);
+                const uint32_t mip_count = tex_environment->GetMipCount();
+                const uint32_t base_w    = tex_environment->GetWidth();
+                const uint32_t base_h    = tex_environment->GetHeight();
+                for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++)
+                {
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_environment, 0, mip_level);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+                    m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    cmd_list->Dispatch((max(1u, base_w >> mip_level) + 7) / 8, (max(1u, base_h >> mip_level) + 7) / 8);
+                }
+
+                m_pass_state.cloud_environment_baking = false;
+                m_pass_state.cloud_environment_strip  = 0;
             }
         }
         cmd_list->EndTimeblock();
-        m_pass_state.cloud_environment_dirty = false;
     }
 
     bool Renderer::Pass_Clouds_Prepare(RHI_CommandList* cmd_list, uint32_t eye_layer)

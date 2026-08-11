@@ -207,5 +207,6 @@ namespace spartan
         bool m_is_visible           = false;
         uint32_t m_lod_index        = 0;
         uint64_t m_previous_lights  = 0; // lights whose frustums this entity was in last frame
+        math::Vector3 m_cull_camera_position = math::Vector3::Zero;
     };
 }

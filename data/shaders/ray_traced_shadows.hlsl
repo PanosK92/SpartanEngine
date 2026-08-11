@@ -146,7 +146,7 @@ void ray_gen()
             
             TraceRay(
                 tlas,
-                RAY_FLAG_FORCE_OPAQUE,
+                RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
                 0xFF,
                 0,
                 1,

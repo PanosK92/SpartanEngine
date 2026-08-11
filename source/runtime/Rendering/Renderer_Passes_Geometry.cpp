@@ -207,9 +207,19 @@ namespace spartan
                 {
                     const Renderer_DrawCall& draw_call = m_draw_calls[i];
                     Render* render                     = draw_call.render;
-                    Material* material                 = render->GetMaterial();
-                    const float shadow_distance        = render->GetMaxShadowDistance();
-                    if (!material || material->IsTransparent() || !render->HasFlag(RenderFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
+                    if (!render->HasFlag(RenderFlags::CastsShadows))
+                    {
+                        continue;
+                    }
+
+                    const float shadow_distance = render->GetMaxShadowDistance();
+                    if (draw_call.distance_squared > shadow_distance * shadow_distance)
+                    {
+                        continue;
+                    }
+
+                    Material* material = render->GetMaterial();
+                    if (!material || material->IsTransparent())
                     {
                         continue;
                     }
@@ -1021,17 +1031,20 @@ namespace spartan
                 RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
                 RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
                 cmd_list->Blit(tex_depth, tex_depth_output, false, Renderer::GetResolutionScale());
-
-                // the one place motion vector previous transforms are updated, every path reads the UpdateDrawCalls snapshot
-                for (uint32_t i = 0; i < m_draw_call_count; i++)
-                {
-                    Entity* entity = m_draw_calls[i].render->GetEntity();
-                    entity->SetMatrixPrevious(entity->GetMatrix());
-                }
             }
 
         }
         cmd_list->EndTimeblock();
+
+        if (!is_transparent_pass)
+        {
+            // cpu bookkeeping, kept outside the g_buffer gpu timeblock
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                Entity* entity = m_draw_calls[i].render->GetEntity();
+                entity->SetMatrixPrevious(entity->GetMatrix());
+            }
+        }
     }
 
     void Renderer::Pass_Grass_Populate(RHI_CommandList* cmd_list)

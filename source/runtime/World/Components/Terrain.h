@@ -24,12 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Component.h"
 #include <atomic>
+#include <array>
 #include <unordered_map>
 #include <vector>
 #include "../../RHI/RHI_Definitions.h"
 #include "../../Math/Quaternion.h"
 #include "../../Math/Ray.h"
+#include "../../Math/Vector4.h"
 #include "../TerrainSystem.h"
+#include "../TerrainLayer.h"
 //====================================
 
 namespace spartan
@@ -125,8 +128,29 @@ namespace spartan
         uint64_t GetHeightSampleCount() const   { return m_height_samples; }
         float* GetHeightData()                  { return !m_height_data.empty() ? &m_height_data[0] : nullptr; }
         std::shared_ptr<Material> GetMaterial() { return m_material; }
-        // forest-style grass/rock/sand slope blend, used by island and procedural forest
+        // build the surface material and the procedural layer set, used by island and procedural forest
         void ApplyDefaultMaterial();
+
+        // layers
+        const std::array<TerrainLayerRule, terrain_layer_max>& GetLayerRules() const { return m_layer_rules; }
+        std::array<TerrainLayerRule, terrain_layer_max>& GetLayerRules()             { return m_layer_rules; }
+        Material* GetLayerMaterial(uint32_t index) const;
+        bool IsLayerEnabled(uint32_t index) const;
+        // how many of the highest weighted layers get sampled per pixel, 1 to 4
+        uint32_t GetLayerQuality() const        { return m_layer_quality; }
+        void SetLayerQuality(uint32_t quality);
+        float GetSnowAmount() const             { return m_snow_amount; }
+        void SetSnowAmount(float amount)        { m_snow_amount = amount; }
+        float GetWetness() const                { return m_wetness; }
+        void SetWetness(float wetness)          { m_wetness = wetness; }
+        TerrainDebugView GetDebugView() const   { return m_debug_view; }
+        void SetDebugView(TerrainDebugView view);
+        RHI_Texture* GetAnalysisMapA() const    { return m_map_a.get(); }
+        RHI_Texture* GetAnalysisMapB() const    { return m_map_b.get(); }
+        // reload the layer materials from project/materials and hand the whole set to the renderer
+        void RefreshLayers();
+        // hand the current layer set, analysis maps and world mapping to the renderer
+        void PushToRenderer() const;
 
         // generation
         void Generate();
@@ -198,6 +222,10 @@ namespace spartan
         void ClearTileEntities();
         void CreateTileEntities();
         void BakeHeightMapTexture();
+        // curvature, flow, occlusion, insolation, wear, deposition and talus into two rgba8 textures
+        void BakeTerrainMaps();
+        bool LoadTerrainMapsFromCache();
+        void SaveTerrainMapsToCache() const;
         void SnapshotBaseline();
         uint64_t ComputeCacheHash() const;
 
@@ -206,6 +234,16 @@ namespace spartan
         std::shared_ptr<RHI_Texture> m_height_map_final = nullptr;
         // previous bake kept alive so imgui cannot reference a destroyed texture mid-frame
         std::shared_ptr<RHI_Texture> m_height_map_final_retired;
+
+        // baked heightfield analysis, see the tex_terrain_map_a/b comment in common_resources.hlsl
+        std::shared_ptr<RHI_Texture> m_map_a;
+        std::shared_ptr<RHI_Texture> m_map_b;
+        std::shared_ptr<RHI_Texture> m_map_a_retired;
+        std::shared_ptr<RHI_Texture> m_map_b_retired;
+        std::vector<uint8_t> m_map_a_pixels; // mip 0 rgba8, kept so the cache write does not re-derive it
+        std::vector<uint8_t> m_map_b_pixels;
+        uint32_t m_map_width  = 0;
+        uint32_t m_map_height = 0;
 
         // configurable parameters
         float m_min_y          = 0.0f;
@@ -238,7 +276,20 @@ namespace spartan
         std::vector<uint32_t> m_indices;
         std::vector<std::vector<uint32_t>> m_tile_indices;
         std::shared_ptr<Mesh> m_mesh;
+        // the surface material, tile renders point at this one, it carries no layer textures of its
+        // own, only the terrain flag and the pointer to where the layer table starts
         std::shared_ptr<Material> m_material;
+        // one ordinary material per layer, a null entry is a layer whose folder is missing
+        std::array<std::shared_ptr<Material>, terrain_layer_max> m_layer_materials;
+        std::array<TerrainLayerRule, terrain_layer_max> m_layer_rules;
+        uint32_t m_layer_quality      = 2;
+        float m_snow_amount           = 1.0f;
+        float m_wetness               = 0.0f;
+        TerrainDebugView m_debug_view = TerrainDebugView::Off;
+        // xy = world min xz, zw = 1 / world size xz, maps world position onto the analysis maps
+        math::Vector4 m_world_mapping = math::Vector4::Zero;
+        // what the erosion simulation moved, only populated on a from-scratch generate
+        TerrainErosionMaps m_erosion_maps;
         std::vector<math::Vector3> m_tile_offsets;
         std::vector<math::Vector3> m_positions;
         // heights right after generate/create flat, used to undo sculpt

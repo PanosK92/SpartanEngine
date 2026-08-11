@@ -8,7 +8,7 @@
   <Variable name="r.chromatic_aberration" value="0.000000" />
  </ConsoleVariables>
  <Entities>
-  <Entity name="world" id="9002000000000000001" active="true" position="2013.9 103.1 693.3" rotation="0 -0.173408 0 0.98485" scale="1 1 1">
+  <Entity name="world" id="9002000000000000001" active="true" position="2587.4 103.1 -1766.6" rotation="0 0.42284 0 0.906205" scale="1 1 1">
    <Entity name="spline_car" id="5723169428173956022" active="false" position="1958.04 8.31514 800.637" rotation="0.00100538 -0.826177 0.00147428 0.563408" scale="1 1 1">
     <prefab type="car" file="cars/ferrari_laferrari.car" static_physics="false" drivable="false" paint_preset="metallic" paint_color_r="0.392156869" paint_color_b="0" paint_color_g="0" paint_color_a="1" />
     <spline_follower spline_entity_id="10358794943034623506" speed="60" follow_mode="0" align_to_spline="true" flip_forward="true" animate_wheels="true" wheel_radius="0" max_steer_angle="35" />
@@ -7313,7 +7313,7 @@
     </Entity>
    </Entity>
   </Entity>
-  <Entity name="roads" id="9002000000000000002" active="true" position="2013.9 103.1 693.3" rotation="0 -0.173408 0 0.98485" scale="1 1 1">
+  <Entity name="roads" id="9002000000000000002" active="true" position="2587.4 103.1 -1766.6" rotation="0 0.42284 0 0.906205" scale="1 1 1">
    <Entity name="road_arterial_south_b" id="14969106871085868605" active="true" position="100 0.1 -320" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="standard" material_path="./project/plan_resources/standard.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -7771,20 +7771,20 @@
   <Entity name="terrain" id="7677335530244238779" active="true" position="0 -5.9 0" rotation="0 0 0 1" scale="1 1 1">
    <terrain height_map_path="project/height_maps/zakynthos_heightmap.png" min_y="0" max_y="755" level_sea="0" level_snow="400" shore_width="2000" smoothing="0" density="1" scale="25" tile_count="16" create_border="false" />
   </Entity>
-  <Entity name="ocean" id="9001000000000000006" active="true" position="4215.5 0 1899.5" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="ocean" id="9001000000000000006" active="true" position="-2904.5 0 -17739.5" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="./project/plan_resources/water_fft.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <water>
     <water cascade_count="4" amplitude="1" choppiness="0.600000024" displacement_scale="1" normal_strength="1" sea_level="0" turbidity="1" caustics_intensity="1" />
    </water>
   </Entity>
-  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="4215.51 1923.81 1899.56" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="-2904.48 17554.8 -17739.2" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="0.0969977 -0.900361 0.262084 0.333546" scale="1 1 1">
+   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="0.43404 0.0145966 -0.00694025 0.900748" scale="1 1 1">
     <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.58724964" near_plane="0.100000001" far_plane="100000" projection="0" preset="3" flags="49" />
    </Entity>
   </Entity>
   <Entity name="ufo_disc_craft_zeta_reticuli" id="15374946806319271320" active="true" position="0 6518.14 0" rotation="0 0.626093 0 0.779748" scale="1 1 1">
-   <script file_path="../worlds/ufo_hover.lua" min_x="-150000" warp_speed="300" min_z="-150000" rotation_speed="0" Start="" elapsed_time="1" Initialize="" target_pause="1" warp_deceleration="1200" max_z="150000" target_x="123741" pause_time="1" max_x="150000" hover_speed="1" bounds_refresh_time="0" current_speed="0" hover_height="1" altitude_clearance="18" boundary_margin="0" warp_acceleration="900" target_z="76546" Tick="" cruise_y="765" />
+   <script file_path="../worlds/ufo_hover.lua" warp_speed="300" cruise_y="769" warp_acceleration="900" hover_speed="1" max_x="150000" boundary_margin="0" min_z="-150000" Start="" min_x="-150000" hover_height="1" target_z="53496" target_x="131795" pause_time="1" altitude_clearance="18" current_speed="0" warp_deceleration="1200" max_z="150000" elapsed_time="1" Tick="" Initialize="" target_pause="1" rotation_speed="0" bounds_refresh_time="0" />
    <Entity name="main_hull" id="15092377769586295881" active="true" position="-1.52588e-05 0.0200195 1.52588e-05" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <render mesh_name="ufo_disc_craft_0_main_hull_22cd1637" mesh_path="./project/plan_resources/ufo_disc_craft_0_main_hull_22cd1637.mesh" sub_mesh_index="0" material_name="ufo_painted_metal" material_path="./project/plan_resources/ufo_painted_metal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />

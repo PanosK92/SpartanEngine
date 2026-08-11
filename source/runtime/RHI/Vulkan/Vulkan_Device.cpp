@@ -1445,6 +1445,13 @@ namespace spartan
                     SP_ASSERT(support_1_2.descriptorIndexing == VK_TRUE);
                     features_1_2.descriptorIndexing = VK_TRUE;
 
+                    // terrain picks its layer textures per pixel, so the bindless index diverges within a wave
+                    SP_ASSERT(support_1_2.shaderSampledImageArrayNonUniformIndexing == VK_TRUE);
+                    features_1_2.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+
+                    SP_ASSERT(support_1_2.shaderStorageBufferArrayNonUniformIndexing == VK_TRUE);
+                    features_1_2.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+
                     SP_ASSERT(support_robustness.nullDescriptor == VK_TRUE);
                     features_robustness.nullDescriptor = VK_TRUE;
 

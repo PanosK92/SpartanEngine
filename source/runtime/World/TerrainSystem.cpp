@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 #include <algorithm>
 #include <cmath>
+#include <limits>
+#include <queue>
 //=======================================
 
 //= NAMESPACES ===============
@@ -37,50 +39,716 @@ namespace spartan
 {
     namespace
     {
-        void apply_wind_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, float wind_strength = 0.3f)
+        // erosion runs in cell units, one unit of height equals one cell of horizontal spacing,
+        // which keeps every constant below independent of terrain density and scale
+        struct erosion_settings
         {
-            static const float kernel[9] = {
-                0.0625f, 0.125f, 0.0625f,
-                0.125f,  0.25f,  0.125f,
-                0.0625f, 0.125f, 0.0625f
-            };
+            // hydraulic, droplet model after musgrave 1989, mei 2007 and beyer 2015
+            float droplets_per_cell   = 2.0f;
+            uint32_t droplet_lifetime = 48;
+            uint32_t erode_radius     = 1;
+            float inertia             = 0.10f;
+            float capacity_factor     = 0.5f;
+            float capacity_min        = 0.0005f;
+            float erode_rate          = 0.30f;
+            float deposit_rate        = 0.30f;
+            float evaporation         = 0.03f;
+            float gravity             = 2.0f;
+            float speed_max           = 3.0f;
+            float drag                = 0.05f;
 
-            vector<float> temp_heights(positions.size());
-            auto copy_heights = [&](uint32_t start, uint32_t end)
+            // thermal, talus angle of repose, steep because one cell already averages a wide
+            // patch of ground and real cliffs must survive
+            float talus_angle_deg  = 50.0f;
+            float thermal_rate     = 0.4f;
+            uint32_t thermal_steps = 6;
+
+            // differential erosion, soft and hard rock plus altitude banded strata
+            float hardness_amount    = 0.5f;
+            float hardness_frequency = 5.0f;
+            float strata_amount      = 0.2f;
+            float strata_period      = 2.5f;
+
+            // a source height map is usually already an eroded landform, so the solver is only
+            // allowed to deviate from it by this fraction of the terrain's vertical relief
+            float budget_relief = 0.03f;
+
+            // erosion can only sharpen detail that already exists, on a smooth or quantised
+            // height map it just blurs, so seed fine relief for it to organise into rills
+            float detail_relief          = 0.012f;
+            float detail_wavelength_cell = 8.0f;
+            float deterrace_strength     = 0.5f;
+
+            // rain does work on slopes, a flat plain stays a flat plain
+            float slope_reference = 0.25f;
+
+            // dry land is guaranteed to stay this far above the water
+            float freeboard_cell = 0.05f;
+
+            // hydraulic and thermal are interleaved so valleys and screes co-evolve
+            uint32_t passes = 3;
+        };
+
+        struct erosion_brush
+        {
+            vector<int32_t> offset_x;
+            vector<int32_t> offset_z;
+            vector<float> weight;
+        };
+
+        // a radial falloff brush, eroding through it instead of a single cell is what keeps
+        // channels smooth, a point sampled erode pits the heightfield
+        erosion_brush build_erosion_brush(uint32_t radius)
+        {
+            erosion_brush brush;
+            int32_t r = static_cast<int32_t>(radius);
+            float sum = 0.0f;
+
+            for (int32_t z = -r; z <= r; z++)
             {
-                for (uint32_t i = start; i < end; i++)
+                for (int32_t x = -r; x <= r; x++)
                 {
-                    temp_heights[i] = positions[i].y;
-                }
-            };
-            ThreadPool::ParallelLoop(copy_heights, static_cast<uint32_t>(positions.size()));
-
-            auto apply_blur = [&](uint32_t start_idx, uint32_t end_idx)
-            {
-                for (uint32_t idx = start_idx; idx < end_idx; idx++)
-                {
-                    uint32_t x = idx % width;
-                    uint32_t z = idx / width;
-
-                    if (x < 1 || x >= width - 1 || z < 1 || z >= height - 1)
+                    float distance = sqrtf(static_cast<float>(x * x + z * z));
+                    if (distance > static_cast<float>(r))
                     {
                         continue;
                     }
 
-                    float new_height = 0.0f;
-                    for (int kz = -1; kz <= 1; ++kz)
-                    {
-                        for (int kx = -1; kx <= 1; ++kx)
-                        {
-                            new_height += temp_heights[(z + kz) * width + (x + kx)] * kernel[(kz + 1) * 3 + (kx + 1)];
-                        }
-                    }
+                    float w = 1.0f - distance / static_cast<float>(r + 1);
+                    brush.offset_x.push_back(x);
+                    brush.offset_z.push_back(z);
+                    brush.weight.push_back(w);
+                    sum += w;
+                }
+            }
 
-                    positions[idx].y += wind_strength * (new_height - positions[idx].y);
+            for (float& w : brush.weight)
+            {
+                w /= sum;
+            }
+
+            return brush;
+        }
+
+        uint32_t erosion_hash(uint32_t x, uint32_t z, uint32_t seed)
+        {
+            uint32_t h = x * 374761393u + z * 668265263u + seed * 362437u;
+            h          = (h ^ (h >> 13)) * 1274126177u;
+            return h ^ (h >> 16);
+        }
+
+        float erosion_value_noise(float x, float z, uint32_t seed)
+        {
+            float base_x = floorf(x);
+            float base_z = floorf(z);
+            uint32_t ix  = static_cast<uint32_t>(static_cast<int32_t>(base_x) + 8192);
+            uint32_t iz  = static_cast<uint32_t>(static_cast<int32_t>(base_z) + 8192);
+
+            float tx = x - base_x;
+            float tz = z - base_z;
+            tx       = tx * tx * (3.0f - 2.0f * tx);
+            tz       = tz * tz * (3.0f - 2.0f * tz);
+
+            const float to_unit = 1.0f / 4294967295.0f;
+            float n00 = static_cast<float>(erosion_hash(ix,     iz,     seed)) * to_unit;
+            float n10 = static_cast<float>(erosion_hash(ix + 1, iz,     seed)) * to_unit;
+            float n01 = static_cast<float>(erosion_hash(ix,     iz + 1, seed)) * to_unit;
+            float n11 = static_cast<float>(erosion_hash(ix + 1, iz + 1, seed)) * to_unit;
+
+            float a = n00 + (n10 - n00) * tx;
+            float b = n01 + (n11 - n01) * tx;
+
+            return a + (b - a) * tz;
+        }
+
+        float erosion_fbm(float x, float z, uint32_t seed, uint32_t octaves)
+        {
+            float value     = 0.0f;
+            float amplitude = 0.5f;
+            float total     = 0.0f;
+
+            for (uint32_t octave = 0; octave < octaves; octave++)
+            {
+                value     += erosion_value_noise(x, z, seed + octave * 97u) * amplitude;
+                total     += amplitude;
+                x         *= 2.03f;
+                z         *= 2.03f;
+                amplitude *= 0.5f;
+            }
+
+            return value / total;
+        }
+
+        // material erodibility, low frequency noise gives resistant ridges and soft basins
+        void build_erodibility(vector<float>& erodibility, uint32_t width, uint32_t depth, const erosion_settings& settings, uint32_t seed)
+        {
+            float frequency_x = settings.hardness_frequency / static_cast<float>(width);
+            float frequency_z = settings.hardness_frequency / static_cast<float>(depth);
+
+            auto fill = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    float x = static_cast<float>(index % width) * frequency_x;
+                    float z = static_cast<float>(index / width) * frequency_z;
+                    float n = erosion_fbm(x, z, seed, 4) * 2.0f - 1.0f;
+
+                    erodibility[index] = clamp(1.0f + settings.hardness_amount * n, 0.25f, 2.0f);
                 }
             };
 
-            ThreadPool::ParallelLoop(apply_blur, width * height);
+            ThreadPool::ParallelLoop(fill, width * depth);
+        }
+
+        float erosion_smoothstep(float edge0, float edge1, float value)
+        {
+            float t = clamp((value - edge0) / max(edge1 - edge0, 1e-6f), 0.0f, 1.0f);
+            return t * t * (3.0f - 2.0f * t);
+        }
+
+        // local slope in cell units, the grid is isotropic so a central difference is enough
+        float erosion_slope(const vector<float>& heights, uint32_t width, uint32_t depth, int32_t x, int32_t z)
+        {
+            int32_t x0 = max(x - 1, 0);
+            int32_t x1 = min(x + 1, static_cast<int32_t>(width) - 1);
+            int32_t z0 = max(z - 1, 0);
+            int32_t z1 = min(z + 1, static_cast<int32_t>(depth) - 1);
+
+            float dx = (heights[static_cast<size_t>(z) * width + x1] - heights[static_cast<size_t>(z) * width + x0]) / static_cast<float>(x1 - x0);
+            float dz = (heights[static_cast<size_t>(z1) * width + x] - heights[static_cast<size_t>(z0) * width + x]) / static_cast<float>(z1 - z0);
+
+            return sqrtf(dx * dx + dz * dz);
+        }
+
+        // removes the stair steps an eight bit height map bakes in and injects fine relief on
+        // slopes, the droplets then organise that relief into gullies instead of smoothing it away
+        void seed_detail(
+            vector<float>& heights,
+            const vector<float>& original,
+            vector<float>& scratch,
+            uint32_t width,
+            uint32_t depth,
+            float sea_level,
+            float relief,
+            const erosion_settings& settings,
+            uint32_t seed
+        )
+        {
+            int32_t last_x       = static_cast<int32_t>(width) - 1;
+            int32_t last_z       = static_cast<int32_t>(depth) - 1;
+            float detail         = settings.detail_relief * relief;
+            float frequency      = 1.0f / max(settings.detail_wavelength_cell, 1.0f);
+            float shore_fade     = 0.08f * relief;
+            float freeboard      = settings.freeboard_cell;
+
+            auto apply = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    scratch[index] = heights[index];
+
+                    // the sea bed is left exactly as it was, noise there would grow new islands
+                    if (original[index] <= sea_level)
+                    {
+                        continue;
+                    }
+
+                    int32_t x = static_cast<int32_t>(index % width);
+                    int32_t z = static_cast<int32_t>(index / width);
+                    if (x < 1 || z < 1 || x >= last_x || z >= last_z)
+                    {
+                        continue;
+                    }
+
+                    float blurred =
+                        (heights[index - width - 1] + heights[index - width] * 2.0f + heights[index - width + 1] +
+                         heights[index - 1] * 2.0f + heights[index] * 4.0f + heights[index + 1] * 2.0f +
+                         heights[index + width - 1] + heights[index + width] * 2.0f + heights[index + width + 1]) * 0.0625f;
+
+                    float h = heights[index] + (blurred - heights[index]) * settings.deterrace_strength;
+
+                    float steep = erosion_smoothstep(0.0f, settings.slope_reference, erosion_slope(heights, width, depth, x, z));
+                    float shore = erosion_smoothstep(0.0f, shore_fade, original[index] - sea_level);
+                    float n     = erosion_fbm(static_cast<float>(x) * frequency, static_cast<float>(z) * frequency, seed + 31u, 3) * 2.0f - 1.0f;
+
+                    h += n * detail * steep * shore;
+
+                    scratch[index] = max(h, sea_level + freeboard);
+                }
+            };
+
+            ThreadPool::ParallelLoop(apply, width * depth);
+
+            heights.swap(scratch);
+        }
+
+        // cumulative spawn weights so droplets land where there is slope to work with, sampling
+        // uniformly instead would spend most of the budget stirring flat ground
+        void build_spawn_table(
+            vector<float>& table,
+            const vector<float>& heights,
+            uint32_t width,
+            uint32_t depth,
+            float sea_level,
+            const erosion_settings& settings
+        )
+        {
+            int32_t last_x = static_cast<int32_t>(width) - 3;
+            int32_t last_z = static_cast<int32_t>(depth) - 3;
+
+            auto weigh = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    table[index] = 0.0f;
+
+                    int32_t x = static_cast<int32_t>(index % width);
+                    int32_t z = static_cast<int32_t>(index / width);
+                    if (x < 2 || z < 2 || x >= last_x || z >= last_z || heights[index] <= sea_level)
+                    {
+                        continue;
+                    }
+
+                    float steep  = erosion_smoothstep(0.0f, settings.slope_reference, erosion_slope(heights, width, depth, x, z));
+                    table[index] = 0.05f + 0.95f * steep * steep;
+                }
+            };
+            ThreadPool::ParallelLoop(weigh, width * depth);
+
+            double running = 0.0;
+            for (uint32_t index = 0; index < width * depth; index++)
+            {
+                running     += table[index];
+                table[index] = static_cast<float>(running);
+            }
+
+            float total = table[width * depth - 1];
+            if (total <= 0.0f)
+            {
+                return;
+            }
+
+            float inverse = 1.0f / total;
+            auto normalize = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    table[index] *= inverse;
+                }
+            };
+            ThreadPool::ParallelLoop(normalize, width * depth);
+        }
+
+        // thermal weathering, any slope steeper than the talus angle sheds material downhill,
+        // this is what produces cliff faces with scree fans at their base
+        void thermal_erosion(
+            vector<float>& heights,
+            vector<float>& outflow,
+            vector<float>& excess,
+            vector<float>& scratch,
+            uint32_t width,
+            uint32_t depth,
+            float talus,
+            float rate,
+            uint32_t steps
+        )
+        {
+            const int32_t neighbor_x[8]  = { -1,  0,  1, -1, 1, -1, 0, 1 };
+            const int32_t neighbor_z[8]  = { -1, -1, -1,  0, 0,  1, 1, 1 };
+            const float neighbor_dist[8] = { 1.4142136f, 1.0f, 1.4142136f, 1.0f, 1.0f, 1.4142136f, 1.0f, 1.4142136f };
+
+            int32_t last_x = static_cast<int32_t>(width) - 1;
+            int32_t last_z = static_cast<int32_t>(depth) - 1;
+
+            for (uint32_t step = 0; step < steps; step++)
+            {
+                // the scatter is expressed as two gathers so it stays lock free
+                auto measure = [&](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t index = start; index < end; index++)
+                    {
+                        outflow[index] = 0.0f;
+                        excess[index]  = 0.0f;
+
+                        int32_t x = static_cast<int32_t>(index % width);
+                        int32_t z = static_cast<int32_t>(index / width);
+                        if (x < 1 || z < 1 || x >= last_x || z >= last_z)
+                        {
+                            continue;
+                        }
+
+                        float h            = heights[index];
+                        float excess_total = 0.0f;
+                        float excess_max   = 0.0f;
+
+                        for (uint32_t n = 0; n < 8; n++)
+                        {
+                            size_t neighbor  = static_cast<size_t>(z + neighbor_z[n]) * width + (x + neighbor_x[n]);
+                            float difference = h - heights[neighbor] - talus * neighbor_dist[n];
+                            if (difference > 0.0f)
+                            {
+                                excess_total += difference;
+                                excess_max    = max(excess_max, difference);
+                            }
+                        }
+
+                        excess[index]  = excess_total;
+                        outflow[index] = rate * excess_max * 0.5f;
+                    }
+                };
+                ThreadPool::ParallelLoop(measure, width * depth);
+
+                auto redistribute = [&](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t index = start; index < end; index++)
+                    {
+                        float h = heights[index] - outflow[index];
+
+                        int32_t x = static_cast<int32_t>(index % width);
+                        int32_t z = static_cast<int32_t>(index / width);
+                        if (x >= 1 && z >= 1 && x < last_x && z < last_z)
+                        {
+                            for (uint32_t n = 0; n < 8; n++)
+                            {
+                                size_t source = static_cast<size_t>(z + neighbor_z[n]) * width + (x + neighbor_x[n]);
+                                if (excess[source] <= 0.0f)
+                                {
+                                    continue;
+                                }
+
+                                float difference = heights[source] - heights[index] - talus * neighbor_dist[n];
+                                if (difference > 0.0f)
+                                {
+                                    h += outflow[source] * (difference / excess[source]);
+                                }
+                            }
+                        }
+
+                        scratch[index] = h;
+                    }
+                };
+                ThreadPool::ParallelLoop(redistribute, width * depth);
+
+                heights.swap(scratch);
+            }
+        }
+
+        // droplet based hydraulic erosion, carves gullies and lays alluvium in the valley floors
+        void hydraulic_erosion(
+            vector<float>& heights,
+            const vector<float>& original,
+            const vector<float>& erodibility,
+            const vector<float>& spawn_table,
+            const erosion_brush& brush,
+            uint32_t width,
+            uint32_t depth,
+            float sea_level,
+            float budget,
+            uint32_t droplet_count,
+            uint32_t seed,
+            const erosion_settings& settings
+        )
+        {
+            int32_t last_x     = static_cast<int32_t>(width) - 1;
+            int32_t last_z     = static_cast<int32_t>(depth) - 1;
+            size_t brush_taps  = brush.weight.size();
+            float strata_scale = 6.2831853f / max(settings.strata_period, 0.05f);
+            float limit_x      = static_cast<float>(width) - 3.0f;
+            float limit_z      = static_cast<float>(depth) - 3.0f;
+            float freeboard    = settings.freeboard_cell;
+            float inv_budget   = 1.0f / max(budget, 1e-4f);
+            uint32_t cells     = width * depth;
+
+            // droplets run in parallel and write to shared cells, the occasional lost update is
+            // far below the noise floor of the simulation and buys a linear speedup
+            auto simulate = [&](uint32_t start, uint32_t end)
+            {
+                mt19937 rng(seed + start * 2654435761u + 1u);
+                uniform_real_distribution<float> unit(0.0f, 1.0f);
+                uniform_real_distribution<float> spawn_angle(0.0f, 6.2831853f);
+
+                // a land cell may never sink into the sea and a sea cell may never rise out of
+                // it, so the coastline the height map describes survives the whole simulation
+                auto floor_of = [&](size_t cell) -> float
+                {
+                    return original[cell] > sea_level
+                        ? max(original[cell] - budget, sea_level + freeboard)
+                        : -numeric_limits<float>::max();
+                };
+
+                auto ceiling_of = [&](size_t cell) -> float
+                {
+                    return original[cell] > sea_level
+                        ? original[cell] + budget
+                        : sea_level - freeboard;
+                };
+
+                for (uint32_t droplet = start; droplet < end; droplet++)
+                {
+                    size_t spawn = static_cast<size_t>(
+                        lower_bound(spawn_table.begin(), spawn_table.end(), unit(rng)) - spawn_table.begin()
+                    );
+                    if (spawn >= cells)
+                    {
+                        spawn = cells - 1;
+                    }
+
+                    float position_x = static_cast<float>(spawn % width) + unit(rng);
+                    float position_z = static_cast<float>(spawn / width) + unit(rng);
+                    position_x       = clamp(position_x, 2.0f, limit_x - 0.001f);
+                    position_z       = clamp(position_z, 2.0f, limit_z - 0.001f);
+
+                    float direction_x = 0.0f;
+                    float direction_z = 0.0f;
+                    float speed       = 1.0f;
+                    float water       = 1.0f;
+                    float sediment    = 0.0f;
+
+                    int32_t cell_x = 0;
+                    int32_t cell_z = 0;
+
+                    // spreads whatever is still carried over the brush footprint
+                    auto dump_sediment = [&](float amount)
+                    {
+                        if (amount <= 0.0f)
+                        {
+                            return;
+                        }
+
+                        for (size_t tap = 0; tap < brush_taps; tap++)
+                        {
+                            int32_t brush_x = cell_x + brush.offset_x[tap];
+                            int32_t brush_z = cell_z + brush.offset_z[tap];
+                            if (brush_x < 1 || brush_z < 1 || brush_x >= last_x || brush_z >= last_z)
+                            {
+                                continue;
+                            }
+
+                            size_t cell = static_cast<size_t>(brush_z) * width + brush_x;
+                            heights[cell] = min(heights[cell] + amount * brush.weight[tap], ceiling_of(cell));
+                        }
+                    };
+
+                    for (uint32_t life = 0; life < settings.droplet_lifetime; life++)
+                    {
+                        cell_x       = static_cast<int32_t>(position_x);
+                        cell_z       = static_cast<int32_t>(position_z);
+                        float frac_x = position_x - static_cast<float>(cell_x);
+                        float frac_z = position_z - static_cast<float>(cell_z);
+                        size_t index = static_cast<size_t>(cell_z) * width + cell_x;
+
+                        float h00 = heights[index];
+                        float h10 = heights[index + 1];
+                        float h01 = heights[index + width];
+                        float h11 = heights[index + width + 1];
+
+                        float height_here =
+                            h00 * (1.0f - frac_x) * (1.0f - frac_z) +
+                            h10 * frac_x * (1.0f - frac_z) +
+                            h01 * (1.0f - frac_x) * frac_z +
+                            h11 * frac_x * frac_z;
+
+                        // rain does not carve the sea bed, sediment arriving there is gone for good
+                        if (height_here <= sea_level)
+                        {
+                            break;
+                        }
+
+                        // analytic gradient of the bilinear patch
+                        float gradient_x = (h10 - h00) * (1.0f - frac_z) + (h11 - h01) * frac_z;
+                        float gradient_z = (h01 - h00) * (1.0f - frac_x) + (h11 - h10) * frac_x;
+
+                        direction_x = direction_x * settings.inertia - gradient_x * (1.0f - settings.inertia);
+                        direction_z = direction_z * settings.inertia - gradient_z * (1.0f - settings.inertia);
+
+                        float length = sqrtf(direction_x * direction_x + direction_z * direction_z);
+                        if (length < 1e-6f)
+                        {
+                            float angle = spawn_angle(rng);
+                            direction_x = cosf(angle);
+                            direction_z = sinf(angle);
+                        }
+                        else
+                        {
+                            direction_x /= length;
+                            direction_z /= length;
+                        }
+
+                        position_x += direction_x;
+                        position_z += direction_z;
+
+                        if (position_x < 2.0f || position_z < 2.0f || position_x >= limit_x || position_z >= limit_z)
+                        {
+                            break;
+                        }
+
+                        int32_t next_x = static_cast<int32_t>(position_x);
+                        int32_t next_z = static_cast<int32_t>(position_z);
+                        float next_fx  = position_x - static_cast<float>(next_x);
+                        float next_fz  = position_z - static_cast<float>(next_z);
+                        size_t next    = static_cast<size_t>(next_z) * width + next_x;
+
+                        float n00 = heights[next];
+                        float n10 = heights[next + 1];
+                        float n01 = heights[next + width];
+                        float n11 = heights[next + width + 1];
+
+                        float height_next =
+                            n00 * (1.0f - next_fx) * (1.0f - next_fz) +
+                            n10 * next_fx * (1.0f - next_fz) +
+                            n01 * (1.0f - next_fx) * next_fz +
+                            n11 * next_fx * next_fz;
+
+                        float delta    = height_next - height_here;
+                        float capacity = max(-delta, settings.capacity_min) * speed * water * settings.capacity_factor;
+
+                        if (delta > 0.0f || sediment > capacity)
+                        {
+                            // uphill fills the pit exactly, otherwise shed the surplus load
+                            float amount = (delta > 0.0f)
+                                ? min(delta, sediment)
+                                : (sediment - capacity) * settings.deposit_rate;
+
+                            amount    = max(amount, 0.0f);
+                            sediment -= amount;
+
+                            float w00 = (1.0f - frac_x) * (1.0f - frac_z);
+                            float w10 = frac_x * (1.0f - frac_z);
+                            float w01 = (1.0f - frac_x) * frac_z;
+                            float w11 = frac_x * frac_z;
+
+                            heights[index]             = min(heights[index]             + amount * w00, ceiling_of(index));
+                            heights[index + 1]         = min(heights[index + 1]         + amount * w10, ceiling_of(index + 1));
+                            heights[index + width]     = min(heights[index + width]     + amount * w01, ceiling_of(index + width));
+                            heights[index + width + 1] = min(heights[index + width + 1] + amount * w11, ceiling_of(index + width + 1));
+                        }
+                        else
+                        {
+                            // strata band the rock by altitude, the noise field varies it laterally
+                            float strata = 1.0f + settings.strata_amount * sinf(height_here * strata_scale);
+
+                            // erosion fades out as a cell spends its displacement budget, so the
+                            // landform the height map describes is never washed away
+                            float spent  = fabsf(heights[index] - original[index]) * inv_budget;
+                            float left   = clamp(1.0f - spent * spent, 0.0f, 1.0f);
+
+                            float soft   = erodibility[index] * strata * left;
+                            float amount = min((capacity - sediment) * settings.erode_rate * soft, -delta);
+                            amount       = clamp(amount, 0.0f, max(heights[index] - floor_of(index), 0.0f));
+
+                            sediment += amount;
+
+                            for (size_t tap = 0; tap < brush_taps; tap++)
+                            {
+                                int32_t brush_x = cell_x + brush.offset_x[tap];
+                                int32_t brush_z = cell_z + brush.offset_z[tap];
+                                if (brush_x < 1 || brush_z < 1 || brush_x >= last_x || brush_z >= last_z)
+                                {
+                                    continue;
+                                }
+
+                                size_t cell   = static_cast<size_t>(brush_z) * width + brush_x;
+                                heights[cell] = max(heights[cell] - amount * brush.weight[tap], floor_of(cell));
+                            }
+                        }
+
+                        speed = sqrtf(max(0.0f, speed * speed - delta * settings.gravity));
+                        speed = min(speed * (1.0f - settings.drag), settings.speed_max);
+                        water *= 1.0f - settings.evaporation;
+
+                        if (water < 0.01f)
+                        {
+                            break;
+                        }
+                    }
+
+                    // whatever is still in suspension settles, throwing it away would delete mass
+                    // from the terrain and grind every mountain down over successive passes
+                    dump_sediment(sediment);
+                }
+            };
+
+            ThreadPool::ParallelLoop(simulate, droplet_count);
+        }
+
+        // keeps every cell inside its erosion budget and on the correct side of the shoreline
+        void clamp_to_budget(
+            vector<float>& heights,
+            const vector<float>& original,
+            uint32_t width,
+            uint32_t depth,
+            float sea_level,
+            float budget,
+            float freeboard
+        )
+        {
+            auto apply = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    if (original[index] > sea_level)
+                    {
+                        float low  = max(original[index] - budget, sea_level + freeboard);
+                        float high = original[index] + budget;
+                        heights[index] = clamp(heights[index], low, high);
+                    }
+                    else
+                    {
+                        heights[index] = min(heights[index], sea_level - freeboard);
+                    }
+                }
+            };
+
+            ThreadPool::ParallelLoop(apply, width * depth);
+        }
+
+        // pulls back cells that stick out past every neighbor, ridges survive because they are
+        // never an extremum along their own crest
+        void remove_spikes(vector<float>& heights, vector<float>& scratch, uint32_t width, uint32_t depth, float threshold)
+        {
+            const int32_t neighbor_x[8] = { -1,  0,  1, -1, 1, -1, 0, 1 };
+            const int32_t neighbor_z[8] = { -1, -1, -1,  0, 0,  1, 1, 1 };
+
+            int32_t last_x = static_cast<int32_t>(width) - 1;
+            int32_t last_z = static_cast<int32_t>(depth) - 1;
+
+            auto filter = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    scratch[index] = heights[index];
+
+                    int32_t x = static_cast<int32_t>(index % width);
+                    int32_t z = static_cast<int32_t>(index / width);
+                    if (x < 1 || z < 1 || x >= last_x || z >= last_z)
+                    {
+                        continue;
+                    }
+
+                    float h       = heights[index];
+                    float sum     = 0.0f;
+                    float lowest  = numeric_limits<float>::max();
+                    float highest = -numeric_limits<float>::max();
+
+                    for (uint32_t n = 0; n < 8; n++)
+                    {
+                        float neighbor = heights[static_cast<size_t>(z + neighbor_z[n]) * width + (x + neighbor_x[n])];
+                        sum    += neighbor;
+                        lowest  = min(lowest, neighbor);
+                        highest = max(highest, neighbor);
+                    }
+
+                    if (h > highest + threshold || h < lowest - threshold)
+                    {
+                        float mean     = sum * 0.125f;
+                        scratch[index] = mean + (h - mean) * 0.25f;
+                    }
+                }
+            };
+
+            ThreadPool::ParallelLoop(filter, width * depth);
+
+            heights.swap(scratch);
         }
 
         float brush_falloff_weight(float distance, float radius, float falloff)
@@ -142,27 +810,35 @@ namespace spartan
         {
             vector<byte> height_data = height_texture->GetMip(0, 0)->bytes;
             SP_ASSERT(height_data.size() > 0);
-        
+
+            const uint32_t width  = height_texture->GetWidth();
+            const uint32_t height = height_texture->GetHeight();
+
             // map texture bytes to height values
             uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
-            uint32_t pixel_count     = static_cast<uint32_t>(height_data.size() / bytes_per_pixel);
+            uint32_t pixel_count     = width * height;
+            // scanlines can be padded for alignment, so derive the stride instead of assuming it
+            size_t row_stride        = height_data.size() / height;
             height_data_out.resize(pixel_count);
 
             auto map_height = [&](uint32_t start_pixel, uint32_t end_pixel)
             {
                 for (uint32_t pixel = start_pixel; pixel < end_pixel; pixel++)
                 {
-                    uint32_t byte_index    = pixel * bytes_per_pixel;
+                    uint32_t x = pixel % width;
+                    uint32_t y = pixel / width;
+
+                    // the first row of the image is north and north is +z, so rows are read back
+                    // to front, taking them in order mirrors the terrain against its height map
+                    size_t byte_index = static_cast<size_t>(height - 1 - y) * row_stride + static_cast<size_t>(x) * bytes_per_pixel;
+
                     float normalized_value = static_cast<float>(height_data[byte_index]) / 255.0f;
                     height_data_out[pixel] = min_y + normalized_value * (max_y - min_y);
                 }
             };
             ThreadPool::ParallelLoop(map_height, pixel_count);
-        
-            // smooth height map to reduce hard edges
-            const uint32_t width  = height_texture->GetWidth();
-            const uint32_t height = height_texture->GetHeight();
 
+            // smooth height map to reduce hard edges
             for (uint32_t iteration = 0; iteration < smoothing; iteration++)
             {
                 vector<float> smoothed_height_data(height_data_out.size());
@@ -320,137 +996,147 @@ namespace spartan
             ThreadPool::ParallelLoop(generate_position, width * height);
         }
 
-        void TerrainSystem::ApplyErosion(vector<Vector3>& positions, uint32_t width, uint32_t height, float level_sea, uint32_t iterations, uint32_t wind_interval)
+        void TerrainSystem::ApplyErosion(vector<Vector3>& positions, uint32_t width, uint32_t height, float level_sea, float intensity, TerrainErosionMaps* maps_out)
         {
-            const float inertia          = 0.05f;
-            const float capacity_factor  = 1.0f;
-            const float min_slope        = 0.01f;
-            const float deposition_rate  = 0.05f;
-            const float erosion_rate     = 0.2f;
-            const float evaporation_rate = 0.05f;
-            const float gravity          = 4.0f;
-            const uint32_t max_steps     = 30;
-            const float wind_strength    = 0.3f;
-            const float max_step         = 0.5f;
-
-            // height interpolation
-            auto get_height = [&positions, width, height](float x, float z) -> float
+            if (maps_out)
             {
-                int ix   = clamp(static_cast<int>(floor(x)), 0, static_cast<int>(width) - 2);
-                int iz   = clamp(static_cast<int>(floor(z)), 0, static_cast<int>(height) - 2);
-                float fx = x - static_cast<float>(ix);
-                float fz = z - static_cast<float>(iz);
-        
-                float h00 = positions[static_cast<size_t>(iz) * width + ix].y;
-                float h10 = positions[static_cast<size_t>(iz) * width + ix + 1].y;
-                float h01 = positions[static_cast<size_t>(iz + 1) * width + ix].y;
-                float h11 = positions[static_cast<size_t>(iz + 1) * width + ix + 1].y;
-        
-                return (h00 + fx * (h10 - h00)) + fz * ((h01 + fx * (h11 - h01)) - (h00 + fx * (h10 - h00)));
-            };
-        
-            // bilinear height modification
-            auto add_height = [&positions, width, height, level_sea, max_step](float x, float z, float amount)
-            {
-                int ix   = clamp(static_cast<int>(floor(x)), 0, static_cast<int>(width) - 2);
-                int iz   = clamp(static_cast<int>(floor(z)), 0, static_cast<int>(height) - 2);
-                float fx = x - static_cast<float>(ix);
-                float fz = z - static_cast<float>(iz);
-            
-                float w00 = (1.0f - fx) * (1.0f - fz);
-                float w10 = fx * (1.0f - fz);
-                float w01 = (1.0f - fx) * fz;
-                float w11 = fx * fz;
-
-                auto apply = [&](size_t idx, float delta)
-                {
-                    float& h = positions[idx].y;
-                    h       += clamp(delta, -max_step, max_step);
-                    h        = max(h, level_sea - 10.0f);
-                };
-            
-                apply(static_cast<size_t>(iz) * width + ix,         amount * w00);
-                apply(static_cast<size_t>(iz) * width + ix + 1,     amount * w10);
-                apply(static_cast<size_t>(iz + 1) * width + ix,     amount * w01);
-                apply(static_cast<size_t>(iz + 1) * width + ix + 1, amount * w11);
-            };
-
-            auto get_gradient = [get_height](float x, float z) -> Vector2
-            {
-                return Vector2(
-                    (get_height(x + 1.0f, z) - get_height(x - 1.0f, z)) / 2.0f,
-                    (get_height(x, z + 1.0f) - get_height(x, z - 1.0f)) / 2.0f
-                );
-            };
-        
-            mt19937 gen(width * 3000017u + height * 41u + 11111u);
-            uniform_real_distribution<float> dist_x(1.0f, static_cast<float>(width) - 2.0f);
-            uniform_real_distribution<float> dist_z(1.0f, static_cast<float>(height) - 2.0f);
-        
-            // hydraulic erosion simulation
-            for (uint32_t i = 0; i < iterations; ++i)
-            {
-                if (i % wind_interval == 0 && i != 0)
-                {
-                    apply_wind_erosion(positions, width, height, wind_strength);
-                }
-        
-                float pos_x    = dist_x(gen);
-                float pos_z    = dist_z(gen);
-                Vector2 dir    = Vector2::Zero;
-                float speed    = 1.0f;
-                float water    = 1.0f;
-                float sediment = 0.0f;
-        
-                for (uint32_t step = 0; step < max_steps; ++step)
-                {
-                    if (water < 0.01f)
-                    {
-                        break;
-                    }
-        
-                    float h          = get_height(pos_x, pos_z);
-                    Vector2 gradient = get_gradient(pos_x, pos_z);
-                    float slope      = max(gradient.Length(), min_slope);
-
-                    Vector2 new_dir = -gradient.Normalized();
-                    dir             = (dir * inertia + new_dir * (1.0f - inertia)).Normalized();
-        
-                    float new_x   = pos_x + dir.x;
-                    float new_z   = pos_z + dir.y;
-                    float delta_h = get_height(new_x, new_z) - h;
-        
-                    // stop if moving uphill
-                    if (delta_h >= 0.0f || dir.LengthSquared() < 0.0001f)
-                    {
-                        add_height(pos_x, pos_z, sediment * deposition_rate);
-                        break;
-                    }
-        
-                    pos_x = new_x;
-                    pos_z = new_z;
-                    speed = sqrt(speed * speed - gravity * delta_h);
-
-                    float capacity = capacity_factor * water * speed * slope;
-        
-                    if (sediment > capacity)
-                    {
-                        float deposit = (sediment - capacity) * deposition_rate;
-                        add_height(pos_x, pos_z, deposit);
-                        sediment -= deposit;
-                    }
-                    else
-                    {
-                        float erode = min((capacity - sediment) * erosion_rate, -delta_h);
-                        add_height(pos_x, pos_z, -erode);
-                        sediment += erode;
-                    }
-        
-                    water *= (1.0f - evaporation_rate);
-                }
+                maps_out->wear.clear();
+                maps_out->deposition.clear();
             }
-        
-            apply_wind_erosion(positions, width, height, wind_strength);
+
+            if (positions.size() < static_cast<size_t>(width) * height || width < 16 || height < 16 || intensity <= 0.0f)
+            {
+                return;
+            }
+
+            erosion_settings settings;
+            settings.droplets_per_cell *= intensity;
+            settings.budget_relief     *= clamp(intensity, 0.25f, 4.0f);
+
+            // horizontal spacing between two samples, heights are normalized by it so the
+            // simulation behaves identically at any terrain density or scale
+            float cell_size = fabsf(positions[1].x - positions[0].x);
+            if (cell_size < 1e-4f)
+            {
+                cell_size = 1.0f;
+            }
+            float inv_cell_size = 1.0f / cell_size;
+
+            uint32_t cell_count = width * height;
+            vector<float> heights(cell_count);
+            vector<float> original(cell_count);
+            vector<float> erodibility(cell_count);
+            vector<float> spawn_table(cell_count);
+            vector<float> scratch_a(cell_count);
+            vector<float> scratch_b(cell_count);
+            vector<float> scratch_c(cell_count);
+
+            auto to_cell_units = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    heights[index]  = positions[index].y * inv_cell_size;
+                    original[index] = heights[index];
+                }
+            };
+            ThreadPool::ParallelLoop(to_cell_units, cell_count);
+
+            float lowest  = numeric_limits<float>::max();
+            float highest = -numeric_limits<float>::max();
+            for (uint32_t index = 0; index < cell_count; index++)
+            {
+                lowest  = min(lowest, original[index]);
+                highest = max(highest, original[index]);
+            }
+
+            float relief = max(highest - lowest, 1e-3f);
+            float budget = settings.budget_relief * relief;
+            float sea    = level_sea * inv_cell_size;
+            uint32_t seed = width * 3000017u + height * 41u + 11111u;
+
+            seed_detail(heights, original, scratch_a, width, height, sea, relief, settings, seed);
+            build_erodibility(erodibility, width, height, settings, seed);
+            build_spawn_table(spawn_table, heights, width, height, sea, settings);
+
+            // reference taken after the detail seed so the exported delta is erosion only, the
+            // clamp and hydraulic solvers keep using original as their budget reference
+            vector<float> pre_erosion;
+            if (maps_out)
+            {
+                pre_erosion = heights;
+            }
+
+            erosion_brush brush = build_erosion_brush(settings.erode_radius);
+
+            float talus             = tanf(settings.talus_angle_deg * 0.0174532925f);
+            uint32_t passes         = max(settings.passes, 1u);
+            uint64_t droplet_total  = static_cast<uint64_t>(static_cast<float>(cell_count) * settings.droplets_per_cell);
+            uint32_t droplets_pass  = static_cast<uint32_t>(max<uint64_t>(droplet_total / passes, 1ull));
+            uint32_t thermal_pass   = max(settings.thermal_steps / passes, 1u);
+
+            // rivers and screes shape each other, so alternate the two solvers
+            for (uint32_t pass = 0; pass < passes; pass++)
+            {
+                hydraulic_erosion(
+                    heights,
+                    original,
+                    erodibility,
+                    spawn_table,
+                    brush,
+                    width,
+                    height,
+                    sea,
+                    budget,
+                    droplets_pass,
+                    seed + pass * 7919u,
+                    settings
+                );
+
+                thermal_erosion(
+                    heights,
+                    scratch_a,
+                    scratch_b,
+                    scratch_c,
+                    width,
+                    height,
+                    talus,
+                    settings.thermal_rate,
+                    thermal_pass
+                );
+
+                clamp_to_budget(heights, original, width, height, sea, budget, settings.freeboard_cell);
+            }
+
+            remove_spikes(heights, scratch_a, width, height, 0.35f);
+            clamp_to_budget(heights, original, width, height, sea, budget, settings.freeboard_cell);
+
+            auto to_world_units = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    positions[index].y = heights[index] * cell_size;
+                }
+            };
+            ThreadPool::ParallelLoop(to_world_units, cell_count);
+
+            // split the signed delta into the two signals texturing actually wants, bedrock that
+            // the water scoured clean and sediment that came to rest on top of it
+            if (maps_out)
+            {
+                maps_out->wear.resize(cell_count);
+                maps_out->deposition.resize(cell_count);
+
+                auto split_delta = [&](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t index = start; index < end; index++)
+                    {
+                        const float delta              = (heights[index] - pre_erosion[index]) * cell_size;
+                        maps_out->wear[index]          = max(-delta, 0.0f);
+                        maps_out->deposition[index]    = max(delta, 0.0f);
+                    }
+                };
+                ThreadPool::ParallelLoop(split_delta, cell_count);
+            }
         }
 
         void TerrainSystem::GenerateVerticesAndIndices(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const vector<Vector3>& positions, uint32_t width, uint32_t height)
@@ -580,7 +1266,7 @@ namespace spartan
             ThreadPool::ParallelLoop(compute_edges, edge_count);
         }
 
-        void TerrainSystem::ApplyPerlinNoise(vector<Vector3>& positions, uint32_t width, uint32_t height, float amplitude, float frequency, uint32_t octaves, float persistence)
+        void TerrainSystem::ApplyPerlinNoise(vector<Vector3>& positions, uint32_t width, uint32_t height, float level_sea, float amplitude, float frequency, uint32_t octaves, float persistence)
         {
             auto fade = [](float t) -> float { return t * t * t * (t * (t * 6 - 15) + 10); };
             auto lerp = [](float a, float b, float t) -> float { return a + t * (b - a); };
@@ -631,10 +1317,20 @@ namespace spartan
                 return lerp(lerp(grad00, grad10, u), lerp(grad01, grad11, u), v);
             };
         
+            // noise fades in above the water line, applying it to the sea bed would lift half of
+            // it into new islands and applying it to the shore would break the coastline apart
+            float shore_fade = max(amplitude * 4.0f, 1e-3f);
+
             auto apply_noise = [&](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t index = start_index; index < end_index; ++index)
                 {
+                    float above_water = positions[index].y - level_sea;
+                    if (above_water <= 0.0f)
+                    {
+                        continue;
+                    }
+
                     uint32_t x = index % width;
                     uint32_t z = index / width;
 
@@ -653,7 +1349,11 @@ namespace spartan
                         current_frequency *= 2.0f;
                     }
         
-                    positions[index].y += (noise_value / max_amplitude) * amplitude;
+                    float gate = clamp(above_water / shore_fade, 0.0f, 1.0f);
+                    gate       = gate * gate * (3.0f - 2.0f * gate);
+
+                    float shifted = positions[index].y + (noise_value / max_amplitude) * amplitude * gate;
+                    positions[index].y = max(shifted, level_sea + 0.01f);
                 }
             };
         
@@ -1003,5 +1703,616 @@ namespace spartan
             }
         };
         ThreadPool::ParallelLoop(bend, static_cast<uint32_t>(positions.size()));
+    }
+
+    namespace
+    {
+        // percentile stretch, raw geomorphometry outputs are heavy tailed and unusable without it
+        // a plain min/max normalize gets destroyed by a single outlier cell
+        void autolevel(vector<float>& values, float percentile_low = 0.02f, float percentile_high = 0.98f)
+        {
+            if (values.empty())
+            {
+                return;
+            }
+
+            vector<float> sorted = values;
+            sort(sorted.begin(), sorted.end());
+
+            const size_t last = sorted.size() - 1;
+            const float low   = sorted[static_cast<size_t>(percentile_low * static_cast<float>(last))];
+            const float high  = sorted[static_cast<size_t>(percentile_high * static_cast<float>(last))];
+            const float range = max(high - low, 1e-6f);
+
+            auto stretch = [&values, low, range](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    values[i] = clamp((values[i] - low) / range, 0.0f, 1.0f);
+                }
+            };
+            ThreadPool::ParallelLoop(stretch, static_cast<uint32_t>(values.size()));
+        }
+
+        // signed stretch around zero, keeps the sign meaningful and maps zero onto 0.5
+        void autolevel_signed(vector<float>& values, float percentile = 0.98f)
+        {
+            if (values.empty())
+            {
+                return;
+            }
+
+            vector<float> magnitudes(values.size());
+            for (size_t i = 0; i < values.size(); i++)
+            {
+                magnitudes[i] = fabsf(values[i]);
+            }
+            sort(magnitudes.begin(), magnitudes.end());
+
+            const float scale = max(magnitudes[static_cast<size_t>(percentile * static_cast<float>(magnitudes.size() - 1))], 1e-6f);
+
+            auto stretch = [&values, scale](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    values[i] = clamp(values[i] / scale, -1.0f, 1.0f) * 0.5f + 0.5f;
+                }
+            };
+            ThreadPool::ParallelLoop(stretch, static_cast<uint32_t>(values.size()));
+        }
+
+        float sample_grid(const vector<float>& grid, uint32_t width, uint32_t height, int32_t x, int32_t z)
+        {
+            x = clamp(x, 0, static_cast<int32_t>(width) - 1);
+            z = clamp(z, 0, static_cast<int32_t>(height) - 1);
+            return grid[static_cast<size_t>(z) * width + x];
+        }
+
+        // box downsample of an arbitrary source grid onto the analysis grid
+        void resample_grid(
+            vector<float>& destination,
+            uint32_t destination_width,
+            uint32_t destination_height,
+            const vector<float>& source,
+            uint32_t source_width,
+            uint32_t source_height
+        )
+        {
+            destination.resize(static_cast<size_t>(destination_width) * destination_height);
+
+            const float step_x = static_cast<float>(source_width)  / static_cast<float>(destination_width);
+            const float step_z = static_cast<float>(source_height) / static_cast<float>(destination_height);
+
+            auto fill = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    const uint32_t dx = index % destination_width;
+                    const uint32_t dz = index / destination_width;
+
+                    const int32_t x0 = static_cast<int32_t>(static_cast<float>(dx)        * step_x);
+                    const int32_t x1 = max(static_cast<int32_t>(static_cast<float>(dx + 1) * step_x), x0 + 1);
+                    const int32_t z0 = static_cast<int32_t>(static_cast<float>(dz)        * step_z);
+                    const int32_t z1 = max(static_cast<int32_t>(static_cast<float>(dz + 1) * step_z), z0 + 1);
+
+                    float sum   = 0.0f;
+                    float count = 0.0f;
+                    for (int32_t z = z0; z < z1; z++)
+                    {
+                        for (int32_t x = x0; x < x1; x++)
+                        {
+                            sum   += sample_grid(source, source_width, source_height, x, z);
+                            count += 1.0f;
+                        }
+                    }
+
+                    destination[index] = sum / max(count, 1.0f);
+                }
+            };
+            ThreadPool::ParallelLoop(fill, destination_width * destination_height);
+        }
+
+        // priority flood sink fill, barnes 2014, so flow routing never dead ends in a pit
+        // without this every closed depression eats the flow accumulation that should have
+        // continued downstream and the river network breaks into disconnected fragments
+        void fill_sinks(vector<float>& heights, uint32_t width, uint32_t height, float epsilon_slope)
+        {
+            const size_t cell_count = static_cast<size_t>(width) * height;
+            vector<float> filled(cell_count, numeric_limits<float>::max());
+            vector<uint8_t> closed(cell_count, 0);
+
+            struct node
+            {
+                float value;
+                uint32_t index;
+                bool operator<(const node& other) const { return value > other.value; } // min heap
+            };
+            priority_queue<node> open;
+
+            for (uint32_t x = 0; x < width; x++)
+            {
+                const uint32_t top    = x;
+                const uint32_t bottom = (height - 1) * width + x;
+                filled[top]           = heights[top];
+                filled[bottom]        = heights[bottom];
+                open.push({ heights[top], top });
+                open.push({ heights[bottom], bottom });
+            }
+            for (uint32_t z = 1; z < height - 1; z++)
+            {
+                const uint32_t left  = z * width;
+                const uint32_t right = z * width + width - 1;
+                filled[left]         = heights[left];
+                filled[right]        = heights[right];
+                open.push({ heights[left], left });
+                open.push({ heights[right], right });
+            }
+
+            const int32_t neighbor_x[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
+            const int32_t neighbor_z[8] = { -1, -1, -1, 0, 0, 1, 1, 1 };
+
+            while (!open.empty())
+            {
+                const node current = open.top();
+                open.pop();
+
+                if (closed[current.index])
+                {
+                    continue;
+                }
+                closed[current.index] = 1;
+
+                const int32_t cx = static_cast<int32_t>(current.index % width);
+                const int32_t cz = static_cast<int32_t>(current.index / width);
+
+                for (uint32_t n = 0; n < 8; n++)
+                {
+                    const int32_t nx = cx + neighbor_x[n];
+                    const int32_t nz = cz + neighbor_z[n];
+                    if (nx < 0 || nz < 0 || nx >= static_cast<int32_t>(width) || nz >= static_cast<int32_t>(height))
+                    {
+                        continue;
+                    }
+
+                    const uint32_t neighbor_index = static_cast<uint32_t>(nz) * width + static_cast<uint32_t>(nx);
+                    if (closed[neighbor_index])
+                    {
+                        continue;
+                    }
+
+                    // the epsilon keeps a gradient across the filled surface so routing still drains
+                    const float raised   = max(heights[neighbor_index], filled[current.index] + epsilon_slope);
+                    filled[neighbor_index] = raised;
+                    open.push({ raised, neighbor_index });
+                }
+            }
+
+            for (size_t i = 0; i < cell_count; i++)
+            {
+                heights[i] = filled[i] == numeric_limits<float>::max() ? heights[i] : filled[i];
+            }
+        }
+
+        // multiple flow direction accumulation, freeman 1991, weights proportional to (tan beta)^p
+        // single direction d8 produces one pixel wide rivers that look like scratches, mfd spreads
+        // the flow into the broad wet bands that vegetation actually follows
+        void accumulate_flow(
+            vector<float>& accumulation,
+            const vector<float>& heights,
+            uint32_t width,
+            uint32_t height,
+            float cell_size
+        )
+        {
+            const size_t cell_count = static_cast<size_t>(width) * height;
+            accumulation.assign(cell_count, 1.0f);
+
+            // process cells from high to low so every donor is resolved before its receivers
+            vector<uint32_t> order(cell_count);
+            for (uint32_t i = 0; i < cell_count; i++)
+            {
+                order[i] = i;
+            }
+            sort(order.begin(), order.end(), [&heights](uint32_t a, uint32_t b) { return heights[a] > heights[b]; });
+
+            const int32_t neighbor_x[8]  = { -1, 0, 1, -1, 1, -1, 0, 1 };
+            const int32_t neighbor_z[8]  = { -1, -1, -1, 0, 0, 1, 1, 1 };
+            const float   diagonal       = 1.41421356f;
+            const float   distances[8]   = { diagonal, 1.0f, diagonal, 1.0f, 1.0f, diagonal, 1.0f, diagonal };
+            const float   exponent       = 1.1f;
+
+            float weights[8];
+            for (uint32_t o = 0; o < cell_count; o++)
+            {
+                const uint32_t index = order[o];
+                const int32_t cx     = static_cast<int32_t>(index % width);
+                const int32_t cz     = static_cast<int32_t>(index / width);
+                const float   center = heights[index];
+
+                float weight_total = 0.0f;
+                for (uint32_t n = 0; n < 8; n++)
+                {
+                    weights[n]       = 0.0f;
+                    const int32_t nx = cx + neighbor_x[n];
+                    const int32_t nz = cz + neighbor_z[n];
+                    if (nx < 0 || nz < 0 || nx >= static_cast<int32_t>(width) || nz >= static_cast<int32_t>(height))
+                    {
+                        continue;
+                    }
+
+                    const float drop = center - heights[static_cast<size_t>(nz) * width + static_cast<size_t>(nx)];
+                    if (drop <= 0.0f)
+                    {
+                        continue;
+                    }
+
+                    weights[n]    = powf(drop / (distances[n] * cell_size), exponent);
+                    weight_total += weights[n];
+                }
+
+                if (weight_total <= 0.0f)
+                {
+                    continue;
+                }
+
+                const float share = accumulation[index] / weight_total;
+                for (uint32_t n = 0; n < 8; n++)
+                {
+                    if (weights[n] <= 0.0f)
+                    {
+                        continue;
+                    }
+
+                    const uint32_t neighbor_index = static_cast<uint32_t>(cz + neighbor_z[n]) * width + static_cast<uint32_t>(cx + neighbor_x[n]);
+                    accumulation[neighbor_index] += weights[n] * share;
+                }
+            }
+        }
+
+        // horizon angle in one compass direction, exponential stepping so a handful of samples
+        // still reach across the whole map
+        float horizon_angle(
+            const vector<float>& heights,
+            uint32_t width,
+            uint32_t height,
+            int32_t x,
+            int32_t z,
+            float direction_x,
+            float direction_z,
+            float cell_size,
+            uint32_t steps
+        )
+        {
+            const float center = heights[static_cast<size_t>(z) * width + x];
+            float best         = 0.0f;
+            float distance     = 1.0f;
+
+            for (uint32_t step = 0; step < steps; step++)
+            {
+                const int32_t sx = x + static_cast<int32_t>(direction_x * distance);
+                const int32_t sz = z + static_cast<int32_t>(direction_z * distance);
+                if (sx < 0 || sz < 0 || sx >= static_cast<int32_t>(width) || sz >= static_cast<int32_t>(height))
+                {
+                    break;
+                }
+
+                const float rise = heights[static_cast<size_t>(sz) * width + sx] - center;
+                if (rise > 0.0f)
+                {
+                    best = max(best, rise / (distance * cell_size));
+                }
+
+                distance *= 1.42f;
+            }
+
+            return atanf(best);
+        }
+    }
+
+    void TerrainSystem::ComputeAnalysisMaps(
+        TerrainAnalysisMaps& maps_out,
+        const vector<Vector3>& positions,
+        uint32_t width,
+        uint32_t height,
+        float level_sea,
+        const TerrainErosionMaps* erosion,
+        uint32_t resolution_max
+    )
+    {
+        maps_out = TerrainAnalysisMaps();
+
+        const size_t dense_count = static_cast<size_t>(width) * height;
+        if (positions.size() < dense_count || width < 16 || height < 16)
+        {
+            return;
+        }
+
+        // the analysis grid is capped, curvature at four meters per texel is still curvature and
+        // the horizon marches are what dominate the bake time
+        const uint32_t analysis_width  = min(width,  max(resolution_max, 64u));
+        const uint32_t analysis_height = min(height, max(resolution_max, 64u));
+        const uint32_t cell_count      = analysis_width * analysis_height;
+
+        maps_out.width  = analysis_width;
+        maps_out.height = analysis_height;
+
+        // horizontal spacing on the dense grid, scaled up to the analysis grid
+        float dense_cell = fabsf(positions[1].x - positions[0].x);
+        if (dense_cell < 1e-4f)
+        {
+            dense_cell = 1.0f;
+        }
+        const float cell_size = dense_cell * (static_cast<float>(width) / static_cast<float>(analysis_width));
+
+        vector<float> dense_heights(dense_count);
+        {
+            auto extract = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    dense_heights[i] = positions[i].y;
+                }
+            };
+            ThreadPool::ParallelLoop(extract, static_cast<uint32_t>(dense_count));
+        }
+
+        vector<float> heights;
+        resample_grid(heights, analysis_width, analysis_height, dense_heights, width, height);
+
+        // normalized altitude, kept separate from the rules so the shader can use it for macro tints
+        {
+            maps_out.height_norm = heights;
+            autolevel(maps_out.height_norm, 0.001f, 0.999f);
+        }
+
+        // multi scale curvature, laplacian at three octaves so both the gully and the basin register
+        {
+            maps_out.curvature.resize(cell_count);
+
+            const int32_t radii[3]  = { 1, 4, 16 };
+            const float   scales[3] = { 0.5f, 0.32f, 0.18f };
+
+            auto compute = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    const int32_t x = static_cast<int32_t>(index % analysis_width);
+                    const int32_t z = static_cast<int32_t>(index / analysis_width);
+                    const float center = heights[index];
+
+                    float total = 0.0f;
+                    for (uint32_t octave = 0; octave < 3; octave++)
+                    {
+                        const int32_t r = radii[octave];
+                        const float laplacian =
+                            sample_grid(heights, analysis_width, analysis_height, x - r, z) +
+                            sample_grid(heights, analysis_width, analysis_height, x + r, z) +
+                            sample_grid(heights, analysis_width, analysis_height, x, z - r) +
+                            sample_grid(heights, analysis_width, analysis_height, x, z + r) -
+                            4.0f * center;
+
+                        // divide by the octave span so the octaves are comparable before weighting
+                        total += scales[octave] * laplacian / (static_cast<float>(r) * cell_size);
+                    }
+
+                    maps_out.curvature[index] = total;
+                }
+            };
+            ThreadPool::ParallelLoop(compute, cell_count);
+            autolevel_signed(maps_out.curvature);
+        }
+
+        // flow accumulation into a topographic wetness index
+        {
+            vector<float> drained = heights;
+            fill_sinks(drained, analysis_width, analysis_height, cell_size * 1e-4f);
+
+            vector<float> accumulation;
+            accumulate_flow(accumulation, drained, analysis_width, analysis_height, cell_size);
+
+            maps_out.flow.resize(cell_count);
+            auto to_wetness = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    const int32_t x = static_cast<int32_t>(index % analysis_width);
+                    const int32_t z = static_cast<int32_t>(index / analysis_width);
+
+                    const float dx = (sample_grid(drained, analysis_width, analysis_height, x + 1, z) -
+                                      sample_grid(drained, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
+                    const float dz = (sample_grid(drained, analysis_width, analysis_height, x, z + 1) -
+                                      sample_grid(drained, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
+
+                    const float tan_beta = max(sqrtf(dx * dx + dz * dz), 0.001f);
+                    const float alpha    = accumulation[index] * cell_size;
+
+                    maps_out.flow[index] = logf(alpha / tan_beta);
+                }
+            };
+            ThreadPool::ParallelLoop(to_wetness, cell_count);
+            autolevel(maps_out.flow, 0.05f, 0.995f);
+        }
+
+        // sky occlusion and sun path insolation share the horizon marches
+        {
+            maps_out.occlusion.resize(cell_count);
+            maps_out.insolation.resize(cell_count);
+
+            const uint32_t direction_count = 8;
+            const uint32_t march_steps     = 24;
+
+            float direction_x[direction_count];
+            float direction_z[direction_count];
+            for (uint32_t d = 0; d < direction_count; d++)
+            {
+                const float angle = (static_cast<float>(d) / static_cast<float>(direction_count)) * pi * 2.0f;
+                direction_x[d]    = cosf(angle);
+                direction_z[d]    = sinf(angle);
+            }
+
+            // the sun traces an arc from east to west, sampling it and integrating the visible
+            // fraction is what makes north faces read damp and south faces read parched
+            const uint32_t sun_samples = 9;
+
+            auto compute = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    const int32_t x = static_cast<int32_t>(index % analysis_width);
+                    const int32_t z = static_cast<int32_t>(index / analysis_width);
+
+                    float horizons[direction_count];
+                    float open_total = 0.0f;
+                    for (uint32_t d = 0; d < direction_count; d++)
+                    {
+                        horizons[d] = horizon_angle(
+                            heights, analysis_width, analysis_height,
+                            x, z, direction_x[d], direction_z[d], cell_size, march_steps
+                        );
+                        open_total += cosf(horizons[d]) * cosf(horizons[d]);
+                    }
+                    maps_out.occlusion[index] = open_total / static_cast<float>(direction_count);
+
+                    // surface normal from the local gradient, needed for the incidence term
+                    const float dx = (sample_grid(heights, analysis_width, analysis_height, x + 1, z) -
+                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
+                    const float dz = (sample_grid(heights, analysis_width, analysis_height, x, z + 1) -
+                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
+                    const float normal_length = sqrtf(dx * dx + 1.0f + dz * dz);
+                    const float normal_x      = -dx / normal_length;
+                    const float normal_y      = 1.0f / normal_length;
+                    const float normal_z      = -dz / normal_length;
+
+                    float energy = 0.0f;
+                    float energy_max = 0.0f;
+                    for (uint32_t s = 0; s < sun_samples; s++)
+                    {
+                        // east to west arc peaking due south, northern hemisphere summer
+                        const float t         = static_cast<float>(s) / static_cast<float>(sun_samples - 1);
+                        const float azimuth   = -pi * 0.5f + t * pi;
+                        const float elevation = sinf(t * pi) * (pi * 0.42f) + 0.05f;
+
+                        const float sun_x = cosf(elevation) * sinf(azimuth);
+                        const float sun_y = sinf(elevation);
+                        const float sun_z = cosf(elevation) * cosf(azimuth);
+
+                        const float incidence = max(normal_x * sun_x + normal_y * sun_y + normal_z * sun_z, 0.0f);
+                        energy_max += sun_y;
+                        if (incidence <= 0.0f)
+                        {
+                            continue;
+                        }
+
+                        // interpolate the horizon between the two marched directions bracketing the azimuth
+                        float compass = atan2f(sun_z, sun_x) / (pi * 2.0f);
+                        compass       = compass - floorf(compass);
+                        const float slot     = compass * static_cast<float>(direction_count);
+                        const uint32_t slot0 = static_cast<uint32_t>(slot) % direction_count;
+                        const uint32_t slot1 = (slot0 + 1) % direction_count;
+                        const float blend    = slot - floorf(slot);
+                        const float horizon  = horizons[slot0] * (1.0f - blend) + horizons[slot1] * blend;
+
+                        if (elevation > horizon)
+                        {
+                            energy += incidence * sun_y;
+                        }
+                    }
+
+                    maps_out.insolation[index] = energy / max(energy_max, 1e-6f);
+                }
+            };
+            ThreadPool::ParallelLoop(compute, cell_count);
+            autolevel(maps_out.occlusion, 0.02f, 0.98f);
+            autolevel(maps_out.insolation, 0.02f, 0.98f);
+        }
+
+        // talus, ground sitting just under the angle of repose is where scree comes to rest
+        // a cliff face is too steep to hold it and flat ground never received it
+        {
+            maps_out.talus.resize(cell_count);
+
+            const float repose      = 38.0f * deg_to_rad;
+            const float band_width  = 14.0f * deg_to_rad;
+
+            auto compute = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    const int32_t x = static_cast<int32_t>(index % analysis_width);
+                    const int32_t z = static_cast<int32_t>(index / analysis_width);
+
+                    const float dx = (sample_grid(heights, analysis_width, analysis_height, x + 1, z) -
+                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
+                    const float dz = (sample_grid(heights, analysis_width, analysis_height, x, z + 1) -
+                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
+                    const float slope = atanf(sqrtf(dx * dx + dz * dz));
+
+                    // gaussian centred on the repose angle
+                    const float offset = (slope - repose) / band_width;
+                    float in_band      = expf(-offset * offset);
+
+                    // scree needs a cliff above it to have fallen from, look uphill for one
+                    float steepest_above = 0.0f;
+                    for (int32_t r = 2; r <= 12; r += 2)
+                    {
+                        const float up_x = sample_grid(heights, analysis_width, analysis_height, x + r, z) - heights[index];
+                        const float up_z = sample_grid(heights, analysis_width, analysis_height, x, z + r) - heights[index];
+                        const float dn_x = sample_grid(heights, analysis_width, analysis_height, x - r, z) - heights[index];
+                        const float dn_z = sample_grid(heights, analysis_width, analysis_height, x, z - r) - heights[index];
+                        const float rise = max(max(up_x, up_z), max(dn_x, dn_z));
+                        steepest_above   = max(steepest_above, atanf(rise / (static_cast<float>(r) * cell_size)));
+                    }
+
+                    const float cliff_above = clamp((steepest_above - repose) / (0.5f - repose + 0.5f), 0.0f, 1.0f);
+                    maps_out.talus[index]   = in_band * (0.35f + 0.65f * cliff_above);
+                }
+            };
+            ThreadPool::ParallelLoop(compute, cell_count);
+            autolevel(maps_out.talus, 0.02f, 0.98f);
+        }
+
+        // erosion outputs, resampled onto the analysis grid, or a slope derived stand in when the
+        // terrain was loaded from a cache written before erosion export existed
+        if (erosion && erosion->IsValid(dense_count))
+        {
+            resample_grid(maps_out.wear,       analysis_width, analysis_height, erosion->wear,       width, height);
+            resample_grid(maps_out.deposition, analysis_width, analysis_height, erosion->deposition, width, height);
+            autolevel(maps_out.wear,       0.5f, 0.99f);
+            autolevel(maps_out.deposition, 0.5f, 0.99f);
+        }
+        else
+        {
+            maps_out.wear.resize(cell_count);
+            maps_out.deposition.resize(cell_count);
+
+            auto approximate = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    // convex and steep reads as scoured, concave and flat reads as filled
+                    const float curvature = maps_out.curvature[index] * 2.0f - 1.0f;
+                    const float flow      = maps_out.flow[index];
+                    maps_out.wear[index]       = clamp(-curvature * 0.5f + flow * 0.5f, 0.0f, 1.0f);
+                    maps_out.deposition[index] = clamp(curvature * 0.7f + (1.0f - flow) * 0.3f, 0.0f, 1.0f);
+                }
+            };
+            ThreadPool::ParallelLoop(approximate, cell_count);
+        }
+
+        // everything below the water line is sediment by definition, no erosion signal survives there
+        {
+            auto drown = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    if (heights[index] < level_sea)
+                    {
+                        maps_out.deposition[index] = 1.0f;
+                        maps_out.wear[index]       = 0.0f;
+                    }
+                }
+            };
+            ThreadPool::ParallelLoop(drown, cell_count);
+        }
     }
 }

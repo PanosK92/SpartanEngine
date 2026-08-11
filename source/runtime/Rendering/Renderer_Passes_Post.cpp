@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "../World/Entity.h"
+#include "../World/World.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/ParticleSystem.h"
 #include "../RHI/RHI_CommandList.h"
@@ -787,9 +788,10 @@ namespace spartan
 
     void Renderer::Pass_Particles(RHI_CommandList* cmd_list)
     {
-        // gather every active emitter in the world, all of them share one ring buffer
+        // gather every active emitter, cached at world resolve
         vector<ParticleSystem*> emitters;
-        for (Entity* entity : World::GetEntities())
+        emitters.reserve(World::GetEntitiesWithParticles().size());
+        for (Entity* entity : World::GetEntitiesWithParticles())
         {
             if (!entity || !entity->GetActive())
             {

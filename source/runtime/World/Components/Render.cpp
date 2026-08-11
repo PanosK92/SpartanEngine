@@ -325,7 +325,72 @@ namespace spartan
 
         UpdateAabb();
         UpdateFrustumAndDistanceCulling();
-        UpdateLodIndices();
+
+        // lod only matters for visible geometry, off-screen props skip the coverage math
+        if (m_is_visible)
+        {
+            UpdateLodIndices();
+        }
+    }
+
+    void Render::UpdateFrustumAndDistanceCulling()
+    {
+        Camera* camera = World::GetCamera();
+        if (!camera)
+        {
+            m_distance_squared = 0.0f;
+            m_is_visible       = true;
+            return;
+        }
+
+        const BoundingBox& bounding_box = GetBoundingBox();
+        const Vector3 center  = bounding_box.GetCenter();
+        const Vector3 extents = bounding_box.GetExtents();
+
+        // a non finite bbox would crash the frustum culler assert, treat it as invisible
+        if (center.IsNaN() || extents.IsNaN())
+        {
+            SP_LOG_WARNING("non finite bbox on '%s', marking invisible", GetEntity() ? GetEntity()->GetObjectName().c_str() : "?");
+            m_is_visible       = false;
+            m_distance_squared = 0.0f;
+            return;
+        }
+
+        const Vector3 camera_position = camera->GetEntity()->GetPosition();
+        const float max_distance = m_max_distance_render;
+        const float max_distance_sq = max_distance * max_distance;
+
+        // distance-culled static props stay culled until the camera moves a few meters
+        if (!m_is_visible && m_distance_squared > max_distance_sq)
+        {
+            const float cam_move_sq = Vector3::DistanceSquared(camera_position, m_cull_camera_position);
+            if (cam_move_sq < 4.0f)
+            {
+                return;
+            }
+        }
+        m_cull_camera_position = camera_position;
+
+        // cheap reject before the 6-plane frustum test, center farther than max range plus radius cannot be visible
+        const float radius = max(extents.x, max(extents.y, extents.z)) * 1.7320508f;
+        const float reject_distance = max_distance + radius;
+        const float center_distance_sq = Vector3::DistanceSquared(camera_position, center);
+        if (center_distance_sq > reject_distance * reject_distance)
+        {
+            m_is_visible       = false;
+            m_distance_squared = center_distance_sq;
+            return;
+        }
+
+        if (!camera->IsInViewFrustum(bounding_box))
+        {
+            m_is_visible = false;
+            m_distance_squared = center_distance_sq;
+            return;
+        }
+
+        m_distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+        m_is_visible       = m_distance_squared <= max_distance_sq;
     }
 
     void Render::RegisterForScripting(sol::state_view State)
@@ -866,43 +931,6 @@ namespace spartan
             }
             m_transform_previous = transform;
             m_bounding_box_dirty = false;
-        }
-    }
-
-    void Render::UpdateFrustumAndDistanceCulling()
-    {
-        if (Camera* camera = World::GetCamera())
-        {
-            Vector3 camera_position = camera->GetEntity()->GetPosition();
-
-            const BoundingBox& bounding_box = GetBoundingBox();
-
-            // a non finite bbox would crash the frustum culler assert, treat it as invisible
-            if (bounding_box.GetCenter().IsNaN() || bounding_box.GetExtents().IsNaN())
-            {
-                SP_LOG_WARNING("non finite bbox on '%s', marking invisible", GetEntity() ? GetEntity()->GetObjectName().c_str() : "?");
-                m_is_visible       = false;
-                m_distance_squared = 0.0f;
-                return;
-            }
-
-            // first, check if the bounding box is in the frustum
-            if (camera->IsInViewFrustum(bounding_box))
-            {
-                // only if in frustum, calculate distance
-                m_distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                m_is_visible       = m_distance_squared <= m_max_distance_render * m_max_distance_render;
-            }
-            else
-            {
-                // outside frustum, no need for distance check
-                m_is_visible = false;
-            }
-        }
-        else
-        {
-            m_distance_squared = 0.0f;
-            m_is_visible       = true;
         }
     }
 

@@ -899,8 +899,21 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float dist      = RayTCurrent();
     float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
 
+    // terrain, same layer weights as the raster path, one layer and no hex tiling because a
+    // secondary bounce cannot resolve the detail, without this gi lit the world as if it were grass
+    bool terrain_shaded = mat.is_terrain() && mat.terrain_layer_count > 0;
+    TerrainSurface terrain = (TerrainSurface)0;
+    if (terrain_shaded)
+    {
+        terrain = terrain_shade_lod(mat, hit_position, normal_world, texcoord, mip_level);
+    }
+
     float3 albedo = mat.color.rgb;
-    if (mat.has_texture_albedo())
+    if (terrain_shaded)
+    {
+        albedo = terrain.albedo;
+    }
+    else if (mat.has_texture_albedo())
     {
         uint albedo_texture_index = material_index + material_texture_index_albedo;
         float4 sampled = material_textures[albedo_texture_index].SampleLevel(
@@ -914,7 +927,11 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     albedo = saturate(albedo);
 
     float roughness = mat.roughness;
-    if (mat.has_texture_roughness())
+    if (terrain_shaded)
+    {
+        roughness = terrain.roughness;
+    }
+    else if (mat.has_texture_roughness())
     {
         uint roughness_texture_index = material_index + material_texture_index_roughness;
         roughness *= material_textures[roughness_texture_index].SampleLevel(
@@ -923,7 +940,11 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     roughness = max(roughness, 0.04f);
 
     float metallic = mat.metalness;
-    if (mat.has_texture_metalness())
+    if (terrain_shaded)
+    {
+        metallic = terrain.metalness;
+    }
+    else if (mat.has_texture_metalness())
     {
         uint metalness_texture_index = material_index + material_texture_index_metalness;
         metallic *= material_textures[metalness_texture_index].SampleLevel(
@@ -951,7 +972,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
         build_orthonormal_basis_fast(geometric_normal, tangent_world, fallback_bitangent);
     }
 
-    if (mat.has_texture_normal())
+    if (!terrain_shaded && mat.has_texture_normal())
     {
         uint normal_texture_index = material_index + material_texture_index_normal;
         float3 normal_sample = material_textures[normal_texture_index].SampleLevel(

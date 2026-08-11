@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "pch.h"
+#include <unordered_set>
 #include "World.h"
 #include "Entity.h"
 #include "Prefab.h"
@@ -78,6 +79,11 @@ namespace spartan
         vector<Entity*> entities;
         vector<Entity*> entities_lights;       // entities subset that contains only lights
         vector<Entity*> entities_with_render;  // entities subset that contains only active render components
+        vector<Entity*> entities_with_ragdoll; // active ragdolls, late-ticked after scripts
+        vector<Entity*> entities_with_pretick; // physics, script, or ragdoll, only these need Entity::PreTick
+        vector<Entity*> entities_with_logic;   // active non-render entities that still have components to tick
+        vector<Entity*> entities_with_icon;    // active entities that show an editor gizmo icon
+        vector<Entity*> entities_with_particles; // active particle emitters
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
@@ -229,24 +235,18 @@ namespace spartan
 
         size_t compute_material_hash(Material* material)
         {
-            size_t hash = 17; // FNV-1a seed
-
-            // include resource state so async preparation completion triggers an update
+            // revision covers property/texture pointer edits, resource states catch async prep
+            size_t hash = 17;
+            hash = (hash * 31) ^ static_cast<size_t>(material->GetRevision());
             hash = (hash * 31) ^ static_cast<size_t>(material->GetResourceState());
 
             for (const auto* texture : material->GetTextures())
             {
                 hash = (hash * 31) ^ reinterpret_cast<size_t>(texture);
-
-                // include texture's resource state so async texture preparation triggers an update
                 if (texture)
                 {
                     hash = (hash * 31) ^ static_cast<size_t>(texture->GetResourceState());
                 }
-            }
-            for (const float prop : material->GetProperties())
-            {
-                hash = (hash * 31) ^ std::hash<float>{}(prop);
             }
             return hash;
         }
@@ -1303,6 +1303,11 @@ namespace spartan
             entities.clear();
             entities_lights.clear();
             entities_with_render.clear();
+            entities_with_ragdoll.clear();
+            entities_with_pretick.clear();
+            entities_with_logic.clear();
+            entities_with_icon.clear();
+            entities_with_particles.clear();
             // also clear any entities the loader had queued, otherwise we'd leak partially-built objects when a load is aborted
             for (Entity* entity : entities_pending)
             {
@@ -1560,7 +1565,7 @@ namespace spartan
         // during boot keep rendering, but skip sim ticks and the per entity change scan
         if (play_boot != play_boot_phase::starting)
         {
-            for (Entity* entity : entities)
+            for (Entity* entity : entities_with_pretick)
             {
                 if (entity->GetActive())
                 {
@@ -1568,7 +1573,49 @@ namespace spartan
                 }
             }
 
-            for (Entity* entity : entities)
+            // renderables cover most of the scene, cull/lod in parallel then finish other components
+            const uint32_t render_count = static_cast<uint32_t>(entities_with_render.size());
+            if (render_count > 0)
+            {
+                if (render_count >= 64)
+                {
+                    ThreadPool::ParallelLoop([&](uint32_t start, uint32_t end)
+                    {
+                        for (uint32_t i = start; i < end; i++)
+                        {
+                            Entity* entity = entities_with_render[i];
+                            if (!entity->GetActive())
+                            {
+                                continue;
+                            }
+
+                            if (Render* render = entity->GetComponent<Render>())
+                            {
+                                render->Tick();
+                            }
+                        }
+                    }, render_count);
+
+                    for (Entity* entity : entities_with_render)
+                    {
+                        if (entity->GetActive())
+                        {
+                            entity->TickAfterParallelRender();
+                        }
+                    }
+                }
+                else
+                {
+                    for (Entity* entity : entities_with_render)
+                    {
+                        if (entity->GetActive())
+                        {
+                            entity->Tick();
+                        }
+                    }
+                }
+            }
+            for (Entity* entity : entities_with_logic)
             {
                 if (entity->GetActive())
                 {
@@ -1577,82 +1624,87 @@ namespace spartan
             }
 
             // ragdoll hit capsules after scripts/pedestrians moved the bodies
-            for (Entity* entity : entities)
-            {
-                if (!entity->GetActive())
-                {
-                    continue;
-                }
-
-                if (Ragdoll* ragdoll = entity->GetComponent<Ragdoll>())
-                {
-                    ragdoll->LateTick();
-                }
-            }
-
-            // check for entity changes
-            for (Entity* entity : entities)
+            for (Entity* entity : entities_with_ragdoll)
             {
                 if (entity->GetActive())
                 {
+                    if (Ragdoll* ragdoll = entity->GetComponent<Ragdoll>())
+                    {
+                        ragdoll->LateTick();
+                    }
+                }
+            }
+
+            // only entities marked dirty need the change scan, empty most frames
+            if (!entity_states.empty())
+            {
+                for (Entity* entity : entities)
+                {
+                    if (!entity->GetActive())
+                    {
+                        continue;
+                    }
+
                     uint64_t id = entity->GetObjectId();
                     auto it = entity_states.find(id);
-                    if (it != entity_states.end())
+                    if (it == entity_states.end())
                     {
-                        uint32_t& state = it->second;
-                        uint32_t new_state = state;
-
-                        // active state
-                        bool was_active = (state & static_cast<uint32_t>(EntityChange::Active)) != 0;
-                        if (entity->GetActive() != was_active)
-                        {
-                            new_state |= static_cast<uint32_t>(EntityChange::Active);
-                            resolve = true;
-                        }
-
-                        // component count
-                        uint8_t prev_component_count = (state >> 8) & 0xFF;
-                        uint8_t curr_component_count = static_cast<uint8_t>(min(entity->GetComponentCount(), 255u));
-                        if (curr_component_count != prev_component_count)
-                        {
-                            new_state = (new_state & ~0xFF00) | (curr_component_count << 8);
-                            new_state |= static_cast<uint32_t>(EntityChange::Components);
-                            resolve = true;
-                        }
-
-                        // cull mode
-                        uint8_t prev_cull = (state >> 16) & 0xFF;
-                        uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
-                        if (Render* render = entity->GetComponent<Render>())
-                        {
-                            if (Material* material = render->GetMaterial())
-                            {
-                                curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
-                            }
-                        }
-                        if (curr_cull != prev_cull)
-                        {
-                            new_state = (new_state & ~0xFF0000) | (curr_cull << 16);
-                            new_state |= static_cast<uint32_t>(EntityChange::CullMode);
-                            resolve = true;
-                        }
-
-                        // light type
-                        uint8_t prev_light_type = (state >> 24) & 0xFF;
-                        uint8_t curr_light_type = static_cast<uint8_t>(LightType::Max);
-                        if (Light* light_comp = entity->GetComponent<Light>())
-                        {
-                            curr_light_type = static_cast<uint8_t>(light_comp->GetLightType());
-                        }
-                        if (curr_light_type != prev_light_type)
-                        {
-                            new_state = (new_state & ~0xFF000000) | (curr_light_type << 24);
-                            new_state |= static_cast<uint32_t>(EntityChange::LightType);
-                            resolve = true;
-                        }
-
-                        state = new_state;
+                        continue;
                     }
+
+                    uint32_t& state = it->second;
+                    uint32_t new_state = state;
+
+                    // active state
+                    bool was_active = (state & static_cast<uint32_t>(EntityChange::Active)) != 0;
+                    if (entity->GetActive() != was_active)
+                    {
+                        new_state |= static_cast<uint32_t>(EntityChange::Active);
+                        resolve = true;
+                    }
+
+                    // component count
+                    uint8_t prev_component_count = (state >> 8) & 0xFF;
+                    uint8_t curr_component_count = static_cast<uint8_t>(min(entity->GetComponentCount(), 255u));
+                    if (curr_component_count != prev_component_count)
+                    {
+                        new_state = (new_state & ~0xFF00) | (curr_component_count << 8);
+                        new_state |= static_cast<uint32_t>(EntityChange::Components);
+                        resolve = true;
+                    }
+
+                    // cull mode
+                    uint8_t prev_cull = (state >> 16) & 0xFF;
+                    uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
+                    if (Render* render = entity->GetComponent<Render>())
+                    {
+                        if (Material* material = render->GetMaterial())
+                        {
+                            curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
+                        }
+                    }
+                    if (curr_cull != prev_cull)
+                    {
+                        new_state = (new_state & ~0xFF0000) | (curr_cull << 16);
+                        new_state |= static_cast<uint32_t>(EntityChange::CullMode);
+                        resolve = true;
+                    }
+
+                    // light type
+                    uint8_t prev_light_type = (state >> 24) & 0xFF;
+                    uint8_t curr_light_type = static_cast<uint8_t>(LightType::Max);
+                    if (Light* light_comp = entity->GetComponent<Light>())
+                    {
+                        curr_light_type = static_cast<uint8_t>(light_comp->GetLightType());
+                    }
+                    if (curr_light_type != prev_light_type)
+                    {
+                        new_state = (new_state & ~0xFF000000) | (curr_light_type << 24);
+                        new_state |= static_cast<uint32_t>(EntityChange::LightType);
+                        resolve = true;
+                    }
+
+                    state = new_state;
                 }
             }
         }
@@ -1669,6 +1721,11 @@ namespace spartan
                 audio_source_count = 0;
                 entities_lights.clear();
                 entities_with_render.clear();
+                entities_with_ragdoll.clear();
+                entities_with_pretick.clear();
+                entities_with_logic.clear();
+                entities_with_icon.clear();
+                entities_with_particles.clear();
                 for (Entity* entity : entities)
                 {
                     if (entity->GetActive())
@@ -1684,14 +1741,76 @@ namespace spartan
                             entities_lights.push_back(entity);
                         }
 
-                        if (entity->GetComponent<Render>())
+                        const bool has_render = entity->GetComponent<Render>() != nullptr;
+                        if (has_render)
                         {
                             entities_with_render.push_back(entity);
+                        }
+                        else if (entity->GetComponentCount() > 0)
+                        {
+                            // lights, scripts, audio, etc without a mesh still need Entity::Tick
+                            entities_with_logic.push_back(entity);
+                        }
+
+                        if (entity->GetComponent<Ragdoll>())
+                        {
+                            entities_with_ragdoll.push_back(entity);
+                        }
+
+                        if (
+                            entity->GetComponent<Physics>() ||
+                            entity->GetComponent<Script>() ||
+                            entity->GetComponent<Ragdoll>()
+                        )
+                        {
+                            entities_with_pretick.push_back(entity);
                         }
 
                         if (entity->GetComponent<AudioSource>())
                         {
                             audio_source_count++;
+                        }
+
+                        if (entity->GetComponent<ParticleSystem>())
+                        {
+                            entities_with_particles.push_back(entity);
+                        }
+
+                        // editor icons, skip empty and render-only props
+                        const uint32_t component_count = entity->GetComponentCount();
+                        if (component_count > 0 && !(component_count == 1 && has_render))
+                        {
+                            static const ComponentType icon_types[] =
+                            {
+                                ComponentType::Light,
+                                ComponentType::Camera,
+                                ComponentType::AudioSource,
+                                ComponentType::ParticleSystem,
+                                ComponentType::Volume,
+                                ComponentType::SpawnPoint,
+                                ComponentType::Terrain,
+                                ComponentType::Water,
+                                ComponentType::Physics,
+                                ComponentType::Spline,
+                                ComponentType::SplineFollower,
+                                ComponentType::Traffic,
+                                ComponentType::Pedestrians,
+                                ComponentType::Animator,
+                                ComponentType::Ragdoll,
+                                ComponentType::SkidMarks,
+                                ComponentType::CarReset,
+                                ComponentType::Text3D,
+                                ComponentType::Script,
+                            };
+
+                            for (ComponentType type : icon_types)
+                            {
+                                if (entity->GetComponentByType(type))
+                                {
+                                    entities_with_icon.push_back(entity);
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
@@ -1867,6 +1986,16 @@ namespace spartan
                     return true;
                 }
                 return false;
+            };
+
+            // caches are written by the engine, not by an entity, so nothing in the world points at
+            // them and the prune below would wipe them on every save, forcing a full regeneration
+            auto is_engine_cache = [](const string& path) -> bool
+            {
+                const string name = FileSystem::GetFileNameFromFilePath(path);
+                return
+                    name.find("terrain_cache")      == 0 ||
+                    name.find("terrain_mesh_cache") == 0;
             };
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResourcesSnapshot();
@@ -2143,7 +2272,7 @@ namespace spartan
             last_resource_cleanup_failures.clear();
             for (const string& existing_file : FileSystem::GetFilesInDirectory(directory))
             {
-                if (is_mcp_owned(existing_file))
+                if (is_mcp_owned(existing_file) || is_engine_cache(existing_file))
                 {
                     continue;
                 }
@@ -2366,6 +2495,16 @@ namespace spartan
                         if (
                             file_name.rfind("car_", 0) == 0 &&
                             file_name.find("_packed_slot") != string::npos
+                        )
+                        {
+                            continue;
+                        }
+
+                        // the terrain reads its own caches while it generates, loading them here as
+                        // ordinary resources would build the whole terrain mesh a second time
+                        if (
+                            file_name.rfind("terrain_cache", 0)      == 0 ||
+                            file_name.rfind("terrain_mesh_cache", 0) == 0
                         )
                         {
                             continue;
@@ -2753,6 +2892,11 @@ namespace spartan
             }
 
             entities_with_render.erase(remove(entities_with_render.begin(), entities_with_render.end(), entity), entities_with_render.end());
+            entities_with_ragdoll.erase(remove(entities_with_ragdoll.begin(), entities_with_ragdoll.end(), entity), entities_with_ragdoll.end());
+            entities_with_pretick.erase(remove(entities_with_pretick.begin(), entities_with_pretick.end(), entity), entities_with_pretick.end());
+            entities_with_logic.erase(remove(entities_with_logic.begin(), entities_with_logic.end(), entity), entities_with_logic.end());
+            entities_with_icon.erase(remove(entities_with_icon.begin(), entities_with_icon.end(), entity), entities_with_icon.end());
+            entities_with_particles.erase(remove(entities_with_particles.begin(), entities_with_particles.end(), entity), entities_with_particles.end());
             entities_lights.erase(remove(entities_lights.begin(), entities_lights.end(), entity), entities_lights.end());
 
             // also remove from the pending additions list in case it was just created and not yet drained
@@ -2916,6 +3060,16 @@ namespace spartan
         return entities_with_render;
     }
 
+    const vector<Entity*>& World::GetEntitiesWithIcon()
+    {
+        return entities_with_icon;
+    }
+
+    const vector<Entity*>& World::GetEntitiesWithParticles()
+    {
+        return entities_with_particles;
+    }
+
     bool World::IsPlayBooting()
     {
         return play_boot == play_boot_phase::starting;
@@ -2973,29 +3127,62 @@ namespace spartan
     {
         lock_guard<mutex> lock(entity_access_mutex);
 
-        bool changed = false;
-        for (Entity* entity : entities)
+        static uint32_t last_global_revision = 0;
+        static uint64_t resource_poll_frame = 0;
+        const uint32_t global_revision = Material::GetGlobalRevision();
+        const bool props_changed = global_revision != last_global_revision;
+        last_global_revision = global_revision;
+
+        // property/texture pointer edits are covered by the global revision, async resource
+        // states still need a periodic poll so bindless updates when gpu prep finishes
+        resource_poll_frame++;
+        const bool poll_resources = (resource_poll_frame % 8) == 0;
+        const bool hashes_empty = material_state_hashes.empty() && !entities_with_render.empty();
+        if (!props_changed && !poll_resources && !hashes_empty)
         {
-            if (Render* render = entity->GetComponent<Render>())
+            return false;
+        }
+
+        bool changed = false;
+        unordered_set<uint64_t> seen;
+        seen.reserve(entities_with_render.size());
+
+        for (Entity* entity : entities_with_render)
+        {
+            if (!entity)
             {
-                if (Material* material = render->GetMaterial())
-                {
-                    const uint64_t id   = material->GetObjectId();
-                    size_t current_hash = compute_material_hash(material);
-                    auto it = material_state_hashes.find(id);
-                    if (it == material_state_hashes.end())
-                    {
-                        // new material
-                        material_state_hashes[id] = current_hash;
-                        changed = true;
-                    }
-                    else if (it->second != current_hash)
-                    {
-                        // material changed
-                        it->second = current_hash;
-                        changed = true;
-                    }
-                }
+                continue;
+            }
+
+            Render* render = entity->GetComponent<Render>();
+            if (!render)
+            {
+                continue;
+            }
+
+            Material* material = render->GetMaterial();
+            if (!material)
+            {
+                continue;
+            }
+
+            const uint64_t id = material->GetObjectId();
+            if (!seen.insert(id).second)
+            {
+                continue;
+            }
+
+            size_t current_hash = compute_material_hash(material);
+            auto it = material_state_hashes.find(id);
+            if (it == material_state_hashes.end())
+            {
+                material_state_hashes[id] = current_hash;
+                changed = true;
+            }
+            else if (it->second != current_hash)
+            {
+                it->second = current_hash;
+                changed = true;
             }
         }
 

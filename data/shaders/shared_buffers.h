@@ -231,9 +231,44 @@ struct MaterialParameters
     SHARED_FLOAT absorption SHARED_DEFAULT(0.0f); // beer lambert dye density for glass, independent of alpha
     SHARED_FLOAT thickness  SHARED_DEFAULT(0.0f); // shell thickness in meters for glass parallax and optical path
 
+    // terrain, two disjoint roles sharing one block
+    // on a terrain layer material these carry the procedural rule that decides where the layer appears
+    // on the terrain surface material they carry the layer table location and the analysis map mapping
+    // every group below is 16 bytes so the structured buffer layout stays aligned on both apis
+    SHARED_FLOAT2 terrain_slope_range  SHARED_DEFAULT(spartan::math::Vector2::Zero); // radians, weight ramps in across the range
+    SHARED_FLOAT2 terrain_height_range SHARED_DEFAULT(spartan::math::Vector2::Zero); // meters
+
+    SHARED_FLOAT terrain_curvature_influence  SHARED_DEFAULT(0.0f); // positive favours concave, negative favours convex
+    SHARED_FLOAT terrain_flow_influence       SHARED_DEFAULT(0.0f); // positive favours water channels
+    SHARED_FLOAT terrain_occlusion_influence  SHARED_DEFAULT(0.0f); // positive favours crevices and valley floors
+    SHARED_FLOAT terrain_insolation_influence SHARED_DEFAULT(0.0f); // positive favours sun facing slopes
+
+    SHARED_FLOAT terrain_wear_influence       SHARED_DEFAULT(0.0f); // positive favours eroded bedrock
+    SHARED_FLOAT terrain_deposition_influence SHARED_DEFAULT(0.0f); // positive favours accumulated sediment
+    SHARED_FLOAT terrain_talus_influence      SHARED_DEFAULT(0.0f); // positive favours scree below cliffs
+    SHARED_FLOAT terrain_weight_bias          SHARED_DEFAULT(1.0f); // overall priority against the other layers
+
+    SHARED_FLOAT terrain_tiling_scale   SHARED_DEFAULT(1.0f); // multiplies the terrain uv, per layer texel density
+    SHARED_FLOAT terrain_blend_contrast SHARED_DEFAULT(0.2f); // height blend band width, smaller is sharper
+    SHARED_FLOAT terrain_porosity       SHARED_DEFAULT(0.5f); // how much the layer darkens when wet
+    SHARED_FLOAT terrain_macro_strength SHARED_DEFAULT(1.0f); // large scale colour breakup amount
+
+    SHARED_FLOAT4 terrain_world_mapping SHARED_DEFAULT(spartan::math::Vector4::Zero); // xy = world min xz, zw = 1 / world size xz
+
+    SHARED_FLOAT terrain_sea_level   SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT terrain_snow_level  SHARED_DEFAULT(0.0f);
+    SHARED_UINT  terrain_layer_base  SHARED_DEFAULT(0); // bindless material index of layer 0
+    SHARED_UINT  terrain_layer_count SHARED_DEFAULT(0);
+
+    SHARED_UINT  terrain_layer_stride SHARED_DEFAULT(0); // bindless indices between consecutive layers
+    SHARED_UINT  terrain_flags        SHARED_DEFAULT(0);
+    SHARED_FLOAT terrain_snow_amount  SHARED_DEFAULT(1.0f); // global snow multiplier, 0 disables the snow layer
+    SHARED_FLOAT terrain_wetness      SHARED_DEFAULT(0.0f); // global wetness added on top of the flow driven amount
+
 #ifndef __cplusplus
     bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
     bool has_texture_normal()    { return (flags & (1 << 1))  != 0; }
+    bool has_texture_height()    { return (flags & (1 << 0))  != 0; }
     bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
     bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
     bool has_texture_metalness() { return (flags & (1 << 4))  != 0; }
@@ -244,6 +279,16 @@ struct MaterialParameters
     bool is_albedo_srgb()        { return (flags & (1 << 17)) != 0; }
     bool is_emissive_srgb()      { return (flags & (1 << 18)) != 0; }
     bool is_motion_blur_radial() { return (flags & (1 << 19)) != 0; }
+
+    // terrain_flags bits, see TerrainLayer.h
+    bool terrain_layer_biplanar() { return (terrain_flags & (1 << 0)) != 0; }
+    bool terrain_layer_pom()      { return (terrain_flags & (1 << 1)) != 0; }
+    bool terrain_layer_snow()     { return (terrain_flags & (1 << 2)) != 0; }
+    bool terrain_layer_below_sea(){ return (terrain_flags & (1 << 3)) != 0; }
+    bool terrain_has_maps()       { return (terrain_flags & (1 << 4)) != 0; }
+    // on the surface material bits 8 to 11 hold how many layers to sample and 12 to 15 the debug view
+    uint terrain_layer_quality()  { return (terrain_flags >> 8)  & 0xFu; }
+    uint terrain_debug_view()     { return (terrain_flags >> 12) & 0xFu; }
 #endif
 };
 
