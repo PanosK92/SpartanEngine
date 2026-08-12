@@ -2680,6 +2680,69 @@ void Properties::ShowTerrain(Terrain* terrain) const
             });
         }
 
+        if (spawn_biome_props)
+        {
+            const char* density_tooltip =
+                "multiplier on the authored density for this prop. 1 is the default look, "
+                "press respawn props to apply. placement is still gated by the biome mask, "
+                "so a prop cannot spread onto ground its layer does not own";
+
+            float density_tree   = terrain->GetPropDensityTree();
+            float density_rock   = terrain->GetPropDensityRock();
+            float density_flower = terrain->GetPropDensityFlower();
+
+            if (property_float(
+                "Tree Density",
+                &density_tree,
+                0.1f,
+                0.0f,
+                spartan::Terrain::prop_density_max,
+                density_tooltip,
+                "%.2f"
+            ))
+            {
+                terrain->SetPropDensityTree(density_tree);
+            }
+
+            if (property_float(
+                "Rock Density",
+                &density_rock,
+                0.1f,
+                0.0f,
+                spartan::Terrain::prop_density_max,
+                density_tooltip,
+                "%.2f"
+            ))
+            {
+                terrain->SetPropDensityRock(density_rock);
+            }
+
+            if (property_float(
+                "Flower Density",
+                &density_flower,
+                0.1f,
+                0.0f,
+                spartan::Terrain::prop_density_max,
+                density_tooltip,
+                "%.2f"
+            ))
+            {
+                terrain->SetPropDensityFlower(density_flower);
+            }
+
+            if (ImGuiSp::button("Respawn Props", ImVec2(-1, 0)))
+            {
+                spartan::ThreadPool::AddTask([terrain]()
+                {
+                    spartan::WorldHelpers::PopulateTerrainBiomeProps(terrain);
+                });
+            }
+            ImGuiSp::tooltip(
+                "rescatter trees, rocks and flowers with the densities above. "
+                "does not touch the terrain surface, so it is far cheaper than a full generate"
+            );
+        }
+
         layout::group_spacing();
         layout::section_header("Actions");
 
@@ -2715,7 +2778,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
                 1,
                 4,
                 "how many of the highest weighted layers get sampled per pixel. "
-                "2 is the sweet spot, 3 and 4 soften transitions on complex ground at real cost"
+                "3 is the sweet spot, 2 reads as a two tone surface, 4 costs more than it shows"
             ))
             {
                 terrain->SetLayerQuality(quality);
@@ -2774,6 +2837,16 @@ void Properties::ShowTerrain(Terrain* terrain) const
             ImGuiSp::tooltip(
                 "rescan project/materials for each layer folder. a layer whose folder is missing is "
                 "disabled and its weight goes to the layers that do exist"
+            );
+
+            if (ImGuiSp::button("Remove Props", ImVec2(-1, 0)))
+            {
+                spartan::WorldHelpers::RemoveTerrainProps();
+            }
+            ImGuiSp::tooltip(
+                "delete every tree, rock and flower in the world, wherever it sits in the hierarchy, "
+                "and switch off gpu grass. use this to clear props left behind by an older build, "
+                "generate respawns them"
             );
 
             // analysis maps, without these the rules fall back to slope and altitude alone

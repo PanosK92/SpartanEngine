@@ -164,6 +164,15 @@ namespace spartan
 
         bool GetSpawnBiomeProps() const         { return m_spawn_biome_props; }
         void SetSpawnBiomeProps(bool enabled)   { m_spawn_biome_props = enabled; }
+
+        // multipliers on the tuned base density of each prop type, 1 is the authored look
+        static constexpr float prop_density_max = 20.0f;
+        float GetPropDensityTree() const          { return m_prop_density_tree; }
+        void SetPropDensityTree(float density)    { m_prop_density_tree = ClampPropDensity(density); }
+        float GetPropDensityRock() const          { return m_prop_density_rock; }
+        void SetPropDensityRock(float density)    { m_prop_density_rock = ClampPropDensity(density); }
+        float GetPropDensityFlower() const        { return m_prop_density_flower; }
+        void SetPropDensityFlower(float density)  { m_prop_density_flower = ClampPropDensity(density); }
         // reload the layer materials from project/materials and hand the whole set to the renderer
         void RefreshLayers();
         // hand the current layer set, analysis maps and world mapping to the renderer
@@ -274,7 +283,17 @@ namespace spartan
         std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
         uint32_t m_map_width  = 0;
         uint32_t m_map_height = 0;
+        static constexpr float ClampPropDensity(float density)
+        {
+            return density < 0.0f ? 0.0f : (density > prop_density_max ? prop_density_max : density);
+        }
+
         bool m_spawn_biome_props = true;
+        // the base densities live in WorldHelpers, these scale them so a world can be sparser or
+        // denser without recompiling, rocks need the headroom most, their base is very low
+        float m_prop_density_tree   = 1.0f;
+        float m_prop_density_rock   = 1.0f;
+        float m_prop_density_flower = 1.0f;
         float m_height_bake_min = 0.0f;
         float m_height_bake_max = 1.0f;
 
@@ -315,7 +334,9 @@ namespace spartan
         // one ordinary material per layer, a null entry is a layer whose folder is missing
         std::array<std::shared_ptr<Material>, terrain_layer_max> m_layer_materials;
         std::array<TerrainLayerRule, terrain_layer_max> m_layer_rules;
-        uint32_t m_layer_quality      = 2;
+        // seven layers exist by default, two picks per pixel is not enough to read as more than a
+        // two tone surface anywhere the rules overlap, three is where the ground starts looking mixed
+        uint32_t m_layer_quality      = 3;
         float m_snow_amount           = 1.0f;
         float m_wetness               = 0.0f;
         TerrainDebugView m_debug_view = TerrainDebugView::Off;

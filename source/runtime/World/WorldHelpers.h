@@ -43,6 +43,9 @@ namespace spartan
         // spawn biome-masked grass, rocks and trees on an existing terrain
         static void PopulateTerrainBiomeProps(class Terrain* terrain);
 
+        // sweeps every terrain prop out of the world, wherever it currently sits in the hierarchy
+        static void RemoveTerrainProps();
+
         // releases the long lived meshes and materials owned by the builders, called from world shutdown
         static void Clear();
     };

@@ -61,6 +61,9 @@ namespace spartan
     extern TConsoleVar<float> cvar_grid;
     extern TConsoleVar<float> cvar_transform_handle;
     extern TConsoleVar<float> cvar_transform_snap;
+    extern TConsoleVar<float> cvar_transform_snap_translate;
+    extern TConsoleVar<float> cvar_transform_snap_rotate;
+    extern TConsoleVar<float> cvar_transform_snap_scale;
     extern TConsoleVar<float> cvar_selection_outline;
     extern TConsoleVar<float> cvar_entity_icons;
     extern TConsoleVar<float> cvar_performance_metrics;
@@ -565,6 +568,14 @@ namespace spartan
 
             // vrs
             RHI_Texture* vrs_last_cleared_texture = nullptr;
+
+            // terrain rules and the procedural grass material both ride in the bindless material buffer
+            // without belonging to any Material or entity, so editing them does not move the material
+            // revision the upload guard watches, this flag is how they ask for a re-pack
+            //
+            // for grass it decides whether the draw reads the right slot at all, a stale index lands on
+            // a material with no grass blade bit, which shows up as grey blades with flat normals
+            bool                  bindless_materials_dirty = true;
 
             // gpu procedural grass, captured on enable, the per-frame passes early out when disabled
             bool                  grass_enabled    = false;

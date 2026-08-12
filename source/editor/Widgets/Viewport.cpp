@@ -449,25 +449,21 @@ void Viewport::OnTickVisible()
         }
     }
 
-    // entity transform gizmo (will only show if entities have been picked)
-    if (cvar_transform_handle.GetValueAs<bool>())
+    // entity transform gizmo (shows when entities are selected and facing the camera)
+    if (camera)
     {
-        if (camera) // skip if no camera
+        const std::vector<spartan::Entity*>& selected_entities = camera->GetSelectedEntities();
+        if (!selected_entities.empty())
         {
-            const std::vector<spartan::Entity*>& selected_entities = camera->GetSelectedEntities();
-            if (!selected_entities.empty()) // skip if no entities are selected
+            spartan::Entity* primary_selected = selected_entities[0];
+            if (primary_selected)
             {
-                // use the first selected entity for direction check
-                spartan::Entity* primary_selected = selected_entities[0];
-                if (primary_selected)
+                spartan::Entity* camera_entity = camera->GetEntity();
+                spartan::math::Vector3 dir_to_entity = primary_selected->GetPosition() - camera_entity->GetPosition();
+                dir_to_entity.Normalize();
+                if (dir_to_entity.Dot(camera_entity->GetForward()) >= 0.0f)
                 {
-                    spartan::Entity* camera_entity = camera->GetEntity();
-                    spartan::math::Vector3 dir_to_entity = primary_selected->GetPosition() - camera_entity->GetPosition();
-                    dir_to_entity.Normalize();
-                    if (dir_to_entity.Dot(camera_entity->GetForward()) >= 0.0f) // skip when the camera is facing away
-                    {
-                        ImGui::TransformGizmo::tick();
-                    }
+                    ImGui::TransformGizmo::tick();
                 }
             }
         }

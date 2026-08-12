@@ -112,6 +112,9 @@ namespace spartan
             clone->SetRotation(entity->GetRotationLocal());
             clone->SetScale(entity->GetScaleLocal());
             clone->SetTagsString(entity->GetTagsString());
+            // a clone of a runtime only entity is runtime only too, without this a cloned prop is
+            // written into the world file and comes back on load as an orphan nothing can clean up
+            clone->SetTransient(entity->IsTransient());
 
             // clone all the components
             for (shared_ptr<Component> component_original : entity->GetAllComponents())

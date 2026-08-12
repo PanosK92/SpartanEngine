@@ -57,6 +57,73 @@ namespace spartan
         // procedural grass references a mesh and material from renderer state rather than a render component
         vector<shared_ptr<Mesh>> builder_meshes;
         vector<shared_ptr<Material>> builder_materials;
+
+        // spawned props carry this, the mesh prototypes they are cloned from never do
+        const char* terrain_prop_tag = "terrain_prop";
+
+        bool is_terrain_prop_name(const string& name)
+        {
+            return name == "tree" || name == "rock" || name == "flower";
+        }
+
+        // stops at the first match, removal already takes the descendants with it
+        //
+        // the name test is only trusted inside a terrain subtree, the tree and rock mesh prototypes sit
+        // at world root under the same names and deleting one of those would take the source with it
+        void collect_terrain_prop_roots(Entity* entity, bool inside_terrain, vector<Entity*>& out)
+        {
+            if (!entity)
+            {
+                return;
+            }
+
+            if (entity->HasTag(terrain_prop_tag) ||
+                (inside_terrain && is_terrain_prop_name(entity->GetObjectName())))
+            {
+                out.push_back(entity);
+                return;
+            }
+
+            inside_terrain = inside_terrain || entity->GetComponent<Terrain>() != nullptr;
+
+            for (Entity* child : entity->GetChildren())
+            {
+                collect_terrain_prop_roots(child, inside_terrain, out);
+            }
+        }
+    }
+
+    // props are tile children now, so tile teardown takes them with it, but a world saved before that
+    // holds prop roots parked elsewhere in the hierarchy, this sweeps the whole world so a regenerate
+    // can never inherit a stale set
+    //
+    // the walk goes through the scene graph rather than World::GetEntities, that list does not include
+    // entities created this frame and props spawned by a previous generate can still be sitting in it
+    void WorldHelpers::RemoveTerrainProps()
+    {
+        vector<Entity*> roots;
+        World::GetRootEntities(roots);
+
+        vector<Entity*> doomed;
+        doomed.reserve(64);
+        for (Entity* root : roots)
+        {
+            collect_terrain_prop_roots(root, false, doomed);
+        }
+
+        for (Entity* entity : doomed)
+        {
+            World::RemoveEntity(entity);
+        }
+
+        // grass has no entities to sweep, it is a renderer pass fed by the height map and the prop
+        // mask, so removing props has to turn it off explicitly or it keeps drawing over bare terrain
+        Renderer::DisableProceduralGrass();
+
+        if (!doomed.empty())
+        {
+            SP_LOG_INFO("biome props: removed %zu stale prop roots", doomed.size());
+        }
     }
 
     // fft ocean surface, the water component owns the clipmap mesh and drives the gpu simulation
@@ -164,37 +231,7 @@ namespace spartan
         Entity* terrain_entity = terrain->GetEntity();
 
         // drop previous biome prop roots so reloads do not stack instances
-        {
-            vector<Entity*> children = terrain_entity->GetChildren();
-            for (Entity* child : children)
-            {
-                if (!child)
-                {
-                    continue;
-                }
-                const string& name = child->GetObjectName();
-                if (name == "tree" || name == "rock" || name == "flower" || name.find("flower") == 0)
-                {
-                    World::RemoveEntity(child);
-                }
-            }
-            // tile-parented flowers from older builds
-            for (Entity* tile : terrain_entity->GetChildren())
-            {
-                if (!tile)
-                {
-                    continue;
-                }
-                vector<Entity*> tile_children = tile->GetChildren();
-                for (Entity* child : tile_children)
-                {
-                    if (child && child->GetObjectName() == "flower")
-                    {
-                        World::RemoveEntity(child);
-                    }
-                }
-            }
-        }
+        RemoveTerrainProps();
 
         if (!terrain->GetSpawnBiomeProps())
         {
@@ -205,9 +242,11 @@ namespace spartan
         const float render_distance_trees   = 2'000.0f;
         const float render_distance_foliage = 500.0f;
         const float shadow_distance         = 150.0f;
-        const float per_triangle_density_flower = 0.28f;
-        const float per_triangle_density_tree   = 0.008f;
-        const float per_triangle_density_rock   = 0.0012f;
+        // authored base densities, the terrain multipliers scale these so a world can be retuned
+        // without a rebuild, see Terrain::SetPropDensityTree and friends
+        const float per_triangle_density_flower = 0.28f   * terrain->GetPropDensityFlower();
+        const float per_triangle_density_tree   = 0.008f  * terrain->GetPropDensityTree();
+        const float per_triangle_density_rock   = 0.0012f * terrain->GetPropDensityRock();
 
         const uint32_t tree_flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
         shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", tree_flags);
@@ -338,172 +377,229 @@ namespace spartan
 
         vector<vector<Matrix>> tree_transforms_per_tile(tile_count);
         vector<vector<Matrix>> rock_transforms_per_tile(tile_count);
+        vector<vector<Matrix>> flower_transforms_per_tile(tile_count);
 
-        auto place_props_on_tiles = [
+        // placement is the expensive part and it only touches per tile buckets, the entities it feeds
+        // are built afterwards on this thread so the scene graph is only ever mutated in one order
+        // the transforms stay tile local, every prop is parented to its tile and inherits its offset
+        auto compute_transforms = [
             &tiles,
-            &mesh_flower,
             &tree_transforms_per_tile,
             &rock_transforms_per_tile,
+            &flower_transforms_per_tile,
             terrain,
-            render_distance_foliage,
             per_triangle_density_flower,
             per_triangle_density_tree,
-            per_triangle_density_rock,
-            material_flower
+            per_triangle_density_rock
         ](uint32_t start_index, uint32_t end_index)
         {
             for (uint32_t tile_index = start_index; tile_index < end_index; tile_index++)
             {
-                Entity* terrain_tile = tiles[tile_index];
-                if (!terrain_tile)
+                if (!tiles[tile_index])
                 {
                     continue;
                 }
-                const math::Matrix tile_world_matrix = terrain_tile->GetMatrix();
 
-                terrain->FindTransforms(tile_index, TerrainProp::Tree, nullptr, per_triangle_density_tree, 0.026f, tree_transforms_per_tile[tile_index]);
-                for (math::Matrix& t : tree_transforms_per_tile[tile_index])
+                terrain->FindTransforms(tile_index, TerrainProp::Tree,   nullptr, per_triangle_density_tree,   0.026f, tree_transforms_per_tile[tile_index]);
+                terrain->FindTransforms(tile_index, TerrainProp::Rock,   nullptr, per_triangle_density_rock,   0.64f,  rock_transforms_per_tile[tile_index]);
+                terrain->FindTransforms(tile_index, TerrainProp::Flower, nullptr, per_triangle_density_flower, 0.64f,  flower_transforms_per_tile[tile_index]);
+            }
+        };
+
+        ThreadPool::ParallelLoop(compute_transforms, tile_count);
+
+        // clones a prop prototype onto one tile and hands that tile's instances to every renderable it
+        // carries, the prototype hierarchy is kept because bark and leaves need different materials
+        auto attach_prop_to_tile = [](
+            Entity* tile,
+            Entity* prototype,
+            const char* name,
+            const vector<Matrix>& transforms,
+            float render_distance,
+            float shadow_distance_in,
+            const function<void(Entity*, Render*, bool)>& configure
+        ) -> uint32_t
+        {
+            if (!tile || !prototype || transforms.empty())
+            {
+                return 0;
+            }
+
+            Entity* entity = prototype->Clone();
+            entity->SetObjectName(name);
+            entity->SetTransient(true);
+            entity->AddTag(terrain_prop_tag);
+            entity->SetParent(tile);
+            entity->SetPositionLocal(Vector3::Zero);
+            entity->SetRotationLocal(Quaternion::Identity);
+            entity->SetScaleLocal(Vector3::One);
+
+            vector<Entity*> candidates;
+            candidates.push_back(entity);
+            entity->GetDescendants(&candidates);
+
+            uint32_t render_count = 0;
+            for (Entity* candidate : candidates)
+            {
+                candidate->SetTransient(true);
+
+                Render* render = candidate->GetComponent<Render>();
+                if (!render || !render->GetMesh())
                 {
-                    t *= tile_world_matrix;
+                    continue;
                 }
 
-                terrain->FindTransforms(tile_index, TerrainProp::Rock, nullptr, per_triangle_density_rock, 0.64f, rock_transforms_per_tile[tile_index]);
-                for (math::Matrix& t : rock_transforms_per_tile[tile_index])
-                {
-                    t *= tile_world_matrix;
-                }
+                render->SetInstances(transforms);
+                render->SetMaxRenderDistance(render_distance);
+                render->SetMaxShadowDistance(shadow_distance_in);
+                configure(candidate, render, render_count == 0);
+                render_count++;
+            }
 
+            return render_count;
+        };
+
+        size_t tree_total   = 0;
+        size_t rock_total   = 0;
+        uint32_t rock_tiles = 0;
+
+        for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
+        {
+            Entity* terrain_tile = tiles[tile_index];
+            if (!terrain_tile)
+            {
+                continue;
+            }
+
+            // trees
+            if (mesh_tree && mesh_tree->GetRootEntity())
+            {
+                mesh_tree->GetRootEntity()->SetTransient(true);
+                const uint32_t placed = attach_prop_to_tile(
+                    terrain_tile,
+                    mesh_tree->GetRootEntity(),
+                    "tree",
+                    tree_transforms_per_tile[tile_index],
+                    render_distance_trees,
+                    shadow_distance,
+                    [&material_body, &material_leaf](Entity* candidate, Render* render, bool)
+                    {
+                        Material* imported     = render->GetMaterial();
+                        const string imported_name = imported ? imported->GetObjectName() : string();
+                        const bool is_bark     = imported_name.find("Bark") != string::npos ||
+                                                 imported_name.find("bark") != string::npos;
+                        render->SetMaterial(is_bark ? material_body : material_leaf);
+
+                        // only the trunk is collidable, twigs and leaves would just snag the player
+                        if (is_bark)
+                        {
+                            Physics* physics = candidate->AddComponent<Physics>();
+                            physics->SetUseConvexHull(true);
+                            physics->SetBodyType(BodyType::Mesh);
+                        }
+                    }
+                );
+
+                if (placed > 0)
+                {
+                    tree_total += tree_transforms_per_tile[tile_index].size();
+                }
+            }
+
+            // rocks
+            if (mesh_rock && mesh_rock->GetRootEntity())
+            {
+                mesh_rock->GetRootEntity()->SetTransient(true);
+                const uint32_t placed = attach_prop_to_tile(
+                    terrain_tile,
+                    mesh_rock->GetRootEntity(),
+                    "rock",
+                    rock_transforms_per_tile[tile_index],
+                    render_distance_trees,
+                    shadow_distance,
+                    [&material_rock](Entity* candidate, Render* render, bool is_first)
+                    {
+                        render->SetMaterial(material_rock);
+
+                        // a boulder is close enough to convex that a hull matches the silhouette
+                        if (is_first)
+                        {
+                            Physics* physics = candidate->AddComponent<Physics>();
+                            physics->SetUseConvexHull(true);
+                            physics->SetBodyType(BodyType::Mesh);
+                        }
+                    }
+                );
+
+                if (placed > 0)
+                {
+                    rock_total += rock_transforms_per_tile[tile_index].size();
+                    rock_tiles++;
+                }
+            }
+
+            // flowers, a generated mesh with one material so it needs no prototype hierarchy
+            const vector<Matrix>& flowers = flower_transforms_per_tile[tile_index];
+            if (!flowers.empty() && mesh_flower)
+            {
                 Entity* entity = World::CreateEntity();
                 entity->SetObjectName("flower");
+                entity->SetTransient(true);
+                entity->AddTag(terrain_prop_tag);
                 entity->SetParent(terrain_tile);
-
-                vector<Matrix> transforms;
-                terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 0.64f, transforms);
 
                 Render* render = entity->AddComponent<Render>();
                 render->SetMesh(mesh_flower.get());
                 render->SetFlag(RenderFlags::CastsShadows, false);
                 render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
-                render->SetInstances(transforms);
+                render->SetInstances(flowers);
                 render->SetMaterial(material_flower);
                 render->SetMaxRenderDistance(render_distance_foliage);
             }
-        };
-
-        ThreadPool::ParallelLoop(place_props_on_tiles, tile_count);
-
-        // single tree entity for the whole world
-        {
-            size_t tree_total = 0;
-            for (const auto& v : tree_transforms_per_tile)
-            {
-                tree_total += v.size();
-            }
-            vector<Matrix> all_tree_transforms;
-            all_tree_transforms.reserve(tree_total);
-            for (auto& v : tree_transforms_per_tile)
-            {
-                all_tree_transforms.insert(all_tree_transforms.end(), v.begin(), v.end());
-            }
-
-            if (!all_tree_transforms.empty() && mesh_tree && mesh_tree->GetRootEntity())
-            {
-                SP_LOG_INFO("biome props: placing %zu trees", all_tree_transforms.size());
-                mesh_tree->GetRootEntity()->SetTransient(true);
-                Entity* entity = mesh_tree->GetRootEntity()->Clone();
-                entity->SetObjectName("tree");
-                entity->SetParent(terrain_entity);
-                entity->SetScale(math::Vector3::One);
-
-                vector<Entity*> tree_candidates;
-                tree_candidates.push_back(entity);
-                entity->GetDescendants(&tree_candidates);
-                for (Entity* candidate : tree_candidates)
-                {
-                    Render* render = candidate->GetComponent<Render>();
-                    if (!render || !render->GetMesh())
-                    {
-                        continue;
-                    }
-
-                    render->SetInstances(all_tree_transforms);
-                    render->SetMaxRenderDistance(render_distance_trees);
-                    render->SetMaxShadowDistance(shadow_distance);
-
-                    Material* imported_material = render->GetMaterial();
-                    const string imported_name  = imported_material ? imported_material->GetObjectName() : string();
-                    const bool is_bark = imported_name.find("Bark") != string::npos || imported_name.find("bark") != string::npos;
-                    render->SetMaterial(is_bark ? material_body : material_leaf);
-
-                    if (is_bark)
-                    {
-                        Physics* physics = candidate->AddComponent<Physics>();
-                        physics->SetBodyType(BodyType::Mesh);
-                    }
-                }
-            }
         }
 
-        // single rock entity for the whole world
+        SP_LOG_INFO("biome props: placed %zu trees and %zu rocks across %u tiles", tree_total, rock_total, tile_count);
+
+        // rocks have three independent ways to end up invisible, separate them so one run says which
         {
-            size_t rock_total = 0;
-            for (const auto& v : rock_transforms_per_tile)
+            size_t rock_transforms = 0;
+            for (const vector<Matrix>& v : rock_transforms_per_tile)
             {
-                rock_total += v.size();
-            }
-            vector<Matrix> all_rock_transforms;
-            all_rock_transforms.reserve(rock_total);
-            for (auto& v : rock_transforms_per_tile)
-            {
-                all_rock_transforms.insert(all_rock_transforms.end(), v.begin(), v.end());
+                rock_transforms += v.size();
             }
 
-            if (!all_rock_transforms.empty() && mesh_rock && mesh_rock->GetRootEntity())
+            const bool has_mesh = mesh_rock && mesh_rock->GetRootEntity();
+            uint32_t mesh_renderables = 0;
+            if (has_mesh)
             {
-                SP_LOG_INFO("biome props: placing %zu rocks", all_rock_transforms.size());
-                mesh_rock->GetRootEntity()->SetTransient(true);
-                Entity* entity = mesh_rock->GetRootEntity()->Clone();
-                entity->SetObjectName("rock");
-                entity->SetParent(terrain_entity);
-                entity->SetScale(math::Vector3::One);
-
-                vector<Entity*> rock_candidates;
-                rock_candidates.push_back(entity);
-                entity->GetDescendants(&rock_candidates);
-                uint32_t rock_render_count = 0;
-                for (Entity* candidate : rock_candidates)
+                vector<Entity*> parts;
+                parts.push_back(mesh_rock->GetRootEntity());
+                mesh_rock->GetRootEntity()->GetDescendants(&parts);
+                for (Entity* part : parts)
                 {
-                    Render* render = candidate->GetComponent<Render>();
-                    if (!render || !render->GetMesh())
+                    Render* render = part->GetComponent<Render>();
+                    if (render && render->GetMesh())
                     {
-                        continue;
+                        mesh_renderables++;
                     }
-
-                    render->SetInstances(all_rock_transforms);
-                    render->SetMaxRenderDistance(render_distance_trees);
-                    render->SetMaxShadowDistance(shadow_distance);
-                    render->SetMaterial(material_rock);
-
-                    if (rock_render_count == 0)
-                    {
-                        Physics* physics = candidate->AddComponent<Physics>();
-                        physics->SetBodyType(BodyType::Mesh);
-                    }
-                    rock_render_count++;
-                }
-
-                if (rock_render_count == 0)
-                {
-                    SP_LOG_WARNING("biome props: rock mesh has no renderables, spawned %zu transforms unused", all_rock_transforms.size());
                 }
             }
-            else if (!all_rock_transforms.empty())
+
+            if (!has_mesh)
             {
-                SP_LOG_WARNING("biome props: %zu rock transforms but mesh/root missing", all_rock_transforms.size());
+                SP_LOG_WARNING("biome props: rock mesh failed to load from project/models/rock_2/model.obj");
+            }
+            else if (mesh_renderables == 0)
+            {
+                SP_LOG_WARNING("biome props: rock mesh loaded but carries no renderable, %zu transforms unused", rock_transforms);
+            }
+            else if (rock_transforms == 0)
+            {
+                SP_LOG_WARNING("biome props: rock mesh is fine but the prop mask rock channel placed nothing, raise the rock layer weight or lower prop_mask_min");
             }
             else
             {
-                SP_LOG_INFO("biome props: 0 rocks placed");
+                SP_LOG_INFO("biome props: rock mesh has %u renderables, %u tiles carry rocks", mesh_renderables, rock_tiles);
             }
         }
 

@@ -51,6 +51,23 @@ static const float terrain_noise_rcp_scale = 10.0f;
 static const uint terrain_layer_max_shader = 8;
 static const uint terrain_layer_pick_max   = 4;
 
+// rule domains, an edge at or past one of these means the rule does not bound that side
+// slope is measured from horizontal so it can never leave zero to ninety degrees, the ceiling sits a
+// hair under ninety so a rule written as ninety reads as open regardless of float rounding
+static const float terrain_slope_domain_min  = 0.0f;
+static const float terrain_slope_domain_max  = 1.5698f; // 89.94 degrees
+static const float terrain_height_domain_min = -99999.0f;
+static const float terrain_height_domain_max = 99999.0f;
+
+// ramp widths, the slope ramp has to stay narrow or a cliff layer bleeds down onto gentle ground,
+// and the height ramp is a shoreline transition measured in metres, not a whole altitude band
+static const float terrain_slope_feather_max  = 0.14f; // about 8 degrees
+static const float terrain_height_feather_max = 6.0f;
+
+// threshold wobble, kept under the matching feather so it breaks a boundary up instead of moving it
+static const float terrain_slope_jitter  = 0.10f; // about 6 degrees
+static const float terrain_height_jitter = 4.0f;
+
 // past this range the blend band between layers is below a pixel, so the surface collapses to the
 // dominant layer, which is where the bulk of the savings are
 static const float terrain_detail_distance = 45.0f;
@@ -137,13 +154,24 @@ float terrain_jitter(float3 position_world, float seed)
     return n / 1.75f;
 }
 
-// soft band, one at the centre and zero outside, the feather is clamped so an open ended range
-// does not turn the whole band into a ramp
-float terrain_band(float value, float low, float high, float feather_max)
+// soft band, one at the centre and zero outside
+//
+// an edge sitting on the domain boundary is open and contributes nothing, without this a layer whose
+// slope floor is zero scores half weight on perfectly flat ground, because the ramp is centred on the
+// edge and half of it falls outside the domain, that is the one place the fallback layer should win
+//
+// the feather also comes from a closed span only, an open ended range has no meaningful width and
+// feathering across it fades the layer out over its own open end
+float terrain_band(float value, float low, float high, float feather_max, float domain_min, float domain_max)
 {
-    float feather = clamp((high - low) * 0.25f, 1e-4f, feather_max);
-    float rise    = smoothstep(low  - feather, low  + feather, value);
-    float fall    = 1.0f - smoothstep(high - feather, high + feather, value);
+    bool open_low  = low  <= domain_min;
+    bool open_high = high >= domain_max;
+
+    float span    = (open_low || open_high) ? (feather_max * 4.0f) : (high - low);
+    float feather = clamp(span * 0.25f, 1e-4f, feather_max);
+
+    float rise = open_low  ? 1.0f : smoothstep(low  - feather, low  + feather, value);
+    float fall = open_high ? 1.0f : 1.0f - smoothstep(high - feather, high + feather, value);
     return rise * fall;
 }
 
@@ -201,11 +229,25 @@ float terrain_layer_weight(
     // the height band is measured against sea level for the layers that care about the shore
     float height = position_world.y - (layer.terrain_layer_below_sea() ? surface.terrain_sea_level : 0.0f);
 
-    float slope_jittered  = slope_radians + jitter * 0.20f; // about 11 degrees of wobble
-    float height_jittered = height        + jitter * 20.0f;
+    float slope_jittered  = slope_radians + jitter * terrain_slope_jitter;
+    float height_jittered = height        + jitter * terrain_height_jitter;
 
-    float weight = terrain_band(slope_jittered,  layer.terrain_slope_range.x,  layer.terrain_slope_range.y,  0.35f);
-    weight      *= terrain_band(height_jittered, layer.terrain_height_range.x, layer.terrain_height_range.y, 30.0f);
+    float weight = terrain_band(
+        slope_jittered,
+        layer.terrain_slope_range.x,
+        layer.terrain_slope_range.y,
+        terrain_slope_feather_max,
+        terrain_slope_domain_min,
+        terrain_slope_domain_max
+    );
+    weight *= terrain_band(
+        height_jittered,
+        layer.terrain_height_range.x,
+        layer.terrain_height_range.y,
+        terrain_height_feather_max,
+        terrain_height_domain_min,
+        terrain_height_domain_max
+    );
 
     if (weight <= 0.0f)
     {
@@ -223,7 +265,10 @@ float terrain_layer_weight(
     push += layer.terrain_deposition_influence * (analysis.deposition * 2.0f - 1.0f);
     push += layer.terrain_talus_influence      * (analysis.talus      * 2.0f - 1.0f);
 
-    return weight * exp2(push * 2.0f) * layer.terrain_weight_bias;
+    // the influences bias a layer, they must not decide it, an unclamped sum of seven signed channels
+    // fed into exp2 lets a layer with strong influences outscore the slope and height rules by an order
+    // of magnitude, which is how gravel ends up on flat ground it has no business being on
+    return weight * exp2(clamp(push, -1.0f, 1.0f) * 1.25f) * layer.terrain_weight_bias;
 }
 
 struct TerrainLayerPick

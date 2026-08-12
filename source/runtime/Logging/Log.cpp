@@ -49,10 +49,13 @@ namespace spartan
             const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
             text = prefix + " " + text;
 
-            // delete the previous log file (if it exists)
+            // the log being replaced here is the only record of why the last run died, and the restart
+            // after a gpu crash is what lands on this path, so it is rotated rather than deleted
             static bool is_first_log = true;
             if (is_first_log)
             {
+                error_code ignored;
+                filesystem::rename(log_file_name, "log_previous.txt", ignored);
                 FileSystem::Delete(log_file_name);
                 is_first_log = false;
             }

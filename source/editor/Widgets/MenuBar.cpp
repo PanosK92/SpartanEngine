@@ -51,6 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../GeneralWindows.h"
 #include "../ImGui/ImGui_EditorUi.h"
 #include "../ImGui/ImGui_Style.h"
+#include "../ImGui/ImGui_TransformGizmo.h"
 //===============================
 
 //= NAMESPACES =====
@@ -495,7 +496,8 @@ namespace
 
         float snap_group_width()
         {
-            return icon_group_width(1.0f);
+            // w/e/r/t + local/world + snap = 6 buttons
+            return icon_group_width(6.0f);
         }
 
         float panel_group_width(size_t visible_widget_count = widgets.size(), bool show_overflow = false)
@@ -647,6 +649,56 @@ namespace
             }
         }
 
+        void draw_gizmo_mode_button(
+            float menubar_height,
+            float cursor_pos_x,
+            const char* label,
+            bool active,
+            const char* tooltip,
+            ::TransformGizmo::Operation op
+        )
+        {
+            ImGui::SetCursorPosX(cursor_pos_x);
+            ImGui::SetCursorPosY(centered_y(menubar_height, tool_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
+            push_button_colors(active);
+
+            if (ImGui::Button(label, ImVec2(tool_button_width(), tool_button_height())))
+            {
+                ImGui::TransformGizmo::set_operation(op);
+            }
+
+            if (active)
+            {
+                draw_active_underline();
+            }
+
+            ImGuiSp::tooltip(tooltip);
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
+        }
+
+        void draw_space_button(float menubar_height, float cursor_pos_x)
+        {
+            const bool is_world = ImGui::TransformGizmo::space() == ::TransformGizmo::Space::World;
+            ImGui::SetCursorPosX(cursor_pos_x);
+            ImGui::SetCursorPosY(centered_y(menubar_height, tool_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
+            push_button_colors(true);
+
+            if (ImGui::Button(is_world ? "Wld" : "Loc", ImVec2(tool_button_width(), tool_button_height())))
+            {
+                ImGui::TransformGizmo::toggle_space();
+            }
+
+            draw_active_underline();
+            ImGuiSp::tooltip(is_world ? "World space (X)" : "Local space (X)");
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
+        }
+
         void draw_snap_button(float menubar_height, float cursor_pos_x)
         {
             bool snap_enabled = spartan::cvar_transform_snap.GetValueAs<bool>();
@@ -674,6 +726,32 @@ namespace
 
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);
+        }
+
+        void draw_transform_group(float menubar_height, float cursor_pos_x)
+        {
+            const float width = snap_group_width();
+            draw_group_background(cursor_pos_x, width, menubar_height);
+
+            float button_x = cursor_pos_x + group_padding_x();
+            const ::TransformGizmo::Operation op = ImGui::TransformGizmo::operation();
+
+            draw_gizmo_mode_button(menubar_height, button_x, "W", op == ::TransformGizmo::Operation::Translate, "Translate (W)", ::TransformGizmo::Operation::Translate);
+            button_x += tool_button_width() + button_gap();
+
+            draw_gizmo_mode_button(menubar_height, button_x, "E", op == ::TransformGizmo::Operation::Rotate, "Rotate (E)", ::TransformGizmo::Operation::Rotate);
+            button_x += tool_button_width() + button_gap();
+
+            draw_gizmo_mode_button(menubar_height, button_x, "R", op == ::TransformGizmo::Operation::Scale, "Scale (R)", ::TransformGizmo::Operation::Scale);
+            button_x += tool_button_width() + button_gap();
+
+            draw_gizmo_mode_button(menubar_height, button_x, "T", op == ::TransformGizmo::Operation::Universal, "Universal (T)", ::TransformGizmo::Operation::Universal);
+            button_x += tool_button_width() + button_gap();
+
+            draw_space_button(menubar_height, button_x);
+            button_x += tool_button_width() + button_gap();
+
+            draw_snap_button(menubar_height, button_x);
         }
 
         void draw_mcp_button(float menubar_height, float cursor_pos_x)
@@ -835,10 +913,8 @@ namespace
             float group_x = cursor_pos_x;
 
             {
-                float width = snap_group_width();
-                draw_group_background(group_x, width, menubar_height);
-                draw_snap_button(menubar_height, group_x + group_padding_x());
-                group_x += width + group_gap();
+                draw_transform_group(menubar_height, group_x);
+                group_x += snap_group_width() + group_gap();
             }
 
             {

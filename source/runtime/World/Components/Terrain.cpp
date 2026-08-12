@@ -863,7 +863,23 @@ namespace spartan
             }
 
             // compute instance count based on density
-            uint32_t adjusted_count = static_cast<uint32_t>(density_fraction * static_cast<float>(acceptable_triangles.size()) + 0.5f);
+            //
+            // rounding to nearest would zero every tile whose expected count sits under a half, which
+            // is most of them for a sparse prop like rock, so the fraction is resolved by a per tile
+            // dice roll instead, seeded off the tile so a regenerate reproduces the same scatter
+            const float expected    = density_fraction * static_cast<float>(acceptable_triangles.size());
+            uint32_t adjusted_count = static_cast<uint32_t>(expected);
+            {
+                uint32_t h = tile_index * 2654435761u + 1013904223u;
+                h = (h ^ (h >> 16)) * 0x7feb352du;
+                h = (h ^ (h >> 15)) * 0x846ca68bu;
+                h = h ^ (h >> 16);
+                const float roll = static_cast<float>(h & 0xffffu) * (1.0f / 65535.0f);
+                if (roll < (expected - floorf(expected)))
+                {
+                    adjusted_count++;
+                }
+            }
             transforms_out.resize(adjusted_count);
             if (adjusted_count == 0)
             {
@@ -1300,7 +1316,10 @@ namespace spartan
         node.append_attribute("scale")         = m_scale;
         node.append_attribute("tile_count")    = m_tile_count;
         node.append_attribute("create_border") = m_create_border;
-        node.append_attribute("spawn_biome_props") = m_spawn_biome_props;
+        node.append_attribute("spawn_biome_props")   = m_spawn_biome_props;
+        node.append_attribute("prop_density_tree")   = m_prop_density_tree;
+        node.append_attribute("prop_density_rock")   = m_prop_density_rock;
+        node.append_attribute("prop_density_flower") = m_prop_density_flower;
 
         // flat terrain dims, used when there is no height map seed
         if (!m_height_map_seed && m_width > 1 && m_height > 1)
@@ -1334,6 +1353,9 @@ namespace spartan
         m_tile_count    = max(node.attribute("tile_count").as_uint(16), 1u);
         m_create_border = node.attribute("create_border").as_bool(false);
         m_spawn_biome_props = node.attribute("spawn_biome_props").as_bool(true);
+        SetPropDensityTree(node.attribute("prop_density_tree").as_float(1.0f));
+        SetPropDensityRock(node.attribute("prop_density_rock").as_float(1.0f));
+        SetPropDensityFlower(node.attribute("prop_density_flower").as_float(1.0f));
 
         // forest grass/rock/sand slope material
         ApplyDefaultMaterial();
@@ -1365,7 +1387,7 @@ namespace spartan
         };
 
         // bump when cache format or the generation algorithms change so old caches get invalidated
-        const uint64_t cache_format_version = 11;
+        const uint64_t cache_format_version = 12;
         hash_combine(cache_format_version);
 
         hash_combine(static_cast<uint64_t>(m_min_y * 1000));
@@ -2880,15 +2902,35 @@ namespace spartan
         }
 
         // cpu port of terrain_layer_weight, scores each biome then packs grass/tree/rock channels
-        auto band = [](float value, float low, float high, float feather_max) -> float
+        // the constants below mirror common_terrain.hlsl, they must move together or the props end up
+        // scattered over ground the surface shader painted as something else
+        const float slope_domain_min   = 0.0f;
+        const float slope_domain_max   = 1.5698f;
+        const float height_domain_min  = -99999.0f;
+        const float height_domain_max  = 99999.0f;
+        const float slope_feather_max  = 0.14f;
+        const float height_feather_max = 6.0f;
+
+        auto band = [](float value, float low, float high, float feather_max,
+            float domain_min, float domain_max) -> float
         {
-            const float feather = clamp((high - low) * 0.25f, 1e-4f, feather_max);
-            const float rise = saturate((value - (low - feather)) / max(2.0f * feather, 1e-4f));
-            const float fall = 1.0f - saturate((value - (high - feather)) / max(2.0f * feather, 1e-4f));
-            // smoothstep-ish
-            const float r = rise * rise * (3.0f - 2.0f * rise);
-            const float f = fall * fall * (3.0f - 2.0f * fall);
-            return r * f;
+            const bool open_low  = low  <= domain_min;
+            const bool open_high = high >= domain_max;
+
+            const float span    = (open_low || open_high) ? (feather_max * 4.0f) : (high - low);
+            const float feather = clamp(span * 0.25f, 1e-4f, feather_max);
+
+            auto smooth = [](float t) -> float
+            {
+                return t * t * (3.0f - 2.0f * t);
+            };
+
+            const float rise = open_low ?
+                1.0f : smooth(saturate((value - (low - feather)) / max(2.0f * feather, 1e-4f)));
+            const float fall = open_high ?
+                1.0f : smooth(1.0f - saturate((value - (high - feather)) / max(2.0f * feather, 1e-4f)));
+
+            return rise * fall;
         };
 
         auto layer_weight = [&](const TerrainLayerRule& rule, float height, float slope_rad,
@@ -2903,8 +2945,22 @@ namespace spartan
             const float height_for_band = (rule.flags & TerrainLayerFlags_BelowSea) ?
                 (height - m_level_sea) : height;
 
-            float weight = band(slope_rad, rule.slope_min * math::deg_to_rad, rule.slope_max * math::deg_to_rad, 0.35f);
-            weight *= band(height_for_band, rule.height_min, rule.height_max, 30.0f);
+            float weight = band(
+                slope_rad,
+                rule.slope_min * math::deg_to_rad,
+                rule.slope_max * math::deg_to_rad,
+                slope_feather_max,
+                slope_domain_min,
+                slope_domain_max
+            );
+            weight *= band(
+                height_for_band,
+                rule.height_min,
+                rule.height_max,
+                height_feather_max,
+                height_domain_min,
+                height_domain_max
+            );
             if (weight <= 0.0f)
             {
                 return 0.0f;
@@ -2919,7 +2975,7 @@ namespace spartan
             push += rule.deposition_influence * (deposition * 2.0f - 1.0f);
             push += rule.talus_influence      * (talus * 2.0f - 1.0f);
 
-            return weight * exp2f(push * 2.0f) * rule.weight_bias;
+            return weight * exp2f(clamp(push, -1.0f, 1.0f) * 1.25f) * rule.weight_bias;
         };
 
         // find layer indices by name so a reordered rule table still maps correctly

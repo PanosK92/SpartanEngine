@@ -1141,14 +1141,19 @@ namespace spartan
         // consume the world side flag unconditionally, it clears its own change tracking on read
         const bool world_changed =
             World::HaveMaterialsChangedThisFrame();
+        // terrain rules and the grass material are packed into the material buffer without touching
+        // a Material, so the world side revision cannot see them
+        const bool bindless_changed = m_pass_state.bindless_materials_dirty;
         if (
             GetFrameNumber() != 0 &&
             !view_changed &&
-            !world_changed
+            !world_changed &&
+            !bindless_changed
         )
         {
             return;
         }
+        m_pass_state.bindless_materials_dirty = false;
         uploaded_for_secondary = is_secondary;
         materials_uploaded_this_frame = true;
 
@@ -2255,16 +2260,21 @@ namespace spartan
         }
 
         m_pass_state.grass_args_baked = false; // commit on the first frame after enable
+
+        // the grass material belongs to no entity, only the material upload hands it a bindless slot,
+        // so it has to be asked for or the blades sample whatever material already sits at that index
+        m_pass_state.bindless_materials_dirty = true;
     }
 
     void Renderer::DisableProceduralGrass()
     {
-        m_pass_state.grass_enabled    = false;
-        m_pass_state.grass_mesh       = nullptr;
-        m_pass_state.grass_material   = nullptr;
-        m_pass_state.grass_heightmap  = nullptr;
-        m_pass_state.grass_prop_mask  = nullptr;
-        m_pass_state.grass_args_baked = false;
+        m_pass_state.grass_enabled            = false;
+        m_pass_state.grass_mesh               = nullptr;
+        m_pass_state.grass_material           = nullptr;
+        m_pass_state.grass_heightmap          = nullptr;
+        m_pass_state.grass_prop_mask          = nullptr;
+        m_pass_state.grass_args_baked         = false;
+        m_pass_state.bindless_materials_dirty = true;
     }
 
     bool Renderer::IsProceduralGrassEnabled()
@@ -2279,8 +2289,10 @@ namespace spartan
             return;
         }
 
-        m_pass_state.terrain         = params;
-        m_pass_state.terrain_enabled = true;
+        // only pushed when something actually changed, the terrain never calls this per frame
+        m_pass_state.terrain                  = params;
+        m_pass_state.terrain_enabled          = true;
+        m_pass_state.bindless_materials_dirty = true;
     }
 
     void Renderer::ClearTerrain(Material* surface)
@@ -2292,8 +2304,9 @@ namespace spartan
             return;
         }
 
-        m_pass_state.terrain         = TerrainParams();
-        m_pass_state.terrain_enabled = false;
+        m_pass_state.terrain                  = TerrainParams();
+        m_pass_state.terrain_enabled          = false;
+        m_pass_state.bindless_materials_dirty = true;
     }
 
     void Renderer::EnableOcean(

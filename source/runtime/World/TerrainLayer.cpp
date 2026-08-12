@@ -37,12 +37,13 @@ namespace spartan
         }
 
         // layer 0, grass, the fallback surface, wins on gentle sunlit ground above the shore
+        // the slope ceiling is generous on purpose, grass holds well past the angle a cliff needs
         {
             TerrainLayerRule& r     = rules[0];
             r.name                  = "whispy_grass_meadow";
             r.slope_min             = 0.0f;
-            r.slope_max             = 40.0f;
-            r.height_min            = 2.0f;
+            r.slope_max             = 45.0f;
+            r.height_min            = 1.0f;
             r.flags                 = TerrainLayerFlags_BelowSea;
             r.insolation_influence  = 0.25f;
             r.occlusion_influence   = -0.15f;
@@ -52,16 +53,17 @@ namespace spartan
             r.blend_contrast        = 0.25f;
             r.porosity              = 0.7f;
             r.macro_strength        = 1.0f;
-            r.weight_bias           = 1.0f;
+            r.weight_bias           = 1.2f;
         }
 
         // layer 1, rock, the cliff face, biplanar because planar xz smears on anything vertical
+        // pom because a dominant cliff face up close is the one place the extra march earns its cost
         {
             TerrainLayerRule& r    = rules[1];
             r.name                 = "rock";
-            r.slope_min            = 32.0f;
+            r.slope_min            = 34.0f;
             r.slope_max            = 90.0f;
-            r.flags                = TerrainLayerFlags_Biplanar;
+            r.flags                = TerrainLayerFlags_Biplanar | TerrainLayerFlags_Pom;
             r.curvature_influence  = -0.35f;
             r.wear_influence       = 0.5f;
             r.deposition_influence = -0.3f;
@@ -69,7 +71,7 @@ namespace spartan
             r.blend_contrast       = 0.12f;
             r.porosity             = 0.25f;
             r.macro_strength       = 0.6f;
-            r.weight_bias          = 1.15f;
+            r.weight_bias          = 1.0f;
         }
 
         // layer 2, sand, the shoreline and anything sitting at or below the water line
@@ -79,7 +81,7 @@ namespace spartan
             r.slope_min            = 0.0f;
             r.slope_max            = 30.0f;
             r.height_min           = -100000.0f;
-            r.height_max           = 3.0f;
+            r.height_max           = 4.0f;
             r.flags                = TerrainLayerFlags_BelowSea;
             r.deposition_influence = 0.35f;
             r.flow_influence       = 0.15f;
@@ -94,7 +96,7 @@ namespace spartan
         {
             TerrainLayerRule& r    = rules[3];
             r.name                 = "dirt";
-            r.slope_min            = 18.0f;
+            r.slope_min            = 22.0f;
             r.slope_max            = 55.0f;
             r.height_min           = 1.0f;
             r.flags                = TerrainLayerFlags_BelowSea;
@@ -110,15 +112,16 @@ namespace spartan
         }
 
         // layer 4, gravel, scree fans below cliffs, keyed off talus and deposition together
+        // the slope floor has to clear the ramp width, scree does not collect on level ground
         {
             TerrainLayerRule& r    = rules[4];
             r.name                 = "gravel";
-            r.slope_min            = 10.0f;
-            r.slope_max            = 45.0f;
-            r.talus_influence      = 0.9f;
-            r.deposition_influence = 0.45f;
-            r.curvature_influence  = 0.25f;
-            r.flow_influence       = 0.2f;
+            r.slope_min            = 20.0f;
+            r.slope_max            = 42.0f;
+            r.talus_influence      = 0.55f;
+            r.deposition_influence = 0.3f;
+            r.curvature_influence  = 0.15f;
+            r.flow_influence       = 0.12f;
             r.tiling_scale         = 1.2f;
             r.blend_contrast       = 0.15f;
             r.porosity             = 0.55f;

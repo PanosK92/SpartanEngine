@@ -154,6 +154,12 @@ namespace spartan
         void SetBodyType(BodyType type);
         BodyType DetectBodyType();
 
+        // a BodyType::Mesh body cooks a triangle mesh when static and a convex hull when dynamic,
+        // this forces the hull for statics too, which is what scattered props want, a rock or a trunk
+        // is close enough to convex that the exact silhouette buys nothing and costs per contact
+        bool GetUseConvexHull() const { return m_use_convex_hull; }
+        void SetUseConvexHull(bool enabled);
+
         // ground
         bool IsGrounded() const;
         Entity* GetGroundEntity() const;
@@ -357,6 +363,7 @@ namespace spartan
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
         math::Vector3 m_velocity       = math::Vector3::Zero;
         BodyType m_body_type           = BodyType::Max;
+        bool m_use_convex_hull         = false;
         bool m_controller_was_playing  = false; // tracks the edit to play transition of the character controller
         void* m_controller               = nullptr;
 

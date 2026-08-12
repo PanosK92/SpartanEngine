@@ -523,8 +523,9 @@ void RenderOptions::OnTickVisible()
 
                 if (option_header("Debug Visuals"))
                 {
-                    option_check_box("Transform handles", "r.transform_handle");
-                    option_check_box("Transform snapping", "r.transform_snap");
+                    option_value("Snap translate", "r.transform_snap_translate", "world units", 0.05f, 0.001f, 100.0f, "%.3f");
+                    option_value("Snap rotate", "r.transform_snap_rotate", "degrees", 1.0f, 0.1f, 180.0f, "%.1f");
+                    option_value("Snap scale", "r.transform_snap_scale", "scale step", 0.05f, 0.001f, 10.0f, "%.3f");
                     option_check_box("Selection outline", "r.selection_outline");
                     option_check_box("Entity icons", "r.entity_icons");
                     option_check_box("Grid", "r.grid");

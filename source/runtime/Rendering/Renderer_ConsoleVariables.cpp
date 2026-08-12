@@ -162,6 +162,9 @@ namespace spartan
     TConsoleVar<float> cvar_grid                           ("r.grid",                           0.0f,                                                    "draw editor grid");
     TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,                                                    "draw transform handles");
     TConsoleVar<float> cvar_transform_snap                 ("r.transform_snap",                 1.0f,                                                    "snap transform handles");
+    TConsoleVar<float> cvar_transform_snap_translate       ("r.transform_snap_translate",       0.1f,                                                    "translate snap step");
+    TConsoleVar<float> cvar_transform_snap_rotate          ("r.transform_snap_rotate",          10.0f,                                                   "rotate snap step in degrees");
+    TConsoleVar<float> cvar_transform_snap_scale           ("r.transform_snap_scale",           0.1f,                                                    "scale snap step");
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
     TConsoleVar<float> cvar_entity_icons                   ("r.entity_icons",                   1.0f,                                                    "draw entity icons and debug visuals");
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "show performance metrics",                on_performance_metrics_change);

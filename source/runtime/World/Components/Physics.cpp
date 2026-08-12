@@ -1537,6 +1537,22 @@ namespace spartan
         Create();
     }
 
+    void Physics::SetUseConvexHull(bool enabled)
+    {
+        if (m_use_convex_hull == enabled)
+        {
+            return;
+        }
+
+        m_use_convex_hull = enabled;
+
+        // the cooked shape is baked at create time, so the switch only takes effect on a rebuild
+        if (m_body_type == BodyType::Mesh)
+        {
+            Create();
+        }
+    }
+
     void Physics::SetVehiclePreset(const car::car_preset& preset)
     {
         EnsureVehicleSimulation()->load_car(preset);
@@ -3920,7 +3936,10 @@ namespace spartan
                 params.maxWeightRatioInTet             = FLT_MAX;
 
                 PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                if (IsStatic() || IsKinematic()) // triangle mesh for exact collision (static or kinematic)
+                // triangle mesh for exact collision, hull when the caller asked for one or the body
+                // is dynamic, physx cannot simulate a dynamic triangle mesh
+                const bool cook_convex = m_use_convex_hull || !(IsStatic() || IsKinematic());
+                if (!cook_convex)
                 {
                     PxTriangleMeshDesc mesh_desc;
                     mesh_desc.points.count     = static_cast<PxU32>(px_vertices.size());
@@ -3944,7 +3963,7 @@ namespace spartan
                         return;
                     }
                 }
-                else // dynamic: convex mesh
+                else // convex hull
                 {
                     PxConvexMeshDesc mesh_desc;
                     mesh_desc.points.count  = static_cast<PxU32>(px_vertices.size());
@@ -4228,16 +4247,22 @@ namespace spartan
                 {
                     if (m_mesh)
                     {
-                        if (IsStatic() || IsKinematic())
+                        // must mirror the cooking branch in Create, the pointer is one or the other
+                        const bool is_convex = m_use_convex_hull || !(IsStatic() || IsKinematic());
+
+                        // per instance scale, a scattered prop varies size per copy and without this
+                        // every instance collides at the size of the source mesh
+                        Vector3 scale = render->HasInstancing() ? render->GetInstance(i, false).GetScale() : Vector3::One;
+                        PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // runtime transform, cheap for statics but not reflected in the baked shape (raycasts etc)
+
+                        if (is_convex)
                         {
-                            Vector3 scale = render->HasInstancing() ? render->GetInstance(i, false).GetScale() : Vector3::One;
-                            PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // this is a runtime transform, cheap for statics but it won't be reflected for the internal baked shape (raycasts etc)
-                            PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
+                            PxConvexMeshGeometry geometry(static_cast<PxConvexMesh*>(m_mesh), mesh_scale);
                             shape = physics->createShape(geometry, *material);
                         }
                         else
                         {
-                            PxConvexMeshGeometry geometry(static_cast<PxConvexMesh*>(m_mesh));
+                            PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
                             shape = physics->createShape(geometry, *material);
                         }
                     }

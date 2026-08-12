@@ -2277,8 +2277,10 @@ namespace spartan
         {
             resample_grid(maps_out.wear,       analysis_width, analysis_height, erosion->wear,       width, height);
             resample_grid(maps_out.deposition, analysis_width, analysis_height, erosion->deposition, width, height);
-            autolevel(maps_out.wear,       0.5f, 0.99f);
-            autolevel(maps_out.deposition, 0.5f, 0.99f);
+            // a low percentile at the median would clip half the terrain to zero and stretch the tail,
+            // turning both channels into a hard mask instead of the gradient the rules expect
+            autolevel(maps_out.wear,       0.05f, 0.99f);
+            autolevel(maps_out.deposition, 0.05f, 0.99f);
         }
         else
         {
