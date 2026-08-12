@@ -411,13 +411,7 @@ namespace spartan
                 }
                 else if (!is_playing)
                 {
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
-                    {
-                        if (PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]))
-                        {
-                            actor->setGlobalPose(to_px_transform(GetEntity()->GetMatrix()));
-                        }
-                    }
+                    SyncStaticPoses();
                 }
                 break;
         }
@@ -983,6 +977,37 @@ namespace spartan
         }
     }
 
+    // editor only, keeps a static body under a hand moved entity
+    //
+    // the entity matrix is hoisted and tested first, rewriting a pose rewrites the static pruner entry
+    // behind it, and a scattered prop owns one actor per copy, so doing that unconditionally every frame
+    // costs more than the rest of the scene put together
+    void Physics::SyncStaticPoses()
+    {
+        const Matrix matrix = GetEntity()->GetMatrix();
+        if (matrix == m_transform_previous)
+        {
+            return;
+        }
+        m_transform_previous = matrix;
+
+        Render* render      = GetEntity()->GetComponent<Render>();
+        const bool instanced = render && render->HasInstancing();
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+        {
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
+            if (!actor)
+            {
+                continue;
+            }
+
+            // an instanced render owns one actor per copy, writing the entity matrix into all of them
+            // stacks every hull on the entity origin instead of leaving them where they were scattered
+            actor->setGlobalPose(to_px_transform(instanced ? render->GetInstance(i, true) : matrix));
+        }
+    }
+
     void Physics::TickDistanceActivation()
     {
         Camera* camera = World::GetCamera();
@@ -998,6 +1023,21 @@ namespace spartan
         if (m_actors_active.size() != m_actors.size())
         {
             m_actors_active.resize(m_actors.size(), true);
+            m_actors_active_count = static_cast<uint32_t>(m_actors.size());
+        }
+
+        // a scattered prop entity owns one actor per instance, and a populated world has tens of
+        // thousands of them, so walking every instance every frame is the single largest cost in the
+        // editor. they all sit inside one world box, and once the set is fully asleep a box that cannot
+        // reach the activation radius rejects the whole entity in constant time
+        const float box_distance_squared = Vector3::DistanceSquared(
+            camera_pos,
+            render->GetBoundingBox().GetClosestPoint(camera_pos)
+        );
+
+        if (m_actors_active_count == 0 && box_distance_squared > distance_activate_squared)
+        {
+            return;
         }
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
@@ -1020,11 +1060,13 @@ namespace spartan
             {
                 PhysicsWorld::RemoveActor(actor);
                 m_actors_active[i] = false;
+                m_actors_active_count--;
             }
             else if (!is_active && distance_squared <= distance_activate_squared)
             {
                 PhysicsWorld::AddActor(actor);
                 m_actors_active[i] = true;
+                m_actors_active_count++;
             }
         }
     }
@@ -3535,7 +3577,8 @@ namespace spartan
                 m_actors.resize(1, nullptr);
                 PxRigidDynamic* body = m_vehicle_simulation->get_body();
                 m_actors[0] = body;
-                m_actors_active.resize(1, true);
+                m_actors_active.assign(1, true);
+                m_actors_active_count = 1;
 
                 Vector3 pos = GetEntity()->GetPosition();
                 PxTransform current_pose = body->getGlobalPose();
@@ -3831,7 +3874,8 @@ namespace spartan
 
             m_actors.resize(1, nullptr);
             m_actors[0] = actor;
-            m_actors_active.resize(1, true);
+            m_actors_active.assign(1, true);
+            m_actors_active_count = 1;
 
             SP_LOG_INFO("MeshConvex created: %d convex shapes from %zu entities", shapes_created, render_entities.size());
         }
@@ -4176,7 +4220,8 @@ namespace spartan
 
         // create bodies and shapes
         m_actors.resize(instance_count, nullptr);
-        m_actors_active.resize(instance_count, true); // all actors start active
+        m_actors_active.assign(instance_count, true); // all actors start active
+        m_actors_active_count = instance_count;
         for (uint32_t i = 0; i < instance_count; i++)
         {
             math::Matrix transform = (render && render->HasInstancing()) ? render->GetInstance(i, true) : GetEntity()->GetMatrix();

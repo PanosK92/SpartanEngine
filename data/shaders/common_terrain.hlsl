@@ -68,9 +68,13 @@ static const float terrain_height_feather_max = 6.0f;
 static const float terrain_slope_jitter  = 0.10f; // about 6 degrees
 static const float terrain_height_jitter = 4.0f;
 
-// past this range the blend band between layers is below a pixel, so the surface collapses to the
-// dominant layer, which is where the bulk of the savings are
+// past this range the per layer detail work, hex tiling variants and the third and fourth picks, stops
+// paying for itself
 static const float terrain_detail_distance = 45.0f;
+// the interface between two layers is a different thing to the detail inside one, a layer patch is tens
+// to hundreds of metres across so its boundary stays resolvable all the way out, collapsing to a single
+// pick at the detail range is what turns the mid field into a hard edged patchwork
+static const float terrain_blend_distance = 800.0f;
 // the hex lattice has to outlive the layer blend by a long way, the repeat is most obvious at exactly
 // the mid distances where it is still resolvable, and on one layer three taps is cheap
 static const float terrain_hex_distance = 500.0f;
@@ -124,7 +128,16 @@ TerrainAnalysis terrain_sample_analysis(MaterialParameters surface, float3 posit
         return terrain_analysis_neutral();
     }
 
-    float2 uv = (position_world.xz - surface.terrain_world_mapping.xy) * surface.terrain_world_mapping.zw;
+    float2 normalized = (position_world.xz - surface.terrain_world_mapping.xy) * surface.terrain_world_mapping.zw;
+
+    // sample 0 sits at the world minimum and sample n-1 at the maximum, so the maps span n-1 intervals
+    // while the texture spans n, rebasing onto the texel centres is what keeps this agreeing with the
+    // cpu prop mask, which indexes the same maps as normalized * (n - 1)
+    uint map_w;
+    uint map_h;
+    tex_terrain_map_a.GetDimensions(map_w, map_h);
+    float2 map_size = float2(map_w, map_h);
+    float2 uv       = (normalized * (map_size - 1.0f) + 0.5f) / map_size;
 
     float4 map_a = tex_terrain_map_a.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, lod);
     float4 map_b = tex_terrain_map_b.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, lod);
@@ -775,11 +788,20 @@ TerrainSurface terrain_evaluate(
         return output;
     }
 
-    // in the distance the blend band and the hex lattice are both sub pixel, so one layer sampled
-    // straight resolves the same image for a fraction of the fetches
     bool detail = distance_to_camera < terrain_detail_distance;
     bool hex    = distance_to_camera < terrain_hex_distance;
-    uint count  = detail ? pick.count : 1;
+
+    // close up every pick is resolvable, past that two layers still carry the interface for a fraction
+    // of the fetches, and only in the far field is a single layer honest
+    uint count = pick.count;
+    if (distance_to_camera >= terrain_blend_distance)
+    {
+        count = 1;
+    }
+    else if (!detail)
+    {
+        count = min(pick.count, 2u);
+    }
 
     // sample the picks
     TerrainLayerSample samples[terrain_layer_pick_max];

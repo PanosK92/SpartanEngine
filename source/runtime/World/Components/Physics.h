@@ -339,6 +339,7 @@ namespace spartan
         void TickCloth(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
+        void SyncStaticPoses();
         void ApplyBuoyancy();
         float ComputeVolume();
 
@@ -378,6 +379,7 @@ namespace spartan
         void* m_mesh                     = nullptr;
         std::vector<void*> m_actors      = { nullptr };
         std::vector<bool> m_actors_active; // tracks which actors are currently in the scene (for distance-based activation)
+        uint32_t m_actors_active_count = 0; // how many of the above are in the scene, lets a sleeping entity skip its per instance scan
 
         // vehicle wheel entities and state
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
@@ -408,6 +410,8 @@ namespace spartan
 
         // cached scale for detecting editor-time scale changes
         math::Vector3 m_scale_previous = math::Vector3::Zero;
+        // cached entity matrix, a static pose is only rewritten when the entity actually moved
+        math::Matrix m_transform_previous = math::Matrix::Identity;
 
         void UpdateShapeGeometry();
 

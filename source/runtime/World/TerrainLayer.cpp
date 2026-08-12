@@ -113,15 +113,17 @@ namespace spartan
 
         // layer 4, gravel, scree fans below cliffs, keyed off talus and deposition together
         // the slope floor has to clear the ramp width, scree does not collect on level ground
+        //
+        // no flow influence, that channel is a topographic wetness index and keying scree off it paints
+        // the whole drainage network in gravel, which is the one pattern this layer must not produce
         {
             TerrainLayerRule& r    = rules[4];
             r.name                 = "gravel";
-            r.slope_min            = 20.0f;
+            r.slope_min            = 26.0f;
             r.slope_max            = 42.0f;
             r.talus_influence      = 0.55f;
             r.deposition_influence = 0.3f;
-            r.curvature_influence  = 0.15f;
-            r.flow_influence       = 0.12f;
+            r.curvature_influence  = 0.1f;
             r.tiling_scale         = 1.2f;
             r.blend_contrast       = 0.15f;
             r.porosity             = 0.55f;

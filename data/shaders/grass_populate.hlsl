@@ -66,53 +66,66 @@ float hash_unit(uint h)
     return float(h) * (1.0f / 4294967296.0f);
 }
 
-float2 terrain_world_to_uv(float2 world_xz)
+// 0 at the terrain's world minimum, 1 at its maximum, the range test lives in this space
+float2 terrain_world_to_normalized(float2 world_xz)
 {
     float2 origin   = buffer_pass.values[2].xy;
     float2 inv_size = buffer_pass.values[2].zw;
     return (world_xz - origin) * inv_size;
 }
 
+// the terrain grid stores one sample per texel, sample 0 at the world minimum and sample n-1 at the
+// maximum, so it spans n-1 intervals while the texture spans n. a fetch puts those samples on the
+// texel centres, which means the normalized position has to be rebased onto them
+//
+// without this every tap reads half a texel toward -x and -z, and a texel is the terrain grid spacing,
+// 25 m by default, so the blade takes its height from a completely different part of the slope
+float2 terrain_normalized_to_uv(float2 normalized, float2 texture_size)
+{
+    return (normalized * (texture_size - 1.0f) + 0.5f) / texture_size;
+}
+
 // single centre sample, gates the cheap height reject and the frustum/hi-z visibility cull
 // before the four neighbor taps that the slope reject needs, so off-screen blades pay one tap not five
-float sample_terrain_height(float2 world_xz, out float valid)
+float sample_terrain_height(float2 world_xz, float2 height_size, out float valid)
 {
-    float2 uv = terrain_world_to_uv(world_xz);
+    float2 normalized = terrain_world_to_normalized(world_xz);
 
-    if (any(uv < 0.0f) || any(uv > 1.0f))
+    if (any(normalized < 0.0f) || any(normalized > 1.0f))
     {
         valid = 0.0f;
         return 0.0f;
     }
 
     valid = 1.0f;
-    return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
+    return tex.SampleLevel(
+        samplers[sampler_bilinear_clamp],
+        terrain_normalized_to_uv(normalized, height_size),
+        0
+    ).r;
 }
 
 // two forward taps for the surface slope, reuses the centre height so a surviving blade pays three terrain
 // samples total (one centre in sample_terrain_height plus these two) instead of five
 float3 sample_terrain_normal(
     float2 world_xz,
+    float2 height_size,
     float y_c
 )
 {
-    float2 uv = terrain_world_to_uv(world_xz);
+    float2 uv = terrain_normalized_to_uv(terrain_world_to_normalized(world_xz), height_size);
 
-    uint width;
-    uint height;
-    tex.GetDimensions(width, height);
-    float texel_uv_x = 1.0f / float(max(width,  1u));
-    float texel_uv_z = 1.0f / float(max(height, 1u));
+    float2 texel_uv = 1.0f / max(height_size, 1.0f);
 
-    float2 inv_size = buffer_pass.values[2].zw;
-    float world_per_texel_x = texel_uv_x / max(inv_size.x, 1e-8f);
-    float world_per_texel_z = texel_uv_z / max(inv_size.y, 1e-8f);
+    // world distance covered by one texel step, the grid spans n-1 intervals not n
+    float2 inv_size      = buffer_pass.values[2].zw;
+    float2 world_per_tap = 1.0f / (max(inv_size, 1e-8f) * max(height_size - 1.0f, 1.0f));
 
-    float y_r = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(texel_uv_x, 0.0f), 0).r;
-    float y_u = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, texel_uv_z), 0).r;
+    float y_r = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(texel_uv.x, 0.0f), 0).r;
+    float y_u = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, texel_uv.y), 0).r;
 
-    float dy_dx = (y_r - y_c) / world_per_texel_x;
-    float dy_dz = (y_u - y_c) / world_per_texel_z;
+    float dy_dx = (y_r - y_c) / world_per_tap.x;
+    float dy_dz = (y_u - y_c) / world_per_tap.y;
 
     return normalize(float3(-dy_dx, 1.0f, -dy_dz));
 }
@@ -262,8 +275,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     }
 
     // height reject, single centre tap, also yields world_y for the visibility cull below
+    uint height_w;
+    uint height_h;
+    tex.GetDimensions(height_w, height_h);
+    float2 height_size = float2(height_w, height_h);
+
     float valid;
-    float world_y = sample_terrain_height(world_xz, valid);
+    float world_y = sample_terrain_height(world_xz, height_size, valid);
     if (valid < 0.5f || world_y < height_min || world_y > height_max)
         return;
 
@@ -286,6 +304,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // slope reject, two forward taps reusing the centre height, paid only by visible blades
     float3 surface_normal = sample_terrain_normal(
         world_xz,
+        height_size,
         world_y
     );
     if (surface_normal.y < max_slope_cos)
@@ -298,8 +317,16 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float biome_min = asfloat(buffer_pass.is_transparent);
     if (biome_min >= 0.0f)
     {
-        float2 mask_uv = terrain_world_to_uv(world_xz);
-        float grass_w  = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0).r;
+        // the mask is baked at its own resolution, so it needs its own texel centre rebase
+        uint mask_w;
+        uint mask_h;
+        tex3.GetDimensions(mask_w, mask_h);
+
+        float2 mask_uv = terrain_normalized_to_uv(
+            terrain_world_to_normalized(world_xz),
+            float2(mask_w, mask_h)
+        );
+        float grass_w = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0).r;
         if (grass_w < biome_min)
         {
             return;
