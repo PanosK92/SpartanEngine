@@ -25,7 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
+#include "../World/Components/Terrain.h"
 #include "../World/World.h"
+#include "../Resource/IResource.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_AccelerationStructure.h"
@@ -115,6 +117,33 @@ namespace spartan
                     GeometryBuffer::GetMeshletBoundsBuffer() ? "ok" : "null"
                 );
             }
+        }
+
+        // same formula as Terrain::SampleHeight, world_y = local_y + matrix translation
+        // GetPosition is 0 until UpdateTransform, which is also when the tiles drop, so the
+        // offset cannot fire on its own and put grass under the mesh
+        void get_grass_terrain_frame_state(Vector3& offset_out, Vector4& mapping_out)
+        {
+            offset_out  = Vector3::Zero;
+            mapping_out = Vector4::Zero;
+
+            Terrain* terrain = Terrain::FindActive();
+            if (!terrain)
+            {
+                return;
+            }
+
+            mapping_out = terrain->GetWorldMapping();
+            Entity* entity = terrain->GetEntity();
+            if (!entity)
+            {
+                return;
+            }
+
+            const Matrix& world = entity->GetMatrix();
+            offset_out = world.GetTranslation();
+            mapping_out.x += offset_out.x;
+            mapping_out.y += offset_out.z;
         }
 
         void bind_mesh_shader_geometry(RHI_CommandList* cmd_list)
@@ -1052,7 +1081,15 @@ namespace spartan
         // fills the per-lod sections of grass_instances around the camera, then bakes instance_count into the indirect args
 
         if (!m_pass_state.grass_enabled || !m_pass_state.grass_mesh || !m_pass_state.grass_heightmap)
+        {
             return;
+        }
+
+        if (!m_pass_state.grass_heightmap->GetRhiResource() ||
+            m_pass_state.grass_heightmap->GetResourceState() != ResourceState::PreparedForGpu)
+        {
+            return;
+        }
 
         cmd_list->BeginTimeblock("grass_populate");
         {
@@ -1105,6 +1142,17 @@ namespace spartan
                 const float biome_min = m_pass_state.grass_prop_mask ?
                     m_pass_state.grass_params.biome_min_weight : -1.0f;
 
+                Vector3 terrain_offset;
+                Vector4 terrain_mapping;
+                get_grass_terrain_frame_state(terrain_offset, terrain_mapping);
+                if (terrain_mapping.z == 0.0f && terrain_mapping.w == 0.0f)
+                {
+                    terrain_mapping = m_pass_state.grass_params.terrain_world_mapping;
+                    terrain_mapping.x += terrain_offset.x;
+                    terrain_mapping.y += terrain_offset.z;
+                }
+                const float terrain_entity_y = terrain_offset.y;
+
                 for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
                 {
                     const float cell_size   = m_pass_state.grass_params.cell_size_m[lod];
@@ -1129,10 +1177,11 @@ namespace spartan
                 // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
                 // values[1] = (height_min, height_max, max_slope_cos, inner_radius)
                 // values[2] = (map_origin_x, map_origin_z, map_inv_x, map_inv_z)
-                // heightmap is r32 world y, no bake remap
+                // heightmap is r32 local y, material_index bitcast is the entity y offset
                 // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
                 m_pcb_pass_cpu.is_transparent = *reinterpret_cast<const uint32_t*>(&biome_min);
                 m_pcb_pass_cpu.draw_index     = lod;
+                m_pcb_pass_cpu.material_index = *reinterpret_cast<const uint32_t*>(&terrain_entity_y);
                 m_pcb_pass_cpu.v[0]  = cell_size;
                 m_pcb_pass_cpu.v[1]  = ring_radius;
                 m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
@@ -1141,10 +1190,10 @@ namespace spartan
                 m_pcb_pass_cpu.v[5]  = m_pass_state.grass_params.height_max;
                 m_pcb_pass_cpu.v[6]  = max_slope_cos;
                 m_pcb_pass_cpu.v[7]  = inner_radius;
-                m_pcb_pass_cpu.v[8]  = m_pass_state.grass_params.terrain_world_mapping.x;
-                m_pcb_pass_cpu.v[9]  = m_pass_state.grass_params.terrain_world_mapping.y;
-                m_pcb_pass_cpu.v[10] = m_pass_state.grass_params.terrain_world_mapping.z;
-                m_pcb_pass_cpu.v[11] = m_pass_state.grass_params.terrain_world_mapping.w;
+                m_pcb_pass_cpu.v[8]  = terrain_mapping.x;
+                m_pcb_pass_cpu.v[9]  = terrain_mapping.y;
+                m_pcb_pass_cpu.v[10] = terrain_mapping.z;
+                m_pcb_pass_cpu.v[11] = terrain_mapping.w;
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     // one cell per thread, dispatch z carries the blade index, the shader recomputes blades_per_cell so both formulas must match
@@ -1205,10 +1254,21 @@ namespace spartan
         // shares the geometry stage render pass, sets its own vertex shader that reads grass_instances
 
         if (!m_pass_state.grass_enabled || !m_pass_state.grass_mesh || !m_pass_state.grass_material)
+        {
             return;
+        }
 
         if (!m_pass_state.grass_args_baked)
+        {
             return;
+        }
+
+        if (m_pass_state.grass_heightmap &&
+            (!m_pass_state.grass_heightmap->GetRhiResource() ||
+             m_pass_state.grass_heightmap->GetResourceState() != ResourceState::PreparedForGpu))
+        {
+            return;
+        }
 
         Mesh*     mesh     = m_pass_state.grass_mesh;
         Material* material = m_pass_state.grass_material;

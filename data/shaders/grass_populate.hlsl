@@ -45,7 +45,7 @@ static const float grass_cull_radius      = 1.5f;
 //   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
 //   values[2] = (map_origin_x, map_origin_z, map_inv_size_x, map_inv_size_z)
 // camera xz comes from buffer_frame
-// terrain height is r32 world y bound to tex (t7), no remap
+// terrain height is r32 local y bound to tex (t7), material_index bitcast is the entity y
 // biome_min arrives asfloat(is_transparent), negative disables the gate
 
 // 32-bit integer hash, takes the cell's integer world coords and returns a uniform 32-bit value
@@ -281,9 +281,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float2 height_size = float2(height_w, height_h);
 
     float valid;
-    float world_y = sample_terrain_height(world_xz, height_size, valid);
+    float local_y = sample_terrain_height(world_xz, height_size, valid);
+    float entity_y = asfloat(buffer_pass.material_index);
+    float world_y  = local_y + entity_y;
     if (valid < 0.5f || world_y < height_min || world_y > height_max)
+    {
         return;
+    }
 
     // visibility cull, frustum + occluder hi-z on a conservative blade sphere, only blades the camera
     // can actually see survive so on-screen density is unchanged while off-screen and occluded blades
@@ -305,7 +309,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float3 surface_normal = sample_terrain_normal(
         world_xz,
         height_size,
-        world_y
+        local_y
     );
     if (surface_normal.y < max_slope_cos)
     {

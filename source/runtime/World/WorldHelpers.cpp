@@ -604,7 +604,7 @@ namespace spartan
         }
 
         // gpu procedural grass, gated by the grass channel of the biome prop mask
-        // r32 world heights, r8 preview only has ~3m steps over a tall island
+        // r32 local heights, the populate pass adds the terrain entity y each frame
         if (RHI_Texture* heightmap = terrain->GetHeightMapGpu())
         {
             Renderer::ProceduralGrassParams grass_params;

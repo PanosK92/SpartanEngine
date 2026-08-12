@@ -95,7 +95,7 @@ namespace spartan
         RHI_Texture* GetHeightMapSeed() const          { return m_height_map_seed; }
         void SetHeightMapSeed(RHI_Texture* height_map) { m_height_map_seed = height_map;}
         RHI_Texture* GetHeightMapFinal() const         { return m_height_map_final.get(); }
-        // r32 world-space heights for gpu grass populate, not the r8 imgui preview
+        // r32 local-space heights for gpu grass populate, not the r8 imgui preview
         RHI_Texture* GetHeightMapGpu() const           { return m_height_map_gpu.get(); }
         // xy = world min xz, zw = 1 / world size, matches analysis and height sampling
         const math::Vector4& GetWorldMapping() const   { return m_world_mapping; }

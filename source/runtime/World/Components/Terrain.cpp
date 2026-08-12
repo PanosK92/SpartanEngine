@@ -2619,7 +2619,7 @@ namespace spartan
 
         const uint32_t sample_count = m_dense_width * m_dense_height;
 
-        // r32 world heights for grass_populate, the shader samples .r as meters
+        // r32 local heights for grass_populate, the shader adds the terrain entity y
         {
             vector<RHI_Texture_Slice> slices(1);
             slices[0].mips.resize(1);
@@ -3235,7 +3235,8 @@ namespace spartan
             entity->SetObjectName("tile_" + to_string(tile_index + 1));
             entity->SetTransient(true);
             entity->SetParent(GetEntity());
-            entity->SetPosition(m_tile_offsets[tile_index]);
+            // offsets are terrain local, SetPosition would fight the parent world y
+            entity->SetPositionLocal(m_tile_offsets[tile_index]);
 
             if (Render* render = entity->AddComponent<Render>())
             {
