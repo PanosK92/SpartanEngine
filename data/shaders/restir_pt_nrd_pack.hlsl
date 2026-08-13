@@ -51,12 +51,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // sky, mark invalid for nrd, reverse-z clears far to 0
     if (depth <= 0.0f || view_z >= denoising_range)
     {
-        tex_uav[thread_id.xy]  = 0.0f;
+        tex_uav[thread_id.xy]  = float4(0.0f, 0.0f, 0.0f, 0.0f);
         // a raw zero here decodes to a degenerate normal, pack a unit one so nrd's guide
         // fetches stay finite even though the view z already marks the texel out of range
         tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(float3(0.0f, 0.0f, 1.0f), 1.0f, 0.0f);
         tex_uav3[thread_id.xy] = float4(denoising_range * 2.0f, 0.0f, 0.0f, 0.0f);
-        tex_uav4[thread_id.xy] = 0.0f;
+        tex_uav4[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);
         return;
     }
 

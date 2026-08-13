@@ -717,7 +717,8 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::nrd_in_spec_radiance)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_in_spec_radiance");
             at(render_targets, Renderer_RenderTarget::nrd_out_spec_radiance)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance");
             at(render_targets, Renderer_RenderTarget::nrd_in_penumbra)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R32_Float,         flags, "nrd_in_penumbra");
-            at(render_targets, Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_shadow");
+            // sigma_shadow writes a 1-component texel, rgba16f fails vk image write component count
+            at(render_targets, Renderer_RenderTarget::nrd_out_shadow)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16_Float, flags, "nrd_out_shadow");
         };
 
         // gated by cvar_restir_pt so disabling restir frees the output ring as well as the reservoir slots managed by UpdateOptionalRenderTargets

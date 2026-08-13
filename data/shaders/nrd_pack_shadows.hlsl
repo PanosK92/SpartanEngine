@@ -51,8 +51,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (depth <= 0.0f || view_z >= denoising_range)
     {
-        tex_uav[thread_id.xy]  = 0.0f;
-        tex_uav2[thread_id.xy] = 0.0f;
+        tex_uav[thread_id.xy]  = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav2[thread_id.xy] = float4(0.0f, 0.0f, 0.0f, 0.0f);
         tex_uav3[thread_id.xy] = float4(denoising_range * 2.0f, 0.0f, 0.0f, 0.0f);
         tex_uav4[thread_id.xy] = float4(NRD_FP16_MAX, 0.0f, 0.0f, 0.0f);
         return;

@@ -266,20 +266,13 @@ namespace spartan
                 const auto& attribute_descs = input_layout->GetAttributeDescriptions();
             
                 // vertex buffer (binding 0) - for per-vertex attributes like position, uv, color, normal, tangent
-                bool has_vertex_attributes      = false;
-                bool is_geometry_pass_vertex = false;
+                // instance data is pulled from a storage buffer, firstInstance is a draw index so instance-rate attributes would oob
+                bool has_vertex_attributes = false;
                 for (const auto& desc : attribute_descs)
                 {
-                    // check for per-vertex attributes
                     if (desc.name == "POSITION" || desc.name == "TEXCOORD" || desc.name == "COLOR" || desc.name == "NORMAL" || desc.name == "TANGENT")
                     {
                         has_vertex_attributes = true;
-
-                        // geometry pass vertices have normal or tangent
-                        if (desc.name == "NORMAL" || desc.name == "TANGENT")
-                        {
-                            is_geometry_pass_vertex = true;
-                        }
                     }
                 }
             
@@ -305,19 +298,6 @@ namespace spartan
                             });
                         }
                     }
-                }
-            
-                // instance buffer (binding 1) - for instance transform (position, rotation, scale)
-                if (is_geometry_pass_vertex)
-                {
-                    vertex_input_binding_descs.emplace_back(1, static_cast<uint32_t>(sizeof(Instance)), VK_VERTEX_INPUT_RATE_INSTANCE);
-                    uint32_t start_index = static_cast<uint32_t>(vertex_attribute_descs.size());
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, static_cast<uint32_t>(offsetof(Instance, position_x)));
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, static_cast<uint32_t>(offsetof(Instance, position_y)));
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, static_cast<uint32_t>(offsetof(Instance, position_z)));
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_UINT,   static_cast<uint32_t>(offsetof(Instance, normal_oct)));
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,    static_cast<uint32_t>(offsetof(Instance, yaw_packed)));
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,    static_cast<uint32_t>(offsetof(Instance, scale_packed)));
                 }
             }
             // vertex input state
