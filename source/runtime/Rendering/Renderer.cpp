@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_AccelerationStructure.h"
 #include "../World/Entity.h"
@@ -524,6 +525,14 @@ namespace spartan
             RenderDoc::OnPreDeviceCreation();
         }
         RHI_Device::Initialize();
+        RHI_Device::SetPipelineBoundCallback([](RHI_CommandList* cmd_list)
+        {
+            SetStandardResources(cmd_list);
+        });
+        RHI_Device::SetScaleDimensionCallback([](uint32_t dimension, float scale)
+        {
+            return GetScaledDimension(dimension, scale);
+        });
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
@@ -575,6 +584,7 @@ namespace spartan
         });
 
         CreateBuffers();
+        RHI_Device::SetDummyVertexBuffer(GetBuffer(Renderer_Buffer::DummyInstance));
         CreateDepthStencilStates();
         CreateRasterizerStates();
         CreateBlendStates();
@@ -1674,6 +1684,11 @@ namespace spartan
         else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
         {
             RHI_VendorTechnology::XeSS_GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
+            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
+        }
+        else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss)
+        {
+            RHI_VendorTechnology::DLSS_GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
             m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
         }
         else
@@ -4767,5 +4782,30 @@ namespace spartan
         {
             Pass_ReSTIR_SwapGBufferHistory();
         }
+    }
+
+    void RHI_CommandList::SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range)
+    {
+        SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true);
+    }
+
+    void RHI_CommandList::SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const uint32_t array_layer)
+    {
+        SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, false, array_layer);
+    }
+
+    void RHI_CommandList::SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer)
+    {
+        SetBuffer(static_cast<uint32_t>(slot), buffer);
+    }
+
+    void RHI_CommandList::SetConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer)
+    {
+        SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer);
+    }
+
+    void RHI_CommandList::SetAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+    {
+        SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
     }
 }

@@ -50,8 +50,12 @@ namespace spartan
     uint32_t RHI_Device::m_shader_group_base_alignment              = 0;
     bool RHI_Device::m_is_shading_rate_supported                    = false;
     bool RHI_Device::m_xess_supported                               = false;
+    bool RHI_Device::m_dlss_supported                               = false;
     bool RHI_Device::m_is_ray_tracing_supported                     = false;
     bool RHI_Device::m_is_mesh_shaders_supported                    = false;
+    void (*RHI_Device::m_pipeline_bound_callback)(RHI_CommandList*) = nullptr;
+    uint32_t (*RHI_Device::m_scale_dimension_callback)(uint32_t, float) = nullptr;
+    RHI_Buffer* RHI_Device::m_dummy_vertex_buffer                   = nullptr;
 
     // misc
     bool RHI_Device::m_wide_lines                = false;
@@ -105,5 +109,43 @@ namespace spartan
     {
         return width  >= 4 && width  <= m_max_texture_2d_dimension &&
                height >= 4 && height <= m_max_texture_2d_dimension;
+    }
+
+    void RHI_Device::SetPipelineBoundCallback(void (*callback)(RHI_CommandList*))
+    {
+        m_pipeline_bound_callback = callback;
+    }
+
+    void RHI_Device::InvokePipelineBound(RHI_CommandList* cmd_list)
+    {
+        if (m_pipeline_bound_callback)
+        {
+            m_pipeline_bound_callback(cmd_list);
+        }
+    }
+
+    void RHI_Device::SetScaleDimensionCallback(uint32_t (*callback)(uint32_t, float))
+    {
+        m_scale_dimension_callback = callback;
+    }
+
+    uint32_t RHI_Device::ScaleDimension(uint32_t dimension, float scale)
+    {
+        if (m_scale_dimension_callback)
+        {
+            return m_scale_dimension_callback(dimension, scale);
+        }
+
+        return dimension;
+    }
+
+    void RHI_Device::SetDummyVertexBuffer(RHI_Buffer* buffer)
+    {
+        m_dummy_vertex_buffer = buffer;
+    }
+
+    RHI_Buffer* RHI_Device::GetDummyVertexBuffer()
+    {
+        return m_dummy_vertex_buffer;
     }
 }

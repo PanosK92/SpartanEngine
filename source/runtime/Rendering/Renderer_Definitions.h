@@ -101,15 +101,16 @@ namespace spartan
         AA_Off_Upscale_Linear,
         AA_Fxaa_Upscale_Linear,
         AA_Taau_Upscale_Taau,
-        AA_Xess_Upscale_Xess
+        AA_Xess_Upscale_Xess,
+        AA_Dlss_Upscale_Dlss
     };
 
-    enum class Renderer_BindingsCb
+    enum class Renderer_BindingsCb : uint32_t
     {
         frame
     };
     
-    enum class Renderer_BindingsSrv
+    enum class Renderer_BindingsSrv : uint32_t
     {
         // g-buffer
         gbuffer_color    = 0,
@@ -137,17 +138,9 @@ namespace spartan
         tex_perlin = 14,
 
         // baked terrain heightfield analysis, sampled by the terrain surface evaluator
-        // kept clear of t15 to t23, spirv reflection ignores the register space so the bindless
-        // buffers below collide with anything sharing their index
-        terrain_map_a = 35,
-        terrain_map_b = 36,
-
-        // bindless
-        bindless_material_textures   = 15,
-        bindless_material_parameters = 16,
-        bindless_light_parameters    = 17,
-        bindless_aabbs               = 18,
-        bindless_draw_data           = 19,
+        // space 0, bindless arrays reuse these register numbers in other spaces
+        terrain_map_a = 15,
+        terrain_map_b = 16,
 
         // restir reservoir srv bindings (for temporal/spatial read)
         // kept contiguous so a single loop can bind all five slots starting from reservoir_prev0
@@ -171,7 +164,7 @@ namespace spartan
         ocean_normal       = 31,
     };
 
-    enum class Renderer_BindingsUav
+    enum class Renderer_BindingsUav : uint32_t
     {
         tex           = 0,
         tex2          = 1,
@@ -238,6 +231,7 @@ namespace spartan
         // fft ocean vertical displacement per texel, host visible so the cpu can sample wave height for buoyancy
         ocean_heights          = 56,
     };
+#define SPARTAN_RENDERER_BINDINGS_DEFINED
 
     enum class Renderer_Shader : uint8_t
     {

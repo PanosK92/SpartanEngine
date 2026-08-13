@@ -167,6 +167,7 @@ function spartan_project_configuration()
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua",
                 "../third_party/nrd/Include", "../third_party/nrd/Integration", "../third_party/nri/Include",
+                "../third_party/dlss",
                 "../third_party/lzma_sdk/spartan",
                 "../third_party/engine_sim", "../third_party/engine_sim/Core", "../third_party/engine_sim/Solver"
             }
@@ -234,12 +235,12 @@ function spartan_project_configuration()
                 if ARG_API_GRAPHICS == "vulkan" then
                     links {
                         "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl",
-                        "libxess",
+                        "libxess", "nvsdk_ngx_s",
                         "NRD", "NRI", "NRI_Shared", "NRI_VK", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid"
                     }
                 elseif ARG_API_GRAPHICS == "d3d12" then
                     -- nri.lib refs CreateDeviceVK, satisfied by stub, not nri_vk (needs vma)
-                    links { "libxess", "NRD", "NRI", "NRI_Shared", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid" }
+                    links { "libxess", "nvsdk_ngx_s", "NRD", "NRI", "NRI_Shared", "NRI_D3D12", "NRI_Validation", "ShaderMakeBlob", "dxguid" }
                 end
 
         -- Debug configuration
@@ -260,11 +261,11 @@ function spartan_project_configuration()
             if ARG_API_GRAPHICS == "vulkan" then
                 links {
                     "spirv-cross-c_debug", "spirv-cross-core_debug", "spirv-cross-cpp_debug", "spirv-cross-glsl_debug", "spirv-cross-hlsl_debug",
-                    "libxess",
+                    "libxess", "nvsdk_ngx_s_dbg",
                     "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_VK_debug", "NRI_D3D12_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid"
                 }
             elseif ARG_API_GRAPHICS == "d3d12" then
-                links { "libxess", "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_D3D12_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid" }
+                links { "libxess", "nvsdk_ngx_s_dbg", "NRD_debug", "NRI_debug", "NRI_Shared_debug", "NRI_D3D12_debug", "NRI_Validation_debug", "ShaderMakeBlob_debug", "dxguid" }
             end
 
         filter { "configurations:debug", "system:linux" }

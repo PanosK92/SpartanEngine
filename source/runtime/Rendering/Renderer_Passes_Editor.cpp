@@ -283,48 +283,42 @@ namespace spartan
             return;
         }
 
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::grid_v);
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::grid_p);
-
-        cmd_list->BeginTimeblock("grid");
-
-        RHI_PipelineState pso;
-        pso.name                             = "grid";
-        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-        pso.render_target_color_textures[0]  = tex_out;
-        cmd_list->SetPipelineState(pso);
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
-
-        // follow camera in world-unit increments so the grid appears stationary
-        {
-            const float grid_spacing       = 1.0f;
-            const Vector3& camera_position = World::GetCamera()->GetEntity()->GetPosition();
-            const Vector3 translation      = Vector3(
-                floor(camera_position.x / grid_spacing) * grid_spacing,
-                0.0f,
-                floor(camera_position.z / grid_spacing) * grid_spacing
-            );
-
-            Matrix grid_transform     = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
-            m_pcb_pass_cpu.draw_index = WriteDrawData(grid_transform);
-            if (m_pcb_pass_cpu.draw_index == numeric_limits<uint32_t>::max())
+        Pass_Graphics(
+            cmd_list,
+            "grid",
+            Renderer_Shader::grid_v,
+            Renderer_Shader::grid_p,
+            { tex_out },
+            nullptr,
+            GetBlendState(Renderer_BlendState::Alpha),
+            GetDepthStencilState(Renderer_DepthStencilState::Off),
+            nullptr,
+            [&]()
             {
-                cmd_list->EndTimeblock();
-                return;
+                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+
+                const float grid_spacing       = 1.0f;
+                const Vector3& camera_position = World::GetCamera()->GetEntity()->GetPosition();
+                const Vector3 translation      = Vector3(
+                    floor(camera_position.x / grid_spacing) * grid_spacing,
+                    0.0f,
+                    floor(camera_position.z / grid_spacing) * grid_spacing
+                );
+
+                Matrix grid_transform     = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
+                m_pcb_pass_cpu.draw_index = WriteDrawData(grid_transform);
+                if (m_pcb_pass_cpu.draw_index == numeric_limits<uint32_t>::max())
+                {
+                    return;
+                }
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                cmd_list->SetCullMode(RHI_CullMode::Back);
+                cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
+                cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
+                cmd_list->DrawIndexed(6, GetStandardMesh(MeshType::Quad)->GetGlobalIndexOffset(), GetStandardMesh(MeshType::Quad)->GetGlobalVertexOffset());
             }
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-        }
-
-        cmd_list->SetCullMode(RHI_CullMode::Back);
-        cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
-        cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
-        cmd_list->DrawIndexed(6, GetStandardMesh(MeshType::Quad)->GetGlobalIndexOffset(), GetStandardMesh(MeshType::Quad)->GetGlobalVertexOffset());
-
-        cmd_list->EndTimeblock();
+        );
     }
 
     void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)

@@ -28,12 +28,13 @@ local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
 local SEVEN_ZIP_CACHE  = path.join(PROJECT_ROOT, "third_party", "lzma_sdk", "bin", "7zr.exe")
 local SEVEN_ZIP_URL    = "https://www.7-zip.org/a/7zr.exe"
 
-local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/zs3eco3vniorxwjrpqm5u/libraries.7z?rlkey=81bt0q6t2d85f4tglop70jnbr&dl=1"
-local LIBRARY_HASH     = "a8d0df4017d6e61b3c3c871e437ce4a050ccc917db0e373812576b75ebc37ac0"
+local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/ryshk2l75pjp10fgxkw78/libraries.7z?rlkey=ml1dlwvjnobmsd4kv738aekp7&dl=1"
+local LIBRARY_HASH     = "b272cb398e769bcbe08b5070b637b8899fd6c277f55dd083401956449fd13143"
 
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),
     path.join(LIBRARIES_DIR, "libxess.dll"),
+    path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
 }
 
 -- xess-sr overlay from github so upscaler stays current without libraries.7z churn
@@ -42,6 +43,13 @@ local XESS_DIR         = path.join(PROJECT_ROOT, "third_party", "xess")
 local XESS_STAMP       = path.join(XESS_DIR, "version.txt")
 local XESS_URL         = "https://github.com/intel/xess/releases/download/v" .. XESS_VERSION .. "/XeSS_SDK_" .. XESS_VERSION .. ".zip"
 local XESS_ZIP         = path.join(PROJECT_ROOT, "third_party", "XeSS_SDK_" .. XESS_VERSION .. ".zip")
+
+-- nvidia dlss ngx, static mt/mtd libs plus runtime dll
+local DLSS_VERSION     = "310.7.0"
+local DLSS_DIR         = path.join(PROJECT_ROOT, "third_party", "dlss")
+local DLSS_STAMP       = path.join(DLSS_DIR, "version.txt")
+local DLSS_URL         = "https://github.com/NVIDIA/DLSS/archive/refs/tags/v" .. DLSS_VERSION .. ".zip"
+local DLSS_ZIP         = path.join(PROJECT_ROOT, "third_party", "DLSS_" .. DLSS_VERSION .. ".zip")
 
 -- d3d12 agility sdk, downloaded on demand into third_party/d3d12_agility
 -- the middle number of the nuget version is the D3D12SDKVersion exported by the exe
@@ -415,6 +423,112 @@ local function ensure_xess_sdk()
     print("xess sdk " .. XESS_VERSION .. " installed")
 end
 
+local function find_file(root, name)
+    local matches = os.matchfiles(path.join(root, "**/" .. name))
+    if matches and #matches > 0 then
+        return matches[1]
+    end
+    return nil
+end
+
+local function find_file_prefer(root, name, needle)
+    local matches = os.matchfiles(path.join(root, "**/" .. name))
+    if not matches or #matches == 0 then
+        return nil
+    end
+    needle = needle:gsub("\\", "/")
+    for _, m in ipairs(matches) do
+        local normalized = m:gsub("\\", "/")
+        if string.find(string.lower(normalized), string.lower(needle), 1, true) then
+            return m
+        end
+    end
+    return matches[1]
+end
+
+local function stamp_has_version(stamp, version)
+    local text = read_text(stamp)
+    return text ~= nil and string.find(text, version, 1, true) ~= nil
+end
+
+local function ensure_dlss_sdk()
+    if not is_windows() then
+        print("  not windows, skipping dlss sdk")
+        return
+    end
+
+    local required = {
+        path.join(DLSS_DIR, "nvsdk_ngx.h"),
+        path.join(LIBRARIES_DIR, "nvsdk_ngx_s.lib"),
+        path.join(LIBRARIES_DIR, "nvsdk_ngx_s_dbg.lib"),
+        path.join(LIBRARIES_DIR, "nvngx_dlss.dll"),
+    }
+
+    local present = stamp_has_version(DLSS_STAMP, DLSS_VERSION) and stamp_has_version(DLSS_STAMP, "rel")
+    if present then
+        for _, p in ipairs(required) do
+            if not file_exists(p) then
+                present = false
+                break
+            end
+        end
+    end
+
+    if present then
+        print("dlss sdk " .. DLSS_VERSION .. " present, skipping download")
+        return
+    end
+
+    print("downloading dlss sdk " .. DLSS_VERSION .. "...")
+    os.mkdir(path.getdirectory(DLSS_ZIP))
+
+    local result, code = download_with_progress(DLSS_URL, DLSS_ZIP)
+    if result ~= "OK" then
+        error(string.format("dlss sdk download failed: %s (http %s)", tostring(result), tostring(code)))
+    end
+
+    local extract_root = path.join(PROJECT_ROOT, "third_party", "dlss_sdk_extract")
+    if os.isdir(extract_root) then
+        os.rmdir(extract_root)
+    end
+
+    extract_zip(DLSS_ZIP, extract_root)
+
+    local header = find_file(extract_root, "nvsdk_ngx.h")
+    local lib_rel = find_file(extract_root, "nvsdk_ngx_s.lib")
+    local lib_dbg = find_file(extract_root, "nvsdk_ngx_s_dbg.lib")
+    local dll     = find_file_prefer(extract_root, "nvngx_dlss.dll", "/rel/")
+    if not header or not lib_rel or not lib_dbg or not dll then
+        error("unexpected dlss sdk archive layout")
+    end
+
+    os.mkdir(DLSS_DIR)
+    local header_dir = path.getdirectory(header)
+    for _, h in ipairs(os.matchfiles(path.join(header_dir, "*.h"))) do
+        copy_file(h, path.join(DLSS_DIR, path.getname(h)))
+    end
+    local license = find_file(extract_root, "LICENSE.txt")
+    if not license then
+        license = find_file(extract_root, "LICENSE")
+    end
+    if license then
+        copy_file(license, path.join(DLSS_DIR, "LICENSE.txt"))
+    end
+
+    copy_file(lib_rel, path.join(LIBRARIES_DIR, "nvsdk_ngx_s.lib"))
+    copy_file(lib_dbg, path.join(LIBRARIES_DIR, "nvsdk_ngx_s_dbg.lib"))
+    copy_file(dll, path.join(LIBRARIES_DIR, "nvngx_dlss.dll"))
+
+    local f = io.open(DLSS_STAMP, "wb")
+    f:write(DLSS_VERSION .. " static MT/MTd nvsdk_ngx_s rel")
+    f:close()
+
+    os.rmdir(extract_root)
+    os.remove(DLSS_ZIP)
+
+    print("dlss sdk " .. DLSS_VERSION .. " installed")
+end
+
 local function ensure_steamworks()
     if file_exists(STEAM_DLL) and file_exists(STEAM_LIB) then
         print("steamworks sdk present, skipping download")
@@ -467,25 +581,28 @@ local function ensure_steamworks()
 end
 
 function setup.run()
-    print("\n[1/7] copying data files into binaries...")
+    print("\n[1/8] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
 
-    print("\n[2/7] ensuring libraries archive is present...")
+    print("\n[2/8] ensuring libraries archive is present...")
     ensure_archive()
 
-    print("\n[3/7] extracting archive...")
+    print("\n[3/8] extracting archive...")
     extract_archive()
 
-    print("\n[4/7] ensuring xess sdk...")
+    print("\n[4/8] ensuring xess sdk...")
     ensure_xess_sdk()
 
-    print("\n[5/7] ensuring d3d12 agility sdk...")
+    print("\n[5/8] ensuring dlss sdk...")
+    ensure_dlss_sdk()
+
+    print("\n[6/8] ensuring d3d12 agility sdk...")
     ensure_agility_sdk()
 
-    print("\n[6/7] ensuring steamworks sdk...")
+    print("\n[7/8] ensuring steamworks sdk...")
     ensure_steamworks()
 
-    print("\n[7/7] copying runtime dlls into binaries...")
+    print("\n[8/8] copying runtime dlls into binaries...")
     for _, dll in ipairs(RUNTIME_DLLS) do
         if file_exists(dll) then
             copy_file(dll, path.join(BINARIES_DIR, path.getname(dll)))

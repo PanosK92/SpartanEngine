@@ -232,16 +232,18 @@ void Viewport::OnTickVisible()
             ImVec2(9.0f, 4.0f)
         );
         const float dot_size = ImGui::EditorUi::scaled(6.0f);
-        const ImVec2 badge_min(
-            image_rect_min.x + ImGui::EditorUi::scaled(12.0f),
-            image_rect_min.y + ImGui::EditorUi::scaled(12.0f)
-        );
-        const ImVec2 badge_max(
-            badge_min.x +
+        const float margin = ImGui::EditorUi::scaled(12.0f);
+        const float badge_width =
             text_size.x +
             padding.x * 2.0f +
             dot_size +
-            ImGui::EditorUi::scaled(6.0f),
+            ImGui::EditorUi::scaled(6.0f);
+        const ImVec2 badge_min(
+            image_rect_max.x - margin - badge_width,
+            image_rect_min.y + margin
+        );
+        const ImVec2 badge_max(
+            badge_min.x + badge_width,
             badge_min.y + text_size.y + padding.y * 2.0f
         );
         ImDrawList* draw_list = ImGui::GetWindowDrawList();

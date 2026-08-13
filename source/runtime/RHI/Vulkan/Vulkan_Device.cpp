@@ -35,10 +35,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_CommandList.h"
+#include "../RHI_VendorTechnology.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
+#ifdef _WIN32
+#include "nvsdk_ngx_vk.h"
+#endif
 SP_WARNINGS_ON
+#include <filesystem>
 //=====================================
 
 //= NAMESPACES ===============
@@ -274,6 +279,7 @@ namespace spartan
             "VK_EXT_swapchain_colorspace",
             // openxr requirements
             "VK_KHR_external_memory_capabilities",
+            "VK_KHR_external_semaphore_capabilities",
             "VK_KHR_external_fence_capabilities",
             "VK_KHR_get_physical_device_properties2",
         };
@@ -292,6 +298,7 @@ namespace spartan
             "VK_KHR_external_memory",
             "VK_KHR_external_semaphore",
             "VK_KHR_external_memory_win32",
+            "VK_KHR_external_semaphore_win32",
             "VK_KHR_win32_keyed_mutex",
             "VK_KHR_timeline_semaphore",
             "VK_KHR_dedicated_allocation",
@@ -414,6 +421,125 @@ namespace spartan
             return extensions_supported;
         }
     }
+
+#ifdef _WIN32
+    namespace ngx_dlss
+    {
+        wstring data_path;
+        const wchar_t* dll_dir = nullptr;
+        NVSDK_NGX_FeatureCommonInfo feature_info = {};
+        vector<string> instance_ext_store;
+        vector<string> device_ext_store;
+
+        bool already_requested(const vector<const char*>& list, const char* name)
+        {
+            for (const char* extension : list)
+            {
+                if (strcmp(extension, name) == 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        NVSDK_NGX_FeatureDiscoveryInfo make_discovery()
+        {
+            if (data_path.empty())
+            {
+                data_path = filesystem::path(FileSystem::GetExecutableDirectory()).wstring();
+                dll_dir   = data_path.c_str();
+                feature_info.PathListInfo.Path   = &dll_dir;
+                feature_info.PathListInfo.Length = 1;
+            }
+
+            NVSDK_NGX_FeatureDiscoveryInfo info = {};
+            info.SDKVersion = NVSDK_NGX_Version_API;
+            info.FeatureID  = NVSDK_NGX_Feature_SuperSampling;
+            info.Identifier.IdentifierType = NVSDK_NGX_Application_Identifier_Type_Project_Id;
+            info.Identifier.v.ProjectDesc.ProjectId     = RHI_VendorTechnology::dlss_project_id;
+            info.Identifier.v.ProjectDesc.EngineType    = NVSDK_NGX_ENGINE_TYPE_CUSTOM;
+            info.Identifier.v.ProjectDesc.EngineVersion = RHI_VendorTechnology::dlss_engine_version;
+            info.ApplicationDataPath = data_path.c_str();
+            info.FeatureInfo         = &feature_info;
+            return info;
+        }
+
+        void append_names(vector<const char*>& destination, vector<string>& store, VkExtensionProperties* props, uint32_t count)
+        {
+            store.clear();
+            for (uint32_t i = 0; i < count; i++)
+            {
+                if (!already_requested(destination, props[i].extensionName))
+                {
+                    store.emplace_back(props[i].extensionName);
+                }
+            }
+            for (const string& name : store)
+            {
+                destination.push_back(name.c_str());
+            }
+        }
+
+        void append_instance_extensions()
+        {
+            NVSDK_NGX_FeatureDiscoveryInfo info = make_discovery();
+            uint32_t count = 0;
+            VkExtensionProperties* props = nullptr;
+            NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_GetFeatureInstanceExtensionRequirements(&info, &count, &props);
+            if (NVSDK_NGX_FAILED(result))
+            {
+                SP_LOG_WARNING("DLSS instance extension query failed: 0x%x", static_cast<unsigned int>(result));
+                return;
+            }
+            if (!props || count == 0)
+            {
+                return;
+            }
+            append_names(extensions::extensions_instance, instance_ext_store, props, count);
+        }
+
+        void append_device_extensions()
+        {
+            NVSDK_NGX_FeatureDiscoveryInfo info = make_discovery();
+            uint32_t count = 0;
+            VkExtensionProperties* props = nullptr;
+            NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_GetFeatureDeviceExtensionRequirements(
+                RHI_Context::instance,
+                RHI_Context::device_physical,
+                &info,
+                &count,
+                &props
+            );
+            if (NVSDK_NGX_FAILED(result))
+            {
+                SP_LOG_WARNING("DLSS device extension query failed: 0x%x", static_cast<unsigned int>(result));
+                return;
+            }
+            if (props && count != 0)
+            {
+                append_names(extensions::extensions_device, device_ext_store, props, count);
+            }
+
+            NVSDK_NGX_FeatureRequirement requirement = {};
+            result = NVSDK_NGX_VULKAN_GetFeatureRequirements(
+                RHI_Context::instance,
+                RHI_Context::device_physical,
+                &info,
+                &requirement
+            );
+            if (NVSDK_NGX_FAILED(result))
+            {
+                SP_LOG_WARNING("DLSS feature requirements query failed: 0x%x", static_cast<unsigned int>(result));
+                return;
+            }
+            if (requirement.FeatureSupported != NVSDK_NGX_FeatureSupportResult_Supported)
+            {
+                SP_LOG_WARNING("DLSS feature requirements not met: 0x%x", static_cast<unsigned int>(requirement.FeatureSupported));
+            }
+        }
+    }
+#endif
 
     namespace validation_layer
     {
@@ -878,9 +1004,10 @@ namespace spartan
                 bool updated_existing = false;
                 for (RHI_Descriptor& descriptor_base : base_descriptors)
                 {
-                    if (descriptor_base.slot == descriptor_additional.slot)
+                    if (descriptor_base.slot == descriptor_additional.slot && descriptor_base.space == descriptor_additional.space)
                     {
                         descriptor_base.stage |= descriptor_additional.stage;
+                        descriptor_base.used  |= descriptor_additional.used;
                         updated_existing = true;
                         break;
                     }
@@ -926,16 +1053,21 @@ namespace spartan
                         bool merged = false;
                         for (size_t i = 0; i < static_size; ++i)
                         {
-                            if (static_buffer[i].slot == d.slot)
+                            if (static_buffer[i].slot == d.slot && static_buffer[i].space == d.space)
                             {
                                 static_buffer[i].stage |= d.stage;
+                                static_buffer[i].used  |= d.used;
                                 merged = true;
                                 break;
                             }
                         }
-        
+
                         if (!merged)
                         {
+                            if (d.IsBindless())
+                            {
+                                continue;
+                            }
                             SP_ASSERT(static_size < 256);
                             static_buffer[static_size++] = d;
                         }
@@ -1682,6 +1814,9 @@ namespace spartan
             info_instance.pApplicationInfo          = &app_info;
 
             // extensions
+#ifdef _WIN32
+            ngx_dlss::append_instance_extensions();
+#endif
             vector<const char*> extensions_instance = extensions::get_extensions_instance();
             info_instance.enabledExtensionCount     = static_cast<uint32_t>(extensions_instance.size());
             info_instance.ppEnabledExtensionNames   = extensions_instance.data();
@@ -1857,8 +1992,12 @@ namespace spartan
                 }
             }
   
+#ifdef _WIN32
+            ngx_dlss::append_device_extensions();
+#endif
             vector<const char*> extensions_supported = extensions::get_extensions_device();
             device_features::detect(&m_is_shading_rate_supported, &m_xess_supported, &m_is_ray_tracing_supported, &m_is_mesh_shaders_supported);
+            m_dlss_supported = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
 
             // create
             {

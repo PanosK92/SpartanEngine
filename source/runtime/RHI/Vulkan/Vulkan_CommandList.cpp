@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Implementation.h"
+#include "../RHI_CommandList.h"
+#include "../RHI_Texture.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_DescriptorSet.h"
@@ -34,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_VendorTechnology.h"
-#include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
 #include "../../Profiling/Breadcrumbs.h"
@@ -1549,9 +1550,10 @@ namespace spartan
 
             if (m_pso.use_standard_resources)
             {
-                Renderer::SetStandardResources(this);
+                RHI_Device::InvokePipelineBound(this);
             }
         }
+        m_push_constant_size   = 0;
         m_pipeline_state_dirty = false;
     }
 
@@ -1692,7 +1694,7 @@ namespace spartan
         if (m_pso.render_target_depth_texture != nullptr)
         {
             RHI_Texture* rt = m_pso.render_target_depth_texture;
-            if (Renderer::GetResolutionScale() == 1.0f)
+            if (RHI_Device::ScaleDimension(rt->GetWidth()) == rt->GetWidth())
             { 
                 SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
             }
@@ -2166,8 +2168,8 @@ namespace spartan
         for (uint32_t mip_index = 0; mip_index < blit_region_count; mip_index++)
         {
             VkOffset3D& source_blit_size = blit_offsets_source[mip_index];
-            source_blit_size.x           = static_cast<int32_t>(Renderer::GetScaledDimension(source->GetWidth(), source_scaling)) >> mip_index;
-            source_blit_size.y           = static_cast<int32_t>(Renderer::GetScaledDimension(source->GetHeight(), source_scaling)) >> mip_index;
+            source_blit_size.x           = static_cast<int32_t>(RHI_Device::ScaleDimension(source->GetWidth(), source_scaling)) >> mip_index;
+            source_blit_size.y           = static_cast<int32_t>(RHI_Device::ScaleDimension(source->GetHeight(), source_scaling)) >> mip_index;
             source_blit_size.z           = 1;
 
             VkOffset3D& destination_blit_size = blit_offsets_destination[mip_index];
@@ -2802,7 +2804,7 @@ namespace spartan
         // the instance buffer is optional but always part of the pipeline therefore it can't be null
         if (!instance)
         {
-            instance = Renderer::GetBuffer(Renderer_Buffer::DummyInstance);
+            instance = RHI_Device::GetDummyVertexBuffer();
         }
         TrackBufferRead(0, const_cast<RHI_Buffer*>(vertex), RHI_Resource_Usage::Vertex);
         TrackBufferRead(1, instance, RHI_Resource_Usage::Vertex);
@@ -2866,6 +2868,7 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(size <= RHI_Device::PropertyGetMaxPushConstantSize());
         SP_ASSERT(m_pipeline != nullptr);
+        m_push_constant_size = size;
 
         uint32_t stages = m_pipeline->GetPushConstantStages();
         if (stages == 0)
@@ -2970,7 +2973,7 @@ namespace spartan
         m_bind_dynamic |= m_descriptor_layout_current->IsDirty();
     }
 
-    void RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+    void RHI_CommandList::SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         m_descriptor_layout_current->SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
@@ -2980,8 +2983,12 @@ namespace spartan
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        const RHI_Resource_Access access = GetBufferAccess(slot);
-        TrackBufferUsage(slot, buffer && buffer->GetRhiResource() && access != RHI_Resource_Access::None ? buffer : nullptr, access);
+        RHI_Resource_Access access = GetBufferAccess(slot);
+        if (buffer && buffer->GetRhiResource() && access == RHI_Resource_Access::None)
+        {
+            access = RHI_Resource_Access::Read;
+        }
+        TrackBufferUsage(slot, buffer && buffer->GetRhiResource() ? buffer : nullptr, access);
 
         if (!m_descriptor_layout_current)
         {

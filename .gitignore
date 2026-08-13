@@ -271,6 +271,12 @@ ModelManifest.xml
 /third_party/d3d12_agility_extract/
 /third_party/d3d12_agility.nupkg
 
+# vendor upscaler sdk extracts from tools/setup.lua
+/third_party/dlss_sdk_extract/
+/third_party/DLSS_*.zip
+/third_party/XeSS_SDK_*.zip
+/third_party/xess_sdk_extract/
+
 # steamworks download leftovers from tools/setup.lua
 /third_party/steamworks_extract/
 /third_party/steamworks_sdk.zip

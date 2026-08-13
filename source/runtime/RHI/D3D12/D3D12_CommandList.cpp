@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_AccelerationStructure.h"
 #include "../../Profiling/Profiler.h"
-#include "../../Rendering/Renderer.h"
 #include "../../Core/Debugging.h"
 #include "../../Profiling/Breadcrumbs.h"
 #include "../../XR/Xr.h"
@@ -1439,8 +1438,9 @@ namespace spartan
         // mirrors what Vulkan_CommandList does at the equivalent point in SetPipelineState
         if (pipeline && pipeline->GetRhiResource() && pso.use_standard_resources)
         {
-            Renderer::SetStandardResources(this);
+            RHI_Device::InvokePipelineBound(this);
         }
+        m_push_constant_size   = 0;
         m_pipeline_state_dirty = false;
     }
 
@@ -2059,7 +2059,7 @@ namespace spartan
         cmd4->DispatchRays(&desc);
     }
 
-    void RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+    void RHI_CommandList::SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -2074,7 +2074,7 @@ namespace spartan
             return;
         }
 
-        const uint32_t slot_index = static_cast<uint32_t>(slot);
+        const uint32_t slot_index = slot;
         if (slot_index >= d3d12_root_slot::srv_space0_count)
         {
             return;
@@ -2815,6 +2815,7 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(data != nullptr);
+        m_push_constant_size = size;
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         const uint32_t num_32bit = size / 4;
@@ -2841,8 +2842,12 @@ namespace spartan
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        const RHI_Resource_Access access = GetBufferAccess(slot);
-        TrackBufferUsage(slot, buffer && buffer->GetRhiResource() && access != RHI_Resource_Access::None ? buffer : nullptr, access);
+        RHI_Resource_Access access = GetBufferAccess(slot);
+        if (buffer && buffer->GetRhiResource() && access == RHI_Resource_Access::None)
+        {
+            access = RHI_Resource_Access::Read;
+        }
+        TrackBufferUsage(slot, buffer && buffer->GetRhiResource() ? buffer : nullptr, access);
         if (!buffer || !buffer->GetRhiResource())
         {
             return;

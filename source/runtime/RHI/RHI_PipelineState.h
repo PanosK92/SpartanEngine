@@ -44,6 +44,17 @@ namespace spartan
         bool IsRayTracing() const;
         bool HasTessellation();
         bool HasMeshShaders() const;
+        void SetColorTargets(
+            RHI_Texture* t0,
+            RHI_Texture* t1 = nullptr,
+            RHI_Texture* t2 = nullptr,
+            RHI_Texture* t3 = nullptr,
+            RHI_Texture* t4 = nullptr,
+            RHI_Texture* t5 = nullptr,
+            RHI_Texture* t6 = nullptr,
+            RHI_Texture* t7 = nullptr
+        );
+        void SetDepthTarget(RHI_Texture* texture);
 
         //= STATE =========================================================================
         RHI_RasterizerState* rasterizer_state      = nullptr;

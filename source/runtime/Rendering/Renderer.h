@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer_Definitions.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_Vertex.h"
+#include "../RHI/RHI_PipelineState.h"
+#include "../RHI/RHI_Shader.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../Math/Vector3.h"
 #include "../Math/Plane.h"
 #include "Renderer_Buffers.h"
@@ -33,6 +36,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <atomic>
 #include <string>
+#include <initializer_list>
+#include <type_traits>
 #include "../Math/Rectangle.h"
 #include "../Math/Vector4.h"
 #include "../World/TerrainLayer.h"
@@ -433,6 +438,19 @@ namespace spartan
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         template<typename F = std::nullptr_t>
         static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum, RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
+        template<typename F = std::nullptr_t>
+        static void Pass_Graphics(
+            RHI_CommandList* cmd_list,
+            const char* name,
+            Renderer_Shader shader_vs_or_mesh,
+            Renderer_Shader shader_pixel,
+            std::initializer_list<RHI_Texture*> color_targets,
+            RHI_Texture* depth = nullptr,
+            RHI_BlendState* blend = nullptr,
+            RHI_DepthStencilState* depth_stencil = nullptr,
+            RHI_RasterizerState* rasterizer = nullptr,
+            F setup = nullptr
+        );
         // passes - utility
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
@@ -654,4 +672,58 @@ namespace spartan
         static uint64_t                      m_frame_num;
         static math::Vector2                 m_jitter_offset;
     };
+
+    template<typename F>
+    void Renderer::Pass_Graphics(
+        RHI_CommandList* cmd_list,
+        const char* name,
+        Renderer_Shader shader_vs_or_mesh,
+        Renderer_Shader shader_pixel,
+        std::initializer_list<RHI_Texture*> color_targets,
+        RHI_Texture* depth,
+        RHI_BlendState* blend,
+        RHI_DepthStencilState* depth_stencil,
+        RHI_RasterizerState* rasterizer,
+        F setup
+    )
+    {
+        cmd_list->BeginTimeblock(name);
+        {
+            RHI_PipelineState pso;
+            pso.name = name;
+            RHI_Shader* shader_a = GetShader(shader_vs_or_mesh);
+            if (shader_a && shader_a->GetShaderStage() == RHI_Shader_Type::MeshShader)
+            {
+                pso.shaders[RHI_Shader_Type::MeshShader] = shader_a;
+            }
+            else
+            {
+                pso.shaders[RHI_Shader_Type::Vertex] = shader_a;
+            }
+            pso.shaders[RHI_Shader_Type::Pixel] = GetShader(shader_pixel);
+            pso.blend_state         = blend;
+            pso.depth_stencil_state = depth_stencil;
+            pso.rasterizer_state    = rasterizer;
+            pso.SetDepthTarget(depth);
+
+            uint32_t color_index = 0;
+            for (RHI_Texture* color : color_targets)
+            {
+                if (color_index >= rhi_max_render_target_count)
+                {
+                    break;
+                }
+                pso.render_target_color_textures[color_index] = color;
+                color_index++;
+            }
+
+            cmd_list->SetPipelineState(pso);
+
+            if constexpr (!std::is_null_pointer_v<F>)
+            {
+                setup();
+            }
+        }
+        cmd_list->EndTimeblock();
+    }
 }

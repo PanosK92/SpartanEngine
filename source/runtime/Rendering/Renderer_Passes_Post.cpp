@@ -499,8 +499,10 @@ namespace spartan
                 method = Renderer_AntiAliasing_Upsampling::AA_Off_Upscale_Linear;
             }
 
-            // xess keeps one global temporal context, cannot run twice per frame for two eyes
-            if (is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+            // vendor upscalers keep one global temporal context, cannot run twice per frame for two eyes
+            if (is_stereo &&
+                (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess ||
+                 method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss))
             {
                 method = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
             }
@@ -508,6 +510,16 @@ namespace spartan
             if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
+                    cmd_list,
+                    tex_in,
+                    tex_depth,
+                    tex_velocity,
+                    tex_out
+                );
+            }
+            else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss)
+            {
+                RHI_VendorTechnology::DLSS_Dispatch(
                     cmd_list,
                     tex_in,
                     tex_depth,

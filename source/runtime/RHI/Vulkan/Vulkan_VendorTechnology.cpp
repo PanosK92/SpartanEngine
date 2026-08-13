@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-//= INCLUDES ==================================
+//= INCLUDES =============================
 #include "pch.h"
 SP_WARNINGS_OFF
 #ifdef _WIN32
@@ -31,9 +31,12 @@ SP_WARNINGS_OFF
 #include "Extensions/NRIHelper.h"
 #include "Extensions/NRIWrapperVK.h"
 #include "NRDIntegration.hpp"
+#include "nvsdk_ngx_vk.h"
+#include "nvsdk_ngx_helpers.h"
+#include "nvsdk_ngx_helpers_vk.h"
 #endif
 SP_WARNINGS_ON
-#include "../RHI_VendorTechnologyNrd.h"
+#include "../RHI_VendorTechnology.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
@@ -44,7 +47,9 @@ SP_WARNINGS_ON
 #include "../../Rendering/Renderer.h"
 #include "../../World/World.h"
 #include "../../World/Components/Camera.h"
-//=============================================
+#include <cmath>
+#include <filesystem>
+//========================================
 
 //= NAMESPACES ===============
 using namespace spartan::math;
@@ -54,6 +59,131 @@ using namespace std;
 namespace spartan
 {
     #ifdef _WIN32
+    namespace nrd_common
+    {
+        constexpr nrd::Identifier id_gi          = 0;
+        constexpr nrd::Identifier id_reflections = 1;
+        constexpr nrd::Identifier id_shadows     = 2;
+
+        // engine uses row vectors (v * m), nrd uses column vectors (m * v), so pass the transpose
+        void copy_matrix_for_nrd(float destination[16], const math::Matrix& matrix)
+        {
+            const math::Matrix transposed = matrix.Transposed();
+            memcpy(destination, transposed.Data(), sizeof(float) * 16);
+        }
+
+        void fill_common_settings(
+            nrd::CommonSettings& settings,
+            const Cb_Frame* cb_frame,
+            uint32_t width,
+            uint32_t height,
+            bool reset_history,
+            Nrd_Preset preset
+        )
+        {
+            settings = {};
+
+            // unjittered projection only, view_projection_unjittered = view * proj
+            const math::Matrix view_to_clip      = math::Matrix::Invert(cb_frame->view) * cb_frame->view_projection_unjittered;
+            const math::Matrix view_to_clip_prev = math::Matrix::Invert(cb_frame->view_previous) * cb_frame->view_projection_previous_unjittered;
+
+            copy_matrix_for_nrd(settings.viewToClipMatrix, view_to_clip);
+            copy_matrix_for_nrd(settings.viewToClipMatrixPrev, view_to_clip_prev);
+            copy_matrix_for_nrd(settings.worldToViewMatrix, cb_frame->view);
+            copy_matrix_for_nrd(settings.worldToViewMatrixPrev, cb_frame->view_previous);
+
+            settings.motionVectorScale[0] = 1.0f;
+            settings.motionVectorScale[1] = 1.0f;
+            settings.motionVectorScale[2] = 0.0f;
+
+            // taa jitter is clip space xy, nrd wants uv space sample offset in [-0.5, 0.5]
+            settings.cameraJitter[0]     = cb_frame->taa_jitter_current.x * 0.5f;
+            settings.cameraJitter[1]     = -cb_frame->taa_jitter_current.y * 0.5f;
+            settings.cameraJitterPrev[0] = cb_frame->taa_jitter_previous.x * 0.5f;
+            settings.cameraJitterPrev[1] = -cb_frame->taa_jitter_previous.y * 0.5f;
+
+            settings.resourceSize[0]     = static_cast<uint16_t>(width);
+            settings.resourceSize[1]     = static_cast<uint16_t>(height);
+            settings.resourceSizePrev[0] = static_cast<uint16_t>(width);
+            settings.resourceSizePrev[1] = static_cast<uint16_t>(height);
+            settings.rectSize[0]         = static_cast<uint16_t>(width);
+            settings.rectSize[1]         = static_cast<uint16_t>(height);
+            settings.rectSizePrev[0]     = static_cast<uint16_t>(width);
+            settings.rectSizePrev[1]     = static_cast<uint16_t>(height);
+
+            settings.timeDeltaBetweenFrames     = cb_frame->delta_time * 1000.0f;
+            settings.denoisingRange             = (std::max)(cb_frame->camera_far * 0.99f, 1.0f);
+            settings.disocclusionThreshold      = preset == Nrd_Preset::Shadows ? 0.02f : 0.01f;
+            settings.frameIndex                 = cb_frame->frame;
+            settings.accumulationMode           = reset_history ? nrd::AccumulationMode::CLEAR_AND_RESTART : nrd::AccumulationMode::CONTINUE;
+            settings.isMotionVectorInWorldSpace = false;
+        }
+
+        uint32_t get_accumulated_frame_num(float accumulation_time, uint32_t max_frame_num, float delta_time)
+        {
+            const float fps          = delta_time > 0.0f ? 1.0f / delta_time : 60.0f;
+            const uint32_t frame_num = nrd::GetMaxAccumulatedFrameNum(accumulation_time, fps);
+
+            return (std::min)((std::max)(frame_num, 1u), max_frame_num);
+        }
+
+        // nrd integration asserts frameIndex advances by 1, scene loads and minimize skip frames
+        bool resolve_history_reset(bool reset_requested, uint32_t engine_frame, uint32_t& last_settings_frame)
+        {
+            bool reset = reset_requested;
+            if (last_settings_frame != UINT32_MAX && engine_frame != last_settings_frame && engine_frame != last_settings_frame + 1)
+            {
+                reset = true;
+            }
+
+            last_settings_frame = engine_frame;
+
+            return reset;
+        }
+
+        // restir diffuse gi, temporal heavy, spatial light so material lighting stays
+        void fill_preset_gi(nrd::ReblurSettings& settings, float delta_time)
+        {
+            settings                                   = {};
+            settings.diffusePrepassBlurRadius          = 0.0f;
+            settings.specularPrepassBlurRadius         = 0.0f;
+            settings.maxBlurRadius                     = 8.0f;
+            settings.minBlurRadius                     = 1.0f;
+            settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME, nrd::REBLUR_MAX_HISTORY_FRAME_NUM, delta_time);
+            settings.maxFastAccumulatedFrameNum        = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME / 5.0f, settings.maxAccumulatedFrameNum, delta_time);
+            settings.minHitDistanceWeight              = 0.08f;
+            settings.fireflySuppressorMinRelativeScale = 2.5f;
+            settings.enableAntiFirefly                 = true;
+        }
+
+        // rt reflections, roughness guided specular reblur
+        void fill_preset_reflections(nrd::ReblurSettings& settings, float delta_time)
+        {
+            settings                                   = {};
+            settings.diffusePrepassBlurRadius          = 0.0f;
+            settings.specularPrepassBlurRadius         = 30.0f;
+            settings.maxBlurRadius                     = 30.0f;
+            settings.minBlurRadius                     = 1.0f;
+            settings.maxAccumulatedFrameNum            = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME, nrd::REBLUR_MAX_HISTORY_FRAME_NUM, delta_time);
+            settings.maxFastAccumulatedFrameNum        = get_accumulated_frame_num(nrd::REBLUR_DEFAULT_ACCUMULATION_TIME / 5.0f, settings.maxAccumulatedFrameNum, delta_time);
+            settings.minHitDistanceWeight              = 0.1f;
+            settings.lobeAngleFraction                 = 0.15f;
+            settings.fireflySuppressorMinRelativeScale = 2.0f;
+            settings.enableAntiFirefly                 = true;
+        }
+
+        // directional rt shadows, sigma penumbra reconstruction
+        void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3], float delta_time)
+        {
+            settings                          = {};
+            settings.lightDirection[0]        = light_direction[0];
+            settings.lightDirection[1]        = light_direction[1];
+            settings.lightDirection[2]        = light_direction[2];
+            settings.planeDistanceSensitivity = 0.02f;
+            settings.maxStabilizedFrameNum    = get_accumulated_frame_num(nrd::SIGMA_DEFAULT_ACCUMULATION_TIME, nrd::SIGMA_MAX_HISTORY_FRAME_NUM, delta_time);
+        }
+    }
+
     namespace common
     {
         uint32_t resolution_render_width      = 0; // scaled (render * scale), used for per-frame dispatch
@@ -65,6 +195,21 @@ namespace spartan
         bool reset_history                    = false;
         float resolution_scale                = 1.0f;
         Cb_Frame* cb_frame                    = nullptr;
+
+        uint32_t get_upscaler_sample_count()
+        {
+            float render_w = static_cast<float>((std::max)(1u, resolution_render_width));
+            float scale    = static_cast<float>(resolution_output_width) / render_w;
+            float raw      = 8.0f * scale * scale;
+            uint32_t count = static_cast<uint32_t>(std::ceil(raw));
+            return (std::max)(1u, count);
+        }
+
+        void write_projection_jitter(float pixel_x, float pixel_y, float* x, float* y)
+        {
+            *x =  2.0f * pixel_x / static_cast<float>((std::max)(1u, resolution_render_width));
+            *y = -2.0f * pixel_y / static_cast<float>((std::max)(1u, resolution_render_height));
+        }
     }
 
     namespace intel
@@ -208,6 +353,227 @@ namespace spartan
         }
     }
 
+    namespace dlss
+    {
+        bool sdk_ready                        = false;
+        bool create_failed                    = false;
+        NVSDK_NGX_Parameter* parameters       = nullptr;
+        NVSDK_NGX_Handle* handle              = nullptr;
+        Vector2 jitter                        = Vector2::Zero;
+        wstring data_path;
+        const wchar_t* dll_dir                = nullptr;
+        NVSDK_NGX_PerfQuality_Value quality   = NVSDK_NGX_PerfQuality_Value_Balanced;
+
+        NVSDK_NGX_PerfQuality_Value get_quality(const float scale_factor)
+        {
+            struct QualitySetting
+            {
+                NVSDK_NGX_PerfQuality_Value quality;
+                float scale_factor;
+            };
+
+            const QualitySetting quality_settings[] =
+            {
+                { NVSDK_NGX_PerfQuality_Value_UltraPerformance, 0.11f },
+                { NVSDK_NGX_PerfQuality_Value_MaxPerf,          0.25f },
+                { NVSDK_NGX_PerfQuality_Value_Balanced,         0.34f },
+                { NVSDK_NGX_PerfQuality_Value_MaxQuality,       0.44f },
+                { NVSDK_NGX_PerfQuality_Value_UltraQuality,     0.59f },
+                { NVSDK_NGX_PerfQuality_Value_DLAA,             1.0f  }
+            };
+
+            quality              = NVSDK_NGX_PerfQuality_Value_Balanced;
+            float min_difference = numeric_limits<float>::max();
+            for (const auto& setting : quality_settings)
+            {
+                float difference = abs(scale_factor - setting.scale_factor);
+                if (difference < min_difference)
+                {
+                    min_difference = difference;
+                    quality        = setting.quality;
+                }
+            }
+
+            return quality;
+        }
+
+        NVSDK_NGX_Resource_VK to_ngx(RHI_Texture* texture, bool read_write)
+        {
+            VkImageSubresourceRange range = {};
+            range.aspectMask              = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+            range.aspectMask             |= texture->IsStencilFormat() ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
+            range.levelCount              = 1;
+            range.layerCount              = 1;
+
+            return NVSDK_NGX_Create_ImageView_Resource_VK(
+                static_cast<VkImageView>(texture->GetRhiSrv()),
+                static_cast<VkImage>(texture->GetRhiResource()),
+                range,
+                vulkan_format[rhi_format_to_index(texture->GetFormat())],
+                texture->GetWidth(),
+                texture->GetHeight(),
+                read_write
+            );
+        }
+
+        void feature_destroy()
+        {
+            if (handle)
+            {
+                NVSDK_NGX_VULKAN_ReleaseFeature(handle);
+                handle = nullptr;
+            }
+            create_failed = false;
+        }
+
+        void sdk_shutdown()
+        {
+            feature_destroy();
+            if (parameters)
+            {
+                NVSDK_NGX_VULKAN_DestroyParameters(parameters);
+                parameters = nullptr;
+            }
+            if (sdk_ready)
+            {
+                NVSDK_NGX_VULKAN_Shutdown1(RHI_Context::device);
+                sdk_ready = false;
+            }
+        }
+
+        void sdk_init()
+        {
+            if (!RHI_Device::IsSupportedDlss() || sdk_ready)
+            {
+                return;
+            }
+
+            data_path = filesystem::path(FileSystem::GetExecutableDirectory()).wstring();
+            dll_dir   = data_path.c_str();
+
+            NVSDK_NGX_FeatureCommonInfo info = {};
+            info.PathListInfo.Path           = &dll_dir;
+            info.PathListInfo.Length         = 1;
+
+            NVSDK_NGX_Result result = NVSDK_NGX_VULKAN_Init_with_ProjectID(
+                RHI_VendorTechnology::dlss_project_id,
+                NVSDK_NGX_ENGINE_TYPE_CUSTOM,
+                RHI_VendorTechnology::dlss_engine_version,
+                data_path.c_str(),
+                RHI_Context::instance,
+                RHI_Context::device_physical,
+                RHI_Context::device,
+                vkGetInstanceProcAddr,
+                vkGetDeviceProcAddr,
+                &info
+            );
+            if (NVSDK_NGX_FAILED(result))
+            {
+                SP_LOG_WARNING("DLSS ngx init failed: 0x%x", static_cast<unsigned int>(result));
+                return;
+            }
+
+            result = NVSDK_NGX_VULKAN_GetCapabilityParameters(&parameters);
+            if (NVSDK_NGX_FAILED(result) || !parameters)
+            {
+                SP_LOG_WARNING("DLSS capability parameters failed: 0x%x", static_cast<unsigned int>(result));
+                NVSDK_NGX_VULKAN_Shutdown1(RHI_Context::device);
+                parameters = nullptr;
+                return;
+            }
+
+            sdk_ready = true;
+
+            unsigned int available    = 0;
+            unsigned int needs_driver = 0;
+            int init_result           = 0;
+            NVSDK_NGX_Parameter_GetUI(parameters, NVSDK_NGX_Parameter_SuperSampling_Available, &available);
+            NVSDK_NGX_Parameter_GetUI(parameters, NVSDK_NGX_Parameter_SuperSampling_NeedsUpdatedDriver, &needs_driver);
+            NVSDK_NGX_Parameter_GetI(parameters, NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult, &init_result);
+            if (!available)
+            {
+                SP_LOG_WARNING("DLSS super sampling unavailable, needs_driver=%u, init_result=0x%x", needs_driver, static_cast<unsigned int>(init_result));
+            }
+        }
+
+        void set_dlss4_presets()
+        {
+            const unsigned int preset_quality = static_cast<unsigned int>(NVSDK_NGX_DLSS_Hint_Render_Preset_K);
+            const unsigned int preset_perf    = static_cast<unsigned int>(NVSDK_NGX_DLSS_Hint_Render_Preset_M);
+            const unsigned int preset_ultra   = static_cast<unsigned int>(NVSDK_NGX_DLSS_Hint_Render_Preset_L);
+            NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA,             preset_quality);
+            NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality,          preset_quality);
+            NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced,         preset_quality);
+            NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality,     preset_quality);
+            NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance,      preset_perf);
+            NVSDK_NGX_Parameter_SetUI(parameters, NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, preset_ultra);
+        }
+
+        void feature_create(VkCommandBuffer cmd)
+        {
+            if (!sdk_ready || handle || create_failed || !cmd || common::resolution_render_max_width == 0)
+            {
+                return;
+            }
+
+            uint32_t render_area = common::resolution_render_max_width * common::resolution_render_max_height;
+            uint32_t output_area = common::resolution_output_width * common::resolution_output_height;
+            float scale_factor   = static_cast<float>(render_area) / static_cast<float>((std::max)(1u, output_area));
+            quality              = get_quality(scale_factor);
+
+            set_dlss4_presets();
+
+            unsigned int opt_w = 0;
+            unsigned int opt_h = 0;
+            unsigned int max_w = 0;
+            unsigned int max_h = 0;
+            unsigned int min_w = 0;
+            unsigned int min_h = 0;
+            float sharpness    = 0.0f;
+            NVSDK_NGX_Result result = NGX_DLSS_GET_OPTIMAL_SETTINGS(
+                parameters,
+                common::resolution_output_width,
+                common::resolution_output_height,
+                quality,
+                &opt_w, &opt_h, &max_w, &max_h, &min_w, &min_h, &sharpness
+            );
+            if (NVSDK_NGX_FAILED(result))
+            {
+                SP_LOG_WARNING("DLSS optimal settings failed: 0x%x", static_cast<unsigned int>(result));
+                create_failed = true;
+                return;
+            }
+
+            uint32_t in_w = common::resolution_render_max_width;
+            uint32_t in_h = common::resolution_render_max_height;
+            if (max_w != 0 && max_h != 0)
+            {
+                in_w = (std::min)((std::max)(in_w, min_w), max_w);
+                in_h = (std::min)((std::max)(in_h, min_h), max_h);
+            }
+
+            NVSDK_NGX_DLSS_Create_Params create = {};
+            create.Feature.InWidth            = in_w;
+            create.Feature.InHeight           = in_h;
+            create.Feature.InTargetWidth      = common::resolution_output_width;
+            create.Feature.InTargetHeight     = common::resolution_output_height;
+            create.Feature.InPerfQualityValue = quality;
+            create.InFeatureCreateFlags       = NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
+                                                NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
+                                                NVSDK_NGX_DLSS_Feature_Flags_DepthInverted |
+                                                NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+            create.InEnableOutputSubrects     = false;
+
+            result = NGX_VULKAN_CREATE_DLSS_EXT1(RHI_Context::device, cmd, 1, 1, &handle, parameters, &create);
+            if (NVSDK_NGX_FAILED(result))
+            {
+                SP_LOG_WARNING("DLSS feature creation failed: 0x%x", static_cast<unsigned int>(result));
+                handle        = nullptr;
+                create_failed = true;
+            }
+        }
+    }
+
     namespace nvidia
     {
         // gi is restir sized, screen is render sized for reflections and shadows
@@ -341,13 +707,16 @@ namespace spartan
 
     void RHI_VendorTechnology::Initialize()
     {
-
+    #ifdef _WIN32
+        dlss::sdk_init();
+    #endif
     }
 
     void RHI_VendorTechnology::Shutdown()
     {
     #ifdef _WIN32
         intel::context_destroy();
+        dlss::sdk_shutdown();
         nvidia::context_destroy();
     #endif
     }
@@ -382,6 +751,7 @@ namespace spartan
         {
             RHI_Device::QueueWaitAll();
             intel::context_create();
+            dlss::feature_destroy();
             common::reset_history = true;
             nvidia::request_history_reset();
             nvidia::context_destroy();
@@ -503,6 +873,124 @@ namespace spartan
 
         _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &intel::params_execute);
         SP_ASSERT(result == XESS_RESULT_SUCCESS);
+        cmd_list->AdoptComputeShaderResource(tex_color);
+        cmd_list->AdoptComputeShaderResource(tex_velocity);
+        cmd_list->AdoptComputeShaderResource(tex_depth);
+        cmd_list->AdoptUnorderedAccess(tex_output);
+        cmd_list->RestoreAfterExternalPass();
+    #endif
+    }
+
+    void RHI_VendorTechnology::DLSS_GenerateJitterSample(float* x, float* y)
+    {
+    #ifdef _WIN32
+        auto get_corput = [](uint32_t index, uint32_t base) -> float
+        {
+            float result = 0.0f;
+            float bk     = 1.0f;
+            while (index > 0)
+            {
+                bk     /= static_cast<float>(base);
+                result += static_cast<float>(index % base) * bk;
+                index  /= base;
+            }
+            return result;
+        };
+
+        static vector<pair<float, float>> halton_points;
+        static size_t halton_index = 0;
+
+        if (common::reset_history)
+        {
+            halton_index = 0;
+        }
+
+        if (halton_points.empty())
+        {
+            const uint32_t sample_limit = 96;
+            halton_points.reserve(sample_limit);
+            for (uint32_t i = 1; i < 1 + sample_limit; ++i)
+            {
+                halton_points.emplace_back(get_corput(i, 2) - 0.5f, get_corput(i, 3) - 0.5f);
+            }
+        }
+
+        auto sample = halton_points[halton_index];
+        dlss::jitter.x = sample.first;
+        dlss::jitter.y = sample.second;
+        common::write_projection_jitter(sample.first, sample.second, x, y);
+        halton_index = (halton_index + 1) % common::get_upscaler_sample_count();
+    #endif
+    }
+
+    void RHI_VendorTechnology::DLSS_Dispatch(
+        RHI_CommandList* cmd_list,
+        RHI_Texture* tex_color,
+        RHI_Texture* tex_depth,
+        RHI_Texture* tex_velocity,
+        RHI_Texture* tex_output
+    )
+    {
+    #ifdef _WIN32
+        if (!dlss::sdk_ready || !cmd_list)
+        {
+            return;
+        }
+
+        VkCommandBuffer vk_cmd = static_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
+        dlss::feature_create(vk_cmd);
+        if (!dlss::handle)
+        {
+            return;
+        }
+
+        tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        cmd_list->PrepareForExternalWrite(tex_output);
+        cmd_list->FlushBarriers();
+
+        NVSDK_NGX_Resource_VK color    = dlss::to_ngx(tex_color, false);
+        NVSDK_NGX_Resource_VK depth    = dlss::to_ngx(tex_depth, false);
+        NVSDK_NGX_Resource_VK velocity = dlss::to_ngx(tex_velocity, false);
+        NVSDK_NGX_Resource_VK output   = dlss::to_ngx(tex_output, true);
+
+        const float render_w = static_cast<float>(common::resolution_render_width);
+        const float render_h = static_cast<float>(common::resolution_render_height);
+
+        NVSDK_NGX_VK_DLSS_Eval_Params eval    = {};
+        eval.Feature.pInColor                 = &color;
+        eval.Feature.pInOutput                = &output;
+        eval.pInDepth                         = &depth;
+        eval.pInMotionVectors                 = &velocity;
+        eval.InJitterOffsetX                  = dlss::jitter.x;
+        eval.InJitterOffsetY                  = dlss::jitter.y;
+        eval.InRenderSubrectDimensions.Width  = common::resolution_render_width;
+        eval.InRenderSubrectDimensions.Height = common::resolution_render_height;
+        eval.InReset                          = common::reset_history ? 1 : 0;
+        eval.InMVScaleX                       = -0.5f * render_w;
+        eval.InMVScaleY                       = -0.5f * render_h;
+        eval.InPreExposure                    = 1.0f;
+        eval.InExposureScale                  = 1.0f;
+        if (common::cb_frame)
+        {
+            eval.InFrameTimeDeltaInMsec = common::cb_frame->delta_time * 1000.0f;
+        }
+
+        common::reset_history = false;
+
+        NVSDK_NGX_Result result = NGX_VULKAN_EVALUATE_DLSS_EXT(vk_cmd, dlss::handle, dlss::parameters, &eval);
+        if (NVSDK_NGX_FAILED(result))
+        {
+            SP_LOG_WARNING("DLSS dispatch failed: 0x%x", static_cast<unsigned int>(result));
+            cmd_list->AdoptComputeShaderResource(tex_color);
+            cmd_list->AdoptComputeShaderResource(tex_velocity);
+            cmd_list->AdoptComputeShaderResource(tex_depth);
+            cmd_list->AdoptUnorderedAccess(tex_output);
+            cmd_list->RestoreAfterExternalPass();
+            return;
+        }
+
         cmd_list->AdoptComputeShaderResource(tex_color);
         cmd_list->AdoptComputeShaderResource(tex_velocity);
         cmd_list->AdoptComputeShaderResource(tex_depth);

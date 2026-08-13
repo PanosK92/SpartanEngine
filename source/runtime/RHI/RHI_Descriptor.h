@@ -40,7 +40,9 @@ namespace spartan
             const uint32_t stage,
             const uint32_t struct_size,
             const bool as_array,
-            const uint32_t array_length
+            const uint32_t array_length,
+            const uint32_t space = 0,
+            const bool used = true
         )
             : type(type)
             , layout(layout)
@@ -50,9 +52,12 @@ namespace spartan
             , struct_size(struct_size)
             , as_array(as_array)
             , array_length(array_length)
+            , space(space)
+            , used(used)
         {}
 
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
+        bool IsBindless() const { return space != 0 || (as_array && array_length == rhi_max_array_size); }
 
         // layout properties (from reflection)
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
@@ -61,7 +66,9 @@ namespace spartan
         uint32_t stage           = 0;
         uint32_t struct_size     = 0;
         uint32_t array_length    = 0;
+        uint32_t space           = 0;
         bool as_array            = false;
+        bool used                = true;
         std::string name;
     };
 

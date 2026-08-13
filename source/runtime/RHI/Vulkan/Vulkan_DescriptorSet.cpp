@@ -176,8 +176,8 @@ namespace spartan
                 continue;
             }
 
-            // skip bindless arrays - they have their own descriptor sets
-            if (layout.as_array && layout.array_length == rhi_max_array_size)
+            // skip bindless, they have their own descriptor sets
+            if (layout.IsBindless())
             {
                 continue;
             }

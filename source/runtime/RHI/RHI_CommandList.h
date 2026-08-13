@@ -28,13 +28,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_PipelineState.h"
 #include "RHI_Buffer.h"
 #include "RHI_SyncPrimitive.h"
-#include "../Rendering/Renderer_Definitions.h"
 #include "../Core/SpartanObject.h"
 #include <stack>
 //============================================
 
 namespace spartan
 {
+#ifndef SPARTAN_RENDERER_BINDINGS_DEFINED
+    enum class Renderer_BindingsUav : uint32_t;
+    enum class Renderer_BindingsSrv : uint32_t;
+    enum class Renderer_BindingsCb : uint32_t;
+#endif
+
     // forward declaration
     namespace math { class Rectangle; }
 
@@ -164,11 +169,11 @@ namespace spartan
         void SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance = nullptr);
         void SetBufferIndex(const RHI_Buffer* buffer);
         void SetBuffer(const uint32_t slot, RHI_Buffer* buffer);
-        void SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer) { SetBuffer(static_cast<uint32_t>(slot), buffer); }
+        void SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer);
 
         // constant buffer
         void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer);
-        void SetConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer) { SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer); }
+        void SetConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer);
 
         // push constant buffer
         void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
@@ -177,11 +182,12 @@ namespace spartan
 
         // texture
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false, const uint32_t array_layer = rhi_all_mips);
-        void SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true); }
-        void SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips) { SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, false, array_layer); }
+        void SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0);
+        void SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
 
         // acceleration structure
-        void SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas);
+        void SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas);
+        void SetAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas);
 
         // markers
         void BeginMarker(const char* name);
@@ -256,6 +262,7 @@ namespace spartan
         void PrepareForExternalWrite(RHI_Texture* texture, RHI_Image_Layout layout = RHI_Image_Layout::General, RHI_Barrier_Scope scope = RHI_Barrier_Scope::Compute);
         void SynchronizeRenderTargets();
         void SynchronizeResources(bool include_bindings = true);
+        void ValidateBindings();
         void ResetTrackedBindings();
         void ResetTrackedResources();
         void CommitTrackedResources();
@@ -319,6 +326,7 @@ namespace spartan
         bool m_pipeline_state_dirty = false;
         bool m_resources_dirty = true;
         bool m_resources_have_write_bindings = false;
+        uint32_t m_push_constant_size = 0;
         mutable uint64_t m_texture_bindings_hash = 0;
         mutable uint64_t m_texture_bindings_srv = 0;
         mutable uint64_t m_texture_bindings_uav = 0;

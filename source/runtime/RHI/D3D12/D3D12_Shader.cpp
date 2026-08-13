@@ -173,6 +173,7 @@ namespace spartan
             RHI_Image_Layout layout             = RHI_Image_Layout::Max;
             uint32_t struct_size                = 0;
             uint32_t shifted_slot               = bind_desc.BindPoint;
+            uint32_t space                      = bind_desc.Space;
 
             switch (bind_desc.Type)
             {
@@ -279,7 +280,8 @@ namespace spartan
                 rhi_shader_type_to_mask(shader_stage),
                 struct_size,
                 is_array,
-                array_length
+                array_length,
+                space
             );
         }
     }

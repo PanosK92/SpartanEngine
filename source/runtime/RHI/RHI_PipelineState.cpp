@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_BlendState.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
-#include "../Rendering/Renderer.h"
+#include "RHI_Texture.h"
+#include "RHI_Device.h"
 //================================
 
 //= NAMESPACES ===============
@@ -63,14 +64,10 @@ namespace spartan
         
             if (is_graphics)
             {
-                bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture; // ensure at least one render target
-                bool has_backbuffer      = pso.render_target_swapchain; // check that no both the swapchain and the color render target are active
-                bool has_graphics_states = pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state;
-                SP_ASSERT_MSG(has_graphics_states,                 "Graphics states are missing");
+                bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture;
+                bool has_backbuffer      = pso.render_target_swapchain;
+                SP_ASSERT_MSG(pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state, "Graphics states are missing");
                 SP_ASSERT_MSG(has_render_target || has_backbuffer, "A render target is missing");
-                SP_ASSERT_MSG(pso.blend_state,                     "You need to define a blend state");
-                SP_ASSERT_MSG(pso.depth_stencil_state,             "You need to define a depth-stencil state");
-                SP_ASSERT_MSG(pso.rasterizer_state,                "You need to define a rasterizer state");
                 SP_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
             }
             else if (is_ray_tracing)
@@ -194,8 +191,35 @@ namespace spartan
 
             if (pso.resolution_scale)
             { 
-                *width  = Renderer::GetScaledDimension(*width);
-                *height = Renderer::GetScaledDimension(*height);
+                *width  = RHI_Device::ScaleDimension(*width);
+                *height = RHI_Device::ScaleDimension(*height);
+            }
+        }
+
+        void apply_graphics_defaults(RHI_PipelineState& pso)
+        {
+            if (!pso.IsGraphics())
+            {
+                return;
+            }
+
+            if (!pso.rasterizer_state)
+            {
+                static RHI_RasterizerState rasterizer(RHI_PolygonMode::Solid, true, 0.0f, 0.0f, 0.0f, 3.0f);
+                pso.rasterizer_state = &rasterizer;
+            }
+
+            if (!pso.blend_state)
+            {
+                static RHI_BlendState blend(false);
+                pso.blend_state = &blend;
+            }
+
+            if (!pso.depth_stencil_state)
+            {
+                static RHI_DepthStencilState depth_off(false, false, RHI_Comparison_Function::Never);
+                static RHI_DepthStencilState depth_read_write(true, true, RHI_Comparison_Function::GreaterEqual);
+                pso.depth_stencil_state = pso.render_target_depth_texture ? &depth_read_write : &depth_off;
             }
         }
     }
@@ -213,9 +237,29 @@ namespace spartan
 
     void RHI_PipelineState::Prepare()
     {
+        apply_graphics_defaults(*this);
         m_hash = compute_hash(*this);
         get_dimensions(*this, &m_width, &m_height);
         validate(*this);
+    }
+
+    void RHI_PipelineState::SetColorTargets(
+        RHI_Texture* t0,
+        RHI_Texture* t1,
+        RHI_Texture* t2,
+        RHI_Texture* t3,
+        RHI_Texture* t4,
+        RHI_Texture* t5,
+        RHI_Texture* t6,
+        RHI_Texture* t7
+    )
+    {
+        render_target_color_textures = { t0, t1, t2, t3, t4, t5, t6, t7 };
+    }
+
+    void RHI_PipelineState::SetDepthTarget(RHI_Texture* texture)
+    {
+        render_target_depth_texture = texture;
     }
 
     bool RHI_PipelineState::HasClearValues() const

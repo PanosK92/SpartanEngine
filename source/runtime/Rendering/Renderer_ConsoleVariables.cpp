@@ -136,8 +136,16 @@ namespace spartan
                 return;
             }
 
+            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss) && !RHI_Device::IsSupportedDlss())
+            {
+                SP_LOG_WARNING("This GPU doesn't support DLSS");
+                *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = 0.0f;
+                return;
+            }
+
             if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau) ||
-                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
+                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) ||
+                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss))
             {
                 RHI_VendorTechnology::ResetHistory();
                 Renderer::ResetTaauHistory();
@@ -197,7 +205,7 @@ namespace spartan
     // quality settings
     TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering level (0-16)",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
-    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        1.0f,                                                    "aa/upsampling method index",              on_antialiasing_change); // int value from Renderer_AntiAliasing_Upsampling
+    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau), "aa/upsampling method index",              on_antialiasing_change);
     // display
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
     TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");

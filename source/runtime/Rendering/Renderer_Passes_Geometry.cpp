@@ -148,11 +148,6 @@ namespace spartan
 
         void bind_mesh_shader_geometry(RHI_CommandList* cmd_list)
         {
-            // cull writes these on compute, mesh reads them, auto barriers miss this under load
-            cmd_list->PrepareBufferForGraphics(Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
-            cmd_list->PrepareBufferForGraphics(Renderer::GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
-            cmd_list->PrepareBufferForGraphics(Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
-
             cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data,    Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
             cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,     Renderer::GetBuffer(Renderer_Buffer::MeshletInstances));
             cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,        GeometryBuffer::GetMeshletBoundsBuffer());
@@ -870,11 +865,13 @@ namespace spartan
                 )
                 : nullptr;
         pso.resolution_scale                 = true;
-        pso.render_target_color_textures[0]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
-        pso.render_target_color_textures[1]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
-        pso.render_target_color_textures[2]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
-        pso.render_target_color_textures[3]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
-        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        pso.SetColorTargets(
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_color),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
+            GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)
+        );
+        pso.SetDepthTarget(GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
         pso.is_multiview                     = xr_multiview;
         // the opaque draw clears the g-buffer, the alpha draw loads it so it does not wipe the opaque output
         pso.clear_color[0]                   = Color::standard_transparent;

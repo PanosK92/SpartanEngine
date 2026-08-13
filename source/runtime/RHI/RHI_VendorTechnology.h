@@ -36,12 +36,12 @@ namespace spartan
     // easy nrd entry points, each maps to a tuned denoiser
     enum class Nrd_Preset : uint32_t
     {
-        Gi,           // reblur diffuse, restir gi
-        Reflections,  // reblur specular, rt reflections
-        Shadows       // sigma, directional rt shadows
+        Gi,          // reblur diffuse, restir gi
+        Reflections, // reblur specular, rt reflections
+        Shadows      // sigma, directional rt shadows
     };
 
-    // the vendor sdk glue, xess upscaling, fsr, nrd denoising and the rest, kept behind one facade
+    // the vendor sdk glue, xess/dlss upscaling, nrd denoising and the rest, kept behind one facade
     class RHI_VendorTechnology
     {
     public:
@@ -53,6 +53,20 @@ namespace spartan
         // xess
         static void XeSS_GenerateJitterSample(float* x, float* y);
         static void XeSS_Dispatch(
+            RHI_CommandList* cmd_list,
+            RHI_Texture* tex_color,
+            RHI_Texture* tex_depth,
+            RHI_Texture* tex_velocity,
+            RHI_Texture* tex_output
+        );
+
+        // ngx project id, guid format required by nvidia, must match vulkan discovery
+        static constexpr const char* dlss_project_id     = "6f8a2c1e-9d34-4b71-a5e8-2c7f91d0b463";
+        static constexpr const char* dlss_engine_version = "1.0";
+
+        // dlss
+        static void DLSS_GenerateJitterSample(float* x, float* y);
+        static void DLSS_Dispatch(
             RHI_CommandList* cmd_list,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,

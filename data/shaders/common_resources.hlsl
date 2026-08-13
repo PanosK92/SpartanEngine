@@ -55,10 +55,9 @@ Texture2D tex_perlin : register(t14);
 // terrain heightfield analysis, baked once per terrain generate, sampled in normalized terrain xz
 // map a: r = curvature (0.5 is flat), g = flow accumulation, b = sky occlusion, a = sediment deposition
 // map b: r = wear (bedrock exposure), g = insolation, b = normalized height, a = talus (scree)
-// spirv reflection keys descriptors on the register index alone and ignores the space, so these
-// have to avoid every t index used by the bindless buffers below, t20 through t23 are taken
-Texture2D<float4> tex_terrain_map_a : register(t35);
-Texture2D<float4> tex_terrain_map_b : register(t36);
+// space 0, next to perlin, bindless arrays live in other spaces so these registers are free here
+Texture2D<float4> tex_terrain_map_a : register(t15);
+Texture2D<float4> tex_terrain_map_b : register(t16);
 
 // restir reservoir textures (shared across path tracing, temporal, and spatial passes)
 // kept contiguous so a single loop can bind all five slots starting from tex_reservoir_prev0

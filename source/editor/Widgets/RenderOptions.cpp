@@ -324,13 +324,17 @@ void RenderOptions::OnTickVisible()
 
                 if (option_header("Anti-Aliasing & Upscaling"))
                 {
-                    static vector<string> upsamplers =
+                    vector<string> upsamplers =
                     {
-                        "Off",   // AA_Off_Upscale_Linear
-                        "FXAA",  // AA_Fxaa_Upscale_Linear
-                        "TAAU",  // AA_Taau_Upscale_Taau
-                        "XeSS 3" // AA_Xess_Upscale_Xess
+                        "Off",    // AA_Off_Upscale_Linear
+                        "FXAA",   // AA_Fxaa_Upscale_Linear
+                        "TAAU",   // AA_Taau_Upscale_Taau
+                        "XeSS 3"  // AA_Xess_Upscale_Xess
                     };
+                    if (RHI_Device::IsSupportedDlss())
+                    {
+                        upsamplers.emplace_back("DLSS 4"); // AA_Dlss_Upscale_Dlss
+                    }
 
                     uint32_t mode = cvar_antialiasing_upsampling.GetValueAs<uint32_t>();
                     if (option_combo_box("Upsampling method", upsamplers, mode))

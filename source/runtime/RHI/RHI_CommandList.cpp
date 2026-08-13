@@ -27,7 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Queue.h"
 #include "RHI_Shader.h"
 #include "RHI_DepthStencilState.h"
-#include "../Rendering/Renderer.h"
+#include "RHI_DescriptorSetLayout.h"
+#include "RHI_Device.h"
+#include <unordered_set>
 //============================
 
 //= NAMESPACES ========
@@ -293,6 +295,12 @@ namespace spartan
                     uint32_t binding_slot = 0;
                     uint64_t* binding_mask = nullptr;
                     if (
+                        descriptor.IsBindless()
+                    )
+                    {
+                        continue;
+                    }
+                    if (
                         descriptor.type ==
                         RHI_Descriptor_Type::Image
                     )
@@ -389,6 +397,199 @@ namespace spartan
         return RHI_Barrier_Scope::All;
     }
 
+#ifdef DEBUG
+    namespace
+    {
+        bool is_generic_slot_name(const string& name)
+        {
+            static const char* names[] =
+            {
+                "tex", "tex2", "tex3", "tex4", "tex5", "tex6", "tex3d",
+                "tex_uav", "tex_uav2", "tex_uav3", "tex_uav4", "tex3d_uav",
+                "tex_uav_sss", "tex_uav_uint", "tex_uav_mips"
+            };
+            for (const char* candidate : names)
+            {
+                if (name == candidate)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void log_bind_once(uint64_t key, const char* fmt, const char* pass, const char* shader, const char* resource, uint32_t slot)
+        {
+            static mutex log_mutex;
+            static unordered_set<uint64_t> logged;
+            lock_guard<mutex> lock(log_mutex);
+            if (logged.insert(key).second)
+            {
+                SP_LOG_WARNING(fmt, pass, shader, resource, slot);
+            }
+        }
+    }
+#endif
+
+    void RHI_CommandList::ValidateBindings()
+    {
+#ifdef DEBUG
+        const char* pass_name = m_pso.name ? m_pso.name : "unnamed";
+        const uint64_t pso_hash = m_pso.GetHash();
+
+        auto shader_name = [](RHI_Shader* shader) -> const char*
+        {
+            if (!shader)
+            {
+                return "unknown";
+            }
+            const string& name = shader->GetObjectName();
+            return name.empty() ? shader->GetFilePath().c_str() : name.c_str();
+        };
+
+        auto slot_bound = [&](const RHI_Descriptor& descriptor) -> bool
+        {
+            if (descriptor.type == RHI_Descriptor_Type::Image)
+            {
+                const uint32_t slot = descriptor.slot - rhi_shader_register_shift_t;
+                return slot < m_max_tracked_resource_slots && m_tracked_textures_srv[slot].texture != nullptr;
+            }
+            if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
+            {
+                const uint32_t slot = descriptor.slot - rhi_shader_register_shift_u;
+                return slot < m_max_tracked_resource_slots && m_tracked_textures_uav[slot].texture != nullptr;
+            }
+            if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+            {
+                uint32_t slot = descriptor.slot;
+                if (slot >= rhi_shader_register_shift_u && slot < rhi_shader_register_shift_b)
+                {
+                    slot -= rhi_shader_register_shift_u;
+                }
+                else if (slot >= rhi_shader_register_shift_t)
+                {
+                    slot -= rhi_shader_register_shift_t;
+                }
+                return slot < m_max_tracked_resource_slots && m_tracked_buffers[slot].buffer != nullptr;
+            }
+            if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            {
+                return m_pso.use_standard_resources;
+            }
+            if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure && m_descriptor_layout_current)
+            {
+                const vector<RHI_Descriptor>& descriptors = m_descriptor_layout_current->GetDescriptors();
+                const vector<RHI_DescriptorBinding>& bindings = m_descriptor_layout_current->GetBindings();
+                for (size_t i = 0; i < descriptors.size() && i < bindings.size(); i++)
+                {
+                    if (descriptors[i].slot == descriptor.slot && bindings[i].resource != nullptr)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        for (RHI_Shader* shader : m_pso.shaders)
+        {
+            if (!shader)
+            {
+                continue;
+            }
+
+            for (const RHI_Descriptor& descriptor : shader->GetDescriptors())
+            {
+                if (descriptor.IsBindless() || descriptor.type == RHI_Descriptor_Type::PushConstantBuffer)
+                {
+                    continue;
+                }
+                if (!descriptor.used)
+                {
+                    continue;
+                }
+                if (is_generic_slot_name(descriptor.name))
+                {
+                    continue;
+                }
+                if (slot_bound(descriptor))
+                {
+                    continue;
+                }
+
+                const uint64_t key = rhi_hash_combine(pso_hash, rhi_hash_combine(static_cast<uint64_t>(descriptor.slot), static_cast<uint64_t>(descriptor.type)));
+                log_bind_once(key, "%s (%s): shader uses \"%s\" at slot %u, nothing bound", pass_name, shader_name(shader), descriptor.name.c_str(), descriptor.slot);
+            }
+
+            for (const RHI_Descriptor& descriptor : shader->GetDescriptors())
+            {
+                if (descriptor.type != RHI_Descriptor_Type::PushConstantBuffer)
+                {
+                    continue;
+                }
+                if (m_push_constant_size == 0)
+                {
+                    continue;
+                }
+                if (descriptor.struct_size == 0 || m_push_constant_size == descriptor.struct_size)
+                {
+                    continue;
+                }
+                static mutex push_log_mutex;
+                static unordered_set<uint64_t> push_logged;
+                const uint64_t key = rhi_hash_combine(pso_hash, static_cast<uint64_t>(descriptor.struct_size));
+                lock_guard<mutex> lock(push_log_mutex);
+                if (push_logged.insert(key).second)
+                {
+                    SP_LOG_WARNING("%s (%s): push constant size %u does not match reflected %u", pass_name, shader_name(shader), m_push_constant_size, descriptor.struct_size);
+                }
+            }
+        }
+
+        auto slot_in_shaders = [&](uint32_t shifted_slot) -> bool
+        {
+            for (RHI_Shader* shader : m_pso.shaders)
+            {
+                if (!shader)
+                {
+                    continue;
+                }
+                for (const RHI_Descriptor& descriptor : shader->GetDescriptors())
+                {
+                    if (descriptor.IsBindless())
+                    {
+                        continue;
+                    }
+                    if (descriptor.slot == shifted_slot)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        for (uint32_t slot = 0; slot < m_max_tracked_resource_slots; slot++)
+        {
+            if (m_tracked_textures_srv[slot].texture && !slot_in_shaders(slot + rhi_shader_register_shift_t))
+            {
+                const uint64_t key = rhi_hash_combine(pso_hash, 0x1000ull + slot);
+                log_bind_once(key, "%s (%s): unused bind of \"%s\" at srv slot %u", pass_name, pass_name, m_tracked_textures_srv[slot].texture->GetObjectName().c_str(), slot);
+            }
+            if (m_tracked_textures_uav[slot].texture && !slot_in_shaders(slot + rhi_shader_register_shift_u))
+            {
+                const uint64_t key = rhi_hash_combine(pso_hash, 0x2000ull + slot);
+                log_bind_once(key, "%s (%s): unused bind of \"%s\" at uav slot %u", pass_name, pass_name, m_tracked_textures_uav[slot].texture->GetObjectName().c_str(), slot);
+            }
+            if (m_tracked_buffers[slot].buffer && !slot_in_shaders(slot + rhi_shader_register_shift_u) && !slot_in_shaders(slot + rhi_shader_register_shift_t))
+            {
+                const uint64_t key = rhi_hash_combine(pso_hash, 0x3000ull + slot);
+                log_bind_once(key, "%s (%s): unused bind of \"%s\" at buffer slot %u", pass_name, pass_name, m_tracked_buffers[slot].buffer->GetObjectName().c_str(), slot);
+            }
+        }
+#endif
+    }
+
     void RHI_CommandList::SynchronizeRenderTargets()
     {
         m_tracked_attachments.fill(RHI_Tracked_Texture_Binding{});
@@ -441,6 +642,13 @@ namespace spartan
         {
             return;
         }
+
+#ifdef DEBUG
+        if (include_bindings)
+        {
+            ValidateBindings();
+        }
+#endif
 
         m_batch_barrier_flush = true;
         m_current_texture_usage.clear();
@@ -560,27 +768,33 @@ namespace spartan
         }
 
         m_current_buffer_usage.clear();
+        auto collect_buffer = [&](const RHI_Tracked_Buffer_Binding& binding)
+        {
+            if (!binding.buffer)
+            {
+                return;
+            }
+
+            RHI_Tracked_Usage& usage = m_current_buffer_usage[binding.buffer];
+            usage.access = resource_tracker::merge(usage.access, binding.access);
+            if (
+                usage.usage == RHI_Resource_Usage::None ||
+                binding.usage == RHI_Resource_Usage::Indirect ||
+                (binding.usage != RHI_Resource_Usage::Shader && usage.usage == RHI_Resource_Usage::Shader)
+            )
+            {
+                usage.usage = binding.usage;
+            }
+            usage.scope = GetResourceScope();
+            usage.queue = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
+        };
         for (const RHI_Tracked_Buffer_Binding& binding : m_tracked_buffers)
         {
-            if (binding.buffer)
-            {
-                RHI_Tracked_Usage& usage = m_current_buffer_usage[binding.buffer];
-                usage.access = binding.access;
-                usage.usage  = binding.usage;
-                usage.scope  = GetResourceScope();
-                usage.queue  = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
-            }
+            collect_buffer(binding);
         }
         for (const RHI_Tracked_Buffer_Binding& binding : m_tracked_buffers_read)
         {
-            if (binding.buffer)
-            {
-                RHI_Tracked_Usage& usage = m_current_buffer_usage[binding.buffer];
-                usage.access = binding.access;
-                usage.usage  = binding.usage;
-                usage.scope  = GetResourceScope();
-                usage.queue  = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
-            }
+            collect_buffer(binding);
         }
 
         for (auto& [buffer, current] : m_current_buffer_usage)
@@ -598,7 +812,12 @@ namespace spartan
             }
 
             RHI_Tracked_Usage& previous = history_it->second;
-            if (previous.access != RHI_Resource_Access::None && (resource_tracker::writes(previous.access) || resource_tracker::writes(current.access)))
+            const bool wrote = resource_tracker::writes(previous.access) || resource_tracker::writes(current.access);
+            const bool compute_to_graphics =
+                previous.scope == RHI_Barrier_Scope::Compute &&
+                current.scope == RHI_Barrier_Scope::Graphics &&
+                resource_tracker::writes(previous.access);
+            if (previous.access != RHI_Resource_Access::None && (wrote || compute_to_graphics))
             {
                 const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current.queue != RHI_Queue_Type::Max && previous.queue != current.queue;
                 RHI_Barrier barrier = RHI_Barrier::buffer_sync(buffer, previous.access, current.access);
@@ -711,9 +930,9 @@ namespace spartan
         const uint32_t thread_group_size = 8;
 
         // scaled dimensions
-        const uint32_t scaled_width  = Renderer::GetScaledDimension(texture->GetWidth(), resolution_scale);
-        const uint32_t scaled_height = Renderer::GetScaledDimension(texture->GetHeight(), resolution_scale);
-        const uint32_t scaled_depth  = (texture->GetType() == RHI_Texture_Type::Type3D) ? Renderer::GetScaledDimension(texture->GetDepth(), resolution_scale) : 1;
+        const uint32_t scaled_width  = RHI_Device::ScaleDimension(texture->GetWidth(), resolution_scale);
+        const uint32_t scaled_height = RHI_Device::ScaleDimension(texture->GetHeight(), resolution_scale);
+        const uint32_t scaled_depth  = (texture->GetType() == RHI_Texture_Type::Type3D) ? RHI_Device::ScaleDimension(texture->GetDepth(), resolution_scale) : 1;
 
         // conservative dispatch counts
         const uint32_t dispatch_x = (scaled_width + thread_group_size - 1) / thread_group_size;

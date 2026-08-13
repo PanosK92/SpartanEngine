@@ -113,6 +113,7 @@ namespace spartan
         static uint32_t PropertyGetShaderGroupBaseAlignment()             { return m_shader_group_base_alignment; }
         static bool IsSupportedVrs()                                      { return m_is_shading_rate_supported; }
         static bool IsSupportedXess()                                     { return m_xess_supported; }
+        static bool IsSupportedDlss()                                     { return m_dlss_supported; }
         static bool IsSupportedRayTracing()                               { return m_is_ray_tracing_supported; }
         static bool IsSupportedMeshShaders()                              { return m_is_mesh_shaders_supported; }
 
@@ -137,6 +138,14 @@ namespace spartan
         static RHI_PhysicalDevice* GetPrimaryPhysicalDevice();
         static void SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled);
 
+        // renderer hooks, keeps the rhi from including renderer headers
+        static void SetPipelineBoundCallback(void (*callback)(RHI_CommandList*));
+        static void InvokePipelineBound(RHI_CommandList* cmd_list);
+        static void SetScaleDimensionCallback(uint32_t (*callback)(uint32_t, float));
+        static uint32_t ScaleDimension(uint32_t dimension, float scale = -1.0f);
+        static void SetDummyVertexBuffer(RHI_Buffer* buffer);
+        static RHI_Buffer* GetDummyVertexBuffer();
+
     private:
         // properties
         static float m_timestamp_period;
@@ -157,8 +166,12 @@ namespace spartan
         static uint32_t m_shader_group_base_alignment;
         static bool m_is_shading_rate_supported;
         static bool m_xess_supported;
+        static bool m_dlss_supported;
         static bool m_is_ray_tracing_supported;
         static bool m_is_mesh_shaders_supported;
+        static void (*m_pipeline_bound_callback)(RHI_CommandList*);
+        static uint32_t (*m_scale_dimension_callback)(uint32_t, float);
+        static RHI_Buffer* m_dummy_vertex_buffer;
 
         // misc
         static bool m_wide_lines;

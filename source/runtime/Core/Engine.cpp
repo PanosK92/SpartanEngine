@@ -107,7 +107,7 @@ namespace spartan
 
         // post-initialize
         {
-            // set ray tracing defaults for new users (no settings file)
+            // gpu-capability defaults for new users (no settings file)
             // existing users keep their saved preferences
             if (!Settings::HasLoadedUserSettingsFromFile())
             {
@@ -115,6 +115,13 @@ namespace spartan
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", std::to_string(static_cast<float>(ray_tracing_supported)));
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_shadows", std::to_string(static_cast<float>(ray_tracing_supported)));
                 ConsoleRegistry::Get().SetValueFromString("r.mesh_shaders", std::to_string(static_cast<float>(RHI_Device::IsSupportedMeshShaders())));
+
+                Renderer_AntiAliasing_Upsampling aa = Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau;
+                if (RHI_Device::IsSupportedDlss())
+                {
+                    aa = Renderer_AntiAliasing_Upsampling::AA_Dlss_Upscale_Dlss;
+                }
+                ConsoleRegistry::Get().SetValueFromString("r.antialiasing_upsampling", std::to_string(static_cast<float>(aa)));
             }
 
             Window::PumpEvents();

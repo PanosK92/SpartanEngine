@@ -765,6 +765,7 @@ namespace spartan
 
             // xess requires shader model 6.4 or newer
             m_xess_supported = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;
+            m_dlss_supported = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
 
             m_is_mesh_shaders_supported = (caps::mesh_shader_tier >= D3D12_MESH_SHADER_TIER_1);
             if (m_is_mesh_shaders_supported)

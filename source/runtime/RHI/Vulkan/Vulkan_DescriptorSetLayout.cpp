@@ -55,7 +55,7 @@ namespace spartan
             {
                 continue;
             }
-            if (desc.as_array && desc.array_length == rhi_max_array_size)
+            if (desc.IsBindless())
             {
                 continue;
             }
@@ -75,12 +75,13 @@ namespace spartan
             return;
         }
 
-        // validate unique bindings
+        // validate unique bindings within a set, space maps to the vulkan set index so slot can repeat across spaces
         {
-            unordered_set<uint32_t> unique_bindings;
+            unordered_set<uint64_t> unique_bindings;
             for (const RHI_Descriptor& desc : filtered)
             {
-                bool inserted = unique_bindings.insert(desc.slot).second;
+                const uint64_t key = (static_cast<uint64_t>(desc.space) << 32) | desc.slot;
+                bool inserted = unique_bindings.insert(key).second;
                 SP_ASSERT_MSG(inserted, "Duplicate binding slot detected");
             }
         }

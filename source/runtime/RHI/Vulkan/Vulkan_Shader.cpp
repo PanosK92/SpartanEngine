@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_DirectXShaderCompiler.h"
+#include <unordered_set>
 SP_WARNINGS_OFF
 #include <spirv_cross/spirv_hlsl.hpp>
 SP_WARNINGS_ON
@@ -47,7 +48,8 @@ namespace spartan
             vector<RHI_Descriptor>& descriptors,
             const SmallVector<Resource>& resources,
             const RHI_Descriptor_Type descriptor_type,
-            const RHI_Shader_Type shader_stage
+            const RHI_Shader_Type shader_stage,
+            const unordered_set<VariableID>& active
         )
         {
             // this only matters for textures
@@ -58,10 +60,12 @@ namespace spartan
             for (const Resource& resource : resources)
             {
                 uint32_t slot         = compiler.get_decoration(resource.id, spv::DecorationBinding);
+                uint32_t space        = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
                 SPIRType type         = compiler.get_type(resource.type_id);
                 uint32_t size         = 0;
                 bool is_array         = !type.array.empty();
                 uint32_t array_length = is_array ? type.array[0] : 0;
+                bool used             = active.empty() || active.count(resource.id) != 0;
 
                 if (descriptor_type == RHI_Descriptor_Type::ConstantBuffer || descriptor_type == RHI_Descriptor_Type::PushConstantBuffer)
                 {
@@ -82,7 +86,9 @@ namespace spartan
                     rhi_shader_type_to_mask(shader_stage), // stage
                     size,                                  // struct size
                     is_array,                              // is array
-                    array_length                           // array length
+                    array_length,                          // array length
+                    space,                                 // space
+                    used                                   // used
                 );
             }
         };
@@ -232,13 +238,14 @@ namespace spartan
         }
 
         ShaderResources resources = compiler.get_shader_resources();
+        const unordered_set<VariableID> active = compiler.get_active_interface_variables();
 
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,         RHI_Descriptor_Type::Image,                 shader_stage); // srv
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_images,          RHI_Descriptor_Type::TextureStorage,        shader_stage); // uav
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_buffers,         RHI_Descriptor_Type::StructuredBuffer,      shader_stage);
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.uniform_buffers,         RHI_Descriptor_Type::ConstantBuffer,        shader_stage);
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.push_constant_buffers,   RHI_Descriptor_Type::PushConstantBuffer,    shader_stage);
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.acceleration_structures, RHI_Descriptor_Type::AccelerationStructure, shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,         RHI_Descriptor_Type::Image,                 shader_stage, active); // srv
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_images,          RHI_Descriptor_Type::TextureStorage,        shader_stage, active); // uav
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_buffers,         RHI_Descriptor_Type::StructuredBuffer,      shader_stage, active);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.uniform_buffers,         RHI_Descriptor_Type::ConstantBuffer,        shader_stage, active);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.push_constant_buffers,   RHI_Descriptor_Type::PushConstantBuffer,    shader_stage, active);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.acceleration_structures, RHI_Descriptor_Type::AccelerationStructure, shader_stage, active);
     }
 
     void RHI_Shader::CompileFromSpirv(const RHI_Shader_Type type, const void* spirv_bytecode, uint64_t spirv_size, const string& name)
