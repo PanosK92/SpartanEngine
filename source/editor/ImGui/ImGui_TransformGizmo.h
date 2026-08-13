@@ -178,6 +178,30 @@ namespace ImGui::TransformGizmo
         }
     }
 
+    static bool has_selected_ancestor(
+        spartan::Entity* entity,
+        const std::vector<spartan::Entity*>& selected_entities
+    )
+    {
+        if (!entity)
+        {
+            return false;
+        }
+
+        for (spartan::Entity* ancestor = entity->GetParent(); ancestor; ancestor = ancestor->GetParent())
+        {
+            for (spartan::Entity* selected : selected_entities)
+            {
+                if (selected == ancestor)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     static void apply_aabb_edge_snap(
         spartan::Entity* primary_entity,
         const std::vector<spartan::Entity*>& selected_entities,
@@ -431,7 +455,7 @@ namespace ImGui::TransformGizmo
 
                 for (spartan::Entity* entity : selected_entities)
                 {
-                    if (entity)
+                    if (entity && !has_selected_ancestor(entity, selected_entities))
                     {
                         entities_being_transformed.push_back(entity);
                         positions_previous.push_back(entity->GetPosition());
@@ -470,7 +494,7 @@ namespace ImGui::TransformGizmo
 
             for (spartan::Entity* entity : selected_entities)
             {
-                if (!entity)
+                if (!entity || has_selected_ancestor(entity, selected_entities))
                 {
                     continue;
                 }

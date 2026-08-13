@@ -673,8 +673,9 @@ TerrainLayerSample terrain_sample_layer(
     result.gradient = 0.0f;
     float4 packed   = 1.0f;
 
-    // biplanar only earns its cost where the ground is actually steep, flat terrain never pays
-    bool biplanar = allow_biplanar && layer.terrain_layer_biplanar() && abs(normal_world.y) < 0.8f;
+    // biplanar is for cliff faces, y still dominates until about 45 degrees so a looser
+    // threshold projects a side axis onto rolling ground and shears the uv into streaks
+    bool biplanar = layer.terrain_layer_biplanar() && abs(normal_world.y) < 0.55f;
 
     if (biplanar)
     {

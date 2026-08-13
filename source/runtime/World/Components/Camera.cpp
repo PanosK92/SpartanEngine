@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Physics.h"
 #include "Light.h"
 #include "AudioSource.h"
+#include "Terrain.h"
 #include "ParticleSystem.h"
 #include "../Entity.h"
 #include "../World.h"
@@ -48,6 +49,101 @@ using namespace std;
 
 namespace spartan
 {
+    namespace
+    {
+        Physics* fly_controller(Entity* camera_entity)
+        {
+            if (!camera_entity)
+            {
+                return nullptr;
+            }
+
+            Entity* parent = camera_entity->GetParent();
+            if (!parent)
+            {
+                return nullptr;
+            }
+
+            Physics* physics = parent->GetComponent<Physics>();
+            if (!physics || physics->GetBodyType() != BodyType::Controller)
+            {
+                return nullptr;
+            }
+
+            return physics;
+        }
+
+        // tiles carry the mesh, the terrain component lives on the parent
+        Entity* resolve_picked_entity(Entity* entity)
+        {
+            if (!entity)
+            {
+                return nullptr;
+            }
+
+            if (Terrain::ParseTileIndex(entity) >= 0)
+            {
+                Entity* parent = entity->GetParent();
+                if (parent && parent->GetComponent<Terrain>())
+                {
+                    return parent;
+                }
+            }
+
+            return entity;
+        }
+
+        float ray_hit_mesh(
+            const Ray& ray,
+            const vector<uint32_t>& indices,
+            const vector<RHI_Vertex_PosTexNorTan>& vertices,
+            const Matrix& transform,
+            float best_depth
+        )
+        {
+            float closest = best_depth;
+            for (uint32_t i = 0; i < indices.size(); i += 3)
+            {
+                const RHI_Vertex_PosTexNorTan& v1 = vertices[indices[i]];
+                const RHI_Vertex_PosTexNorTan& v2 = vertices[indices[i + 1]];
+                const RHI_Vertex_PosTexNorTan& v3 = vertices[indices[i + 2]];
+                Vector3 p1(v1.pos[0], v1.pos[1], v1.pos[2]);
+                Vector3 p2(v2.pos[0], v2.pos[1], v2.pos[2]);
+                Vector3 p3(v3.pos[0], v3.pos[1], v3.pos[2]);
+
+                p1 = p1 * transform;
+                p2 = p2 * transform;
+                p3 = p3 * transform;
+
+                const float distance = ray.HitDistance(p1, p2, p3);
+                if (distance < closest)
+                {
+                    closest = distance;
+                }
+            }
+
+            return closest;
+        }
+
+        // fly control moves the parent capsule, lerp used to move only the camera child, so wasd
+        // snapped the eye back onto the capsule at the old location
+        void set_camera_world_pose(Entity* camera_entity, const Vector3& position, const Quaternion& rotation)
+        {
+            if (Physics* physics = fly_controller(camera_entity))
+            {
+                Entity* parent    = camera_entity->GetParent();
+                const Vector3 eye = physics->GetControllerTopLocal();
+                parent->SetPosition(position - parent->GetRotation() * eye);
+                camera_entity->SetPositionLocal(eye);
+                camera_entity->SetRotation(rotation);
+                return;
+            }
+
+            camera_entity->SetPosition(position);
+            camera_entity->SetRotation(rotation);
+        }
+    }
+
     Camera::Camera(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
@@ -333,12 +429,18 @@ namespace spartan
         const vector<Entity*>& entities = World::GetEntities();
         for (Entity* entity : entities)
         {
-            if (!entity->GetComponent<Render>())
+            if (!entity || !entity->GetActive())
             {
                 continue;
             }
 
-            const BoundingBox& aabb = entity->GetComponent<Render>()->GetBoundingBox();
+            Render* render = entity->GetComponent<Render>();
+            if (!render)
+            {
+                continue;
+            }
+
+            const BoundingBox& aabb = render->GetBoundingBox();
             float distance          = ray.HitDistance(aabb);
             if (distance == numeric_limits<float>::infinity())
             {
@@ -365,6 +467,35 @@ namespace spartan
             }
 
             Render* render = broad_hit.m_entity->GetComponent<Render>();
+            if (!render)
+            {
+                continue;
+            }
+
+            // instanced foliage can be thousands of copies of a heavy mesh, a triangle test
+            // per instance freezes the editor, the instance aabb is tight enough to pick
+            if (render->HasInstancing())
+            {
+                const BoundingBox& mesh_aabb = render->GetBoundingBoxMesh();
+                const uint32_t instance_count = render->GetInstanceCount();
+                for (uint32_t i = 0; i < instance_count; i++)
+                {
+                    const BoundingBox world_box = mesh_aabb * render->GetInstance(i, true);
+                    const Vector3 extents = world_box.GetExtents();
+                    if (extents.x > 40.0f || extents.y > 40.0f || extents.z > 40.0f)
+                    {
+                        continue;
+                    }
+
+                    const float aabb_dist = ray.HitDistance(world_box);
+                    if (aabb_dist < best_depth)
+                    {
+                        best_depth  = aabb_dist;
+                        best_entity = broad_hit.m_entity;
+                    }
+                }
+                continue;
+            }
 
             // query mesh size first to reserve exact capacity and avoid allocations
             uint32_t index_count  = render->GetIndexCount();
@@ -391,29 +522,17 @@ namespace spartan
                 continue;
             }
 
-            const Matrix& transform = broad_hit.m_entity->GetMatrix();
-
-            for (uint32_t i = 0; i < m_pick_indices.size(); i += 3)
+            const float hit = ray_hit_mesh(
+                ray,
+                m_pick_indices,
+                m_pick_vertices,
+                broad_hit.m_entity->GetMatrix(),
+                best_depth
+            );
+            if (hit < best_depth)
             {
-                Vector3 p1(m_pick_vertices[m_pick_indices[i]].pos);
-                Vector3 p2(m_pick_vertices[m_pick_indices[i + 1]].pos);
-                Vector3 p3(m_pick_vertices[m_pick_indices[i + 2]].pos);
-
-                p1 = p1 * transform;
-                p2 = p2 * transform;
-                p3 = p3 * transform;
-
-                float distance = ray.HitDistance(p1, p2, p3);
-                if (distance == numeric_limits<float>::infinity())
-                {
-                    continue;
-                }
-
-                if (distance < best_depth)
-                {
-                    best_depth  = distance;
-                    best_entity = broad_hit.m_entity;
-                }
+                best_depth  = hit;
+                best_entity = broad_hit.m_entity;
             }
         }
 
@@ -443,13 +562,14 @@ namespace spartan
 
         for (Entity* entity : World::GetEntities())
         {
-            if (!entity)
+            if (!entity || !entity->GetActive())
             {
                 continue;
             }
 
             // only entities that draw an icon, matches the icon pass
-            // render-only meshes are skipped, they are already visible
+            // renderable meshes are skipped, they are already visible, physics on a mesh
+            // must not steal clicks from the terrain surface
             bool draws_icon =
                 entity->GetComponent<Light>() != nullptr ||
                 entity->GetComponent<Camera>() != nullptr ||
@@ -459,7 +579,8 @@ namespace spartan
                 entity->GetComponentByType(ComponentType::SpawnPoint) != nullptr ||
                 entity->GetComponentByType(ComponentType::Terrain) != nullptr ||
                 entity->GetComponentByType(ComponentType::Water) != nullptr ||
-                entity->GetComponentByType(ComponentType::Physics) != nullptr ||
+                (entity->GetComponentByType(ComponentType::Physics) != nullptr &&
+                 entity->GetComponent<Render>() == nullptr) ||
                 entity->GetComponentByType(ComponentType::Spline) != nullptr ||
                 entity->GetComponentByType(ComponentType::SplineFollower) != nullptr ||
                 entity->GetComponentByType(ComponentType::Traffic) != nullptr ||
@@ -523,6 +644,7 @@ namespace spartan
         // they take priority over geometry picking, clicking one selects its entity in the hierarchy
         if (Entity* icon_entity = FindIconUnderCursor())
         {
+            icon_entity = resolve_picked_entity(icon_entity);
             if (Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right))
             {
                 ToggleSelection(icon_entity);
@@ -535,7 +657,7 @@ namespace spartan
             return;
         }
 
-        Entity* best_entity = FindEntityUnderCursor();
+        Entity* best_entity = resolve_picked_entity(FindEntityUnderCursor());
 
         // spline picking uses its own ray, recompute it here since pick() no longer owns the broadphase
         const Ray& ray                  = ComputePickingRay();
@@ -789,14 +911,12 @@ namespace spartan
             return;
         }
 
-        if (GetFlag(CameraFlags::CanBeControlled))
+        // lerp first so wasd can cancel it and fly control takes over from the current pose this frame
+        Input_LerpToEntity();
+
+        if (GetFlag(CameraFlags::CanBeControlled) && !m_lerp_to_target_p && !m_lerp_to_target_r)
         {
             Input_FpsControl();
-        }
-
-        // shortcuts
-        {
-            Input_LerpToEntity(); // f
         }
     }
 
@@ -1290,7 +1410,6 @@ namespace spartan
 
     void Camera::Input_LerpToEntity()
     {
-        // set focused entity as a lerp target
         const bool focus_requested = Input::GetKeyDown(KeyCode::F);
         if (focus_requested)
         {
@@ -1302,100 +1421,102 @@ namespace spartan
             return;
         }
 
-        auto stop = [this]()
-        {
-            m_lerp_to_target_p        = false;
-            m_lerp_to_target_r        = false;
-            m_lerp_to_target_alpha    = 0.0f;
-            m_lerp_to_target_position = Vector3::Zero;
-            m_movement_speed          = Vector3::Zero;
-        };
+        // only real fly input cancels, mouse delta and left click fire constantly in the editor
+        const bool user_cancelled =
+            Input::GetKey(KeyCode::W) ||
+            Input::GetKey(KeyCode::A) ||
+            Input::GetKey(KeyCode::S) ||
+            Input::GetKey(KeyCode::D) ||
+            Input::GetKey(KeyCode::Q) ||
+            Input::GetKey(KeyCode::E) ||
+            Input::GetKey(KeyCode::Click_Right) ||
+            Input::GetMouseWheelDelta() != Vector2::Zero;
 
-        // any user interaction stops the lerp at the pose the camera has currently reached, so control is handed over from there instead of snapping
-        const bool user_interacted =
-            GetFlag(CameraFlags::IsControlled)                                                                          ||
-            Input::GetMouseDelta()      != Vector2::Zero                                                                ||
-            Input::GetMouseWheelDelta() != Vector2::Zero                                                                ||
-            Input::GetKey(KeyCode::W) || Input::GetKey(KeyCode::A) || Input::GetKey(KeyCode::S) || Input::GetKey(KeyCode::D) ||
-            Input::GetKey(KeyCode::Q) || Input::GetKey(KeyCode::E)                                                      ||
-            Input::GetKey(KeyCode::Click_Left) || Input::GetKey(KeyCode::Click_Middle) || Input::GetKey(KeyCode::Click_Right) ||
-            (Input::IsGamepadConnected() && (Input::GetGamepadThumbStickLeft().Length() > 0.1f || Input::GetGamepadThumbStickRight().Length() > 0.1f));
-
-        // ignore interaction on the frame focus was requested, the f keypress itself must not cancel the lerp it just started
-        if (!focus_requested && user_interacted)
+        // f itself must not cancel the lerp it just started
+        if (!focus_requested && user_cancelled)
         {
-            stop();
+            set_camera_world_pose(GetEntity(), GetEntity()->GetPosition(), GetEntity()->GetRotation());
+            m_lerp_to_target_p = false;
+            m_lerp_to_target_r = false;
+            m_movement_speed   = Vector3::Zero;
             return;
         }
 
-        // lerp duration: 2.0 seconds + [0.0 - 2.0] seconds based on distance
-        const float lerp_duration = 2.0f + clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
+        // 0.25s nearby, up to 0.55s across a large island
+        const float lerp_duration = 0.25f + clamp(m_lerp_to_target_distance * 0.00015f, 0.0f, 0.3f);
 
-        // alpha
         m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
         float alpha = clamp(m_lerp_to_target_alpha, 0.0f, 1.0f);
+        alpha = alpha * alpha * (3.0f - 2.0f * alpha);
 
-        // position - interpolate between the stored start and target (fixed endpoints)
+        Vector3 interpolated_position    = m_lerp_from_position;
+        Quaternion interpolated_rotation = m_lerp_from_rotation;
         if (m_lerp_to_target_p)
         {
-            const Vector3 interpolated_position = Vector3::Lerp(m_lerp_from_position, m_lerp_to_target_position, alpha);
-            GetEntity()->SetPosition(interpolated_position);
+            interpolated_position = Vector3::Lerp(m_lerp_from_position, m_lerp_to_target_position, alpha);
         }
-
-        // rotation - interpolate between the stored start and target (fixed endpoints)
         if (m_lerp_to_target_r)
         {
-            const Quaternion interpolated_rotation = Quaternion::Lerp(m_lerp_from_rotation, m_lerp_to_target_rotation, alpha);
-            GetEntity()->SetRotation(interpolated_rotation);
+            interpolated_rotation = Quaternion::Lerp(m_lerp_from_rotation, m_lerp_to_target_rotation, alpha);
         }
 
-        // stop once the lerp completes
+        set_camera_world_pose(GetEntity(), interpolated_position, interpolated_rotation);
+
         if (m_lerp_to_target_alpha >= 1.0f)
         {
-            stop();
+            m_lerp_to_target_p = false;
+            m_lerp_to_target_r = false;
         }
     }
 
     void Camera::FocusOnSelectedEntity()
     {
-        // only do this in editor mode
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
             return;
         }
 
-        if (Entity* entity = GetSelectedEntity())
+        Entity* entity = GetSelectedEntity();
+        if (!entity)
         {
-            SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetObjectName().c_str());
-
-            m_lerp_to_target_position = entity->GetPosition();
-            const Vector3 target_direction = (m_lerp_to_target_position - GetEntity()->GetPosition()).Normalized();
-
-            // if the entity has a render component, we can get a more accurate target position
-            // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
-            if (Render* render = entity->GetComponent<Render>())
-            {
-                m_lerp_to_target_position -= target_direction * render->GetBoundingBox().GetExtents().Length() * 2.0f;
-            }
-            else
-            {
-                m_lerp_to_target_position -= target_direction;
-            }
-            SP_ASSERT(!isnan(m_lerp_to_target_distance));
-
-            // store start state so the lerp interpolates between two fixed endpoints
-            m_lerp_from_position      = GetEntity()->GetPosition();
-            m_lerp_from_rotation      = GetEntity()->GetRotation();
-            m_lerp_to_target_alpha    = 0.0f;
-            m_movement_speed          = Vector3::Zero;
-            m_lerp_to_target_rotation = Quaternion::FromLookRotation(entity->GetPosition() - m_lerp_to_target_position).Normalized();
-            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_lerp_from_position);
-
-            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_lerp_from_rotation.Normalized())) * rad_to_deg;
-
-            m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
-            m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;
+            return;
         }
+
+        SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetObjectName().c_str());
+
+        const Vector3 camera_position = GetEntity()->GetPosition();
+        Vector3 focus_point           = entity->GetPosition();
+        if (Render* render = entity->GetComponent<Render>())
+        {
+            focus_point = render->GetBoundingBox().GetCenter();
+        }
+
+        Vector3 to_focus = focus_point - camera_position;
+        if (to_focus.LengthSquared() < 0.0001f)
+        {
+            to_focus = GetEntity()->GetForward();
+        }
+        to_focus.Normalize();
+
+        float pullback = 1.0f;
+        if (Render* render = entity->GetComponent<Render>())
+        {
+            pullback = max(render->GetBoundingBox().GetExtents().Length() * 2.0f, 1.0f);
+        }
+
+        m_lerp_to_target_position = focus_point - to_focus * pullback;
+        m_lerp_from_position      = camera_position;
+        m_lerp_from_rotation      = GetEntity()->GetRotation();
+        m_lerp_to_target_alpha    = 0.0f;
+        m_movement_speed          = Vector3::Zero;
+        m_lerp_to_target_rotation = Quaternion::FromLookRotation(focus_point - m_lerp_to_target_position).Normalized();
+        m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_lerp_from_position);
+
+        const float dot        = clamp(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_lerp_from_rotation.Normalized()), -1.0f, 1.0f);
+        const float lerp_angle = acosf(dot) * rad_to_deg;
+
+        m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f;
+        m_lerp_to_target_r = lerp_angle > 1.0f;
     }
 
     void Camera::SetFlag(const CameraFlags flag, const bool enable)

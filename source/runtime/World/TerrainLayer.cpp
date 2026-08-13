@@ -36,8 +36,7 @@ namespace spartan
             return rules;
         }
 
-        // layer 0, grass, the fallback surface, wins on gentle sunlit ground above the shore
-        // the slope ceiling is generous on purpose, grass holds well past the angle a cliff needs
+        // layer 0, grass, the ground cover, rock only takes over once the slope is actually a face
         {
             TerrainLayerRule& r     = rules[0];
             r.name                  = "whispy_grass_meadow";
@@ -57,13 +56,12 @@ namespace spartan
         }
 
         // layer 1, rock, the cliff face, biplanar because planar xz smears on anything vertical
-        // pom because a dominant cliff face up close is the one place the extra march earns its cost
         {
             TerrainLayerRule& r    = rules[1];
             r.name                 = "rock";
             r.slope_min            = 34.0f;
             r.slope_max            = 90.0f;
-            r.flags                = TerrainLayerFlags_Biplanar | TerrainLayerFlags_Pom;
+            r.flags                = TerrainLayerFlags_Biplanar;
             r.curvature_influence  = -0.35f;
             r.wear_influence       = 0.5f;
             r.deposition_influence = -0.3f;

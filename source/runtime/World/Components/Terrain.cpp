@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
+#include <algorithm>
 #include <fstream>
 #include <functional>
 #include <unordered_set>
@@ -817,7 +818,10 @@ namespace spartan
             float edge_threshold_z   = tile_max_z - edge_epsilon;
 
             vector<uint32_t> acceptable_triangles;
+            vector<float> acceptable_weights;
             acceptable_triangles.reserve(tile_triangle_data.size());
+            acceptable_weights.reserve(tile_triangle_data.size());
+            float weight_sum = 0.0f;
             for (uint32_t i = 0; i < tile_triangle_data.size(); i++)
             {
                 const TriangleData& tri = tile_triangle_data[i];
@@ -828,46 +832,59 @@ namespace spartan
                     continue;
                 }
 
-                if (tri.slope_radians > prop_desc.max_slope_angle_rad ||
+                if (tri.slope_radians < prop_desc.min_slope_angle_rad ||
+                    tri.slope_radians > prop_desc.max_slope_angle_rad ||
                     tri.height_min < prop_desc.min_spawn_height ||
                     tri.height_max > prop_desc.max_spawn_height)
                 {
                     continue;
                 }
 
-                // biome mask, stochastic so soft edges match the painted layer blend
+                float weight = 1.0f;
                 if (sample_biome_weight && prop_desc.prop_mask_channel >= 0)
                 {
-                    const float weight = sample_biome_weight(tri.centroid.x, tri.centroid.z);
+                    weight = sample_biome_weight(tri.centroid.x, tri.centroid.z);
                     if (weight < prop_desc.prop_mask_min)
-                    {
-                        continue;
-                    }
-
-                    uint32_t h = i * 747796405u + 2891336453u;
-                    h = (h ^ (h >> 16)) * 0x7feb352du;
-                    h = (h ^ (h >> 15)) * 0x846ca68bu;
-                    h = h ^ (h >> 16);
-                    const float roll = static_cast<float>(h & 0xffffu) * (1.0f / 65535.0f);
-                    if (roll > weight)
                     {
                         continue;
                     }
                 }
 
                 acceptable_triangles.push_back(i);
+                acceptable_weights.push_back(weight);
+                weight_sum += weight;
             }
-            if (acceptable_triangles.empty())
+            if (acceptable_triangles.empty() || weight_sum <= 1e-6f)
             {
                 return;
             }
 
-            // compute instance count based on density
-            //
-            // rounding to nearest would zero every tile whose expected count sits under a half, which
-            // is most of them for a sparse prop like rock, so the fraction is resolved by a per tile
-            // dice roll instead, seeded off the tile so a regenerate reproduces the same scatter
-            const float expected    = density_fraction * static_cast<float>(acceptable_triangles.size());
+            vector<float> weight_prefix(acceptable_weights.size());
+            {
+                float running = 0.0f;
+                for (size_t i = 0; i < acceptable_weights.size(); i++)
+                {
+                    running += acceptable_weights[i];
+                    weight_prefix[i] = running;
+                }
+            }
+
+            auto pick_weighted_local = [&](mt19937& generator) -> uint32_t
+            {
+                uniform_real_distribution<float> pick_dist(0.0f, weight_sum);
+                const float x = pick_dist(generator);
+                auto it = lower_bound(weight_prefix.begin(), weight_prefix.end(), x);
+                uint32_t local = static_cast<uint32_t>(distance(weight_prefix.begin(), it));
+                if (local >= acceptable_triangles.size())
+                {
+                    local = static_cast<uint32_t>(acceptable_triangles.size() - 1);
+                }
+                return local;
+            };
+
+            // instance count follows mask strength, a tile that is 10 percent meadow gets 10 percent
+            // of the instances instead of a flat scatter across every triangle that merely passed
+            const float expected    = density_fraction * weight_sum;
             uint32_t adjusted_count = static_cast<uint32_t>(expected);
             {
                 uint32_t h = tile_index * 2654435761u + 1013904223u;
@@ -908,8 +925,6 @@ namespace spartan
             auto place_cluster = [&](uint32_t start_index, uint32_t end_index)
             {
                 mt19937 generator(tile_index * 1000003u + start_index * 31u + 12345u);
-                const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
-                uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 const uint32_t max_attempts = 50;
                 
@@ -921,7 +936,7 @@ namespace spartan
                     
                     do
                     {
-                        tri_idx           = acceptable_triangles[triangle_dist(generator)];
+                        tri_idx           = acceptable_triangles[pick_weighted_local(generator)];
                         TriangleData& tri = tile_triangle_data[tri_idx];
 
                         float r1      = dist(generator);
@@ -1155,6 +1170,8 @@ namespace spartan
 
     Terrain::~Terrain()
     {
+        FinishGenerate();
+
         Renderer::ClearTerrain(m_material.get());
 
         m_height_map_seed = nullptr;
@@ -1187,6 +1204,11 @@ namespace spartan
         m_material->SetProperty(MaterialProperty::TextureTilingX, 0.15f);
         m_material->SetProperty(MaterialProperty::TextureTilingY, 0.15f);
         m_material->SetProperty(MaterialProperty::Tessellation, 0.0f);
+
+        if (!m_material->GetResourceFilePath().empty())
+        {
+            m_material = ResourceCache::Cache(m_material);
+        }
 
         RefreshLayers();
     }
@@ -1420,33 +1442,50 @@ namespace spartan
     {
         TerrainPropDescription description;
 
+        // triangle heights are tile local, sea and snow are world y
+        // during load the world matrix can still be identity, local y is already authored
+        float terrain_y = 0.0f;
+        if (Entity* terrain_entity = GetEntity())
+        {
+            terrain_y = terrain_entity->GetPositionLocal().y;
+            const float world_y = terrain_entity->GetMatrix().GetTranslation().y;
+            if (world_y != 0.0f)
+            {
+                terrain_y = world_y;
+            }
+        }
+        const float sea_local  = m_level_sea  - terrain_y;
+        const float snow_local = m_level_snow - terrain_y;
+
         if (terrain_prop == TerrainProp::Tree)
         {
-            description.max_slope_angle_rad  = 45.0f * math::deg_to_rad;
-            description.min_spawn_height     = m_level_sea + 5.0f;
-            description.max_spawn_height     = m_level_snow + 20;
-            description.min_scale            = scale * 0.4f;
-            description.max_scale            = scale * 1.0f;
-            description.prop_mask_channel    = 1; // g, forest + meadow scatter
-            description.prop_mask_min        = 0.08f;
+            description.max_slope_angle_rad     = 32.0f * math::deg_to_rad;
+            description.min_spawn_height        = sea_local + 5.0f;
+            description.max_spawn_height        = snow_local + 20;
+            description.min_scale               = scale * 0.4f;
+            description.max_scale               = scale * 1.0f;
+            description.instances_per_cluster   = 6;
+            description.cluster_radius          = 18.0f;
+            description.prop_mask_channel       = 1;
+            description.prop_mask_min           = 0.12f;
         }
         else if (terrain_prop == TerrainProp::Grass)
         {
-            description.max_slope_angle_rad     = 45.0f * math::deg_to_rad;
+            description.max_slope_angle_rad     = 22.0f * math::deg_to_rad;
             description.align_to_surface_normal = true;
-            description.min_spawn_height        = m_level_sea + 5.0f;
-            description.max_spawn_height        = m_level_snow;
+            description.min_spawn_height        = sea_local + 1.0f;
+            description.max_spawn_height        = snow_local;
             description.min_scale               = scale * 1.0f;
             description.max_scale               = scale * 1.5f;
             description.prop_mask_channel       = 0;
-            description.prop_mask_min           = 0.35f;
+            description.prop_mask_min           = 0.15f;
         }
         else if (terrain_prop == TerrainProp::Flower)
         {
-            description.max_slope_angle_rad     = 45.0f * math::deg_to_rad;
+            description.max_slope_angle_rad     = 16.0f * math::deg_to_rad;
             description.align_to_surface_normal = true;
-            description.min_spawn_height        = m_level_sea + 5.0f;
-            description.max_spawn_height        = m_level_snow;
+            description.min_spawn_height        = sea_local + 5.0f;
+            description.max_spawn_height        = snow_local;
             description.min_scale               = scale * 0.2f;
             description.max_scale               = scale * 1.2f;
             description.instances_per_cluster   = 1000;
@@ -1456,16 +1495,16 @@ namespace spartan
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
-            // cliffs only, sparse accents
+            description.min_slope_angle_rad     = 14.0f * math::deg_to_rad;
             description.max_slope_angle_rad     = 80.0f * math::deg_to_rad;
             description.align_to_surface_normal = true;
-            description.min_spawn_height        = m_level_sea - 10.0f;
+            description.min_spawn_height        = sea_local - 10.0f;
             description.max_spawn_height        = numeric_limits<float>::max();
             description.min_scale               = scale * 0.1f;
             description.max_scale               = scale * 1.0f;
             description.scale_adjust_by_slope   = true;
             description.prop_mask_channel       = 2;
-            description.prop_mask_min           = 0.22f;
+            description.prop_mask_min           = 0.08f;
         }
         else
         {
@@ -1473,13 +1512,19 @@ namespace spartan
         }
 
         function<float(float, float)> biome_sample;
-        if (description.prop_mask_channel >= 0 && !m_prop_mask_pixels.empty())
+        if (description.prop_mask_channel >= 0)
         {
+            if (m_prop_mask_pixels.empty())
+            {
+                transforms_out.clear();
+                return;
+            }
+
             const int channel = description.prop_mask_channel;
             const Vector3 tile_offset = (tile_index < m_tile_offsets.size()) ?
                 m_tile_offsets[tile_index] :
                 Vector3::Zero;
-            // triangle centroids are tile-local, the prop mask is authored in world xz
+            // triangle centroids are tile-local, the prop mask is authored in terrain xz
             biome_sample = [this, channel, tile_offset](float x, float z) -> float
             {
                 return SamplePropMaskChannel(
@@ -1683,6 +1728,7 @@ namespace spartan
             m_max_y = 755.0f;
         }
     
+        // 8 cpu jobs, 1 gpu upload on the main thread
         uint32_t job_count = 9;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
     
@@ -1695,8 +1741,10 @@ namespace spartan
         {
             loaded_from_cache = true;
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache");
-            for (uint32_t i = 0; i < job_count - 1; i++)
+            for (uint32_t i = 0; i < 8; i++)
+            {
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
         }
 
         if (!loaded_from_cache)
@@ -1749,14 +1797,16 @@ namespace spartan
             // 8. compute triangle data for placement
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing placement data...");
             for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
+            {
                 placement::compute_triangle_data(m_tile_vertices, m_tile_indices, tile_index, m_triangle_data);
+            }
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
 
             SaveToFile(cache_file.c_str());
         }
 
-        BakeHeightMapTexture();
         BakeTerrainMaps();
+        BakeHeightMapPixels();
 
         // the dense erosion grid is only needed for the analysis bake above, it is tens of
         // megabytes and nothing reads it afterwards
@@ -1774,55 +1824,96 @@ namespace spartan
             m_area_km2 = TerrainSystem::ComputeSurfaceAreaKm2(m_vertices, m_indices);
         }
 
-        // 9. create tile entities and gpu buffers
-        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
+        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("building mesh...");
 
-        // tile remove is deferred, detach draws before the old mesh pointer is replaced
+        m_mesh_pending.reset();
+        BuildCpuMesh();
+
+        m_gpu_commit_pending.store(true, memory_order_release);
+    }
+
+    void Terrain::FinishGenerate()
+    {
+        if (!m_is_generating.load(memory_order_acquire) &&
+            !m_gpu_commit_pending.load(memory_order_acquire) &&
+            !m_props_commit_pending.load(memory_order_acquire))
+        {
+            return;
+        }
+
+        m_gpu_commit_pending.store(false, memory_order_release);
+        m_props_commit_pending.store(false, memory_order_release);
+        m_mesh_pending.reset();
+        ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
+        m_is_generating.store(false, memory_order_release);
+    }
+
+    void Terrain::BuildCpuMesh()
+    {
+        m_mesh_pending = make_shared<Mesh>();
+        m_mesh_pending->SetObjectName("terrain_mesh");
+        m_mesh_pending->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+        m_mesh_pending->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
+
+        for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
+        {
+            uint32_t sub_mesh_index = 0;
+            m_mesh_pending->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
+        }
+    }
+
+    void Terrain::Tick()
+    {
+        if (m_gpu_commit_pending.exchange(false, memory_order_acq_rel))
+        {
+            CommitGpu();
+            return;
+        }
+
+        if (m_props_commit_pending.exchange(false, memory_order_acq_rel))
+        {
+            CommitProps();
+        }
+    }
+
+    void Terrain::CommitGpu()
+    {
+        ProgressTracker::GetProgress(ProgressType::Terrain).SetText("uploading gpu mesh...");
+
         DetachTileMeshes();
         ClearTileEntities();
 
-        // try to load the prebuilt mesh (lods + meshlets) from disk so cached loads skip simplify + build_meshlets
-        const string cache_file_mesh = get_terrain_mesh_cache_path();
-        bool mesh_loaded_from_cache  = false;
-        if (loaded_from_cache && FileSystem::Exists(cache_file_mesh))
-        {
-            shared_ptr<Mesh> mesh_from_cache = make_shared<Mesh>();
-            mesh_from_cache->LoadFromFile(cache_file_mesh);
-            if (mesh_from_cache->GetVertexCount() > 0)
-            {
-                ResourceCache::Remove(m_mesh);
-                m_mesh                 = mesh_from_cache;
-                mesh_loaded_from_cache = true;
-            }
-        }
-
-        if (!mesh_loaded_from_cache)
+        if (m_mesh_pending)
         {
             ResourceCache::Remove(m_mesh);
-            m_mesh = make_shared<Mesh>();
-            m_mesh->SetObjectName("terrain_mesh");
-            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
-
-            for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
-            {
-                uint32_t sub_mesh_index = 0;
-                m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
-            }
-
-            // save before CreateGpuBuffers so the global geometry offsets are not baked into the file
-            m_mesh->SetResourceFilePath(cache_file_mesh);
-            m_mesh->SaveToFile(cache_file_mesh);
-
+            m_mesh = m_mesh_pending;
+            m_mesh_pending.reset();
             m_mesh->CreateGpuBuffers();
         }
 
+        if ((!m_mesh || m_mesh->GetVertexCount() == 0) && !m_tile_vertices.empty())
+        {
+            BuildCpuMesh();
+            if (m_mesh_pending)
+            {
+                ResourceCache::Remove(m_mesh);
+                m_mesh = m_mesh_pending;
+                m_mesh_pending.reset();
+                m_mesh->CreateGpuBuffers();
+            }
+        }
+
+        UploadHeightMapTextures();
+        UploadTerrainMaps();
+
         CreateTileEntities();
         RefreshPhysics();
+        RefreshLayers();
+        PushToRenderer();
 
         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+        ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
 
-        // free temporary data
         m_vertices.clear();
         m_indices.clear();
         m_tile_vertices.clear();
@@ -1830,10 +1921,19 @@ namespace spartan
 
         SnapshotBaseline();
 
-        // biome props need tiles + analysis maps, both ready at this point
-        WorldHelpers::PopulateTerrainBiomeProps(this);
+        if (m_spawn_biome_props)
+        {
+            m_props_commit_pending.store(true, memory_order_release);
+            return;
+        }
 
-        m_is_generating = false;
+        m_is_generating.store(false, memory_order_release);
+    }
+
+    void Terrain::CommitProps()
+    {
+        WorldHelpers::PopulateTerrainBiomeProps(this);
+        m_is_generating.store(false, memory_order_release);
     }
 
 
@@ -2610,76 +2710,54 @@ namespace spartan
         SnapshotBaseline();
     }
 
-    void Terrain::BakeHeightMapTexture()
+    void Terrain::BakeHeightMapPixels()
     {
         if (m_positions.empty() || m_dense_width == 0 || m_dense_height == 0)
         {
+            m_height_gpu_bytes.clear();
+            m_height_preview_bytes.clear();
             return;
         }
 
         const uint32_t sample_count = m_dense_width * m_dense_height;
 
-        // r32 local heights for grass_populate, the shader adds the terrain entity y
+        m_height_gpu_bytes.resize(static_cast<size_t>(sample_count) * sizeof(float));
+        float* heights = reinterpret_cast<float*>(m_height_gpu_bytes.data());
+        auto copy_world_y = [this, heights](uint32_t start, uint32_t end)
         {
-            vector<RHI_Texture_Slice> slices(1);
-            slices[0].mips.resize(1);
-            slices[0].mips[0].bytes.resize(static_cast<size_t>(sample_count) * sizeof(float));
-            float* heights = reinterpret_cast<float*>(slices[0].mips[0].bytes.data());
-            auto copy_world_y = [this, heights](uint32_t start, uint32_t end)
+            for (uint32_t i = start; i < end; i++)
             {
-                for (uint32_t i = start; i < end; i++)
-                {
-                    heights[i] = m_positions[i].y;
-                }
-            };
-            ThreadPool::ParallelLoop(copy_world_y, sample_count);
+                heights[i] = m_positions[i].y;
+            }
+        };
+        ThreadPool::ParallelLoop(copy_world_y, sample_count);
 
-            m_height_map_gpu_retired = m_height_map_gpu;
-            m_height_map_gpu = make_shared<RHI_Texture>(
-                RHI_Texture_Type::Type2D,
-                m_dense_width, m_dense_height, 1, 1,
-                RHI_Format::R32_Float, RHI_Texture_Srv,
-                "terrain_height_gpu", move(slices)
-            );
-        }
-
-        // imgui samples as rgba8, so bake a normalized grayscale preview separately
         m_height_bake_min = m_positions[0].y;
         m_height_bake_max = m_positions[0].y;
+        float min_x = m_positions[0].x;
+        float max_x = m_positions[0].x;
+        float min_z = m_positions[0].z;
+        float max_z = m_positions[0].z;
         for (const Vector3& position : m_positions)
         {
             m_height_bake_min = min(m_height_bake_min, position.y);
             m_height_bake_max = max(m_height_bake_max, position.y);
+            min_x = min(min_x, position.x);
+            max_x = max(max_x, position.x);
+            min_z = min(min_z, position.z);
+            max_z = max(max_z, position.z);
         }
+
+        m_world_mapping = Vector4(
+            min_x,
+            min_z,
+            1.0f / max(max_x - min_x, epsilon),
+            1.0f / max(max_z - min_z, epsilon)
+        );
 
         const float height_range = max(m_height_bake_max - m_height_bake_min, epsilon);
-
-        // keep world mapping in sync even if analysis bake is skipped later
-        {
-            float min_x = m_positions[0].x;
-            float max_x = m_positions[0].x;
-            float min_z = m_positions[0].z;
-            float max_z = m_positions[0].z;
-            for (const Vector3& position : m_positions)
-            {
-                min_x = min(min_x, position.x);
-                max_x = max(max_x, position.x);
-                min_z = min(min_z, position.z);
-                max_z = max(max_z, position.z);
-            }
-            m_world_mapping = Vector4(
-                min_x,
-                min_z,
-                1.0f / max(max_x - min_x, epsilon),
-                1.0f / max(max_z - min_z, epsilon)
-            );
-        }
-
-        vector<RHI_Texture_Slice> slices(1);
-        slices[0].mips.resize(1);
-        slices[0].mips[0].bytes.resize(static_cast<size_t>(sample_count) * 4);
-
-        uint8_t* pixels = reinterpret_cast<uint8_t*>(slices[0].mips[0].bytes.data());
+        m_height_preview_bytes.resize(static_cast<size_t>(sample_count) * 4);
+        uint8_t* pixels = m_height_preview_bytes.data();
         auto copy_heights = [this, pixels, height_range](uint32_t start, uint32_t end)
         {
             for (uint32_t i = start; i < end; i++)
@@ -2694,15 +2772,46 @@ namespace spartan
             }
         };
         ThreadPool::ParallelLoop(copy_heights, sample_count);
+    }
 
-        // retire the previous bake first, imgui may still draw it this frame
-        m_height_map_final_retired = m_height_map_final;
-        m_height_map_final = make_shared<RHI_Texture>(
-            RHI_Texture_Type::Type2D,
-            m_dense_width, m_dense_height, 1, 1,
-            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
-            "terrain_baked", move(slices)
-        );
+    void Terrain::UploadHeightMapTextures()
+    {
+        if (m_height_gpu_bytes.empty() || m_dense_width == 0 || m_dense_height == 0)
+        {
+            return;
+        }
+
+        {
+            vector<RHI_Texture_Slice> slices = to_single_mip_slice(m_height_gpu_bytes);
+            m_height_map_gpu_retired = m_height_map_gpu;
+            m_height_map_gpu = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                m_dense_width, m_dense_height, 1, 1,
+                RHI_Format::R32_Float, RHI_Texture_Srv,
+                "terrain_height_gpu", move(slices)
+            );
+        }
+
+        if (!m_height_preview_bytes.empty())
+        {
+            vector<RHI_Texture_Slice> slices = to_single_mip_slice(m_height_preview_bytes);
+            m_height_map_final_retired = m_height_map_final;
+            m_height_map_final = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                m_dense_width, m_dense_height, 1, 1,
+                RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
+                "terrain_baked", move(slices)
+            );
+        }
+
+        m_height_gpu_bytes.clear();
+        m_height_preview_bytes.clear();
+    }
+
+    void Terrain::BakeHeightMapTexture()
+    {
+        BakeHeightMapPixels();
+        UploadHeightMapTextures();
     }
 
     bool Terrain::LoadTerrainMapsFromCache()
@@ -2845,8 +2954,9 @@ namespace spartan
             BakePropMask();
             SaveTerrainMapsToCache();
         }
-        else if (m_prop_mask_pixels.empty())
+        else
         {
+            // cached analysis, still rebake the mask so placement tracks the current layer rules
             BakePropMask();
             SaveTerrainMapsToCache();
         }
@@ -2855,8 +2965,15 @@ namespace spartan
         {
             return;
         }
+    }
 
-        // retire the previous pair, an in flight frame may still hold their descriptors
+    void Terrain::UploadTerrainMaps()
+    {
+        if (m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        {
+            return;
+        }
+
         m_map_a_retired = m_map_a;
         m_map_b_retired = m_map_b;
         m_prop_mask_retired = m_prop_mask;
@@ -2888,8 +3005,6 @@ namespace spartan
 
         m_map_a->PrepareForGpu();
         m_map_b->PrepareForGpu();
-
-        PushToRenderer();
     }
 
     void Terrain::BakePropMask()
@@ -2937,9 +3052,26 @@ namespace spartan
             float curvature, float flow, float occlusion, float deposition,
             float wear, float insolation, float talus) -> float
         {
-            if (rule.weight_bias <= 0.0f || (rule.flags & TerrainLayerFlags_Snow))
+            if (rule.weight_bias <= 0.0f)
             {
                 return 0.0f;
+            }
+
+            // snow is driven by accumulation on the gpu, a height and slope stand-in is enough
+            // to keep grass and trees off the snow line in the prop mask
+            if (rule.flags & TerrainLayerFlags_Snow)
+            {
+                if (m_snow_amount <= 0.0f)
+                {
+                    return 0.0f;
+                }
+
+                const float altitude = height - m_level_snow;
+                float snow = saturate(altitude / 130.0f);
+                snow *= powf(saturate(cosf(slope_rad)), 2.5f);
+                snow *= lerp(0.55f, 1.15f, curvature);
+                snow *= lerp(0.65f, 1.1f, 1.0f - occlusion);
+                return snow * m_snow_amount * rule.weight_bias;
             }
 
             const float height_for_band = (rule.flags & TerrainLayerFlags_BelowSea) ?
@@ -2979,16 +3111,22 @@ namespace spartan
         };
 
         // find layer indices by name so a reordered rule table still maps correctly
-        int grass_i = -1;
-        int rock_i = -1;
+        int grass_i  = -1;
+        int rock_i   = -1;
         int gravel_i = -1;
         int forest_i = -1;
+        int sand_i   = -1;
+        int dirt_i   = -1;
+        int snow_i   = -1;
         for (uint32_t i = 0; i < terrain_layer_max; i++)
         {
             if (m_layer_rules[i].name == "whispy_grass_meadow") grass_i = static_cast<int>(i);
             if (m_layer_rules[i].name == "rock") rock_i = static_cast<int>(i);
             if (m_layer_rules[i].name == "gravel") gravel_i = static_cast<int>(i);
             if (m_layer_rules[i].name == "forest_floor") forest_i = static_cast<int>(i);
+            if (m_layer_rules[i].name == "sand") sand_i = static_cast<int>(i);
+            if (m_layer_rules[i].name == "dirt") dirt_i = static_cast<int>(i);
+            if (m_layer_rules[i].name == "snow") snow_i = static_cast<int>(i);
         }
 
         const size_t cell_count = static_cast<size_t>(m_map_width) * m_map_height;
@@ -3047,22 +3185,131 @@ namespace spartan
                     {
                         return 0.0f;
                     }
+                    if (!IsLayerEnabled(static_cast<uint32_t>(layer_index)))
+                    {
+                        return 0.0f;
+                    }
                     return layer_weight(
                         m_layer_rules[static_cast<size_t>(layer_index)],
                         y_c, slope, curvature, flow, occlusion, deposition, wear, insolation, talus
                     );
                 };
 
-                // prop mask mirrors layer ownership, lushness is tuned in TerrainLayer rules
-                float grass  = score(grass_i);
-                float forest = score(forest_i);
-                float rock   = score(rock_i) + score(gravel_i) * 0.85f;
-                float trees  = forest + grass * 0.15f;
+                // same pick as the surface shader, sand dirt and snow keep their share so grass
+                // cannot inherit ground it does not own
+                float scores[terrain_layer_max];
+                for (uint32_t layer = 0; layer < terrain_layer_max; layer++)
+                {
+                    scores[layer] = score(static_cast<int>(layer));
+                }
 
-                const float sum = max(grass + trees + rock, 1e-4f);
-                grass = saturate(grass / sum);
-                trees = saturate(trees / sum);
-                rock  = saturate(rock / sum);
+                const uint32_t keep = clamp(m_layer_quality, 1u, 4u);
+                float picked[terrain_layer_max] = {};
+                float total = 0.0f;
+                for (uint32_t slot = 0; slot < keep; slot++)
+                {
+                    float best_score = 0.0f;
+                    int best_layer   = -1;
+                    for (uint32_t layer = 0; layer < terrain_layer_max; layer++)
+                    {
+                        if (scores[layer] > best_score)
+                        {
+                            best_score = scores[layer];
+                            best_layer = static_cast<int>(layer);
+                        }
+                    }
+                    if (best_layer < 0)
+                    {
+                        break;
+                    }
+                    scores[best_layer] = 0.0f;
+                    picked[best_layer] = best_score;
+                    total += best_score;
+                }
+
+                float grass = 0.0f;
+                float trees = 0.0f;
+                float rock  = 0.0f;
+                if (total > 1e-6f)
+                {
+                    const float inv = 1.0f / total;
+                    auto share = [&](int layer_index) -> float
+                    {
+                        return (layer_index >= 0) ? picked[layer_index] * inv : 0.0f;
+                    };
+
+                    const float slope_deg  = slope * math::rad_to_deg;
+                    const float above_sea  = y_c - m_level_sea;
+                    const float below_snow = m_level_snow - y_c;
+                    const float grass_w    = share(grass_i);
+                    const float forest_w   = share(forest_i);
+                    const float rock_w     = share(rock_i);
+                    const float gravel_w   = share(gravel_i);
+                    const float dirt_w     = share(dirt_i);
+                    const float sand_w     = share(sand_i);
+                    const float snow_w     = share(snow_i);
+
+                    const float meadow = saturate(1.0f - slope_deg / 22.0f);
+                    const float meadow2 = meadow * meadow;
+                    const float steep  = saturate((slope_deg - 14.0f) / 45.0f);
+                    const float cliff  = saturate((slope_deg - 26.0f) / 28.0f);
+                    const float ridge  = saturate(1.0f - curvature * 2.0f);
+                    const float gully  = saturate(curvature * 2.0f - 1.0f);
+                    const float shade  = 1.0f - insolation;
+                    const float altitude = saturate(
+                        (y_c - m_level_sea) / max(m_level_snow - m_level_sea, 1.0f)
+                    );
+                    const float alpine    = saturate((altitude - 0.55f) / 0.45f);
+                    const float tree_line = saturate(1.0f - alpine * 1.5f);
+
+                    // geometry first, a steep face is never a meadow even if grass still scores
+                    if (slope_deg < 24.0f && above_sea > 1.0f && below_snow > 4.0f && sand_w < 0.45f && snow_w < 0.35f)
+                    {
+                        grass = grass_w * meadow2
+                            * lerp(0.3f, 1.0f, insolation)
+                            * lerp(0.4f, 1.0f, deposition)
+                            * (1.0f - alpine * 0.85f)
+                            * (1.0f - ridge * 0.75f);
+                        grass = saturate(grass);
+                    }
+
+                    if (slope_deg < 32.0f && above_sea > 4.0f && below_snow > 12.0f && sand_w < 0.35f && snow_w < 0.25f)
+                    {
+                        float tree_habitat = forest_w;
+                        if (tree_habitat < 0.05f)
+                        {
+                            tree_habitat = grass_w
+                                * saturate((shade - 0.4f) / 0.45f)
+                                * (1.0f - ridge)
+                                * meadow2;
+                        }
+                        trees = tree_habitat
+                            * saturate(1.0f - slope_deg / 32.0f)
+                            * tree_line
+                            * lerp(0.35f, 1.0f, occlusion)
+                            * lerp(0.5f, 1.0f, gully);
+                        trees = saturate(trees);
+                    }
+
+                    rock = (rock_w + gravel_w * 0.9f + dirt_w * 0.4f) * lerp(0.12f, 1.0f, steep)
+                        + cliff
+                        + ridge * steep * 0.55f;
+                    if (slope_deg < 12.0f)
+                    {
+                        rock *= 0.08f;
+                    }
+                    if (sand_w > 0.5f)
+                    {
+                        rock *= 0.15f;
+                    }
+                    rock = saturate(rock);
+
+                    if (slope_deg > 28.0f)
+                    {
+                        grass = 0.0f;
+                        trees = 0.0f;
+                    }
+                }
 
                 m_prop_mask_pixels[offset + 0] = static_cast<uint8_t>(grass * 255.0f + 0.5f);
                 m_prop_mask_pixels[offset + 1] = static_cast<uint8_t>(trees * 255.0f + 0.5f);
@@ -3073,11 +3320,31 @@ namespace spartan
         ThreadPool::ParallelLoop(bake, static_cast<uint32_t>(cell_count));
     }
 
+    void Terrain::RebuildPropMask()
+    {
+        BakePropMask();
+        if (m_prop_mask_pixels.empty() || m_map_width == 0 || m_map_height == 0)
+        {
+            m_prop_mask_retired = m_prop_mask;
+            m_prop_mask.reset();
+            return;
+        }
+
+        m_prop_mask_retired = m_prop_mask;
+        m_prop_mask = make_shared<RHI_Texture>(
+            RHI_Texture_Type::Type2D,
+            m_map_width, m_map_height, 1, 1,
+            RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv,
+            "terrain_prop_mask", to_single_mip_slice(m_prop_mask_pixels)
+        );
+        m_prop_mask->PrepareForGpu();
+    }
+
     Vector3 Terrain::SamplePropMask(float world_x, float world_z) const
     {
         if (m_prop_mask_pixels.empty() || m_map_width == 0 || m_map_height == 0)
         {
-            return Vector3(1.0f, 1.0f, 1.0f);
+            return Vector3::Zero;
         }
 
         float u = (world_x - m_world_mapping.x) * m_world_mapping.z;
@@ -3280,6 +3547,7 @@ namespace spartan
 
         BakeHeightMapTexture();
         BakeTerrainMaps();
+        UploadTerrainMaps();
 
         m_height_samples = m_dense_width * m_dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
@@ -3306,6 +3574,8 @@ namespace spartan
 
         CreateTileEntities();
         RefreshPhysics();
+        RefreshLayers();
+        PushToRenderer();
 
         m_vertices.clear();
         m_indices.clear();
@@ -3388,7 +3658,6 @@ namespace spartan
             FileSystem::Delete(get_terrain_cache_bin_path());
             FileSystem::Delete(get_terrain_mesh_cache_path());
             FileSystem::Delete(get_terrain_maps_cache_path());
-            Clear();
             Generate();
             return;
         }

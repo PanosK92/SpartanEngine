@@ -170,6 +170,41 @@ namespace spartan
             return current;
         }
 
+        void untrack_entity(Entity* entity)
+        {
+            if (!entity)
+            {
+                return;
+            }
+
+            if (entity == camera)
+            {
+                camera = nullptr;
+            }
+            if (entity == camera_override)
+            {
+                camera_override = nullptr;
+            }
+            if (entity == light)
+            {
+                light = nullptr;
+            }
+
+            auto erase_from = [entity](vector<Entity*>& list)
+            {
+                list.erase(remove(list.begin(), list.end(), entity), list.end());
+            };
+
+            erase_from(entities_with_render);
+            erase_from(entities_with_ragdoll);
+            erase_from(entities_with_pretick);
+            erase_from(entities_with_logic);
+            erase_from(entities_with_icon);
+            erase_from(entities_with_particles);
+            erase_from(entities_lights);
+            erase_from(entities_pending);
+        }
+
         // snapshot for play/stop state restoration (like unity's play mode)
         struct EntitySnapshot
         {
@@ -1164,10 +1199,8 @@ namespace spartan
             uint64_t id = (*it)->GetObjectId();
             if (pending_remove.count(id) > 0)
             {
-                if (*it == camera_override)
-                {
-                    camera_override = nullptr;
-                }
+                // strip cache lists before delete, pretick still runs this frame before resolve
+                untrack_entity(*it);
 
                 // clean up change tracking
                 entity_states.erase(id);
@@ -2864,19 +2897,6 @@ namespace spartan
                 }
             }
 
-            if (entity == camera)
-            {
-                camera = nullptr;
-            }
-            if (entity == camera_override)
-            {
-                camera_override = nullptr;
-            }
-            if (entity == light)
-            {
-                light = nullptr;
-            }
-
             // remove from entities vector
             auto it = find(entities.begin(), entities.end(), entity);
             if (it != entities.end())
@@ -2891,20 +2911,7 @@ namespace spartan
                 entities.erase(it);
             }
 
-            entities_with_render.erase(remove(entities_with_render.begin(), entities_with_render.end(), entity), entities_with_render.end());
-            entities_with_ragdoll.erase(remove(entities_with_ragdoll.begin(), entities_with_ragdoll.end(), entity), entities_with_ragdoll.end());
-            entities_with_pretick.erase(remove(entities_with_pretick.begin(), entities_with_pretick.end(), entity), entities_with_pretick.end());
-            entities_with_logic.erase(remove(entities_with_logic.begin(), entities_with_logic.end(), entity), entities_with_logic.end());
-            entities_with_icon.erase(remove(entities_with_icon.begin(), entities_with_icon.end(), entity), entities_with_icon.end());
-            entities_with_particles.erase(remove(entities_with_particles.begin(), entities_with_particles.end(), entity), entities_with_particles.end());
-            entities_lights.erase(remove(entities_lights.begin(), entities_lights.end(), entity), entities_lights.end());
-
-            // also remove from the pending additions list in case it was just created and not yet drained
-            auto pending_it = find(entities_pending.begin(), entities_pending.end(), entity);
-            if (pending_it != entities_pending.end())
-            {
-                entities_pending.erase(pending_it);
-            }
+            untrack_entity(entity);
 
             pending_remove.erase(id);
 

@@ -1478,7 +1478,7 @@ void Properties::ShowRender(spartan::Render* render) const
             {
                 for (uint32_t i = 0; i < render->GetInstanceCount(); ++i)
                 {
-                    Matrix instance = render->GetInstance(i, true);
+                    Matrix instance = render->GetInstance(i, false);
 
                     ImGui::PushID(static_cast<int>(i));
 
@@ -2732,10 +2732,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
 
             if (ImGuiSp::button("Respawn Props", ImVec2(-1, 0)))
             {
-                spartan::ThreadPool::AddTask([terrain]()
-                {
-                    spartan::WorldHelpers::PopulateTerrainBiomeProps(terrain);
-                });
+                spartan::WorldHelpers::PopulateTerrainBiomeProps(terrain);
             }
             ImGuiSp::tooltip(
                 "rescatter trees, rocks and flowers with the densities above. "
@@ -2746,20 +2743,20 @@ void Properties::ShowTerrain(Terrain* terrain) const
         layout::group_spacing();
         layout::section_header("Actions");
 
-        ImGui::BeginDisabled(!can_generate);
+        ImGui::BeginDisabled(!can_generate || terrain->IsGenerating());
         if (ImGuiSp::button("Generate", ImVec2(-1, 0)))
         {
             spartan::ThreadPool::AddTask([terrain]()
             {
-                // clears cache and rebuilds from heightmap or flat params
                 terrain->Regenerate();
             });
         }
         ImGui::EndDisabled();
         ImGuiSp::tooltip(
             can_generate
-                ? "build or rebuild the mesh from the source heightmap. "
-                  "clears sculpt edits and the terrain cache. click again anytime to regenerate"
+                ? "build or rebuild the mesh from the source heightmap on a worker thread. "
+                  "the editor stays interactive, gpu upload happens on the next frames. "
+                  "clears sculpt edits and the terrain cache"
                 : "assign a heightmap in source first, or create a flat terrain from the sculpt window"
         );
 

@@ -56,6 +56,7 @@ namespace spartan
     struct TerrainPropDescription
     {
         bool  align_to_surface_normal  = true;
+        float min_slope_angle_rad      = 0.0f;
         float max_slope_angle_rad      = math::deg_to_rad * 35.0f;
         float surface_offset           = 0.05f;
         float min_spawn_height         = 0.0f;
@@ -157,6 +158,7 @@ namespace spartan
         RHI_Texture* GetAnalysisMapA() const    { return m_map_a.get(); }
         RHI_Texture* GetAnalysisMapB() const    { return m_map_b.get(); }
         RHI_Texture* GetPropMask() const        { return m_prop_mask.get(); }
+        void RebuildPropMask();
 
         // r=grass, g=trees, b=rocks, bilinear sample in world xz
         math::Vector3 SamplePropMask(float world_x, float world_z) const;
@@ -177,6 +179,8 @@ namespace spartan
         void RefreshLayers();
         // hand the current layer set, analysis maps and world mapping to the renderer
         void PushToRenderer() const;
+        bool IsGenerating() const { return m_is_generating.load(); }
+        void Tick() override;
 
         // generation
         void Generate();
@@ -253,9 +257,16 @@ namespace spartan
         void CreateTileEntities();
         // static heightfield body covering the whole surface, rebuilt whenever the grid changes
         void RefreshPhysics();
+        void BakeHeightMapPixels();
+        void UploadHeightMapTextures();
         void BakeHeightMapTexture();
         // curvature, flow, occlusion, insolation, wear, deposition and talus into two rgba8 textures
         void BakeTerrainMaps();
+        void UploadTerrainMaps();
+        void BuildCpuMesh();
+        void CommitGpu();
+        void CommitProps();
+        void FinishGenerate();
         void BakePropMask();
         bool LoadTerrainMapsFromCache();
         void SaveTerrainMapsToCache() const;
@@ -281,6 +292,8 @@ namespace spartan
         std::vector<uint8_t> m_map_a_pixels; // mip 0 rgba8, kept so the cache write does not re-derive it
         std::vector<uint8_t> m_map_b_pixels;
         std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
+        std::vector<uint8_t> m_height_gpu_bytes;
+        std::vector<uint8_t> m_height_preview_bytes;
         uint32_t m_map_width  = 0;
         uint32_t m_map_height = 0;
         static constexpr float ClampPropDensity(float density)
@@ -314,6 +327,9 @@ namespace spartan
         uint32_t m_height                 = 0;
         float m_area_km2                  = 0.0f;
         std::atomic<bool> m_is_generating = false;
+        std::atomic<bool> m_gpu_commit_pending = false;
+        std::atomic<bool> m_props_commit_pending = false;
+        std::shared_ptr<Mesh> m_mesh_pending;
         uint32_t m_height_samples         = 0;
         uint32_t m_vertex_count           = 0;
         uint32_t m_index_count            = 0;

@@ -27,13 +27,11 @@ static const float blend_static       = 1.0f / 24.0f;
 static const float blend_motion       = 1.0f / 4.0f;
 static const float blend_flicker_min  = 0.3f;
 static const float motion_px_full     = 24.0f;
-// below this, treat as static, never hard reject, jitter alone must not dump history
-static const float motion_reject_px   = 0.75f;
 static const float box_widen_static   = 0.5f;
 static const float box_pad_relative   = 0.08f;
 static const float box_pad_absolute   = 0.002f;
 static const float box_pad_hdr        = 0.2f;
-// relative depth, anything above this is treated as a hard disocclusion
+// relative depth, same surface, jitter and precision only
 static const float reuse_depth_tol = 0.02f;
 
 float3 tonemap_for_taa(float3 c)
@@ -135,21 +133,12 @@ float2 compute_sky_velocity(float2 uv)
     return curr_clip.xy / max(curr_clip.w, 1e-6f) - prev_clip.xy / max(prev_clip.w, 1e-6f);
 }
 
-// used only when the pixel is moving, compares expected previous depth vs actual,
-// center tap only so a visible neighbour cannot fake a valid history and keep the ghost
-float compute_history_reuse(int2 px_render, float2 res_render, float2 uv_prev, int2 px_render_max)
+// expected previous depth of this surface versus what was actually stored,
+// sampled at the reprojected jittered uv so a still camera is not compared
+// against the wrong texel
+float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_max, float2 velocity_ndc)
 {
-    float depth_raw   = tex_depth[px_render].r;
-    bool  is_sky_now  = depth_raw < 1e-4f;
-    int2  prev_center = clamp(int2(uv_prev * res_render), int2(0, 0), px_render_max);
-    float prev_depth_raw = tex3[prev_center].r;
-    bool  is_sky_prev    = prev_depth_raw < 1e-4f;
-
-    if (is_sky_now || is_sky_prev)
-    {
-        return (is_sky_now == is_sky_prev) ? 1.0f : 0.0f;
-    }
-
+    float  depth_raw = tex_depth[px_render].r;
     float2 uv_render = (float2(px_render) + 0.5f) / res_render;
     float3 position  = get_position(depth_raw, uv_render);
     float4 prev_clip = mul(float4(position, 1.0f), get_view_projection_previous());
@@ -158,11 +147,54 @@ float compute_history_reuse(int2 px_render, float2 res_render, float2 uv_prev, i
         return 0.0f;
     }
 
-    float expected = linearize_depth(prev_clip.z / prev_clip.w);
-    float actual   = linearize_depth(prev_depth_raw);
-    float delta    = abs(actual - expected) * rcp(max(expected, 1e-3f));
+    float2 prev_uv = ndc_to_uv(prev_clip.xy / prev_clip.w);
+    if (any(prev_uv < 0.0f) || any(prev_uv > 1.0f))
+    {
+        return 0.0f;
+    }
 
-    return (delta <= reuse_depth_tol) ? 1.0f : 0.0f;
+    int2  prev_px        = clamp(int2(prev_uv * res_render), int2(0, 0), px_render_max);
+    float prev_depth_raw = tex3[prev_px].r;
+    float expected       = linearize_depth(prev_clip.z / prev_clip.w);
+    float actual         = linearize_depth(prev_depth_raw);
+    float abs_delta      = abs(actual - expected);
+    if (abs_delta <= reuse_depth_tol * max(expected, 1e-3f))
+    {
+        return 1.0f;
+    }
+
+    // mismatch, keep only if a still neighbour owns that previous depth, jitter
+    // across a static silhouette, a moving neighbour is an occluder that left
+    static const float still_px = 0.5f;
+    static const int2 n4[4] =
+    {
+        int2(1, 0), int2(-1, 0),
+        int2(0, 1), int2(0, -1)
+    };
+    [unroll]
+    for (int i = 0; i < 4; ++i)
+    {
+        int2 tap = px_render + n4[i];
+        if (any(tap < 0) || any(tap > px_render_max))
+        {
+            continue;
+        }
+
+        float2 vel_n  = tex_velocity[tap].xy;
+        float  rel_px = length((vel_n - velocity_ndc) * float2(0.5f, -0.5f) * res_render);
+        if (rel_px > still_px)
+        {
+            continue;
+        }
+
+        float z_n = linearize_depth(tex_depth[tap].r);
+        if (abs(actual - z_n) <= reuse_depth_tol * max(z_n, 1e-3f))
+        {
+            return 1.0f;
+        }
+    }
+
+    return 0.0f;
 }
 
 float3 taau(uint2 px_out, float2 res_out)
@@ -265,16 +297,17 @@ float3 taau(uint2 px_out, float2 res_out)
     bool current_valid = weight_sum > 0.0f;
     current_rgb_tm     = current_valid ? current_rgb_tm * rcp(weight_sum) : 0.0f.xxx;
 
-    // center velocity, closest depth dilation pulls panel gap motion into paint
-    float  center_depth = tex_depth[center].r;
-    bool   is_sky       = center_depth < 1e-4f;
-    float2 velocity_ndc = tex_velocity[closest_px].xy;
-    if (is_sky && dot(velocity_ndc, velocity_ndc) < 1e-12f)
+    // dilated velocity is for history uv only, the reuse test must use this pixel
+    float  center_depth    = tex_depth[center].r;
+    bool   is_sky          = center_depth < 1e-4f;
+    float2 velocity_center = tex_velocity[center].xy;
+    if (is_sky && dot(velocity_center, velocity_center) < 1e-12f)
     {
-        velocity_ndc = compute_sky_velocity(uv_out);
+        velocity_center = compute_sky_velocity(uv_out);
     }
-    float2 velocity_uv = velocity_ndc * float2(0.5f, -0.5f);
-    float2 uv_prev     = uv_out - velocity_uv;
+    float2 velocity_ndc = is_sky ? velocity_center : tex_velocity[closest_px].xy;
+    float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
+    float2 uv_prev      = uv_out - velocity_uv;
 
     float2 inset           = 1.5f / res_out;
     bool   uv_prev_valid   = all(uv_prev > inset) && all(uv_prev < 1.0f - inset);
@@ -295,15 +328,11 @@ float3 taau(uint2 px_out, float2 res_out)
     float motion_px = length(velocity_uv * res_out);
     float motion    = saturate(motion_px * rcp(motion_px_full));
 
-    // hard reject only under real motion, a still camera has no geometric disocclusion and
-    // a center depth tap flips on specular edges under jitter which was shaking the image
-    if (motion_px > motion_reject_px)
+    // always test, a revealed sky pixel has no velocity so a motion gate would keep the ghost
+    float reuse = compute_history_reuse(center, active_render_f, px_render_max, velocity_center);
+    if (reuse < 1.0f)
     {
-        float reuse = compute_history_reuse(center, active_render_f, uv_prev, px_render_max);
-        if (reuse < 1.0f)
-        {
-            return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
-        }
+        return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
     }
 
     float3 history_rgb = sample_history(uv_prev, res_out);

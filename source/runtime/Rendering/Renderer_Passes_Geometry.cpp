@@ -1130,17 +1130,18 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, m_pass_state.grass_heightmap);
                 // occluder hi-z on tex2 drives the per-blade frustum + occlusion cull, built by Pass_HiZ which runs earlier this frame
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz));
-                // biome prop mask on tex3, r = grass suitability, white when unrestricted
+                // biome prop mask on tex3, r = grass suitability, black means no grass
                 cmd_list->SetTexture(
                     Renderer_BindingsSrv::tex3,
                     m_pass_state.grass_prop_mask ?
                         m_pass_state.grass_prop_mask :
-                        GetStandardTexture(Renderer_StandardTexture::White)
+                        GetStandardTexture(Renderer_StandardTexture::Black)
                 );
 
                 const float max_slope_cos = cosf(m_pass_state.grass_params.max_slope_deg * (math::pi / 180.0f));
+                // no mask used to disable the gate and fill the world, keep it on and fail closed
                 const float biome_min = m_pass_state.grass_prop_mask ?
-                    m_pass_state.grass_params.biome_min_weight : -1.0f;
+                    m_pass_state.grass_params.biome_min_weight : 2.0f;
 
                 Vector3 terrain_offset;
                 Vector4 terrain_mapping;
@@ -1171,7 +1172,15 @@ namespace spartan
                     // grass_instances is partitioned by lod, lod_base is the cumulative prefix sum
                     // of the per-lod caps so each ring writes into its own contiguous slot
                     const uint32_t lod_base   = renderer_grass_lod_base(lod);
-                    const uint32_t lod_cap    = renderer_max_grass_per_lod[lod];
+                    const uint32_t lod_cap    = std::max(
+                        1u,
+                        static_cast<uint32_t>(
+                            std::floor(
+                                static_cast<float>(renderer_max_grass_per_lod[lod]) *
+                                clamp(m_pass_state.grass_params.density, 0.05f, 1.0f)
+                            )
+                        )
+                    );
 
                 // layout mirrors grass_populate.hlsl values[0..2]
                 // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)

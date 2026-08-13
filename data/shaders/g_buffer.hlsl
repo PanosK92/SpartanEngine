@@ -52,51 +52,6 @@ static const float POM_FADE_START        = 25.0f;
 static const float POM_FADE_END          = 50.0f;
 static const float POM_HEIGHT_SCALE      = 0.04f;
 
-// terrain fills the screen at grazing angles, which is the case that picks the highest step count,
-// so it marches on its own much smaller budget and fades out far sooner than prop surfaces do
-static const uint  TERRAIN_POM_MAX_STEPS  = 32;
-static const uint  TERRAIN_POM_MIN_STEPS  = 8;
-static const float TERRAIN_POM_FADE_START = 12.0f;
-static const float TERRAIN_POM_FADE_END   = 25.0f;
-
-// parallax march against the dominant terrain layer, terrain_shade hands back the height scale of
-// whichever layer won this pixel so only the layers flagged for it ever pay for the march
-static float2 terrain_parallax(
-    float2 uv,
-    float2 dx,
-    float2 dy,
-    uint   layer_index,
-    float  tiling_scale,
-    float  height_scale,
-    float3 v_tangent,
-    float  fade
-)
-{
-    float max_displacement = height_scale * POM_HEIGHT_SCALE * fade;
-    uint  step_count       = (uint)lerp(TERRAIN_POM_MAX_STEPS, TERRAIN_POM_MIN_STEPS, saturate(v_tangent.z));
-
-    float2 layer_uv = uv * tiling_scale;
-    float2 layer_dx = dx * tiling_scale;
-    float2 layer_dy = dy * tiling_scale;
-    float2 delta_uv = v_tangent.xy * max_displacement / step_count;
-    float  layer_h  = 1.0f / step_count;
-
-    float2 cur_uv    = layer_uv;
-    float  cur_layer = 1.0f;
-    float  cur_samp  = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, layer_dx, layer_dy).a;
-
-    [loop]
-    while (cur_layer > cur_samp && cur_layer > 0.0f)
-    {
-        cur_uv    -= delta_uv;
-        cur_layer -= layer_h;
-        cur_samp   = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_bilinear_wrap), cur_uv, layer_dx, layer_dy).a;
-    }
-
-    // the intersection is found in the layer's own uv space, hand the offset back in the shared one
-    return uv + (cur_uv - layer_uv) / max(tiling_scale, 1e-4f);
-}
-
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface, float3 world_pos)
 {
     return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
@@ -261,25 +216,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         TerrainAnalysis analysis = terrain_sample_analysis(material, position_world, analysis_lod);
         float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));
         TerrainLayerPick pick    = terrain_pick_layers(material, analysis, position_world, vertex.normal, slope_radians);
-
-        // parallax against the dominant layer only, and only when that layer asked for it
-        MaterialParameters dominant = material_parameters[NonUniformResourceIndex(pick.index[0])];
-        if (dominant.terrain_layer_pom() && dominant.has_texture_height())
-        {
-            float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
-            float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
-
-            float distance_fade = saturate((TERRAIN_POM_FADE_END - distance) / (TERRAIN_POM_FADE_END - TERRAIN_POM_FADE_START));
-            float grazing_fade  = smoothstep(0.1f, 0.4f, saturate(v_tangent.z));
-            float fade          = distance_fade * grazing_fade * pick.weight[0];
-
-            // the derivatives are kept, the march only shifts the uv by a fraction of a tile so
-            // recomputing them inside a branch would cost more than the mip error it removes
-            if (fade > 0.0f)
-            {
-                uv = terrain_parallax(uv, duvdx, duvdy, pick.index[0], dominant.terrain_tiling_scale, dominant.height, v_tangent, fade);
-            }
-        }
 
         TerrainSurface terrain = terrain_evaluate(
             material, pick, analysis, position_world, vertex.normal, uv, duvdx, duvdy, dpdx, dpdy, distance

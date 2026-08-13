@@ -101,6 +101,13 @@ namespace spartan
 
             for (const auto& entry : priority)
             {
+                // mesh plus collider is picked by geometry, a physics icon on the tile
+                // center was eating terrain clicks
+                if (entry.first == ComponentType::Physics && entity->GetComponent<Render>())
+                {
+                    continue;
+                }
+
                 if (entity->GetComponentByType(entry.first))
                 {
                     return Renderer::GetStandardTexture(entry.second);
@@ -397,35 +404,49 @@ namespace spartan
                     
                         for (Entity* entity_selected : selected_entities)
                         {
-                            if (!entity_selected)
-                            {
-                                continue;
-                            }
-                                
-                            Render* render = entity_selected->GetComponent<Render>();
-                            if (!render)
-                            {
-                                continue;
-                            }
-                                
-                            if (!render->GetVertexBuffer() || !render->GetIndexBuffer())
+                            if (!entity_selected || !entity_selected->GetActive())
                             {
                                 continue;
                             }
 
-                            const uint32_t draw_index = WriteDrawData(entity_selected->GetMatrix());
-                            if (draw_index == numeric_limits<uint32_t>::max())
-                            {
-                                continue;
-                            }
-                            m_pcb_pass_cpu.draw_index = draw_index;
-                            m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
-                            cmd_list->PushConstants(m_pcb_pass_cpu);
+                            vector<Entity*> to_outline;
+                            to_outline.push_back(entity_selected);
+                            entity_selected->GetDescendants(&to_outline);
 
-                            cmd_list->SetBufferVertex(render->GetVertexBuffer());
-                            cmd_list->SetBufferIndex(render->GetIndexBuffer());
-                            cmd_list->DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(), render->GetVertexOffset());
-                            any_rendered = true;
+                            for (Entity* entity : to_outline)
+                            {
+                                if (!entity || !entity->GetActive())
+                                {
+                                    continue;
+                                }
+
+                                Render* render = entity->GetComponent<Render>();
+                                if (!render || !render->GetVertexBuffer() || !render->GetIndexBuffer())
+                                {
+                                    continue;
+                                }
+
+                                const uint32_t instance_count = render->HasInstancing() ? render->GetInstanceCount() : 1;
+                                for (uint32_t i = 0; i < instance_count; i++)
+                                {
+                                    const Matrix world = render->HasInstancing()
+                                        ? render->GetInstance(i, true)
+                                        : entity->GetMatrix();
+                                    const uint32_t draw_index = WriteDrawData(world);
+                                    if (draw_index == numeric_limits<uint32_t>::max())
+                                    {
+                                        break;
+                                    }
+
+                                    m_pcb_pass_cpu.draw_index = draw_index;
+                                    m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
+                                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                                    cmd_list->SetBufferVertex(render->GetVertexBuffer());
+                                    cmd_list->SetBufferIndex(render->GetIndexBuffer());
+                                    cmd_list->DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(), render->GetVertexOffset());
+                                    any_rendered = true;
+                                }
+                            }
                         }
                     }
                     cmd_list->EndMarker();

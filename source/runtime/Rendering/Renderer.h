@@ -158,6 +158,7 @@ namespace spartan
             float height_max         = 400.0f;
             float max_slope_deg      = 45.0f;
             float biome_min_weight   = 0.2f;
+            float density            = 1.0f;
             float height_bake_min    = 0.0f; // remap 0-1 height preview to world y
             float height_bake_max    = 1.0f;
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f);

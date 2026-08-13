@@ -239,18 +239,20 @@ namespace spartan
             return;
         }
 
+        terrain->RebuildPropMask();
+
         const float render_distance_trees   = 2'000.0f;
         const float render_distance_foliage = 500.0f;
         const float shadow_distance         = 150.0f;
         // authored base densities, the terrain multipliers scale these so a world can be retuned
         // without a rebuild, see Terrain::SetPropDensityTree and friends
-        const float per_triangle_density_flower = 0.28f   * terrain->GetPropDensityFlower();
-        const float per_triangle_density_tree   = 0.008f  * terrain->GetPropDensityTree();
-        const float per_triangle_density_rock   = 0.0012f * terrain->GetPropDensityRock();
+        const float per_triangle_density_flower = 0.12f  * terrain->GetPropDensityFlower();
+        const float per_triangle_density_tree   = 0.02f  * terrain->GetPropDensityTree();
+        const float per_triangle_density_rock   = 0.05f  * terrain->GetPropDensityRock();
 
-        const uint32_t tree_flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-        shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", tree_flags);
-        shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj");
+        const uint32_t prop_mesh_flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+        shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", prop_mesh_flags);
+        shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj", prop_mesh_flags);
         if (!mesh_rock)
         {
             SP_LOG_WARNING("biome props: rock mesh missing at project/models/rock_2/model.obj");
@@ -408,6 +410,41 @@ namespace spartan
 
         ThreadPool::ParallelLoop(compute_transforms, tile_count);
 
+        auto count_mesh_renderables = [](Entity* root) -> uint32_t
+        {
+            if (!root)
+            {
+                return 1;
+            }
+
+            vector<Entity*> parts;
+            parts.push_back(root);
+            root->GetDescendants(&parts);
+
+            uint32_t n = 0;
+            for (Entity* part : parts)
+            {
+                Render* render = part->GetComponent<Render>();
+                if (render && render->GetMesh())
+                {
+                    n++;
+                }
+            }
+
+            return max(n, 1u);
+        };
+
+        const uint32_t tree_renderables = count_mesh_renderables(mesh_tree ? mesh_tree->GetRootEntity() : nullptr);
+        const uint32_t rock_renderables = count_mesh_renderables(mesh_rock ? mesh_rock->GetRootEntity() : nullptr);
+        uint32_t instance_slots = 1;
+        for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
+        {
+            instance_slots += static_cast<uint32_t>(tree_transforms_per_tile[tile_index].size()) * tree_renderables;
+            instance_slots += static_cast<uint32_t>(rock_transforms_per_tile[tile_index].size()) * rock_renderables;
+            instance_slots += static_cast<uint32_t>(flower_transforms_per_tile[tile_index].size());
+        }
+        GeometryBuffer::Reserve(0, 0, 0, 0, 0, instance_slots);
+
         // clones a prop prototype onto one tile and hands that tile's instances to every renderable it
         // carries, the prototype hierarchy is kept because bark and leaves need different materials
         auto attach_prop_to_tile = [](
@@ -430,19 +467,24 @@ namespace spartan
             entity->SetTransient(true);
             entity->AddTag(terrain_prop_tag);
             entity->SetParent(tile);
-            entity->SetPositionLocal(Vector3::Zero);
-            entity->SetRotationLocal(Quaternion::Identity);
-            entity->SetScaleLocal(Vector3::One);
+            entity->SetActive(true);
 
             vector<Entity*> candidates;
             candidates.push_back(entity);
             entity->GetDescendants(&candidates);
 
-            uint32_t render_count = 0;
+            // instances are tile local, every node must sit at the tile origin so the gpu does instance * tile
             for (Entity* candidate : candidates)
             {
                 candidate->SetTransient(true);
+                candidate->SetPositionLocal(Vector3::Zero);
+                candidate->SetRotationLocal(Quaternion::Identity);
+                candidate->SetScaleLocal(Vector3::One);
+            }
 
+            uint32_t render_count = 0;
+            for (Entity* candidate : candidates)
+            {
                 Render* render = candidate->GetComponent<Render>();
                 if (!render || !render->GetMesh())
                 {
@@ -452,6 +494,12 @@ namespace spartan
                 render->SetInstances(transforms);
                 render->SetMaxRenderDistance(render_distance);
                 render->SetMaxShadowDistance(shadow_distance_in);
+                // foliage instance counts blow the tlas, the entity origin would also ghost a full size mesh at the tile center
+                render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
+                if (render->GetMeshletCount(0) == 0)
+                {
+                    SP_LOG_WARNING("biome props: '%s' has no meshlets, opaque path will skip it", candidate->GetObjectName().c_str());
+                }
                 configure(candidate, render, render_count == 0);
                 render_count++;
             }
@@ -558,6 +606,16 @@ namespace spartan
             }
         }
 
+        // prototypes stay in the world as templates, hide them so they do not draw at the origin
+        if (mesh_tree && mesh_tree->GetRootEntity())
+        {
+            mesh_tree->GetRootEntity()->SetActive(false);
+        }
+        if (mesh_rock && mesh_rock->GetRootEntity())
+        {
+            mesh_rock->GetRootEntity()->SetActive(false);
+        }
+
         SP_LOG_INFO("biome props: placed %zu trees and %zu rocks across %u tiles", tree_total, rock_total, tile_count);
 
         // rocks have three independent ways to end up invisible, separate them so one run says which
@@ -607,28 +665,37 @@ namespace spartan
         // r32 local heights, the populate pass adds the terrain entity y each frame
         if (RHI_Texture* heightmap = terrain->GetHeightMapGpu())
         {
-            Renderer::ProceduralGrassParams grass_params;
-            grass_params.ring_radii_m[0]  = 30.0f;
-            grass_params.ring_radii_m[1]  = 120.0f;
-            grass_params.ring_radii_m[2]  = render_distance_foliage;
-            grass_params.cell_size_m[0]   = 0.55f;
-            grass_params.cell_size_m[1]   = 1.6f;
-            grass_params.cell_size_m[2]   = 4.5f;
-            grass_params.height_min       = terrain->GetSeaLevel() + 1.0f;
-            grass_params.height_max       = terrain->GetSnowLevel();
-            grass_params.max_slope_deg    = 48.0f;
-            grass_params.biome_min_weight = 0.35f;
-            grass_params.terrain_world_mapping = terrain->GetWorldMapping();
-            const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
-            const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());
-            grass_params.terrain_extent_m = Vector2(extent_x, extent_z);
-            Renderer::EnableProceduralGrass(
-                mesh_grass_blade.get(),
-                material_grass_blade.get(),
-                heightmap,
-                grass_params,
-                terrain->GetPropMask()
-            );
+            if (RHI_Texture* prop_mask = terrain->GetPropMask())
+            {
+                Renderer::ProceduralGrassParams grass_params;
+                grass_params.ring_radii_m[0]  = 30.0f;
+                grass_params.ring_radii_m[1]  = 120.0f;
+                grass_params.ring_radii_m[2]  = render_distance_foliage;
+                grass_params.cell_size_m[0]   = 0.55f;
+                grass_params.cell_size_m[1]   = 1.6f;
+                grass_params.cell_size_m[2]   = 4.5f;
+                grass_params.height_min       = terrain->GetSeaLevel() + 1.0f;
+                grass_params.height_max       = terrain->GetSnowLevel();
+                grass_params.max_slope_deg    = 22.0f;
+                grass_params.biome_min_weight = 0.15f;
+                grass_params.density          = 0.32f;
+                grass_params.terrain_world_mapping = terrain->GetWorldMapping();
+                const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
+                const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());
+                grass_params.terrain_extent_m = Vector2(extent_x, extent_z);
+                Renderer::EnableProceduralGrass(
+                    mesh_grass_blade.get(),
+                    material_grass_blade.get(),
+                    heightmap,
+                    grass_params,
+                    prop_mask
+                );
+            }
+            else
+            {
+                SP_LOG_WARNING("biome props: missing prop mask, gpu grass disabled");
+                Renderer::DisableProceduralGrass();
+            }
         }
         else
         {
