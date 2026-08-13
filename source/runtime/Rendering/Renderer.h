@@ -564,11 +564,8 @@ namespace spartan
             bool     sky_state_changed_this_frame = true;
             float    sky_warmup_blend          = 1.0f;
 
-            bool     cloud_history_valid       = false;
-            uint32_t cloud_history_index       = 0;
-
-            bool     ssao_history_valid        = false;
-            uint32_t ssao_history_index        = 0;
+            TemporalPingPong cloud_history;
+            TemporalPingPong ssao_history;
             bool     cloud_environment_dirty   = true;
             uint32_t cloud_environment_strip   = 0; // 0..3 progressive bake strips
             bool     cloud_environment_baking  = false;
@@ -616,8 +613,7 @@ namespace spartan
             Water*        ocean                              = nullptr;
             bool          ocean_spectrum_dirty               = true;
             bool          ocean_displacement_produced        = false;
-            bool          ocean_displacement_history_valid   = false;
-            uint32_t      ocean_displacement_index           = 0;
+            TemporalPingPong ocean_history;
             math::Vector3 ocean_wind                         = math::Vector3::Zero; // last world wind used, re-seeds the spectrum on change
 
             void Reset()

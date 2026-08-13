@@ -28,6 +28,47 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    // two-slot temporal history, write then advance, read is the other slot
+    struct TemporalPingPong
+    {
+        uint32_t index = 0;
+        bool valid     = false;
+
+        uint32_t Write() const
+        {
+            return index;
+        }
+
+        uint32_t Read() const
+        {
+            return 1u - index;
+        }
+
+        template<typename T>
+        T SelectWrite(T a, T b) const
+        {
+            return index == 0 ? a : b;
+        }
+
+        template<typename T>
+        T SelectRead(T a, T b) const
+        {
+            return index == 0 ? b : a;
+        }
+
+        void Advance()
+        {
+            index ^= 1;
+            valid  = true;
+        }
+
+        void Reset()
+        {
+            index = 0;
+            valid = false;
+        }
+    };
+
     // world draw entries plus imgui draw cmds share this buffer, leave headroom for the editor ui
     const uint32_t renderer_max_draw_calls         = 32768;
     const uint32_t renderer_max_cpu_indirect_draws = renderer_max_draw_calls * 8;

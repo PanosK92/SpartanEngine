@@ -88,8 +88,8 @@ namespace spartan
             return;
         }
 
-        const uint32_t history_write = m_pass_state.ssao_history_index;
-        const uint32_t history_read  = 1u - history_write;
+        const uint32_t history_write = m_pass_state.ssao_history.Write();
+        const uint32_t history_read  = m_pass_state.ssao_history.Read();
         RHI_Texture* tex_history_read  = history_read == 0 ? tex_hist_0 : tex_hist_1;
         RHI_Texture* tex_history_write = history_write == 0 ? tex_hist_0 : tex_hist_1;
 
@@ -110,12 +110,11 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_history_write);
             // x > 0.5 resets temporal history (first frame or after rt recreate)
-            m_pcb_pass_cpu.set_f3_value(m_pass_state.ssao_history_valid ? 0.0f : 1.0f, 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f3_value(m_pass_state.ssao_history.valid ? 0.0f : 1.0f, 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(tex_ssao, GetResolutionScale());
 
-            m_pass_state.ssao_history_index = history_read;
-            m_pass_state.ssao_history_valid = true;
+            m_pass_state.ssao_history.Advance();
         }
         cmd_list->EndTimeblock();
     }
@@ -191,7 +190,7 @@ namespace spartan
             {
                 SetCommonTextures(cmd_list, eye_layer);
                 // a secondary view never runs the cloud passes, its velocity lives in the gbuffer
-                const bool use_cloud_velocity = m_pass_state.cloud_history_valid && !IsSecondaryViewActive();
+                const bool use_cloud_velocity = m_pass_state.cloud_history.valid && !IsSecondaryViewActive();
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(use_cloud_velocity ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
                 // y > 1.5 enables the radial mask debug view (r.motion_blur = 2)
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), cvar_motion_blur.GetValue(), 0.0f);
@@ -482,7 +481,7 @@ namespace spartan
     {
         RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::frame_output);
-        RHI_Texture* tex_velocity    = GetRenderTarget(m_pass_state.cloud_history_valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity);
+        RHI_Texture* tex_velocity    = GetRenderTarget(m_pass_state.cloud_history.valid && !IsSecondaryViewActive() ? Renderer_RenderTarget::cloud_velocity : Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         const float resolution_scale = Renderer::GetResolutionScale();
 

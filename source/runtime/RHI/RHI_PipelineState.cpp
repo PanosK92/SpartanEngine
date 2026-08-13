@@ -115,35 +115,34 @@ namespace spartan
                 hash = rhi_hash_combine(hash, shader->GetHash());
             }
 
-            // rt
+            // rt, formats not object ids, recreating an rt must not explode the pipeline cache
             {
-                // color
+                auto hash_rt = [&](RHI_Texture* texture)
+                {
+                    if (!texture)
+                    {
+                        return;
+                    }
+                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(texture->GetFormat()));
+                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(texture->GetType()));
+                };
+
                 for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                 {
-                    if (RHI_Texture* texture = pso.render_target_color_textures[i])
-                    {
-                        hash = rhi_hash_combine(hash, texture->GetObjectId());
-                    }
+                    hash_rt(pso.render_target_color_textures[i]);
                 }
 
-                // depth
-                if (pso.render_target_depth_texture)
-                {
-                    hash = rhi_hash_combine(hash, pso.render_target_depth_texture->GetObjectId());
-                }
-
-                // variable rate shading
-                if (pso.vrs_input_texture)
-                {
-                    hash = rhi_hash_combine(hash, pso.vrs_input_texture->GetObjectId());
-                }
+                hash_rt(pso.render_target_depth_texture);
+                hash_rt(pso.vrs_input_texture);
 
                 hash = rhi_hash_combine(hash, pso.render_target_array_index);
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.is_multiview));
             }
 
-            // cull mode, only d3d12 bakes this into the pso, vulkan keeps the field at its default and uses dynamic state
+            // d3d12 bakes cull into the pso, vulkan keeps it dynamic and ignores this field
+#if defined(API_GRAPHICS_D3D12)
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.cull_mode));
+#endif
 
             return hash;
         }

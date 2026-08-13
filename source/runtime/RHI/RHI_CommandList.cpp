@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_DepthStencilState.h"
 #include "RHI_DescriptorSetLayout.h"
+#include "RHI_Descriptor.h"
 #include "RHI_Device.h"
 #include <unordered_set>
 //============================
@@ -940,5 +941,107 @@ namespace spartan
         const uint32_t dispatch_z = (scaled_depth + thread_group_size - 1) / thread_group_size;
 
         Dispatch(dispatch_x, dispatch_y, dispatch_z);
+    }
+
+    namespace
+    {
+        uint32_t descriptor_slot_unshifted(const RHI_Descriptor& descriptor)
+        {
+            switch (descriptor.type)
+            {
+            case RHI_Descriptor_Type::Image:
+            case RHI_Descriptor_Type::AccelerationStructure:
+                return descriptor.slot - rhi_shader_register_shift_t;
+            case RHI_Descriptor_Type::TextureStorage:
+                return descriptor.slot - rhi_shader_register_shift_u;
+            case RHI_Descriptor_Type::ConstantBuffer:
+                return descriptor.slot - rhi_shader_register_shift_b;
+            case RHI_Descriptor_Type::StructuredBuffer:
+                if (descriptor.slot >= rhi_shader_register_shift_t)
+                {
+                    return descriptor.slot - rhi_shader_register_shift_t;
+                }
+                return descriptor.slot - rhi_shader_register_shift_u;
+            default:
+                return descriptor.slot;
+            }
+        }
+
+        bool find_descriptor(const RHI_PipelineState& pso, const char* name, uint32_t& slot, RHI_Descriptor_Type& type)
+        {
+            if (!name)
+            {
+                return false;
+            }
+
+            for (RHI_Shader* shader : pso.shaders)
+            {
+                if (!shader)
+                {
+                    continue;
+                }
+
+                for (const RHI_Descriptor& descriptor : shader->GetDescriptors())
+                {
+                    if (descriptor.IsBindless())
+                    {
+                        continue;
+                    }
+
+                    if (descriptor.name != name)
+                    {
+                        continue;
+                    }
+
+                    slot = descriptor_slot_unshifted(descriptor);
+                    type = descriptor.type;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    void RHI_CommandList::SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const uint32_t array_layer)
+    {
+        uint32_t slot = 0;
+        RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
+        if (!find_descriptor(m_pso, name, slot, type))
+        {
+            return;
+        }
+
+        if (type != RHI_Descriptor_Type::Image && type != RHI_Descriptor_Type::TextureStorage)
+        {
+            return;
+        }
+
+        const bool uav = type == RHI_Descriptor_Type::TextureStorage;
+        SetTexture(slot, texture, mip_index, mip_range, uav, array_layer);
+    }
+
+    void RHI_CommandList::SetBuffer(const char* name, RHI_Buffer* buffer)
+    {
+        uint32_t slot = 0;
+        RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
+        if (!find_descriptor(m_pso, name, slot, type) || type != RHI_Descriptor_Type::StructuredBuffer)
+        {
+            return;
+        }
+
+        SetBuffer(slot, buffer);
+    }
+
+    void RHI_CommandList::SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas)
+    {
+        uint32_t slot = 0;
+        RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
+        if (!find_descriptor(m_pso, name, slot, type) || type != RHI_Descriptor_Type::AccelerationStructure)
+        {
+            return;
+        }
+
+        SetAccelerationStructure(slot, tlas);
     }
 }

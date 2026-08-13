@@ -152,7 +152,7 @@ namespace spartan
             m_pass_state.ocean_spectrum_dirty;
         if (reset_history)
         {
-            m_pass_state.ocean_displacement_index = 0;
+            m_pass_state.ocean_history.Reset();
         }
 
         if (
@@ -160,18 +160,17 @@ namespace spartan
             m_pass_state.ocean_displacement_produced
         )
         {
-            m_pass_state.ocean_displacement_index ^= 1;
-            m_pass_state.ocean_displacement_history_valid = true;
+            m_pass_state.ocean_history.Advance();
         }
         else
         {
-            m_pass_state.ocean_displacement_history_valid = false;
+            m_pass_state.ocean_history.valid = false;
         }
 
-        RHI_Texture* tex_displacement =
-            m_pass_state.ocean_displacement_index == 0 ?
-            tex_displacement_a :
-            tex_displacement_b;
+        RHI_Texture* tex_displacement = m_pass_state.ocean_history.SelectWrite(
+            tex_displacement_a,
+            tex_displacement_b
+        );
 
         // shared push constants, the cascade lengths are packed across the value slots
         m_pcb_pass_cpu.set_f3_value(dir_x, dir_z, wind_speed);

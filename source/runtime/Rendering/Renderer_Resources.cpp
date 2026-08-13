@@ -445,8 +445,7 @@ namespace spartan
                     flags,
                     "ssao_history_1"
                 );
-                m_pass_state.ssao_history_valid = false;
-                m_pass_state.ssao_history_index = 0;
+                m_pass_state.ssao_history.Reset();
             }
         }
         else if (at(render_targets, Renderer_RenderTarget::ssao))
@@ -454,8 +453,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::ssao)           = nullptr;
             at(render_targets, Renderer_RenderTarget::ssao_history_0) = nullptr;
             at(render_targets, Renderer_RenderTarget::ssao_history_1) = nullptr;
-            m_pass_state.ssao_history_valid = false;
-            m_pass_state.ssao_history_index = 0;
+            m_pass_state.ssao_history.Reset();
         }
         
         // ray traced reflections gbuffer, concurrent sharing so rt reflections can run on the compute queue
@@ -695,8 +693,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::cloud_resolved_distance_1) = make_shared<RHI_Texture>(rt_type, width_cloud, height_cloud, rt_layers, 1, RHI_Format::R32_Float, flags, "cloud_resolved_distance_1");
             at(render_targets, Renderer_RenderTarget::cloud_composite)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_composite");
             at(render_targets, Renderer_RenderTarget::cloud_velocity)            = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "cloud_velocity");
-            m_pass_state.cloud_history_valid = false;
-            m_pass_state.cloud_history_index = 0;
+            m_pass_state.cloud_history.Reset();
         };
 
         auto create_lighting_buffers = [&]()

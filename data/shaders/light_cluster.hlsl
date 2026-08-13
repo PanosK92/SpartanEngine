@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_LIGHT_CLUSTER
 #define SPARTAN_LIGHT_CLUSTER
 
-#include "common_resources.hlsl"
+#include "common_resources_buffers.hlsl"
 
 // converts a screen uv plus view space z into a 3d cluster id
 // uv is top-left origin, view_z is positive forward in left handed view space

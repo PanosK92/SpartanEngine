@@ -227,8 +227,8 @@ namespace spartan
     {
         const Renderer_RenderTarget resolved_targets[] = { Renderer_RenderTarget::cloud_resolved_0, Renderer_RenderTarget::cloud_resolved_1 };
         const Renderer_RenderTarget distance_targets[] = { Renderer_RenderTarget::cloud_resolved_distance_0, Renderer_RenderTarget::cloud_resolved_distance_1 };
-        const uint32_t history_index = m_pass_state.cloud_history_index;
-        const uint32_t output_index  = 1u - history_index;
+        const uint32_t history_index = m_pass_state.cloud_history.Read();
+        const uint32_t output_index  = m_pass_state.cloud_history.Write();
         RHI_Texture* tex_output          = GetRenderTarget(resolved_targets[output_index]);
         RHI_Texture* tex_output_distance = GetRenderTarget(distance_targets[output_index]);
 
@@ -245,7 +245,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::tex5, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous), rhi_all_mips, 0, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_output, rhi_all_mips, 0, true, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_output_distance, rhi_all_mips, 0, true, eye_layer);
-        m_pcb_pass_cpu.set_f3_value(m_pass_state.cloud_history_valid ? 0.0f : 1.0f);
+        m_pcb_pass_cpu.set_f3_value(m_pass_state.cloud_history.valid ? 0.0f : 1.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
         cmd_list->Dispatch(tex_output);
     }
@@ -254,7 +254,7 @@ namespace spartan
     {
         const Renderer_RenderTarget resolved_targets[] = { Renderer_RenderTarget::cloud_resolved_0, Renderer_RenderTarget::cloud_resolved_1 };
         const Renderer_RenderTarget distance_targets[] = { Renderer_RenderTarget::cloud_resolved_distance_0, Renderer_RenderTarget::cloud_resolved_distance_1 };
-        const uint32_t output_index = 1u - m_pass_state.cloud_history_index;
+        const uint32_t output_index = m_pass_state.cloud_history.Write();
         RHI_Texture* tex_composite  = GetRenderTarget(Renderer_RenderTarget::cloud_composite);
 
         RHI_PipelineState pso;
@@ -381,7 +381,7 @@ namespace spartan
     {
         if (!World::GetDirectionalLight())
         {
-            m_pass_state.cloud_history_valid = false;
+            m_pass_state.cloud_history.valid = false;
             return false;
         }
 
@@ -398,7 +398,7 @@ namespace spartan
         RHI_Shader* shader_composite = GetShader(Renderer_Shader::clouds_composite_c);
         if (!shader_render || !shader_render->IsCompiled() || !shader_temporal || !shader_temporal->IsCompiled() || !shader_composite || !shader_composite->IsCompiled())
         {
-            m_pass_state.cloud_history_valid = false;
+            m_pass_state.cloud_history.valid = false;
             return false;
         }
 
@@ -426,8 +426,7 @@ namespace spartan
 
         if (last_eye)
         {
-            m_pass_state.cloud_history_index = 1u - m_pass_state.cloud_history_index;
-            m_pass_state.cloud_history_valid = true;
+            m_pass_state.cloud_history.Advance();
         }
     }
 

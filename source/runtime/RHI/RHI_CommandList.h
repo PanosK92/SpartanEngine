@@ -170,6 +170,7 @@ namespace spartan
         void SetBufferIndex(const RHI_Buffer* buffer);
         void SetBuffer(const uint32_t slot, RHI_Buffer* buffer);
         void SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer);
+        void SetBuffer(const char* name, RHI_Buffer* buffer);
 
         // constant buffer
         void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer);
@@ -184,10 +185,12 @@ namespace spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false, const uint32_t array_layer = rhi_all_mips);
         void SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0);
         void SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
+        void SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
 
         // acceleration structure
         void SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas);
         void SetAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas);
+        void SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas);
 
         // markers
         void BeginMarker(const char* name);

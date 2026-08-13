@@ -19,15 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef SPARTAN_COMMON_RESOURCES
-#define SPARTAN_COMMON_RESOURCES
+#ifndef SPARTAN_COMMON_RESOURCES_GBUFFER
+#define SPARTAN_COMMON_RESOURCES_GBUFFER
 
-#include "shared_buffers.h"
-#include "common_resources_gbuffer.hlsl"
-#include "common_resources_pass.hlsl"
-#include "common_resources_world.hlsl"
-#include "common_resources_bindless.hlsl"
-#include "common_resources_gpu_driven.hlsl"
-#include "common_resources_buffers.hlsl"
+// g-buffer
+Texture2D tex_albedo   : register(t0);
+Texture2D tex_normal   : register(t1);
+Texture2D tex_material : register(t2);
+Texture2D tex_velocity : register(t3);
+Texture2D tex_depth    : register(t4);
+
+// ray-tracing, the declaration alone makes the spir-v require the ray query capability, even when unused,
+// because bindings are preserved, so it must not exist in modules built for devices without support
+#ifdef RAY_TRACING_ENABLED
+RaytracingAccelerationStructure tlas : register(t5);
+#endif
+
+// other
+Texture2D tex_ssao : register(t6);
 
 #endif

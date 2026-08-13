@@ -1538,10 +1538,9 @@ namespace spartan
             m_pass_state.atmosphere_lut_produced = false;
             m_pass_state.cloud_noise_produced    = false;
             m_pass_state.sky_first_frame         = true;
-            m_pass_state.cloud_history_valid     = false;
+            m_pass_state.cloud_history.Reset();
             m_pass_state.cloud_environment_dirty = true;
-            m_pass_state.ssao_history_valid      = false;
-            m_pass_state.ssao_history_index      = 0;
+            m_pass_state.ssao_history.Reset();
             m_taau_reset_history                 = true;
 
             CreateSamplers();
@@ -1589,10 +1588,9 @@ namespace spartan
         }
 
         CreateRenderTargets(true, true, true);
-        m_pass_state.cloud_history_valid     = false;
+        m_pass_state.cloud_history.Reset();
         m_pass_state.cloud_environment_dirty = true;
-        m_pass_state.ssao_history_valid      = false;
-        m_pass_state.ssao_history_index      = 0;
+        m_pass_state.ssao_history.Reset();
         CreateSamplers();
     }
 
@@ -2337,9 +2335,8 @@ namespace spartan
         const bool ocean_changed = m_pass_state.ocean != water;
         if (ocean_changed)
         {
-            m_pass_state.ocean_displacement_produced      = false;
-            m_pass_state.ocean_displacement_history_valid = false;
-            m_pass_state.ocean_displacement_index         = 0;
+            m_pass_state.ocean_displacement_produced = false;
+            m_pass_state.ocean_history.Reset();
             ResetOceanHeightReadback();
         }
 
@@ -2361,11 +2358,10 @@ namespace spartan
             return;
         }
 
-        m_pass_state.ocean                              = nullptr;
-        m_pass_state.ocean_spectrum_dirty               = true;
-        m_pass_state.ocean_displacement_produced        = false;
-        m_pass_state.ocean_displacement_history_valid   = false;
-        m_pass_state.ocean_displacement_index           = 0;
+        m_pass_state.ocean                       = nullptr;
+        m_pass_state.ocean_spectrum_dirty        = true;
+        m_pass_state.ocean_displacement_produced = false;
+        m_pass_state.ocean_history.Reset();
         ResetOceanHeightReadback();
     }
 
@@ -2543,11 +2539,11 @@ namespace spartan
     void Renderer::SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/, bool bind_ssao /*= true*/)
     {
         // gbuffer (when eye_layer is specified, bind per-layer 2d views for compute passes)
-        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_color),    GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, false, eye_layer);
-        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_normal),   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),   rhi_all_mips, 0, false, eye_layer);
-        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_material), GetRenderTarget(Renderer_RenderTarget::gbuffer_material), rhi_all_mips, 0, false, eye_layer);
-        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
-        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth),    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture("tex_albedo",   GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture("tex_normal",   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),   rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture("tex_material", GetRenderTarget(Renderer_RenderTarget::gbuffer_material), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture("tex_velocity", GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
+        cmd_list->SetTexture("tex_depth",    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, eye_layer);
 
         // ssao is written on async compute, skip binding it during graphics phase 2
         // stereo skips the ssao pass, bind white so left eye occlusion does not hit the right eye
@@ -2555,7 +2551,7 @@ namespace spartan
         {
             const bool xr_stereo = Xr::IsSessionRunning() && Xr::GetStereoMode();
             RHI_Texture* tex_ssao = (!xr_stereo) ? GetRenderTarget(Renderer_RenderTarget::ssao) : nullptr;
-            cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
+            cmd_list->SetTexture("tex_ssao", tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
         }
     }
 
@@ -4282,8 +4278,8 @@ namespace spartan
             cloud_state_changed;
         if (cloud_state_changed)
         {
-            m_pass_state.sky_frames_remaining   = temporal_convergence_frames;
-            m_pass_state.cloud_history_valid     = false;
+            m_pass_state.sky_frames_remaining     = temporal_convergence_frames;
+            m_pass_state.cloud_history.valid      = false;
             m_pass_state.cloud_environment_dirty = true;
         }
         m_pass_state.cloud_light           = directional_light;
@@ -4317,19 +4313,19 @@ namespace spartan
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex_perlin, GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
+        cmd_list->SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
         if (tex_exposure)
         {
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex_effective_exposure, tex_exposure);
+            cmd_list->SetTexture("tex_effective_exposure", tex_exposure);
         }
 
         bool is_graphics_queue = cmd_list->GetQueue() && cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics;
         RHI_Texture* tex_wind  = GetRenderTarget(Renderer_RenderTarget::wind_field);
         if (is_graphics_queue && tex_wind)
         {
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
+            cmd_list->SetTexture("tex_wind_field", tex_wind);
         }
 
         // terrain analysis maps, bound globally because the raster, reflection and gi paths all
@@ -4345,20 +4341,19 @@ namespace spartan
                 map_b->GetResourceState() == ResourceState::PreparedForGpu;
 
             RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Noise_perlin);
-            cmd_list->SetTexture(Renderer_BindingsSrv::terrain_map_a, ready ? map_a : fallback);
-            cmd_list->SetTexture(Renderer_BindingsSrv::terrain_map_b, ready ? map_b : fallback);
+            cmd_list->SetTexture("tex_terrain_map_a", ready ? map_a : fallback);
+            cmd_list->SetTexture("tex_terrain_map_b", ready ? map_b : fallback);
         }
 
-        Renderer_RenderTarget ocean_displacement_current =
-            m_pass_state.ocean_displacement_index == 0 ?
-            Renderer_RenderTarget::ocean_displacement :
-            Renderer_RenderTarget::ocean_displacement_previous;
+        Renderer_RenderTarget ocean_displacement_current = m_pass_state.ocean_history.SelectWrite(
+            Renderer_RenderTarget::ocean_displacement,
+            Renderer_RenderTarget::ocean_displacement_previous
+        );
         Renderer_RenderTarget ocean_displacement_previous =
-            m_pass_state.ocean_displacement_history_valid ?
-            (
-                m_pass_state.ocean_displacement_index == 0 ?
-                Renderer_RenderTarget::ocean_displacement_previous :
-                Renderer_RenderTarget::ocean_displacement
+            m_pass_state.ocean_history.valid ?
+            m_pass_state.ocean_history.SelectRead(
+                Renderer_RenderTarget::ocean_displacement,
+                Renderer_RenderTarget::ocean_displacement_previous
             ) :
             ocean_displacement_current;
 
@@ -4373,18 +4368,15 @@ namespace spartan
         );
         if (is_graphics_queue && tex_ocean_disp)
         {
-            cmd_list->SetTexture(Renderer_BindingsSrv::ocean_displacement, tex_ocean_disp);
+            cmd_list->SetTexture("tex_ocean_displacement", tex_ocean_disp);
         }
         if (is_graphics_queue && tex_ocean_disp_previous)
         {
-            cmd_list->SetTexture(
-                Renderer_BindingsSrv::ocean_displacement_previous,
-                tex_ocean_disp_previous
-            );
+            cmd_list->SetTexture("tex_ocean_displacement_previous", tex_ocean_disp_previous);
         }
         if (is_graphics_queue && tex_ocean_norm)
         {
-            cmd_list->SetTexture(Renderer_BindingsSrv::ocean_normal, tex_ocean_norm);
+            cmd_list->SetTexture("tex_ocean_normal", tex_ocean_norm);
         }
     }
 

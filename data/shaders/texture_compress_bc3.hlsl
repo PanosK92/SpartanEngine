@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "compressonator/bcn_common_kernel.h"
-#include "common_resources.hlsl"
+#include "common_resources_buffers.hlsl"
+#include "common_resources_gpu_driven.hlsl"
 
 // compression parameters packed into the push constant values:
 // values[0].x = num_block_x       (uint via asuint)

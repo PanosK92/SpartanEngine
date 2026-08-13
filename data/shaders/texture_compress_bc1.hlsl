@@ -28,7 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "compressonator/bcn_common_kernel.h"
-#include "common_resources.hlsl"
+#include "common_resources_buffers.hlsl"
+#include "common_resources_gpu_driven.hlsl"
 
 uint  get_num_block_x()      { return asuint(buffer_pass.values[0].x); }
 uint  get_num_total_blocks() { return asuint(buffer_pass.values[0].y); }
