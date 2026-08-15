@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
-#include "../Input/Input.h"
-#include "../Display/Display.h"
-#include "../RHI/RHI_Implementation.h"
+#include "../input/Input.h"
+#include "../display/Display.h"
+#include "../rhi/RHI_Implementation.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
 #include <freetype/freetype.h>

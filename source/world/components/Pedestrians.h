@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "Component.h"
-#include "../../Math/Vector3.h"
+#include "../../math/Vector3.h"
 #include <atomic>
 #include <cstdint>
 #include <memory>

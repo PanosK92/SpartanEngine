@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 //= INCLUDES =====================
 #include "IResource.h"
-#include "../Logging/Log.h"
+#include "../logging/Log.h"
 #include <mutex>
-#include "../Rendering/Material.h"
-#include "../RHI/RHI_Texture.h"
-#include "../Math/Vector2.h"
+#include "../rendering/Material.h"
+#include "../rhi/RHI_Texture.h"
+#include "../math/Vector2.h"
 //================================
 
 namespace pugi

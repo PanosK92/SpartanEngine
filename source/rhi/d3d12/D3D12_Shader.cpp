@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_DirectXShaderCompiler.h"
-#include "../Rendering/Renderer.h"
+#include "../rendering/Renderer.h"
 #include "D3D12_Internal.h"
 SP_WARNINGS_OFF
 #include <dxc/d3d12shader.h>
@@ -204,7 +204,7 @@ namespace spartan
                     else
                     {
                         descriptor_type = RHI_Descriptor_Type::Image;
-                        layout          = RHI_Image_Layout::Shader_Read;
+                        layout          = RHI_Image_Layout::General;
                     }
                     shifted_slot += rhi_shader_register_shift_t;
                     break;

@@ -23,16 +23,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "../TransformGizmo.h"
-#include "Source/imgui.h"
-#include "World/Entity.h"
-#include "World/Components/Camera.h"
-#include "World/Components/Render.h"
-#include "Input/Input.h"
-#include "Commands/CommandStack.h"
-#include "Commands/CommandTransform.h"
-#include "Commands/CommandTransformMulti.h"
+#include "source/imgui.h"
+#include "world/Entity.h"
+#include "world/components/Camera.h"
+#include "world/components/Render.h"
+#include "input/Input.h"
+#include "commands/CommandStack.h"
+#include "commands/CommandTransform.h"
+#include "commands/CommandTransformMulti.h"
 #include "Engine.h"
-#include "Rendering/Renderer.h"
+#include "rendering/Renderer.h"
 #include <vector>
 #include <cfloat>
 #include <cmath>

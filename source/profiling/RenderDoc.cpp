@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "pch.h"
 #include "RenderDoc.h"
-#include "../RHI/RHI_Implementation.h"
+#include "../rhi/RHI_Implementation.h"
 #if defined(_WIN32) // windows
 #include "renderdoc/app/renderdoc_app.h"
 #else

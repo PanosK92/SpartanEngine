@@ -26,7 +26,7 @@ SOFTWARE.
 #include "../Entity.h"
 #include "../World.h"
 SP_WARNINGS_OFF
-#include "../../IO/pugixml.hpp"
+#include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
 
 namespace spartan

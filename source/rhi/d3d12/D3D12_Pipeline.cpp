@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_Texture.h"
-#include "../Rendering/Renderer.h"
+#include "../rendering/Renderer.h"
 #include "D3D12_Internal.h"
 #include <wrl/client.h>
 #include <cstring>

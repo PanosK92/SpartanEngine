@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <sstream>
 #include "CommandEntityDelete.h"
-#include "../World/Entity.h"
-#include "../World/World.h"
+#include "../world/Entity.h"
+#include "../world/World.h"
 SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //==============================
 

@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <cmath>
 #include <cstdint>
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Rendering/Color.h"
+#include "../math/Vector2.h"
+#include "../math/Vector3.h"
+#include "../rendering/Color.h"
 #include <Definitions.h>
 //=============================
 

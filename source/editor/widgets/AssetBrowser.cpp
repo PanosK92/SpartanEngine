@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "AssetBrowser.h"
 #include "Properties.h"
-#include "Geometry/Mesh.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../Widgets/FileDialog.h"
+#include "geometry/Mesh.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../widgets/FileDialog.h"
 #include "Viewport.h"
 //================================
 
@@ -130,6 +130,7 @@ namespace
 AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 {
     m_title           = "Assets";
+    m_dock            = WidgetDock::DownRight;
     file_dialog_view  = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
     file_dialog_load  = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
     m_flags          |= ImGuiWindowFlags_NoScrollbar;

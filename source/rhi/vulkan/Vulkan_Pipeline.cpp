@@ -33,9 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
 #include "../RHI_VendorTechnology.h"
-#include "../Core/Debugging.h"
-#include "../World/Components/Render.h"
-#include "../Rendering/Renderer_Buffers.h"
+#include "../core/Debugging.h"
+#include "../world/components/Render.h"
+#include "../rendering/Renderer_Buffers.h"
 //=====================================
 
 //= NAMESPACES =====

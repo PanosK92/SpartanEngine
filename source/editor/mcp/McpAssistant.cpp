@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "pch.h"
 #include "McpAssistant.h"
-#include "MCP/McpServer.h"
-#include "Input/Input.h"
-#include "FileSystem/FileSystem.h"
+#include "mcp/McpServer.h"
+#include "input/Input.h"
+#include "file_system/FileSystem.h"
 #include "../Editor.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_Style.h"
-#include "../ImGui/Source/imgui_internal.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_Style.h"
+#include "../imgui/source/imgui_internal.h"
 #include <algorithm>
 #include <atomic>
 #include <cctype>

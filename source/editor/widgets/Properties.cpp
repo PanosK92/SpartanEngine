@@ -24,34 +24,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "Window.h"
 #include "FileDialog.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/Source/imgui_stdlib.h"
-#include "../Widgets/ButtonColorPicker.h"
-#include "Core/Engine.h"
-#include "World/Entity.h"
-#include "Rendering/Material.h"
-#include "World/Components/Render.h"
-#include "World/Components/Physics.h"
-#include "World/Components/Light.h"
-#include "World/Components/AudioSource.h"
-#include "World/Components/Spline.h"
-#include "World/Components/SplineFollower.h"
-#include "World/Components/Terrain.h"
-#include "World/WorldHelpers.h"
-#include "Core/ThreadPool.h"
-#include "World/Components/Camera.h"
-#include "World/Components/Volume.h"
-#include "Rendering/Renderer.h"
-#include "Resource/IResource.h"
-#include "RHI/RHI_Texture.h"
-#include "World/Components/Script.h"
-#include "World/Components/ParticleSystem.h"
-#include "World/Components/Water.h"
-#include "World/Components/SpawnPoint.h"
-#include "World/Components/CarReset.h"
-#include "World/Components/Text3D.h"
-#include "World/Prefab.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/source/imgui_stdlib.h"
+#include "../widgets/ButtonColorPicker.h"
+#include "core/Engine.h"
+#include "world/Entity.h"
+#include "rendering/Material.h"
+#include "world/components/Render.h"
+#include "world/components/Physics.h"
+#include "world/components/Light.h"
+#include "world/components/AudioSource.h"
+#include "world/components/Spline.h"
+#include "world/components/SplineFollower.h"
+#include "world/components/Terrain.h"
+#include "world/WorldHelpers.h"
+#include "core/ThreadPool.h"
+#include "world/components/Camera.h"
+#include "world/components/Volume.h"
+#include "rendering/Renderer.h"
+#include "resource/IResource.h"
+#include "rhi/RHI_Texture.h"
+#include "world/components/Script.h"
+#include "world/components/ParticleSystem.h"
+#include "world/components/Water.h"
+#include "world/components/SpawnPoint.h"
+#include "world/components/CarReset.h"
+#include "world/components/Text3D.h"
+#include "world/Prefab.h"
 #include "TerrainEditor.h"
 #include "../Editor.h"
 //==========================================
@@ -725,6 +725,7 @@ namespace
 Properties::Properties(Editor* editor) : Widget(editor)
 {
     m_title          = "Properties";
+    m_dock           = WidgetDock::RightDown;
     m_size_initial.x = 500;
 
     color_picker_light          = make_unique<ButtonColorPicker>("Light Color Picker");
@@ -3073,9 +3074,9 @@ void Properties::ShowWater(spartan::Water* water) const
         }
 
         property_float("Amplitude",          &amplitude,          0.01f, 0.0f,    10.0f,    "linear wave height multiplier, 1 is the physical sea for the current wind");
-        property_float("Choppiness",         &choppiness,         0.01f, 0.0f,    4.0f,     "horizontal sharpening of the crests, past ~2 the surface folds and foams heavily");
+        property_float("Choppiness",         &choppiness,         0.01f, 0.0f,    4.0f,     "horizontal sharpening of the crests, high values fold the peak");
         property_float("Displacement Scale", &displacement_scale, 0.01f, 0.0f,    4.0f,     "scales the simulated displacement");
-        property_float("Normal Strength",    &normal_strength,    0.01f, 0.0f,    4.0f,     "steepens the surface normals so waves catch more light");
+        property_float("Normal Strength",    &normal_strength,    0.01f, 0.0f,    4.0f,     "how steep the wave lighting reads, 1 matches the displaced surface");
         property_float("Sea Level",          &sea_level,          0.1f,  -1000.0f, 1000.0f, "world height of the water surface", "%.1f m");
         property_float("Turbidity",          &turbidity,          0.01f, 0.0f,    4.0f,     "suspended particle density, higher makes the underwater light shafts more vivid");
         property_float("Caustics Intensity", &caustics_intensity, 0.01f, 0.0f,    4.0f,     "brightness of the sun caustics dancing on submerged geometry");

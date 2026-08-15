@@ -2,7 +2,7 @@
 
 
 #include "Widget.h"
-#include "ImGui/TextEditor.h"
+#include "imgui/TextEditor.h"
 
 class ScriptEditor : public Widget
 {

@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "Component.h"
-#include "../../Math/Vector2.h"
-#include "../../Math/Vector3.h"
-#include "../../Core/Event.h"
+#include "../../math/Vector2.h"
+#include "../../math/Vector3.h"
+#include "../../core/Event.h"
 //=============================
 
 namespace spartan

@@ -22,17 +22,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Profiler.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_SwapChain.h"
-#include "../Core/ThreadPool.h"
-#include "../Core/Debugging.h"
-#include "../Core/Timer.h"
-#include "../Rendering/Renderer.h"
-#include "../Display/Display.h"
-#include "../Memory/Allocator.h"
-#include "../FileSystem/FileSystem.h"
+#include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_Implementation.h"
+#include "../rhi/RHI_SwapChain.h"
+#include "../core/ThreadPool.h"
+#include "../core/Debugging.h"
+#include "../core/Timer.h"
+#include "../rendering/Renderer.h"
+#include "../rhi/RHI_Viewport.h"
+#include "../display/Display.h"
+#include "../memory/Allocator.h"
+#include "../file_system/FileSystem.h"
 #include <array>
 #include <fstream>
 #include <thread>
@@ -1717,7 +1718,7 @@ namespace spartan
                 "Viewport:\t\t%u x %u\n\n",
                 Display::GetName(),
                 static_cast<int>(Display::GetRefreshRate()),
-                Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
+                RHI_Device::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
                 static_cast<uint32_t>(Display::GetLuminanceMax()),
                 static_cast<uint32_t>(res_render.x),
                 static_cast<uint32_t>(res_render.y),

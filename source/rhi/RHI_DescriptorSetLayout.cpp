@@ -138,7 +138,7 @@ namespace spartan
 
     bool RHI_DescriptorSetLayout::SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, RHI_Image_Layout layout, bool storage)
     {
-        SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read);
+        SP_ASSERT(layout == RHI_Image_Layout::General);
 
         uint32_t shift     = storage ? rhi_shader_register_shift_u : rhi_shader_register_shift_t;
         uint32_t actual_slot = slot + shift;

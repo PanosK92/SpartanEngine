@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <vector>
 #include <memory>
-#include "../../Math/Vector3.h"
-#include "../../Math/Quaternion.h"
-#include "../../RHI/RHI_Vertex.h"
+#include "../../math/Vector3.h"
+#include "../../math/Quaternion.h"
+#include "../../rhi/RHI_Vertex.h"
 //=================================
 
 namespace sol

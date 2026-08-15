@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
+#include "../math/Vector2.h"
+#include "../math/Vector3.h"
 #include "RHI_Definitions.h"
 //==========================
 
@@ -53,7 +53,6 @@ namespace spartan
         // xess
         static void XeSS_GenerateJitterSample(float* x, float* y);
         static void XeSS_Dispatch(
-            RHI_CommandList* cmd_list,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
@@ -67,7 +66,6 @@ namespace spartan
         // dlss
         static void DLSS_GenerateJitterSample(float* x, float* y);
         static void DLSS_Dispatch(
-            RHI_CommandList* cmd_list,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
@@ -76,7 +74,6 @@ namespace spartan
 
         // nrd, guides + signal in/out, light_direction only for shadows
         static bool NRD_Dispatch(
-            RHI_CommandList* cmd_list,
             Nrd_Preset preset,
             RHI_Texture* tex_mv,
             RHI_Texture* tex_normal_roughness,

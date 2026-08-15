@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "IResource.h"
-#include "../RHI/RHI_Texture.h"
-#include "../Font/Font.h"
-#include "../Geometry/Mesh.h"
-#include "../Rendering/Material.h"
+#include "../rhi/RHI_Texture.h"
+#include "../font/Font.h"
+#include "../geometry/Mesh.h"
+#include "../rendering/Material.h"
 //=================================
 
 //= NAMESPACES ==========

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "../Core/SpartanObject.h"
+#include "../core/SpartanObject.h"
 #include "RHI_Definitions.h"
 //================================
 
@@ -87,6 +87,7 @@ namespace spartan
         ~RHI_Buffer() { RHI_DestroyResource(); }
 
         // storage and constant buffer updating
+        void Update(void* data_cpu, const uint32_t size = 0);
         void Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size = 0);
         void ResetOffset() { m_offset = 0; first_update = true; }
 

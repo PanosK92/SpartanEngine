@@ -23,14 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "PhysicsWorld.h"
 #include "ProgressTracker.h"
-#include "../Profiling/Profiler.h"
-#include "../Rendering/Renderer.h"
-#include "../Input/Input.h"
-#include "../World/Entity.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Physics.h"
-#include "../World/Components/Ragdoll.h"
-#include "../World/World.h"
+#include "../profiling/Profiler.h"
+#include "../rendering/Renderer.h"
+#include "../input/Input.h"
+#include "../world/Entity.h"
+#include "../world/components/Camera.h"
+#include "../world/components/Physics.h"
+#include "../world/components/Ragdoll.h"
+#include "../world/World.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
     #define _DEBUG 1

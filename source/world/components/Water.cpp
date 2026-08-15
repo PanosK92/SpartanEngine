@@ -26,13 +26,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "../Entity.h"
 #include "../World.h"
-#include "../../Geometry/Mesh.h"
-#include "../../Geometry/GeometryGeneration.h"
-#include "../../Rendering/Material.h"
-#include "../../Rendering/Renderer.h"
-#include "../../FileSystem/FileSystem.h"
+#include "../../geometry/Mesh.h"
+#include "../../geometry/GeometryGeneration.h"
+#include "../../rendering/Material.h"
+#include "../../rendering/Renderer.h"
+#include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
-#include "../../IO/pugixml.hpp"
+#include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
 //=======================================
 

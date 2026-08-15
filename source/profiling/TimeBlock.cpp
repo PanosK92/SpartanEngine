@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "TimeBlock.h"
 #include "Profiler.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Device.h"
+#include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_Device.h"
 //=================================
 
 //= NAMESPACES =====
@@ -74,7 +74,7 @@ namespace spartan
 
         if (type == TimeBlockType::Gpu)
         {
-            m_timestamp_index_start = cmd_list->BeginTimestamp();
+            m_timestamp_index_start = cmd_list->begin_timestamp();
         }
     }
 

@@ -116,6 +116,11 @@ namespace spartan
         m_size = 0;
     }
 
+    void RHI_AccelerationStructure::BuildBottomLevel(const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts, bool allow_update)
+    {
+        BuildBottomLevel(RHI_Device::Cmd(), geometries, primitive_counts, allow_update);
+    }
+
     void RHI_AccelerationStructure::BuildBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts, bool allow_update)
     {
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Bottom);
@@ -264,6 +269,11 @@ namespace spartan
         }
     }
 
+    void RHI_AccelerationStructure::RefitBottomLevel(const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
+    {
+        RefitBottomLevel(RHI_Device::Cmd(), geometries, primitive_counts);
+    }
+
     void RHI_AccelerationStructure::RefitBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
     {
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Bottom);
@@ -343,6 +353,11 @@ namespace spartan
 
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &dependency_info);
         }
+    }
+
+    void RHI_AccelerationStructure::BuildTopLevel(const vector<RHI_AccelerationStructureInstance>& instances)
+    {
+        BuildTopLevel(RHI_Device::Cmd(), instances);
     }
 
     void RHI_AccelerationStructure::BuildTopLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureInstance>& instances)

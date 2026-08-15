@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "Definitions.h"
-#include "../Commands/Command.h"
+#include "../commands/Command.h"
 #include <string>
 //==============================
 

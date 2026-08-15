@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "pch.h"
 #include "GeometryProcessing.h"
-#include "../Core/ThreadPool.h"
+#include "../core/ThreadPool.h"
 #include <unordered_map>
 #include <cmath>
 SP_WARNINGS_OFF

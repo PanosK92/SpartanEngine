@@ -24,13 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldSelector.h"
 #include "../WorldPreviews.h"
 #include "../GeneralWindows.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_Style.h"
-#include "../Widgets/Viewport.h"
-#include "Core/ProgressTracker.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_Style.h"
+#include "../widgets/Viewport.h"
+#include "core/ProgressTracker.h"
 SP_WARNINGS_OFF
-#include "IO/pugixml.hpp"
+#include "io/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================
 

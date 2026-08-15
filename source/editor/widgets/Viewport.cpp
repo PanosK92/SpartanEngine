@@ -26,18 +26,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldViewer.h"
 #include "Properties.h"
 #include "TerrainEditor.h"
-#include "RHI/RHI_Device.h"
-#include "Rendering/Renderer.h"
-#include "Rendering/Material.h"
-#include "Resource/ResourceCache.h"
-#include "World/Prefab.h"
-#include "World/Components/Render.h"
-#include "World/Components/Camera.h"
-#include "Math/Ray.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_Style.h"
-#include "../ImGui/ImGui_TransformGizmo.h"
+#include "rhi/RHI_Device.h"
+#include "rendering/Renderer.h"
+#include "rendering/Material.h"
+#include "resource/ResourceCache.h"
+#include "world/Prefab.h"
+#include "world/components/Render.h"
+#include "world/components/Camera.h"
+#include "math/Ray.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_Style.h"
+#include "../imgui/ImGui_TransformGizmo.h"
 #include "Settings.h"
 //========================================
 
@@ -166,6 +166,7 @@ namespace
 Viewport::Viewport(Editor* editor) : Widget(editor)
 {
     m_title         = "Viewport";
+    m_dock          = WidgetDock::Center;
     m_size_initial  = Vector2(400, 250);
     m_flags        |= ImGuiWindowFlags_NoScrollbar;
     m_padding       = Vector2(2.0f);

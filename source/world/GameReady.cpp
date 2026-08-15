@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameReady.h"
 #include "Entity.h"
 #include "World.h"
-#include "Components/Render.h"
-#include "../Geometry/Mesh.h"
-#include "../Geometry/GeometryProcessing.h"
-#include "../Rendering/Material.h"
-#include "../Resource/ResourceCache.h"
+#include "components/Render.h"
+#include "../geometry/Mesh.h"
+#include "../geometry/GeometryProcessing.h"
+#include "../rendering/Material.h"
+#include "../resource/ResourceCache.h"
 #include <algorithm>
 #include <filesystem>
 #include <unordered_map>

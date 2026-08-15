@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <vector>
 #include <memory>
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/BoundingBox.h"
-#include "../Rendering/Material.h"
-#include "../World/Components/Physics.h"
+#include "../math/Vector2.h"
+#include "../math/Vector3.h"
+#include "../math/BoundingBox.h"
+#include "../rendering/Material.h"
+#include "../world/components/Physics.h"
 //======================================
 
 namespace pugi

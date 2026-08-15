@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <vector>
 #include <cstdint>
-#include "../Math/Vector3.h"
-#include "../Math/Ray.h"
-#include "../RHI/RHI_Vertex.h"
+#include "../math/Vector3.h"
+#include "../math/Ray.h"
+#include "../rhi/RHI_Vertex.h"
 //============================
 
 namespace spartan

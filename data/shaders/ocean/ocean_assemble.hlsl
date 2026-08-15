@@ -41,7 +41,6 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float length_m   = ocean_cascade_length(cascade);
     float chop       = ocean_choppiness();
     float disp_scale = ocean_disp_scale();
-    float normal_str = ocean_normal_str();
 
     float s    = ocean_sign(id.xy);
     float4 a   = tex_ocean_fft_a_uav[id];
@@ -84,6 +83,8 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float4 a_xm = tex_ocean_fft_a_uav[uint3(xm, id.y, cascade)];
     float4 a_yp = tex_ocean_fft_a_uav[uint3(id.x, yp, cascade)];
     float4 a_ym = tex_ocean_fft_a_uav[uint3(id.x, ym, cascade)];
+    float4 b_xp = tex_ocean_fft_b_uav[uint3(xp, id.y, cascade)];
+    float4 b_xm = tex_ocean_fft_b_uav[uint3(xm, id.y, cascade)];
     float4 b_yp = tex_ocean_fft_b_uav[uint3(id.x, yp, cascade)];
     float4 b_ym = tex_ocean_fft_b_uav[uint3(id.x, ym, cascade)];
 
@@ -94,9 +95,10 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     float dDx_dx = (((a_xp.z * s_xp) - (a_xm.z * s_xm)) * inv2) * chop * disp_scale;
     float dDz_dz = (((b_yp.x * s_yp) - (b_ym.x * s_ym)) * inv2) * chop * disp_scale;
     float dDx_dz = (((a_yp.z * s_yp) - (a_ym.z * s_ym)) * inv2) * chop * disp_scale;
+    float dDz_dx = (((b_xp.x * s_xp) - (b_xm.x * s_xm)) * inv2) * chop * disp_scale;
 
-    // jacobian of the horizontal displacement, it drops below 1 where the surface compresses and hits 0 where it folds onto itself
-    float jacobian = (1.0 + dDx_dx) * (1.0 + dDz_dz) - dDx_dz * dDx_dz;
+    // jacobian of the horizontal mapping, 1 is undeformed, below 1 is a compressed crest, 0 is a fold
+    float jacobian = (1.0 + dDx_dx) * (1.0 + dDz_dz) - dDx_dz * dDz_dx;
 
     // choppiness folds the surface horizontally, dividing the height gradient by the horizontal stretch
     // sharpens normals on compressed crests and flattens stretched troughs, this is what makes choppiness read in the lighting
@@ -106,35 +108,21 @@ void main_cs(uint3 id : SV_DispatchThreadID)
     slope_x         = slope_x * disp_scale / stretch_x;
     slope_z         = slope_z * disp_scale / stretch_z;
 
-    // whitewater forms where the surface compresses toward folding, well before it overhangs,
-    // so foam starts once the jacobian dips below the bias and saturates as it approaches zero
-    // the result is accumulated over time so it trails behind the crests as fading streaks instead of single-frame sparkle,
-    // the previous value is read back from the persistent normal target whose slope channels are overwritten below
-    bool reset_history = pass_get_f2_value().y > 0.5;
-    float inject       = saturate(
-        (OCEAN_FOAM_BIAS - jacobian) *
-        OCEAN_FOAM_GAIN
-    );
-    float prev_foam =
-        reset_history ?
-        0.0 :
-        saturate(tex_ocean_normal_uav[id].z);
-    float decay = exp(
-        -buffer_frame.delta_time *
-        OCEAN_FOAM_DECAY
-    );
-    float rise = 1.0f - exp(
-        -buffer_frame.delta_time *
-        10.0f
-    );
-    float foam = max(
-        prev_foam * decay,
-        lerp(
-            prev_foam,
-            inject,
-            rise
-        )
-    );
+    // foam mask on the wind sea crest, a short persist lets it clump instead of flashing as a line
+    uint cascade_count = buffer_frame.ocean_cascade_count;
+    uint break_cascade = cascade_count > 1u ? cascade_count - 2u : 0u;
+    float foam         = 0.0;
+    if (cascade == break_cascade)
+    {
+        float h           = height * disp_scale;
+        float compression = saturate(1.0 - jacobian);
+        float inject      = saturate(compression / 0.2);
+        inject           *= h > 0.0 ? 1.0 : 0.0;
+        bool reset        = pass_get_f2_value().y > 0.5;
+        float prev        = reset ? 0.0 : saturate(tex_ocean_normal_uav[id].z);
+        float decay       = exp(-buffer_frame.delta_time * 2.5);
+        foam              = max(inject, prev * decay);
+    }
 
-    tex_ocean_normal_uav[id] = float4(slope_x * normal_str, slope_z * normal_str, foam, 0.0);
+    tex_ocean_normal_uav[id] = float4(slope_x, slope_z, foam, 0.0);
 }

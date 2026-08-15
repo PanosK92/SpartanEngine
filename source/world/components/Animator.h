@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "Component.h"
-#include "../../Animation/AnimationEvaluate.h"
-#include "../../Math/Matrix.h"
-#include "../../Math/Quaternion.h"
-#include "../../Math/Vector3.h"
-#include "../../RHI/RHI_Vertex.h"
+#include "../../animation/AnimationEvaluate.h"
+#include "../../math/Matrix.h"
+#include "../../math/Quaternion.h"
+#include "../../math/Vector3.h"
+#include "../../rhi/RHI_Vertex.h"
 #include <string>
 #include <vector>
 //=============================

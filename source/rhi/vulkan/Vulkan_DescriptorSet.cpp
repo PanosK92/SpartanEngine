@@ -26,7 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_AccelerationStructure.h"
-#include "../Rendering/Renderer.h"
+#include "../rendering/Renderer.h"
+#include "../RHI_Texture.h"
 //=======================================
 
 //= NAMESPACES =====

@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include <vector>
-#include "../RHI/RHI_Vertex.h"
-#include "../Rendering/Renderer_Buffers.h"
-#include "../Math/BoundingBox.h"
+#include "../rhi/RHI_Vertex.h"
+#include "../rendering/Renderer_Buffers.h"
+#include "../math/BoundingBox.h"
 //======================================
 
 namespace spartan::geometry_processing

@@ -28,15 +28,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "Terrain.h"
 #include "../Entity.h"
-#include "../../RHI/RHI_Vertex.h"
-#include "../../Physics/PhysicsWorld.h"
-#include "../../Car/Car.h"
-#include "../../Car/CarSimulation.h"
-#include "../../Geometry/Mesh.h"
-#include "../../Geometry/GeometryProcessing.h"
-#include "../../Rendering/Renderer.h"
-#include "../../Rendering/GeometryBuffer.h"
-#include "../../Core/ProgressTracker.h"
+#include "../../rhi/RHI_Vertex.h"
+#include "../../physics/PhysicsWorld.h"
+#include "../../car/Car.h"
+#include "../../car/CarSimulation.h"
+#include "../../geometry/Mesh.h"
+#include "../../geometry/GeometryProcessing.h"
+#include "../../rendering/Renderer.h"
+#include "../../rendering/GeometryBuffer.h"
+#include "../../core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #ifdef DEBUG
@@ -47,7 +47,7 @@ SP_WARNINGS_OFF
     #undef _DEBUG
 #endif
 #define PX_PHYSX_STATIC_LIB
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //============================================
 

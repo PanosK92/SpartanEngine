@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ProgressDialog.h"
 #include "Viewport.h"
 #include "../Editor.h"
-#include "../ImGui/Source/imgui_internal.h"
-#include "Core/ProgressTracker.h"
+#include "../imgui/source/imgui_internal.h"
+#include "core/ProgressTracker.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -56,8 +56,9 @@ namespace
 
 ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 {
-    m_visible       = false;
-    m_size_initial  = Vector2(500.0f, 83.0f);
+    m_visible            = false;
+    m_show_in_view_menu  = false;
+    m_size_initial       = Vector2(500.0f, 83.0f);
     m_flags        |=
         ImGuiWindowFlags_NoMove           |
         ImGuiWindowFlags_NoCollapse       |

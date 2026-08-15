@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Volume.h"
 #include "Render.h"
 #include "../Entity.h"
-#include "../../Core/Engine.h"
-#include "../../Rendering/Renderer.h"
+#include "../../core/Engine.h"
+#include "../../rendering/Renderer.h"
 SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================
 

@@ -22,29 +22,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "pch.h"
 #include "Window.h"
-#include "Renderer.h"
+#include "Renderer_Internal.h"
 #include "Material.h"
-#include "../Geometry/Mesh.h"
-#include "../Geometry/GeometryGeneration.h"
-#include "../World/Components/Light.h"
-#include "../Resource/ResourceCache.h"
-#include "../Display/Display.h"
-#include "../RHI/RHI_Texture.h"
-#include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_Sampler.h"
-#include "../RHI/RHI_BlendState.h"
-#include "../RHI/RHI_RasterizerState.h"
-#include "../RHI/RHI_DepthStencilState.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_SyncPrimitive.h"
-#include "../Profiling/Profiler.h"
-#include "../XR/Xr.h"
-#include "../Core/ThreadPool.h"
-#include "../Core/Debugging.h"
+#include "../geometry/Mesh.h"
+#include "../geometry/GeometryGeneration.h"
+#include "../world/components/Light.h"
+#include "../resource/ResourceCache.h"
+#include "../display/Display.h"
+#include "../rhi/RHI_Texture.h"
+#include "../rhi/RHI_Shader.h"
+#include "../rhi/RHI_Sampler.h"
+#include "../rhi/RHI_BlendState.h"
+#include "../rhi/RHI_RasterizerState.h"
+#include "../rhi/RHI_DepthStencilState.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_SyncPrimitive.h"
+#include "../profiling/Profiler.h"
+#include "../xr/Xr.h"
+#include "../core/ThreadPool.h"
+#include "../core/Debugging.h"
 #include <fstream>
 #ifdef _MSC_VER
-#include "../RHI/RHI_VendorTechnology.h"
+#include "../rhi/RHI_VendorTechnology.h"
 #endif
 //========================================
 
@@ -1396,6 +1396,7 @@ namespace spartan
 
     array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& Renderer::GetSamplers()
     {
+        static_assert(static_cast<uint32_t>(Renderer_Sampler::Max) == rhi_max_sampler_count);
         return samplers;
     }
 

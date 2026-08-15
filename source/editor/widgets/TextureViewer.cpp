@@ -22,9 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "TextureViewer.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "Rendering/Material.h"
-#include "Rendering/Renderer.h"
+#include "../imgui/ImGui_Extension.h"
+#include "rendering/Material.h"
+#include "rendering/Renderer.h"
+#include "resource/ResourceCache.h"
 //===================================
 
 //= NAMESPACES =========
@@ -1002,8 +1003,10 @@ namespace
 
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 {
-    m_title        = "Texture Viewer";
-    m_visible      = false;
+    m_title         = "Texture Viewer";
+    m_visible       = false;
+    m_toolbar_order = 5;
+    m_toolbar_icon  = static_cast<int>(spartan::IconType::Texture);
     m_size_initial = math::Vector2(1080.0f, 640.0f);
     m_size_min     = math::Vector2(880.0f, 440.0f);
 }

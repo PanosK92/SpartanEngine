@@ -329,12 +329,7 @@ inline constexpr VkSamplerMipmapMode vulkan_mipmap_mode[] =
 inline constexpr VkImageLayout vulkan_image_layout[] =
 {
     VK_IMAGE_LAYOUT_GENERAL,
-    VK_IMAGE_LAYOUT_PREINITIALIZED,
-    VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
     VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
-    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
     VK_IMAGE_LAYOUT_UNDEFINED
 };
@@ -420,5 +415,5 @@ namespace spartan
 
 // Utilities
 #if defined (API_GRAPHICS_D3D12)
-    #include "D3D12/D3D12_Utility.h"
+    #include "d3d12/D3D12_Utility.h"
 #endif

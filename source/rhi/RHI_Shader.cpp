@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
 #include "RHI_Device.h"
-#include "../Core/ThreadPool.h"
+#include "../core/ThreadPool.h"
 //=============================
 
 //= NAMESPACES =====

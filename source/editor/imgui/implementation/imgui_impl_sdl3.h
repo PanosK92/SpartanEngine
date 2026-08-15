@@ -22,7 +22,7 @@
 // - Introduction, links and more at the top of imgui.cpp
 
 #pragma once
-#include "../Source/imgui.h"      // IMGUI_IMPL_API
+#include "../source/imgui.h"      // IMGUI_IMPL_API
 #ifndef IMGUI_DISABLE
 
 struct SDL_Window;

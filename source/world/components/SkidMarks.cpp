@@ -26,17 +26,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Render.h"
 #include "../Entity.h"
 #include "../World.h"
-#include "../../Core/Engine.h"
-#include "../../Geometry/Mesh.h"
-#include "../../Math/Vector2.h"
-#include "../../Rendering/Material.h"
-#include "../../Rendering/Color.h"
-#include "../../Rendering/GeometryBuffer.h"
-#include "../../Resource/ResourceCache.h"
-#include "../../RHI/RHI_Texture.h"
-#include "../../FileSystem/FileSystem.h"
+#include "../../core/Engine.h"
+#include "../../geometry/Mesh.h"
+#include "../../math/Vector2.h"
+#include "../../rendering/Material.h"
+#include "../../rendering/Color.h"
+#include "../../rendering/GeometryBuffer.h"
+#include "../../resource/ResourceCache.h"
+#include "../../rhi/RHI_Texture.h"
+#include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
-#include "../../IO/pugixml.hpp"
+#include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
 //=========================================
 

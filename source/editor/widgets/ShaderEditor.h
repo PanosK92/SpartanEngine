@@ -24,13 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "Widget.h"
 #include <vector>
-#include "../ImGui/TextEditor.h"
+#include "../imgui/TextEditor.h"
 //===========================
 
 namespace spartan
 {
     class RHI_Shader;
-    class Renderer;
 }
 
 class ShaderEditor : public Widget

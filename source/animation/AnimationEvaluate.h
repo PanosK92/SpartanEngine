@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Math/Matrix.h"
-#include "../RHI/RHI_Vertex.h"
+#include "../math/Matrix.h"
+#include "../rhi/RHI_Vertex.h"
 #include <vector>
 //=============================
 

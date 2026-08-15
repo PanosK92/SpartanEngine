@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "Component.h"
-#include "../../Math/BoundingBox.h"
-#include "../../Math/Matrix.h"
-#include "../../Math/Quaternion.h"
-#include "../../Math/Vector3.h"
+#include "../../math/BoundingBox.h"
+#include "../../math/Matrix.h"
+#include "../../math/Quaternion.h"
+#include "../../math/Vector3.h"
 #include <cstdint>
 #include <vector>
 

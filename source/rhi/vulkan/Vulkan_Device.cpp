@@ -22,9 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "pch.h"
 #include <fstream>
-#include "../../Profiling/Profiler.h"
-#include "../Core/Debugging.h"
-#include "../Rendering/Renderer.h"
+#include "../../profiling/Profiler.h"
+#include "../core/Debugging.h"
+#include "../rendering/Renderer.h"
+#include "../RHI_Texture.h"
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Queue.h"
@@ -2100,6 +2101,8 @@ namespace spartan
     {
         SP_ASSERT(queues::graphics != nullptr);
 
+        DestroySwapChain();
+
         // destroy queues
         QueueWaitAll();
         queues::destroy();
@@ -2402,7 +2405,7 @@ namespace spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::UpdateBindlessMaterials(RHI_CommandList* cmd_list, array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
+    void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
     {
         lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
         if (textures)
@@ -2425,13 +2428,13 @@ namespace spartan
         }
     }
 
-    void RHI_Device::UpdateBindlessSamplers(const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers)
+    void RHI_Device::UpdateBindlessSamplers(const shared_ptr<RHI_Sampler>* samplers, uint32_t count)
     {
-        if (samplers)
+        if (samplers && count >= 9)
         {
             lock_guard<mutex> lock(descriptors::descriptor_pipeline_mutex);
-            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersComparison, &(*samplers)[0], 1);
-            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersRegular, &(*samplers)[1], 8);
+            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersComparison, &samplers[0], 1);
+            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersRegular, &samplers[1], 8);
         }
     }
 

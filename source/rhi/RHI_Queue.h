@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "../Core/SpartanObject.h"
+#include "../core/SpartanObject.h"
 #include "RHI_Definitions.h"
 #include "RHI_CommandList.h"
 #include <vector>

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "D3D12_Internal.h"
-#include "../Core/Debugging.h"
+#include "../core/Debugging.h"
 #include <wrl/client.h>
 #include <vector>
 #include <cstdint>

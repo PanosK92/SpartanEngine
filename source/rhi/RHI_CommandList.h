@@ -28,18 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_PipelineState.h"
 #include "RHI_Buffer.h"
 #include "RHI_SyncPrimitive.h"
-#include "../Core/SpartanObject.h"
+#include "../core/SpartanObject.h"
 #include <stack>
 //============================================
 
 namespace spartan
 {
-#ifndef SPARTAN_RENDERER_BINDINGS_DEFINED
-    enum class Renderer_BindingsUav : uint32_t;
-    enum class Renderer_BindingsSrv : uint32_t;
-    enum class Renderer_BindingsCb : uint32_t;
-#endif
-
     // forward declaration
     namespace math { class Rectangle; }
 
@@ -106,16 +100,64 @@ namespace spartan
                     RHI_SyncPrimitive* semaphore_timeline_wait = nullptr, uint64_t timeline_wait_value = 0);
         void WaitForExecution(const bool log_wait_time = false);
         bool IsExecutionComplete();
-        void SetPipelineState(RHI_PipelineState& pso);
 
         // immediate execution
         static RHI_CommandList* ImmediateExecutionBegin(const RHI_Queue_Type queue_type);
         static void ImmediateExecutionEnd(RHI_CommandList* cmd_list);
         static void ImmediateExecutionShutdown();
 
+        RHI_SyncPrimitive* GetTimelineSemaphore()                  { return m_rendering_complete_semaphore_timeline.get(); }
+        uint64_t GetLastTimelineSignalValue() const                { return m_last_timeline_signal_value; }
+        const RHI_CommandListState GetState() const                { return m_state; }
+        RHI_Queue* GetQueue() const                                { return m_queue; }
+        void* GetRhiResourcePipeline();
+        void* GetRhiResource() const { return m_rhi_resource; }
+        void* GetRhiState() const    { return m_rhi_state; }
+        uint32_t begin_timestamp();
+        uint32_t end_timestamp();
+        float GetTimestampResult(const uint32_t index_timestamp);
+        float GetTimestampStartMs(const uint32_t index_timestamp);
+        void ReadbackTimestampsForProfiler();
+        uint64_t GetTimestampRawTick(uint32_t index) const { return (index < m_max_timestamps) ? m_timestamp_data[index] : 0; }
+        bool GetOcclusionQueryResult(const uint64_t entity_id);
+
+    private:
+        void set_pipeline_state(RHI_PipelineState& pso);
+        const RHI_PipelineState& get_pipeline_state() const { return m_pso; }
+
+        // pass, mutates the pending pso and binds when it is complete
+        void begin_pass(const char* name);
+        void end_pass();
+        void set_pass(const char* name);
+        void set_shader(RHI_Shader* shader, const char* name = nullptr);
+        void set_shaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c = nullptr);
+        void set_color_target(RHI_Texture* texture);
+        void set_color_targets(
+            RHI_Texture* t0,
+            RHI_Texture* t1 = nullptr,
+            RHI_Texture* t2 = nullptr,
+            RHI_Texture* t3 = nullptr,
+            RHI_Texture* t4 = nullptr,
+            RHI_Texture* t5 = nullptr,
+            RHI_Texture* t6 = nullptr,
+            RHI_Texture* t7 = nullptr
+        );
+        void set_depth_target(RHI_Texture* texture);
+        void set_swap_chain(RHI_SwapChain* swapchain);
+        void set_blend_state(RHI_BlendState* state);
+        void set_rasterizer_state(RHI_RasterizerState* state);
+        void set_depth_stencil_state(RHI_DepthStencilState* state);
+        void set_primitive_topology(RHI_PrimitiveTopology topology);
+        void set_clear_color(uint32_t index, const Color& color);
+        void set_clear_depth(float depth);
+        void set_vrs_texture(RHI_Texture* texture);
+        void set_resolution_scale(bool enabled);
+        void set_multiview(bool enabled);
+        void set_array_index(uint32_t index);
+
         // clear
-        void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
-        void ClearTexture(
+        void clear_pipeline_state_render_targets(RHI_PipelineState& pipeline_state);
+        void clear_texture(
             RHI_Texture* texture,
             const Color& clear_color     = rhi_color_load,
             const float clear_depth      = rhi_depth_load,
@@ -123,125 +165,213 @@ namespace spartan
         );
 
         // draw
-        void Draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
-        void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
-        void DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count = 1);
-        void DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count);
-        void DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset);
+        void draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
+        void draw_indexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
+        void draw_indexed_indirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count = 1);
+        void draw_indexed_indirect_count(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count);
+        void draw_indirect(RHI_Buffer* args_buffer, const uint32_t args_offset);
         // one mesh workgroup per IndirectDispatchArgs.group_count_x, args layout matches VkDrawMeshTasksIndirectCommandEXT / D3D12_DISPATCH_MESH_ARGUMENTS
-        void DrawMeshTasksIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
+        void draw_mesh_tasks_indirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
 
         // dispatch
-        void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
-        void Dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
-        void DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
+        void dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
+        void dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
+        void dispatch_indirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
 
         // trace rays
-        void TraceRays(const uint32_t width, const uint32_t height);
+        void trace_rays(const uint32_t width, const uint32_t height);
 
         // blit
-        void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
-        void Blit(RHI_Texture* source, RHI_SwapChain* destination);
-        void BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer);
-        void BlitToXrSwapchain(RHI_Texture* source); // blit to openxr swapchain with aspect ratio preservation
-        void PrepareForPresent(RHI_SwapChain* swapchain);
-        void PrepareTextureForUpload(RHI_Texture* texture);
-        void PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
-        void PrepareBufferForCompute(RHI_Buffer* buffer);
-        void PrepareBufferForReadback(RHI_Buffer* buffer);
+        void blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
+        void blit(RHI_Texture* source, RHI_SwapChain* destination);
+        void blit_to_array_layer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer);
+        void blit_to_xr_swapchain(RHI_Texture* source); // blit to openxr swapchain with aspect ratio preservation
+        void prepare_for_present(RHI_SwapChain* swapchain);
+        void prepare_texture_for_upload(RHI_Texture* texture);
+        void prepare_textures_for_sampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
+        void prepare_buffer_for_compute(RHI_Buffer* buffer);
+        void prepare_buffer_for_readback(RHI_Buffer* buffer);
         // compute writes then mesh/vs reads, renderdoc serializes this so freestanding runs race without it
-        void PrepareBufferForGraphics(RHI_Buffer* buffer);
+        void prepare_buffer_for_graphics(RHI_Buffer* buffer);
 
         // copy
-        void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
-        void Copy(RHI_Texture* source, RHI_SwapChain* destination);
+        void copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
+        void copy(RHI_Texture* source, RHI_SwapChain* destination);
 
         // viewport
-        void SetViewport(const RHI_Viewport& viewport) const;
+        void set_viewport(const RHI_Viewport& viewport) const;
         
         // scissor
-        void SetScissorRectangle(const math::Rectangle& scissor_rectangle) const;
+        void set_scissor_rectangle(const math::Rectangle& scissor_rectangle) const;
 
         // cull mode
-        void SetCullMode(const RHI_CullMode cull_mode);
+        void set_cull_mode(const RHI_CullMode cull_mode);
         
         // buffers
-        void SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance = nullptr);
-        void SetBufferIndex(const RHI_Buffer* buffer);
-        void SetBuffer(const uint32_t slot, RHI_Buffer* buffer);
-        void SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer);
-        void SetBuffer(const char* name, RHI_Buffer* buffer);
+        void set_buffer_vertex(const RHI_Buffer* vertex, RHI_Buffer* instance = nullptr);
+        void set_buffer_index(const RHI_Buffer* buffer);
+        void set_buffer(const uint32_t slot, RHI_Buffer* buffer);
+        void set_buffer(const char* name, RHI_Buffer* buffer);
 
         // constant buffer
-        void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer);
-        void SetConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer);
+        void set_constant_buffer(const uint32_t slot, RHI_Buffer* constant_buffer);
+        void set_constant_buffer(const char* name, RHI_Buffer* constant_buffer);
 
         // push constant buffer
-        void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
+        void push_constants(const uint32_t offset, const uint32_t size, const void* data);
         template<typename T>
-        void PushConstants(const T& data) { PushConstants(0, sizeof(T), &data); }
+        void push_constants(const T& data) { push_constants(0, sizeof(T), &data); }
 
         // texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false, const uint32_t array_layer = rhi_all_mips);
-        void SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0);
-        void SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
-        void SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
+        void set_texture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false, const uint32_t array_layer = rhi_all_mips);
+        void set_texture(const char* name, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
 
         // acceleration structure
-        void SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas);
-        void SetAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas);
-        void SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas);
+        void set_acceleration_structure(const uint32_t slot, RHI_AccelerationStructure* tlas);
+        void set_acceleration_structure(const char* name, RHI_AccelerationStructure* tlas);
 
         // markers
-        void BeginMarker(const char* name);
-        void EndMarker();
+        void begin_marker(const char* name);
+        void end_marker();
 
         // gpu breadcrumbs - writes a uint32 value into a slot of the breadcrumb buffer on the gpu timeline
-        void WriteGpuBreadcrumb(RHI_Buffer* buffer, uint32_t slot, uint32_t value);
-
-        // timestamp queries
-        uint32_t BeginTimestamp();
-        uint32_t EndTimestamp();
-        float GetTimestampResult(const uint32_t index_timestamp);
-        float GetTimestampStartMs(const uint32_t index_timestamp);
-
-        // deferred profiler readback (reads fresh timestamps after gpu execution)
-        void ReadbackTimestampsForProfiler();
-        uint64_t GetTimestampRawTick(uint32_t index) const { return (index < m_max_timestamps) ? m_timestamp_data[index] : 0; }
+        void write_gpu_breadcrumb(RHI_Buffer* buffer, uint32_t slot, uint32_t value);
 
         // occlusion queries
-        void BeginOcclusionQuery(const uint64_t entity_id);
-        void EndOcclusionQuery();
-        bool GetOcclusionQueryResult(const uint64_t entity_id);
-        void UpdateOcclusionQueries();
+        void begin_occlusion_query(const uint64_t entity_id);
+        void end_occlusion_query();
+        void update_occlusion_queries();
 
         // timeblocks (cpu and gpu time measurement as well as gpu markers)
-        void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
-        void EndTimeblock();
+        void begin_timeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
+        void end_timeblock();
 
         // buffer
-        void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory = true);
+        void update_buffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory = true);
 
         // misc
-        void RenderPassEnd();
-        void RestoreAfterExternalPass();
-        RHI_SyncPrimitive* GetTimelineSemaphore()                  { return m_rendering_complete_semaphore_timeline.get(); }
-        uint64_t GetLastTimelineSignalValue() const                { return m_last_timeline_signal_value; }
-        const RHI_CommandListState GetState() const                { return m_state; }
-        RHI_Queue* GetQueue() const                                { return m_queue; }
-        void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
-        void CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size);
-        void CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
+        void render_pass_end();
+        void restore_after_external_pass();
+        void copy_texture_to_buffer(RHI_Texture* source, RHI_Buffer* destination);
+        void copy_buffer_to_buffer(void* source, RHI_Buffer* destination, uint64_t size);
+        void copy_buffer_to_buffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
 
-        // rhi
-        void* GetRhiResourcePipeline();
-        void* GetRhiResource() const { return m_rhi_resource; }
-        void* GetRhiState() const    { return m_rhi_state; }
+    public:
+        // bound list, Class::Method, no instance pointer
+        static const RHI_PipelineState& GetPipelineState();
+        static void SetPipelineState(RHI_PipelineState& pso);
+        static void SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso);
+        static void BeginPass(const char* name);
+        static void EndPass();
+        static void SetPass(const char* name);
+        static void SetShader(RHI_Shader* shader, const char* name = nullptr);
+        static void SetShaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c = nullptr);
+        static void SetColorTarget(RHI_Texture* texture);
+        static void SetColorTargets(
+            RHI_Texture* t0,
+            RHI_Texture* t1 = nullptr,
+            RHI_Texture* t2 = nullptr,
+            RHI_Texture* t3 = nullptr,
+            RHI_Texture* t4 = nullptr,
+            RHI_Texture* t5 = nullptr,
+            RHI_Texture* t6 = nullptr,
+            RHI_Texture* t7 = nullptr
+        );
+        static void SetDepthTarget(RHI_Texture* texture);
+        static void SetSwapChain(RHI_SwapChain* swapchain);
+        static void SetBlendState(RHI_BlendState* state);
+        static void SetRasterizerState(RHI_RasterizerState* state);
+        static void SetDepthStencilState(RHI_DepthStencilState* state);
+        static void SetPrimitiveTopology(RHI_PrimitiveTopology topology);
+        static void SetClearColor(uint32_t index, const Color& color);
+        static void SetClearDepth(float depth);
+        static void SetVrsTexture(RHI_Texture* texture);
+        static void SetResolutionScale(bool enabled);
+        static void SetMultiview(bool enabled);
+        static void SetArrayIndex(uint32_t index);
+        static void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
+        static void ClearTexture(
+            RHI_Texture* texture,
+            const Color& clear_color = rhi_color_load,
+            const float clear_depth = rhi_depth_load,
+            const uint32_t clear_stencil = rhi_stencil_load
+        );
+        static void Draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
+        static void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
+        static void DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count = 1);
+        static void DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count);
+        static void DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset);
+        static void DrawMeshTasksIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
+        static void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
+        static void Dispatch(RHI_CommandList* cmd_list, uint32_t x, uint32_t y, uint32_t z = 1);
+        static void Dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
+        static void DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset = 0);
+        static void TraceRays(const uint32_t width, const uint32_t height);
+        static void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
+        static void Blit(RHI_Texture* source, RHI_SwapChain* destination);
+        static void BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer);
+        static void BlitToXrSwapchain(RHI_Texture* source);
+        static void PrepareForPresent(RHI_SwapChain* swapchain);
+        static void PrepareTextureForUpload(RHI_Texture* texture);
+        static void PrepareTextureForUpload(RHI_CommandList* cmd_list, RHI_Texture* texture);
+        static void PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
+        static void PrepareBufferForCompute(RHI_Buffer* buffer);
+        static void PrepareBufferForCompute(RHI_CommandList* cmd_list, RHI_Buffer* buffer);
+        static void PrepareBufferForReadback(RHI_Buffer* buffer);
+        static void PrepareBufferForReadback(RHI_CommandList* cmd_list, RHI_Buffer* buffer);
+        static void PrepareBufferForGraphics(RHI_Buffer* buffer);
+        static void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
+        static void Copy(RHI_Texture* source, RHI_SwapChain* destination);
+        static void SetViewport(const RHI_Viewport& viewport);
+        static void SetScissorRectangle(const math::Rectangle& scissor_rectangle);
+        static void SetCullMode(const RHI_CullMode cull_mode);
+        static void SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance = nullptr);
+        static void SetBufferIndex(const RHI_Buffer* buffer);
+        static void SetBuffer(const uint32_t slot, RHI_Buffer* buffer);
+        static void SetBuffer(RHI_CommandList* cmd_list, const uint32_t slot, RHI_Buffer* buffer);
+        static void SetBuffer(const char* name, RHI_Buffer* buffer);
+        static void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer);
+        static void SetConstantBuffer(const char* name, RHI_Buffer* constant_buffer);
+        static void PushConstants(const uint32_t offset, const uint32_t size, const void* data);
+        static void PushConstants(RHI_CommandList* cmd_list, const uint32_t offset, const uint32_t size, const void* data);
+        template<typename T>
+        static void PushConstants(const T& data)
+        {
+            PushConstants(0, sizeof(T), &data);
+        }
+        template<typename T>
+        static void PushConstants(RHI_CommandList* cmd_list, const T& data)
+        {
+            PushConstants(cmd_list, 0, sizeof(T), &data);
+        }
+        static void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false, const uint32_t array_layer = rhi_all_mips);
+        static void SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const uint32_t array_layer = rhi_all_mips);
+        static void SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas);
+        static void SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas);
+        static void BeginMarker(const char* name);
+        static void EndMarker();
+        static void WriteGpuBreadcrumb(RHI_Buffer* buffer, uint32_t slot, uint32_t value);
+        static uint32_t BeginTimestamp();
+        static uint32_t EndTimestamp();
+        static void BeginOcclusionQuery(const uint64_t entity_id);
+        static void EndOcclusionQuery();
+        static void UpdateOcclusionQueries();
+        static void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
+        static void EndTimeblock();
+        static void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory = true);
+        static void RenderPassEnd();
+        static void RestoreAfterExternalPass();
+        static void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
+        static void CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size);
+        static void CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
+        static void CopyBufferToBuffer(RHI_CommandList* cmd_list, RHI_Buffer* source, RHI_Buffer* destination, uint64_t size);
 
     private:
         friend class RHI_Texture;
         friend class RHI_VendorTechnology;
         friend class RHI_Device;
+        friend class RHI_Buffer;
+        friend class RHI_AccelerationStructure;
 
         // include_pixel_stage widens the d3d12 state to pixel and non pixel, nri barriers on a direct list expect both
         void EnsureComputeShaderResource(RHI_Texture* texture, bool include_pixel_stage = false);
@@ -253,10 +383,12 @@ namespace spartan
         void InsertBarrier(const RHI_Barrier& barrier);
         void FlushBarriers();
         void InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip = rhi_all_mips, uint32_t mip_range = 0);
-        void InsertBarrier(RHI_Texture* texture, RHI_BarrierType sync_type);
         void InsertBarrier(RHI_Buffer* buffer);
         void InsertBarrier(void* image, RHI_Format format, uint32_t mip_index, uint32_t mip_range, uint32_t array_length, RHI_Image_Layout layout);
         void PreDraw();
+        void PrepareDispatch();
+        void TryBindPendingPipeline();
+        bool IsPendingPipelineReady() const;
         void RenderPassBegin();
         void TrackTextureUsage(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer, bool uav);
         void TrackBufferUsage(uint32_t slot, RHI_Buffer* buffer, RHI_Resource_Access access);
@@ -336,6 +468,7 @@ namespace spartan
         bool m_batch_barrier_flush = false;
         bool m_flushing_barriers = false;
         RHI_PipelineState m_pso;
+        RHI_PipelineState m_pso_pending;
         std::vector<PendingBarrierInfo> m_pending_barriers;
         RHI_Queue* m_queue = nullptr;
         bool m_load_depth_render_target = false;

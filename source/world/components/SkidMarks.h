@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include <memory>
 #include <vector>
-#include "../../Math/Vector3.h"
-#include "../../RHI/RHI_Vertex.h"
+#include "../../math/Vector3.h"
+#include "../../rhi/RHI_Vertex.h"
 //==============================
 
 namespace spartan

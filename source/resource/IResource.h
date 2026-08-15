@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <atomic>
 #include <memory>
-#include "../FileSystem/FileSystem.h"
-#include "../Core/SpartanObject.h"
+#include "../file_system/FileSystem.h"
+#include "../core/SpartanObject.h"
 //===================================
 
 namespace spartan

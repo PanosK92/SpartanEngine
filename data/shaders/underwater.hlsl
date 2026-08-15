@@ -28,18 +28,6 @@ static const float meniscus_scale   = 0.02f;
 // vertical spacing of the seam blur taps in texels
 static const float seam_blur_texels = 2.0f;
 
-// wave height above a world xz, same cascade sum the refraction composite and buoyancy use
-float get_ocean_height(float2 world_xz)
-{
-    float height = buffer_frame.ocean_sea_level;
-    [loop] for (uint c = 0; c < buffer_frame.ocean_cascade_count; ++c)
-    {
-        float2 cascade_uv = world_xz / buffer_frame.ocean_cascade_length[c];
-        height           += tex_ocean_displacement.SampleLevel(samplers[sampler_bilinear_wrap], float3(cascade_uv, (float)c), 0.0f).y;
-    }
-    return height;
-}
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {

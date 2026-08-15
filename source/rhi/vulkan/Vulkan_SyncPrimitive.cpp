@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Implementation.h"
-#include "../../Core/Debugging.h"
-#include "../../Profiling/Breadcrumbs.h"
+#include "../../core/Debugging.h"
+#include "../../profiling/Breadcrumbs.h"
 //================================
 
 namespace spartan

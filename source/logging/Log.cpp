@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <filesystem>
 #include <system_error>
-#include "../Core/Debugging.h"
+#include "../core/Debugging.h"
 //============================
 
 //= NAMESPACES =====

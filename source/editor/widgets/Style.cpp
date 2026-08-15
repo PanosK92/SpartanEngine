@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <fstream>
 #include "Style.h"
-#include "../ImGui/ImGui_Style.h"
+#include "../imgui/ImGui_Style.h"
 #include <Window.h>
 //================================
 
@@ -42,11 +42,12 @@ namespace
 
 Style::Style(Editor* editor) : Widget(editor)
 {
-    m_title        = "Style";
-    m_size_initial = Vector2(424, 600);
-    m_flags       |= ImGuiWindowFlags_NoScrollbar;
-    m_padding      = Vector2(8.0f);
-    m_visible      = false;
+    m_title              = "Style";
+    m_size_initial       = Vector2(424, 600);
+    m_flags             |= ImGuiWindowFlags_NoScrollbar;
+    m_padding            = Vector2(8.0f);
+    m_visible            = false;
+    m_show_in_view_menu  = false;
 
     ImGui::Style::SetupImGuiBase();
 

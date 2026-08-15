@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ResourceCache.h"
 #include "IconAtlas.h"
-#include "../RHI/RHI_Texture.h"
-#include "../Rendering/Renderer.h"
-#include "../Core/Window.h"
-#include "../Core/ThreadPool.h"
-#include "../FileSystem/FileSystem.h"
+#include "../rhi/RHI_Texture.h"
+#include "../rendering/Renderer.h"
+#include "../core/Window.h"
+#include "../core/ThreadPool.h"
+#include "../file_system/FileSystem.h"
 #include <unordered_map>
 #include <algorithm>
 #include <vector>
@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cctype>
 #include <filesystem>
 SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 #include <SDL3/SDL_platform.h>
 SP_WARNINGS_ON
 //=============================
@@ -113,7 +113,7 @@ namespace spartan
         unordered_map<string, unique_ptr<mutex>> m_in_flight_mutexes;
         mutex m_in_flight_map_mutex;
 
-        // walk up from an anchor looking for the repo root (source/runtime + data/shaders)
+        // walk up from an anchor looking for the repo root (source/core + data/shaders)
         string find_root_shader_directory_from(const string& anchor)
         {
             if (anchor.empty())
@@ -125,7 +125,7 @@ namespace spartan
             for (uint32_t level = 0; level < 16; level++)
             {
                 const string candidate = current + "/data/shaders";
-                if (FileSystem::IsDirectory(current + "/source/runtime") &&
+                if (FileSystem::IsDirectory(current + "/source/core") &&
                     FileSystem::IsDirectory(candidate))
                 {
                     return candidate;

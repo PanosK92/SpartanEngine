@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "pch.h"
-#include "Renderer.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Light.h"
-#include "../World/Entity.h"
-#include "../Core/Timer.h"
+#include "Renderer_Internal.h"
+#include "../world/components/Camera.h"
+#include "../world/components/Light.h"
+#include "../world/Entity.h"
+#include "../core/Timer.h"
 //=====================================
 
 //= NAMESPACES ===============

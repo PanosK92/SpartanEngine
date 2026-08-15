@@ -24,17 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 #include <filesystem>
 #include "FileDialog.h"
-#include "../ImGui/Source/imgui_internal.h"
-#include "../ImGui/Source/imgui_stdlib.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Style.h"
-#include "../Widgets/Viewport.h"
-#include <Rendering/Material.h>
-#include "World/Entity.h"
-#include "World/Prefab.h"
-#include "World/World.h"
-#include "World/Components/Script.h"
-#include "Core/ThreadPool.h"
+#include "../imgui/source/imgui_internal.h"
+#include "../imgui/source/imgui_stdlib.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Style.h"
+#include "../widgets/Viewport.h"
+#include <rendering/Material.h>
+#include "world/Entity.h"
+#include "world/Prefab.h"
+#include "world/World.h"
+#include "world/components/Script.h"
+#include "core/ThreadPool.h"
 //=========================================
 
 //= NAMESPACES ===============

@@ -6,14 +6,14 @@
 #include <memory>
 #include <sstream>
 #include <unordered_map>
-#include "Core/ProgressTracker.h"
-#include "Core/Timer.h"
-#include "FileSystem/FileSystem.h"
-#include "Rendering/Renderer.h"
-#include "Resource/ResourceCache.h"
-#include "RHI/RHI_Device.h"
-#include "RHI/RHI_Texture.h"
-#include "World/World.h"
+#include "core/ProgressTracker.h"
+#include "core/Timer.h"
+#include "file_system/FileSystem.h"
+#include "rendering/Renderer.h"
+#include "resource/ResourceCache.h"
+#include "rhi/RHI_Device.h"
+#include "rhi/RHI_Texture.h"
+#include "world/World.h"
 
 using namespace std;
 

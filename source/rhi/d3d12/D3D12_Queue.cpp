@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_SwapChain.h"
-#include "../../Profiling/Profiler.h"
+#include "../../profiling/Profiler.h"
 //================================
 
 //= NAMESPACES =====

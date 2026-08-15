@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <string>
 #include <vector>
-#include "../Core/Definitions.h"
+#include "../core/Definitions.h"
 // dxcapi.h assumes the com base types (IUnknown, HRESULT, REFCLSID) are already declared
 #include <unknwn.h>
 SP_WARNINGS_OFF

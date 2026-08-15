@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "pch.h"
 #include "Breadcrumbs.h"
-#include "../RHI/RHI_Buffer.h"
+#include "../rhi/RHI_Buffer.h"
 #include <sstream>
 //=============================
 

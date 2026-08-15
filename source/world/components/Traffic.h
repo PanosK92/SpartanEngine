@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "Component.h"
-#include "../../Math/Vector3.h"
-#include "../../Math/Quaternion.h"
+#include "../../math/Vector3.h"
+#include "../../math/Quaternion.h"
 #include <array>
 #include <atomic>
 #include <cstdint>

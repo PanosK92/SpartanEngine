@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <cassert>
 #include <limits>
-#include "../Rendering/Color.h"
+#include "../rendering/Color.h"
 //=============================
 
 // Declarations
@@ -277,15 +277,27 @@ namespace spartan
     enum class RHI_Image_Layout
     {
         General,
-        Preinitialized,
-        Attachment,
         Shading_Rate_Attachment,
-        Shader_Read,
-        Transfer_Source,
-        Transfer_Destination,
         Present_Source,
         Max
     };
+
+    // vulkan parks images in general after the first undefined transition
+    // present and vrs are the only layouts that leave general
+    inline bool rhi_layout_is_unified_exception(const RHI_Image_Layout layout)
+    {
+        return layout == RHI_Image_Layout::Present_Source ||
+               layout == RHI_Image_Layout::Shading_Rate_Attachment;
+    }
+
+    inline RHI_Image_Layout rhi_unify_image_layout(const RHI_Image_Layout layout)
+    {
+        if (rhi_layout_is_unified_exception(layout) || layout == RHI_Image_Layout::Max)
+        {
+            return layout;
+        }
+        return RHI_Image_Layout::General;
+    }
 
     enum RHI_Shader_Type
     {
@@ -332,13 +344,6 @@ namespace spartan
         GeometryIndices,
         Instances,
         Max
-    };
-
-    enum class RHI_BarrierType
-    {
-        EnsureWriteThenRead,  // RAW: make prior write visible before read (e.g., post-dispatch)
-        EnsureReadThenWrite,  // WAR: order read before write (execution dep; e.g., pre-dispatch)
-        EnsureWriteThenWrite  // WAW: order prior write before new write (e.g., sequential computes on same UAV)
     };
 
     enum class RHI_Resource_Access : uint8_t
@@ -397,7 +402,6 @@ namespace spartan
         uint32_t mip_range         = 1;
         uint32_t array_length      = 1;
         RHI_Image_Layout layout    = RHI_Image_Layout::Max;
-        RHI_BarrierType sync_type  = RHI_BarrierType::EnsureWriteThenRead;
         RHI_Resource_Access access_src = RHI_Resource_Access::None;
         RHI_Resource_Access access_dst = RHI_Resource_Access::None;
         RHI_Resource_Usage usage_src   = RHI_Resource_Usage::None;
@@ -433,18 +437,6 @@ namespace spartan
             b.mip_range    = range;
             b.array_length = arr_len;
             b.layout       = new_layout;
-            return b;
-        }
-
-        // factory: texture sync barrier (no layout change)
-        static RHI_Barrier image_sync(RHI_Texture* tex, RHI_BarrierType sync)
-        {
-            RHI_Barrier b;
-            b.type      = Type::ImageSync;
-            b.texture   = tex;
-            b.sync_type = sync;
-            b.mip_index = std::numeric_limits<uint32_t>::max();
-            b.mip_range = 0;
             return b;
         }
 
@@ -667,6 +659,7 @@ namespace spartan
     const uint8_t  rhi_max_render_target_count   = 8;
     const uint8_t  rhi_max_constant_buffer_count = 8;
     const uint32_t rhi_max_array_size            = 16384;
+    const uint32_t rhi_max_sampler_count         = 9;
     const uint32_t rhi_max_descriptor_set_count  = 512;
     const uint32_t  rhi_max_mip_count            = 13;
     const uint32_t rhi_all_mips                  = std::numeric_limits<uint32_t>::max();

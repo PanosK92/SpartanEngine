@@ -22,18 +22,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <string>
-#include <functional>
-#include "../ImGui/Source/imgui.h"
+#include "../imgui/source/imgui.h"
 //================================
 
-//==================================
 struct ImGuiWindow;
 class Editor;
-namespace spartan { class Context; }
-//==================================
 
 constexpr float k_widget_default_property = -1.0f;
+
+enum class WidgetDock
+{
+    None,
+    Center,
+    Right,
+    RightDown,
+    Down,
+    DownRight
+};
 
 class Widget
 {
@@ -43,51 +48,48 @@ public:
 
     void Tick();
 
-    // called always
     virtual void OnTick() {};
-
-    // called only when the widget is visible
     virtual void OnTickVisible() {};
-
-    // called when the window becomes visible
     virtual void OnVisible() {};
-
-    // called when the window becomes invisible
     virtual void OnInvisible() {};
-
-    // called just before ImGui::Begin()
     virtual void OnPreBegin();
 
-    // use this to push style variables. They will be automatically popped.
     template<typename T>
-    void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_push_count++; }
+    void PushStyleVar(ImGuiStyleVar idx, T val)
+    {
+        ImGui::PushStyleVar(idx, val);
+        m_var_push_count++;
+    }
 
-    // properties
     spartan::math::Vector2 GetCenter() const;
     float GetHeight()                  const { return m_height; }
     ImGuiWindow* GetWindow()           const { return m_window; }
     const char* GetTitle()             const { return m_title; }
     bool& GetVisible()                       { return m_visible; }
-    void SetVisible(bool is_visible)         { m_visible = is_visible; }
+    void SetVisible(const bool is_visible)   { m_visible = is_visible; }
+
+    bool ShowInViewMenu()              const { return m_show_in_view_menu; }
+    WidgetDock GetDock()               const { return m_dock; }
+    int GetToolbarOrder()              const { return m_toolbar_order; }
+    int GetToolbarIcon()               const { return m_toolbar_icon; }
 
 protected:
-    // properties
     bool m_is_window                      = true;
     bool m_visible                        = true;
+    bool m_show_in_view_menu              = true;
     int m_flags                           = ImGuiWindowFlags_NoCollapse;
+    int m_toolbar_order                   = 0;
+    int m_toolbar_icon                    = 0; // icontype value, 0 is none
     float m_height                        = 0;
     float m_alpha                         = -1.0f;
+    WidgetDock m_dock                     = WidgetDock::None;
     spartan::math::Vector2 m_size_initial = k_widget_default_property;
     spartan::math::Vector2 m_size_min     = k_widget_default_property;
     spartan::math::Vector2 m_size_max     = FLT_MAX;
     spartan::math::Vector2 m_padding      = k_widget_default_property;
     const char* m_title                   = "Title";
-
-    // the ImGui window this widget corresponds to
-    ImGuiWindow* m_window = nullptr;
-
-    // dependencies
-    Editor* m_editor = nullptr;
+    ImGuiWindow* m_window                 = nullptr;
+    Editor* m_editor                      = nullptr;
 
 private:
     uint8_t m_var_push_count = 0;

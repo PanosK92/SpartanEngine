@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 #include <algorithm>
 #include "Definitions.h"
-#include "../RHI/RHI_Definitions.h"
+#include "../rhi/RHI_Definitions.h"
 //=================================
 
 namespace spartan

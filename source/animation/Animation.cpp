@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================================
 #include "pch.h"
 #include "Animation.h"
-#include "../Resource/Animation/AnimationClipIO.h"
+#include "../resource/animation/AnimationClipIO.h"
 //================================================
 
 //= NAMESPACES =====

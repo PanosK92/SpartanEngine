@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===================
-#include "../Math/BoundingBox.h"
+#include "../math/BoundingBox.h"
 #include <string>
 #include <functional>
 #include <sol/forward.hpp>

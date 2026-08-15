@@ -21,20 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================
 #include "pch.h"
-#include "Renderer.h"
-#include "../Geometry/Mesh.h"
-#include "../World/Entity.h"
-#include "../World/World.h"
-#include "../World/Components/Component.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Light.h"
-#include "../World/Components/AudioSource.h"
-#include "../World/Components/ParticleSystem.h"
-#include "../World/Components/Render.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Shader.h"
-#include "../Rendering/Material.h"
+#include "Renderer_Internal.h"
+#include "../geometry/Mesh.h"
+#include "../world/Entity.h"
+#include "../world/World.h"
+#include "../world/components/Component.h"
+#include "../world/components/Camera.h"
+#include "../world/components/Light.h"
+#include "../world/components/AudioSource.h"
+#include "../world/components/ParticleSystem.h"
+#include "../world/components/Render.h"
+#include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_Shader.h"
+#include "../rendering/Material.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -118,7 +118,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_Icons(RHI_Texture* tex_out)
     {
         static uint64_t icons_frame = ~0ull;
         if (icons_frame != m_frame_num)
@@ -163,7 +163,7 @@ namespace spartan
             return;
         }
 
-        cmd_list->BeginTimeblock("icons");
+        RHI_CommandList::BeginPass("icons");
         {
             // group by texture so each atlas/gizmo type is one draw
             sort(m_icons.begin(), m_icons.end(), [](const tuple<RHI_Texture*, Vector3>& a, const tuple<RHI_Texture*, Vector3>& b)
@@ -198,7 +198,7 @@ namespace spartan
 
             if (m_icons_vertices.empty())
             {
-                cmd_list->EndTimeblock();
+                RHI_CommandList::EndPass();
                 return;
             }
 
@@ -220,22 +220,25 @@ namespace spartan
                 copy(m_icons_vertices.begin(), m_icons_vertices.end(), buffer);
             }
 
-            RHI_PipelineState pso;
-            pso.name                             = "icons";
-            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::icon_v);
-            pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::icon_p);
-            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-            pso.render_target_color_textures[0]  = tex_out;
-            pso.clear_color[0]                   = rhi_color_load;
-            cmd_list->SetPipelineState(pso);
+            RHI_CommandList::SetShaders(
+                GetShader(Renderer_Shader::icon_v),
+                GetShader(Renderer_Shader::icon_p)
+            );
+            RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
+            RHI_CommandList::SetColorTarget(tex_out);
 
-            m_pcb_pass_cpu.set_f2_value(static_cast<float>(renderer_editor_icon_size_px), static_cast<float>(renderer_editor_icon_size_px));
-            m_pcb_pass_cpu.set_f4_value(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()), 0.0f, 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->SetBufferVertex(m_icons_vertex_buffer.get());
-            cmd_list->SetCullMode(RHI_CullMode::None);
+            m_pcb_pass_cpu.set_f2_value(
+                static_cast<float>(renderer_editor_icon_size_px),
+                static_cast<float>(renderer_editor_icon_size_px)
+            );
+            m_pcb_pass_cpu.set_f4_value(
+                static_cast<float>(tex_out->GetWidth()),
+                static_cast<float>(tex_out->GetHeight()),
+                0.0f,
+                0.0f
+            );
+            RHI_CommandList::SetBufferVertex(m_icons_vertex_buffer.get());
+            RHI_CommandList::SetCullMode(RHI_CullMode::None);
 
             uint32_t vertex_offset = 0;
             RHI_Texture* current_texture = nullptr;
@@ -248,8 +251,8 @@ namespace spartan
                     return;
                 }
 
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, current_texture);
-                cmd_list->Draw(run_icons * 6, vertex_offset);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), current_texture);
+                RHI_CommandList::Draw(run_icons * 6, vertex_offset);
                 vertex_offset += run_icons * 6;
                 run_icons = 0;
             };
@@ -271,12 +274,12 @@ namespace spartan
             }
             flush_run();
 
-            cmd_list->SetCullMode(RHI_CullMode::Back);
+            RHI_CommandList::SetCullMode(RHI_CullMode::Back);
         }
-        cmd_list->EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
-    void Renderer::Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_Grid(RHI_Texture* tex_out)
     {
         if (!cvar_grid.GetValueAs<bool>())
         {
@@ -284,7 +287,6 @@ namespace spartan
         }
 
         Pass_Graphics(
-            cmd_list,
             "grid",
             Renderer_Shader::grid_v,
             Renderer_Shader::grid_p,
@@ -295,7 +297,7 @@ namespace spartan
             nullptr,
             [&]()
             {
-                cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
 
                 const float grid_spacing       = 1.0f;
                 const Vector3& camera_position = World::GetCamera()->GetEntity()->GetPosition();
@@ -311,17 +313,17 @@ namespace spartan
                 {
                     return;
                 }
-                cmd_list->PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-                cmd_list->SetCullMode(RHI_CullMode::Back);
-                cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
-                cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
-                cmd_list->DrawIndexed(6, GetStandardMesh(MeshType::Quad)->GetGlobalIndexOffset(), GetStandardMesh(MeshType::Quad)->GetGlobalVertexOffset());
+                RHI_CommandList::SetCullMode(RHI_CullMode::Back);
+                RHI_CommandList::SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
+                RHI_CommandList::SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
+                RHI_CommandList::DrawIndexed(6, GetStandardMesh(MeshType::Quad)->GetGlobalIndexOffset(), GetStandardMesh(MeshType::Quad)->GetGlobalVertexOffset());
             }
         );
     }
 
-    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_Lines(RHI_Texture* tex_out)
     {
         RHI_Shader* shader_v  = GetShader(Renderer_Shader::line_v);
         RHI_Shader* shader_p  = GetShader(Renderer_Shader::line_p);
@@ -329,40 +331,41 @@ namespace spartan
 
         if (vertex_count != 0)
         {
-            cmd_list->BeginTimeblock("lines");
-
-            RHI_PipelineState pso;
-            pso.name                             = "lines";
-            pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-            pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Wireframe);
-            pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-            pso.render_target_color_textures[0]  = tex_out;
-            pso.clear_color[0]                   = rhi_color_load;
-            pso.primitive_topology               = RHI_PrimitiveTopology::LineList;
-            cmd_list->SetPipelineState(pso);
-            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
-
-            if (vertex_count > m_lines_vertex_buffer->GetElementCount())
+            RHI_CommandList::BeginPass("lines");
             {
-                m_lines_vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(m_lines_vertices[0]), vertex_count, static_cast<void*>(&m_lines_vertices[0]), true, "lines");
+                RHI_CommandList::SetShaders(shader_v, shader_p);
+                RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
+                RHI_CommandList::SetRasterizerState(GetRasterizerState(Renderer_RasterizerState::Wireframe));
+                RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology::LineList);
+                RHI_CommandList::SetColorTarget(tex_out);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+
+                if (vertex_count > m_lines_vertex_buffer->GetElementCount())
+                {
+                    m_lines_vertex_buffer = make_shared<RHI_Buffer>(
+                        RHI_Buffer_Type::Vertex,
+                        sizeof(m_lines_vertices[0]),
+                        vertex_count,
+                        static_cast<void*>(&m_lines_vertices[0]),
+                        true,
+                        "lines"
+                    );
+                }
+
+                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_lines_vertex_buffer->GetMappedData());
+                memset(buffer, 0, m_lines_vertex_buffer->GetObjectSize());
+                copy(m_lines_vertices.begin(), m_lines_vertices.end(), buffer);
+                RHI_CommandList::SetBufferVertex(m_lines_vertex_buffer.get());
+
+                RHI_CommandList::SetCullMode(RHI_CullMode::None);
+                RHI_CommandList::Draw(static_cast<uint32_t>(m_lines_vertices.size()));
+                RHI_CommandList::SetCullMode(RHI_CullMode::Back);
             }
-
-            RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_lines_vertex_buffer->GetMappedData());
-            memset(buffer, 0, m_lines_vertex_buffer->GetObjectSize());
-            copy(m_lines_vertices.begin(), m_lines_vertices.end(), buffer);
-            cmd_list->SetBufferVertex(m_lines_vertex_buffer.get());
-
-            cmd_list->SetCullMode(RHI_CullMode::None);
-            cmd_list->Draw(static_cast<uint32_t>(m_lines_vertices.size()));
-            cmd_list->SetCullMode(RHI_CullMode::Back);
-
-            cmd_list->EndTimeblock();
+            RHI_CommandList::EndPass();
         }
     }
 
-    void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_Outline(RHI_Texture* tex_out)
     {
         if (!cvar_selection_outline.GetValueAs<bool>() || Engine::IsFlagSet(EngineMode::Playing))
         {
@@ -378,24 +381,18 @@ namespace spartan
             const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
             if (!selected_entities.empty())
             {
-                cmd_list->BeginTimeblock("outline");
+                RHI_CommandList::BeginTimeblock("outline");
                 {
                     RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline);
 
                     bool any_rendered = false;
-                    cmd_list->BeginMarker("color_silhouette");
+                    RHI_CommandList::BeginPass("color_silhouette");
                     {
-                        RHI_PipelineState pso;
-                        pso.name                             = "color_silhouette";
-                        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-                        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-                        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-                        pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
-                        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-                        pso.render_target_color_textures[0]  = tex_outline;
-                        pso.clear_color[0]                   = Color::standard_transparent;
-                        cmd_list->SetPipelineState(pso);
-                    
+                        RHI_CommandList::SetShaders(shader_v, shader_p);
+                        RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Additive));
+                        RHI_CommandList::SetClearColor(0, Color::standard_transparent);
+                        RHI_CommandList::SetColorTarget(tex_outline);
+
                         for (Entity* entity_selected : selected_entities)
                         {
                             if (!entity_selected || !entity_selected->GetActive())
@@ -434,44 +431,44 @@ namespace spartan
 
                                     m_pcb_pass_cpu.draw_index = draw_index;
                                     m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
-                                    cmd_list->PushConstants(m_pcb_pass_cpu);
-                                    cmd_list->SetBufferVertex(render->GetVertexBuffer());
-                                    cmd_list->SetBufferIndex(render->GetIndexBuffer());
-                                    cmd_list->DrawIndexed(render->GetIndexCount(), render->GetIndexOffset(), render->GetVertexOffset());
+                                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                                    RHI_CommandList::SetBufferVertex(render->GetVertexBuffer());
+                                    RHI_CommandList::SetBufferIndex(render->GetIndexBuffer());
+                                    RHI_CommandList::DrawIndexed(
+                                        render->GetIndexCount(),
+                                        render->GetIndexOffset(),
+                                        render->GetVertexOffset()
+                                    );
                                     any_rendered = true;
                                 }
                             }
                         }
                     }
-                    cmd_list->EndMarker();
-                    
+                    RHI_CommandList::EndPass();
+
                     if (any_rendered)
                     {
                         {
                             const float radius = 30.0f;
-                            Pass_Blur(cmd_list, tex_outline, false, radius);
+                            Pass_Blur(tex_outline, false, radius);
                         }
-                        
-                        cmd_list->BeginMarker("composition");
-                        {
-                            RHI_PipelineState pso;
-                            pso.name             = "composition";
-                            pso.shaders[Compute] = shader_c;
-                            cmd_list->SetPipelineState(pso);
 
-                            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-                            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_outline);
-                            cmd_list->Dispatch(tex_out);
+                        RHI_CommandList::BeginPass("composition");
+                        {
+                            RHI_CommandList::SetShader(shader_c);
+                            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
+                            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_outline);
+                            RHI_CommandList::Dispatch(tex_out);
                         }
-                        cmd_list->EndMarker();
+                        RHI_CommandList::EndPass();
                     }
                 }
-                cmd_list->EndTimeblock();
+                RHI_CommandList::EndTimeblock();
             }
         }
     }
 
-    void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_Text(RHI_Texture* tex_out)
     {
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);
@@ -482,42 +479,32 @@ namespace spartan
             return;
         }
 
-        cmd_list->BeginTimeblock("text");
-
-        font->UpdateVertexAndIndexBuffers(cmd_list);
-
-        RHI_PipelineState pso;
-        pso.name                             = "text";
-        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-        pso.render_target_color_textures[0]  = tex_out;
-        pso.clear_color[0]                   = rhi_color_load;
-
-        cmd_list->SetPipelineState(pso);
-        cmd_list->SetBufferVertex(font->GetVertexBuffer());
-        cmd_list->SetBufferIndex(font->GetIndexBuffer());
-        cmd_list->SetCullMode(RHI_CullMode::Back);
-
-        // draw outline
-        if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
+        RHI_CommandList::BeginPass("text");
         {
-            m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, font->GetAtlasOutline().get());
-            cmd_list->DrawIndexed(font->GetIndexCount());
-        }
+            font->UpdateVertexAndIndexBuffers();
 
-        // draw inline
-        {
-            m_pcb_pass_cpu.set_f4_value(font->GetColor());
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, font->GetAtlas().get());
-            cmd_list->DrawIndexed(font->GetIndexCount());
-        }
+            RHI_CommandList::SetShaders(shader_v, shader_p);
+            RHI_CommandList::SetBlendState(GetBlendState(Renderer_BlendState::Alpha));
+            RHI_CommandList::SetColorTarget(tex_out);
+            RHI_CommandList::SetBufferVertex(font->GetVertexBuffer());
+            RHI_CommandList::SetBufferIndex(font->GetIndexBuffer());
+            RHI_CommandList::SetCullMode(RHI_CullMode::Back);
 
-        cmd_list->EndTimeblock();
+            if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
+            {
+                m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), font->GetAtlasOutline().get());
+                RHI_CommandList::DrawIndexed(font->GetIndexCount());
+            }
+
+            {
+                m_pcb_pass_cpu.set_f4_value(font->GetColor());
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), font->GetAtlas().get());
+                RHI_CommandList::DrawIndexed(font->GetIndexCount());
+            }
+        }
+        RHI_CommandList::EndPass();
     }
 }

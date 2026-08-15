@@ -26,14 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Volume.h"
 #include "../Entity.h"
 #include "../World.h"
-#include "../../Core/Engine.h"
-#include "../../FileSystem/FileSystem.h"
+#include "../../core/Engine.h"
+#include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include <SDL3/SDL_audio.h>
 #define DR_MP3_IMPLEMENTATION
 #include <SDL3/dr_mp3.h>
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //==========================
 

@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Render.h"
 #include "../Entity.h"
 #include "../World.h"
-#include "../../Math/Quaternion.h"
+#include "../../math/Quaternion.h"
 SP_WARNINGS_OFF
-#include "../../IO/pugixml.hpp"
+#include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
 //=================================
 

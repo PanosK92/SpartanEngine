@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include "RHI_Viewport.h"
 #include "RHI_Definitions.h"
-#include "../Resource/IResource.h"
+#include "../resource/IResource.h"
 //================================
 
 namespace spartan

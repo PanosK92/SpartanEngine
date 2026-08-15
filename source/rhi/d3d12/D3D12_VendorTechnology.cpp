@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -40,9 +40,10 @@ SP_WARNINGS_ON
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Texture.h"
-#include "../../Rendering/Renderer.h"
-#include "../../World/World.h"
-#include "../../World/Components/Camera.h"
+#include "../../rendering/Renderer.h"
+#include "../../rendering/Renderer_Buffers.h"
+#include "../../world/World.h"
+#include "../../world/components/Camera.h"
 #include <cmath>
 #include <filesystem>
 //============================================
@@ -787,13 +788,13 @@ namespace spartan
     }
 
     void RHI_VendorTechnology::XeSS_Dispatch(
-        RHI_CommandList* cmd_list,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_output
     )
     {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
         if (!intel::context)
         {
@@ -849,7 +850,7 @@ namespace spartan
         cmd_list->AdoptUnorderedAccess(tex_output);
 
         // xess binds its own descriptor heap when pDescriptorHeap is null, restore engine heaps/root sig state
-        cmd_list->RestoreAfterExternalPass();
+        cmd_list->restore_after_external_pass();
     #endif
     }
 
@@ -896,13 +897,13 @@ namespace spartan
     }
 
     void RHI_VendorTechnology::DLSS_Dispatch(
-        RHI_CommandList* cmd_list,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_output
     )
     {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
         if (!dlss::sdk_ready || !cmd_list)
         {
@@ -954,7 +955,7 @@ namespace spartan
             cmd_list->AdoptComputeShaderResource(tex_velocity);
             cmd_list->AdoptComputeShaderResource(tex_depth);
             cmd_list->AdoptUnorderedAccess(tex_output);
-            cmd_list->RestoreAfterExternalPass();
+            cmd_list->restore_after_external_pass();
             return;
         }
 
@@ -962,12 +963,11 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_velocity);
         cmd_list->AdoptComputeShaderResource(tex_depth);
         cmd_list->AdoptUnorderedAccess(tex_output);
-        cmd_list->RestoreAfterExternalPass();
+        cmd_list->restore_after_external_pass();
     #endif
     }
 
     bool RHI_VendorTechnology::NRD_Dispatch(
-        RHI_CommandList* cmd_list,
         Nrd_Preset preset,
         RHI_Texture* tex_mv,
         RHI_Texture* tex_normal_roughness,
@@ -977,6 +977,7 @@ namespace spartan
         const math::Vector3* light_direction
     )
     {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
         if (!common::cb_frame || !tex_mv || !tex_normal_roughness || !tex_view_z || !tex_signal_in || !tex_signal_out)
         {
@@ -1097,7 +1098,7 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_view_z, include_pixel_stage);
         cmd_list->AdoptComputeShaderResource(tex_signal_in, include_pixel_stage);
         cmd_list->AdoptUnorderedAccess(tex_signal_out);
-        cmd_list->RestoreAfterExternalPass();
+        cmd_list->restore_after_external_pass();
         return true;
     #else
         return false;

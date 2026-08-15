@@ -1,10 +1,10 @@
 #include "pch.h"
 #include <filesystem>
 #include "ScriptEditor.h"
-#include "ImGui/TextEditor.h"
-#include "World/Entity.h"
-#include "World/World.h"
-#include "World/Components/Script.h"
+#include "imgui/TextEditor.h"
+#include "world/Entity.h"
+#include "world/World.h"
+#include "world/components/Script.h"
 
 using namespace spartan;
 

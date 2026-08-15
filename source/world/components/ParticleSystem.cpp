@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ParticleSystem.h"
 #include "../Entity.h"
-#include "../../RHI/RHI_Texture.h"
-#include "../../Resource/ResourceCache.h"
-#include "../../FileSystem/FileSystem.h"
+#include "../../rhi/RHI_Texture.h"
+#include "../../resource/ResourceCache.h"
+#include "../../file_system/FileSystem.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================
 

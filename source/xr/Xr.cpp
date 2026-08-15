@@ -22,8 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "pch.h"
 #include "Xr.h"
-#include "../Rendering/Renderer.h"
-#include "../Commands/Console/ConsoleCommands.h"
+#include "../rendering/Renderer.h"
+#include "../rhi/RHI_Viewport.h"
+#include "../commands/console/ConsoleCommands.h"
 //=============================
 
 //= NAMESPACES =====

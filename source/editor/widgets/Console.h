@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <deque>
 #include <mutex>
-#include "Logging/ILogger.h"
-#include "../ImGui/ImGui_Style.h"
+#include "logging/ILogger.h"
+#include "../imgui/ImGui_Style.h"
 //===============================
 
 namespace spartan

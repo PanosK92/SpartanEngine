@@ -26,10 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <ranges>
 #include <utility>
 #include "Window.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/Source/imgui_internal.h"
-#include "Commands/Console/ConsoleCommands.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/source/imgui_internal.h"
+#include "commands/console/ConsoleCommands.h"
 //===========================================
 
 //= NAMESPACES =========
@@ -41,6 +41,7 @@ using namespace math;
 Console::Console(Editor* editor) : Widget(editor)
 {
     m_title = "Console";
+    m_dock  = WidgetDock::Down;
 
     // create an implementation of EngineLogger
     m_logger = make_shared<EngineLogger>();

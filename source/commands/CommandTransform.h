@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "Definitions.h"
-#include "../Commands/Command.h"
-#include "../World/Entity.h"
+#include "../commands/Command.h"
+#include "../world/Entity.h"
 //==============================
 
 namespace spartan

@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Prefab.h"
 #include "Entity.h"
 #include "World.h"
-#include "../FileSystem/FileSystem.h"
+#include "../file_system/FileSystem.h"
 SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //====================================
 

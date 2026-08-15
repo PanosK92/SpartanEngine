@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <array>
 #include <atomic>
-#include "../Math/Matrix.h"
-#include "../Math/Vector3.h"
-#include "../Math/Quaternion.h"
+#include "../math/Matrix.h"
+#include "../math/Vector3.h"
+#include "../math/Quaternion.h"
 //==============================
 
 namespace spartan

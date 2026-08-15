@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "McpCommands.h"
-#include "../World/Components/Spline.h"
-#include "../World/Components/SplineFollower.h"
+#include "../world/components/Spline.h"
+#include "../world/components/SplineFollower.h"
 #include <cstdint>
 #include <optional>
 #include <string>

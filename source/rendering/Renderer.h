@@ -23,24 +23,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "Renderer_Definitions.h"
-#include "../RHI/RHI_Texture.h"
-#include "../RHI/RHI_Vertex.h"
-#include "../RHI/RHI_PipelineState.h"
-#include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../Math/Vector3.h"
-#include "../Math/Plane.h"
-#include "Renderer_Buffers.h"
-#include "../Font/Font.h"
-#include "../Commands/Console/ConsoleCommands.h"
-#include <unordered_map>
+#include "../rhi/RHI_Definitions.h"
+#include "../math/Vector2.h"
+#include "../math/Vector3.h"
+#include "../math/Vector4.h"
+#include "../math/Plane.h"
+#include "../math/Matrix.h"
+#include "../commands/console/ConsoleCommands.h"
+#include "../world/TerrainLayer.h"
+#include <array>
 #include <atomic>
+#include <memory>
 #include <string>
-#include <initializer_list>
-#include <type_traits>
-#include "../Math/Rectangle.h"
-#include "../Math/Vector4.h"
-#include "../World/TerrainLayer.h"
+#include <vector>
 //==============================================
 
 namespace spartan
@@ -52,7 +47,18 @@ namespace spartan
     class Light;
     class Render;
     class Water;
+    class Font;
+    class RHI_Texture;
+    class RHI_Shader;
+    class RHI_Buffer;
+    class RHI_Sampler;
+    class RHI_CommandList;
+    class RHI_Viewport;
+    class RHI_RasterizerState;
+    class RHI_DepthStencilState;
+    class RHI_BlendState;
     class RHI_SyncPrimitive;
+    class RHI_AccelerationStructure;
     enum class MeshType;
     namespace math
     {
@@ -115,23 +121,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
     extern TConsoleVar<float> cvar_auto_exposure_compensation;
 
-    struct ShadowSlice
-    {
-        Light* light;
-        uint32_t slice_index;
-        uint32_t resolution;
-        math::Rectangle rect;
-    };
-
-    struct PersistentLine
-    {
-        math::Vector3 from;
-        math::Vector3 to;
-        Color color_from;
-        Color color_to;
-        double expire_time;
-    };
-
     enum class Renderer_SecondaryViewMode
     {
         Solid,
@@ -150,10 +139,8 @@ namespace spartan
         Max
     };
 
-    // owns the frame, it collects the world's draw calls, records every pass and presents the result
-    class Renderer
+    namespace Renderer
     {
-    public:
         // one ring_radii_m and cell_size_m entry per lod ring, the renderer assumes three rings ordered near to far
         struct ProceduralGrassParams
         {
@@ -192,78 +179,72 @@ namespace spartan
         };
 
         // core
-        static void Initialize();
-        static void Shutdown();
-        static void Tick();
+        void Initialize();
+        void Shutdown();
+        void Tick();
 
         // debug primitives (duration: 0 = one frame, > 0 = seconds, FLT_MAX = forever)
-        static void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, float duration_sec = 0.0f);
-        static void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
-        static void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
-        static void DrawCircle(const math::Vector3& center, const math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
-        static void DrawSphere(const math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
-        static void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
-        static void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
-        static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
-        static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
+        void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawCircle(const math::Vector3& center, const math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawSphere(const math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        void DrawString(const char* text, const math::Vector2& position_screen_percentage);
+        void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
 
-        // swapchain
-        static RHI_SwapChain* GetSwapChain();
-        static void SetPresentInRenderer(bool enabled);
-        static void AcquireSwapchainImage();
-        static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
-        static void BlitToXrSwapchain(RHI_CommandList* cmd_list, RHI_Texture* texture);
-        static void EndXrFrame();
-        static void SubmitAndPresent();
+        void SetPresentInRenderer(bool enabled);
+        void BlitToXrSwapchain(RHI_Texture* texture);
+        void EndXrFrame();
 
         // misc
-        static void SetStandardResources(RHI_CommandList* cmd_list);
-        static uint64_t GetFrameNumber();
-        static RHI_Api_Type GetRhiApiType();
-        static bool Screenshot();
-        static bool Screenshot(const std::string& file_path);
-        static bool ScreenshotSecondary(
+        void SetStandardResources(RHI_CommandList* cmd_list = nullptr);
+        uint64_t GetFrameNumber();
+        RHI_Api_Type GetRhiApiType();
+        bool Screenshot();
+        bool Screenshot(const std::string& file_path);
+        bool ScreenshotSecondary(
             const std::string& file_path
         );
-        static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // returns the entry index, or uint32_max when the frame budget is full, a null render writes an identity uv transform
-        static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* render = nullptr);
+        uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* render = nullptr);
 
         // wind
-        static const math::Vector3& GetWind();
-        static void SetWind(const math::Vector3& wind);
+        const math::Vector3& GetWind();
+        void SetWind(const math::Vector3& wind);
 
         // gpu procedural grass, the caller keeps ownership of the mesh, material and heightmap and must outlive the renderer's use
-        static void EnableProceduralGrass(
+        void EnableProceduralGrass(
             Mesh* grass_mesh,
             Material* grass_material,
             RHI_Texture* terrain_heightmap,
             const ProceduralGrassParams& params,
             RHI_Texture* terrain_prop_mask = nullptr
         );
-        static void DisableProceduralGrass();
-        static bool IsProceduralGrassEnabled();
+        void DisableProceduralGrass();
+        bool IsProceduralGrassEnabled();
 
         // terrain surface, the Terrain component keeps ownership of the materials and maps and must outlive their use
-        static void SetTerrain(const TerrainParams& params);
-        static void ClearTerrain(Material* surface);
+        void SetTerrain(const TerrainParams& params);
+        void ClearTerrain(Material* surface);
 
         // fft ocean, the water component stays the owner of the simulation parameters and must outlive its use
-        static void EnableOcean(
+        void EnableOcean(
             Water* water,
             bool spectrum_dirty
         );
-        static void DisableOcean(Water* water);
-        static bool IsOceanEnabled();
+        void DisableOcean(Water* water);
+        bool IsOceanEnabled();
         // world space wave height at (x, z) from the readback of the gpu displacement, false when no ocean is active
-        static bool GetOceanHeight(const float x, const float z, float& height);
+        bool GetOceanHeight(const float x, const float z, float& height);
 
         // viewport
-        static const RHI_Viewport& GetViewport();
-        static void SetViewport(float width, float height);
-        static bool RequestSecondaryView(
+        const RHI_Viewport& GetViewport();
+        void SetViewport(float width, float height);
+        bool RequestSecondaryView(
             Entity* camera_entity,
             Entity* render_root,
             uint32_t width,
@@ -273,453 +254,207 @@ namespace spartan
             Renderer_SecondaryViewBackdrop backdrop =
                 Renderer_SecondaryViewBackdrop::Sky
         );
-        static RHI_Texture* GetSecondaryViewOutput();
-        static bool IsSecondaryViewReady();
+        RHI_Texture* GetSecondaryViewOutput();
+        bool IsSecondaryViewReady();
         // true only while the frame currently being recorded belongs to a secondary view
-        static bool IsSecondaryViewActive();
-        static void InvalidateSecondaryView();
+        bool IsSecondaryViewActive();
+        void InvalidateSecondaryView();
         // a capture is waiting on a secondary render, issuing a new request would change what it grabs
-        static bool IsSecondaryScreenshotPending();
-        static uint64_t GetSecondaryViewGeneration();
-        static uint64_t GetSecondaryViewRequestGeneration();
-        static Renderer_SecondaryViewMode GetSecondaryViewMode();
+        bool IsSecondaryScreenshotPending();
+        uint64_t GetSecondaryViewGeneration();
+        uint64_t GetSecondaryViewRequestGeneration();
+        Renderer_SecondaryViewMode GetSecondaryViewMode();
 
         // resolution render
-        static const math::Vector2& GetResolutionRender();
-        static void SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources = true);
+        const math::Vector2& GetResolutionRender();
+        void SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources = true);
 
         // resolution output
-        static const math::Vector2& GetResolutionOutput();
-        static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
-        static float GetResolutionScale();
-        static uint32_t GetScaledDimension(uint32_t dimension, float scale = -1.0f);
+        const math::Vector2& GetResolutionOutput();
+        void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
+        float GetResolutionScale();
+        uint32_t GetScaledDimension(uint32_t dimension, float scale = -1.0f);
 
         // force render target recreation (e.g. when xr stereo mode changes)
-        static void RecreateRenderTargets();
-        static void ResetTaauHistory();
+        void RecreateRenderTargets();
+        void ResetTaauHistory();
 
         // get all
-        static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
-        static std::array<std::shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
-        static std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& GetSamplers();
-        static std::array<RHI_Texture*, rhi_max_array_size>& GetBindlessMaterialTextures();
+        std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
+        std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
+        std::array<std::shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
+        std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& GetSamplers();
+        std::array<RHI_Texture*, rhi_max_array_size>& GetBindlessMaterialTextures();
 
         // get individual
-        static RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);
-        static RHI_DepthStencilState* GetDepthStencilState(const Renderer_DepthStencilState type);
-        static RHI_BlendState* GetBlendState(const Renderer_BlendState type);
-        static RHI_Texture* GetRenderTarget(const Renderer_RenderTarget type);
-        static RHI_Shader* GetShader(const Renderer_Shader type);
-        static RHI_Buffer* GetBuffer(const Renderer_Buffer type);
-        static RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
-        static RHI_AccelerationStructure* GetTopLevelAccelerationStructure();
-        static void DestroyAccelerationStructures();
+        RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);
+        RHI_DepthStencilState* GetDepthStencilState(const Renderer_DepthStencilState type);
+        RHI_BlendState* GetBlendState(const Renderer_BlendState type);
+        RHI_Texture* GetRenderTarget(const Renderer_RenderTarget type);
+        RHI_Shader* GetShader(const Renderer_Shader type);
+        RHI_Buffer* GetBuffer(const Renderer_Buffer type);
+        RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
+        RHI_AccelerationStructure* GetTopLevelAccelerationStructure();
+        void DestroyAccelerationStructures();
 
         // cluster shading telemetry, last frame's count of clusters that exceeded CLUSTER_MAX_LIGHTS
-        static uint32_t GetClusterOverflowCount();
-        static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
-        static std::shared_ptr<Font>& GetFont();
-        static std::shared_ptr<Material>& GetStandardMaterial();
-        static void ClearMaterialTextureReferences();
-    private:
-        static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
-        static void UpdateFrameCb_CameraAndProjectionHistory();
-        static void UpdateFrameCb_ProjectionJitter();
-        static void UpdateFrameCb_ViewProjectionAndCameraFields();
-        static void UpdateFrameCb_ScalarFields();
-        static void UpdateFrameCb_ClusterLighting();
-        static void UpdateFrameCb_FeatureBits();
-        static void UpdateFrameCb_StereoXr();
-        static void UpdateFrameCb_RadialBlurHubs();
-        static bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources, bool create_render, bool create_output, const char* label);
+        uint32_t GetClusterOverflowCount();
+        std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
+        std::shared_ptr<Font>& GetFont();
+        std::shared_ptr<Material>& GetStandardMaterial();
+        void ClearMaterialTextureReferences();
+        void UpdateFrameConstantBuffer();
+        void UpdateFrameCb_CameraAndProjectionHistory();
+        void UpdateFrameCb_ProjectionJitter();
+        void UpdateFrameCb_ViewProjectionAndCameraFields();
+        void UpdateFrameCb_ScalarFields();
+        void UpdateFrameCb_ClusterLighting();
+        void UpdateFrameCb_FeatureBits();
+        void UpdateFrameCb_StereoXr();
+        void UpdateFrameCb_RadialBlurHubs();
+        bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources, bool create_render, bool create_output, const char* label);
 
         // resources
-        static void CreateBuffers();
-        static void CreateDepthStencilStates();
-        static void CreateRasterizerStates();
-        static void CreateBlendStates();
-        static void CreateShaders();
-        static void CreateSamplers();
-        static void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
-        static void UpdateOptionalRenderTargets();
-        static void CreateFonts();
-        static void CreateStandardMeshes();
-        static void CreateStandardTextures();
-        static void CreateStandardMaterials();
+        void CreateBuffers();
+        void CreateDepthStencilStates();
+        void CreateRasterizerStates();
+        void CreateBlendStates();
+        void CreateShaders();
+        void CreateSamplers();
+        void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
+        void UpdateOptionalRenderTargets();
+        void CreateFonts();
+        void CreateStandardMeshes();
+        void CreateStandardTextures();
+        void CreateStandardMaterials();
 
         // passes - core
-        static void ProduceFrame(
-            RHI_CommandList* cmd_list_graphics_present,
-            RHI_CommandList* cmd_list_compute,
-            RHI_CommandList* cmd_list_compute_b
-        );
-        static bool UpdateSkysphereConvergenceState();
-        static void Pass_ComputeBatchA(
-            RHI_CommandList* cmd_list,
+        void ProduceFrame();
+        bool UpdateSkysphereConvergenceState();
+        void Pass_ComputeBatchA(
             bool update_skysphere
         );
-        static void Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list);
-        static void Pass_ComputeBatchB(RHI_CommandList* cmd_list);
-        static void Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list);
-        static void ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer);
-        static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
-        static void Pass_ShadowMaps(RHI_CommandList* cmd_list);
-        static void Pass_HiZ(RHI_CommandList* cmd_list);
-        static void Pass_IndirectCull(RHI_CommandList* cmd_list);
-        static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
-        static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        static void Pass_GBuffer_Indirect(RHI_CommandList* cmd_list);
-        static void Pass_GBuffer_TessellatedAndTransparent(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        static void Pass_MeshletVisualize(RHI_CommandList* cmd_list);
-        static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
-        static void Pass_Reflections_Trace(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Reflections_Shade(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Reflections_Denoise(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Reflections_Apply(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
-        static void Pass_Denoise_RayTracedShadows(RHI_CommandList* cmd_list);
-        static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
-        static void Pass_ReSTIR_TraceInitial(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* tex_skysphere, RHI_Texture* const* reservoirs, uint32_t width, uint32_t height);
-        static void Pass_ReSTIR_Temporal(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y);
-        static bool Pass_ReSTIR_SpatialPair(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_spatial, uint32_t dispatch_x, uint32_t dispatch_y);
-        static void Pass_ReSTIR_SwapReservoirs();
-        static void Pass_ReSTIR_SwapGBufferHistory();
-        static void Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list);
-        static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
-        static void Pass_Skysphere(RHI_CommandList* cmd_list);
-        static void Pass_Skysphere_SH_Project(RHI_CommandList* cmd_list);
-        static void Pass_Clouds_Render(RHI_CommandList* cmd_list, uint32_t eye_layer);
-        static void Pass_Clouds_Temporal(RHI_CommandList* cmd_list, uint32_t eye_layer);
-        static void Pass_Clouds_Composite(RHI_CommandList* cmd_list, uint32_t eye_layer, RHI_Texture* tex_scene);
-        static void Pass_Clouds_Environment(RHI_CommandList* cmd_list);
-        static bool Pass_Clouds_Prepare(RHI_CommandList* cmd_list, uint32_t eye_layer);
-        static void Pass_Clouds(RHI_CommandList* cmd_list, uint32_t eye_layer, bool last_eye);
+        void Pass_GraphicsPhase1_Geometry();
+        void Pass_ComputeBatchB();
+        void Pass_GraphicsPhase2_ShadowsAndRT();
+        void ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer);
+        void Pass_VariableRateShading();
+        void Pass_ShadowMaps();
+        void Pass_HiZ();
+        void Pass_IndirectCull();
+        void Pass_Depth_Prepass();
+        void Pass_GBuffer(const bool is_transparent_pass);
+        void Pass_GBuffer_Indirect();
+        void Pass_GBuffer_TessellatedAndTransparent(const bool is_transparent_pass);
+        void Pass_MeshletVisualize();
+        void Pass_ScreenSpaceAmbientOcclusion();
+        void Pass_Reflections_Trace(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Reflections_Shade(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Reflections_Denoise(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Reflections_Apply(uint32_t eye_layer = rhi_all_mips);
+        void Pass_RayTracedShadows();
+        void Pass_Denoise_RayTracedShadows();
+        void Pass_ReSTIR_PathTracing();
+        void Pass_ReSTIR_TraceInitial(RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* tex_skysphere, RHI_Texture* const* reservoirs, uint32_t width, uint32_t height);
+        void Pass_ReSTIR_Temporal(RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y);
+        bool Pass_ReSTIR_SpatialPair(RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_spatial, uint32_t dispatch_x, uint32_t dispatch_y);
+        void Pass_ReSTIR_SwapReservoirs();
+        void Pass_ReSTIR_SwapGBufferHistory();
+        void Pass_ReSTIR_Denoising();
+        void Pass_ScreenSpaceShadows();
+        void Pass_Skysphere();
+        void Pass_Skysphere_SH_Project();
+        void Pass_Clouds_Render(uint32_t eye_layer);
+        void Pass_Clouds_Temporal(uint32_t eye_layer);
+        void Pass_Clouds_Composite(uint32_t eye_layer, RHI_Texture* tex_scene);
+        void Pass_Clouds_Environment();
+        bool Pass_Clouds_Prepare(uint32_t eye_layer);
+        void Pass_Clouds(uint32_t eye_layer, bool last_eye);
         // passes - lighting
-        static void Pass_LightClusterAssign(RHI_CommandList* cmd_list);
-        static void Pass_LightClusterVisualize(RHI_CommandList* cmd_list);
-        static void Pass_LightFlares(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Light_Ibl(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
-        static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
-        static void Pass_CloudNoise(RHI_CommandList* cmd_list);
+        void Pass_LightClusterAssign();
+        void Pass_LightClusterVisualize();
+        void Pass_LightFlares(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Light(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
+        void Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
+        void Pass_Light_Ibl(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Lut_BrdfSpecular();
+        void Pass_Lut_AtmosphericScattering();
+        void Pass_CloudNoise();
         // passes - particles
-        static void Pass_Particles(RHI_CommandList* cmd_list);
+        void Pass_Particles();
         // passes - gpu procedural grass
         // runs the placement compute + indirect args build, the draw is folded into the g-buffer pass via Pass_Grass_Draw
-        static void Pass_Grass_Populate(RHI_CommandList* cmd_list);
-        static void Pass_Grass_Draw(RHI_CommandList* cmd_list);
+        void Pass_Grass_Populate();
+        void Pass_Grass_Draw();
         // passes - wind field
-        static void Pass_WindField(RHI_CommandList* cmd_list);
+        void Pass_WindField();
         // passes - fft ocean
-        static void Pass_Ocean(RHI_CommandList* cmd_list);
-        static bool ResolveOceanHeightReadback(
+        void Pass_Ocean();
+        bool ResolveOceanHeightReadback(
             uint32_t readback_index
         );
-        static void ResetOceanHeightReadback();
+        void ResetOceanHeightReadback();
         // passes - debug/editor
-        static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        void Pass_Grid(RHI_Texture* tex_out);
+        void Pass_Lines(RHI_Texture* tex_out);
+        void Pass_Outline(RHI_Texture* tex_out);
+        void Pass_Icons(RHI_Texture* tex_out);
+        void Pass_Text(RHI_Texture* tex_out);
         // asset preview backdrop and wireframe recolour, secondary views only
-        static void Pass_PreviewStudio(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        void Pass_PreviewStudio(RHI_Texture* tex_out);
         // passes - post-process
-        static void Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_PostProcess_Color(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, uint32_t eye_layer);
-        static void Pass_PostProcess_EditorOverlays(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_PostProcess_DisplayEffects(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering = true);
-        static void Pass_Tonemap(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr = false);
-        static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_AA_Upscale(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
-        template<typename F = std::nullptr_t>
-        static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum, RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
-        template<typename F = std::nullptr_t>
-        static void Pass_Graphics(
-            RHI_CommandList* cmd_list,
-            const char* name,
-            Renderer_Shader shader_vs_or_mesh,
-            Renderer_Shader shader_pixel,
-            std::initializer_list<RHI_Texture*> color_targets,
-            RHI_Texture* depth = nullptr,
-            RHI_BlendState* blend = nullptr,
-            RHI_DepthStencilState* depth_stencil = nullptr,
-            RHI_RasterizerState* rasterizer = nullptr,
-            F setup = nullptr
-        );
+        void Pass_PostProcess(uint32_t eye_layer = rhi_all_mips);
+        void Pass_PostProcess_Color(RHI_Texture*& tex_in, RHI_Texture*& tex_out, uint32_t eye_layer);
+        void Pass_PostProcess_EditorOverlays(RHI_Texture* tex_out);
+        void Pass_PostProcess_DisplayEffects(RHI_Texture*& tex_in, RHI_Texture*& tex_out, bool apply_dithering = true);
+        void Pass_Tonemap(RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr = false);
+        void Pass_Bloom(RHI_Texture* tex_in, RHI_Texture* tex_out);
+        void Pass_AA_Upscale(uint32_t eye_layer = rhi_all_mips);
+        void Pass_AutoExposure(RHI_Texture* tex_in);
         // passes - utility
-        static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);
-        static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
-        static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
+        void Pass_Blit(RHI_Texture* tex_in, RHI_Texture* tex_out, const bool gpu_timing = true);
+        void Pass_Downscale(RHI_Texture* tex, const Renderer_DownsampleFilter filter);
+        void Pass_Blur(RHI_Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
         // restir denoising fallback, history clear plus blit raw to denoised
-        static void Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised);
+        void Pass_BlitRestirFallback(RHI_Texture* tex_raw, RHI_Texture* tex_denoised);
 
         // event handlers
-        static void OnFullScreenToggled();
+        void OnFullScreenToggled();
 
         // bindless
-        static void UpdateMaterials(RHI_CommandList* cmd_list);
-        static void UpdateLights(RHI_CommandList* cmd_list);
-        static void UpdateBoundingBoxes(RHI_CommandList* cmd_list);
+        void UpdateMaterials();
+        void UpdateLights();
+        void UpdateBoundingBoxes();
 
         // misc
-        static void AddLinesToBeRendered();
-        static void UpdatePersistentLines();
-        static void SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips, bool bind_ssao = true);
-        static void DestroyResources();
-        static void UpdateShadowAtlas();
+        void AddLinesToBeRendered();
+        void UpdatePersistentLines();
+        void SetCommonTextures(uint32_t eye_layer = rhi_all_mips, bool bind_ssao = true);
+        void BeginPass(const char* name, uint32_t eye_layer, bool bind_ssao = true);
+        void SetPass(const char* name, uint32_t eye_layer, bool bind_ssao = true);
+        void DestroyResources();
+        void UpdateShadowAtlas();
 
         // tick helpers
-        static void TickRecreateOptionalRenderTargetsIfNeeded();
-        static void TickUpdateHiZSuppressionState();
+        void TickRecreateOptionalRenderTargetsIfNeeded();
+        void TickUpdateHiZSuppressionState();
         // must run before UpdateDrawCalls, it assigns the material indices the draw data carries
-        static void TickUploadMaterials(RHI_CommandList* cmd_list);
-        static void TickUploadBindlessDependencies(RHI_CommandList* cmd_list);
-        static void TickAdvanceFrameConstantBufferRing();
-        static void TickLogClusterOverflowRateLimited();
-        static void Pass_Screenshot(RHI_CommandList* cmd_list, RHI_Texture* tex_pre_tonemap);
-        static void Pass_ScreenshotXr(RHI_CommandList* cmd_list);
-        static void FinalizeScreenshotReadback();
-        static void UpdateDrawCalls(RHI_CommandList* cmd_list);
-        static void UpdateDrawCalls_ResetCounts();
-        static void UpdateDrawCalls_CollectAndSort();
-        static void UpdateDrawCalls_BuildPrepass();
-        static void UpdateDrawCalls_BuildIndirectAndCullTasks();
-        static void UpdateDrawCalls_SelectOccluders();
-        static void UpdateAccelerationStructures(RHI_CommandList* cmd_list);
+        void TickUploadMaterials();
+        void TickUploadBindlessDependencies();
+        void TickAdvanceFrameConstantBufferRing();
+        void TickLogClusterOverflowRateLimited();
+        void Pass_Screenshot(RHI_Texture* tex_pre_tonemap);
+        void Pass_ScreenshotXr();
+        void FinalizeScreenshotReadback();
+        void UpdateDrawCalls();
+        void UpdateDrawCalls_ResetCounts();
+        void UpdateDrawCalls_CollectAndSort();
+        void UpdateDrawCalls_BuildPrepass();
+        void UpdateDrawCalls_BuildIndirectAndCullTasks();
+        void UpdateDrawCalls_SelectOccluders();
+        void UpdateAccelerationStructures();
         // fills EmissiveTriangles from lod 0 of every emissive render, area weighted with a prefix sum so restir can sample in o(log n)
-        static void BuildEmissiveTriangleNeePool(RHI_CommandList* cmd_list);
-        static void RotateFrameBuffers();
-
-        // draw calls
-        static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;
-        static uint32_t m_draw_call_count;
-        static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls_prepass;
-        static uint32_t m_draw_calls_prepass_count;
-
-        // gpu-driven indirect drawing, m_indirect_renders is parallel to m_indirect_draw_data so both must be filtered identically
-        static std::array<Sb_DrawData, renderer_max_indirect_draws> m_indirect_draw_data;
-        static std::array<Render*, renderer_max_indirect_draws>     m_indirect_renders;
-        static uint32_t m_indirect_draw_count;
-        static uint32_t m_indirect_render_count; // distinct renders, one aabb slot each
-        static std::array<Sb_CullTask, renderer_max_cull_tasks> m_cull_tasks;
-        static uint32_t m_cull_task_count;
-
-        // per-frame gpu buffers, rotated so in-flight frames never race
-        struct FrameResource
-        {
-            std::shared_ptr<RHI_Buffer> indirect_draw_args;     // single-slot args buffer for the final non-indexed indirect draw
-            std::shared_ptr<RHI_Buffer> cpu_indirect_draw_args;
-            std::shared_ptr<RHI_Buffer> indirect_draw_data;     // per-render lod draw data
-            std::shared_ptr<RHI_Buffer> meshlet_instances;      // meshlet-cull survivor list
-            std::shared_ptr<RHI_Buffer> visible_triangles;      // triangle-cull survivor list (packed meshlet_instance + triangle index)
-            std::shared_ptr<RHI_Buffer> triangle_dispatch_args; // vs: triangle cull dispatch, mesh: opaque+alpha mesh task counts
-            std::shared_ptr<RHI_Buffer> cull_tasks;
-            std::shared_ptr<RHI_Buffer> surviving_instances;    // phase a survivor list, one entry per visible instance
-            std::shared_ptr<RHI_Buffer> instance_dispatch_args; // single-slot indirect dispatch args for the meshlet cull pass (phase b)
-            RHI_SyncPrimitive* completion_timeline = nullptr;
-            uint64_t completion_value = 0;
-        };
-        static std::array<FrameResource, renderer_draw_data_buffer_count> m_frame_resources;
-        static uint32_t m_frame_resource_index;
-        static uint32_t m_cpu_indirect_draw_arg_count;
-
-        // cpu-side draw data staging
-        static std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;
-        static uint32_t m_draw_data_count;
-        static bool m_draw_data_gpu_synced;
-
-        // bindless
-        static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
-        static std::array<Sb_Light, rhi_max_array_size> m_bindless_lights;
-        static std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
-        static bool m_bindless_samplers_dirty;
-
-        // one-shot and feature-toggle state
-        struct PassState
-        {
-            // one-shot initialization (run once, never again unless reset)
-            bool brdf_lut_produced       = false;
-            uint64_t brdf_lut_shader_hash = 0;
-            bool atmosphere_lut_produced = false;
-            bool cloud_noise_produced    = false;
-
-            // feature-toggle clear flags (set when feature disabled, reset when re-enabled)
-            bool cleared_reflections     = false;
-            bool cleared_rt_reflections  = false;
-            bool cleared_rt_shadows      = false;
-            bool cleared_restir          = false;
-            // false until the one-shot clear runs, keeps the temporal pass off uninitialized reservoirs
-            bool restir_reservoirs_initialized = false;
-
-            // skysphere convergence, warmup does full bakes blended as a progressive average, then partial dispatches
-            bool     sky_first_frame           = true;
-            bool     sky_had_directional_light = false;
-            uint32_t sky_frames_remaining      = 0;
-            bool     sky_warmup_this_frame     = false; // captured before sky_frames_remaining decrements
-            bool     sky_state_changed_this_frame = true;
-            float    sky_warmup_blend          = 1.0f;
-
-            TemporalPingPong cloud_history;
-            TemporalPingPong ssao_history;
-            bool     cloud_environment_dirty   = true;
-            uint32_t cloud_environment_strip   = 0; // 0..3 progressive bake strips
-            bool     cloud_environment_baking  = false;
-            Light*   cloud_light               = nullptr;
-            math::Quaternion cloud_light_rotation = math::Quaternion::Identity;
-            math::Vector3 cloud_wind            = math::Vector3::Zero;
-            float    cloud_light_intensity      = -1.0f;
-            float    cloud_coverage             = -1.0f;
-            double   cloud_time                 = 0.0;
-
-            // exposure history
-            Camera*      exposure_camera          = nullptr;
-            RHI_Texture* exposure_history_texture = nullptr;
-            bool         exposure_history_reset   = false;
-            bool         exposure_was_automatic   = false;
-
-            // vrs
-            RHI_Texture* vrs_last_cleared_texture = nullptr;
-
-            // terrain rules and the procedural grass material both ride in the bindless material buffer
-            // without belonging to any Material or entity, so editing them does not move the material
-            // revision the upload guard watches, this flag is how they ask for a re-pack
-            //
-            // for grass it decides whether the draw reads the right slot at all, a stale index lands on
-            // a material with no grass blade bit, which shows up as grey blades with flat normals
-            bool                  bindless_materials_dirty = true;
-
-            // gpu procedural grass, captured on enable, the per-frame passes early out when disabled
-            bool                  grass_enabled    = false;
-            Mesh*                 grass_mesh       = nullptr;
-            Material*             grass_material   = nullptr;
-            RHI_Texture*          grass_heightmap  = nullptr;
-            RHI_Texture*          grass_prop_mask  = nullptr;
-            ProceduralGrassParams grass_params;
-            // one entry per lod, the args build shader adds the dynamic instance_count from grass_count
-            std::array<Sb_IndirectDrawArgs, renderer_max_grass_lod_count> grass_indirect_args_static{};
-            bool                  grass_args_baked = false;
-
-            // terrain surface, captured on SetTerrain, the material update pass registers the layer
-            // block first so the layer indices are contiguous and known before anything else lands
-            bool          terrain_enabled = false;
-            TerrainParams terrain;
-
-            // fft ocean, the registered water component owns the parameters, null means disabled
-            Water*        ocean                              = nullptr;
-            bool          ocean_spectrum_dirty               = true;
-            bool          ocean_displacement_produced        = false;
-            TemporalPingPong ocean_history;
-            math::Vector3 ocean_wind                         = math::Vector3::Zero; // last world wind used, re-seeds the spectrum on change
-
-            void Reset()
-            {
-                *this = PassState();
-            }
-        };
-        static PassState m_pass_state;
-
-        // misc
-        static Cb_Frame m_cb_frame_cpu;
-        static Pcb_Pass m_pcb_pass_cpu;
-        static math::Matrix m_view_projection_previous_right;
-        static math::Matrix m_view_projection_previous_unjittered_left;
-        static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;
-        static std::vector<RHI_Vertex_PosCol> m_lines_vertices;
-        static std::vector<PersistentLine> m_persistent_lines;
-        static std::shared_ptr<RHI_Buffer> m_icons_vertex_buffer;
-        static std::vector<RHI_Vertex_PosTex> m_icons_vertices;
-        static std::vector<std::tuple<RHI_Texture*, math::Vector3>> m_icons;
-        static uint32_t m_frame_cb_ring_slot;
-        static std::atomic<bool> m_initialized_resources;
-        static bool m_transparents_present;
-        static bool m_is_hiz_suppressed;
-        static bool m_taau_reset_history;
-        static RHI_CommandList* m_cmd_list_present;
-        static RHI_CommandList* m_cmd_list_compute;
-        static RHI_CommandList* m_cmd_list_compute_b;
-
-        // cross-queue and cross-frame timeline sync, see CrossQueueSync member fields for the contract
-        struct CrossQueueSync
-        {
-            // phase 3 present submit waits on async compute batch b before recording lighting work
-            RHI_SyncPrimitive* pending_compute_timeline       = nullptr;
-            uint64_t           pending_compute_timeline_value = 0;
-        };
-        static CrossQueueSync m_cross_queue_sync;
-
-        static std::vector<ShadowSlice> m_shadow_slices;
-        static uint32_t m_count_active_lights;
-        static uint32_t m_volumetric_light_count;
-
-        // top-level acceleration structure built once per frame from all bindless mesh instances
-        static std::unique_ptr<RHI_AccelerationStructure> m_tlas;
-
-        // session statics (resolution, viewport, swapchain, frame counter, taa jitter)
-        static math::Vector2                 m_resolution_render;
-        static math::Vector2                 m_resolution_output;
-        static RHI_Viewport                  m_viewport;
-        static std::shared_ptr<RHI_SwapChain> m_swapchain;
-        static bool m_present_in_renderer;
-        static uint64_t                      m_frame_num;
-        static math::Vector2                 m_jitter_offset;
-    };
-
-    template<typename F>
-    void Renderer::Pass_Graphics(
-        RHI_CommandList* cmd_list,
-        const char* name,
-        Renderer_Shader shader_vs_or_mesh,
-        Renderer_Shader shader_pixel,
-        std::initializer_list<RHI_Texture*> color_targets,
-        RHI_Texture* depth,
-        RHI_BlendState* blend,
-        RHI_DepthStencilState* depth_stencil,
-        RHI_RasterizerState* rasterizer,
-        F setup
-    )
-    {
-        cmd_list->BeginTimeblock(name);
-        {
-            RHI_PipelineState pso;
-            pso.name = name;
-            RHI_Shader* shader_a = GetShader(shader_vs_or_mesh);
-            if (shader_a && shader_a->GetShaderStage() == RHI_Shader_Type::MeshShader)
-            {
-                pso.shaders[RHI_Shader_Type::MeshShader] = shader_a;
-            }
-            else
-            {
-                pso.shaders[RHI_Shader_Type::Vertex] = shader_a;
-            }
-            pso.shaders[RHI_Shader_Type::Pixel] = GetShader(shader_pixel);
-            pso.blend_state         = blend;
-            pso.depth_stencil_state = depth_stencil;
-            pso.rasterizer_state    = rasterizer;
-            pso.SetDepthTarget(depth);
-
-            uint32_t color_index = 0;
-            for (RHI_Texture* color : color_targets)
-            {
-                if (color_index >= rhi_max_render_target_count)
-                {
-                    break;
-                }
-                pso.render_target_color_textures[color_index] = color;
-                color_index++;
-            }
-
-            cmd_list->SetPipelineState(pso);
-
-            if constexpr (!std::is_null_pointer_v<F>)
-            {
-                setup();
-            }
-        }
-        cmd_list->EndTimeblock();
+        void BuildEmissiveTriangleNeePool();
+        void RotateFrameBuffers();
     }
 }

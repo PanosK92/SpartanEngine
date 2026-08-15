@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Component.h"
-#include "../../Rendering/Color.h"
-#include "../../Math/Vector3.h"
+#include "../../rendering/Color.h"
+#include "../../math/Vector3.h"
 #include <sol/forward.hpp>
 //===================================
 

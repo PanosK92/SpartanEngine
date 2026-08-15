@@ -163,6 +163,150 @@ float get_ocean_caustic(float2 world_xz, float travel)
     return 1.0f / max(abs(jacobian_x * jacobian_z), 0.1f);
 }
 
+// summed cascade displacement in the undisplaced grid the fft writes into
+float3 get_ocean_displacement(float2 grid_xz)
+{
+    float3 displacement = 0.0f;
+    uint cascades       = buffer_frame.ocean_cascade_count;
+    [loop] for (uint c = 0; c < cascades; ++c)
+    {
+        float2 uv = grid_xz / buffer_frame.ocean_cascade_length[c];
+        displacement += tex_ocean_displacement.SampleLevel(
+            samplers[sampler_bilinear_wrap],
+            float3(uv, (float)c),
+            0.0f
+        ).xyz;
+    }
+    return displacement;
+}
+
+// recover the fft grid xz from a displaced world point, g = p - displacement(g)
+float2 get_ocean_grid_xz(float2 world_xz)
+{
+    float2 grid_xz = world_xz;
+    [unroll] for (uint it = 0; it < 3u; ++it)
+    {
+        grid_xz = world_xz - get_ocean_displacement(grid_xz).xz;
+    }
+    return grid_xz;
+}
+
+float get_ocean_height(float2 world_xz)
+{
+    float2 grid_xz = get_ocean_grid_xz(world_xz);
+    return buffer_frame.ocean_sea_level + get_ocean_displacement(grid_xz).y;
+}
+
+// fast 1d hash
+float hash(float p)
+{
+    // scale input, convert to uint for bit manipulation
+    uint u = asuint(p * 3141592653.0f);
+
+    // mix with multiply and xor, normalize to [0,1)
+    return float(u * u * 3141592653u) / 4294967295.0f;
+}
+
+// fast 2d hash
+float hash(float2 p)
+{
+    // scale each component, convert to uint2
+    uint2 u = asuint(p * float2(141421356.0f, 2718281828.0f));
+
+    // combine with xor, mix, normalize to [0,1)
+    return float((u.x ^ u.y) * 3141592653u) / 4294967295.0f;
+}
+
+float ocean_foam_noise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    f        = f * f * (3.0f - 2.0f * f);
+    float a  = hash(i);
+    float b  = hash(i + float2(1.0f, 0.0f));
+    float c  = hash(i + float2(0.0f, 1.0f));
+    float d  = hash(i + float2(1.0f, 1.0f));
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+}
+
+// carve the crest mask into lacy whitewater, holes and a denser core
+float shape_ocean_foam(float coverage, float2 grid_xz)
+{
+    coverage = saturate(coverage);
+    if (coverage <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float n =
+        ocean_foam_noise(grid_xz * 3.5f) * 0.45f +
+        ocean_foam_noise(grid_xz * 11.0f) * 0.35f +
+        ocean_foam_noise(grid_xz * 29.0f) * 0.20f;
+    float body  = smoothstep(0.06f, 0.38f, coverage);
+    float lace  = saturate((n - 0.28f) / 0.5f);
+    float dense = smoothstep(0.4f, 0.75f, coverage) * saturate(n + 0.2f);
+    return saturate(max(body * lace, dense));
+}
+
+// compression from the swell cascades, gated by the summed crest so foam sits on the peak
+float get_ocean_foam(float2 grid_xz)
+{
+    float foam   = 0.0f;
+    float height = 0.0f;
+    uint cascades = buffer_frame.ocean_cascade_count;
+    [loop] for (uint c = 0; c < cascades; ++c)
+    {
+        float2 uv = grid_xz / buffer_frame.ocean_cascade_length[c];
+        foam = max(
+            foam,
+            tex_ocean_normal.SampleLevel(
+                samplers[sampler_bilinear_wrap],
+                float3(uv, (float)c),
+                0.0f
+            ).z
+        );
+        height += tex_ocean_displacement.SampleLevel(
+            samplers[sampler_bilinear_wrap],
+            float3(uv, (float)c),
+            0.0f
+        ).y;
+    }
+    return shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
+}
+
+// analytic fft slopes with distance fade, all cascades keep their ripple
+void sample_ocean_surface(float2 grid_xz, float view_distance, out float3 normal, out float foam)
+{
+    uint cascades = buffer_frame.ocean_cascade_count;
+    float2 slope  = 0.0f;
+    float height  = 0.0f;
+    foam          = 0.0f;
+
+    [loop] for (uint c = 0; c < cascades; ++c)
+    {
+        float L    = buffer_frame.ocean_cascade_length[c];
+        float2 uv  = grid_xz / L;
+        float fade = 1.0f - smoothstep(L * 2.0f, L * 8.0f, view_distance);
+
+        float4 slope_foam = tex_ocean_normal.SampleLevel(
+            samplers[sampler_bilinear_wrap],
+            float3(uv, (float)c),
+            0.0f
+        );
+        slope  += slope_foam.xy * fade;
+        foam    = max(foam, slope_foam.z);
+        height += tex_ocean_displacement.SampleLevel(
+            samplers[sampler_bilinear_wrap],
+            float3(uv, (float)c),
+            0.0f
+        ).y;
+    }
+
+    float str = buffer_frame.ocean_normal_strength;
+    normal    = normalize(float3(-slope.x * str, 1.0f, -slope.y * str));
+    foam      = shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
+}
+
 // chromaticity preserving hdr clamp, the engine sky panorama is clamped to keep huge sun
 // radiance values inside the 16 bit storage range, a channel wise min(color, cap) would
 // saturate every channel to the cap whenever any single channel exceeded it which is the
@@ -582,26 +726,6 @@ float luminance(float4 color)
 /*------------------------------------------------------------------------------
     HASHES & NOISE
 ------------------------------------------------------------------------------*/
-// fast 1d hash
-float hash(float p)
-{
-    // scale input, convert to uint for bit manipulation
-    uint u = asuint(p * 3141592653.0f);
-    
-    // mix with multiply and xor, normalize to [0,1)
-    return float(u * u * 3141592653u) / 4294967295.0f;
-}
-
-// fast 2d hash
-float hash(float2 p)
-{
-    // scale each component, convert to uint2
-    uint2 u = asuint(p * float2(141421356.0f, 2718281828.0f));
-    
-    // combine with xor, mix, normalize to [0,1)
-    return float((u.x ^ u.y) * 3141592653u) / 4294967295.0f;
-}
-
 float noise_perlin(float x)
 {
     float scale = 0.1f;

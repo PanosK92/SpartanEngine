@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AnimationClip.h"
 #include "Skeleton.h"
 #include "SkeletalMeshBinding.h"
-#include "../Core/ThreadPool.h"
+#include "../core/ThreadPool.h"
 #include <cmath>
 //================================
 

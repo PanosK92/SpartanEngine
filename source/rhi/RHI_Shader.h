@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../Core/SpartanObject.h"
+#include "../core/SpartanObject.h"
 #include "RHI_Vertex.h"
 #include "RHI_Descriptor.h"
 #include <set>

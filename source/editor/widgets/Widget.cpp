@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "pch.h"
 #include "Widget.h"
-#include "../Editor.h"
-#include "../ImGui/Source/imgui_internal.h"
-#include "Profiling/Profiler.h"
 #include "Viewport.h"
-#include "Display/Display.h"
+#include "../Editor.h"
+#include "../imgui/source/imgui_internal.h"
+#include "profiling/Profiler.h"
+#include "display/Display.h"
 //=========================================
 
 //= NAMESPACES =========
@@ -53,60 +53,52 @@ void Widget::Tick()
     bool draw_contents = false;
     bool window_appearing = false;
 
-    // Begin
+    SP_PROFILE_CPU_START(m_title);
+
+    m_size_initial = m_size_initial == k_widget_default_property
+        ? Vector2(Display::GetWidth() * 0.5f, Display::GetHeight() * 0.5f)
+        : m_size_initial;
+    ImGui::SetNextWindowSize(m_size_initial, ImGuiCond_FirstUseEver);
+
+    if (m_size_min != k_widget_default_property || m_size_max != FLT_MAX)
     {
-        SP_PROFILE_CPU_START(m_title);
+        ImGui::SetNextWindowSizeConstraints(m_size_min, m_size_max);
+    }
 
-        // Size initial
-        m_size_initial = m_size_initial == k_widget_default_property ? Vector2(Display::GetWidth() * 0.5f, Display::GetHeight() * 0.5f) : m_size_initial;
-        ImGui::SetNextWindowSize(m_size_initial, ImGuiCond_FirstUseEver);
+    if (m_padding != k_widget_default_property)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
+        m_var_push_count++;
+    }
 
-        // Size min max
-        if (m_size_min != k_widget_default_property || m_size_max != FLT_MAX)
-        {
-            ImGui::SetNextWindowSizeConstraints(m_size_min, m_size_max);
-        }
+    if (m_alpha != k_widget_default_property)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_alpha);
+        m_var_push_count++;
+    }
 
-        // Padding
-        if (m_padding != k_widget_default_property)
-        {
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
-            m_var_push_count++;
-        }
+    OnPreBegin();
 
-        // Alpha
-        if (m_alpha != k_widget_default_property)
-        {
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_alpha);
-            m_var_push_count++;
-        }
+    draw_contents = ImGui::Begin(m_title, &m_visible, m_flags);
+    ImGuiWindow* current_window = ImGui::GetCurrentWindow();
+    window_appearing = current_window && current_window->Appearing;
+    if (draw_contents)
+    {
+        m_window = current_window;
+        m_height = ImGui::GetWindowHeight();
+    }
+    else
+    {
+        m_window = nullptr;
+    }
 
-        // Callback
-        OnPreBegin();
-
-        // Begin
-        draw_contents = ImGui::Begin(m_title, &m_visible, m_flags);
-        ImGuiWindow* current_window = ImGui::GetCurrentWindow();
-        window_appearing = current_window && current_window->Appearing;
-        if (draw_contents)
-        {
-            m_window = current_window;
-            m_height = ImGui::GetWindowHeight();
-        }
-        else
-        {
-            m_window = nullptr;
-        }
-
-        // Callbacks
-        if (!m_visible)
-        {
-            OnInvisible();
-        }
-        else if (window_appearing)
-        {
-            OnVisible();
-        }
+    if (!m_visible)
+    {
+        OnInvisible();
+    }
+    else if (window_appearing)
+    {
+        OnVisible();
     }
 
     if (draw_contents)
@@ -114,23 +106,14 @@ void Widget::Tick()
         OnTickVisible();
     }
 
-    // End
-    {
-        // End
-        ImGui::End();
-
-        // Pop style variables
-        ImGui::PopStyleVar(m_var_push_count);
-        m_var_push_count = 0;
-
-        // End profiling
-        SP_PROFILE_CPU_END();
-    }
+    ImGui::End();
+    ImGui::PopStyleVar(m_var_push_count);
+    m_var_push_count = 0;
+    SP_PROFILE_CPU_END();
 }
 
 void Widget::OnPreBegin()
 {
-    // Set the position to the viewport's center
     if (Viewport* viewport = m_editor->GetWidget<Viewport>())
     {
         if (ImGuiWindow* window = viewport->GetWindow())

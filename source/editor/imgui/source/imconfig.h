@@ -103,8 +103,8 @@
 
 //---- Define constructor and implicit cast operators to convert back<>forth between your math types and ImVec2/ImVec4.
 // This will be inlined as part of ImVec2 and ImVec4 class declarations.
-#include "Math/Vector2.h"
-#include "Math/Vector4.h"
+#include "math/Vector2.h"
+#include "math/Vector4.h"
 
 #define IM_VEC2_CLASS_EXTRA                                           \
         ImVec2(const spartan::math::Vector2& f) { x = f.x; y = f.y; } \

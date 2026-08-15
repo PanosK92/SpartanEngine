@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <unordered_map>
 #include "World.h"
-#include "Components/Component.h"
-#include "../Math/Quaternion.h"
-#include "../Math/Matrix.h"
+#include "components/Component.h"
+#include "../math/Quaternion.h"
+#include "../math/Matrix.h"
 //===============================
 
 namespace pugi

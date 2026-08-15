@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Render.h"
 #include "Terrain.h"
 #include "../Entity.h"
-#include "../../Rendering/Renderer.h"
-#include "../../Resource/ResourceCache.h"
-#include "../../Physics/PhysicsWorld.h"
-#include "../../Core/ProgressTracker.h"
+#include "../../rendering/Renderer.h"
+#include "../../resource/ResourceCache.h"
+#include "../../physics/PhysicsWorld.h"
+#include "../../core/ProgressTracker.h"
 SP_WARNINGS_OFF
-#include "../../IO/pugixml.hpp"
+#include "../../io/pugixml.hpp"
 #include <sol/sol.hpp>
 SP_WARNINGS_ON
 //=======================================

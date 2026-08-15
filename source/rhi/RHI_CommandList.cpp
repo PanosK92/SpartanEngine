@@ -39,6 +39,12 @@ using namespace std;
 
 namespace spartan
 {
+    namespace
+    {
+        // pair begin and end to the same list if bind changes mid block
+        thread_local stack<RHI_CommandList*> timeblock_cmd_lists;
+    }
+
     namespace resource_tracker
     {
         mutex global_mutex;
@@ -77,7 +83,7 @@ namespace spartan
         binding.mip_range   = mip_index == rhi_all_mips ? texture->GetMipCount() : (mip_range == 0 ? 1 : mip_range);
         binding.array_layer = array_layer;
         binding.access      = uav ? RHI_Resource_Access::ReadWrite : RHI_Resource_Access::Read;
-        binding.layout      = uav ? RHI_Image_Layout::General : RHI_Image_Layout::Shader_Read;
+        binding.layout      = RHI_Image_Layout::General;
 
         auto& opposite_bindings = uav ? m_tracked_textures_srv : m_tracked_textures_uav;
         for (RHI_Tracked_Texture_Binding& opposite : opposite_bindings)
@@ -197,14 +203,16 @@ namespace spartan
             const RHI_Tracked_Usage& previous = history_it->second[mip];
             const RHI_Queue_Type current_queue = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
             const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current_queue != RHI_Queue_Type::Max && previous.queue != current_queue;
-            if (GetTrackedTextureLayout(texture, mip) != layout)
+            const RHI_Image_Layout target_layout =
+                rhi_unify_image_layout(layout);
+            if (GetTrackedTextureLayout(texture, mip) != target_layout)
             {
-                RHI_Barrier barrier = RHI_Barrier::image_layout(texture, layout, mip, 1);
+                RHI_Barrier barrier = RHI_Barrier::image_layout(texture, target_layout, mip, 1);
                 barrier.from(cross_queue ? RHI_Barrier_Scope::None : (previous.access == RHI_Resource_Access::None ? RHI_Barrier_Scope::All : previous.scope)).to(scope);
                 barrier.access_src = cross_queue ? RHI_Resource_Access::None : previous.access;
                 barrier.access_dst = RHI_Resource_Access::Write;
                 barrier.usage_src  = cross_queue ? RHI_Resource_Usage::None : previous.usage;
-                barrier.usage_dst  = layout == RHI_Image_Layout::Attachment ? RHI_Resource_Usage::Attachment : (layout == RHI_Image_Layout::Transfer_Destination ? RHI_Resource_Usage::Transfer : RHI_Resource_Usage::Shader);
+                barrier.usage_dst  = scope == RHI_Barrier_Scope::Transfer ? RHI_Resource_Usage::Transfer : (scope == RHI_Barrier_Scope::Graphics ? RHI_Resource_Usage::Attachment : RHI_Resource_Usage::Shader);
                 InsertBarrier(barrier);
             }
             else if (previous.access != RHI_Resource_Access::None)
@@ -213,7 +221,7 @@ namespace spartan
                 barrier.from(cross_queue ? RHI_Barrier_Scope::None : previous.scope).to(scope);
                 barrier.access_src = cross_queue ? RHI_Resource_Access::None : previous.access;
                 barrier.usage_src = cross_queue ? RHI_Resource_Usage::None : previous.usage;
-                barrier.usage_dst = layout == RHI_Image_Layout::Attachment ? RHI_Resource_Usage::Attachment : (layout == RHI_Image_Layout::Transfer_Destination ? RHI_Resource_Usage::Transfer : RHI_Resource_Usage::Shader);
+                barrier.usage_dst = scope == RHI_Barrier_Scope::Transfer ? RHI_Resource_Usage::Transfer : (scope == RHI_Barrier_Scope::Graphics ? RHI_Resource_Usage::Attachment : RHI_Resource_Usage::Shader);
                 InsertBarrier(barrier);
             }
         }
@@ -475,7 +483,23 @@ namespace spartan
             }
             if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
-                return m_pso.use_standard_resources;
+                if (m_pso.use_standard_resources)
+                {
+                    return true;
+                }
+                if (m_descriptor_layout_current)
+                {
+                    const vector<RHI_Descriptor>& descriptors = m_descriptor_layout_current->GetDescriptors();
+                    const vector<RHI_DescriptorBinding>& bindings = m_descriptor_layout_current->GetBindings();
+                    for (size_t i = 0; i < descriptors.size() && i < bindings.size(); i++)
+                    {
+                        if (descriptors[i].slot == descriptor.slot && bindings[i].resource != nullptr)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
             if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure && m_descriptor_layout_current)
             {
@@ -604,7 +628,7 @@ namespace spartan
                 binding.mip_range = 1;
                 binding.access    = RHI_Resource_Access::ReadWrite;
                 binding.usage     = RHI_Resource_Usage::Attachment;
-                binding.layout    = RHI_Image_Layout::Attachment;
+                binding.layout    = RHI_Image_Layout::General;
             }
         }
 
@@ -616,7 +640,7 @@ namespace spartan
             const bool depth_write = m_pso.depth_stencil_state && (m_pso.depth_stencil_state->GetDepthWriteEnabled() || m_pso.depth_stencil_state->GetStencilWriteEnabled());
             binding.access    = depth_write ? RHI_Resource_Access::ReadWrite : RHI_Resource_Access::Read;
             binding.usage     = RHI_Resource_Usage::Attachment;
-            binding.layout    = RHI_Image_Layout::Attachment;
+            binding.layout    = RHI_Image_Layout::General;
         }
 
         if (m_pso.vrs_input_texture)
@@ -727,11 +751,12 @@ namespace spartan
             {
                 RHI_Tracked_Usage& previous = previous_usages[mip];
                 RHI_Tracked_Usage& current  = current_usages[mip];
-                const bool layout_transition = current.access != RHI_Resource_Access::None && GetTrackedTextureLayout(texture, mip) != current.layout;
+                const RHI_Image_Layout desired_layout = rhi_unify_image_layout(current.layout);
+                const bool layout_transition = current.access != RHI_Resource_Access::None && GetTrackedTextureLayout(texture, mip) != desired_layout;
                 if (layout_transition)
                 {
                     const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current.queue != RHI_Queue_Type::Max && previous.queue != current.queue;
-                    RHI_Barrier barrier = RHI_Barrier::image_layout(texture, current.layout, mip, 1);
+                    RHI_Barrier barrier = RHI_Barrier::image_layout(texture, desired_layout, mip, 1);
                     barrier.from(cross_queue ? RHI_Barrier_Scope::None : (previous.access == RHI_Resource_Access::None ? RHI_Barrier_Scope::All : previous.scope)).to(current.scope);
                     barrier.access_src = cross_queue ? RHI_Resource_Access::None : previous.access;
                     barrier.access_dst = current.access;
@@ -862,7 +887,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::PrepareForPresent(RHI_SwapChain* swapchain)
+    void RHI_CommandList::prepare_for_present(RHI_SwapChain* swapchain)
     {
         if (swapchain)
         {
@@ -870,11 +895,11 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::PrepareTextureForUpload(RHI_Texture* texture)
+    void RHI_CommandList::prepare_texture_for_upload(RHI_Texture* texture)
     {
         if (texture)
         {
-            InsertBarrier(texture, RHI_Image_Layout::Transfer_Destination, 0, texture->GetMipCount());
+            InsertBarrier(texture, RHI_Image_Layout::General, 0, texture->GetMipCount());
             FlushBarriers();
         }
     }
@@ -883,12 +908,13 @@ namespace spartan
     {
         if (texture && texture->GetRhiResource() && texture->GetResourceState() == ResourceState::PreparedForGpu)
         {
-            InsertBarrier(texture, RHI_Image_Layout::Shader_Read, 0, texture->GetMipCount());
-            TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, RHI_Image_Layout::Shader_Read, RHI_Barrier_Scope::All);
+            const RHI_Image_Layout layout = RHI_Image_Layout::General;
+            InsertBarrier(texture, layout, 0, texture->GetMipCount());
+            TrackExternalTextureUsage(texture, RHI_Resource_Access::Read, layout, RHI_Barrier_Scope::All);
         }
     }
 
-    void RHI_CommandList::PrepareTexturesForSampling(const array<RHI_Texture*, rhi_max_array_size>* textures)
+    void RHI_CommandList::prepare_textures_for_sampling(const array<RHI_Texture*, rhi_max_array_size>* textures)
     {
         if (textures)
         {
@@ -899,7 +925,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::PrepareBufferForCompute(RHI_Buffer* buffer)
+    void RHI_CommandList::prepare_buffer_for_compute(RHI_Buffer* buffer)
     {
         if (buffer)
         {
@@ -908,7 +934,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::PrepareBufferForReadback(RHI_Buffer* buffer)
+    void RHI_CommandList::prepare_buffer_for_readback(RHI_Buffer* buffer)
     {
         if (buffer)
         {
@@ -917,7 +943,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::PrepareBufferForGraphics(RHI_Buffer* buffer)
+    void RHI_CommandList::prepare_buffer_for_graphics(RHI_Buffer* buffer)
     {
         if (buffer)
         {
@@ -926,7 +952,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::Dispatch(RHI_Texture* texture, float resolution_scale /*= 1.0f*/)
+    void RHI_CommandList::dispatch(RHI_Texture* texture, float resolution_scale /*= 1.0f*/)
     {
         const uint32_t thread_group_size = 8;
 
@@ -940,7 +966,7 @@ namespace spartan
         const uint32_t dispatch_y = (scaled_height + thread_group_size - 1) / thread_group_size;
         const uint32_t dispatch_z = (scaled_depth + thread_group_size - 1) / thread_group_size;
 
-        Dispatch(dispatch_x, dispatch_y, dispatch_z);
+        dispatch(dispatch_x, dispatch_y, dispatch_z);
     }
 
     namespace
@@ -1003,7 +1029,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const uint32_t array_layer)
+    void RHI_CommandList::set_texture(const char* name, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const uint32_t array_layer)
     {
         uint32_t slot = 0;
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
@@ -1018,10 +1044,10 @@ namespace spartan
         }
 
         const bool uav = type == RHI_Descriptor_Type::TextureStorage;
-        SetTexture(slot, texture, mip_index, mip_range, uav, array_layer);
+        set_texture(slot, texture, mip_index, mip_range, uav, array_layer);
     }
 
-    void RHI_CommandList::SetBuffer(const char* name, RHI_Buffer* buffer)
+    void RHI_CommandList::set_buffer(const char* name, RHI_Buffer* buffer)
     {
         uint32_t slot = 0;
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
@@ -1030,10 +1056,22 @@ namespace spartan
             return;
         }
 
-        SetBuffer(slot, buffer);
+        set_buffer(slot, buffer);
     }
 
-    void RHI_CommandList::SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas)
+    void RHI_CommandList::set_constant_buffer(const char* name, RHI_Buffer* constant_buffer)
+    {
+        uint32_t slot = 0;
+        RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
+        if (!find_descriptor(m_pso, name, slot, type) || type != RHI_Descriptor_Type::ConstantBuffer)
+        {
+            return;
+        }
+
+        set_constant_buffer(slot, constant_buffer);
+    }
+
+    void RHI_CommandList::set_acceleration_structure(const char* name, RHI_AccelerationStructure* tlas)
     {
         uint32_t slot = 0;
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
@@ -1042,6 +1080,696 @@ namespace spartan
             return;
         }
 
-        SetAccelerationStructure(slot, tlas);
+        set_acceleration_structure(slot, tlas);
+    }
+
+    void RHI_CommandList::begin_pass(const char* name)
+    {
+        begin_timeblock(name);
+        set_pass(name);
+    }
+
+    void RHI_CommandList::end_pass()
+    {
+        end_timeblock();
+        m_pso_pending = RHI_PipelineState();
+        m_pipeline_state_dirty = false;
+        RHI_Device::InvokePassReset();
+    }
+
+    void RHI_CommandList::set_pass(const char* name)
+    {
+        RHI_Device::InvokePassReset();
+        m_pso_pending = RHI_PipelineState();
+        m_pso_pending.name = name;
+        m_pipeline_state_dirty = true;
+    }
+
+    void RHI_CommandList::set_shader(RHI_Shader* shader, const char* name)
+    {
+        SP_ASSERT(shader != nullptr);
+
+        const RHI_Shader_Type stage = shader->GetShaderStage();
+        if (stage == RHI_Shader_Type::Compute)
+        {
+            const char* keep_name = name ? name : m_pso_pending.name;
+            m_pso_pending = RHI_PipelineState();
+            m_pso_pending.name = keep_name;
+        }
+        else if (name)
+        {
+            m_pso_pending.name = name;
+        }
+
+        m_pso_pending.shaders[static_cast<uint32_t>(stage)] = shader;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_shaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c)
+    {
+        if (shader_a)
+        {
+            set_shader(shader_a);
+        }
+        if (shader_b)
+        {
+            set_shader(shader_b);
+        }
+        if (shader_c)
+        {
+            set_shader(shader_c);
+        }
+    }
+
+    void RHI_CommandList::set_color_target(RHI_Texture* texture)
+    {
+        set_color_targets(texture);
+    }
+
+    void RHI_CommandList::set_color_targets(
+        RHI_Texture* t0,
+        RHI_Texture* t1,
+        RHI_Texture* t2,
+        RHI_Texture* t3,
+        RHI_Texture* t4,
+        RHI_Texture* t5,
+        RHI_Texture* t6,
+        RHI_Texture* t7
+    )
+    {
+        m_pso_pending.SetColorTargets(t0, t1, t2, t3, t4, t5, t6, t7);
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_depth_target(RHI_Texture* texture)
+    {
+        m_pso_pending.SetDepthTarget(texture);
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_swap_chain(RHI_SwapChain* swapchain)
+    {
+        m_pso_pending.render_target_swapchain = swapchain;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_blend_state(RHI_BlendState* state)
+    {
+        m_pso_pending.blend_state = state;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_rasterizer_state(RHI_RasterizerState* state)
+    {
+        m_pso_pending.rasterizer_state = state;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_depth_stencil_state(RHI_DepthStencilState* state)
+    {
+        m_pso_pending.depth_stencil_state = state;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_primitive_topology(RHI_PrimitiveTopology topology)
+    {
+        m_pso_pending.primitive_topology = topology;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_clear_color(uint32_t index, const Color& color)
+    {
+        SP_ASSERT(index < rhi_max_render_target_count);
+        m_pso_pending.clear_color[index] = color;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_clear_depth(float depth)
+    {
+        m_pso_pending.clear_depth = depth;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_vrs_texture(RHI_Texture* texture)
+    {
+        m_pso_pending.vrs_input_texture = texture;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_resolution_scale(bool enabled)
+    {
+        m_pso_pending.resolution_scale = enabled;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_multiview(bool enabled)
+    {
+        m_pso_pending.is_multiview = enabled;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    void RHI_CommandList::set_array_index(uint32_t index)
+    {
+        m_pso_pending.render_target_array_index = index;
+        m_pipeline_state_dirty = true;
+        TryBindPendingPipeline();
+    }
+
+    bool RHI_CommandList::IsPendingPipelineReady() const
+    {
+        if (m_pso_pending.IsCompute())
+        {
+            RHI_Shader* shader = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)];
+            return m_pso_pending.name != nullptr && shader && shader->IsCompiled();
+        }
+
+        if (m_pso_pending.IsRayTracing())
+        {
+            RHI_Shader* raygen = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::RayGeneration)];
+            RHI_Shader* miss = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::RayMiss)];
+            RHI_Shader* hit = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::RayHit)];
+            return m_pso_pending.name != nullptr
+                && raygen && raygen->IsCompiled()
+                && miss && miss->IsCompiled()
+                && hit && hit->IsCompiled();
+        }
+
+        if (m_pso_pending.IsGraphics())
+        {
+            const bool has_target =
+                m_pso_pending.render_target_color_textures[0]
+                || m_pso_pending.render_target_depth_texture
+                || m_pso_pending.render_target_swapchain;
+            RHI_Shader* vs = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::Vertex)];
+            RHI_Shader* ms = m_pso_pending.shaders[static_cast<uint32_t>(RHI_Shader_Type::MeshShader)];
+            const bool has_compiled_shader =
+                (vs && vs->IsCompiled()) || (ms && ms->IsCompiled());
+            return m_pso_pending.name != nullptr && has_target && has_compiled_shader;
+        }
+
+        return false;
+    }
+
+    void RHI_CommandList::TryBindPendingPipeline()
+    {
+        if (!m_pipeline_state_dirty)
+        {
+            return;
+        }
+
+        if (!IsPendingPipelineReady())
+        {
+            return;
+        }
+
+        set_pipeline_state(m_pso_pending);
+    }
+
+    void RHI_CommandList::PrepareDispatch()
+    {
+        TryBindPendingPipeline();
+        if (!m_pipeline)
+        {
+            return;
+        }
+        if (m_pso.use_standard_resources && m_push_constant_size == 0)
+        {
+            RHI_Device::InvokeDefaultPushConstants(this);
+        }
+    }
+
+    const RHI_PipelineState& RHI_CommandList::GetPipelineState()
+    {
+        return RHI_Device::Cmd()->get_pipeline_state();
+    }
+
+    void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
+    {
+        RHI_Device::Cmd()->set_pipeline_state(pso);
+    }
+
+    void RHI_CommandList::SetPipelineState(RHI_CommandList* cmd_list, RHI_PipelineState& pso)
+    {
+        if (!cmd_list)
+        {
+            return;
+        }
+        cmd_list->set_pipeline_state(pso);
+    }
+
+    void RHI_CommandList::BeginPass(const char* name)
+    {
+        RHI_Device::Cmd()->begin_pass(name);
+    }
+
+    void RHI_CommandList::EndPass()
+    {
+        RHI_Device::Cmd()->end_pass();
+    }
+
+    void RHI_CommandList::SetPass(const char* name)
+    {
+        RHI_Device::Cmd()->set_pass(name);
+    }
+
+    void RHI_CommandList::SetShader(RHI_Shader* shader, const char* name)
+    {
+        RHI_Device::Cmd()->set_shader(shader, name);
+    }
+
+    void RHI_CommandList::SetShaders(RHI_Shader* shader_a, RHI_Shader* shader_b, RHI_Shader* shader_c)
+    {
+        RHI_Device::Cmd()->set_shaders(shader_a, shader_b, shader_c);
+    }
+
+    void RHI_CommandList::SetColorTarget(RHI_Texture* texture)
+    {
+        RHI_Device::Cmd()->set_color_target(texture);
+    }
+
+    void RHI_CommandList::SetColorTargets(
+        RHI_Texture* t0,
+        RHI_Texture* t1,
+        RHI_Texture* t2,
+        RHI_Texture* t3,
+        RHI_Texture* t4,
+        RHI_Texture* t5,
+        RHI_Texture* t6,
+        RHI_Texture* t7
+    )
+    {
+        RHI_Device::Cmd()->set_color_targets(t0, t1, t2, t3, t4, t5, t6, t7);
+    }
+
+    void RHI_CommandList::SetDepthTarget(RHI_Texture* texture)
+    {
+        RHI_Device::Cmd()->set_depth_target(texture);
+    }
+
+    void RHI_CommandList::SetSwapChain(RHI_SwapChain* swapchain)
+    {
+        RHI_Device::Cmd()->set_swap_chain(swapchain);
+    }
+
+    void RHI_CommandList::SetBlendState(RHI_BlendState* state)
+    {
+        RHI_Device::Cmd()->set_blend_state(state);
+    }
+
+    void RHI_CommandList::SetRasterizerState(RHI_RasterizerState* state)
+    {
+        RHI_Device::Cmd()->set_rasterizer_state(state);
+    }
+
+    void RHI_CommandList::SetDepthStencilState(RHI_DepthStencilState* state)
+    {
+        RHI_Device::Cmd()->set_depth_stencil_state(state);
+    }
+
+    void RHI_CommandList::SetPrimitiveTopology(RHI_PrimitiveTopology topology)
+    {
+        RHI_Device::Cmd()->set_primitive_topology(topology);
+    }
+
+    void RHI_CommandList::SetClearColor(uint32_t index, const Color& color)
+    {
+        RHI_Device::Cmd()->set_clear_color(index, color);
+    }
+
+    void RHI_CommandList::SetClearDepth(float depth)
+    {
+        RHI_Device::Cmd()->set_clear_depth(depth);
+    }
+
+    void RHI_CommandList::SetVrsTexture(RHI_Texture* texture)
+    {
+        RHI_Device::Cmd()->set_vrs_texture(texture);
+    }
+
+    void RHI_CommandList::SetResolutionScale(bool enabled)
+    {
+        RHI_Device::Cmd()->set_resolution_scale(enabled);
+    }
+
+    void RHI_CommandList::SetMultiview(bool enabled)
+    {
+        RHI_Device::Cmd()->set_multiview(enabled);
+    }
+
+    void RHI_CommandList::SetArrayIndex(uint32_t index)
+    {
+        RHI_Device::Cmd()->set_array_index(index);
+    }
+
+    void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
+    {
+        RHI_Device::Cmd()->clear_pipeline_state_render_targets(pipeline_state);
+    }
+
+    void RHI_CommandList::ClearTexture(RHI_Texture* texture, const Color& clear_color, const float clear_depth, const uint32_t clear_stencil)
+    {
+        RHI_Device::Cmd()->clear_texture(texture, clear_color, clear_depth, clear_stencil);
+    }
+
+    void RHI_CommandList::Draw(const uint32_t vertex_count, const uint32_t vertex_start_index)
+    {
+        RHI_Device::Cmd()->draw(vertex_count, vertex_start_index);
+    }
+
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_index, const uint32_t instance_count)
+    {
+        RHI_Device::Cmd()->draw_indexed(index_count, index_offset, vertex_offset, instance_index, instance_count);
+    }
+
+    void RHI_CommandList::DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset, const uint32_t draw_count)
+    {
+        RHI_Device::Cmd()->draw_indexed_indirect(args_buffer, args_offset, draw_count);
+    }
+
+    void RHI_CommandList::DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
+    {
+        RHI_Device::Cmd()->draw_indexed_indirect_count(args_buffer, args_offset, count_buffer, count_offset, max_draw_count);
+    }
+
+    void RHI_CommandList::DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    {
+        RHI_Device::Cmd()->draw_indirect(args_buffer, args_offset);
+    }
+
+    void RHI_CommandList::DrawMeshTasksIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    {
+        RHI_Device::Cmd()->draw_mesh_tasks_indirect(args_buffer, args_offset);
+    }
+
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
+    {
+        RHI_Device::Cmd()->dispatch(x, y, z);
+    }
+
+    void RHI_CommandList::Dispatch(RHI_CommandList* cmd_list, uint32_t x, uint32_t y, uint32_t z)
+    {
+        if (!cmd_list)
+        {
+            return;
+        }
+        cmd_list->dispatch(x, y, z);
+    }
+
+    void RHI_CommandList::Dispatch(RHI_Texture* texture, float resolution_scale)
+    {
+        RHI_Device::Cmd()->dispatch(texture, resolution_scale);
+    }
+
+    void RHI_CommandList::DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    {
+        RHI_Device::Cmd()->dispatch_indirect(args_buffer, args_offset);
+    }
+
+    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)
+    {
+        RHI_Device::Cmd()->trace_rays(width, height);
+    }
+
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling)
+    {
+        RHI_Device::Cmd()->blit(source, destination, blit_mips, source_scaling);
+    }
+
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
+    {
+        RHI_Device::Cmd()->blit(source, destination);
+    }
+
+    void RHI_CommandList::BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer)
+    {
+        RHI_Device::Cmd()->blit_to_array_layer(source, destination, dst_layer);
+    }
+
+    void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
+    {
+        RHI_Device::Cmd()->blit_to_xr_swapchain(source);
+    }
+
+    void RHI_CommandList::PrepareForPresent(RHI_SwapChain* swapchain)
+    {
+        RHI_Device::Cmd()->prepare_for_present(swapchain);
+    }
+
+    void RHI_CommandList::PrepareTextureForUpload(RHI_Texture* texture)
+    {
+        RHI_Device::Cmd()->prepare_texture_for_upload(texture);
+    }
+
+    void RHI_CommandList::PrepareTextureForUpload(RHI_CommandList* cmd_list, RHI_Texture* texture)
+    {
+        if (!cmd_list)
+        {
+            return;
+        }
+        cmd_list->prepare_texture_for_upload(texture);
+    }
+
+    void RHI_CommandList::PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures)
+    {
+        RHI_Device::Cmd()->prepare_textures_for_sampling(textures);
+    }
+
+    void RHI_CommandList::PrepareBufferForCompute(RHI_Buffer* buffer)
+    {
+        RHI_Device::Cmd()->prepare_buffer_for_compute(buffer);
+    }
+
+    void RHI_CommandList::PrepareBufferForCompute(RHI_CommandList* cmd_list, RHI_Buffer* buffer)
+    {
+        if (!cmd_list)
+        {
+            return;
+        }
+        cmd_list->prepare_buffer_for_compute(buffer);
+    }
+
+    void RHI_CommandList::PrepareBufferForReadback(RHI_Buffer* buffer)
+    {
+        RHI_Device::Cmd()->prepare_buffer_for_readback(buffer);
+    }
+
+    void RHI_CommandList::PrepareBufferForReadback(RHI_CommandList* cmd_list, RHI_Buffer* buffer)
+    {
+        if (!cmd_list)
+        {
+            return;
+        }
+        cmd_list->prepare_buffer_for_readback(buffer);
+    }
+
+    void RHI_CommandList::PrepareBufferForGraphics(RHI_Buffer* buffer)
+    {
+        RHI_Device::Cmd()->prepare_buffer_for_graphics(buffer);
+    }
+
+    void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
+    {
+        RHI_Device::Cmd()->copy(source, destination, blit_mips);
+    }
+
+    void RHI_CommandList::Copy(RHI_Texture* source, RHI_SwapChain* destination)
+    {
+        RHI_Device::Cmd()->copy(source, destination);
+    }
+
+    void RHI_CommandList::SetViewport(const RHI_Viewport& viewport)
+    {
+        RHI_Device::Cmd()->set_viewport(viewport);
+    }
+
+    void RHI_CommandList::SetScissorRectangle(const math::Rectangle& scissor_rectangle)
+    {
+        RHI_Device::Cmd()->set_scissor_rectangle(scissor_rectangle);
+    }
+
+    void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
+    {
+        RHI_Device::Cmd()->set_cull_mode(cull_mode);
+    }
+
+    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance)
+    {
+        RHI_Device::Cmd()->set_buffer_vertex(vertex, instance);
+    }
+
+    void RHI_CommandList::SetBufferIndex(const RHI_Buffer* buffer)
+    {
+        RHI_Device::Cmd()->set_buffer_index(buffer);
+    }
+
+    void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
+    {
+        RHI_Device::Cmd()->set_buffer(slot, buffer);
+    }
+
+    void RHI_CommandList::SetBuffer(RHI_CommandList* cmd_list, const uint32_t slot, RHI_Buffer* buffer)
+    {
+        if (!cmd_list)
+        {
+            return;
+        }
+        cmd_list->set_buffer(slot, buffer);
+    }
+
+    void RHI_CommandList::SetBuffer(const char* name, RHI_Buffer* buffer)
+    {
+        RHI_Device::Cmd()->set_buffer(name, buffer);
+    }
+
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer)
+    {
+        RHI_Device::Cmd()->set_constant_buffer(slot, constant_buffer);
+    }
+
+    void RHI_CommandList::SetConstantBuffer(const char* name, RHI_Buffer* constant_buffer)
+    {
+        RHI_Device::Cmd()->set_constant_buffer(name, constant_buffer);
+    }
+
+    void RHI_CommandList::PushConstants(const uint32_t offset, const uint32_t size, const void* data)
+    {
+        RHI_Device::Cmd()->push_constants(offset, size, data);
+    }
+
+    void RHI_CommandList::PushConstants(RHI_CommandList* cmd_list, const uint32_t offset, const uint32_t size, const void* data)
+    {
+        if (!cmd_list || !cmd_list->m_pipeline)
+        {
+            return;
+        }
+        cmd_list->push_constants(offset, size, data);
+    }
+
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const bool uav, const uint32_t array_layer)
+    {
+        RHI_Device::Cmd()->set_texture(slot, texture, mip_index, mip_range, uav, array_layer);
+    }
+
+    void RHI_CommandList::SetTexture(const char* name, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const uint32_t array_layer)
+    {
+        RHI_Device::Cmd()->set_texture(name, texture, mip_index, mip_range, array_layer);
+    }
+
+    void RHI_CommandList::SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas)
+    {
+        RHI_Device::Cmd()->set_acceleration_structure(slot, tlas);
+    }
+
+    void RHI_CommandList::SetAccelerationStructure(const char* name, RHI_AccelerationStructure* tlas)
+    {
+        RHI_Device::Cmd()->set_acceleration_structure(name, tlas);
+    }
+
+    void RHI_CommandList::BeginMarker(const char* name)
+    {
+        RHI_Device::Cmd()->begin_marker(name);
+    }
+
+    void RHI_CommandList::EndMarker()
+    {
+        RHI_Device::Cmd()->end_marker();
+    }
+
+    void RHI_CommandList::WriteGpuBreadcrumb(RHI_Buffer* buffer, uint32_t slot, uint32_t value)
+    {
+        RHI_Device::Cmd()->write_gpu_breadcrumb(buffer, slot, value);
+    }
+
+    uint32_t RHI_CommandList::BeginTimestamp()
+    {
+        return RHI_Device::Cmd()->begin_timestamp();
+    }
+
+    uint32_t RHI_CommandList::EndTimestamp()
+    {
+        return RHI_Device::Cmd()->end_timestamp();
+    }
+
+    void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
+    {
+        RHI_Device::Cmd()->begin_occlusion_query(entity_id);
+    }
+
+    void RHI_CommandList::EndOcclusionQuery()
+    {
+        RHI_Device::Cmd()->end_occlusion_query();
+    }
+
+    void RHI_CommandList::UpdateOcclusionQueries()
+    {
+        RHI_Device::Cmd()->update_occlusion_queries();
+    }
+
+    void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
+    {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        SP_ASSERT(cmd_list != nullptr);
+        cmd_list->begin_timeblock(name, gpu_marker, gpu_timing);
+        timeblock_cmd_lists.push(cmd_list);
+    }
+
+    void RHI_CommandList::EndTimeblock()
+    {
+        SP_ASSERT(!timeblock_cmd_lists.empty());
+        RHI_CommandList* cmd_list = timeblock_cmd_lists.top();
+        timeblock_cmd_lists.pop();
+        cmd_list->end_timeblock();
+    }
+
+    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool use_mapped_memory)
+    {
+        RHI_Device::Cmd()->update_buffer(buffer, offset, size, data, use_mapped_memory);
+    }
+
+    void RHI_CommandList::RenderPassEnd()
+    {
+        RHI_Device::Cmd()->render_pass_end();
+    }
+
+    void RHI_CommandList::RestoreAfterExternalPass()
+    {
+        RHI_Device::Cmd()->restore_after_external_pass();
+    }
+
+    void RHI_CommandList::CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination)
+    {
+        RHI_Device::Cmd()->copy_texture_to_buffer(source, destination);
+    }
+
+    void RHI_CommandList::CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size)
+    {
+        RHI_Device::Cmd()->copy_buffer_to_buffer(source, destination, size);
+    }
+
+    void RHI_CommandList::CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
+    {
+        RHI_Device::Cmd()->copy_buffer_to_buffer(source, destination, size);
+    }
+
+    void RHI_CommandList::CopyBufferToBuffer(RHI_CommandList* cmd_list, RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
+    {
+        if (!cmd_list)
+        {
+            return;
+        }
+        cmd_list->copy_buffer_to_buffer(source, destination, size);
     }
 }

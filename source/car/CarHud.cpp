@@ -29,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CarPresets.h"
 #include "CarEngineSoundSynthesis.h"
 #include "CarTireSquealSynthesis.h"
-#include "../World/Components/Physics.h"
-#include "../../editor/ImGui/Source/imgui.h"
-#include "../../editor/Widgets/Viewport.h"
+#include "../world/components/Physics.h"
+#include "imgui/source/imgui.h"
+#include "widgets/Viewport.h"
 //==========================================
 
 namespace spartan::car_hud

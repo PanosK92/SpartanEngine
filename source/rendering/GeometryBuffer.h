@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "../RHI/RHI_Vertex.h"
+#include "../rhi/RHI_Vertex.h"
 #include "Renderer_Buffers.h"
 #include "Instance.h"
 //================================

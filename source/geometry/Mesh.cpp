@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <fstream>
 #include "Mesh.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_AccelerationStructure.h"
-#include "../World/Entity.h"
-#include "../Resource/Import/ModelImporter.h"
-#include "../Rendering/GeometryBuffer.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_AccelerationStructure.h"
+#include "../world/Entity.h"
+#include "../resource/import/ModelImporter.h"
+#include "../rendering/GeometryBuffer.h"
 #include "GeometryProcessing.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
@@ -989,7 +989,7 @@ namespace spartan
         return GeometryBuffer::GetIndexBuffer();
     }
 
-    void Mesh::BuildAccelerationStructure(RHI_CommandList* cmd_list, bool allow_update)
+    void Mesh::BuildAccelerationStructure(bool allow_update)
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 
@@ -1066,7 +1066,7 @@ namespace spartan
             // create and build blas for this sub-mesh
             string blas_name = m_object_name + "_blas_" + to_string(i);
             m_blas[i] = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, blas_name.c_str());
-            m_blas[i]->BuildBottomLevel(cmd_list, geometries, primitive_counts, allow_update);
+            m_blas[i]->BuildBottomLevel(geometries, primitive_counts, allow_update);
         }
     }
 
@@ -1108,7 +1108,7 @@ namespace spartan
         }
     }
 
-    void Mesh::RefitBlas(RHI_CommandList* cmd_list, uint32_t sub_mesh_index)
+    void Mesh::RefitBlas(uint32_t sub_mesh_index)
     {
         if (!m_ready_for_blas.load(std::memory_order_acquire))
         {
@@ -1149,7 +1149,7 @@ namespace spartan
         vector<RHI_AccelerationStructureGeometry> geometries = { geo };
         vector<uint32_t> primitive_counts                    = { lod.index_count / 3 };
 
-        m_blas[sub_mesh_index]->RefitBottomLevel(cmd_list, geometries, primitive_counts);
+        m_blas[sub_mesh_index]->RefitBottomLevel(geometries, primitive_counts);
     }
 
     bool Mesh::CanRefitBlas(uint32_t sub_mesh_index) const

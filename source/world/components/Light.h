@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include "Component.h"
 #include "Render.h"
-#include "../../Math/Matrix.h"
-#include "../../Math/Frustum.h"
-#include "../../Math/Rectangle.h"
-#include "../../Rendering/Color.h"
+#include "../../math/Matrix.h"
+#include "../../math/Frustum.h"
+#include "../../math/Rectangle.h"
+#include "../../rendering/Color.h"
 //================================
 
 namespace spartan

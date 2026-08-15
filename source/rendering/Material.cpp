@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <filesystem>
 #include "Material.h"
-#include "../Resource/ResourceCache.h"
-#include "../RHI/RHI_Texture.h"
-#include "../World/World.h"
-#include "../Core/ProgressTracker.h"
+#include "../resource/ResourceCache.h"
+#include "../rhi/RHI_Texture.h"
+#include "../world/World.h"
+#include "../core/ProgressTracker.h"
 SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //====================================
 

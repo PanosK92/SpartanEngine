@@ -144,19 +144,6 @@ float2 compute_refraction_uv(float3 surface_pos_ws, float3 refracted_dir_ws, flo
     return uv;
 }
 
-// smooth value noise, used to carve the coarse jacobian foam into finer whitewater
-float ocean_value_noise(float2 p)
-{
-    float2 i = floor(p);
-    float2 f = frac(p);
-    f       = f * f * (3.0f - 2.0f * f);
-    float a = hash(i + float2(0.0f, 0.0f));
-    float b = hash(i + float2(1.0f, 0.0f));
-    float c = hash(i + float2(0.0f, 1.0f));
-    float d = hash(i + float2(1.0f, 1.0f));
-    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
-}
-
 float shoreline_intersection_mask(
     float2 render_uv,
     float3 water_position,
@@ -300,48 +287,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float foam = 0.0f;
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
-        uint cascades = buffer_frame.ocean_cascade_count;
-
-        // the geometry was shifted horizontally by the choppiness displacement, undo it so foam lands on the waves it formed on
-        // the depth here only gives the displaced position, fixed-point iterate g = p - displacement(g) to recover the undisplaced grid domain the fft indexes
-        float2 world_xz = surface.position.xz;
-        [unroll] for (uint it = 0; it < 3; ++it)
-        {
-            float2 displaced = 0.0f;
-            [loop] for (uint c = 0; c < cascades; ++c)
-            {
-                float2 uv  = world_xz / buffer_frame.ocean_cascade_length[c];
-                displaced += tex_ocean_displacement.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f).xz;
-            }
-            world_xz = surface.position.xz - displaced;
-        }
-
-        [loop] for (uint c = 0; c < cascades; ++c)
-        {
-            float2 uv = world_xz / buffer_frame.ocean_cascade_length[c];
-            foam += tex_ocean_normal.SampleLevel(samplers[sampler_bilinear_wrap], float3(uv, (float)c), 0.0f).z;
-        }
-        // noise shapes foam inside the compression mask
-        float coverage = saturate(foam);
-        float lace =
-            ocean_value_noise(world_xz * 4.0f) * 0.45f +
-            ocean_value_noise(world_xz * 13.0f) * 0.35f +
-            ocean_value_noise(world_xz * 41.0f) * 0.2f;
-        float body     = smoothstep(0.04f, 0.42f, coverage);
-        float detail   = lerp(0.65f, 1.0f, lace);
-        float dense    = smoothstep(0.45f, 0.85f, coverage);
-        float shaped   = lerp(body * detail, 1.0f, dense);
-
-        // the fine octaves go subpixel with distance and would alias, ease back to the plain
-        // coverage mask out there, the cascade resolution is adequate at that magnification anyway
-        foam = lerp(
-            shaped,
-            coverage,
-            saturate(
-                surface.camera_to_pixel_length /
-                100.0f
-            )
-        );
+        // recover the undisplaced fft grid so foam sits on the crest that produced it
+        float2 grid_xz = get_ocean_grid_xz(surface.position.xz);
+        foam           = get_ocean_foam(grid_xz);
 
         // contact foam, the opaque point behind this water pixel must sit right at the surface point in
         // full 3d, a submerged wall seen through the water lies meters along the ray so it stays clean
@@ -370,11 +318,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 surface.position,
                 opaque_pos
             );
-            float contact_foam =
-                contact *
-                shoreline *
-                lerp(0.6f, 1.0f, lace) *
-                0.55f;
+            float contact_foam = contact * shoreline;
             foam = saturate(max(foam, contact_foam));
         }
     }

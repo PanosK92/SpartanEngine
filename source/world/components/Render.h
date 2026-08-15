@@ -25,11 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include <vector>
 #include <limits>
-#include "../../Math/Matrix.h"
-#include "../../Math/BoundingBox.h"
-#include "../Geometry/Mesh.h"
-#include "../Rendering/Renderer_Definitions.h"
-#include "../../Rendering/Instance.h"
+#include "../../math/Matrix.h"
+#include "../../math/BoundingBox.h"
+#include "../geometry/Mesh.h"
+#include "../rendering/Renderer_Definitions.h"
+#include "../../rendering/Instance.h"
 //============================================
 
 namespace spartan
@@ -94,8 +94,8 @@ namespace spartan
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
-        void BuildAccelerationStructure(RHI_CommandList* cmd_list);
-        void RefitAccelerationStructure(RHI_CommandList* cmd_list);
+        void BuildAccelerationStructure();
+        void RefitAccelerationStructure();
         bool HasAccelerationStructure() const;
         void InvalidateAccelerationStructure();
         uint64_t GetAccelerationStructureDeviceAddress() const;
@@ -165,12 +165,11 @@ namespace spartan
         uint64_t GetPreviousLights() const      { return m_previous_lights; }
         void SetPreviousLights(uint64_t lights) { m_previous_lights = lights; }
 
-    private:
-        friend class Renderer;
-
         void UpdateAabb();
         void UpdateFrustumAndDistanceCulling();
         void UpdateLodIndices();
+
+    private:
 
         // geometry/mesh
         Mesh* m_mesh                          = nullptr;

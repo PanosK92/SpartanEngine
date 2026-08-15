@@ -23,24 +23,24 @@ SOFTWARE.
 //======================================
 #include "pch.h"
 #include "AssetViewer.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_Style.h"
-#include "../ImGui/Source/imgui_stdlib.h"
-#include "FileSystem/FileSystem.h"
-#include "Geometry/GeometryProcessing.h"
-#include "Geometry/Mesh.h"
-#include "IO/pugixml.hpp"
-#include "RHI/RHI_Texture.h"
-#include "Rendering/Material.h"
-#include "Rendering/Renderer.h"
-#include "Resource/ResourceCache.h"
-#include "World/Entity.h"
-#include "World/Prefab.h"
-#include "World/World.h"
-#include "World/Components/Camera.h"
-#include "World/Components/Light.h"
-#include "World/Components/Render.h"
-#include "MCP/McpJson.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_Style.h"
+#include "../imgui/source/imgui_stdlib.h"
+#include "file_system/FileSystem.h"
+#include "geometry/GeometryProcessing.h"
+#include "geometry/Mesh.h"
+#include "io/pugixml.hpp"
+#include "rhi/RHI_Texture.h"
+#include "rendering/Material.h"
+#include "rendering/Renderer.h"
+#include "resource/ResourceCache.h"
+#include "world/Entity.h"
+#include "world/Prefab.h"
+#include "world/World.h"
+#include "world/components/Camera.h"
+#include "world/components/Light.h"
+#include "world/components/Render.h"
+#include "mcp/McpJson.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -1113,8 +1113,10 @@ namespace
 
 AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
 {
-    m_title        = "Asset Viewer";
-    m_visible      = false;
+    m_title         = "Asset Viewer";
+    m_visible       = false;
+    m_toolbar_order = 6;
+    m_toolbar_icon  = static_cast<int>(spartan::IconType::Model);
     m_size_initial = math::Vector2(1280.0f, 760.0f);
     m_size_min     = math::Vector2(720.0f, 480.0f);
     m_next_refresh_check = chrono::steady_clock::now();

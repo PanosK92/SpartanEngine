@@ -23,7 +23,7 @@ connection with the software or the use or other dealings in the software.
 
 //= includes ===================================
 #include "Component.h"
-#include "../../Math/BoundingBox.h"
+#include "../../math/BoundingBox.h"
 #include <unordered_map>
 #include <string>
 //==============================================

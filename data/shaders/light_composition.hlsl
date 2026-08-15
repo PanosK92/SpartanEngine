@@ -149,15 +149,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // in, same optics as the refraction composite so object and column agree, fading with depth
         if (pass_is_opaque() && buffer_frame.ocean_enabled > 0.5f)
         {
-            // actual displaced wave height above this point, not the flat sea level plane, so the
-            // waterline on geometry follows the swell, the horizontal choppiness shift is ignored
-            // which is fine for a soft ambient band
-            float water_height = buffer_frame.ocean_sea_level;
-            [loop] for (uint c = 0; c < buffer_frame.ocean_cascade_count; ++c)
-            {
-                float2 cascade_uv = surface.position.xz / buffer_frame.ocean_cascade_length[c];
-                water_height     += tex_ocean_displacement.SampleLevel(samplers[sampler_bilinear_wrap], float3(cascade_uv, (float)c), 0.0f).y;
-            }
+            // actual displaced wave height above this point, not the flat sea level plane
+            float water_height = get_ocean_height(surface.position.xz);
 
             float depth_below = water_height - surface.position.y;
             if (depth_below > 0.0f)

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "pch.h"
 #include "McpTextureKernel.h"
-#include "../Core/ThreadPool.h"
+#include "../core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include <freetype/freetype.h>
 SP_WARNINGS_ON

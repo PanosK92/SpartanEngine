@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "Component.h"
-#include "../../Math/Quaternion.h"
+#include "../../math/Quaternion.h"
 #include <vector>
 //================================
 

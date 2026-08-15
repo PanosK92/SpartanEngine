@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Queue.h"
-#include "../Display/Display.h"
-#include "../Rendering/Renderer.h"
-#include "../../Profiling/Profiler.h"
+#include "../display/Display.h"
+#include "../rendering/Renderer.h"
+#include "../../profiling/Profiler.h"
 #ifdef _WIN32
 #include <tlhelp32.h>
 #endif

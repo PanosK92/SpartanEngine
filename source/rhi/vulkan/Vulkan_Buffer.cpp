@@ -251,6 +251,11 @@ namespace spartan
         }
     }
 
+    void RHI_Buffer::Update(void* data_cpu, const uint32_t size)
+    {
+        Update(RHI_Device::Cmd(), data_cpu, size);
+    }
+
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
         SP_ASSERT(cmd_list);

@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include <array>
 #include "ImageImporter.h"
-#include "../../RHI/RHI_Texture.h"
-#include "../../Core/ThreadPool.h"
+#include "../../rhi/RHI_Texture.h"
+#include "../../core/ThreadPool.h"
 SP_WARNINGS_OFF
 #define FREEIMAGE_LIB
 #include <FreeImage/FreeImage.h>

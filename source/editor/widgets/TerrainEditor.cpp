@@ -23,14 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TerrainEditor.h"
 #include "Viewport.h"
 #include "../Editor.h"
-#include "World/World.h"
-#include "World/Entity.h"
-#include "World/Components/Terrain.h"
-#include "World/Components/Camera.h"
-#include "Input/Input.h"
-#include "Core/Timer.h"
-#include "Math/Helper.h"
-#include "../ImGui/ImGui_Extension.h"
+#include "world/World.h"
+#include "world/Entity.h"
+#include "world/components/Terrain.h"
+#include "world/components/Camera.h"
+#include "input/Input.h"
+#include "core/Timer.h"
+#include "math/Helper.h"
+#include "../imgui/ImGui_Extension.h"
 //=========================================
 
 //= NAMESPACES ===============

@@ -24,23 +24,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldViewer.h"
 #include "Properties.h"
 #include "MenuBar.h"
-#include "World/Entity.h"
-#include "World/World.h"
-#include "World/Prefab.h"
-#include "Core/ProgressTracker.h"
-#include "World/Components/Light.h"
-#include "World/Components/AudioSource.h"
-#include "World/Components/Physics.h"
-#include "World/Components/Terrain.h"
-#include "World/Components/Camera.h"
-#include "World/Components/ParticleSystem.h"
-#include "Commands/CommandStack.h"
-#include "Commands/CommandEntityDelete.h"
-#include "Input/Input.h"
-#include "../ImGui/ImGui_Extension.h"
+#include "world/Entity.h"
+#include "world/World.h"
+#include "world/Prefab.h"
+#include "core/ProgressTracker.h"
+#include "world/components/Light.h"
+#include "world/components/AudioSource.h"
+#include "world/components/Physics.h"
+#include "world/components/Terrain.h"
+#include "world/components/Camera.h"
+#include "world/components/ParticleSystem.h"
+#include "commands/CommandStack.h"
+#include "commands/CommandEntityDelete.h"
+#include "input/Input.h"
+#include "../imgui/ImGui_Extension.h"
 #include <unordered_set>
 SP_WARNINGS_OFF
-#include "../ImGui/Source/imgui_stdlib.h"
+#include "../imgui/source/imgui_stdlib.h"
 SP_WARNINGS_ON
 //=======================================
 
@@ -378,6 +378,7 @@ namespace
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 {
     m_title = "World";
+    m_dock  = WidgetDock::Right;
 }
 
 void WorldViewer::OnTickVisible()
@@ -1220,7 +1221,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Load: Ctrl + L
     if (Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::L))
     {
-        m_editor->GetWidget<MenuBar>()->ShowWorldLoadDialog();
+        MenuBar::ShowWorldLoadDialog();
     }
 
     // Undo and Redo: Ctrl + Z, Ctrl + Shift + Z

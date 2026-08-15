@@ -23,24 +23,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Window.h"
 #include "ThreadPool.h"
-#include "../Input/Input.h"
-#include "../World/World.h"
-#include "../Physics/PhysicsWorld.h"
-#include "../Profiling/Profiler.h"
-#include "../Rendering/Renderer.h"
-#include "../Resource/ResourceCache.h"
-#include "../Resource/Import/FontImporter.h"
-#include "../Resource/Import/ModelImporter.h"
-#include "../Resource/Import/ImageImporter.h"
-#include "../Display/Display.h"
-#include "../Memory/Allocator.h"
-#include "../Testing/SmokeTest.h"
-#include "../RHI/RHI_Device.h"
-#include "../XR/Xr.h"
-#include "../Commands/Console/ConsoleCommands.h"
-#include "../MCP/McpServer.h"
-#include "../Steam/Steam.h"
-#include "../Resource/IconAtlas.h"
+#include "../input/Input.h"
+#include "../world/World.h"
+#include "../physics/PhysicsWorld.h"
+#include "../profiling/Profiler.h"
+#include "../rendering/Renderer.h"
+#include "../resource/ResourceCache.h"
+#include "../resource/import/FontImporter.h"
+#include "../resource/import/ModelImporter.h"
+#include "../resource/import/ImageImporter.h"
+#include "../display/Display.h"
+#include "../memory/Allocator.h"
+#include "../testing/SmokeTest.h"
+#include "../rhi/RHI_Device.h"
+#include "../xr/Xr.h"
+#include "../commands/console/ConsoleCommands.h"
+#include "../mcp/McpServer.h"
+#include "../steam/Steam.h"
+#include "../resource/IconAtlas.h"
 #include "Settings.h"
 #include <future>
 //===========================================
@@ -62,7 +62,7 @@ namespace spartan
     {
         arguments = args;
 
-        SetFlag(EngineMode::EditorVisible, true);
+        SetFlag(EngineMode::EditorVisible, !HasArgument("-game"));
         SetFlag(EngineMode::Playing,       true);
 
         // initialize

@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <vector>
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../RHI/RHI_Vertex.h"
+#include "../math/Vector2.h"
+#include "../math/Vector3.h"
+#include "../rhi/RHI_Vertex.h"
 //=============================
 
 namespace spartan::geometry_generation

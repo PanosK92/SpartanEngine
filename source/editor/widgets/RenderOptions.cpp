@@ -22,11 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "RenderOptions.h"
-#include "Core/Timer.h"
-#include "RHI/RHI_Device.h"
-#include "Rendering/Renderer.h"
-#include "World/World.h"
-#include "../ImGui/ImGui_Extension.h"
+#include "core/Timer.h"
+#include "rhi/RHI_Device.h"
+#include "rendering/Renderer.h"
+#include "resource/ResourceCache.h"
+#include "world/World.h"
+#include "../imgui/ImGui_Extension.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -244,8 +245,10 @@ namespace
 
 RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
 {
-    m_title        = "Renderer Options";
-    m_visible      = false;
+    m_title         = "Renderer Options";
+    m_visible       = false;
+    m_toolbar_order = 4;
+    m_toolbar_icon  = static_cast<int>(spartan::IconType::Gear);
     m_alpha        = 1.0f;
     m_size_initial = Vector2(Display::GetWidth() * 0.25f, Display::GetHeight() * 0.5f);
 }

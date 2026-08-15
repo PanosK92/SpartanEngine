@@ -61,38 +61,41 @@ jobs:
         shell: cmd
         working-directory: ${{ github.workspace }}
         run: |
-          if not exist spartan.slnx (
-            echo Error: spartan.slnx not found!
+          if not exist Spartan.slnx (
+            echo Error: Spartan.slnx not found!
             dir *.sln*
             exit /b 1
           )
-          echo Solution file found: spartan.slnx
+          echo Solution file found: Spartan.slnx
           
       - name: Build
         shell: cmd
         working-directory: ${{ github.workspace }}
-        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v143 /m spartan.slnx
+        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v143 /m Spartan.slnx
 
       - name: Create artifacts
-        if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
+        if: github.event_name != 'pull_request'
         shell: cmd
         run: |
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
+          set ZIP=spartan_${{ matrix.api }}_${{ matrix.configuration }}.zip
           IF "${{ matrix.configuration }}" == "release" (
-            echo "Creating binaries-only archive for Release..."
-            tar -a -c -f spartan_vulkan_release.zip binaries\dxcompiler.dll binaries\libxess.dll binaries\data binaries\spartan_${{ matrix.api }}.exe
+            IF "${{ matrix.api }}" == "d3d12" (
+              tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\D3D12Core.dll binaries\d3d12SDKLayers.dll binaries\data binaries\spartan_d3d12.exe
+            ) ELSE (
+              tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\data binaries\spartan_vulkan.exe
+            )
           ) ELSE (
-            echo "Creating binaries-only archive for Debug..."
-            tar -a -c -f spartan_vulkan_debug.zip binaries\libxess.dll binaries\data binaries\spartan_${{ matrix.api }}_debug.exe
+            tar -a -c -f %ZIP% binaries\libxess.dll binaries\data binaries\spartan_${{ matrix.api }}_debug.exe
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
       - name: Upload artifact
-        if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_vulkan_${{ matrix.configuration }}
-          path: spartan_vulkan_${{ matrix.configuration }}.zip
+          name: spartan_${{ matrix.api }}_${{ matrix.configuration }}
+          path: spartan_${{ matrix.api }}_${{ matrix.configuration }}.zip
 
   release:
     if: github.event_name != 'pull_request'
@@ -116,17 +119,21 @@ jobs:
           name: spartan_vulkan_debug
           path: .
 
+      - name: Download d3d12 release build
+        uses: actions/download-artifact@v4
+        with:
+          name: spartan_d3d12_release
+          path: .
+
       - name: Get date and time for versioning
         id: get_datetime
         run: echo "version=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_OUTPUT
 
-      - name: Rename release artifact
+      - name: Rename release artifacts
         run: |
           mv spartan_vulkan_release.zip spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.zip
-
-      - name: Rename debug artifact
-        run: |
           mv spartan_vulkan_debug.zip spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.zip
+          mv spartan_d3d12_release.zip spartan_d3d12_release_${{ steps.get_datetime.outputs.version }}.zip
 
       - name: Generate release notes
         id: generate_release_notes
@@ -209,3 +216,4 @@ jobs:
           files: |
             spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.zip
             spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.zip
+            spartan_d3d12_release_${{ steps.get_datetime.outputs.version }}.zip

@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <unordered_map>
 #include "Glyph.h"
-#include "../Rendering/Color.h"
-#include "../Resource/IResource.h"
-#include "../RHI/RHI_Vertex.h"
+#include "../rendering/Color.h"
+#include "../resource/IResource.h"
+#include "../rhi/RHI_Vertex.h"
 //================================
 
 namespace spartan
@@ -93,7 +93,7 @@ namespace spartan
         void SetAtlasOutline(const std::shared_ptr<RHI_Texture>& atlas) { m_atlas_outline = atlas; }
 
         // misc
-        void UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list);
+        void UpdateVertexAndIndexBuffers();
         uint32_t GetIndexCount();
 
         // properties

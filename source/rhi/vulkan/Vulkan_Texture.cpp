@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
 #include "../RHI_CommandList.h"
-#include "../../Profiling/Breadcrumbs.h"
+#include "../../profiling/Breadcrumbs.h"
 //================================
 
 //= NAMESPACES ===============
@@ -293,9 +293,9 @@ namespace spartan
             Breadcrumbs::BeginMarker("texture_stage_buffer_to_image");
             if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
             {
-                RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
+                RHI_Image_Layout layout = RHI_Image_Layout::General;
         
-                cmd_list->PrepareTextureForUpload(texture);
+                RHI_CommandList::PrepareTextureForUpload(cmd_list, texture);
         
                 vkCmdCopyBufferToImage(
                     static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
@@ -317,26 +317,9 @@ namespace spartan
             Breadcrumbs::EndMarker(); // texture_stage
         }
 
-        RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
+        RHI_Image_Layout GetAppropriateLayout(RHI_Texture*)
         {
-            // priority: uav (requires general) > rt (requires attachment) > srv (shader read)
-            // uav takes highest priority because vulkan mandates general layout for storage images
-            if (texture->IsUav())
-            {
-                return RHI_Image_Layout::General;
-            }
-
-            if (texture->IsRt())
-            {
-                return RHI_Image_Layout::Attachment;
-            }
-
-            if (texture->IsSrv())
-            {
-                return RHI_Image_Layout::Shader_Read;
-            }
-
-            return RHI_Image_Layout::Preinitialized;
+            return RHI_Image_Layout::General;
         }
     }
 
@@ -356,26 +339,18 @@ namespace spartan
             stage(this);
         }
 
-        // transition to target layout
+        // staging already parks the image in general, skip a second submit
         Breadcrumbs::BeginMarker("texture_layout_transition");
-        if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
+        RHI_Image_Layout target_layout = GetAppropriateLayout(this);
+        if (GetLayout(0) != target_layout)
         {
-            uint32_t array_length          = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
-            RHI_Image_Layout target_layout = GetAppropriateLayout(this);
-
-            // general, not shader_read, to avoid the undefined to read-only transition warning, SetTexture fixes it on first use
-            if (!HasData() && target_layout == RHI_Image_Layout::Shader_Read)
+            if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
             {
-                target_layout = RHI_Image_Layout::General;
+                cmd_list->InsertBarrier(this, target_layout, 0, m_mip_count);
+                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }
-
-            cmd_list->InsertBarrier(this, target_layout, 0, m_mip_count);
-        
-            // flush
-            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-
-            SP_ASSERT_MSG(GetLayout(0) != RHI_Image_Layout::Max, "Layout not set after transition");
         }
+        SP_ASSERT_MSG(GetLayout(0) != RHI_Image_Layout::Max, "Layout not set after transition");
         Breadcrumbs::EndMarker(); // layout_transition
 
         // create image views

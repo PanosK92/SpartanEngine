@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Core/Event.h"
+#include "../core/Event.h"
 #include <string>
 #include <vector>
 #include <chrono>

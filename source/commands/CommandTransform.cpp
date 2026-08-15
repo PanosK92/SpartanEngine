@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "pch.h"
 #include "CommandTransform.h"
-#include "../World/World.h"
+#include "../world/World.h"
 //===========================
 
 //= NAMESPACES ===============

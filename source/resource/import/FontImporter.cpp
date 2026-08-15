@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "pch.h"
 #include "FontImporter.h"
-#include "../RHI/RHI_Texture.h"
-#include "../Font/Font.h"
+#include "../rhi/RHI_Texture.h"
+#include "../font/Font.h"
 SP_WARNINGS_OFF
 #include <freetype/ftstroke.h>
 #include <freetype/freetype.h>

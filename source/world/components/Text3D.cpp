@@ -24,16 +24,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Text3D.h"
 #include "Render.h"
 #include "../Entity.h"
-#include "../../Geometry/Mesh.h"
-#include "../../Core/ProgressTracker.h"
-#include "../../Resource/ResourceCache.h"
-#include "../../Rendering/Renderer.h"
+#include "../../geometry/Mesh.h"
+#include "../../core/ProgressTracker.h"
+#include "../../resource/ResourceCache.h"
+#include "../../rendering/Renderer.h"
 #include <cmath>
 SP_WARNINGS_OFF
 #include <freetype/freetype.h>
 #include <freetype/ftoutln.h>
 #include <sol/sol.hpp>
-#include "../../IO/pugixml.hpp"
+#include "../../io/pugixml.hpp"
 SP_WARNINGS_ON
 //=======================================
 

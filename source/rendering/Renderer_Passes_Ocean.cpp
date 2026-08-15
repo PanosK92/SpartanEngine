@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
-#include "Renderer.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_Texture.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../Core/ThreadPool.h"
-#include "../World/World.h"
-#include "../World/Components/Water.h"
+#include "Renderer_Internal.h"
+#include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_Shader.h"
+#include "../rhi/RHI_Texture.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../core/ThreadPool.h"
+#include "../world/World.h"
+#include "../world/components/Water.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -61,7 +61,7 @@ namespace spartan
 
     }
 
-    void Renderer::Pass_Ocean(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Ocean()
     {
         RHI_Texture* tex_displacement_a = GetRenderTarget(
             Renderer_RenderTarget::ocean_displacement
@@ -181,81 +181,53 @@ namespace spartan
             reset_history ? 1.0f : 0.0f
         );
 
-        cmd_list->BeginTimeblock("ocean");
+        RHI_CommandList::BeginTimeblock("ocean");
         {
             // spectrum init, only when the parameters changed
             if (m_pass_state.ocean_spectrum_dirty)
             {
-                RHI_PipelineState pso;
-                pso.name             = "ocean_spectrum_init";
-                pso.shaders[Compute] = shader_init;
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch(n / 8, n / 8, cascades);
+                RHI_CommandList::SetShader(shader_init, "ocean_spectrum_init");
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_spectrum), tex_spectrum, rhi_all_mips, 0, true);
+                RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
 
                 m_pass_state.ocean_spectrum_dirty = false;
             }
 
             // spectrum update, evolves the spectrum to the current time
             {
-                RHI_PipelineState pso;
-                pso.name             = "ocean_spectrum_update";
-                pso.shaders[Compute] = shader_update;
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_spectrum, tex_spectrum);
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch(n / 8, n / 8, cascades);
+                RHI_CommandList::SetShader(shader_update, "ocean_spectrum_update");
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_spectrum), tex_spectrum, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_a), tex_fft_a, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_b), tex_fft_b, rhi_all_mips, 0, true);
+                RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
             }
 
             // inverse fft, one dimension at a time, in place on the working textures
             {
-                RHI_PipelineState pso;
-                pso.name             = "ocean_fft_horizontal";
-                pso.shaders[Compute] = shader_fft_h;
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch(1, n, cascades);
+                RHI_CommandList::SetShader(shader_fft_h, "ocean_fft_horizontal");
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_a), tex_fft_a, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_b), tex_fft_b, rhi_all_mips, 0, true);
+                RHI_CommandList::Dispatch(1, n, cascades);
             }
             {
-                RHI_PipelineState pso;
-                pso.name             = "ocean_fft_vertical";
-                pso.shaders[Compute] = shader_fft_v;
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch(1, n, cascades);
+                RHI_CommandList::SetShader(shader_fft_v, "ocean_fft_vertical");
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_a), tex_fft_a, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_b), tex_fft_b, rhi_all_mips, 0, true);
+                RHI_CommandList::Dispatch(1, n, cascades);
             }
 
             // assemble displacement, surface slope and foam from the spatial-domain fields
             {
-                RHI_PipelineState pso;
-                pso.name             = "ocean_assemble";
-                pso.shaders[Compute] = shader_assemble;
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_a, tex_fft_a);
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_fft_b, tex_fft_b);
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement, tex_displacement);
-                cmd_list->SetTexture(Renderer_BindingsUav::ocean_normal, tex_normal);
-                cmd_list->PrepareBufferForCompute(
+                RHI_CommandList::SetShader(shader_assemble, "ocean_assemble");
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_a), tex_fft_a, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_fft_b), tex_fft_b, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_displacement), tex_displacement, rhi_all_mips, 0, true);
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::ocean_normal), tex_normal, rhi_all_mips, 0, true);
+                RHI_CommandList::PrepareBufferForCompute(
                     buffer_heights
                 );
-                cmd_list->SetBuffer(
-                    Renderer_BindingsUav::ocean_heights,
-                    buffer_heights
-                );
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch(n / 8, n / 8, cascades);
+                RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::ocean_heights), buffer_heights);
+                RHI_CommandList::Dispatch(n / 8, n / 8, cascades);
             }
 
             RHI_Buffer* buffer_readback =
@@ -270,10 +242,10 @@ namespace spartan
                 nullptr;
             if (buffer_readback)
             {
-                cmd_list->PrepareBufferForReadback(
+                RHI_CommandList::PrepareBufferForReadback(
                     buffer_heights
                 );
-                cmd_list->CopyBufferToBuffer(
+                RHI_CommandList::CopyBufferToBuffer(
                     buffer_heights,
                     buffer_readback,
                     buffer_heights->GetObjectSize()
@@ -284,7 +256,7 @@ namespace spartan
 
             m_pass_state.ocean_displacement_produced = true;
         }
-        cmd_list->EndTimeblock();
+        RHI_CommandList::EndTimeblock();
     }
 
     bool Renderer::ResolveOceanHeightReadback(

@@ -44,9 +44,10 @@ SP_WARNINGS_ON
 #include "../RHI_Shader.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
-#include "../../Rendering/Renderer.h"
-#include "../../World/World.h"
-#include "../../World/Components/Camera.h"
+#include "../../rendering/Renderer.h"
+#include "../../rendering/Renderer_Buffers.h"
+#include "../../world/World.h"
+#include "../../world/components/Camera.h"
 #include <cmath>
 #include <filesystem>
 //========================================
@@ -831,22 +832,22 @@ namespace spartan
     }
 
     void RHI_VendorTechnology::XeSS_Dispatch(
-        RHI_CommandList* cmd_list,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_output
     )
     {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
         if (!intel::context)
         {
             return;
         }
 
-        tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->PrepareForExternalWrite(tex_output);
         cmd_list->FlushBarriers();
 
@@ -877,7 +878,7 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_velocity);
         cmd_list->AdoptComputeShaderResource(tex_depth);
         cmd_list->AdoptUnorderedAccess(tex_output);
-        cmd_list->RestoreAfterExternalPass();
+        cmd_list->restore_after_external_pass();
     #endif
     }
 
@@ -924,13 +925,13 @@ namespace spartan
     }
 
     void RHI_VendorTechnology::DLSS_Dispatch(
-        RHI_CommandList* cmd_list,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_output
     )
     {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
         if (!dlss::sdk_ready || !cmd_list)
         {
@@ -944,9 +945,9 @@ namespace spartan
             return;
         }
 
-        tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->PrepareForExternalWrite(tex_output);
         cmd_list->FlushBarriers();
 
@@ -987,7 +988,7 @@ namespace spartan
             cmd_list->AdoptComputeShaderResource(tex_velocity);
             cmd_list->AdoptComputeShaderResource(tex_depth);
             cmd_list->AdoptUnorderedAccess(tex_output);
-            cmd_list->RestoreAfterExternalPass();
+            cmd_list->restore_after_external_pass();
             return;
         }
 
@@ -995,12 +996,11 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_velocity);
         cmd_list->AdoptComputeShaderResource(tex_depth);
         cmd_list->AdoptUnorderedAccess(tex_output);
-        cmd_list->RestoreAfterExternalPass();
+        cmd_list->restore_after_external_pass();
     #endif
     }
 
     bool RHI_VendorTechnology::NRD_Dispatch(
-        RHI_CommandList* cmd_list,
         Nrd_Preset preset,
         RHI_Texture* tex_mv,
         RHI_Texture* tex_normal_roughness,
@@ -1010,6 +1010,7 @@ namespace spartan
         const math::Vector3* light_direction
     )
     {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
     #ifdef _WIN32
         if (!common::cb_frame || !tex_mv || !tex_normal_roughness || !tex_view_z || !tex_signal_in || !tex_signal_out)
         {
@@ -1034,10 +1035,10 @@ namespace spartan
             pool.reset_history = true;
         }
 
-        tex_mv->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_normal_roughness->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_view_z->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_signal_in->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_mv->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_normal_roughness->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_view_z->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_signal_in->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->PrepareForExternalWrite(tex_signal_out);
         cmd_list->FlushBarriers();
 
@@ -1125,7 +1126,7 @@ namespace spartan
         cmd_list->AdoptComputeShaderResource(tex_view_z);
         cmd_list->AdoptComputeShaderResource(tex_signal_in);
         cmd_list->AdoptUnorderedAccess(tex_signal_out);
-        cmd_list->RestoreAfterExternalPass();
+        cmd_list->restore_after_external_pass();
         return true;
     #else
         return false;

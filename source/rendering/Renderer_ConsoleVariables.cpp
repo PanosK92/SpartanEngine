@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "pch.h"
 #include "Renderer.h"
-#include "../Commands/Console/ConsoleCommands.h"
-#include "../Display/Display.h"
-#include "../Profiling/Profiler.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_VendorTechnology.h"
-#include "../XR/Xr.h"
+#include "../commands/console/ConsoleCommands.h"
+#include "../display/Display.h"
+#include "../profiling/Profiler.h"
+#include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_SwapChain.h"
+#include "../rhi/RHI_VendorTechnology.h"
+#include "../xr/Xr.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -73,7 +73,7 @@ namespace spartan
                 return;
             }
 
-            if (RHI_SwapChain* swapchain = Renderer::GetSwapChain())
+            if (RHI_SwapChain* swapchain = RHI_Device::GetSwapChain())
             {
                 swapchain->SetHdr(get<float>(value) != 0.0f);
             }
@@ -83,7 +83,7 @@ namespace spartan
 
         void on_vsync_change(const CVarVariant& value)
         {
-            if (RHI_SwapChain* swapchain = Renderer::GetSwapChain())
+            if (RHI_SwapChain* swapchain = RHI_Device::GetSwapChain())
             {
                 swapchain->SetVsync(get<float>(value) != 0.0f);
             }

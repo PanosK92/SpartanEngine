@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../RHI_Device.h"
-#include "../../Logging/Log.h"
-#include "../../Display/Display.h"
-#include "../Rendering/Renderer.h"
+#include "../../logging/Log.h"
+#include "../../display/Display.h"
+#include "../rendering/Renderer.h"
 //================================
 
 namespace spartan::d3d12_utility

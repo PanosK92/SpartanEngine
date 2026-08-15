@@ -433,6 +433,11 @@ namespace spartan
         RHI_Device::StagingBufferRelease(staging);
     }
 
+    void RHI_Buffer::Update(void* data_cpu, const uint32_t size)
+    {
+        Update(RHI_Device::Cmd(), data_cpu, size);
+    }
+
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
         if (!data_cpu || size == 0)
@@ -470,7 +475,7 @@ namespace spartan
 
         // unmapped path, storage buffers live on the default heap so route through cmd-list staging
         SP_ASSERT(cmd_list);
-        cmd_list->UpdateBuffer(this, 0, size, data_cpu);
+        cmd_list->update_buffer(this, 0, size, data_cpu);
     }
 
     void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)

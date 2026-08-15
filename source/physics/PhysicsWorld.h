@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <vector>
 #include <functional>
-#include "../Math/Vector3.h"
+#include "../math/Vector3.h"
 //==========================
 
 namespace physx

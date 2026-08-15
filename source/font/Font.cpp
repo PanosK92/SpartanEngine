@@ -22,10 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Font.h"
-#include "../Rendering/Renderer.h"
-#include "../Resource/Import/FontImporter.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_CommandList.h"
+#include "../rendering/Renderer.h"
+#include "../rhi/RHI_Viewport.h"
+#include "../resource/import/FontImporter.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_CommandList.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -165,7 +166,7 @@ namespace spartan
         m_font_size = clamp<uint32_t>(size, 8, 50);
     }
 
-    void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)
+    void Font::UpdateVertexAndIndexBuffers()
     {
         m_buffer_index = (m_buffer_index + 1) % buffer_count;
 
@@ -205,10 +206,10 @@ namespace spartan
         }
 
         uint64_t vertex_data_size = static_cast<uint64_t>(m_vertices.size()) * vertex_stride;
-        cmd_list->UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, vertex_data_size, m_vertices.data());
+        RHI_CommandList::UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, vertex_data_size, m_vertices.data());
 
         uint64_t index_data_size = static_cast<uint64_t>(m_indices.size()) * index_stride;
-        cmd_list->UpdateBuffer(m_buffers_index[m_buffer_index].get(), 0, index_data_size, m_indices.data());
+        RHI_CommandList::UpdateBuffer(m_buffers_index[m_buffer_index].get(), 0, index_data_size, m_indices.data());
 
         m_index_count[m_buffer_index] = static_cast<uint32_t>(m_indices.size());
 

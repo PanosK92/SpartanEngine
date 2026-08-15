@@ -29,10 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_CommandList.h"
 #include "RHI_Implementation.h"
 #include "ThreadPool.h"
-#include "../Rendering/Renderer.h"
-#include "../Resource/Import/ImageImporter.h"
-#include "../Core/ProgressTracker.h"
-#include "../Profiling/Breadcrumbs.h"
+#include "../rendering/Renderer.h"
+#include "../rendering/Renderer_Buffers.h"
+#include "../resource/import/ImageImporter.h"
+#include "../core/ProgressTracker.h"
+#include "../profiling/Breadcrumbs.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -352,19 +353,17 @@ namespace spartan
                     return false;
                 }
 
-                cmd_list->CopyBufferToBuffer(pool::staging.get(), pool::input.get(), staging_size);
-                cmd_list->PrepareBufferForCompute(pool::input.get());
+                RHI_CommandList::CopyBufferToBuffer(cmd_list, pool::staging.get(), pool::input.get(), staging_size);
+                RHI_CommandList::PrepareBufferForCompute(cmd_list, pool::input.get());
 
                 RHI_PipelineState pso;
                 pso.name = pso_name;
                 pso.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)] = shader;
-                cmd_list->SetPipelineState(pso);
+                RHI_CommandList::SetPipelineState(cmd_list, pso);
 
-                cmd_list->SetBuffer(Renderer_BindingsUav::compress_input, pool::input.get());
-                Renderer_BindingsUav output_binding = (target_format == RHI_Format::BC1_Unorm)
-                    ? Renderer_BindingsUav::compress_output_bc1
-                    : Renderer_BindingsUav::compress_output;
-                cmd_list->SetBuffer(output_binding, pool::output.get());
+                RHI_CommandList::SetBuffer(cmd_list, 40, pool::input.get());
+                const uint32_t output_binding = (target_format == RHI_Format::BC1_Unorm) ? 42u : 41u;
+                RHI_CommandList::SetBuffer(cmd_list, output_binding, pool::output.get());
 
                 // dispatch from smallest to largest mip so the shader pipeline is warm by the
                 // time the heaviest dispatch runs
@@ -387,14 +386,14 @@ namespace spartan
                     uint32_t dispatch_y           = (total_groups + dispatch_x - 1) / dispatch_x;
                     pass.v[7]                     = uint_as_float(dispatch_x);
 
-                    cmd_list->PushConstants(pass);
-                    cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+                    RHI_CommandList::PushConstants(cmd_list, pass);
+                    RHI_CommandList::Dispatch(cmd_list, dispatch_x, dispatch_y, 1);
                 }
 
-                cmd_list->PrepareBufferForReadback(pool::output.get());
+                RHI_CommandList::PrepareBufferForReadback(cmd_list, pool::output.get());
 
                 uint64_t copy_size = static_cast<uint64_t>(total_blocks) * output_element_size;
-                cmd_list->CopyBufferToBuffer(pool::output.get(), pool::readback.get(), copy_size);
+                RHI_CommandList::CopyBufferToBuffer(cmd_list, pool::output.get(), pool::readback.get(), copy_size);
 
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }

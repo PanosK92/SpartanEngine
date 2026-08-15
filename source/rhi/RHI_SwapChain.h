@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include <vector>
 #include "RHI_Definitions.h"
-#include "../Core/SpartanObject.h"
+#include "../core/SpartanObject.h"
 //================================
 
 namespace spartan

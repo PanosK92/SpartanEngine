@@ -22,26 +22,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "SmokeTest.h"
-#include "../Core/Engine.h"
-#include "../Core/Timer.h"
-#include "../Logging/Log.h"
-#include "../Rendering/Renderer.h"
-#include "../Rendering/Material.h"
-#include "../Resource/Import/ImageImporter.h"
-#include "../Resource/IResource.h"
-#include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_InputLayout.h"
-#include "../RHI/RHI_Texture.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Device.h"
-#include "../World/World.h"
-#include "../World/Entity.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Light.h"
-#include "../World/Components/Render.h"
-#include "../World/Components/Physics.h"
-#include "../FileSystem/FileSystem.h"
+#include "../core/Engine.h"
+#include "../core/Timer.h"
+#include "../logging/Log.h"
+#include "../rendering/Renderer.h"
+#include "../rendering/Material.h"
+#include "../resource/import/ImageImporter.h"
+#include "../resource/IResource.h"
+#include "../rhi/RHI_Shader.h"
+#include "../rhi/RHI_InputLayout.h"
+#include "../rhi/RHI_Texture.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_Device.h"
+#include "../world/World.h"
+#include "../world/Entity.h"
+#include "../world/components/Camera.h"
+#include "../world/components/Light.h"
+#include "../world/components/Render.h"
+#include "../world/components/Physics.h"
+#include "../file_system/FileSystem.h"
 #include <fstream>
 #include <iostream>
 #include <thread>
@@ -185,7 +185,7 @@ namespace spartan
 
         if (!Engine::HasArgument("-headless"))
         {
-            RHI_SwapChain* swap_chain = Renderer::GetSwapChain();
+            RHI_SwapChain* swap_chain = RHI_Device::GetSwapChain();
             if (!swap_chain)
             {
                 out_error = "Swap chain not initialized";
@@ -280,7 +280,7 @@ namespace spartan
 
         if (RHI_CommandList* cmd = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
-            cmd->ClearTexture(texture.get(), Color(1, 0, 0, 1));
+            RHI_CommandList::ClearTexture(texture.get(), Color(1, 0, 0, 1));
 
             RHI_CommandList::ImmediateExecutionEnd(cmd);
         }
@@ -305,8 +305,8 @@ namespace spartan
 
         if (RHI_CommandList* cmd = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
-            cmd->ClearTexture(texture.get(), Color(1, 0, 0, 1));
-            cmd->ClearTexture(texture.get(), Color(0, 1, 0, 1));
+            RHI_CommandList::ClearTexture(texture.get(), Color(1, 0, 0, 1));
+            RHI_CommandList::ClearTexture(texture.get(), Color(0, 1, 0, 1));
             RHI_CommandList::ImmediateExecutionEnd(cmd);
         }
         else
@@ -474,7 +474,7 @@ namespace spartan
 
         if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
-            cmd_list->CopyTextureToBuffer(texture, buffer);
+            RHI_CommandList::CopyTextureToBuffer(texture, buffer);
             RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             return true;
         }

@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "ResourceViewer.h"
-#include "Resource/ResourceCache.h"
-#include "../ImGui/ImGui_EditorUi.h"
+#include "resource/ResourceCache.h"
+#include "../imgui/ImGui_EditorUi.h"
 //=================================
 
 //= NAMESPACES ===============
@@ -82,8 +82,10 @@ namespace
 
 ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
 {
-    m_title   = "Resource Viewer";
-    m_visible = false;
+    m_title         = "Resource Viewer";
+    m_visible       = false;
+    m_toolbar_order = 2;
+    m_toolbar_icon  = static_cast<int>(IconType::ResourceCache);
 }
 
 void ResourceViewer::OnTickVisible()

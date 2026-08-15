@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_VendorTechnology.h"
-#include "../Core/Debugging.h"
-#include "../../Profiling/Breadcrumbs.h"
-#include "../../Profiling/Profiler.h"
+#include "../core/Debugging.h"
+#include "../../profiling/Breadcrumbs.h"
+#include "../../profiling/Profiler.h"
 //==================================
 
 //= NAMESPACES =====

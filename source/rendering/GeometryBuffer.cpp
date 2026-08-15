@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "pch.h"
 #include "GeometryBuffer.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Device.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_Device.h"
 #include <algorithm>
 #include <mutex>
 //===============================

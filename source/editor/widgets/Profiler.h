@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <utility>
 #include <vector>
-#include "Profiling/TimeBlock.h"
+#include "profiling/TimeBlock.h"
 //=================================
 
 struct Timings

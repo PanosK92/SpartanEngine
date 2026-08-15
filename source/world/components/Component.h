@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <string>
 #include <sol/forward.hpp>
-#include "../../Core/SpartanObject.h"
+#include "../../core/SpartanObject.h"
 //===================================
 
 namespace pugi

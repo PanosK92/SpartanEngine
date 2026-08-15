@@ -6,11 +6,11 @@ Copyright(c) 2015-2026 Panos Karabelas
 #include "CarEngineSoundSynthesis.h"
 #include "CarEngineSimFerrari412.h"
 
-#include "Core/engine.h"
-#include "Core/ignition_module.h"
-#include "Core/piston_engine_simulator.h"
-#include "Core/synthesizer.h"
-#include "Core/units.h"
+#include "core/engine.h"
+#include "core/ignition_module.h"
+#include "core/piston_engine_simulator.h"
+#include "core/synthesizer.h"
+#include "core/units.h"
 
 #include <algorithm>
 #include <atomic>

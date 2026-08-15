@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "pch.h"
 #include "Input.h"
-#include "../Core/Window.h"
+#include "../core/Window.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
 SP_WARNINGS_ON

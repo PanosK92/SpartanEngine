@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "pch.h"
-#include "../../XR/Xr.h"
-#include "../../Rendering/Renderer.h"
-#include "../../Commands/Console/ConsoleCommands.h"
+#include "../../xr/Xr.h"
+#include "../../rendering/Renderer.h"
+#include "../../commands/console/ConsoleCommands.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
-#include "../../World/World.h"
-#include "../../World/Components/Camera.h"
-#include "../../World/Entity.h"
+#include "../../world/World.h"
+#include "../../world/components/Camera.h"
+#include "../../world/Entity.h"
 #include <thread>
 #define XR_USE_GRAPHICS_API_D3D12
 #include <openxr/openxr.h>

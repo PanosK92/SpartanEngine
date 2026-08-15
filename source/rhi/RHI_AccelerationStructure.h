@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "../Core/SpartanObject.h"
+#include "../core/SpartanObject.h"
 #include "RHI_Definitions.h"
 #include <vector>
 #include <array>
@@ -64,8 +64,11 @@ namespace spartan
         RHI_AccelerationStructure(const RHI_AccelerationStructureType type, const char* name);
         ~RHI_AccelerationStructure();
 
+        void BuildBottomLevel(const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts, bool allow_update = false);
         void BuildBottomLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts, bool allow_update = false);
+        void RefitBottomLevel(const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts);
         void RefitBottomLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts);
+        void BuildTopLevel(const std::vector<RHI_AccelerationStructureInstance>& instances);
         void BuildTopLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
 
         // misc

@@ -32,12 +32,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ParticleSystem.h"
 #include "../Entity.h"
 #include "../World.h"
-#include "../../Input/Input.h"
-#include "../../Rendering/Renderer.h"
-#include "../../Display/Display.h"
-#include "../../XR/Xr.h"
+#include "../../input/Input.h"
+#include "../../rendering/Renderer.h"
+#include "../../rhi/RHI_Viewport.h"
+#include "../../display/Display.h"
+#include "../../xr/Xr.h"
 SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 #include <sol/sol.hpp>
 SP_WARNINGS_ON
 //===================================

@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
-#include "../Core/Debugging.h"
-#include "../Profiling/Profiler.h"
+#include "../core/Debugging.h"
+#include "../profiling/Profiler.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
@@ -53,9 +53,10 @@ namespace spartan
         )
         {
             // this only matters for textures
-            RHI_Image_Layout layout = RHI_Image_Layout::Max;
-            layout                  = descriptor_type == RHI_Descriptor_Type::TextureStorage ? RHI_Image_Layout::General     : layout;
-            layout                  = descriptor_type == RHI_Descriptor_Type::Image          ? RHI_Image_Layout::Shader_Read : layout;
+            RHI_Image_Layout layout = (descriptor_type == RHI_Descriptor_Type::TextureStorage ||
+                                       descriptor_type == RHI_Descriptor_Type::Image)
+                ? RHI_Image_Layout::General
+                : RHI_Image_Layout::Max;
 
             for (const Resource& resource : resources)
             {

@@ -31,8 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Sampler.h"
 #include <wrl/client.h>
 #include "../RHI_Queue.h"
-#include "../Core/Debugging.h"
-#include "../Rendering/Renderer_Definitions.h"
+#include "../core/Debugging.h"
 #include "D3D12_Internal.h"
 #include <unordered_map>
 #include <mutex>
@@ -942,6 +941,7 @@ namespace spartan
 
     void RHI_Device::Destroy()
     {
+        DestroySwapChain();
         QueueWaitAll();
 
         // flush the pipeline library to disk (best-effort, ignored on failure)
@@ -1382,7 +1382,7 @@ namespace spartan::d3d12_descriptors
 
 namespace spartan
 {
-    void RHI_Device::UpdateBindlessMaterials(RHI_CommandList* cmd_list, array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
+    void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
     {
         // copy each texture's srv into the bindless_textures zone
         if (textures)
@@ -1399,9 +1399,9 @@ namespace spartan
                 {
                     continue;
                 }
-                if (cmd_list)
+                if (RHI_CommandList* cmd_list = Cmd())
                 {
-                    cmd_list->PrepareTextureForSampling(tex);
+                    cmd_list->prepare_texture_for_sampling(tex);
                 }
 
                 // tex->GetRhiSrv() stores the cpu handle ptr of the source srv (see D3D12_Texture)
@@ -1454,9 +1454,9 @@ namespace spartan
         write_bindless_structured_srv(d3d12_descriptors::bindless_buffer_slot::light_parameters, parameters);
     }
 
-    void RHI_Device::UpdateBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers)
+    void RHI_Device::UpdateBindlessSamplers(const std::shared_ptr<RHI_Sampler>* samplers, uint32_t count)
     {
-        if (!samplers)
+        if (!samplers || count == 0)
         {
             return;
         }
@@ -1466,9 +1466,9 @@ namespace spartan
 
         // first sampler is comparison sampler (per renderer convention) - copy into compare zone
         // others go into the regular sampler zone
-        for (uint32_t i = 0; i < samplers->size(); i++)
+        for (uint32_t i = 0; i < count; i++)
         {
-            const auto& s = (*samplers)[i];
+            const auto& s = samplers[i];
             if (!s || !s->GetRhiResource())
             {
                 continue;

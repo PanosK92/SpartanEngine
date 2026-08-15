@@ -213,16 +213,7 @@ namespace spartan
 
         // set initial layout matching the initial state
         {
-            RHI_Image_Layout layout = RHI_Image_Layout::General;
-            if (initial_state == D3D12_RESOURCE_STATE_DEPTH_WRITE)
-            {
-                layout = RHI_Image_Layout::Attachment;
-            }
-            else if (initial_state == D3D12_RESOURCE_STATE_COPY_DEST)
-            {
-                layout = RHI_Image_Layout::Transfer_Destination;
-            }
-            SetLayoutDirect(0, m_mip_count, layout);
+            SetLayoutDirect(0, m_mip_count, RHI_Image_Layout::General);
         }
 
         // upload initial data via a staging buffer
@@ -300,7 +291,7 @@ namespace spartan
 
                             // pixel|non_pixel so bindless material sampling works in pixel shaders without a per-texture settexture upgrade
                             D3D12_RESOURCE_STATES post_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                            RHI_Image_Layout post_layout     = RHI_Image_Layout::Shader_Read;
+                            RHI_Image_Layout post_layout     = RHI_Image_Layout::General;
                             if (m_flags & RHI_Texture_Uav)
                             {
                                 post_state  = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;

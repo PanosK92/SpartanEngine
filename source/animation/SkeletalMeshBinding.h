@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include "../Math/Matrix.h"
+#include "../math/Matrix.h"
 #include <cstddef>
 #include <cstdint>
 #include <limits>

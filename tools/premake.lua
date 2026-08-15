@@ -18,7 +18,7 @@
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 CPP_VERSION      = "C++20"
-SOLUTION_NAME    = "spartan"
+SOLUTION_NAME    = "Spartan"
 EXECUTABLE_NAME  = "spartan"
 SOURCE_DIR       = "../source"
 LIBRARY_DIR      = "../third_party/libraries"
@@ -128,13 +128,13 @@ function spartan_project_configuration()
         files(lzma_sdk.sources())
 
         if ARG_API_GRAPHICS == "d3d12" then
-            removefiles { SOURCE_DIR .. "/runtime/RHI/Vulkan/**" }
+            removefiles { SOURCE_DIR .. "/rhi/vulkan/**" }
         elseif ARG_API_GRAPHICS == "vulkan" then
-            removefiles { SOURCE_DIR .. "/runtime/RHI/D3D12/**" }
+            removefiles { SOURCE_DIR .. "/rhi/d3d12/**" }
         end
 
         pchheader "pch.h"
-        pchsource(SOURCE_DIR .. "/runtime/Core/pch.cpp")
+        pchsource(SOURCE_DIR .. "/core/pch.cpp")
 
         -- lzma sdk: compile into spartan, no separate solution project
         filter { "files:**/lzma_sdk/**" }
@@ -161,7 +161,7 @@ function spartan_project_configuration()
         -- Windows includes for all builds
         filter { "system:windows" }
             includedirs {
-                SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
+                SOURCE_DIR, SOURCE_DIR .. "/core", SOURCE_DIR .. "/editor",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/renderdoc",
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
@@ -188,7 +188,7 @@ function spartan_project_configuration()
         -- Linux includes
         filter { "system:linux" }
             includedirs {
-                SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
+                SOURCE_DIR, SOURCE_DIR .. "/core", SOURCE_DIR .. "/editor",
                 "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
                 "/usr/include/freetype2", "/usr/include/renderdoc",
                 "../third_party/lzma_sdk/spartan",

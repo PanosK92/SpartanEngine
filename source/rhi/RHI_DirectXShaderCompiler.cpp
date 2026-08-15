@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "RHI_DirectXShaderCompiler.h"
-#include "../FileSystem/FileSystem.h"
+#include "../file_system/FileSystem.h"
 #include <sstream>
 //=======================================
 

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "ImGui/Source/imgui.h"
+#include "imgui/source/imgui.h"
 //=============================
 
 // float[16] matches spartan::math::Matrix column-major memory

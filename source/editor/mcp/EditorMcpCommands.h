@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ================
-#include "MCP/McpCommands.h"
+#include "mcp/McpCommands.h"
 #include <initializer_list>
 #include <optional>
 #include <string>

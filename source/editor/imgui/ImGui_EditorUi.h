@@ -23,7 +23,7 @@ THE SOFTWARE.
 #pragma once
 
 #include "ImGui_Style.h"
-#include "Source/imgui_internal.h"
+#include "source/imgui_internal.h"
 #include "Window.h"
 
 namespace ImGui::EditorUi

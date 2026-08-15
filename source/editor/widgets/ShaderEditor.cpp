@@ -23,9 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ShaderEditor.h"
 #include <fstream>
-#include "RHI/RHI_Shader.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_Style.h"
+#include "rhi/RHI_Shader.h"
+#include "resource/ResourceCache.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_Style.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -141,6 +142,8 @@ ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
     m_title           = "Shader Editor";
     m_flags           = ImGuiWindowFlags_NoScrollbar;
     m_visible         = false;
+    m_toolbar_order   = 3;
+    m_toolbar_icon    = static_cast<int>(spartan::IconType::Shader);
     m_alpha           = 1.0f;
     m_index_displayed = -1;
 

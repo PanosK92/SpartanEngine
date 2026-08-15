@@ -26,20 +26,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstring>
 #include <unordered_map>
 #include "Definitions.h"
-#include "Logging/Log.h"
+#include "logging/Log.h"
 #include "Window.h"
 #include "Engine.h"
-#include "RHI/RHI_Texture.h"
-#include "Rendering/Renderer.h"
-#include "World/World.h"
-#include "World/Components/Camera.h"
-#include "Resource/ResourceCache.h"
-#include "Core/ThreadPool.h"
-#include "Display/Display.h"
-#include "Source/imgui_internal.h"
+#include "rhi/RHI_Texture.h"
+#include "rendering/Renderer.h"
+#include "world/World.h"
+#include "world/components/Camera.h"
+#include "resource/ResourceCache.h"
+#include "core/ThreadPool.h"
+#include "display/Display.h"
+#include "source/imgui_internal.h"
 #include "ImGui_EditorUi.h"
 #include "../Editor.h"
-#include <Resource/ResourceCache.h>
+#include <resource/ResourceCache.h>
 //=================================
 
 namespace ImGuiSp

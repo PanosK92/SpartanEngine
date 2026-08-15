@@ -23,17 +23,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "RHI_PhysicalDevice.h"
+#include <array>
 #include <memory>
 #include <map>
 #include <mutex>
 #include <vector>
 #include "RHI_Descriptor.h"
-#include "../Rendering/Renderer_Definitions.h"
+#include "RHI_Definitions.h"
 //============================================
 
 namespace spartan
 {
     class RHI_CommandList;
+    class RHI_SwapChain;
+    class RHI_SyncPrimitive;
+    class RHI_Texture;
+    class RHI_Sampler;
+
+    enum class RHI_Frame_List
+    {
+        Graphics,
+        ComputeA,
+        ComputeB
+    };
+
+    struct RHI_Work
+    {
+        RHI_SyncPrimitive* timeline = nullptr;
+        uint64_t value              = 0;
+    };
 
     class RHI_Device
     {
@@ -42,6 +60,40 @@ namespace spartan
         static void Initialize();
         static void Tick(const uint64_t frame_count);
         static void Destroy();
+
+        // frame, swapchain and the three recording lists live here
+        static void CreateSwapChain(
+            void* sdl_window,
+            uint32_t width,
+            uint32_t height,
+            RHI_Present_Mode present_mode,
+            uint32_t buffer_count,
+            bool hdr,
+            const char* name
+        );
+        static void DestroySwapChain();
+        static RHI_SwapChain* GetSwapChain();
+        static void AcquireSwapChainImage();
+        static void BlitToBackBuffer(RHI_Texture* texture);
+        static void BeginFrame(bool acquire_compute);
+        static void Bind(RHI_Frame_List list);
+        static void Bind(RHI_CommandList* cmd_list);
+        static bool IsRecording();
+        static bool IsRecording(RHI_Frame_List list);
+        static RHI_Queue_Type GetBoundQueueType();
+        static RHI_Work Submit(
+            RHI_Frame_List list,
+            RHI_SyncPrimitive* semaphore_wait = nullptr,
+            bool is_immediate = false,
+            RHI_SyncPrimitive* semaphore_signal = nullptr,
+            RHI_SyncPrimitive* semaphore_timeline_wait = nullptr,
+            uint64_t timeline_wait_value = 0
+        );
+        static void SetFrameWait(RHI_SyncPrimitive* timeline_wait, uint64_t timeline_value);
+        static RHI_Work EndFrame(
+            RHI_SyncPrimitive* timeline_wait = nullptr,
+            uint64_t timeline_value = 0
+        );
 
         // queues
         static void QueueWaitAll(const bool flush = false);
@@ -57,9 +109,9 @@ namespace spartan
         static void DescriptorSetInvalidateReferencingResource(void* resource);
         static void* GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Bindless_Resource resource_type);
-        static void UpdateBindlessMaterials(RHI_CommandList* cmd_list, std::array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters);
+        static void UpdateBindlessMaterials(std::array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters);
         static void UpdateBindlessLights(RHI_Buffer* parameters);
-        static void UpdateBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers);
+        static void UpdateBindlessSamplers(const std::shared_ptr<RHI_Sampler>* samplers, uint32_t count);
         static void UpdateBindlessAABBs(RHI_Buffer* buffer);
         static void UpdateBindlessDrawData(RHI_Buffer* buffer);
         static void UpdateBindlessGeometryVertices(RHI_Buffer* buffer);
@@ -141,12 +193,22 @@ namespace spartan
         // renderer hooks, keeps the rhi from including renderer headers
         static void SetPipelineBoundCallback(void (*callback)(RHI_CommandList*));
         static void InvokePipelineBound(RHI_CommandList* cmd_list);
+        static void SetDefaultPushConstantsCallback(void (*callback)(RHI_CommandList*));
+        static void InvokeDefaultPushConstants(RHI_CommandList* cmd_list);
+        static void SetPassResetCallback(void (*callback)());
+        static void InvokePassReset();
         static void SetScaleDimensionCallback(uint32_t (*callback)(uint32_t, float));
         static uint32_t ScaleDimension(uint32_t dimension, float scale = -1.0f);
         static void SetDummyVertexBuffer(RHI_Buffer* buffer);
         static RHI_Buffer* GetDummyVertexBuffer();
 
     private:
+        static RHI_CommandList* Cmd();
+        static RHI_CommandList* Cmd(RHI_Frame_List list);
+        friend class RHI_CommandList;
+        friend class RHI_Buffer;
+        friend class RHI_VendorTechnology;
+        friend class RHI_AccelerationStructure;
         // properties
         static float m_timestamp_period;
         static uint64_t m_min_uniform_buffer_offset_alignment;
@@ -170,6 +232,8 @@ namespace spartan
         static bool m_is_ray_tracing_supported;
         static bool m_is_mesh_shaders_supported;
         static void (*m_pipeline_bound_callback)(RHI_CommandList*);
+        static void (*m_default_push_constants_callback)(RHI_CommandList*);
+        static void (*m_pass_reset_callback)();
         static uint32_t (*m_scale_dimension_callback)(uint32_t, float);
         static RHI_Buffer* m_dummy_vertex_buffer;
 

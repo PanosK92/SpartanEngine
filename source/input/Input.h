@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "Definitions.h"
-#include "../Math/Vector2.h"
+#include "../math/Vector2.h"
 #include "Event.h"
 //==========================
 

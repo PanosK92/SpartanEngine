@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "ButtonColorPicker.h"
-#include "../ImGui/Source/imgui.h"
-#include "../ImGui/ImGui_Extension.h"
+#include "../imgui/source/imgui.h"
+#include "../imgui/ImGui_Extension.h"
 //===================================
 
 //= NAMESPACES =====

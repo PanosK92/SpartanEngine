@@ -25,18 +25,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Render.h"
 #include "Camera.h"
 #include "../Entity.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_AccelerationStructure.h"
-#include "../../FileSystem/FileSystem.h"
-#include "../../Resource/ResourceCache.h"
-#include "../../Rendering/Renderer.h"
-#include "../../Rendering/Material.h"
-#include "../../Rendering/GeometryBuffer.h"
-#include "../../Geometry/Mesh.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_AccelerationStructure.h"
+#include "../../file_system/FileSystem.h"
+#include "../../resource/ResourceCache.h"
+#include "../../rendering/Renderer.h"
+#include "../../rendering/Material.h"
+#include "../../rendering/GeometryBuffer.h"
+#include "../../geometry/Mesh.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //===========================================
 
@@ -744,24 +744,24 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
-    void Render::BuildAccelerationStructure(RHI_CommandList* cmd_list)
+    void Render::BuildAccelerationStructure()
     {
         if (!m_mesh)
         {
             return;
         }
 
-        m_mesh->BuildAccelerationStructure(cmd_list, m_allow_blas_update);
+        m_mesh->BuildAccelerationStructure(m_allow_blas_update);
     }
 
-    void Render::RefitAccelerationStructure(RHI_CommandList* cmd_list)
+    void Render::RefitAccelerationStructure()
     {
         if (!m_mesh)
         {
             return;
         }
 
-        m_mesh->RefitBlas(cmd_list, m_sub_mesh_index);
+        m_mesh->RefitBlas(m_sub_mesh_index);
     }
 
     bool Render::HasAccelerationStructure() const

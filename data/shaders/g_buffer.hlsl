@@ -410,28 +410,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         metalness    *= lerp(1.0f, packed.b, (float)material.has_texture_metalness());
     }
 
-    // fft ocean shading, world-space normal from the summed cascade slopes plus foam
+    // fft ocean shading, normal from the displaced surface so lighting follows the swell
     if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
     {
-        // sample in the undisplaced grid domain the fft writes into, the geometry was shifted horizontally by the choppiness displacement
-        float2 world_xz = vertex.ocean_world_xz;
-        float2 slope    = 0.0f;
-        float foam      = 0.0f;
-        uint cascades   = buffer_frame.ocean_cascade_count;
-        [loop] for (uint c = 0; c < cascades; ++c)
-        {
-            float L      = buffer_frame.ocean_cascade_length[c];
-            float2 uv    = world_xz / L;
-            float4 slope_foam = tex_ocean_normal.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float3(uv, (float)c), 0.0f);
-
-            // the maps have no mips, so once a cascade's texels drop below the pixel footprint its slopes alias into sparkle, fade it out with distance
-            float fade   = 1.0f - smoothstep(L * 2.0f, L * 8.0f, distance);
-            slope       += slope_foam.xy * fade;
-            foam        += slope_foam.z * fade;
-        }
-
-        normal     = normalize(float3(-slope.x, 1.0f, -slope.y));
-        foam       = saturate(foam);
+        float foam = 0.0f;
+        sample_ocean_surface(vertex.ocean_world_xz, distance, normal, foam);
 
         // distance hides the sub-texel slope variance, lift roughness with distance so far water reads as a glitter sheet, not a sharp mirror
         float distance_fade = saturate(distance / 600.0f);

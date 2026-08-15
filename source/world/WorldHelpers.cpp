@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,21 +24,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldHelpers.h"
 #include "World.h"
 #include "Entity.h"
-#include "Components/Render.h"
-#include "Components/Physics.h"
-#include "Components/AudioSource.h"
-#include "Components/Terrain.h"
-#include "Components/Water.h"
-#include "../Core/ThreadPool.h"
-#include "../Core/Stopwatch.h"
-#include "../Rendering/Renderer.h"
-#include "../Rendering/Material.h"
-#include "../Rendering/GeometryBuffer.h"
-#include "../Resource/ResourceCache.h"
-#include "../Geometry/Mesh.h"
-#include "../Geometry/GeometryGeneration.h"
-#include "../Geometry/GeometryProcessing.h"
-#include "../RHI/RHI_Texture.h"
+#include "components/Render.h"
+#include "components/Physics.h"
+#include "components/AudioSource.h"
+#include "components/Terrain.h"
+#include "components/Water.h"
+#include "../core/ThreadPool.h"
+#include "../core/Stopwatch.h"
+#include "../rendering/Renderer.h"
+#include "../rendering/Material.h"
+#include "../rendering/GeometryBuffer.h"
+#include "../resource/ResourceCache.h"
+#include "../geometry/Mesh.h"
+#include "../geometry/GeometryGeneration.h"
+#include "../geometry/GeometryProcessing.h"
+#include "../rhi/RHI_Texture.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 SP_WARNINGS_ON

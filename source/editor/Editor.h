@@ -22,10 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==============
-#include <vector>
 #include <memory>
-#include "Widgets/Widget.h"
+#include <string>
+#include <typeindex>
+#include <unordered_map>
+#include <vector>
+#include "widgets/Widget.h"
 //=========================
+
+struct ImFont;
 
 class Editor
 {
@@ -36,24 +41,42 @@ public:
     void Tick();
 
     template<typename T>
-    T* GetWidget()
+    T* GetWidget() const
+    {
+        const auto it = m_widget_lookup.find(std::type_index(typeid(T)));
+        if (it == m_widget_lookup.end())
+        {
+            return nullptr;
+        }
+
+        return static_cast<T*>(it->second);
+    }
+
+    template<typename TFn>
+    void ForEachWidget(TFn&& fn) const
     {
         for (const auto& widget : m_widgets)
         {
-            if (T* widget_t = dynamic_cast<T*>(widget.get()))
-            {
-                return widget_t;
-            }
+            fn(widget.get());
         }
-
-        return nullptr;
     }
 
     inline static ImFont* font_normal = nullptr;
     inline static ImFont* font_bold   = nullptr;
 
 private:
-    void BeginWindow();
+    template<typename T>
+    T* AddWidget()
+    {
+        std::unique_ptr<T> widget = std::make_unique<T>(this);
+        T* raw = widget.get();
+        m_widget_lookup[std::type_index(typeid(T))] = raw;
+        m_widgets.push_back(std::move(widget));
+        return raw;
+    }
 
-    std::vector<std::shared_ptr<Widget>> m_widgets;
+    void RegisterWidgets();
+
+    std::vector<std::unique_ptr<Widget>> m_widgets;
+    std::unordered_map<std::type_index, Widget*> m_widget_lookup;
 };

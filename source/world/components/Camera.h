@@ -27,19 +27,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cmath>
 #include <memory>
 #include <vector>
-#include "../../RHI/RHI_Viewport.h"
-#include "../../Math/Matrix.h"
-#include "../../Math/Ray.h"
-#include "../../Math/Frustum.h"
-#include "../../Math/Vector2.h"
-#include "../../Math/Rectangle.h"
+#include "../../rhi/RHI_Viewport.h"
+#include "../../math/Matrix.h"
+#include "../../math/Ray.h"
+#include "../../math/Frustum.h"
+#include "../../math/Vector2.h"
+#include "../../math/Rectangle.h"
 //=================================
 
 namespace spartan
 {
     class Entity;
     class Render;
-    class Renderer;
     class Physics;
 
     enum ProjectionType

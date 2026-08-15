@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================================
 #include "pch.h"
 #include "Steam.h"
-#include "../Core/Debugging.h"
-#include "../World/World.h"
+#include "../core/Debugging.h"
+#include "../world/World.h"
 // the steamworks sdk is vendored locally, compile to no-ops when it is absent
 #if __has_include("steam/steam_api.h")
     #define SP_STEAM_ENABLED 1

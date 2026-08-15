@@ -23,13 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include <chrono>
-#include "../RHI/RHI_Definitions.h"
+#include "../rhi/RHI_Definitions.h"
 //=================================
 
 namespace spartan
 {
-    class Renderer;
-
     enum class TimeBlockType
     {
         Cpu,

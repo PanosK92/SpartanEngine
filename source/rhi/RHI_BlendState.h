@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "RHI_Definitions.h"
-#include "../Core/SpartanObject.h"
+#include "../core/SpartanObject.h"
 //================================
 
 namespace spartan

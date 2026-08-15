@@ -21,8 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 //= INCLUDES ========================
-#include "FileSystem/FileSystem.h"
-#include "../ImGui/ImGui_Extension.h"
+#include "file_system/FileSystem.h"
+#include "../imgui/ImGui_Extension.h"
 #include <vector>
 #include <string>
 #include <functional>

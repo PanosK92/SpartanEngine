@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <map>
 #include <memory>
-#include <ImGui/Source/imgui.h>
+#include <imgui/source/imgui.h>
 
 class TextEditor
 {

@@ -31,8 +31,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "../Math/Matrix.h"
-#include "../RHI/RHI_Vertex.h"
+#include "../math/Matrix.h"
+#include "../rhi/RHI_Vertex.h"
 
 namespace spartan::mcp_geometry_kernel
 {

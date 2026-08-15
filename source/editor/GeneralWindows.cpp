@@ -23,13 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "GeneralWindows.h"
 #include "WorldPreviews.h"
-#include "Windows/WorldSelector.h"
-#include "Windows/Contributors.h"
-#include "ImGui/Source/imgui.h"
-#include "ImGui/ImGui_Extension.h"
-#include "FileSystem/FileSystem.h"
-#include "Widgets/Viewport.h"
-#include "Input/Input.h"
+#include "windows/WorldSelector.h"
+#include "windows/Contributors.h"
+#include "imgui/source/imgui.h"
+#include "imgui/ImGui_Extension.h"
+#include "file_system/FileSystem.h"
+#include "widgets/Viewport.h"
+#include "input/Input.h"
 // third party version queries
 SP_WARNINGS_OFF
 #include <assimp/version.h>
@@ -42,7 +42,7 @@ SP_WARNINGS_OFF
 #include <physx/foundation/PxPhysicsVersion.h>
 #include <sol/sol.hpp>
 #include <renderdoc/replay/version.h>
-#include "IO/pugixml.hpp"
+#include "io/pugixml.hpp"
 #if defined(_WIN32)
 #include <xess/xess.h>
 #endif

@@ -26,10 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Render.h"
 #include "../World.h"
 #include "../Entity.h"
-#include "../../Rendering/Renderer.h"
+#include "../../rendering/Renderer.h"
+#include "../../rhi/RHI_Texture.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================
 

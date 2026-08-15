@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // memory
-#include "../Memory/MemoryOverrides.h"
+#include "../memory/MemoryOverrides.h"
 
 // std (lean, ubiquitous-only)
 #include <string>
@@ -50,20 +50,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Event.h"
 #include "Settings.h"
 #include "Timer.h"
-#include "../FileSystem/FileSystem.h"
+#include "../file_system/FileSystem.h"
 #include "Stopwatch.h"
-#include "../Logging/Log.h"
+#include "../logging/Log.h"
 
 // math
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-#include "../Math/Ray.h"
-#include "../Math/RayHitResult.h"
-#include "../Math/Rectangle.h"
-#include "../Math/BoundingBox.h"
-#include "../Math/Sphere.h"
-#include "../Math/Matrix.h"
-#include "../Math/Frustum.h"
-#include "../Math/Plane.h"
-#include "../Math/Helper.h"
+#include "../math/Vector2.h"
+#include "../math/Vector3.h"
+#include "../math/Vector4.h"
+#include "../math/Ray.h"
+#include "../math/RayHitResult.h"
+#include "../math/Rectangle.h"
+#include "../math/BoundingBox.h"
+#include "../math/Sphere.h"
+#include "../math/Matrix.h"
+#include "../math/Frustum.h"
+#include "../math/Plane.h"
+#include "../math/Helper.h"

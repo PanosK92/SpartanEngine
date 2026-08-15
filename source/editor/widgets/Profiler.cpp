@@ -22,11 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Profiler.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "Profiling/Profiler.h"
-#include "../RHI/RHI_Device.h"
-#include "../Memory/Allocator.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Extension.h"
+#include "profiling/Profiler.h"
+#include "resource/ResourceCache.h"
+#include "../rhi/RHI_Device.h"
+#include "../memory/Allocator.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -126,10 +127,12 @@ namespace
 
 Profiler::Profiler(Editor* editor) : Widget(editor)
 {
-    m_title        = "Profiler";
-    m_visible      = false;
-    m_size_initial = Vector2(1000, 715);
-    m_size_min     = Vector2(600, 500);
+    m_title         = "Profiler";
+    m_visible       = false;
+    m_toolbar_order = 1;
+    m_toolbar_icon  = static_cast<int>(spartan::IconType::Profiler);
+    m_size_initial  = Vector2(1000, 715);
+    m_size_min      = Vector2(600, 500);
     m_plot.fill(16.0f);
 }
 

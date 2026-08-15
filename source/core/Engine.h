@@ -25,7 +25,7 @@ namespace spartan
 {
     enum class EngineMode : uint32_t
     {
-        EditorVisible = 1 << 0,
+        EditorVisible = 1 << 0, // off with -game, editor code stays in the binary
         Playing       = 1 << 1,
         Paused        = 1 << 2
     };

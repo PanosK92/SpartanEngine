@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "EditorMcpCommands.h"
 #include "Editor.h"
-#include "Widgets/Sequencer.h"
-#include "World/World.h"
-#include "World/Entity.h"
-#include "World/Components/Camera.h"
-#include "World/Components/SplineFollower.h"
+#include "widgets/Sequencer.h"
+#include "world/World.h"
+#include "world/Entity.h"
+#include "world/components/Camera.h"
+#include "world/components/SplineFollower.h"
 #include <cstdlib>
 //=============================================
 

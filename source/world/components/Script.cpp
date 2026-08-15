@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Script.h"
-#include "IO/pugixml.hpp"
-#include "World/Entity.h"
-#include "World/World.h"
+#include "io/pugixml.hpp"
+#include "world/Entity.h"
+#include "world/World.h"
 #include "Light.h"
 
 using namespace spartan;

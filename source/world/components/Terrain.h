@@ -27,10 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <unordered_map>
 #include <vector>
-#include "../../RHI/RHI_Definitions.h"
-#include "../../Math/Quaternion.h"
-#include "../../Math/Ray.h"
-#include "../../Math/Vector4.h"
+#include "../../rhi/RHI_Definitions.h"
+#include "../../math/Quaternion.h"
+#include "../../math/Ray.h"
+#include "../../math/Vector4.h"
 #include "../TerrainSystem.h"
 #include "../TerrainLayer.h"
 //====================================

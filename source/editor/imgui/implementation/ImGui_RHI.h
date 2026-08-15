@@ -23,25 +23,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include <array>
-#include "../Source/imgui.h"
+#include "../source/imgui.h"
+#include "../source/imgui_internal.h"
 #include "imgui_impl_sdl3.h"
-#include "../../Widgets/TextureViewer.h"
-#include "Core/Event.h"
-#include "Rendering/Renderer_Buffers.h"
-#include "Rendering/Renderer.h"
-#include "Math/Rectangle.h"
-#include "RHI/RHI_Device.h"
-#include "RHI/RHI_Implementation.h"
-#include "RHI/RHI_Shader.h"
-#include "RHI/RHI_Texture.h"
-#include "RHI/RHI_SwapChain.h"
-#include "RHI/RHI_BlendState.h"
-#include "RHI/RHI_Queue.h"
-#include "RHI/RHI_CommandList.h"
-#include "RHI/RHI_Buffer.h"
-#include "RHI/RHI_PipelineState.h"
-#include "RHI/RHI_RasterizerState.h"
-#include "RHI/RHI_DepthStencilState.h"
+#include "../../widgets/TextureViewer.h"
+#include "resource/ResourceCache.h"
+#include "core/Event.h"
+#include "rendering/Renderer_Buffers.h"
+#include "rendering/Renderer.h"
+#include "math/Rectangle.h"
+#include "rhi/RHI_Device.h"
+#include "rhi/RHI_Implementation.h"
+#include "rhi/RHI_Shader.h"
+#include "rhi/RHI_Texture.h"
+#include "rhi/RHI_SwapChain.h"
+#include "rhi/RHI_BlendState.h"
+#include "rhi/RHI_Queue.h"
+#include "rhi/RHI_CommandList.h"
+#include "rhi/RHI_Buffer.h"
+#include "rhi/RHI_PipelineState.h"
+#include "rhi/RHI_RasterizerState.h"
+#include "rhi/RHI_DepthStencilState.h"
 #include <Debugging.h>
 SP_WARNINGS_OFF
 #include <SDL3/SDL_video.h>
@@ -278,7 +280,7 @@ namespace ImGui::RHI
     {
         // create required RHI objects
         {
-            g_viewport_data       = ViewportRhiResources("imgui", Renderer::GetSwapChain());
+            g_viewport_data       = ViewportRhiResources("imgui", RHI_Device::GetSwapChain());
             g_depth_stencil_state = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Always);
             g_rasterizer_state    = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid, true);
 
@@ -345,12 +347,12 @@ namespace ImGui::RHI
         // get resources
         bool is_main_window                 = window_data == nullptr;
         ViewportRhiResources* rhi_resources = is_main_window ? &g_viewport_data : window_data->viewport_rhi_resources.get();
-        RHI_SwapChain* swapchain            = is_main_window ? Renderer::GetSwapChain() : window_data->swapchain.get();
+        RHI_SwapChain* swapchain            = is_main_window ? RHI_Device::GetSwapChain() : window_data->swapchain.get();
         uint32_t buffer_index               = rhi_resources->buffer_index;
         rhi_resources->buffer_index         = (rhi_resources->buffer_index + 1) % buffer_count;
         RHI_Buffer* vertex_buffer           = rhi_resources->vertex_buffers[buffer_index].get();
         RHI_Buffer* index_buffer            = rhi_resources->index_buffers[buffer_index].get();
-        RHI_CommandList* cmd_list           = Renderer::GetCommandListPresent();
+        RHI_CommandList* cmd_list           = nullptr;
 
         // if that's a child window, update it's swapchain and give it a command list
         if (!is_main_window)
@@ -361,6 +363,7 @@ namespace ImGui::RHI
             cmd_list              = window_data->cmd_list;
 
             window_data->cmd_list->Begin();
+            RHI_Device::Bind(cmd_list);
         }
 
         // the main window draws straight into the back buffer, so bail out when there is no acquired image
@@ -370,8 +373,14 @@ namespace ImGui::RHI
             return;
         }
 
+        // pin graphics, world load uploads otherwise steal the bound list
+        if (is_main_window)
+        {
+            RHI_Device::Bind(RHI_Frame_List::Graphics);
+        }
+
         // when the engine splash screen is shown, the command list is not valid as the renderer is initializing
-        if (!cmd_list || cmd_list->GetState() != RHI_CommandListState::Recording)
+        if (!RHI_Device::IsRecording())
         {
             return;
         }
@@ -450,17 +459,21 @@ namespace ImGui::RHI
 
         auto setup_render_state = [&]()
         {
-            cmd_list->SetPipelineState(pso);
-            cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, Renderer::GetBuffer(Renderer_Buffer::ConstantFrame));
-            cmd_list->SetBufferVertex(vertex_buffer);
-            cmd_list->SetBufferIndex(index_buffer);
-            cmd_list->SetCullMode(RHI_CullMode::None);
+            if (is_main_window)
+            {
+                RHI_Device::Bind(RHI_Frame_List::Graphics);
+            }
+            RHI_CommandList::SetPipelineState(pso);
+            RHI_CommandList::SetConstantBuffer(static_cast<uint32_t>(Renderer_BindingsCb::frame), Renderer::GetBuffer(Renderer_Buffer::ConstantFrame));
+            RHI_CommandList::SetBufferVertex(vertex_buffer);
+            RHI_CommandList::SetBufferIndex(index_buffer);
+            RHI_CommandList::SetCullMode(RHI_CullMode::None);
         };
 
         // start the pass
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
         bool gpu_timing  = is_main_window;
-        cmd_list->BeginTimeblock(name, true, spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
+        RHI_CommandList::BeginTimeblock(name, true, spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
         setup_render_state();
 
         // render
@@ -501,7 +514,7 @@ namespace ImGui::RHI
                             pcmd->UserCallback(cmd_list_imgui, pcmd);
                         }
                         pso.clear_color[0] = rhi_color_load;
-                        cmd_list->RestoreAfterExternalPass();
+                        RHI_CommandList::RestoreAfterExternalPass();
                         setup_render_state();
                         state_valid = false;
                     }
@@ -520,7 +533,7 @@ namespace ImGui::RHI
                             rectangle.width  = (pcmd->ClipRect.z - draw_data->DisplayPos.x) - rectangle.x;
                             rectangle.height = (pcmd->ClipRect.w - draw_data->DisplayPos.y) - rectangle.y;
 
-                            cmd_list->SetScissorRectangle(rectangle);
+                            RHI_CommandList::SetScissorRectangle(rectangle);
                         }
 
                         // set texture and update texture viewer parameters
@@ -557,7 +570,7 @@ namespace ImGui::RHI
                             }
                             if (!state_valid || texture_bound != texture_last)
                             {
-                                cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture_bound);
+                                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), texture_bound);
                                 texture_last = texture_bound;
                             }
 
@@ -582,7 +595,7 @@ namespace ImGui::RHI
                             {
                                 rhi_resources->push_constant_buffer_pass.set_f3_value(*reinterpret_cast<float*>(&flags), 0.0f, 0.0f);
                                 rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
-                                cmd_list->PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
+                                RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
                                 flags_last       = flags;
                                 mip_level_last   = mip_level;
                                 array_level_last = array_level;
@@ -590,7 +603,7 @@ namespace ImGui::RHI
                             state_valid = true;
                         }
 
-                        cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                        RHI_CommandList::DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
                 }
 
@@ -599,22 +612,21 @@ namespace ImGui::RHI
             }
         }
 
-        cmd_list->EndTimeblock();
+        RHI_CommandList::EndTimeblock();
 
         // for child windows, submit and prepare for presentation
         if (!is_main_window)
         {
             if (swapchain->IsImageAcquired())
             {
-                cmd_list->PrepareForPresent(swapchain);
-                // use per-swapchain-image semaphore to signal rendering complete
+                RHI_CommandList::PrepareForPresent(swapchain);
                 cmd_list->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
             }
             else
             {
-                // no image acquired (window minimized/transitioning), submit without presentation semaphores
                 cmd_list->Submit(nullptr, true);
             }
+            RHI_Device::Bind(static_cast<RHI_CommandList*>(nullptr));
         }
     }
 

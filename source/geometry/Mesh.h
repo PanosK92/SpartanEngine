@@ -26,12 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <atomic>
 #include <memory>
-#include "../RHI/RHI_Vertex.h"
-#include "../Resource/IResource.h"
-#include "../Math/BoundingBox.h"
-#include "../Rendering/Renderer_Buffers.h"
-#include "../Animation/AnimationClip.h"
-#include "../Animation/SkeletalMeshBinding.h"
+#include "../rhi/RHI_Vertex.h"
+#include "../resource/IResource.h"
+#include "../math/BoundingBox.h"
+#include "../rendering/Renderer_Buffers.h"
+#include "../animation/AnimationClip.h"
+#include "../animation/SkeletalMeshBinding.h"
 //================================
 
 namespace sol
@@ -130,7 +130,7 @@ namespace spartan
 
         // gpu buffers
         void CreateGpuBuffers();
-        void BuildAccelerationStructure(RHI_CommandList* cmd_list, bool allow_update = false);
+        void BuildAccelerationStructure(bool allow_update = false);
         RHI_Buffer* GetIndexBuffer();
         RHI_Buffer* GetVertexBuffer();
 
@@ -175,7 +175,7 @@ namespace spartan
         bool HasBlas(uint32_t sub_mesh_index) const;
         void InvalidateBlas(uint32_t sub_mesh_index);
         void InvalidateAllBlas();
-        void RefitBlas(RHI_CommandList* cmd_list, uint32_t sub_mesh_index);
+        void RefitBlas(uint32_t sub_mesh_index);
         bool CanRefitBlas(uint32_t sub_mesh_index) const;
 
     private:

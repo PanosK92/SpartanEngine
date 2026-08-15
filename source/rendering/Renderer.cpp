@@ -25,39 +25,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_set>
 #include <future>
 #include <cmath>
-#include "Renderer.h"
+#include "Renderer_Internal.h"
 #include "Material.h"
 #include "GeometryBuffer.h"
 #include "ThreadPool.h"
-#include "../Profiling/RenderDoc.h"
-#include "../Profiling/Profiler.h"
-#include "../Core/Debugging.h"
-#include "../Core/Window.h"
-#include "../Core/Timer.h"
-#include "../FileSystem/FileSystem.h"
-#include "../Input/Input.h"
-#include "../Display/Display.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_Queue.h"
-#include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_VendorTechnology.h"
-#include "../RHI/RHI_AccelerationStructure.h"
-#include "../World/Entity.h"
-#include "../World/Components/Light.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Volume.h"
-#include "../World/Components/Render.h"
-#include "../World/Components/Water.h"
-#include "../Core/ProgressTracker.h"
-#include "../Math/Rectangle.h"
-#include "../Resource/Import/ImageImporter.h"
-#include "../Commands/Console/ConsoleCommands.h"
-#include "../Profiling/Breadcrumbs.h"
-#include "../XR/Xr.h"
+#include "../profiling/RenderDoc.h"
+#include "../profiling/Profiler.h"
+#include "../core/Debugging.h"
+#include "../core/Window.h"
+#include "../core/Timer.h"
+#include "../file_system/FileSystem.h"
+#include "../input/Input.h"
+#include "../display/Display.h"
+#include "../rhi/RHI_Device.h"
+#include "../rhi/RHI_SwapChain.h"
+#include "../rhi/RHI_Queue.h"
+#include "../rhi/RHI_Implementation.h"
+#include "../rhi/RHI_Buffer.h"
+#include "../rhi/RHI_Shader.h"
+#include "../rhi/RHI_CommandList.h"
+#include "../rhi/RHI_VendorTechnology.h"
+#include "../rhi/RHI_AccelerationStructure.h"
+#include "../world/Entity.h"
+#include "../world/components/Light.h"
+#include "../world/components/Camera.h"
+#include "../world/components/Volume.h"
+#include "../world/components/Render.h"
+#include "../world/components/Water.h"
+#include "../core/ProgressTracker.h"
+#include "../math/Rectangle.h"
+#include "../resource/import/ImageImporter.h"
+#include "../commands/console/ConsoleCommands.h"
+#include "../profiling/Breadcrumbs.h"
+#include "../xr/Xr.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -67,63 +67,41 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    Renderer::State::~State() = default;
+
+    Renderer::State& Renderer::state()
+    {
+        static Renderer::State s;
+        return s;
+    }
+
     namespace
     {
+        bool s_common_bind = false;
+        bool s_common_ssao = true;
+        uint32_t s_common_eye = rhi_all_mips;
+
+        void reset_common_bind()
+        {
+            s_common_bind = false;
+            s_common_ssao = true;
+            s_common_eye = rhi_all_mips;
+        }
+
         // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
         bool materials_uploaded_this_frame = false;
     }
 
     // constant and push constant buffers
-    Cb_Frame Renderer::m_cb_frame_cpu;
-    Pcb_Pass Renderer::m_pcb_pass_cpu;
-    math::Matrix Renderer::m_view_projection_previous_right           = math::Matrix::Identity;
-    math::Matrix Renderer::m_view_projection_previous_unjittered_left = math::Matrix::Identity;
-    Renderer::PassState Renderer::m_pass_state;
 
     // bindless draw data
-    array<Sb_DrawData, renderer_max_draw_calls> Renderer::m_draw_data_cpu;
-    uint32_t Renderer::m_draw_data_count = 0;
-    bool Renderer::m_draw_data_gpu_synced = false;
 
     // per-frame rotated buffers
-    array<Renderer::FrameResource, renderer_draw_data_buffer_count> Renderer::m_frame_resources;
-    uint32_t Renderer::m_frame_resource_index = 0;
-    uint32_t Renderer::m_cpu_indirect_draw_arg_count = 0;
 
     // line and icon rendering
-    shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
-    vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
-    vector<PersistentLine> Renderer::m_persistent_lines;
-    shared_ptr<RHI_Buffer> Renderer::m_icons_vertex_buffer;
-    vector<RHI_Vertex_PosTex> Renderer::m_icons_vertices;
-    vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
-    uint32_t Renderer::m_frame_cb_ring_slot        = 0;
-    atomic<bool> Renderer::m_initialized_resources = false;
-    bool Renderer::m_transparents_present          = false;
-    bool Renderer::m_is_hiz_suppressed             = false;
-    bool Renderer::m_taau_reset_history            = true;
-    bool Renderer::m_bindless_samplers_dirty       = true;
-    RHI_CommandList* Renderer::m_cmd_list_present   = nullptr;
-    RHI_CommandList* Renderer::m_cmd_list_compute   = nullptr;
-    RHI_CommandList* Renderer::m_cmd_list_compute_b = nullptr;
-    Renderer::CrossQueueSync Renderer::m_cross_queue_sync;
-    vector<ShadowSlice> Renderer::m_shadow_slices;
-    array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
-    array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
-    array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    unique_ptr<RHI_AccelerationStructure> Renderer::m_tlas;
-    uint32_t Renderer::m_count_active_lights    = 0;
-    uint32_t Renderer::m_volumetric_light_count = 0;
 
-    math::Vector2             Renderer::m_resolution_render = math::Vector2::Zero;
-    math::Vector2             Renderer::m_resolution_output = math::Vector2::Zero;
-    RHI_Viewport              Renderer::m_viewport          = RHI_Viewport(0, 0, 0, 0);
-    shared_ptr<RHI_SwapChain> Renderer::m_swapchain;
-    bool                      Renderer::m_present_in_renderer = true;
-    uint64_t                  Renderer::m_frame_num         = 0;
-    math::Vector2             Renderer::m_jitter_offset     = math::Vector2::Zero;
 
     namespace
     {
@@ -366,7 +344,7 @@ namespace spartan
             auto staging = make_shared<RHI_Buffer>(RHI_Buffer_Type::Readback, texture->GetObjectSize(), 1, nullptr, true, "screenshot_staging");
             if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
             {
-                cmd_list->CopyTextureToBuffer(texture, staging.get());
+                RHI_CommandList::CopyTextureToBuffer(texture, staging.get());
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }
 
@@ -527,12 +505,18 @@ namespace spartan
         RHI_Device::Initialize();
         RHI_Device::SetPipelineBoundCallback([](RHI_CommandList* cmd_list)
         {
+            RHI_Device::Bind(cmd_list);
             SetStandardResources(cmd_list);
+        });
+        RHI_Device::SetDefaultPushConstantsCallback([](RHI_CommandList* cmd_list)
+        {
+            RHI_CommandList::PushConstants(cmd_list, m_pcb_pass_cpu);
         });
         RHI_Device::SetScaleDimensionCallback([](uint32_t dimension, float scale)
         {
             return GetScaledDimension(dimension, scale);
         });
+        RHI_Device::SetPassResetCallback(reset_common_bind);
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
@@ -553,8 +537,7 @@ namespace spartan
         // must init before swapchain so breadcrumbs are available for the swapchain command lists
         RHI_VendorTechnology::Initialize();
 
-        m_swapchain = make_shared<RHI_SwapChain>
-        (
+        RHI_Device::CreateSwapChain(
             Window::GetHandleSDL(),
             Window::GetWidthInPixels(),
             Window::GetHeightInPixels(),
@@ -563,7 +546,7 @@ namespace spartan
             Display::GetHdr(),
             "renderer"
         );
-        ConsoleRegistry::Get().SetValueFromString("r.hdr", m_swapchain->IsHdr() ? "1" : "0");
+        ConsoleRegistry::Get().SetValueFromString("r.hdr", RHI_Device::GetSwapChain()->IsHdr() ? "1" : "0");
 
         ThreadPool::AddTask([]()
         {
@@ -623,7 +606,7 @@ namespace spartan
         {
             DestroyResources();
             GeometryBuffer::Shutdown();
-            m_swapchain           = nullptr;
+            RHI_Device::DestroySwapChain();
             m_lines_vertex_buffer = nullptr;
             m_icons_vertex_buffer = nullptr;
             m_tlas                = nullptr;
@@ -682,28 +665,15 @@ namespace spartan
         if (can_render)
         {
             RotateFrameBuffers();
-            AcquireSwapchainImage();
+            RHI_Device::AcquireSwapChainImage();
         }
         else if (m_frame_num > 0)
         {
             RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Wait();
         }
         RHI_Device::Tick(m_frame_num);
-
-        m_cmd_list_present = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
-        m_cmd_list_present->Begin();
-
-        // pre-acquire both compute lists before any submit so batch b never stalls mid-frame
-        m_cmd_list_compute   = nullptr;
-        m_cmd_list_compute_b = nullptr;
-        if (can_render)
-        {
-            RHI_Queue* queue_compute = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
-            m_cmd_list_compute = queue_compute->NextCommandList();
-            m_cmd_list_compute->Begin();
-            m_cmd_list_compute_b = queue_compute->NextCommandList();
-            m_cmd_list_compute_b->Begin();
-        }
+        RHI_Device::BeginFrame(can_render);
+        RHI_Device::Bind(RHI_Frame_List::Graphics);
 
         m_draw_data_count      = 0;
         m_draw_data_gpu_synced = false;
@@ -775,7 +745,7 @@ namespace spartan
                     primary_camera_entity =
                         primary_camera->GetEntity();
                 }
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
                     ),
@@ -790,26 +760,26 @@ namespace spartan
                     GetRenderTarget(
                         Renderer_RenderTarget::auto_exposure_previous
                     );
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     exposure,
                     secondary_view_exposure_primary.get(),
                     false
                 );
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     exposure_previous,
                     secondary_view_exposure_primary_previous.get(),
                     false
                 );
                 if (!secondary_view_exposure_valid)
                 {
-                    m_cmd_list_present->Copy(
+                    RHI_CommandList::Copy(
                         exposure_previous,
                         secondary_view_exposure.get(),
                         false
                     );
                     secondary_view_exposure_valid = true;
                 }
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     secondary_view_exposure.get(),
                     exposure_previous,
                     false
@@ -886,11 +856,11 @@ namespace spartan
                 }
             }
 
-            TickUploadMaterials(m_cmd_list_present);
-            UpdateDrawCalls(m_cmd_list_present);
+            TickUploadMaterials();
+            UpdateDrawCalls();
 
             TickAdvanceFrameConstantBufferRing();
-            TickUploadBindlessDependencies(m_cmd_list_present);
+            TickUploadBindlessDependencies();
 
             if (!render_secondary_view)
             {
@@ -908,31 +878,25 @@ namespace spartan
 
         if (can_render)
         {
-            UpdateFrameConstantBuffer(m_cmd_list_present);
-            ProduceFrame(
-                m_cmd_list_present,
-                m_cmd_list_compute,
-                m_cmd_list_compute_b
-            );
+            UpdateFrameConstantBuffer();
+            ProduceFrame();
             if (render_secondary_view)
             {
                 // runs on the display ready frame, after post process, so the backdrop stays flat
                 // and the wires stay crisp instead of being blurred by depth of field
                 Pass_PreviewStudio(
-                    m_cmd_list_present,
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
                     )
                 );
                 Pass_Blit(
-                    m_cmd_list_present,
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
                     ),
                     secondary_view_output.get(),
                     false
                 );
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     secondary_view_primary_backup.get(),
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
@@ -947,17 +911,17 @@ namespace spartan
                     GetRenderTarget(
                         Renderer_RenderTarget::auto_exposure_previous
                     );
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     exposure_previous,
                     secondary_view_exposure.get(),
                     false
                 );
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     secondary_view_exposure_primary.get(),
                     exposure,
                     false
                 );
-                m_cmd_list_present->Copy(
+                RHI_CommandList::Copy(
                     secondary_view_exposure_primary_previous.get(),
                     exposure_previous,
                     false
@@ -998,26 +962,40 @@ namespace spartan
         if (xr_should_render && can_render)
         {
             RHI_Texture* stereo_output = GetRenderTarget(Renderer_RenderTarget::frame_output_stereo);
-            BlitToXrSwapchain(m_cmd_list_present, stereo_output ? stereo_output : GetRenderTarget(Renderer_RenderTarget::frame_output));
+            BlitToXrSwapchain(stereo_output ? stereo_output : GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
 
         // submit gpu work before xrEndFrame so the compositor does not read a stale swapchain image
         if (m_present_in_renderer)
         {
-            AcquireSwapchainImage();
+            RHI_Device::AcquireSwapChainImage();
             if (
                 can_render &&
-                m_swapchain->IsImageAcquired()
+                RHI_Device::GetSwapChain() &&
+                RHI_Device::GetSwapChain()->IsImageAcquired()
             )
             {
-                BlitToBackBuffer(
-                    m_cmd_list_present,
+                RHI_Device::BlitToBackBuffer(
                     GetRenderTarget(
                         Renderer_RenderTarget::frame_output
                     )
                 );
             }
-            SubmitAndPresent();
+            {
+                RHI_Work submitted = RHI_Device::EndFrame(
+                    m_cross_queue_sync.pending_compute_timeline,
+                    m_cross_queue_sync.pending_compute_timeline_value
+                );
+                FrameResource& frame_resource =
+                    m_frame_resources[m_frame_resource_index];
+                frame_resource.completion_timeline =
+                    submitted.timeline;
+                frame_resource.completion_value =
+                    submitted.value;
+                m_cross_queue_sync.pending_compute_timeline       = nullptr;
+                m_cross_queue_sync.pending_compute_timeline_value = 0;
+            }
+            FinalizeScreenshotReadback();
             EndXrFrame();
         }
         else if (Xr::IsSessionRunning())
@@ -1025,7 +1003,8 @@ namespace spartan
             if (xr_should_render && can_render)
             {
                 // editor ui would otherwise delay endframe by a full imgui frame, that is the hmd judder
-                m_cmd_list_present->Submit(
+                RHI_Work submitted = RHI_Device::Submit(
+                    RHI_Frame_List::Graphics,
                     nullptr,
                     false,
                     nullptr,
@@ -1036,9 +1015,9 @@ namespace spartan
                 FrameResource& frame_resource =
                     m_frame_resources[m_frame_resource_index];
                 frame_resource.completion_timeline =
-                    m_cmd_list_present->GetTimelineSemaphore();
+                    submitted.timeline;
                 frame_resource.completion_value =
-                    m_cmd_list_present->GetLastTimelineSignalValue();
+                    submitted.value;
 
                 // editor submit samples frame_output, wait for this graphics work first
                 m_cross_queue_sync.pending_compute_timeline =
@@ -1047,10 +1026,6 @@ namespace spartan
                     frame_resource.completion_value;
 
                 EndXrFrame();
-
-                m_cmd_list_present =
-                    RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
-                m_cmd_list_present->Begin();
             }
             else
             {
@@ -1134,7 +1109,7 @@ namespace spartan
         }
     }
 
-    void Renderer::TickUploadMaterials(RHI_CommandList* cmd_list)
+    void Renderer::TickUploadMaterials()
     {
         // the bindless slot a material owns is handed out here and a draw carries that slot as an index,
         // so this has to run before the draw data is written, doing it afterwards leaves the frame
@@ -1167,16 +1142,15 @@ namespace spartan
         uploaded_for_secondary = is_secondary;
         materials_uploaded_this_frame = true;
 
-        UpdateMaterials(cmd_list);
-        cmd_list->PrepareTexturesForSampling(&m_bindless_textures);
+        UpdateMaterials();
+        RHI_CommandList::PrepareTexturesForSampling(&m_bindless_textures);
         RHI_Device::UpdateBindlessMaterials(
-            cmd_list,
             &m_bindless_textures,
             GetBuffer(Renderer_Buffer::MaterialParameters)
         );
     }
 
-    void Renderer::TickUploadBindlessDependencies(RHI_CommandList* cmd_list)
+    void Renderer::TickUploadBindlessDependencies()
     {
         // run during loading so newly published entities pick up materials and lights as they arrive
         const bool initialize     = GetFrameNumber() == 0;
@@ -1188,7 +1162,7 @@ namespace spartan
         }
 
         // frustum and draw distance membership depend on the camera, rebuild every frame
-        UpdateLights(cmd_list);
+        UpdateLights();
         if (lights_changed)
         {
             RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
@@ -1196,12 +1170,12 @@ namespace spartan
 
         if (m_bindless_samplers_dirty)
         {
-            RHI_Device::UpdateBindlessSamplers(&Renderer::GetSamplers());
+            RHI_Device::UpdateBindlessSamplers(Renderer::GetSamplers().data(), static_cast<uint32_t>(Renderer::GetSamplers().size()));
             m_bindless_samplers_dirty = false;
         }
 
         // aabbs change every frame with entity transforms
-        UpdateBoundingBoxes(cmd_list);
+        UpdateBoundingBoxes();
         static bool aabbs_descriptor_set = false;
         if (!aabbs_descriptor_set)
         {
@@ -1217,7 +1191,7 @@ namespace spartan
             const uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_draw_data_count;
             if (!buffer->GetMappedData())
             {
-                cmd_list->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
+                RHI_CommandList::UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
             }
         }
         // mark synced even when empty so later imgui/editor WriteDrawData can stage mid-frame on d3d12
@@ -1263,7 +1237,7 @@ namespace spartan
         draw_args[1].instance_count      = 1;
         RHI_Buffer* args_buffer          = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
         args_buffer->ResetOffset();
-        args_buffer->Update(cmd_list, &draw_args[0], sizeof(draw_args));
+        args_buffer->Update(&draw_args[0], sizeof(draw_args));
 
         // two-slot indirect dispatch args, slot 0 opaque (or full list for vs path), slot 1 alpha for mesh path
         // group_count_x is bumped by the meshlet cull, group_count_y/z fixed at 1
@@ -1274,7 +1248,7 @@ namespace spartan
         dispatch_args[1].group_count_z           = 1;
         RHI_Buffer* dispatch_args_buffer         = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
         dispatch_args_buffer->ResetOffset();
-        dispatch_args_buffer->Update(cmd_list, &dispatch_args[0], sizeof(dispatch_args));
+        dispatch_args_buffer->Update(&dispatch_args[0], sizeof(dispatch_args));
 
         // single slot indirect dispatch args for the meshlet cull (phase b), group_count_x bumped by the instance cull (phase a)
         Sb_IndirectDispatchArgs instance_dispatch = {};
@@ -1282,20 +1256,20 @@ namespace spartan
         instance_dispatch.group_count_z          = 1;
         RHI_Buffer* instance_dispatch_buffer     = GetBuffer(Renderer_Buffer::InstanceDispatchArgs);
         instance_dispatch_buffer->ResetOffset();
-        instance_dispatch_buffer->Update(cmd_list, &instance_dispatch, sizeof(Sb_IndirectDispatchArgs));
+        instance_dispatch_buffer->Update(&instance_dispatch, sizeof(Sb_IndirectDispatchArgs));
 
         if (m_indirect_draw_count > 0)
         {
             RHI_Buffer* data_buffer = GetBuffer(Renderer_Buffer::IndirectDrawData);
             data_buffer->ResetOffset();
-            data_buffer->Update(cmd_list, &m_indirect_draw_data[0], data_buffer->GetStride() * m_indirect_draw_count);
+            data_buffer->Update(&m_indirect_draw_data[0], data_buffer->GetStride() * m_indirect_draw_count);
         }
 
         if (m_cull_task_count > 0)
         {
             RHI_Buffer* tasks_buffer = GetBuffer(Renderer_Buffer::CullTasks);
             tasks_buffer->ResetOffset();
-            tasks_buffer->Update(cmd_list, &m_cull_tasks[0], tasks_buffer->GetStride() * m_cull_task_count);
+            tasks_buffer->Update(&m_cull_tasks[0], tasks_buffer->GetStride() * m_cull_task_count);
         }
     }
 
@@ -1417,7 +1391,6 @@ namespace spartan
     }
 
     void Renderer::Pass_PreviewStudio(
-        RHI_CommandList* cmd_list,
         RHI_Texture* tex_out
     )
     {
@@ -1466,28 +1439,19 @@ namespace spartan
                 ? (wires_on_light ? 2.0f : 1.0f)
                 : 0.0f;
 
-        cmd_list->BeginTimeblock("preview_studio");
+        Renderer::BeginPass("preview_studio", rhi_all_mips);
         {
-            RHI_PipelineState pso;
-            pso.name = "preview_studio";
-            pso.shaders[RHI_Shader_Type::Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
-
-            SetCommonTextures(cmd_list);
-            cmd_list->SetTexture(
-                Renderer_BindingsUav::tex,
-                tex_out
-            );
+            RHI_CommandList::SetShader(shader_c);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
             m_pcb_pass_cpu.set_f3_value(tint);
             m_pcb_pass_cpu.set_f3_value2(
                 replace_sky ? 1.0f : 0.0f,
                 wire_mode,
                 0.0f
             );
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->Dispatch(tex_out);
+            RHI_CommandList::Dispatch(tex_out);
         }
-        cmd_list->EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     const Vector2& Renderer::GetResolutionRender()
@@ -1731,9 +1695,12 @@ namespace spartan
         m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
         // 0 = sdr, 1 = hdr10 pq (vulkan), 2 = hdr scrgb (d3d12 windowed)
         m_cb_frame_cpu.hdr_enabled = 0.0f;
-        if (m_swapchain && m_swapchain->IsHdr())
+        if (RHI_SwapChain* swapchain = RHI_Device::GetSwapChain())
         {
-            m_cb_frame_cpu.hdr_enabled = (m_swapchain->GetFormat() == RHI_Format::R16G16B16A16_Float) ? 2.0f : 1.0f;
+            if (swapchain->IsHdr())
+            {
+                m_cb_frame_cpu.hdr_enabled = (swapchain->GetFormat() == RHI_Format::R16G16B16A16_Float) ? 2.0f : 1.0f;
+            }
         }
         m_cb_frame_cpu.hdr_max_nits       = Display::GetLuminanceMax();
         m_cb_frame_cpu.hdr_sdr_white_nits = Display::GetSdrWhiteNits();
@@ -1990,7 +1957,7 @@ namespace spartan
         m_cb_frame_cpu.radial_blur_hub_count = static_cast<float>(count);
     }
 
-    void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
+    void Renderer::UpdateFrameConstantBuffer()
     {
         UpdateFrameCb_CameraAndProjectionHistory();
         UpdateFrameCb_ProjectionJitter();
@@ -2016,12 +1983,12 @@ namespace spartan
 
         // emissive triangle nee pool, must precede the cb upload because it writes the count
         // into m_cb_frame_cpu, the buffer upload itself piggybacks on the same cmd_list
-        BuildEmissiveTriangleNeePool(cmd_list);
+        BuildEmissiveTriangleNeePool();
 
-        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
+        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(&m_cb_frame_cpu);
     }
 
-    void Renderer::BuildEmissiveTriangleNeePool(RHI_CommandList* cmd_list)
+    void Renderer::BuildEmissiveTriangleNeePool()
     {
         // skip when restir off, the buffer stays at whatever data it had previously, the count
         // is set to zero so the shader treats the pool as empty regardless of buffer contents
@@ -2178,7 +2145,6 @@ namespace spartan
             RHI_Buffer* emissive_triangles_buffer = GetBuffer(Renderer_Buffer::EmissiveTriangles);
             emissive_triangles_buffer->ResetOffset();
             emissive_triangles_buffer->Update(
-                cmd_list,
                 tris.data(),
                 static_cast<uint32_t>(tris.size() * sizeof(Sb_EmissiveTriangle))
             );
@@ -2417,42 +2383,16 @@ namespace spartan
         }
     }
 
-    RHI_SwapChain* Renderer::GetSwapChain()
-    {
-        return m_swapchain.get();
-    }
-
     void Renderer::SetPresentInRenderer(const bool enabled)
     {
         m_present_in_renderer = enabled;
     }
 
-    void Renderer::AcquireSwapchainImage()
+    void Renderer::BlitToXrSwapchain(RHI_Texture* texture)
     {
-        if (
-            m_swapchain &&
-            !m_swapchain->IsImageAcquired()
-        )
-        {
-            ScopedTimeBlock time_block(
-                "frame_acquire"
-            );
-            m_swapchain->AcquireNextImage();
-        }
-    }
-
-    void Renderer::BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture)
-    {
-        cmd_list->BeginMarker("blit_to_back_buffer");
-        cmd_list->Blit(texture, m_swapchain.get());
-        cmd_list->EndMarker();
-    }
-
-    void Renderer::BlitToXrSwapchain(RHI_CommandList* cmd_list, RHI_Texture* texture)
-    {
-        cmd_list->BeginMarker("blit_to_xr_swapchain");
-        cmd_list->BlitToXrSwapchain(texture);
-        cmd_list->EndMarker();
+        RHI_CommandList::BeginMarker("blit_to_xr_swapchain");
+        RHI_CommandList::BlitToXrSwapchain(texture);
+        RHI_CommandList::EndMarker();
     }
 
     void Renderer::EndXrFrame()
@@ -2466,66 +2406,6 @@ namespace spartan
         Xr::EndFrame();
     }
 
-    void Renderer::SubmitAndPresent()
-    {
-        Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
-        {
-            SP_ASSERT(m_cmd_list_present->GetState() == RHI_CommandListState::Recording);
-
-            if (m_swapchain->IsImageAcquired())
-            {
-                m_cmd_list_present->RenderPassEnd();
-                m_cmd_list_present->PrepareForPresent(m_swapchain.get());
-
-                {
-                    ScopedTimeBlock time_block(
-                        "frame_submit"
-                    );
-                    m_cmd_list_present->Submit(
-                        m_swapchain->GetImageAcquiredSemaphore(),
-                        false,
-                        m_swapchain->GetRenderingCompleteSemaphore(),
-                        m_cross_queue_sync.pending_compute_timeline,
-                        m_cross_queue_sync.pending_compute_timeline_value);
-                }
-                {
-                    ScopedTimeBlock time_block(
-                        "frame_present"
-                    );
-                    m_swapchain->Present(
-                        m_cmd_list_present
-                    );
-                }
-            }
-            else
-            {
-                ScopedTimeBlock time_block(
-                    "frame_submit"
-                );
-                m_cmd_list_present->Submit(
-                    nullptr,
-                    true,
-                    nullptr,
-                    m_cross_queue_sync.pending_compute_timeline,
-                    m_cross_queue_sync.pending_compute_timeline_value);
-            }
-
-            FrameResource& frame_resource =
-                m_frame_resources[m_frame_resource_index];
-            frame_resource.completion_timeline =
-                m_cmd_list_present->GetTimelineSemaphore();
-            frame_resource.completion_value =
-                m_cmd_list_present->
-                    GetLastTimelineSignalValue();
-
-            m_cross_queue_sync.pending_compute_timeline       = nullptr;
-            m_cross_queue_sync.pending_compute_timeline_value = 0;
-        }
-        Profiler::TimeBlockEnd(TimeBlockType::Cpu);
-
-        FinalizeScreenshotReadback();
-    }
-
     RHI_Api_Type Renderer::GetRhiApiType()
     {
         return RHI_Context::api_type;
@@ -2536,14 +2416,30 @@ namespace spartan
         return m_frame_num;
     }
 
-    void Renderer::SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/, bool bind_ssao /*= true*/)
+    void Renderer::BeginPass(const char* name, uint32_t eye_layer, bool bind_ssao)
+    {
+        RHI_CommandList::BeginPass(name);
+        s_common_bind = true;
+        s_common_eye = eye_layer;
+        s_common_ssao = bind_ssao;
+    }
+
+    void Renderer::SetPass(const char* name, uint32_t eye_layer, bool bind_ssao)
+    {
+        RHI_CommandList::SetPass(name);
+        s_common_bind = true;
+        s_common_eye = eye_layer;
+        s_common_ssao = bind_ssao;
+    }
+
+    void Renderer::SetCommonTextures(uint32_t eye_layer /*= rhi_all_mips*/, bool bind_ssao /*= true*/)
     {
         // gbuffer (when eye_layer is specified, bind per-layer 2d views for compute passes)
-        cmd_list->SetTexture("tex_albedo",   GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, eye_layer);
-        cmd_list->SetTexture("tex_normal",   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),   rhi_all_mips, 0, eye_layer);
-        cmd_list->SetTexture("tex_material", GetRenderTarget(Renderer_RenderTarget::gbuffer_material), rhi_all_mips, 0, eye_layer);
-        cmd_list->SetTexture("tex_velocity", GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
-        cmd_list->SetTexture("tex_depth",    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture("tex_albedo",   GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture("tex_normal",   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),   rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture("tex_material", GetRenderTarget(Renderer_RenderTarget::gbuffer_material), rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture("tex_velocity", GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture("tex_depth",    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, eye_layer);
 
         // ssao is written on async compute, skip binding it during graphics phase 2
         // stereo skips the ssao pass, bind white so left eye occlusion does not hit the right eye
@@ -2551,7 +2447,7 @@ namespace spartan
         {
             const bool xr_stereo = Xr::IsSessionRunning() && Xr::GetStereoMode();
             RHI_Texture* tex_ssao = (!xr_stereo) ? GetRenderTarget(Renderer_RenderTarget::ssao) : nullptr;
-            cmd_list->SetTexture("tex_ssao", tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
+            RHI_CommandList::SetTexture("tex_ssao", tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
         }
     }
 
@@ -2600,19 +2496,16 @@ namespace spartan
         {
             // d3d12 storage buffers are not persistently mapped, scene draws are bulk-uploaded in
             // TickUploadBindlessDependencies, imgui and editor overlays written after that must stage here
-            if (RHI_CommandList* cmd_list = GetCommandListPresent())
+            if (RHI_Device::IsRecording())
             {
-                if (cmd_list->GetState() == RHI_CommandListState::Recording)
-                {
-                    cmd_list->UpdateBuffer(buffer, global_index * sizeof(Sb_DrawData), sizeof(Sb_DrawData), &entry);
-                }
+                RHI_CommandList::UpdateBuffer(buffer, global_index * sizeof(Sb_DrawData), sizeof(Sb_DrawData), &entry);
             }
         }
 
         return global_index;
     }
 
-    void Renderer::UpdateMaterials(RHI_CommandList* cmd_list)
+    void Renderer::UpdateMaterials()
     {
         static array<Sb_Material, rhi_max_array_size> properties;
         static unordered_set<uint64_t> unique_material_ids;
@@ -2844,10 +2737,10 @@ namespace spartan
 
         RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &properties[0], buffer->GetStride() * count);
+        buffer->Update(&properties[0], buffer->GetStride() * count);
     }
 
-    void Renderer::UpdateLights(RHI_CommandList* cmd_list)
+    void Renderer::UpdateLights()
     {
         // only clear slots we wrote last frame, full 16k fill is pure cpu waste
         static uint32_t prev_light_count = 0;
@@ -3037,7 +2930,7 @@ namespace spartan
         
         if (m_count_active_lights > 0)
         {
-            buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * m_count_active_lights);
+            buffer->Update(&m_bindless_lights[0], buffer->GetStride() * m_count_active_lights);
         }
 
         // upload the compact volumetric light index list, count flows through buffer_frame.volumetric_light_count
@@ -3046,13 +2939,13 @@ namespace spartan
         {
             RHI_Buffer* vol_buffer = GetBuffer(Renderer_Buffer::VolumetricLightIndices);
             vol_buffer->ResetOffset();
-            vol_buffer->Update(cmd_list, &volumetric_indices[0], vol_buffer->GetStride() * volumetric_count);
+            vol_buffer->Update(&volumetric_indices[0], vol_buffer->GetStride() * volumetric_count);
         }
 
         prev_light_count = m_count_active_lights;
     }
 
-    void Renderer::UpdateBoundingBoxes(RHI_CommandList* cmd_list)
+    void Renderer::UpdateBoundingBoxes()
     {
         static uint32_t prev_aabb_count = 0;
         for (uint32_t i = 0; i < prev_aabb_count; i++)
@@ -3100,7 +2993,7 @@ namespace spartan
             RHI_Buffer* buffer         = GetBuffer(Renderer_Buffer::AABBs);
             uint32_t frame_byte_offset = m_frame_resource_index * rhi_max_array_size * static_cast<uint32_t>(sizeof(Sb_Aabb));
             uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_Aabb)) * total_aabb_count;
-            cmd_list->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_bindless_aabbs[0]);
+            RHI_CommandList::UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_bindless_aabbs[0]);
         }
         prev_aabb_count = total_aabb_count;
     }
@@ -3501,7 +3394,7 @@ namespace spartan
         }
     }
 
-    void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
+    void Renderer::UpdateDrawCalls()
     {
         UpdateDrawCalls_ResetCounts();
         UpdateDrawCalls_CollectAndSort();
@@ -3554,7 +3447,7 @@ namespace spartan
         return true;
     }
 
-    void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
+    void Renderer::UpdateAccelerationStructures()
     {
         bool ray_tracing_enabled = cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>();
         if (!ray_tracing_enabled)
@@ -3562,7 +3455,7 @@ namespace spartan
             return;
         }
 
-        if (!RHI_Device::IsSupportedRayTracing() || !cmd_list)
+        if (!RHI_Device::IsSupportedRayTracing() || !RHI_Device::IsRecording())
         {
             SP_LOG_WARNING("Ray tracing or command list invalid, skipping update");
             return;
@@ -3586,7 +3479,7 @@ namespace spartan
         bool blas_refit_done = false;
         bool blas_built_this_frame = false;
         {
-            cmd_list->BeginMarker("blas_build");
+            RHI_CommandList::BeginMarker("blas_build");
 
             constexpr uint32_t blas_builds_per_frame = 64;
 
@@ -3623,7 +3516,7 @@ namespace spartan
                 {
                     if (blas_built < blas_builds_per_frame)
                     {
-                        render->BuildAccelerationStructure(cmd_list);
+                        render->BuildAccelerationStructure();
                         if (render->HasAccelerationStructure())
                         {
                             blas_built++;
@@ -3638,7 +3531,7 @@ namespace spartan
                 // refit blas for deformable meshes (cloth, skinned, etc.)
                 if (render->NeedsBlasRefit() && render->HasAccelerationStructure())
                 {
-                    render->RefitAccelerationStructure(cmd_list);
+                    render->RefitAccelerationStructure();
                     render->SetNeedsBlasRefit(false);
                     blas_refit_done = true;
                 }
@@ -3655,7 +3548,7 @@ namespace spartan
                 SP_LOG_INFO("Ray tracing: BLAS build burst complete (last frame built %u, total %u)", blas_built, blas_total);
             }
 
-            cmd_list->EndMarker();
+            RHI_CommandList::EndMarker();
         }
 
         // skip tlas build until all blas are ready so we don't keep rebuilding it with an incomplete set
@@ -3714,7 +3607,7 @@ namespace spartan
 
         // tlas
         {
-            cmd_list->BeginMarker("tlas_build");
+            RHI_CommandList::BeginMarker("tlas_build");
 
             if (!m_tlas)
             {
@@ -3852,14 +3745,14 @@ namespace spartan
                     SP_LOG_INFO("Ray tracing: building TLAS with %zu instances", instances.size());
                     last_instance_count = static_cast<uint32_t>(instances.size());
                 }
-                m_tlas->BuildTopLevel(cmd_list, instances);
+                m_tlas->BuildTopLevel(instances);
 
                 // this is a full overwrite of the table, not a ring push, and the hit shaders read it at
                 // the offset it was bound with. without the rewind every rebuild walked the offset one
                 // stride further until the write ran off the end of the buffer, and in the meantime the
                 // passes bound at zero and read whatever an earlier rebuild had left there
                 geometry_info_buffer->ResetOffset();
-                geometry_info_buffer->Update(cmd_list, geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
+                geometry_info_buffer->Update(geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
             }
             else if (last_instance_count != 0)
             {
@@ -3868,7 +3761,7 @@ namespace spartan
                 last_instance_count = 0;
             }
 
-            cmd_list->EndMarker();
+            RHI_CommandList::EndMarker();
         }
     }
 
@@ -4081,7 +3974,7 @@ namespace spartan
         return true;
     }
 
-    void Renderer::Pass_Screenshot(RHI_CommandList* cmd_list, RHI_Texture* tex_pre_tonemap)
+    void Renderer::Pass_Screenshot(RHI_Texture* tex_pre_tonemap)
     {
         {
             lock_guard<mutex> lock(screenshot_mutex);
@@ -4107,29 +4000,26 @@ namespace spartan
             return;
         }
 
-        cmd_list->BeginMarker("screenshot_sdr");
+        RHI_CommandList::BeginMarker("screenshot_sdr");
         {
-            Pass_Tonemap(cmd_list, tex_pre_tonemap, tex_sdr, true);
+            Pass_Tonemap(tex_pre_tonemap, tex_sdr, true);
 
             RHI_Texture* tex_in  = tex_sdr;
             RHI_Texture* tex_out = tex_ping;
-            Pass_PostProcess_DisplayEffects(cmd_list, tex_in, tex_out, false);
+            Pass_PostProcess_DisplayEffects(tex_in, tex_out, false);
 
             if (tex_in != tex_sdr)
             {
-                cmd_list->Copy(tex_in, tex_sdr, false);
+                RHI_CommandList::Copy(tex_in, tex_sdr, false);
             }
 
             if (!secondary_render_root_active)
             {
-                Pass_PostProcess_EditorOverlays(
-                    cmd_list,
-                    tex_sdr
-                );
-                Pass_Text(cmd_list, tex_sdr);
+                Pass_PostProcess_EditorOverlays(tex_sdr);
+                Pass_Text(tex_sdr);
             }
         }
-        cmd_list->EndMarker();
+        RHI_CommandList::EndMarker();
 
         lock_guard<mutex> lock(screenshot_mutex);
         if (screenshot.pending)
@@ -4139,7 +4029,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_ScreenshotXr(RHI_CommandList* cmd_list)
+    void Renderer::Pass_ScreenshotXr()
     {
         {
             lock_guard<mutex> lock(screenshot_mutex);
@@ -4162,19 +4052,14 @@ namespace spartan
         }
 
         // stereo buffer is already tonemapped per eye, copy left eye for an hmd matched debug shot
-        cmd_list->BeginMarker("screenshot_xr");
+        RHI_CommandList::BeginMarker("screenshot_xr");
         {
-            RHI_Shader* shader_c = GetShader(Renderer_Shader::blit_c);
-            RHI_PipelineState pso;
-            pso.name             = "screenshot_xr_left";
-            pso.shaders[Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
-
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_sdr);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_stereo, rhi_all_mips, 0, 0);
-            cmd_list->Dispatch(tex_sdr);
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::blit_c), "screenshot_xr_left");
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_sdr, rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_stereo, rhi_all_mips, 0, 0);
+            RHI_CommandList::Dispatch(tex_sdr);
         }
-        cmd_list->EndMarker();
+        RHI_CommandList::EndMarker();
 
         lock_guard<mutex> lock(screenshot_mutex);
         if (screenshot.pending)
@@ -4245,16 +4130,6 @@ namespace spartan
     }
 
     // draw calls
-    array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls;
-    uint32_t Renderer::m_draw_call_count;
-    array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls_prepass;
-    uint32_t Renderer::m_draw_calls_prepass_count;
-    array<Sb_DrawData, renderer_max_indirect_draws> Renderer::m_indirect_draw_data;
-    array<Render*,     renderer_max_indirect_draws> Renderer::m_indirect_renders;
-    uint32_t Renderer::m_indirect_draw_count       = 0;
-    uint32_t Renderer::m_indirect_render_count = 0;
-    array<Sb_CullTask, renderer_max_cull_tasks> Renderer::m_cull_tasks;
-    uint32_t Renderer::m_cull_task_count = 0;
 
     bool Renderer::UpdateSkysphereConvergenceState()
     {
@@ -4312,20 +4187,28 @@ namespace spartan
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
-        cmd_list->SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
+        if (cmd_list)
+        {
+            RHI_Device::Bind(cmd_list);
+        }
+        if (!RHI_Device::IsRecording())
+        {
+            return;
+        }
+        RHI_CommandList::SetConstantBuffer(0u, GetBuffer(Renderer_Buffer::ConstantFrame));
+        RHI_CommandList::SetTexture("tex_perlin", GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
 
         RHI_Texture* tex_exposure = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
         if (tex_exposure)
         {
-            cmd_list->SetTexture("tex_effective_exposure", tex_exposure);
+            RHI_CommandList::SetTexture("tex_effective_exposure", tex_exposure);
         }
 
-        bool is_graphics_queue = cmd_list->GetQueue() && cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics;
+        bool is_graphics_queue = RHI_Device::GetBoundQueueType() == RHI_Queue_Type::Graphics;
         RHI_Texture* tex_wind  = GetRenderTarget(Renderer_RenderTarget::wind_field);
         if (is_graphics_queue && tex_wind)
         {
-            cmd_list->SetTexture("tex_wind_field", tex_wind);
+            RHI_CommandList::SetTexture("tex_wind_field", tex_wind);
         }
 
         // terrain analysis maps, bound globally because the raster, reflection and gi paths all
@@ -4341,8 +4224,8 @@ namespace spartan
                 map_b->GetResourceState() == ResourceState::PreparedForGpu;
 
             RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Noise_perlin);
-            cmd_list->SetTexture("tex_terrain_map_a", ready ? map_a : fallback);
-            cmd_list->SetTexture("tex_terrain_map_b", ready ? map_b : fallback);
+            RHI_CommandList::SetTexture("tex_terrain_map_a", ready ? map_a : fallback);
+            RHI_CommandList::SetTexture("tex_terrain_map_b", ready ? map_b : fallback);
         }
 
         Renderer_RenderTarget ocean_displacement_current = m_pass_state.ocean_history.SelectWrite(
@@ -4368,19 +4251,24 @@ namespace spartan
         );
         if (is_graphics_queue && tex_ocean_disp)
         {
-            cmd_list->SetTexture("tex_ocean_displacement", tex_ocean_disp);
+            RHI_CommandList::SetTexture("tex_ocean_displacement", tex_ocean_disp);
         }
         if (is_graphics_queue && tex_ocean_disp_previous)
         {
-            cmd_list->SetTexture("tex_ocean_displacement_previous", tex_ocean_disp_previous);
+            RHI_CommandList::SetTexture("tex_ocean_displacement_previous", tex_ocean_disp_previous);
         }
         if (is_graphics_queue && tex_ocean_norm)
         {
-            cmd_list->SetTexture("tex_ocean_normal", tex_ocean_norm);
+            RHI_CommandList::SetTexture("tex_ocean_normal", tex_ocean_norm);
+        }
+
+        if (s_common_bind)
+        {
+            SetCommonTextures(s_common_eye, s_common_ssao);
         }
     }
 
-    void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
+    void Renderer::Pass_VariableRateShading()
     {
         if (
             !cvar_variable_rate_shading.GetValueAs<bool>() ||
@@ -4394,41 +4282,38 @@ namespace spartan
         RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate);
         if (!shader_c || !shader_c->IsCompiled() || !tex_in || !tex_out)
+        {
             return;
+        }
 
         // clear to full rate on first use or after render target recreation
         if (tex_out != m_pass_state.vrs_last_cleared_texture)
         {
-            cmd_list->ClearTexture(tex_out, Color(0.0f, 0.0f, 0.0f, 0.0f));
+            RHI_CommandList::ClearTexture(tex_out, Color(0.0f, 0.0f, 0.0f, 0.0f));
             m_pass_state.vrs_last_cleared_texture = tex_out;
         }
 
-        cmd_list->BeginTimeblock("variable_rate_shading");
+        RHI_CommandList::BeginPass("variable_rate_shading");
         {
-            RHI_PipelineState pso;
-            pso.name             = "variable_rate_shading";
-            pso.shaders[Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
-
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
-            cmd_list->Dispatch(tex_out);
+            RHI_CommandList::SetShader(shader_c);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_in);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex_uint), tex_out, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(tex_out);
         }
-        cmd_list->EndTimeblock();
+        RHI_CommandList::EndPass();
     }
 
     void Renderer::Pass_ComputeBatchA(
-        RHI_CommandList* cmd_list,
         bool update_skysphere
     )
     {
-        cmd_list->BeginMarker("compute_batch_a");
+        RHI_CommandList::BeginMarker("compute_batch_a");
 
         // accel structures first so batch b's rt passes inherit the tlas via compute queue order
-        UpdateAccelerationStructures(cmd_list);
+        UpdateAccelerationStructures();
 
         // only needs the camera frustum and the light list, so it overlaps the gbuffer pass instead of waiting in batch b
-        Pass_LightClusterAssign(cmd_list);
+        Pass_LightClusterAssign();
 
         {
             RHI_Shader* lut_shader = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
@@ -4436,7 +4321,7 @@ namespace spartan
             if (lut_shader && lut_shader->IsCompiled() &&
                 (!m_pass_state.brdf_lut_produced || m_pass_state.brdf_lut_shader_hash != lut_hash))
             {
-                Pass_Lut_BrdfSpecular(cmd_list);
+                Pass_Lut_BrdfSpecular();
                 m_pass_state.brdf_lut_produced    = true;
                 m_pass_state.brdf_lut_shader_hash = lut_hash;
             }
@@ -4446,100 +4331,100 @@ namespace spartan
         {
             if (!m_pass_state.atmosphere_lut_produced)
             {
-                Pass_Lut_AtmosphericScattering(cmd_list);
+                Pass_Lut_AtmosphericScattering();
                 m_pass_state.atmosphere_lut_produced = true;
             }
             if (!m_pass_state.cloud_noise_produced)
             {
-                Pass_CloudNoise(cmd_list);
+                Pass_CloudNoise();
                 m_pass_state.cloud_noise_produced = true;
             }
-            Pass_Skysphere(cmd_list);
+            Pass_Skysphere();
         }
 
-        cmd_list->EndMarker();
+        RHI_CommandList::EndMarker();
     }
 
-    void Renderer::Pass_ComputeBatchB(RHI_CommandList* cmd_list)
+    void Renderer::Pass_ComputeBatchB()
     {
-        cmd_list->BeginMarker("compute_batch_b");
-        Pass_ScreenSpaceAmbientOcclusion(cmd_list);
-        Pass_ScreenSpaceShadows(cmd_list);
-        Pass_RayTracedShadows(cmd_list);
-        Pass_ReSTIR_PathTracing(cmd_list);
-        Pass_ReSTIR_Denoising(cmd_list);
-        cmd_list->EndMarker();
+        RHI_CommandList::BeginMarker("compute_batch_b");
+        Pass_ScreenSpaceAmbientOcclusion();
+        Pass_ScreenSpaceShadows();
+        Pass_RayTracedShadows();
+        Pass_ReSTIR_PathTracing();
+        Pass_ReSTIR_Denoising();
+        RHI_CommandList::EndMarker();
     }
 
-    void Renderer::Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list)
+    void Renderer::Pass_GraphicsPhase1_Geometry()
     {
-        Pass_HiZ(cmd_list);
-        Pass_IndirectCull(cmd_list);
+        Pass_HiZ();
+        Pass_IndirectCull();
         // populate the gpu procedural grass ring before the geometry rasters that consume it
         // safe to run unconditionally, the pass early-outs when grass is disabled
-        Pass_Grass_Populate(cmd_list);
-        Pass_Depth_Prepass(cmd_list);
-        Pass_GBuffer(cmd_list, false);
-        Pass_MeshletVisualize(cmd_list);
+        Pass_Grass_Populate();
+        Pass_Depth_Prepass();
+        Pass_GBuffer(false);
+        Pass_MeshletVisualize();
     }
 
-    void Renderer::Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list)
+    void Renderer::Pass_GraphicsPhase2_ShadowsAndRT()
     {
-        Pass_ShadowMaps(cmd_list);
+        Pass_ShadowMaps();
     }
 
-    void Renderer::ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer)
+    void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer)
     {
         // on graphics on purpose, the graphics queue would otherwise idle for the whole of pass_light
-        Pass_Light(cmd_list, false, eye_layer);
-        Pass_Light_Composition(cmd_list, false, eye_layer);
+        Pass_Light(false, eye_layer);
+        Pass_Light_Composition(false, eye_layer);
 
-        const bool clouds_prepared = Pass_Clouds_Prepare(cmd_list, eye_layer);
-        cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+        const bool clouds_prepared = Pass_Clouds_Prepare(eye_layer);
+        RHI_CommandList::Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
         if (clouds_prepared)
         {
-            Pass_Clouds_Composite(cmd_list, eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque));
+            Pass_Clouds_Composite(eye_layer, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque));
         }
 
         if (eye == 0)
         {
-            Pass_LightClusterVisualize(cmd_list);
+            Pass_LightClusterVisualize();
         }
 
         if (m_transparents_present)
         {
-            Pass_GBuffer(cmd_list, true);
-            Pass_Light(cmd_list, true, eye_layer);
-            Pass_Light_Composition(cmd_list, true, eye_layer);
+            Pass_GBuffer(true);
+            Pass_Light(true, eye_layer);
+            Pass_Light_Composition(true, eye_layer);
         }
 
         // trace after transparent gbuffer so glass pixels own their reflection rays instead of whatever was behind them
-        Pass_Reflections_Trace(cmd_list, eye_layer);
+        Pass_Reflections_Trace(eye_layer);
 
-        Pass_Light_Ibl(cmd_list, eye_layer);
-        Pass_Reflections_Shade(cmd_list, eye_layer);
-        Pass_Reflections_Denoise(cmd_list, eye_layer);
+        Pass_Light_Ibl(eye_layer);
+        Pass_Reflections_Shade(eye_layer);
+        Pass_Reflections_Denoise(eye_layer);
 
-        Pass_Reflections_Apply(cmd_list, eye_layer);
-        Pass_LightFlares(cmd_list, eye_layer);
+        Pass_Reflections_Apply(eye_layer);
+        Pass_LightFlares(eye_layer);
         if (clouds_prepared)
         {
             const bool xr_stereo = Xr::IsSessionRunning() && Xr::GetStereoMode();
-            Pass_Clouds(cmd_list, eye_layer, !xr_stereo || eye == Xr::eye_count - 1);
+            Pass_Clouds(eye_layer, !xr_stereo || eye == Xr::eye_count - 1);
         }
 
         // particles remain foreground content and composite after world space clouds
         if (eye == 0)
         {
-            Pass_Particles(cmd_list);
+            Pass_Particles();
         }
 
-        Pass_AA_Upscale(cmd_list, eye_layer);
-        Pass_PostProcess(cmd_list, eye_layer);
+        Pass_AA_Upscale(eye_layer);
+        Pass_PostProcess(eye_layer);
 
         if (Xr::IsSessionRunning() && Xr::GetStereoMode())
         {
-            cmd_list->BlitToArrayLayer(
+            RHI_CommandList::BlitToArrayLayer(
                 GetRenderTarget(Renderer_RenderTarget::frame_output),
                 GetRenderTarget(Renderer_RenderTarget::frame_output_stereo),
                 eye
@@ -4547,11 +4432,7 @@ namespace spartan
         }
     }
 
-    void Renderer::ProduceFrame(
-        RHI_CommandList* cmd_list_graphics_present,
-        RHI_CommandList* cmd_list_compute,
-        RHI_CommandList* cmd_list_compute_b
-    )
+    void Renderer::ProduceFrame()
     {
         SP_PROFILE_CPU();
 
@@ -4571,22 +4452,13 @@ namespace spartan
                     state == RHI_ShaderCompilationState::Compiling
                 )
                 {
-                    // release pre-acquired compute lists so they do not stay recording
-                    if (
-                        cmd_list_compute &&
-                        cmd_list_compute->GetState() ==
-                            RHI_CommandListState::Recording
-                    )
+                    if (RHI_Device::IsRecording(RHI_Frame_List::ComputeA))
                     {
-                        cmd_list_compute->Submit(nullptr, false);
+                        RHI_Device::Submit(RHI_Frame_List::ComputeA, nullptr, false);
                     }
-                    if (
-                        cmd_list_compute_b &&
-                        cmd_list_compute_b->GetState() ==
-                            RHI_CommandListState::Recording
-                    )
+                    if (RHI_Device::IsRecording(RHI_Frame_List::ComputeB))
                     {
-                        cmd_list_compute_b->Submit(nullptr, false);
+                        RHI_Device::Submit(RHI_Frame_List::ComputeB, nullptr, false);
                     }
                     return;
                 }
@@ -4594,94 +4466,70 @@ namespace spartan
             shaders_ready = true;
         }
 
-        RHI_Texture* rt_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
         const bool update_skysphere =
             secondary_render_root_active
                 ? false
                 : UpdateSkysphereConvergenceState();
-        RHI_Queue* queue_graphics      = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
-        // submit uploads before compute batch a
-        cmd_list_graphics_present->Submit(nullptr, false);
-        RHI_SyncPrimitive* uploads_timeline = cmd_list_graphics_present->GetTimelineSemaphore();
-        const uint64_t uploads_value        = cmd_list_graphics_present->GetLastTimelineSignalValue();
+        RHI_Device::Bind(RHI_Frame_List::Graphics);
+        RHI_Work uploads = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
 
-        cmd_list_graphics_present = queue_graphics->NextCommandList();
-        cmd_list_graphics_present->Begin();
-        m_cmd_list_present = cmd_list_graphics_present;
-
-        // compute batch a, view independent prep, runs alongside graphics phase 1
-        Pass_ComputeBatchA(
-            cmd_list_compute,
-            update_skysphere
+        RHI_Device::Bind(RHI_Frame_List::ComputeA);
+        Pass_ComputeBatchA(update_skysphere);
+        RHI_Work batch_a = RHI_Device::Submit(
+            RHI_Frame_List::ComputeA,
+            nullptr,
+            false,
+            nullptr,
+            uploads.timeline,
+            uploads.value
         );
+        RHI_SyncPrimitive* batch_a_timeline = batch_a.timeline;
+        const uint64_t batch_a_value        = batch_a.value;
+        m_cross_queue_sync.pending_compute_timeline       = batch_a_timeline;
+        m_cross_queue_sync.pending_compute_timeline_value = batch_a_value;
+        RHI_Device::SetFrameWait(batch_a_timeline, batch_a_value);
 
-        // after the upload flush so cluster assign sees this frame's matrices, before graphics phase 1 so the queues overlap
-        cmd_list_compute->Submit(nullptr, false, nullptr, uploads_timeline, uploads_value);
-        RHI_SyncPrimitive* batch_a_timeline = cmd_list_compute->GetTimelineSemaphore();
-        const uint64_t batch_a_value        = cmd_list_compute->GetLastTimelineSignalValue();
-        m_cross_queue_sync.pending_compute_timeline =
-            batch_a_timeline;
-        m_cross_queue_sync.pending_compute_timeline_value =
-            batch_a_value;
-
-        // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
-        // recorded after the compute submit so the gpu compute queue is already kicked off by the time we record it
-        Pass_WindField(cmd_list_graphics_present);
-
-        // fft ocean runs on the graphics queue too, its displacement must be ready for the depth prepass and gbuffer
-        Pass_Ocean(cmd_list_graphics_present);
+        RHI_Device::Bind(RHI_Frame_List::Graphics);
+        Pass_WindField();
+        Pass_Ocean();
 
         if (Camera* camera = World::GetCamera())
         {
-            Pass_VariableRateShading(cmd_list_graphics_present);
-            Pass_GraphicsPhase1_Geometry(cmd_list_graphics_present);
+            Pass_VariableRateShading();
+            Pass_GraphicsPhase1_Geometry();
 
-            // submit phase 1, signal gbuffer ready
-            cmd_list_graphics_present->Submit(nullptr, false);
-            const uint64_t gfx_phase1_timeline_value = cmd_list_graphics_present->GetLastTimelineSignalValue();
-            RHI_SyncPrimitive* gfx_timeline          = cmd_list_graphics_present->GetTimelineSemaphore();
+            RHI_Work phase1 = RHI_Device::Submit(RHI_Frame_List::Graphics, nullptr, false);
 
-            // compute batch b was pre-acquired at tick, waits on phase 1 and overlaps graphics phase 2
-            Pass_ComputeBatchB(cmd_list_compute_b);
-            cmd_list_compute_b->Submit(
+            RHI_Device::Bind(RHI_Frame_List::ComputeB);
+            Pass_ComputeBatchB();
+            RHI_Work batch_b = RHI_Device::Submit(
+                RHI_Frame_List::ComputeB,
                 nullptr,
                 false,
                 nullptr,
-                gfx_timeline,
-                gfx_phase1_timeline_value
+                phase1.timeline,
+                phase1.value
             );
-            RHI_SyncPrimitive* compute_b_timeline =
-                cmd_list_compute_b->GetTimelineSemaphore();
-            const uint64_t compute_b_value =
-                cmd_list_compute_b->GetLastTimelineSignalValue();
+            RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline;
+            const uint64_t compute_b_value        = batch_b.value;
 
             const bool ray_traced_shadows =
                 cvar_ray_traced_shadows.GetValueAs<bool>();
             const bool tlas_available =
                 RHI_Device::IsSupportedRayTracing() &&
-                GetTopLevelAccelerationStructure() !=
-                    nullptr &&
+                GetTopLevelAccelerationStructure() != nullptr &&
                 !IsSecondaryViewActive();
             const bool shadow_maps_required =
                 World::GetLightCount() > 0 &&
-                !(
-                    ray_traced_shadows &&
-                    tlas_available
-                );
+                !(ray_traced_shadows && tlas_available);
+            RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {
-                // once per frame for stereo too, both eyes sample the same atlas
-                // shadow maps overlap compute batch b
-                cmd_list_graphics_present =
-                    queue_graphics->NextCommandList();
-                cmd_list_graphics_present->Begin();
-                m_cmd_list_present =
-                    cmd_list_graphics_present;
-                Pass_GraphicsPhase2_ShadowsAndRT(
-                    cmd_list_graphics_present
-                );
-                cmd_list_graphics_present->Submit(
+                Pass_GraphicsPhase2_ShadowsAndRT();
+                RHI_Device::Submit(
+                    RHI_Frame_List::Graphics,
                     nullptr,
                     false,
                     nullptr,
@@ -4690,12 +4538,9 @@ namespace spartan
                 );
             }
 
-            // graphics phase 3, opaque lighting + post-process, the present cmd list waits on batch b in SubmitAndPresent
-            cmd_list_graphics_present = queue_graphics->NextCommandList();
-            cmd_list_graphics_present->Begin();
-            m_cmd_list_present                                = cmd_list_graphics_present;
             m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;
             m_cross_queue_sync.pending_compute_timeline_value = compute_b_value;
+            RHI_Device::SetFrameWait(compute_b_timeline, compute_b_value);
 
             RHI_Texture* tex_exposure_previous =
                 GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
@@ -4712,7 +4557,7 @@ namespace spartan
                 );
             if (m_pass_state.exposure_history_reset)
             {
-                cmd_list_graphics_present->ClearTexture(
+                RHI_CommandList::ClearTexture(
                     tex_exposure_previous,
                     Color::standard_black
                 );
@@ -4723,81 +4568,45 @@ namespace spartan
             for (uint32_t eye = 0; eye < eye_count; eye++)
             {
                 const uint32_t eye_layer = xr_stereo ? eye : rhi_all_mips;
-                // tag push constant eye index so per eye selectors in common_resources.hlsl pick the right matrices
                 m_pcb_pass_cpu.eye_index = xr_stereo ? eye : 0;
-                ProduceFrame_PerEye(cmd_list_graphics_present, eye, eye_layer);
+                ProduceFrame_PerEye(eye, eye_layer);
             }
 
             if (xr_stereo)
             {
-                Pass_ScreenshotXr(cmd_list_graphics_present);
+                Pass_ScreenshotXr();
             }
 
             if (auto_exposure_enabled)
             {
-                cmd_list_graphics_present->Blit(
+                RHI_CommandList::Blit(
                     GetRenderTarget(Renderer_RenderTarget::auto_exposure),
                     tex_exposure_previous,
                     false
                 );
             }
 
-            // reset eye index for non per eye passes that follow
             m_pcb_pass_cpu.eye_index = 0;
         }
         else
         {
-            // batch b was pre-acquired but phase 1 never ran, release it
-            if (
-                cmd_list_compute_b &&
-                cmd_list_compute_b->GetState() ==
-                    RHI_CommandListState::Recording
-            )
+            if (RHI_Device::IsRecording(RHI_Frame_List::ComputeB))
             {
-                cmd_list_compute_b->Submit(nullptr, false);
+                RHI_Device::Submit(RHI_Frame_List::ComputeB, nullptr, false);
             }
-            cmd_list_graphics_present->ClearTexture(rt_output, Color::standard_black);
+            RHI_Device::Bind(RHI_Frame_List::Graphics);
+            RHI_CommandList::ClearTexture(rt_output, Color::standard_black);
         }
 
+        RHI_Device::Bind(RHI_Frame_List::Graphics);
         if (!secondary_render_root_active)
         {
-            Pass_Text(
-                cmd_list_graphics_present,
-                rt_output
-            );
+            Pass_Text(rt_output);
         }
 
-        // after this the _previous slots resolve to this frame's data, which is what restir's temporal gate reads next frame
-        // a secondary view must not publish its gbuffer as the primary camera's history, the gate would
-        // reject everything on the next primary frame and the main viewport flickers
         if (!secondary_render_root_active)
         {
             Pass_ReSTIR_SwapGBufferHistory();
         }
-    }
-
-    void RHI_CommandList::SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range)
-    {
-        SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true);
-    }
-
-    void RHI_CommandList::SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture, const uint32_t mip_index, uint32_t mip_range, const uint32_t array_layer)
-    {
-        SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, false, array_layer);
-    }
-
-    void RHI_CommandList::SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer)
-    {
-        SetBuffer(static_cast<uint32_t>(slot), buffer);
-    }
-
-    void RHI_CommandList::SetConstantBuffer(const Renderer_BindingsCb slot, RHI_Buffer* constant_buffer)
-    {
-        SetConstantBuffer(static_cast<uint32_t>(slot), constant_buffer);
-    }
-
-    void RHI_CommandList::SetAccelerationStructure(const Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
-    {
-        SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
     }
 }

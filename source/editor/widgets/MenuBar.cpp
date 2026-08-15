@@ -21,37 +21,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================
 #include "pch.h"
+#include <algorithm>
 #include "MenuBar.h"
-#include "Profiler.h"
-#include "ShaderEditor.h"
-#include "RenderOptions.h"
-#include "TextureViewer.h"
-#include "ResourceViewer.h"
-#include "AssetViewer.h"
-#include "AssetBrowser.h"
-#include "Console.h"
-#include "Properties.h"
-#include "Viewport.h"
-#include "WorldViewer.h"
 #include "FileDialog.h"
 #include "Style.h"
+#include "../Editor.h"
 #include "Engine.h"
-#include "Rendering/Renderer.h"
-#include "Profiling/RenderDoc.h"
+#include "resource/ResourceCache.h"
+#include "world/World.h"
+#include "rendering/Renderer.h"
+#include "profiling/RenderDoc.h"
 #include "Debugging.h"
-#include "ScriptEditor.h"
-#include "Sequencer.h"
-#include "TerrainEditor.h"
-#include "Core/Definitions.h"
-#include "Core/ThreadPool.h"
-#include "Commands/CommandStack.h"
-#include "MCP/McpServer.h"
-#include "../MCP/McpAssistant.h"
+#include "core/Definitions.h"
+#include "core/ThreadPool.h"
+#include "commands/CommandStack.h"
+#include "mcp/McpServer.h"
+#include "../mcp/McpAssistant.h"
 #include "../WorldPreviews.h"
 #include "../GeneralWindows.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Style.h"
-#include "../ImGui/ImGui_TransformGizmo.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Style.h"
+#include "../imgui/ImGui_TransformGizmo.h"
 //===============================
 
 //= NAMESPACES =====
@@ -68,15 +58,10 @@ namespace
     string file_dialog_selection_path;
     unique_ptr<FileDialog> file_dialog;
 
-    template <class T>
-    void menu_entry()
+    void menu_entry(Widget* widget)
     {
-        T* widget = editor->GetWidget<T>();
-
-        // menu item with checkmark based on widget->GetVisible()
         if (ImGui::MenuItem(widget->GetTitle(), nullptr, widget->GetVisible()))
         {
-            // toggle visibility
             widget->SetVisible(!widget->GetVisible());
         }
     }
@@ -329,21 +314,13 @@ namespace
 
                 if (ImGui::BeginMenu("Widgets"))
                 {
-                    menu_entry<Profiler>();
-                    menu_entry<ShaderEditor>();
-                    menu_entry<ScriptEditor>();
-                    menu_entry<TerrainEditor>();
-                    menu_entry<RenderOptions>();
-                    menu_entry<TextureViewer>();
-                    menu_entry<ResourceViewer>();
-                    menu_entry<McpAssistant>();
-                    menu_entry<AssetViewer>();
-                    menu_entry<AssetBrowser>();
-                    menu_entry<Console>();
-                    menu_entry<Properties>();
-                    menu_entry<Viewport>();
-                    menu_entry<WorldViewer>();
-                    menu_entry<Sequencer>();
+                    editor->ForEachWidget([](Widget* widget)
+                    {
+                        if (widget->ShowInViewMenu())
+                        {
+                            menu_entry(widget);
+                        }
+                    });
 
                     ImGui::EndMenu();
                 }
@@ -1128,12 +1105,22 @@ void MenuBar::Initialize(Editor* _editor)
     editor      = _editor;
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
-    buttons_toolbar::widgets.push_back({ spartan::IconType::Profiler,      editor->GetWidget<Profiler>()       });
-    buttons_toolbar::widgets.push_back({ spartan::IconType::ResourceCache, editor->GetWidget<ResourceViewer>() });
-    buttons_toolbar::widgets.push_back({ spartan::IconType::Shader,        editor->GetWidget<ShaderEditor>()   });
-    buttons_toolbar::widgets.push_back({ spartan::IconType::Gear,          editor->GetWidget<RenderOptions>()  });
-    buttons_toolbar::widgets.push_back({ spartan::IconType::Texture,       editor->GetWidget<TextureViewer>()  });
-    buttons_toolbar::widgets.push_back({ spartan::IconType::Model,         editor->GetWidget<AssetViewer>()    });
+    vector<pair<int, Widget*>> toolbar;
+    editor->ForEachWidget([&toolbar](Widget* widget)
+    {
+        if (widget->GetToolbarOrder() > 0)
+        {
+            toolbar.push_back({ widget->GetToolbarOrder(), widget });
+        }
+    });
+    sort(toolbar.begin(), toolbar.end());
+    for (const auto& [order, widget] : toolbar)
+    {
+        buttons_toolbar::widgets.push_back({
+            static_cast<spartan::IconType>(widget->GetToolbarIcon()),
+            widget
+        });
+    }
 
     spartan::Engine::SetFlag(spartan::EngineMode::Playing, false);
 }

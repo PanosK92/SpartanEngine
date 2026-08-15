@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "EditorMcpCommands.h"
 #include "Editor.h"
-#include "Widgets/AssetViewer.h"
-#include "FileSystem/FileSystem.h"
-#include "Rendering/Renderer.h"
-#include "World/World.h"
+#include "widgets/AssetViewer.h"
+#include "file_system/FileSystem.h"
+#include "rendering/Renderer.h"
+#include "world/World.h"
 #include <limits>
 //=====================================
 

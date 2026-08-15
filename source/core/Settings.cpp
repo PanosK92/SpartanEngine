@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
-#include "../Rendering/Renderer.h"
-#include "../Resource/ResourceCache.h"
-#include "../Input/Input.h"
-#include "../XR/Xr.h"
+#include "../rendering/Renderer.h"
+#include "../resource/ResourceCache.h"
+#include "../input/Input.h"
+#include "../xr/Xr.h"
 SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
+#include "../io/pugixml.hpp"
 SP_WARNINGS_ON
 //====================================
 

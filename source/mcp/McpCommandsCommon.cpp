@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "pch.h"
 #include "McpCommandsCommon.h"
-#include "../Core/Engine.h"
-#include "../World/World.h"
-#include "../World/Entity.h"
-#include "../World/Components/Component.h"
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/BoundingBox.h"
+#include "../core/Engine.h"
+#include "../world/World.h"
+#include "../world/Entity.h"
+#include "../world/components/Component.h"
+#include "../math/Vector2.h"
+#include "../math/Vector3.h"
+#include "../math/BoundingBox.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>

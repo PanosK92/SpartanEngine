@@ -23,18 +23,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Sequencer.h"
 #include <algorithm>
-#include "World/World.h"
-#include "World/Entity.h"
-#include "World/Components/Camera.h"
-#include "World/Components/SplineFollower.h"
-#include "Commands/Command.h"
-#include "Commands/CommandStack.h"
-#include "../ImGui/ImGui_EditorUi.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_Style.h"
-#include "FileSystem/FileSystem.h"
+#include "world/World.h"
+#include "world/Entity.h"
+#include "world/components/Camera.h"
+#include "world/components/SplineFollower.h"
+#include "commands/Command.h"
+#include "commands/CommandStack.h"
+#include "../imgui/ImGui_EditorUi.h"
+#include "../imgui/ImGui_Extension.h"
+#include "../imgui/ImGui_Style.h"
+#include "file_system/FileSystem.h"
 SP_WARNINGS_OFF
-#include "IO/pugixml.hpp"
+#include "io/pugixml.hpp"
 SP_WARNINGS_ON
 //======================================
 
@@ -316,6 +316,7 @@ Sequencer::Sequencer(Editor* editor) : Widget(editor)
 {
     m_title   = "Sequencer";
     m_visible = false;
+    m_dock    = WidgetDock::Down;
 
     m_world_loaded_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoaded, SP_EVENT_HANDLER(Load));
 }
