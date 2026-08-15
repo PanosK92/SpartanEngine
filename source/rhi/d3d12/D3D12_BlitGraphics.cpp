@@ -359,7 +359,7 @@ float main_ps_depth(VsOut v) : SV_Depth
 
         // bind the blit root sig and pso, the next SetPipelineState in the engine restores the bindless root sig and tables
         cmd_list->SetGraphicsRootSignature(root_signature);
-        cmd_list->set_pipeline_state(pso);
+        cmd_list->SetPipelineState(pso);
         cmd_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmd_list->IASetVertexBuffers(0, 0, nullptr);
         cmd_list->IASetIndexBuffer(nullptr);

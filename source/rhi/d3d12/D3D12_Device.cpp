@@ -1401,7 +1401,7 @@ namespace spartan
                 }
                 if (RHI_CommandList* cmd_list = Cmd())
                 {
-                    cmd_list->prepare_texture_for_sampling(tex);
+                    cmd_list->PrepareTextureForSampling(tex);
                 }
 
                 // tex->GetRhiSrv() stores the cpu handle ptr of the source srv (see D3D12_Texture)
