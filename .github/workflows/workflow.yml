@@ -79,10 +79,13 @@ jobs:
         run: |
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           set ZIP=spartan_${{ matrix.api }}_${{ matrix.configuration }}.zip
-          IF "${{ matrix.api }}" == "d3d12" (
-            tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\D3D12Core.dll binaries\d3d12SDKLayers.dll binaries\data binaries\spartan_d3d12.exe
-          ) ELSE (
-            tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\data binaries\spartan_vulkan.exe
+          set EXE=spartan_${{ matrix.api }}.exe
+          echo DLLs in binaries:
+          dir /b binaries\*.dll
+          if exist binaries\steam_appid.txt (
+            tar -a -c -f %ZIP% binaries\*.dll binaries\steam_appid.txt binaries\data binaries\%EXE%
+          ) else (
+            tar -a -c -f %ZIP% binaries\*.dll binaries\data binaries\%EXE%
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
