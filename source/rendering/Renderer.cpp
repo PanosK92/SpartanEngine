@@ -47,7 +47,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rhi/RHI_VendorTechnology.h"
 #include "../rhi/RHI_AccelerationStructure.h"
 #include "../world/Entity.h"
-#include "../world/World.h"
 #include "../world/components/Light.h"
 #include "../world/components/Camera.h"
 #include "../world/components/Volume.h"
@@ -91,19 +90,6 @@ namespace spartan
 
         // set by TickUploadMaterials, consumed by UpdateAccelerationStructures
         bool materials_uploaded_this_frame = false;
-
-        uint32_t tlas_stable_frames = 0;
-        constexpr uint32_t tlas_stable_frame_threshold = 45;
-
-        void note_tlas_stable()
-        {
-            tlas_stable_frames++;
-        }
-
-        void note_tlas_unstable()
-        {
-            tlas_stable_frames = 0;
-        }
     }
 
     // constant and push constant buffers
@@ -590,11 +576,11 @@ namespace spartan
 
         // pre-size to fit typical large worlds without a mid-load rebuild
         GeometryBuffer::Reserve(
-            8u  * 1024u * 1024u, // vertices, ~256mb at 32b each
-            32u * 1024u * 1024u, // indices,  ~128mb
-            128u * 1024u,        // meshlet bounds
-            8u  * 1024u * 1024u, // meshlet unique verts
-            32u * 1024u * 1024u, // meshlet micro indices
+            4u  * 1024u * 1024u, // vertices, ~128mb at 32b each
+            12u * 1024u * 1024u, // indices,  ~48mb
+            64u * 1024u,         // meshlet bounds
+            4u  * 1024u * 1024u, // meshlet unique verts (~index/3)
+            12u * 1024u * 1024u, // meshlet micro indices (~index count)
             16u * 1024u          // instances
         );
 
@@ -708,8 +694,11 @@ namespace spartan
                 secondary_view_recovery_frames--;
             }
 
-            // upload incrementally so load does not dump hundreds of mb on one frame
-            GeometryBuffer::BuildIfDirty();
+            // batch world geometry into one gpu upload after loading
+            if (!ProgressTracker::IsLoading())
+            {
+                GeometryBuffer::BuildIfDirty();
+            }
 
             // geometry buffer rebuild invalidates blas device addresses, free old gpu memory before rebuilding to avoid a peak
             if (GeometryBuffer::WasRebuilt())
@@ -1098,12 +1087,8 @@ namespace spartan
         }
         else if (was_loading)
         {
-            was_loading          = false;
-            post_load_frames     = 30;
-            m_taau_reset_history = true;
-            m_pass_state.ssao_history.Reset();
-            m_pass_state.fog_history.Reset();
-            m_pass_state.cloud_history.Reset();
+            was_loading      = false;
+            post_load_frames = 30;
         }
 
         if (post_load_frames > 0)
@@ -1821,9 +1806,10 @@ namespace spartan
         // bit positions are shader abi, must match common_resources.hlsl
         // a secondary view is absent from the tlas, so every ray traced feature is off for it
         const bool ray_tracing_allowed = !secondary_render_root_active;
+        const bool tlas_available      = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr && ray_tracing_allowed;
         m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>() && ray_tracing_allowed, 1 << 0);
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                          1 << 1);
-        m_cb_frame_cpu.set_bit(AreRayTracedShadowsLive(), 1 << 2);
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available,          1 << 2);
         m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>() && ray_tracing_allowed,              1 << 3);
     }
 
@@ -3038,9 +3024,16 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls_CollectAndSort()
     {
+        const bool tlas_available =
+            RHI_Device::IsSupportedRayTracing() &&
+            GetTopLevelAccelerationStructure() != nullptr &&
+            !IsSecondaryViewActive();
         const bool shadow_maps_required =
             World::GetLightCount() > 0 &&
-            !AreRayTracedShadowsLive();
+            !(
+                cvar_ray_traced_shadows.GetValueAs<bool>() &&
+                tlas_available
+            );
 
         for (Entity* entity : render_entities())
         {
@@ -3480,6 +3473,11 @@ namespace spartan
             return;
         }
 
+        if (ProgressTracker::IsLoading())
+        {
+            return;
+        }
+
         // a secondary view only sees its own subtree, building the tlas from that would throw
         // away the primary camera's instances and force a full rebuild on the next frame, the
         // preview does not ray trace so the primary structures are left untouched instead
@@ -3496,8 +3494,6 @@ namespace spartan
             RHI_CommandList::BeginMarker("blas_build");
 
             constexpr uint32_t blas_builds_per_frame = 64;
-            const double blas_budget_ms = World::IsPlaySettling() ? 2.0 : 8.0;
-            const double blas_budget_start = Timer::GetTimeMs();
 
             uint32_t blas_built     = 0;
             uint32_t blas_remaining = 0;
@@ -3530,10 +3526,7 @@ namespace spartan
 
                 if (!render->HasAccelerationStructure())
                 {
-                    const bool over_budget =
-                        blas_built >= blas_builds_per_frame ||
-                        (Timer::GetTimeMs() - blas_budget_start) >= blas_budget_ms;
-                    if (!over_budget)
+                    if (blas_built < blas_builds_per_frame)
                     {
                         render->BuildAccelerationStructure();
                         if (render->HasAccelerationStructure())
@@ -3573,7 +3566,6 @@ namespace spartan
         // skip tlas build until all blas are ready so we don't keep rebuilding it with an incomplete set
         if (!blas_burst_done)
         {
-            note_tlas_unstable();
             return;
         }
 
@@ -3621,21 +3613,7 @@ namespace spartan
 
             if (!needs_tlas_rebuild)
             {
-                note_tlas_stable();
                 return;
-            }
-
-            // play spawn storms rebuild the tlas every frame, skip some so the gpu can finish traces
-            if (World::IsPlaySettling())
-            {
-                static uint32_t settle_tlas_age = 0;
-                settle_tlas_age++;
-                if (settle_tlas_age < 3)
-                {
-                    note_tlas_unstable();
-                    return;
-                }
-                settle_tlas_age = 0;
             }
         }
 
@@ -3778,11 +3756,6 @@ namespace spartan
                 {
                     SP_LOG_INFO("Ray tracing: building TLAS with %zu instances", instances.size());
                     last_instance_count = static_cast<uint32_t>(instances.size());
-                    note_tlas_unstable();
-                }
-                else
-                {
-                    note_tlas_stable();
                 }
                 m_tlas->BuildTopLevel(instances);
 
@@ -3798,7 +3771,6 @@ namespace spartan
                 SP_LOG_INFO("Ray tracing: destroying TLAS (world changed)");
                 m_tlas = nullptr;
                 last_instance_count = 0;
-                note_tlas_unstable();
             }
 
             RHI_CommandList::EndMarker();
@@ -3810,38 +3782,12 @@ namespace spartan
         return m_tlas.get();
     }
 
-    bool Renderer::IsTlasReadyForTrace()
-    {
-        return tlas_stable_frames >= tlas_stable_frame_threshold;
-    }
-
-    bool Renderer::AreRayTracedShadowsLive()
-    {
-        if (!cvar_ray_traced_shadows.GetValueAs<bool>())
-        {
-            return false;
-        }
-
-        if (World::IsPlaySettling() || !IsTlasReadyForTrace())
-        {
-            return false;
-        }
-
-        if (!RHI_Device::IsSupportedRayTracing() || IsSecondaryViewActive())
-        {
-            return false;
-        }
-
-        return GetTopLevelAccelerationStructure() != nullptr;
-    }
-
     void Renderer::DestroyAccelerationStructures()
     {
         RHI_Device::QueueWaitAll();
         RHI_AccelerationStructure::FreeSharedBlasScratch();
 
         m_tlas = nullptr;
-        note_tlas_unstable();
 
         // every blas holds device addresses into the global buffers about to be freed, dedup by mesh since many renders share one
         std::unordered_set<Mesh*> meshes;
@@ -4582,9 +4528,16 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = batch_b.timeline;
             const uint64_t compute_b_value        = batch_b.value;
 
+            const bool ray_traced_shadows =
+                cvar_ray_traced_shadows.GetValueAs<bool>();
+            const bool tlas_available =
+                RHI_Device::IsSupportedRayTracing() &&
+                GetTopLevelAccelerationStructure() != nullptr &&
+                !IsSecondaryViewActive();
+            const bool fog_needs_atlas = cvar_fog.GetValue() > 0.0f;
             const bool shadow_maps_required =
                 World::GetLightCount() > 0 &&
-                !AreRayTracedShadowsLive();
+                (!(ray_traced_shadows && tlas_available) || fog_needs_atlas);
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {

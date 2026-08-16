@@ -100,8 +100,6 @@ namespace spartan
         void Rebuild() { Create(); }
         void PreTick() override;
         void Tick() override;
-        void TryDeferredCreate();
-        static bool HasPendingCreates();
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 

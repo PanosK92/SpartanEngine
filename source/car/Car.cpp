@@ -817,10 +817,7 @@ namespace spartan
                 physics->SetChassisEntity(car->m_body_entity, excluded_wheel_entities);
             }
 
-            if (config.vehicle_sim_mode != VehicleSimMode::Cheap)
-            {
-                car->CreateAudioSources(car->m_vehicle_entity);
-            }
+            car->CreateAudioSources(car->m_vehicle_entity);
             car->CreateWheels(car->m_vehicle_entity, physics, excluded_wheel_entities);
 
             // skid marks are defined in the world as a prefab override on the vehicle, not added here

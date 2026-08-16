@@ -291,7 +291,7 @@ namespace spartan
         {
             return;
         }
-        if (!AreRayTracedShadowsLive())
+        if (!cvar_ray_traced_shadows.GetValueAs<bool>())
         {
             if (!m_pass_state.cleared_rt_shadows)
             {
@@ -357,7 +357,11 @@ namespace spartan
             return;
         }
 
-        if (!AreRayTracedShadowsLive())
+        if (
+            !cvar_ray_traced_shadows.GetValueAs<bool>() ||
+            !RHI_Device::IsSupportedRayTracing() ||
+            IsSecondaryViewActive()
+        )
         {
             return;
         }
@@ -951,7 +955,12 @@ namespace spartan
         }
 
         // the rt trace already captures exact contact occlusion, a secondary view never traces
-        if (AreRayTracedShadowsLive())
+        const bool rt_shadows_active =
+            cvar_ray_traced_shadows.GetValueAs<bool>() &&
+            RHI_Device::IsSupportedRayTracing() &&
+            GetTopLevelAccelerationStructure() != nullptr &&
+            !IsSecondaryViewActive();
+        if (rt_shadows_active)
         {
             return;
         }

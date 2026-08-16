@@ -104,12 +104,6 @@ namespace spartan
         // true while play mode is still spreading Entity::Start across frames
         static bool IsPlayBooting();
 
-        // true during boot, pending physics cooks, and the settle window
-        static bool IsPlaySettling();
-
-        // one deferred create per frame, false means try again next frame
-        static bool ConsumePlaySpawnSlot();
-
         // misc
         static const std::string& GetName();
         static const std::string& GetFilePath();

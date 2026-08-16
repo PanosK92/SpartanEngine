@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Pedestrians.h"
 #include "Animator.h"
 #include "Camera.h"
-#include "Physics.h"
 #include "Ragdoll.h"
 #include "Render.h"
 #include "../../core/Engine.h"
@@ -135,7 +134,6 @@ namespace spartan
         }
         m_walkers.clear();
         m_next_spawn_index = 0;
-        m_last_spawn_ms = 0.0;
         m_lod_timer = 0.0f;
         m_physics_ready = false;
         BeginSpawn();
@@ -435,28 +433,18 @@ namespace spartan
             SP_LOG_INFO("Pedestrians physics ready, spawning %u walkers", m_count);
         }
 
-        if (
-            World::IsPlaySettling() ||
-            Physics::HasPendingCreates() ||
-            !World::ConsumePlaySpawnSlot()
-        )
+        // one walker per tick, crowd fills in after play is already interactive
+        constexpr uint32_t max_spawns_per_tick = 1;
+        uint32_t spawned = 0;
+        while (m_next_spawn_index < m_count && spawned < max_spawns_per_tick)
         {
-            return;
+            if (!SpawnWalker(m_next_spawn_index))
+            {
+                break;
+            }
+            m_next_spawn_index++;
+            spawned++;
         }
-
-        const double now_ms = Timer::GetTimeMs();
-        if (m_last_spawn_ms > 0.0 && (now_ms - m_last_spawn_ms) < 80.0)
-        {
-            return;
-        }
-
-        if (!SpawnWalker(m_next_spawn_index))
-        {
-            return;
-        }
-
-        m_last_spawn_ms = now_ms;
-        m_next_spawn_index++;
     }
 
     bool Pedestrians::SpawnWalker(uint32_t index)
@@ -505,7 +493,6 @@ namespace spartan
             }
 
             render->SetMesh(instance_mesh.get(), render->GetSubMeshIndex());
-            render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
         }
 
         entity->SetObjectName("pedestrian_" + to_string(index + 1));

@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "GeometryBuffer.h"
 #include "../rhi/RHI_Buffer.h"
-#include "../rhi/RHI_CommandList.h"
 #include "../rhi/RHI_Device.h"
 #include <algorithm>
 #include <mutex>
@@ -122,24 +121,6 @@ namespace spartan
         // than a second submit
         constexpr uint32_t dirty_merge_slack = 4096;
 
-        // copies on the recording frame list stay on the same queue as the upcoming draws,
-        // immediate execution uses a different graphics queue and races in-flight reads
-        void upload_region(RHI_Buffer* buffer, const void* data, const uint64_t offset_bytes, const uint64_t size_bytes)
-        {
-            if (!buffer || !data || size_bytes == 0)
-            {
-                return;
-            }
-
-            if (RHI_Device::IsRecording())
-            {
-                RHI_CommandList::UpdateBuffer(buffer, offset_bytes, size_bytes, data, false);
-                return;
-            }
-
-            buffer->UploadSubRegion(data, offset_bytes, size_bytes);
-        }
-
         void flush_vertex_updates()
         {
             if (vertex_dirty_ranges.empty())
@@ -174,7 +155,7 @@ namespace spartan
 
                 const uint64_t byte_offset = static_cast<uint64_t>(first) * sizeof(RHI_Vertex_PosTexNorTan);
                 const uint64_t byte_size   = static_cast<uint64_t>(last - first) * sizeof(RHI_Vertex_PosTexNorTan);
-                upload_region(vertex_buffer.get(), vertices.data() + first, byte_offset, byte_size);
+                vertex_buffer->UploadSubRegion(vertices.data() + first, byte_offset, byte_size);
             };
 
             for (size_t i = 1; i < vertex_dirty_ranges.size(); ++i)
@@ -322,7 +303,7 @@ namespace spartan
         {
             const uint64_t byte_offset = static_cast<uint64_t>(offset) * sizeof(uint32_t);
             const uint64_t byte_size   = static_cast<uint64_t>(count) * sizeof(uint32_t);
-            upload_region(index_buffer.get(), data, byte_offset, byte_size);
+            index_buffer->UploadSubRegion(data, byte_offset, byte_size);
         }
     }
 
@@ -337,7 +318,7 @@ namespace spartan
         {
             const uint64_t byte_offset = static_cast<uint64_t>(offset) * sizeof(Sb_MeshletBounds);
             const uint64_t byte_size   = static_cast<uint64_t>(count) * sizeof(Sb_MeshletBounds);
-            upload_region(meshlet_bounds_buffer.get(), data, byte_offset, byte_size);
+            meshlet_bounds_buffer->UploadSubRegion(data, byte_offset, byte_size);
         }
     }
 
@@ -352,7 +333,7 @@ namespace spartan
         {
             const uint64_t byte_offset = static_cast<uint64_t>(offset) * sizeof(uint32_t);
             const uint64_t byte_size   = static_cast<uint64_t>(count) * sizeof(uint32_t);
-            upload_region(meshlet_vertex_buffer.get(), data, byte_offset, byte_size);
+            meshlet_vertex_buffer->UploadSubRegion(data, byte_offset, byte_size);
         }
     }
 
@@ -375,7 +356,7 @@ namespace spartan
 
             const uint64_t byte_offset = static_cast<uint64_t>(packed_micro_count(aligned_offset)) * sizeof(uint32_t);
             const uint64_t byte_size   = static_cast<uint64_t>(packed.size()) * sizeof(uint32_t);
-            upload_region(meshlet_micro_index_buffer.get(), packed.data(), byte_offset, byte_size);
+            meshlet_micro_index_buffer->UploadSubRegion(packed.data(), byte_offset, byte_size);
         }
     }
 
@@ -408,7 +389,6 @@ namespace spartan
         }
 
         was_rebuilt             = false;
-        const bool replacing_live_buffers = vertex_buffer != nullptr;
         bool needs_full_rebuild = !vertex_buffer || !index_buffer || !meshlet_bounds_buffer ||
                                   !meshlet_vertex_buffer || !meshlet_micro_index_buffer || !instance_buffer ||
                                   vertex_count > vertex_capacity ||
@@ -570,8 +550,7 @@ namespace spartan
             meshlet_micro_count_committed  = meshlet_micro_count;
             instance_count_committed       = instance_count;
 
-            // first allocation has no live readers, only a swap of existing buffers invalidates blas addresses
-            was_rebuilt = replacing_live_buffers;
+            was_rebuilt = true;
 
             SP_LOG_INFO("Global geometry buffer built: %u vertices (%.2f MB), %u indices (%.2f MB), %u meshlets (%.2f MB), %u meshlet verts, %u micro indices, %u instances, capacity: %u/%u/%u/%u/%u/%u",
                 vertex_count,
@@ -605,28 +584,28 @@ namespace spartan
             {
                 uint64_t offset = static_cast<uint64_t>(vertex_count_committed) * sizeof(RHI_Vertex_PosTexNorTan);
                 uint64_t size   = static_cast<uint64_t>(new_vertices) * sizeof(RHI_Vertex_PosTexNorTan);
-                upload_region(vertex_buffer.get(), vertices.data() + vertex_count_committed, offset, size);
+                vertex_buffer->UploadSubRegion(vertices.data() + vertex_count_committed, offset, size);
             }
 
             if (new_indices > 0)
             {
                 uint64_t offset = static_cast<uint64_t>(index_count_committed) * sizeof(uint32_t);
                 uint64_t size   = static_cast<uint64_t>(new_indices) * sizeof(uint32_t);
-                upload_region(index_buffer.get(), indices.data() + index_count_committed, offset, size);
+                index_buffer->UploadSubRegion(indices.data() + index_count_committed, offset, size);
             }
 
             if (new_meshlets > 0)
             {
                 uint64_t offset = static_cast<uint64_t>(meshlet_bounds_count_committed) * sizeof(Sb_MeshletBounds);
                 uint64_t size   = static_cast<uint64_t>(new_meshlets) * sizeof(Sb_MeshletBounds);
-                upload_region(meshlet_bounds_buffer.get(), meshlet_bounds.data() + meshlet_bounds_count_committed, offset, size);
+                meshlet_bounds_buffer->UploadSubRegion(meshlet_bounds.data() + meshlet_bounds_count_committed, offset, size);
             }
 
             if (new_meshlet_verts > 0)
             {
                 uint64_t offset = static_cast<uint64_t>(meshlet_vertex_count_committed) * sizeof(uint32_t);
                 uint64_t size   = static_cast<uint64_t>(new_meshlet_verts) * sizeof(uint32_t);
-                upload_region(meshlet_vertex_buffer.get(), meshlet_vertices.data() + meshlet_vertex_count_committed, offset, size);
+                meshlet_vertex_buffer->UploadSubRegion(meshlet_vertices.data() + meshlet_vertex_count_committed, offset, size);
             }
 
             if (new_meshlet_micros > 0)
@@ -637,14 +616,14 @@ namespace spartan
 
                 uint64_t offset = static_cast<uint64_t>(packed_micro_count(meshlet_micro_count_committed)) * sizeof(uint32_t);
                 uint64_t size   = static_cast<uint64_t>(packed.size()) * sizeof(uint32_t);
-                upload_region(meshlet_micro_index_buffer.get(), packed.data(), offset, size);
+                meshlet_micro_index_buffer->UploadSubRegion(packed.data(), offset, size);
             }
 
             if (new_instances > 0)
             {
                 uint64_t offset = static_cast<uint64_t>(instance_count_committed) * sizeof(Instance);
                 uint64_t size   = static_cast<uint64_t>(new_instances) * sizeof(Instance);
-                upload_region(instance_buffer.get(), instances.data() + instance_count_committed, offset, size);
+                instance_buffer->UploadSubRegion(instances.data() + instance_count_committed, offset, size);
             }
 
             vertex_count_committed         = vertex_count;
@@ -667,29 +646,6 @@ namespace spartan
         bool result = was_rebuilt;
         was_rebuilt = false;
         return result;
-    }
-
-    void GeometryBuffer::Reset()
-    {
-        lock_guard<mutex> lock(buffer_mutex);
-
-        vertices.clear();
-        indices.clear();
-        meshlet_bounds.clear();
-        meshlet_vertices.clear();
-        meshlet_micro_indices.clear();
-        instances.clear();
-        vertex_dirty_ranges.clear();
-        vertex_count_committed         = 0;
-        index_count_committed          = 0;
-        meshlet_bounds_count_committed = 0;
-        meshlet_vertex_count_committed = 0;
-        meshlet_micro_count_committed  = 0;
-        instance_count_committed       = 0;
-        instance_capacity_failed_at    = 0;
-        dirty                          = false;
-        was_rebuilt                    = false;
-        oom_logged                     = false;
     }
 
     void GeometryBuffer::Reserve(

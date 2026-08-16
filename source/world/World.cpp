@@ -45,7 +45,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../rhi/RHI_Texture.h"
 #include "../rendering/Material.h"
 #include "../rendering/Renderer.h"
-#include "../rendering/GeometryBuffer.h"
 #include "components/Physics.h"
 #include "components/Traffic.h"
 #include "components/Pedestrians.h"
@@ -230,12 +229,6 @@ namespace spartan
         vector<Entity*> play_start_queue;
         size_t play_start_cursor = 0;
         constexpr double play_start_budget_ms = 4.0;
-        constexpr double play_spawn_budget_ms = 2.0;
-        constexpr double play_settle_duration_ms = 15000.0;
-        constexpr uint32_t max_deferred_creates_per_frame = 1;
-        double play_spawn_budget_origin_ms = 0.0;
-        double play_settle_until_ms = 0.0;
-        uint32_t deferred_creates_this_frame = 0;
 
         bool entity_has_play_priority(Entity* entity)
         {
@@ -1326,7 +1319,6 @@ namespace spartan
 
         Renderer::DisableProceduralGrass();          // drop renderer references to builder owned grass mesh/material
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
-        GeometryBuffer::Reset();                     // keep gpu buffers, rewind cpu so the next world does not append onto stale data
 
         // cars hold entity pointers, drop them before entity delete
         Car::ShutdownAll();
@@ -1365,7 +1357,6 @@ namespace spartan
         play_boot = play_boot_phase::idle;
         play_start_queue.clear();
         play_start_cursor = 0;
-        play_settle_until_ms = 0.0;
         was_in_editor_mode = true;
         camera = nullptr;
         light  = nullptr;
@@ -1484,7 +1475,6 @@ namespace spartan
             play_boot = play_boot_phase::idle;
             play_start_queue.clear();
             play_start_cursor = 0;
-            play_settle_until_ms = 0.0;
 
             // copy the list, Stop can queue removals and must not walk a mutating vector
             const vector<Entity*> entities_to_stop = entities;
@@ -1599,25 +1589,9 @@ namespace spartan
                 play_start_queue.clear();
                 play_start_cursor = 0;
                 play_boot = play_boot_phase::ready;
-                play_settle_until_ms = Timer::GetTimeMs() + play_settle_duration_ms;
                 SP_LOG_INFO(
                     "play boot complete, %zu entities started",
                     entities.size());
-            }
-        }
-
-        play_spawn_budget_origin_ms = Timer::GetTimeMs();
-        deferred_creates_this_frame = 0;
-
-        // cook deferred bodies across frames, play boot used to skip pretick and dump them all at once
-        for (Entity* entity : entities_with_pretick)
-        {
-            if (entity && entity->GetActive())
-            {
-                if (Physics* physics = entity->GetComponent<Physics>())
-                {
-                    physics->TryDeferredCreate();
-                }
             }
         }
 
@@ -3108,29 +3082,6 @@ namespace spartan
         return play_boot == play_boot_phase::starting;
     }
 
-    bool World::IsPlaySettling()
-    {
-        return play_boot == play_boot_phase::starting
-            || Timer::GetTimeMs() < play_settle_until_ms
-            || Physics::HasPendingCreates();
-    }
-
-    bool World::ConsumePlaySpawnSlot()
-    {
-        if (deferred_creates_this_frame >= max_deferred_creates_per_frame)
-        {
-            return false;
-        }
-
-        if ((Timer::GetTimeMs() - play_spawn_budget_origin_ms) >= play_spawn_budget_ms)
-        {
-            return false;
-        }
-
-        deferred_creates_this_frame++;
-        return true;
-    }
-
     const string& World::GetName()
     {
         return world_name;
@@ -3194,10 +3145,7 @@ namespace spartan
         resource_poll_frame++;
         const bool poll_resources = (resource_poll_frame % 8) == 0;
         const bool hashes_empty = material_state_hashes.empty() && !entities_with_render.empty();
-        static size_t last_render_count = 0;
-        const bool render_count_changed = entities_with_render.size() != last_render_count;
-        last_render_count = entities_with_render.size();
-        if (!props_changed && !poll_resources && !hashes_empty && !render_count_changed)
+        if (!props_changed && !poll_resources && !hashes_empty)
         {
             return false;
         }

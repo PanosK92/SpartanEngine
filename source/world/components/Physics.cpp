@@ -22,14 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
-#include <atomic>
 #include <unordered_set>
 #include "Physics.h"
 #include "Render.h"
 #include "Camera.h"
 #include "Terrain.h"
 #include "../Entity.h"
-#include "../World.h"
 #include "../../rhi/RHI_Vertex.h"
 #include "../../physics/PhysicsWorld.h"
 #include "../../car/Car.h"
@@ -76,7 +74,6 @@ namespace spartan
         const float distance_activate_squared   = distance_activate * distance_activate;
 
         PxControllerManager* controller_manager = nullptr;
-        atomic<uint32_t> pending_physics_creates = 0;
 
         // fft water buoyancy, applied once per fixed physics step to every submerged dynamic body
         namespace buoyancy
@@ -204,32 +201,6 @@ namespace spartan
         {
             return PxVec3(v.x, v.y, v.z);
         }
-
-        PxTransform to_px_transform(Entity* entity)
-        {
-            return to_px_transform(entity->GetPosition(), entity->GetRotation());
-        }
-
-        // bake the full world 3x3 into actor local space so parent scale cannot invert the shape
-        void mesh_vertices_to_actor_local(
-            const vector<RHI_Vertex_PosTexNorTan>& vertices,
-            Entity* entity,
-            vector<PxVec3>& px_vertices
-        )
-        {
-            const Matrix world = entity->GetMatrix();
-            const Vector3 origin = entity->GetPosition();
-            const Quaternion rot_inv = entity->GetRotation().Conjugate();
-
-            px_vertices.clear();
-            px_vertices.reserve(vertices.size());
-            for (const auto& vertex : vertices)
-            {
-                const Vector3 world_v = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * world;
-                const Vector3 local = rot_inv * (world_v - origin);
-                px_vertices.emplace_back(local.x, local.y, local.z);
-            }
-        }
     }
 
     Physics::Physics(Entity* entity) : Component(entity)
@@ -327,36 +298,8 @@ namespace spartan
         }
     }
 
-    void Physics::TryDeferredCreate()
-    {
-        if (ProgressTracker::IsLoading() || !m_needs_creation)
-        {
-            return;
-        }
-
-        if (!World::ConsumePlaySpawnSlot())
-        {
-            return;
-        }
-
-        m_needs_creation = false;
-        pending_physics_creates.fetch_sub(1, memory_order_relaxed);
-        Create();
-    }
-
-    bool Physics::HasPendingCreates()
-    {
-        return pending_physics_creates.load(memory_order_relaxed) > 0;
-    }
-
     void Physics::Remove()
     {
-        if (m_needs_creation)
-        {
-            m_needs_creation = false;
-            pending_physics_creates.fetch_sub(1, memory_order_relaxed);
-        }
-
         // serialize physx writes, async scene loading runs this on worker threads in parallel
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
@@ -430,7 +373,12 @@ namespace spartan
             return;
         }
 
-        TryDeferredCreate();
+        // deferred creation after loading (render component needs to be available first)
+        if (m_needs_creation)
+        {
+            m_needs_creation = false;
+            Create();
+        }
 
         // sync physics transforms to entities before other components (like camera) tick
         // this ensures child entities have up-to-date parent transforms when they compute matrices
@@ -883,11 +831,7 @@ namespace spartan
                     {
                         continue;
                     }
-                    dynamic->setKinematicTarget(
-                        (render->HasInstancing() && i < render->GetInstanceCount())
-                            ? to_px_transform(transform)
-                            : to_px_transform(GetEntity())
-                    );
+                    dynamic->setKinematicTarget(to_px_transform(transform));
                 }
                 else
                 {
@@ -911,11 +855,7 @@ namespace spartan
                     continue;
                 }
 
-                actor->setGlobalPose(
-                    (render->HasInstancing() && i < render->GetInstanceCount())
-                        ? to_px_transform(transform)
-                        : to_px_transform(GetEntity())
-                );
+                actor->setGlobalPose(to_px_transform(transform));
 
                 // reset velocities for non-kinematics
                 if (dynamic && !m_is_kinematic)
@@ -1064,11 +1004,7 @@ namespace spartan
 
             // an instanced render owns one actor per copy, writing the entity matrix into all of them
             // stacks every hull on the entity origin instead of leaving them where they were scattered
-            actor->setGlobalPose(
-                instanced
-                    ? to_px_transform(render->GetInstance(i, true))
-                    : to_px_transform(GetEntity())
-            );
+            actor->setGlobalPose(to_px_transform(instanced ? render->GetInstance(i, true) : matrix));
         }
     }
 
@@ -1195,11 +1131,7 @@ namespace spartan
 
         // defer creation until tick so that render component is available
         // (components load in enum order, and render comes after physics)
-        if (!m_needs_creation)
-        {
-            m_needs_creation = true;
-            pending_physics_creates.fetch_add(1, memory_order_relaxed);
-        }
+        m_needs_creation = true;
     }
 
     void Physics::RegisterForScripting(sol::state_view State)
@@ -2193,11 +2125,7 @@ namespace spartan
             SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f), excluding %zu entities",
                 entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z, entities_to_exclude.size());
 
-            // cheap traffic keeps the box from setup, cooking 18k verts per car freezes play
-            if (m_vehicle_sim_mode != VehicleSimMode::Cheap)
-            {
-                BuildChassisConvexShapes(entity, entities_to_exclude);
-            }
+            BuildChassisConvexShapes(entity, entities_to_exclude);
 
             // re-tag after shape replacement
             if (PxRigidDynamic* body = m_vehicle_simulation->get_body())
@@ -3662,7 +3590,7 @@ namespace spartan
                         SP_LOG_ERROR("failed to place car suspension assembly");
                     }
                 }
-                if (m_chassis_entity && m_vehicle_sim_mode != VehicleSimMode::Cheap)
+                if (m_chassis_entity)
                 {
                     BuildChassisConvexShapes(m_chassis_entity, m_chassis_entities_to_exclude);
                 }
@@ -3815,15 +3743,25 @@ namespace spartan
                     geometry_processing::simplify(indices, vertices, target_index_count, false, false);
                 }
 
-                // convert vertices into the physics body's local space, parent scale included
-                const Matrix entity_world = entity->GetMatrix();
+                // compute the local transform of this entity relative to the physics body
+                Vector3 entity_world_pos = entity->GetPosition();
+                Quaternion entity_world_rot = entity->GetRotation();
+                Vector3 entity_scale = entity->GetScale();
+
+                // transform entity position to body-local space
+                Vector3 local_pos = body_rot_inv * (entity_world_pos - body_pos);
+                Quaternion local_rot = body_rot_inv * entity_world_rot;
+
+                // convert vertices to physx format in entity-local space (with scale)
                 vector<PxVec3> px_vertices;
                 px_vertices.reserve(vertices.size());
                 for (const auto& vertex : vertices)
                 {
-                    const Vector3 world_v = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * entity_world;
-                    const Vector3 local = body_rot_inv * (world_v - body_pos);
-                    px_vertices.emplace_back(local.x, local.y, local.z);
+                    px_vertices.emplace_back(
+                        vertex.pos[0] * entity_scale.x,
+                        vertex.pos[1] * entity_scale.y,
+                        vertex.pos[2] * entity_scale.z
+                    );
                 }
                 if (px_vertices.size() < 4)
                 {
@@ -3892,6 +3830,12 @@ namespace spartan
                 PxShape* shape = physics->createShape(geometry, *material);
                 if (shape)
                 {
+                    // set local pose to position this shape relative to body center
+                    PxTransform local_pose(
+                        PxVec3(local_pos.x, local_pos.y, local_pos.z),
+                        PxQuat(local_rot.x, local_rot.y, local_rot.z, local_rot.w)
+                    );
+                    shape->setLocalPose(local_pose);
                     shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                     actor->attachShape(*shape);
                     shape->release(); // actor owns the shape now
@@ -3975,22 +3919,11 @@ namespace spartan
 
                 // convert vertices to physx format
                 vector<PxVec3> px_vertices;
-                if (render->HasInstancing())
+                px_vertices.reserve(vertices.size());
+                Vector3 scale = GetEntity()->GetScale();
+                for (const auto& vertex : vertices)
                 {
-                    Vector3 scale = GetEntity()->GetScale();
-                    px_vertices.reserve(vertices.size());
-                    for (const auto& vertex : vertices)
-                    {
-                        px_vertices.emplace_back(
-                            vertex.pos[0] * scale.x,
-                            vertex.pos[1] * scale.y,
-                            vertex.pos[2] * scale.z
-                        );
-                    }
-                }
-                else
-                {
-                    mesh_vertices_to_actor_local(vertices, GetEntity(), px_vertices);
+                    px_vertices.emplace_back(vertex.pos[0] * scale.x, vertex.pos[1] * scale.y, vertex.pos[2] * scale.z);
                 }
 
                 // remove degenerate triangles (zero/near-zero area) that would cause physx cooking to fail
@@ -4291,9 +4224,11 @@ namespace spartan
         m_actors_active_count = instance_count;
         for (uint32_t i = 0; i < instance_count; i++)
         {
-            PxTransform pose = (render && render->HasInstancing())
-                ? to_px_transform(render->GetInstance(i, true))
-                : to_px_transform(GetEntity());
+            math::Matrix transform = (render && render->HasInstancing()) ? render->GetInstance(i, true) : GetEntity()->GetMatrix();
+            PxTransform pose(
+                PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
+            );
             PxRigidActor* actor = nullptr;
             if (IsStatic())
             {
