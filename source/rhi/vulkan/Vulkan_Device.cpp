@@ -500,7 +500,7 @@ namespace spartan
             append_names(extensions::extensions_instance, instance_ext_store, props, count);
         }
 
-        void append_device_extensions()
+        bool append_device_extensions()
         {
             NVSDK_NGX_FeatureDiscoveryInfo info = make_discovery();
             uint32_t count = 0;
@@ -515,9 +515,8 @@ namespace spartan
             if (NVSDK_NGX_FAILED(result))
             {
                 SP_LOG_WARNING("DLSS device extension query failed: 0x%x", static_cast<unsigned int>(result));
-                return;
             }
-            if (props && count != 0)
+            else if (props && count != 0)
             {
                 append_names(extensions::extensions_device, device_ext_store, props, count);
             }
@@ -532,12 +531,14 @@ namespace spartan
             if (NVSDK_NGX_FAILED(result))
             {
                 SP_LOG_WARNING("DLSS feature requirements query failed: 0x%x", static_cast<unsigned int>(result));
-                return;
+                return false;
             }
             if (requirement.FeatureSupported != NVSDK_NGX_FeatureSupportResult_Supported)
             {
                 SP_LOG_WARNING("DLSS feature requirements not met: 0x%x", static_cast<unsigned int>(requirement.FeatureSupported));
+                return false;
             }
+            return true;
         }
     }
 #endif
@@ -1994,11 +1995,12 @@ namespace spartan
             }
   
 #ifdef _WIN32
-            ngx_dlss::append_device_extensions();
+            m_dlss_supported = ngx_dlss::append_device_extensions();
+#else
+            m_dlss_supported = false;
 #endif
             vector<const char*> extensions_supported = extensions::get_extensions_device();
             device_features::detect(&m_is_shading_rate_supported, &m_xess_supported, &m_is_ray_tracing_supported, &m_is_mesh_shaders_supported);
-            m_dlss_supported = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
 
             // create
             {

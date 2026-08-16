@@ -279,7 +279,7 @@
      </Entity>
      <Entity name="supported_canopy" id="16546110976723011395" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
      <Entity name="bright_canopy_lighting" id="17185135779486198432" active="true" position="0 5.1 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="14000" range="24" angle="0.52359879" index="1" preset="5" area_width="20" area_height="10" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="14000" range="24" angle="0.52359879" index="4294967295" preset="5" area_width="20" area_height="10" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="supported canopy" id="4723648470276431592" active="true" position="0 6.15 0" rotation="0 0 0 1" scale="22 0.35 0.45">
       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -291,28 +291,28 @@
      </Entity>
      <Entity name="canopy_lighting__sr_8aa1454b_8fb9d1b485" id="66495270451328882" active="true" position="0 5.1 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.canopylights">
       <Entity name="canopy_lights_4" id="13993690499153362758" active="true" position="11 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="2" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_5" id="14368113862486260036" active="true" position="-11 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="3" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_6" id="14653238272795965265" active="true" position="-4 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_7" id="15020716375561050508" active="true" position="4 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="5" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_8" id="15314592750590705596" active="true" position="11 0.25 5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="6" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_1" id="11221308876274045138" active="true" position="-11 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="7" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_2" id="12971416434040686782" active="true" position="-4 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="8" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="canopy_lights_3" id="13348546083500287256" active="true" position="4 0.25 -5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="9" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.38658345" color_g="0.922712982" color_b="0.627257884" temperature="4300" intensity="8" intensity_photometric="14000" range="22" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.20000005" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
      </Entity>
     </Entity>
@@ -463,7 +463,7 @@
      </Entity>
      <Entity name="convenience_store" id="16629047030505769030" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
      <Entity name="warm_interior_lighting" id="16913291195874868699" active="true" position="0 3.2 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="9000" range="14" angle="0.52359879" index="10" preset="5" area_width="8" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="9000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="8" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="convenience store" id="4724455967230454161" active="true" position="0 5.35 3.75" rotation="0 0 0 1" scale="10 0.3 0.18">
       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -475,16 +475,16 @@
      </Entity>
      <Entity name="store_lighting__sr_8aa1454b_1a7699570d" id="169965884932043290" active="true" position="0 3.4 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.storelights">
       <Entity name="store_lights_1" id="15638133234979188285" active="true" position="-8 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="11" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="store_lights_2" id="16000611197716511590" active="true" position="-2.5 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="12" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="store_lights_3" id="16687814890918099960" active="true" position="3 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="13" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
       <Entity name="store_lights_4" id="16960507313265151072" active="true" position="8 0.8 0" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="14" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+       <light flags="1" light_type="3" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="12000" range="14" angle="0.52359879" index="4294967295" preset="5" area_width="3" area_height="1.5" draw_distance="90" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
       </Entity>
      </Entity>
      <Entity name="roof_vents__sr_8aa1454b_537df41554" id="457126520929355937" active="true" position="0 4.8 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.vents">
@@ -878,10 +878,10 @@
      </Entity>
     </Entity>
     <Entity name="storefront_accent_left" id="17275017198260262089" active="true" position="5 3 -7" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="15" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="storefront_accent_right" id="17702765425932361635" active="true" position="25 3 -7" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="16" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.96200538" color_g="0.792158365" color_b="0.226122275" temperature="2800" intensity="8" intensity_photometric="7000" range="16" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="100" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="four_complete_fuel_pump_islands" id="16469573671870620436" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
     <Entity name="fuel_hoses" id="16797890223916284875" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
@@ -894,10 +894,10 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="gs_road_paint" material_path="./project/plan_resources/gs_road_paint.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="subtle_exterior_light_left" id="10681305324362455510" active="true" position="2 2.8 -10" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="17" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="subtle_exterior_light_right" id="10839222147088926397" active="true" position="22 2.8 -10" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="18" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="5000" range="10" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="surrounding_asphalt__sr_8aa1454b_cb9448ae19" id="10253077208951222911" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=gas_station_showcase,semantic_id=gs.asphalt,vehicle_route,walkable">
      <Entity name="asphalt_site_surface" id="3406323777341763460" active="true" position="0 -0.1 0" rotation="0 0 0 1" scale="72 0.2 58">
@@ -944,7 +944,7 @@
       </Entity>
      </Entity>
      <Entity name="price_sign_accent" id="18031366581651383761" active="true" position="0 5 2" rotation="0 1 -0 -4.37114e-08" scale="1 1 1">
-      <light flags="1" light_type="2" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="9500" range="18" angle="0.610865235" index="19" preset="5" area_width="1" area_height="1" draw_distance="120" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="2" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="9500" range="18" angle="0.610865235" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="120" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="price_sign" id="16689735993709317976" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
      <Entity name="price sign" id="4967812559231032058" active="true" position="0 6.5 0.440002" rotation="0 0 0 1" scale="2.6 1.4 0.08">
@@ -1642,19 +1642,19 @@
      <render mesh_name="standard_sphere" mesh_path="" sub_mesh_index="0" material_name="airport_light_blue" material_path="./project/plan_resources/airport_light_blue.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="apron_floodlight_1" id="17493974420384963407" active="true" position="-1700 28 -260" rotation="-0.461749 0 0 0.887011" scale="1 1 1">
-     <light flags="5" light_type="2" color_r="1.4128201" color_g="0.91707772" color_b="0.605824828" temperature="4200" intensity="8" intensity_photometric="24000" range="120" angle="1.13446403" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="5" light_type="2" color_r="1.4128201" color_g="0.91707772" color_b="0.605824828" temperature="4200" intensity="8" intensity_photometric="24000" range="120" angle="1.13446403" index="1" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="apron_floodlight_2" id="16517012788551867809" active="true" position="-1500 28 -260" rotation="-0.461749 0 0 0.887011" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1.4128201" color_g="0.91707772" color_b="0.605824828" temperature="4200" intensity="8" intensity_photometric="24000" range="120" angle="1.13446403" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1.4128201" color_g="0.91707772" color_b="0.605824828" temperature="4200" intensity="8" intensity_photometric="24000" range="120" angle="1.13446403" index="2" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="apron_floodlight_3" id="16168425957702236680" active="true" position="-1300 28 -260" rotation="-0.461749 0 0 0.887011" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1.4128201" color_g="0.91707772" color_b="0.605824828" temperature="4200" intensity="8" intensity_photometric="24000" range="120" angle="1.13446403" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1.4128201" color_g="0.91707772" color_b="0.605824828" temperature="4200" intensity="8" intensity_photometric="24000" range="120" angle="1.13446403" index="3" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="cargo_floodlight_1" id="15813385354446834949" active="true" position="-900 24 -260" rotation="-0.461749 0 0 0.887011" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1.53096676" color_g="0.891353428" color_b="0.512749553" temperature="3800" intensity="8" intensity_photometric="22000" range="110" angle="1.04719758" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1.53096676" color_g="0.891353428" color_b="0.512749553" temperature="3800" intensity="8" intensity_photometric="22000" range="110" angle="1.04719758" index="4" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="cargo_floodlight_2" id="15463825365039322435" active="true" position="-780 24 -260" rotation="-0.461749 0 0 0.887011" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1.53096676" color_g="0.891353428" color_b="0.512749553" temperature="3800" intensity="8" intensity_photometric="22000" range="110" angle="1.04719758" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1.53096676" color_g="0.891353428" color_b="0.512749553" temperature="3800" intensity="8" intensity_photometric="22000" range="110" angle="1.04719758" index="5" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="maintenance_floodlight_1" id="15109158517837748189" active="true" position="-2200 26 -250" rotation="-0.461749 0 0 0.887011" scale="1 1 1">
      <light flags="1" light_type="2" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="22000" range="115" angle="1.04719758" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
@@ -1663,37 +1663,37 @@
      <light flags="1" light_type="2" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="22000" range="115" angle="1.04719758" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="terminal_area_light_1" id="14362755938270944142" active="true" position="-1580 20 -130" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.7165103" color_g="0.849744141" color_b="0.378571212" temperature="3300" intensity="8" intensity_photometric="16000" range="80" angle="0.52359879" index="4294967295" preset="5" area_width="90" area_height="12" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.7165103" color_g="0.849744141" color_b="0.378571212" temperature="3300" intensity="8" intensity_photometric="16000" range="80" angle="0.52359879" index="6" preset="5" area_width="90" area_height="12" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="terminal_area_light_2" id="13995600947520460189" active="true" position="-1320 20 -130" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.7165103" color_g="0.849744141" color_b="0.378571212" temperature="3300" intensity="8" intensity_photometric="16000" range="80" angle="0.52359879" index="4294967295" preset="5" area_width="90" area_height="12" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.7165103" color_g="0.849744141" color_b="0.378571212" temperature="3300" intensity="8" intensity_photometric="16000" range="80" angle="0.52359879" index="7" preset="5" area_width="90" area_height="12" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="tower_cab_light" id="13580080291509937390" active="true" position="-1170 52 -70" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="10000" range="45" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="10000" range="45" angle="0.52359879" index="8" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="runway_primary_beacon_west" id="13246798090228155036" active="true" position="-2780 2 -500" rotation="0 0 0 1" scale="1 1 1">
      <light flags="1" light_type="1" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="9000" range="55" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="runway_primary_beacon_east" id="12916546281105451026" active="true" position="-420 2 -500" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="9000" range="55" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="9000" range="55" angle="0.52359879" index="9" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="runway_secondary_beacon_west" id="12583900531754900547" active="true" position="-2520 2 300" rotation="0 0 0 1" scale="1 1 1">
      <light flags="1" light_type="1" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="9000" range="55" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="runway_secondary_beacon_east" id="12251324385821804818" active="true" position="-680 2 300" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="9000" range="55" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.23142791" color_g="0.955487728" color_b="0.759468734" temperature="5000" intensity="8" intensity_photometric="9000" range="55" angle="0.52359879" index="10" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="taxiway_blue_light_1" id="11921482265282152087" active="true" position="-2300 1 -410" rotation="0 0 0 1" scale="1 1 1">
      <light flags="1" light_type="1" color_r="0.994552433" color_g="0.990142405" color_b="1.1136874" temperature="7000" intensity="8" intensity_photometric="8500" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="taxiway_blue_light_2" id="11592370732409501700" active="true" position="-1600 1 -410" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="0.994552433" color_g="0.990142405" color_b="1.1136874" temperature="7000" intensity="8" intensity_photometric="8500" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="0.994552433" color_g="0.990142405" color_b="1.1136874" temperature="7000" intensity="8" intensity_photometric="8500" range="42" angle="0.52359879" index="11" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="taxiway_blue_light_3" id="11220447193950361389" active="true" position="-900 1 -410" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="0.994552433" color_g="0.990142405" color_b="1.1136874" temperature="7000" intensity="8" intensity_photometric="8500" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="0.994552433" color_g="0.990142405" color_b="1.1136874" temperature="7000" intensity="8" intensity_photometric="8500" range="42" angle="0.52359879" index="12" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="parking_area_light" id="10888581584876374856" active="true" position="-1450 22 100" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="18000" range="110" angle="0.52359879" index="4294967295" preset="5" area_width="100" area_height="20" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="18000" range="110" angle="0.52359879" index="13" preset="5" area_width="100" area_height="20" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="airport_ground" id="9623501250191570405" active="true" position="-1600 -0.1 -100" rotation="0 0 0 1" scale="3000 0.2 1300">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -2065,37 +2065,37 @@
    <Entity name="player_garage_hub" id="12848334842964081404" active="true" position="234.2 0 -183" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=player_garage_hub,semantic_id=hub.root,focal_point,landmark,scene_recipe_player_garage_hub">
     <Entity name="practical_lighting__sr_465e8212_abbb1027ad" id="15317390147473076062" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=player_garage_hub,semantic_id=hub.lighting">
      <Entity name="garage_car_key_area" id="10712998828182731605" active="true" position="0 4.6 -3" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="12000" range="16" angle="0.52359879" index="20" preset="5" area_width="4.5" area_height="1.20000005" draw_distance="60" distance_shadows="35" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="12000" range="16" angle="0.52359879" index="14" preset="5" area_width="4.5" area_height="1.20000005" draw_distance="60" distance_shadows="35" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garage_left_ceiling_practical" id="10623919915995389065" active="true" position="-4.2 4.35 -3.5" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="21" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="15" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garage_right_ceiling_practical" id="9643989669480197143" active="true" position="4.2 4.35 -3.5" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="22" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.56429791" color_g="0.883990467" color_b="0.487537891" temperature="3700" intensity="8" intensity_photometric="8500" range="11" angle="0.52359879" index="16" preset="5" area_width="1" area_height="1" draw_distance="45" distance_shadows="24" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="workshop_neutral_area" id="6533251680557657035" active="true" position="-11 4.1 -3.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-      <light flags="1" light_type="3" color_r="1.44028628" color_g="0.911148608" color_b="0.58368057" temperature="4100" intensity="8" intensity_photometric="12000" range="10" angle="0.52359879" index="23" preset="5" area_width="3.79999995" area_height="0.699999988" draw_distance="40" distance_shadows="22" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="3" color_r="1.44028628" color_g="0.911148608" color_b="0.58368057" temperature="4100" intensity="8" intensity_photometric="12000" range="10" angle="0.52359879" index="17" preset="5" area_width="3.79999995" area_height="0.699999988" draw_distance="40" distance_shadows="22" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="lounge_amber_main" id="6323953488332192275" active="true" position="11 3.3 -3" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.08303308" color_g="0.762563944" color_b="0.162900239" temperature="2600" intensity="8" intensity_photometric="8500" range="9" angle="0.52359879" index="24" preset="5" area_width="1" area_height="1" draw_distance="40" distance_shadows="20" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.08303308" color_g="0.762563944" color_b="0.162900239" temperature="2600" intensity="8" intensity_photometric="8500" range="9" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="40" distance_shadows="20" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="jukebox_amber_accent" id="6052627904330939166" active="true" position="13.5 1.7 0.5" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="4800" range="5" angle="0.52359879" index="25" preset="5" area_width="1" area_height="1" draw_distance="24" distance_shadows="12" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.22046041" color_g="0.727859795" color_b="0.102005936" temperature="2400" intensity="8" intensity_photometric="4800" range="5" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="24" distance_shadows="12" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garden_path_light_1" id="7876733908508742374" active="true" position="8 0.9 11" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="26" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="18" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garden_path_light_2" id="7523146821320826700" active="true" position="16 0.9 13" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="27" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="4200" range="6" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="28" distance_shadows="14" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="driveway_entry_light" id="7181780495775446075" active="true" position="-5.2 0.2 11" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="5200" range="8" angle="0.52359879" index="28" preset="5" area_width="1" area_height="1" draw_distance="32" distance_shadows="16" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="5200" range="8" angle="0.52359879" index="19" preset="5" area_width="1" area_height="1" draw_distance="32" distance_shadows="16" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="garage_light" id="12287940123286892819" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
      <Entity name="lounge_light" id="12314872709020588963" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
     </Entity>
     <Entity name="lounge_warm_fill" id="3912926680596372468" active="true" position="12 2.6 -2" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="4200" range="9" angle="0.52359879" index="29" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="4200" range="9" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="text_label" id="11628295388919037259" active="true" position="8.90001 8.6 0" rotation="0 1 0 2.09361e-06" scale="1 1 1">
      <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" ovr_uv_world_space="1" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
@@ -3323,7 +3323,7 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="in_light_yard" id="11599012273622890094" active="true" position="0 8 0" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.46906853" color_g="0.904902399" color_b="0.560801983" temperature="4000" intensity="8" intensity_photometric="8500" range="40" angle="0.52359879" index="30" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.46906853" color_g="0.904902399" color_b="0.560801983" temperature="4000" intensity="8" intensity_photometric="8500" range="40" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="in_pad" id="16662435671605193833" active="true" position="0 0.15 0" rotation="0 0 0 1" scale="90 0.3 70">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -3882,16 +3882,16 @@
       <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="modern_city_emissive" material_path="./project/plan_resources/modern_city_emissive.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      </Entity>
      <Entity name="street_light_1" id="9776363928386780417" active="true" position="-108 9 -15" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="31" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="street_light_2" id="12271615492984265365" active="true" position="108 9 -15" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="32" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="street_light_3" id="11932468732936583960" active="true" position="-15 9 -108" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="33" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="street_light_4" id="11571696254896954984" active="true" position="-15 9 108" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="34" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="38" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="800" distance_shadows="220" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
      <Entity name="obstacles_safety_barrier" id="12280982230998946800" active="true" position="300 0.6 255" rotation="0 0 0 1" scale="18 0.8 0.5">
       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -4121,16 +4121,16 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="city_grid_concrete" material_path="./project/plan_resources/city_grid_concrete.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="city_key_light_1" id="5570802553204494432" active="true" position="-260 110 -260" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="0.720000029" color_g="0.819999993" color_b="1" temperature="5000" intensity="8" intensity_photometric="16000" range="420" angle="0.52359879" index="35" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="0.720000029" color_g="0.819999993" color_b="1" temperature="5000" intensity="8" intensity_photometric="16000" range="420" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="city_key_light_2" id="8182112276208694911" active="true" position="260 110 -260" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="0.819999993" color_g="0.879999995" color_b="1" temperature="5000" intensity="8" intensity_photometric="28000" range="420" angle="0.52359879" index="36" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="0.819999993" color_g="0.879999995" color_b="1" temperature="5000" intensity="8" intensity_photometric="28000" range="420" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="city_key_light_3" id="7847948720439991608" active="true" position="-260 110 260" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="0.720000029" color_g="0.819999993" color_b="1" temperature="5000" intensity="8" intensity_photometric="16000" range="420" angle="0.52359879" index="37" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="0.720000029" color_g="0.819999993" color_b="1" temperature="5000" intensity="8" intensity_photometric="16000" range="420" angle="0.52359879" index="20" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="city_key_light_4" id="7586887118186409489" active="true" position="260 110 260" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="0.819999993" color_g="0.879999995" color_b="1" temperature="5000" intensity="8" intensity_photometric="28000" range="420" angle="0.52359879" index="38" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="0.819999993" color_g="0.879999995" color_b="1" temperature="5000" intensity="8" intensity_photometric="28000" range="420" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="900" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="architectural_detail" id="10303433080679918102" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
      <Entity name="downtown_podium_nw" id="10201272863450395878" active="true" position="-180 4 -180" rotation="0 0 0 1" scale="1 1 1">
@@ -4756,7 +4756,7 @@
         </Entity>
        </Entity>
        <Entity name="landmark_beacon_light" id="11218687520125313721" active="true" position="0 178 0" rotation="0 0 0 1" scale="1 1 1">
-        <light flags="5" light_type="1" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="12000" range="90" angle="0.52359879" index="39" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="500" distance_volumetric="32" cloud_coverage="0.379999995" />
+        <light flags="5" light_type="1" color_r="1.00889552" color_g="1.00090468" color_b="0.964844942" temperature="6500" intensity="8" intensity_photometric="12000" range="90" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1600" distance_shadows="500" distance_volumetric="32" cloud_coverage="0.379999995" />
        </Entity>
       </Entity>
       <Entity name="commercial_facade_2" id="10671658642036107689" active="true" position="-24 60 -38.4" rotation="0 0 0 1" scale="1 1 1">
@@ -5446,10 +5446,10 @@
      </Entity>
     </Entity>
     <Entity name="district_fill_light_1" id="5807414985144902867" active="true" position="-90 32 -90" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.19455719" color_g="0.963140607" color_b="0.792230189" temperature="5200" intensity="8" intensity_photometric="12000" range="125" angle="0.52359879" index="40" preset="5" area_width="1" area_height="1" draw_distance="1200" distance_shadows="420" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.19455719" color_g="0.963140607" color_b="0.792230189" temperature="5200" intensity="8" intensity_photometric="12000" range="125" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1200" distance_shadows="420" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="district_fill_light_2" id="5405461224219647974" active="true" position="90 32 90" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.53096676" color_g="0.891353428" color_b="0.512749553" temperature="3800" intensity="8" intensity_photometric="12000" range="125" angle="0.52359879" index="41" preset="5" area_width="1" area_height="1" draw_distance="1200" distance_shadows="420" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.53096676" color_g="0.891353428" color_b="0.512749553" temperature="3800" intensity="8" intensity_photometric="12000" range="125" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="1200" distance_shadows="420" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="medium_ring__sr_7329bb48_a5f9040adf" id="8249633621553595088" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=city_grid_1km,semantic_id=city.medium,support">
      <Entity name="medium_block_7__sr_7329bb48_124e0e4af9" id="17341490612557604280" active="true" position="-300 0 -180" rotation="0 0 0 1" scale="1 1 1" tags="scene_recipe=city_grid_1km,semantic_id=city.m7,support">
@@ -6016,16 +6016,16 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="car_playground_painted_wall" material_path="./project/plan_resources/car_playground_painted_wall.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="playground_area_light_01" id="4283901531113133461" active="true" position="-34 9 -24" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.67532992" color_g="0.859113038" color_b="0.407026142" temperature="3400" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="42" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.67532992" color_g="0.859113038" color_b="0.407026142" temperature="3400" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="playground_area_light_02" id="4624875051700964158" active="true" position="34 9 -24" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.19455719" color_g="0.963140607" color_b="0.792230189" temperature="5200" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="43" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.19455719" color_g="0.963140607" color_b="0.792230189" temperature="5200" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="playground_area_light_03" id="5057998503817183801" active="true" position="-34 9 24" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.19455719" color_g="0.963140607" color_b="0.792230189" temperature="5200" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="44" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.19455719" color_g="0.963140607" color_b="0.792230189" temperature="5200" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="21" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="playground_area_light_04" id="5394729546197051024" active="true" position="34 9 24" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.67532992" color_g="0.859113038" color_b="0.407026142" temperature="3400" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="45" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.67532992" color_g="0.859113038" color_b="0.407026142" temperature="3400" intensity="8" intensity_photometric="14000" range="42" angle="0.52359879" index="22" preset="5" area_width="5" area_height="3" draw_distance="120" distance_shadows="70" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="car_playground_asphalt_pad" id="15604530453485782906" active="true" position="1.52588e-05 0.08 0" rotation="0 5.96046e-08 0 1" scale="80 0.15 60">
      <physics mass="1" friction="0.949999988" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -6246,28 +6246,28 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="yard_light_a" id="11505891222099181403" active="true" position="-10 11.5 22" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="46" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="23" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="yard_light_b" id="11868085779568477022" active="true" position="20 11.5 22" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="47" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="24" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="yard_light_c" id="13429793215030542290" active="true" position="10 11.5 -22" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="48" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="25" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="yard_light_d" id="14694214673431620577" active="true" position="-32 11.5 0" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="49" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="26" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="warehouse_area_light" id="17332611137632393020" active="true" position="-28 7.5 -12" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="12000" range="40" angle="0.52359879" index="50" preset="5" area_width="12" area_height="4" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="12000" range="40" angle="0.52359879" index="27" preset="5" area_width="12" area_height="4" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="loading_spot" id="17784070043757459802" active="true" position="-12 8 0" rotation="-0.326506 0.627211 0.326506 0.627211" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="9500" range="30" angle="1.22173047" index="51" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="9500" range="30" angle="1.22173047" index="28" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="office_light" id="519116324886764303" active="true" position="28 3.5 18" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="0" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="4500" range="18" angle="0.52359879" index="52" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="0" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="4500" range="18" angle="0.52359879" index="29" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="crane_work_light" id="1329937916652017568" active="true" position="22 16 -8" rotation="-0.573576 0 0 0.819152" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="8500" range="32" angle="0.87266463" index="53" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1.63633871" color_g="0.867911816" color_b="0.434678763" temperature="3500" intensity="8" intensity_photometric="8500" range="32" angle="0.87266463" index="30" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="loading_ramp" id="17620888696942786104" active="true" position="-10 0.4 0" rotation="0 0 -0.104528 0.994522" scale="6 0.3 6">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -6531,7 +6531,7 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="Spot" id="12508816975450551640" active="true" position="0 8.9 1.3" rotation="0.573862 0 0 0.818952" scale="1 1 1">
-     <light flags="5" light_type="2" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="18000" range="42" angle="0.52359879" index="54" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="5" light_type="2" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="18000" range="42" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
    </Entity>
    <Entity name="player_car_spawn" id="2411005043703651745" active="true" position="234 0.8 -171" rotation="0 0 0 1" scale="1 1 1">
@@ -7152,40 +7152,40 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="workshop_fluorescent_1" id="9018158939332705744" active="true" position="-12 5.35 1" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1" color_g="0.74000001" color_b="0.460000008" temperature="3200" intensity="8" intensity_photometric="12500" range="13" angle="0.52359879" index="55" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1" color_g="0.74000001" color_b="0.460000008" temperature="3200" intensity="8" intensity_photometric="12500" range="13" angle="0.52359879" index="4294967295" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="workshop_fluorescent_2" id="9017975621730243319" active="true" position="-12 5.35 -4" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1" color_g="0.720000029" color_b="0.430000007" temperature="3200" intensity="8" intensity_photometric="12000" range="13" angle="0.52359879" index="56" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1" color_g="0.720000029" color_b="0.430000007" temperature="3200" intensity="8" intensity_photometric="12000" range="13" angle="0.52359879" index="4294967295" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="workshop_fluorescent_3" id="9017854674103652318" active="true" position="-5.2 5.35 1" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1" color_g="0.75999999" color_b="0.5" temperature="3200" intensity="8" intensity_photometric="12500" range="13" angle="0.52359879" index="57" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1" color_g="0.75999999" color_b="0.5" temperature="3200" intensity="8" intensity_photometric="12500" range="13" angle="0.52359879" index="4294967295" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="workshop_fluorescent_4" id="9017631871989359515" active="true" position="-5.2 5.35 -4" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1" color_g="0.720000029" color_b="0.430000007" temperature="3200" intensity="8" intensity_photometric="12000" range="13" angle="0.52359879" index="58" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1" color_g="0.720000029" color_b="0.430000007" temperature="3200" intensity="8" intensity_photometric="12000" range="13" angle="0.52359879" index="4294967295" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="parts_counter_warm_light" id="9017614564773422515" active="true" position="7.5 3 -2.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1" color_g="0.680000007" color_b="0.400000006" temperature="3200" intensity="8" intensity_photometric="10500" range="8" angle="0.52359879" index="59" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1" color_g="0.680000007" color_b="0.400000006" temperature="3200" intensity="8" intensity_photometric="10500" range="8" angle="0.52359879" index="4294967295" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="lounge_warm_light" id="9017713329404955319" active="true" position="8.6 3 -6.5" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="1" color_g="0.629999995" color_b="0.349999994" temperature="3200" intensity="8" intensity_photometric="9000" range="7" angle="0.52359879" index="60" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="1" color_g="0.629999995" color_b="0.349999994" temperature="3200" intensity="8" intensity_photometric="9000" range="7" angle="0.52359879" index="4294967295" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="storefront_pool_light" id="9017487991777315973" active="true" position="8.1 4.1 5.5" rotation="-1.67276e-08 -0.382683 0.92388 -4.03841e-08" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1" color_g="0.620000005" color_b="0.330000013" temperature="3500" intensity="8" intensity_photometric="9000" range="12" angle="0.785398185" index="61" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1" color_g="0.620000005" color_b="0.330000013" temperature="3500" intensity="8" intensity_photometric="9000" range="12" angle="0.785398185" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="bay_1_entry_pool" id="9017575325261380355" active="true" position="-12 5.1 4.2" rotation="-2.01837e-08 -0.461749 0.887011 -3.87725e-08" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1" color_g="0.75999999" color_b="0.5" temperature="3500" intensity="8" intensity_photometric="8500" range="12" angle="0.785398185" index="62" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1" color_g="0.75999999" color_b="0.5" temperature="3500" intensity="8" intensity_photometric="8500" range="12" angle="0.785398185" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="bay_2_entry_pool" id="9017449011786498178" active="true" position="-5.2 5.1 4.2" rotation="-2.01837e-08 -0.461749 0.887011 -3.87725e-08" scale="1 1 1">
-     <light flags="1" light_type="2" color_r="1" color_g="0.75999999" color_b="0.5" temperature="3500" intensity="8" intensity_photometric="8500" range="12" angle="0.785398185" index="63" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="2" color_r="1" color_g="0.75999999" color_b="0.5" temperature="3500" intensity="8" intensity_photometric="8500" range="12" angle="0.785398185" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="70" distance_shadows="50" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="roadside_sign_neon_light" id="9017393263276578056" active="true" position="12.5 4 11" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1" color_g="0.0799999982" color_b="0.0350000001" temperature="3200" intensity="8" intensity_photometric="7000" range="7" angle="0.52359879" index="64" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1" color_g="0.0799999982" color_b="0.0350000001" temperature="3200" intensity="8" intensity_photometric="7000" range="7" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="parking_cool_evening_light_1" id="9017455540350754669" active="true" position="-9 4.8 9" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="0.319999993" color_g="0.479999989" color_b="0.800000012" temperature="3200" intensity="8" intensity_photometric="11500" range="16" angle="0.52359879" index="65" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="0.319999993" color_g="0.479999989" color_b="0.800000012" temperature="3200" intensity="8" intensity_photometric="11500" range="16" angle="0.52359879" index="31" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="parking_cool_evening_light_2" id="9017329450601283873" active="true" position="3 4.8 9" rotation="0.707107 0 0 0.707107" scale="1 1 1">
-     <light flags="1" light_type="3" color_r="0.280000001" color_g="0.439999998" color_b="0.75999999" temperature="3200" intensity="8" intensity_photometric="11000" range="16" angle="0.52359879" index="66" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="3" color_r="0.280000001" color_g="0.439999998" color_b="0.75999999" temperature="3200" intensity="8" intensity_photometric="11000" range="16" angle="0.52359879" index="4294967295" preset="5" area_width="6" area_height="3" draw_distance="80" distance_shadows="60" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="tire_display_torus" id="8959935887479192827" active="true" position="11 1.2 3.95" rotation="0.707107 0 0 0.707107" scale="1 1 1">
      <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -7325,14 +7325,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_0" id="17680647106900511183" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="67" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_1" id="17681213115050497118" active="true" position="-25.9584 3 -22.8997" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_1" id="17674194054133156875" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="68" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_0" id="17671595631532021164" active="true" position="-10.1936 0.4 -32.1927" rotation="0 -0.964745 0 0.263185" scale="0.35 0.8 1.6">
@@ -7343,14 +7343,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_2" id="17691977992645026011" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="69" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_3" id="17683961840845601993" active="true" position="-68.9638 3 -94.157" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_3" id="17685236936377710076" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="70" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_1" id="17682552902990521281" active="true" position="-53.6332 0.4 -104.15" rotation="0 -0.958575 0 0.284839" scale="0.35 0.8 1.6">
@@ -7361,14 +7361,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_4" id="17747068705106686550" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="71" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_5" id="17747364252609506044" active="true" position="-89.7303 3 -121.013" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_5" id="17740317957791807191" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="72" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_2" id="17740572326706622203" active="true" position="-76.3826 0.4 -133.533" rotation="0 -0.929887 0 0.367845" scale="0.35 0.8 1.6">
@@ -7379,7 +7379,7 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_6" id="17760379494094379436" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="73" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
    </Entity>
@@ -7391,14 +7391,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_0" id="9910008188805124207" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="74" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_1" id="9909833927050749140" active="true" position="-9.25793 3 -16.6278" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_1" id="9907729706031644186" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="75" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_0" id="9907384551879781624" active="true" position="8.97012 0.4 -15.0068" rotation="0 0.999017 0 0.0443352" scale="0.35 0.8 1.6">
@@ -7409,14 +7409,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_2" id="9945463627509313034" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="76" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_3" id="9945311184147659035" active="true" position="-3.74495 3 -64.6449" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_3" id="9940969066847024711" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="77" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_1" id="9940596181261656903" active="true" position="14.3583 0.4 -61.9685" rotation="0 0.997308 0 0.0733217" scale="0.35 0.8 1.6">
@@ -7427,14 +7427,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_4" id="9934299554075746263" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="78" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_5" id="9933735976858271981" active="true" position="4.42442 3 -116.627" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_5" id="9929787596409763833" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="79" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="spline_point_0" id="8989318877733515216" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
@@ -7451,23 +7451,23 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_0" id="15032551150427726524" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="80" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_1" id="15034810903043778681" active="true" position="-9.7 3 -13" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_1" id="15031001569276768974" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="81" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
    </Entity>
    <Entity name="junction_accents_east" id="7992231758079511686" active="true" position="0 119.391 0" rotation="0 0 0 1" scale="1 1 1">
     <Entity name="in_junc_light" id="356276581732042637" active="true" position="100 7.5 -320" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.46906853" color_g="0.904902399" color_b="0.560801983" temperature="4000" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="82" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.46906853" color_g="0.904902399" color_b="0.560801983" temperature="4000" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="dt_junc_light" id="2618375549437394378" active="true" position="335 7.5 40" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="83" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="rs_junc_planter" id="12091130579323311214" active="true" position="294 0.4 104" rotation="0 0 0 1" scale="1.3 0.8 1.3">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -7502,7 +7502,7 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="mk_junc_light" id="956070179885919558" active="true" position="240 7.5 120" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="84" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.85503149" color_g="0.817631364" color_b="0.288785458" temperature="3000" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
    </Entity>
    <Entity name="spline_road" id="10358794943034623506" active="true" position="103.487 0.516045 109.618" rotation="0 -0.675137 0 0.737693" scale="1 1 1">
@@ -7552,7 +7552,7 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_10" id="9549771372890097371" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="85" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="spline_point_0" id="12650472148340134674" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
@@ -7563,21 +7563,21 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_0" id="9865140219228258851" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="86" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_11" id="9519762606592861732" active="true" position="-64.727 3 -275.542" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_11" id="9517651801254715975" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="87" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_1" id="9865697122073961661" active="true" position="-9.34171 3 -12.2988" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_1" id="9867123788300175677" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="88" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_0" id="9867606658939985740" active="true" position="8.81323 0.4 -9.99913" rotation="0 0.998016 0 0.0629562" scale="0.35 0.8 1.6">
@@ -7588,14 +7588,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_2" id="9829938807048350688" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="89" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_3" id="9830207975461415983" active="true" position="-6.05457 3 -46.3842" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_3" id="9834360298531283369" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="90" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_1" id="9834668929577944243" active="true" position="12.2222 0.4 -45.4624" rotation="0 0.999683 0 0.0251953" scale="0.35 0.8 1.6">
@@ -7606,14 +7606,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_4" id="9841100560802109162" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="91" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_5" id="9841351606664214602" active="true" position="-4.67326 3 -92.9022" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_5" id="9845428288618169807" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="92" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_2" id="9845545030658216586" active="true" position="13.6183 0.4 -92.3461" rotation="0 0.999884 0 0.0151974" scale="0.35 0.8 1.6">
@@ -7624,14 +7624,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_6" id="9542343363041061720" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="93" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_7" id="9542607610501447914" active="true" position="-8.11507 3 -147.876" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_7" id="9541315108645807957" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="94" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_3" id="9544677684304375114" active="true" position="9.81804 0.4 -151.522" rotation="0 -0.994975 0 0.100122" scale="0.35 0.8 1.6">
@@ -7642,14 +7642,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_8" id="9553203217060426855" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="95" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_9" id="9553506685204079062" active="true" position="-34.3366 3 -215.267" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_9" id="9552014966602891115" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="96" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_4" id="9552353244184385059" active="true" position="-17.8865 0.4 -223.285" rotation="0 -0.974401 0 0.224819" scale="0.35 0.8 1.6">
@@ -7683,10 +7683,10 @@
      <render mesh_name="standard_cube" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
     </Entity>
     <Entity name="gas_junc_light" id="270674623690232943" active="true" position="155 7.5 -40" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="97" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="2.02062225" color_g="0.777932227" color_b="0.194440722" temperature="2700" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="dy_junc_light" id="7497899461951369840" active="true" position="12 7.5 -455" rotation="0 0 0 1" scale="1 1 1">
-     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="98" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+     <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="35" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
     </Entity>
     <Entity name="gas_junc_planter_a" id="17044253673078193364" active="true" position="148 0.4 -36" rotation="0 0 0 1" scale="1.3 0.8 1.3">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
@@ -7728,21 +7728,21 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_0" id="5984372240387501781" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="99" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_4" id="5676639523873996062" active="true" position="78.821 3 -26.0843" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_4" id="5694650448375005755" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="100" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_1" id="5981976647641926468" active="true" position="13.4272 3 -17.7146" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_1" id="5986087010337483919" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="101" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_prop_barrier_0" id="5986407830468127088" active="true" position="20.7963 0.4 -3.17551" rotation="0 0.852084 0 0.523405" scale="0.35 0.8 1.6">
@@ -7753,14 +7753,14 @@
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_2" id="5681371341605872178" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="102" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
     <Entity name="road_light_pole_3" id="5681498866940711775" active="true" position="56.2487 3 -37.6953" rotation="0 0 0 1" scale="0.25 6 0.25">
      <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
      <render mesh_name="standard_cylinder" mesh_path="" sub_mesh_index="0" material_name="" material_path="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
      <Entity name="road_light_3" id="5685653213319721100" active="true" position="0 0.55 0" rotation="0 0 0 1" scale="1 1 1">
-      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="103" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
+      <light flags="1" light_type="1" color_r="1.76005673" color_g="0.83975035" color_b="0.349342674" temperature="3200" intensity="8" intensity_photometric="8500" range="30" angle="0.52359879" index="4294967295" preset="5" area_width="1" area_height="1" draw_distance="60" distance_shadows="45" distance_volumetric="32" cloud_coverage="0.379999995" />
      </Entity>
     </Entity>
    </Entity>
@@ -7771,20 +7771,20 @@
   <Entity name="terrain" id="7677335530244238779" active="true" position="0 -5.9 0" rotation="0 0 0 1" scale="1 1 1">
    <terrain height_map_path="project/height_maps/zakynthos_heightmap.png" min_y="0" max_y="755" level_sea="0" level_snow="400" shore_width="2000" smoothing="0" density="1" scale="25" tile_count="16" create_border="false" spawn_biome_props="true" prop_density_tree="1" prop_density_rock="1" prop_density_flower="1" />
   </Entity>
-  <Entity name="ocean" id="9001000000000000006" active="true" position="1845.5 0 -2350.5" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="ocean" id="9001000000000000006" active="true" position="2607.5 0 -2059.5" rotation="0 0 0 1" scale="1 1 1">
    <render mesh_name="" mesh_path="" sub_mesh_index="0" material_name="water_fft" material_path="./project/plan_resources/water_fft.xml" material_default="false" flags="0" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />
    <water>
     <water cascade_count="4" amplitude="1" choppiness="0.300000012" displacement_scale="1" normal_strength="1" sea_level="0" turbidity="1" caustics_intensity="1" />
    </water>
   </Entity>
-  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="1845.74 148.152 -2350.01" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="2607.93 34.255 -2059.09" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
-   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="-0.102411 -0.591727 0.0760241 -0.795984" scale="1 1 1">
+   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="-0.158586 0.45842 -0.0836151 -0.870466" scale="1 1 1">
     <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="400" exposure_mode="1" auto_exposure_adaptation_speed="1" auto_exposure_compensation="0" fov_horizontal="1.58724964" near_plane="0.100000001" far_plane="100000" projection="0" preset="3" flags="49" />
    </Entity>
   </Entity>
   <Entity name="ufo_disc_craft_zeta_reticuli" id="15374946806319271320" active="true" position="0 6518.14 0" rotation="0 0.626093 0 0.779748" scale="1 1 1">
-   <script file_path="../worlds/ufo_hover.lua" warp_deceleration="1200" target_x="-140446" min_x="-150000" elapsed_time="1" warp_acceleration="900" max_x="150000" hover_height="1" pause_time="1" warp_speed="300" rotation_speed="0" target_z="-49673" boundary_margin="0" hover_speed="1" min_z="-150000" bounds_refresh_time="0" altitude_clearance="18" target_pause="1" max_z="150000" cruise_y="96" Start="" Initialize="" Tick="" current_speed="0" />
+   <script file_path="../worlds/ufo_hover.lua" min_x="-150000" hover_speed="1" min_z="-150000" warp_acceleration="900" pause_time="1" elapsed_time="1" warp_deceleration="1200" rotation_speed="0" hover_height="1" max_x="150000" Start="" target_pause="1" target_x="-26201" target_z="-118883" boundary_margin="0" current_speed="0" Initialize="" Tick="" bounds_refresh_time="0" cruise_y="96" max_z="150000" altitude_clearance="18" warp_speed="300" />
    <Entity name="main_hull" id="15092377769586295881" active="true" position="-1.52588e-05 0.0200195 1.52588e-05" rotation="0 0 0 1" scale="1 1 1">
     <physics mass="1" friction="0.5" friction_rolling="0.400000006" restitution="0" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="5" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" cloth_pin_direction_x="0" cloth_pin_direction_y="1" cloth_pin_direction_z="0" />
     <render mesh_name="ufo_disc_craft_0_main_hull_22cd1637" mesh_path="./project/plan_resources/ufo_disc_craft_0_main_hull_22cd1637.mesh" sub_mesh_index="0" material_name="ufo_painted_metal" material_path="./project/plan_resources/ufo_painted_metal.xml" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38" />

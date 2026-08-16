@@ -171,13 +171,13 @@ namespace spartan
             return;
         }
 
-        // shadow atlas is unused when full ray traced shadows own visibility, a secondary view
-        // never traces so it needs the atlas
+        // surface visibility can be ray traced, fog still samples the atlas
         const bool tlas_available =
             RHI_Device::IsSupportedRayTracing() &&
             GetTopLevelAccelerationStructure() != nullptr &&
             !IsSecondaryViewActive();
-        if (cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available)
+        const bool fog_needs_atlas = cvar_fog.GetValue() > 0.0f;
+        if (cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available && !fog_needs_atlas)
         {
             return;
         }

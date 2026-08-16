@@ -1186,17 +1186,6 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::volumetric_light_indices), GetBuffer(Renderer_Buffer::VolumetricLightIndices));
 
-            if (RHI_Device::IsSupportedRayTracing())
-            {
-                if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
-                {
-                    if (tlas->GetRhiResource())
-                    {
-                        RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
-                    }
-                }
-            }
-
             if (RHI_Texture* tex_ocean_norm = GetRenderTarget(Renderer_RenderTarget::ocean_normal))
             {
                 RHI_CommandList::SetTexture("tex_ocean_normal", tex_ocean_norm);
