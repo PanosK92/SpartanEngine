@@ -49,7 +49,9 @@ namespace spartan
         // directional matrix parameters
         const float cascade_near_extent    = 20.0f;
         const float cascade_far_extent     = 2000.0f;
-        const float cascade_depth          = 4000.0f;
+        const float cascade_depth_behind   = 2000.0f;
+        const float cascade_depth_ahead    = 8000.0f;
+        const float cascade_depth          = cascade_depth_behind + cascade_depth_ahead;
         const float cascade_far_max_extent = FLT_MAX;
 
         float get_sensible_range(const LightType type, const float photometric_intensity = 0.0f, const float angle_rad = math::deg_to_rad * 30.0f)
@@ -863,9 +865,9 @@ namespace spartan
                 return;
             }
 
-            // both cascades follow the camera
+            // both cascades follow the camera, most of the depth sits ahead so the ground stays in range when flying
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
-            Vector3 position   = camera_pos - GetEntity()->GetForward() * cascade_depth * 0.5f;
+            Vector3 position   = camera_pos - GetEntity()->GetForward() * cascade_depth_behind;
             m_matrix_view[0]   = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
             m_matrix_view[1]   = m_matrix_view[0];
 

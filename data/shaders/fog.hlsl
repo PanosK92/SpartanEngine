@@ -147,14 +147,14 @@ float visible(float3 position, Light light, uint2 pixel_pos)
             light_get_transform(light, near_cascade)
         );
         float2 projected_uv_near  = ndc_to_uv(projected_pos_near);
-        if (is_valid_uv(projected_uv_near))
+        if (cascade_contains(projected_pos_near))
         {
             float shadowed = light_compare_depth(
                 light,
                 float3(projected_uv_near, (float)near_cascade),
                 projected_pos_near.z
             );
-            return lerp(1.0f, shadowed, cascade_edge_fade(projected_pos_near.xy));
+            return lerp(1.0f, shadowed, cascade_edge_fade(projected_pos_near));
         }
 
         float3 projected_pos_far = world_to_ndc(
@@ -162,14 +162,14 @@ float visible(float3 position, Light light, uint2 pixel_pos)
             light_get_transform(light, far_cascade)
         );
         float2 projected_uv_far  = ndc_to_uv(projected_pos_far);
-        if (is_valid_uv(projected_uv_far))
+        if (cascade_contains(projected_pos_far))
         {
             float shadowed = light_compare_depth(
                 light,
                 float3(projected_uv_far, (float)far_cascade),
                 projected_pos_far.z
             );
-            return lerp(1.0f, shadowed, cascade_edge_fade(projected_pos_far.xy));
+            return lerp(1.0f, shadowed, cascade_edge_fade(projected_pos_far));
         }
 
         return 1.0f;

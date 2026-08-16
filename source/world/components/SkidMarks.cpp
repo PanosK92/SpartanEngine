@@ -201,16 +201,7 @@ namespace spartan
             float u_a       = trail.u_accum * m_uv_tiling;
             float u_b       = (trail.u_accum + d) * m_uv_tiling;
 
-            // map slip into a 0..1 body intensity with a low floor so light skids taper instead of cutting off
-            float t    = (slip - m_slip_threshold) / 0.6f;
-            t          = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
-            float body = 0.2f + 0.8f * t;
-
-            // ramp the intensity up over the start of the strip so it fades in instead of popping
-            float fade_a = smooth_fade(trail.u_accum / m_fade_distance);
-            float fade_b = smooth_fade((trail.u_accum + d) / m_fade_distance);
-
-            DepositQuad(trail, b_left, b_right, u_a, u_b, normal, travel, body * fade_a, body * fade_b);
+            DepositQuad(trail, b_left, b_right, u_a, u_b, normal, travel);
 
             // advance, the new edge becomes the start of the next quad for seamless continuity
             trail.edge_left     = b_left;
@@ -283,21 +274,18 @@ namespace spartan
         trail.global_vertex_offset = render->GetVertexOffset();
     }
 
-    void SkidMarks::DepositQuad(WheelTrail& trail, const Vector3& bl, const Vector3& br, float u_a, float u_b, const Vector3& normal, const Vector3& tangent, float intensity_a, float intensity_b)
+    void SkidMarks::DepositQuad(WheelTrail& trail, const Vector3& bl, const Vector3& br, float u_a, float u_b, const Vector3& normal, const Vector3& tangent)
     {
         uint32_t slot   = trail.head_quad % trail.capacity_quads;
         uint32_t offset = trail.global_vertex_offset + slot * 4;
 
-        // intensity rides the rising half of the tent texture, v=0 is fully faded, v=0.5 is full strength
-        float v_a = intensity_a * 0.5f;
-        float v_b = intensity_b * 0.5f;
-
+        // u tiles along travel, v spans the tire so the project texture reads as a tread
         RecentQuad rq;
         rq.slot     = slot;
-        rq.verts[0] = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(u_a, v_a), normal, tangent);
-        rq.verts[1] = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(u_a, v_a), normal, tangent);
-        rq.verts[2] = RHI_Vertex_PosTexNorTan(bl,               Vector2(u_b, v_b), normal, tangent);
-        rq.verts[3] = RHI_Vertex_PosTexNorTan(br,               Vector2(u_b, v_b), normal, tangent);
+        rq.verts[0] = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(u_a, 0.0f), normal, tangent);
+        rq.verts[1] = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(u_a, 1.0f), normal, tangent);
+        rq.verts[2] = RHI_Vertex_PosTexNorTan(bl,               Vector2(u_b, 0.0f), normal, tangent);
+        rq.verts[3] = RHI_Vertex_PosTexNorTan(br,               Vector2(u_b, 1.0f), normal, tangent);
 
         GeometryBuffer::UpdateVertices(rq.verts, offset, 4);
         trail.head_quad = (trail.head_quad + 1) % trail.capacity_quads;
@@ -318,7 +306,7 @@ namespace spartan
             return;
         }
 
-        // the tail narrows to zero width and alpha so the strip eases away instead of ending on a full width cross section
+        // the tail narrows to zero width so the strip eases away instead of ending on a full width cross section
         float u_end = trail.u_accum;
         const int pairs[2][2] = { { 0, 1 }, { 2, 3 } };
         for (RecentQuad& rq : trail.recent)
@@ -329,12 +317,8 @@ namespace spartan
                 RHI_Vertex_PosTexNorTan& b = rq.verts[pairs[p][1]];
 
                 Vector2 uv_a = a.get_uv();
-                Vector2 uv_b = b.get_uv();
                 float u_dist = (m_uv_tiling > 0.0f) ? (uv_a.x / m_uv_tiling) : u_end;
                 float factor = smooth_fade((u_end - u_dist) / m_fade_distance);
-
-                a.set_uv(uv_a.x, uv_a.y * factor);
-                b.set_uv(uv_b.x, uv_b.y * factor);
 
                 Vector3 pa = a.get_position();
                 Vector3 pb = b.get_position();
@@ -350,48 +334,29 @@ namespace spartan
 
     void SkidMarks::CreateMaterial()
     {
-        // procedural skid texture, u tiles along travel as streaks, v selects slip intensity
-        const uint32_t w = 64;
-        const uint32_t h = 64;
-        RHI_Texture_Mip mip;
-        mip.bytes.resize(w * h * 4);
-        for (uint32_t y = 0; y < h; y++)
+        const string texture_path = "project/materials/skid_marks/albedo.png";
+        if (FileSystem::Exists(texture_path))
         {
-            float v = static_cast<float>(y) / static_cast<float>(h - 1);
-            for (uint32_t x = 0; x < w; x++)
-            {
-                // cheap per-column streak variation so the mark is not a flat band
-                float n      = 0.6f + 0.4f * fabsf(sinf(static_cast<float>(x) * 1.7f) * 0.5f + sinf(static_cast<float>(x) * 0.37f) * 0.5f);
-                // the sampler wraps, so a plain 0..1 ramp bleeds the top row into v=0, a tent zero at both ends removes the seam
-                float tent   = 1.0f - fabsf(2.0f * v - 1.0f);
-                float alpha  = tent * n;
-                alpha        = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha);
-                uint8_t a    = static_cast<uint8_t>(alpha * 255.0f);
-                uint32_t idx = (y * w + x) * 4;
-                mip.bytes[idx + 0] = std::byte{ 12 };
-                mip.bytes[idx + 1] = std::byte{ 12 };
-                mip.bytes[idx + 2] = std::byte{ 12 };
-                mip.bytes[idx + 3] = std::byte{ a };
-            }
+            m_texture = ResourceCache::Load<RHI_Texture>(texture_path);
         }
-
-        RHI_Texture_Slice slice;
-        slice.mips.push_back(move(mip));
-        vector<RHI_Texture_Slice> slices;
-        slices.push_back(move(slice));
-
-        m_texture = make_shared<RHI_Texture>(
-            RHI_Texture_Type::Type2D, w, h, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "skidmarks_texture", slices);
-        m_texture->SetResourceFilePath("skidmarks_color.png");
-        m_texture = ResourceCache::Cache<RHI_Texture>(m_texture);
 
         m_material = make_shared<Material>();
         m_material->SetResourceName("skidmarks" + string(EXTENSION_MATERIAL));
-        m_material->SetColor(Color(0.05f, 0.05f, 0.05f, m_opacity));
+        if (m_texture)
+        {
+            m_material->SetColor(Color(1.0f, 1.0f, 1.0f, m_opacity));
+        }
+        else
+        {
+            m_material->SetColor(Color(0.05f, 0.05f, 0.05f, m_opacity));
+        }
         m_material->SetProperty(MaterialProperty::Roughness, 0.95f);
         m_material->SetProperty(MaterialProperty::Metalness, 0.0f);
         m_material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-        m_material->SetTexture(MaterialTextureType::Color, m_texture);
+        if (m_texture)
+        {
+            m_material->SetTexture(MaterialTextureType::Color, m_texture);
+        }
     }
 
     void SkidMarks::Remove()
@@ -424,7 +389,7 @@ namespace spartan
         m_max_segments         = node.attribute("max_segments").as_uint(512);
         m_opacity              = node.attribute("opacity").as_float(0.75f);
         m_z_offset             = node.attribute("z_offset").as_float(0.02f);
-        m_uv_tiling            = node.attribute("uv_tiling").as_float(0.5f);
+        m_uv_tiling            = node.attribute("uv_tiling").as_float(2.0f);
         m_fade_distance        = node.attribute("fade_distance").as_float(0.5f);
     }
 }

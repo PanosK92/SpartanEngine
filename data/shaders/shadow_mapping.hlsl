@@ -127,13 +127,21 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
 // compute shadow factor using vogel disk sampling
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multiplier = 1.0f)
 {
-    // early out, a fully lit or fully shadowed center skips the pcss search and the pcf taps
+    uint cascade_index = (uint)sample_coords.z;
+    bool far_directional = light.is_directional() && cascade_index == 1;
+
+    // early out, far cascade skips the fully shadowed out so terrain height cannot paint a solid rectangle
     float center = light_compare_depth(light, sample_coords, receiver_depth);
-    if (center <= 0.001f) return 0.0f;
-    if (center >= 0.999f) return 1.0f;
+    if (!far_directional && center <= 0.001f)
+    {
+        return 0.0f;
+    }
+    if (center >= 0.999f)
+    {
+        return 1.0f;
+    }
 
     // atlas texel size in cascade local space, computed once and shared with the penumbra search
-    uint   cascade_index            = (uint)sample_coords.z;
     float2 texel_size_cascade_local =
         light_get_atlas_texel_size(
             light,
@@ -146,9 +154,13 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
     float  rotation_angle           = float(cascade_index) * 0.785398163f;
     float  shadow_factor            = 0.0f;
     
-    // estimate penumbra
-    float light_distance = light.is_directional() ? 1000.0f : length(surface.position - light.position);
-    float penumbra       = compute_penumbra(light, rotation_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
+    // far cascade uses a fixed kernel, pcss blocker search is larger than a far texel and self shadows the whole slice
+    float penumbra = 1.0f;
+    if (!far_directional)
+    {
+        float light_distance = light.is_directional() ? 1000.0f : length(surface.position - light.position);
+        penumbra             = compute_penumbra(light, rotation_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
+    }
 
     float valid_sample_count = 0.0f;
     
@@ -205,8 +217,9 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
     float n_dot_l    = dot(surface.normal, light_dir);
     float slope      = sqrt(saturate(1.0f - n_dot_l * n_dot_l));
 
-    // calculate final offset
-    float offset_amount = (g_base_bias_texels + (slope * g_slope_bias_texels)) * texel_size_world;
+    // far cascade texels are meters wide, extra bias keeps the terrain from self shadowing into a solid rectangle
+    float cascade_bias = (light.is_directional() && cascade_index == 1) ? 2.0f : 1.0f;
+    float offset_amount = (g_base_bias_texels + (slope * g_slope_bias_texels)) * texel_size_world * cascade_bias;
     
     return surface.normal * offset_amount;
 }
@@ -264,8 +277,7 @@ float compute_shadow(Surface surface, Light light)
         float3 ndc_near       = clip_pos_near.xyz / clip_pos_near.w;
         float2 uv_near        = ndc_to_uv(ndc_near.xy);
         
-        float2 ndc_abs_near = abs(ndc_near.xy);
-        bool near_valid     = max(ndc_abs_near.x, ndc_abs_near.y) <= 1.0f;
+        bool near_valid = cascade_contains(ndc_near);
         
         float shadow_near = 1.0f;
         if (near_valid)
@@ -288,8 +300,7 @@ float compute_shadow(Surface surface, Light light)
             float3 ndc_far            = clip_pos_far.xyz / clip_pos_far.w;
             float2 uv_far             = ndc_to_uv(ndc_far.xy);
             
-            float2 ndc_abs_far = abs(ndc_far.xy);
-            bool far_valid     = max(ndc_abs_far.x, ndc_abs_far.y) <= 1.0f;
+            bool far_valid = cascade_contains(ndc_far);
             
             if (near_valid && far_valid)
             {
@@ -311,7 +322,7 @@ float compute_shadow(Surface surface, Light light)
 
             if (far_valid)
             {
-                shadow = lerp(1.0f, shadow, cascade_edge_fade(ndc_far.xy));
+                shadow = lerp(1.0f, shadow, cascade_edge_fade(ndc_far));
             }
         }
 

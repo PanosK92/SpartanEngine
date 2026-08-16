@@ -823,6 +823,19 @@ float cascade_edge_fade(float2 ndc_xy)
     return 1.0f - smoothstep(0.82f, 0.98f, m);
 }
 
+float cascade_edge_fade(float3 ndc)
+{
+    float xy = cascade_edge_fade(ndc.xy);
+    float z  = saturate(ndc.z * 20.0f) * saturate((1.0f - ndc.z) * 20.0f);
+    return xy * z;
+}
+
+bool cascade_contains(float3 ndc)
+{
+    float2 a = abs(ndc.xy);
+    return max(a.x, a.y) <= 1.0f && ndc.z >= 0.0f && ndc.z <= 1.0f;
+}
+
 float screen_fade(float2 uv)
 {
     float2 fade = max(0.0f, 12.0f * abs(uv - 0.5f) - 5.0f);

@@ -90,7 +90,7 @@ namespace spartan
 
         void EnsureInitialized();
         void BuildTrailMesh(WheelTrail& trail, const std::string& name);
-        void DepositQuad(WheelTrail& trail, const math::Vector3& bl, const math::Vector3& br, float u_a, float u_b, const math::Vector3& normal, const math::Vector3& tangent, float intensity_a, float intensity_b);
+        void DepositQuad(WheelTrail& trail, const math::Vector3& bl, const math::Vector3& br, float u_a, float u_b, const math::Vector3& normal, const math::Vector3& tangent);
         void FadeStripEnd(WheelTrail& trail);
         void CreateMaterial();
 
@@ -106,7 +106,7 @@ namespace spartan
         uint32_t m_max_segments      = 512;   // ring buffer size per wheel  
         float m_opacity              = 0.75f; // base material alpha
         float m_z_offset             = 0.02f; // lift above ground to avoid z-fighting
-        float m_uv_tiling            = 0.5f;  // texture repeats per meter along travel
+        float m_uv_tiling            = 2.0f;  // texture repeats per meter along travel
         float m_fade_distance        = 0.5f;  // length of the width taper fade in and fade out at each strip end, in meters
         float m_center_smoothing     = 0.5f;  // contact point low pass, kills lateral jitter
     };

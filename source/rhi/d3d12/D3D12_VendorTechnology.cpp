@@ -936,8 +936,10 @@ namespace spartan
         eval.InRenderSubrectDimensions.Width  = common::resolution_render_width;
         eval.InRenderSubrectDimensions.Height = common::resolution_render_height;
         eval.InReset                          = common::reset_history ? 1 : 0;
+        // engine velocity is unjittered ndc curr minus prev, y up
+        // dlss wants pixel motion as prev equals curr plus mv, y down
         eval.InMVScaleX                       = -0.5f * render_w;
-        eval.InMVScaleY                       = -0.5f * render_h;
+        eval.InMVScaleY                       =  0.5f * render_h;
         eval.InPreExposure                    = 1.0f;
         eval.InExposureScale                  = 1.0f;
         if (common::cb_frame)
