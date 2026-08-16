@@ -82,13 +82,21 @@ namespace spartan
         uint32_t meshlet_micro_count_committed       = 0;
         uint32_t instance_count_committed            = 0;
 
-        // total gpu buffer capacity
+        // actual gpu buffer element counts, only written after a successful alloc
         uint32_t vertex_capacity         = 0;
         uint32_t index_capacity          = 0;
         uint32_t meshlet_bounds_capacity = 0;
         uint32_t meshlet_vertex_capacity = 0;
         uint32_t meshlet_micro_capacity  = 0;
         uint32_t instance_capacity       = 0;
+
+        // requested floors from Reserve, must not overwrite the gpu sizes above
+        uint32_t vertex_reserve         = 0;
+        uint32_t index_reserve          = 0;
+        uint32_t meshlet_bounds_reserve = 0;
+        uint32_t meshlet_vertex_reserve = 0;
+        uint32_t meshlet_micro_reserve  = 0;
+        uint32_t instance_reserve       = 0;
 
         bool dirty       = false;
         bool was_rebuilt = false;
@@ -396,7 +404,13 @@ namespace spartan
                                   meshlet_bounds_count > meshlet_bounds_capacity ||
                                   meshlet_vertex_count > meshlet_vertex_capacity ||
                                   meshlet_micro_count > meshlet_micro_capacity ||
-                                  instance_count > instance_capacity;
+                                  instance_count > instance_capacity ||
+                                  vertex_reserve > vertex_capacity ||
+                                  index_reserve > index_capacity ||
+                                  meshlet_bounds_reserve > meshlet_bounds_capacity ||
+                                  meshlet_vertex_reserve > meshlet_vertex_capacity ||
+                                  meshlet_micro_reserve > meshlet_micro_capacity ||
+                                  instance_reserve > instance_capacity;
 
         if (needs_full_rebuild)
         {
@@ -415,12 +429,12 @@ namespace spartan
             };
 
             constexpr uint64_t max_slack_bytes = 64ull * 1024ull * 1024ull;
-            uint32_t new_vertex_capacity         = max(add_headroom(vertex_count,         sizeof(RHI_Vertex_PosTexNorTan), max_slack_bytes), vertex_capacity);
-            uint32_t new_index_capacity          = max(add_headroom(index_count,          sizeof(uint32_t),                max_slack_bytes), index_capacity);
-            uint32_t new_meshlet_bounds_capacity = max(add_headroom(meshlet_bounds_count, sizeof(Sb_MeshletBounds),        max_slack_bytes), max(meshlet_bounds_capacity, 1u));
-            uint32_t new_meshlet_vertex_capacity = max(add_headroom(max(meshlet_vertex_count, 1u), sizeof(uint32_t),       max_slack_bytes), max(meshlet_vertex_capacity, 1u));
-            uint32_t new_meshlet_micro_capacity  = max(add_headroom(max(meshlet_micro_count, 1u),  sizeof(uint32_t),       max_slack_bytes), max(meshlet_micro_capacity, 1u));
-            uint32_t new_instance_capacity       = max(add_headroom(instance_count,       sizeof(Instance),                max_slack_bytes), max(instance_capacity, 1u));
+            uint32_t new_vertex_capacity         = max(add_headroom(max(vertex_count, vertex_reserve), sizeof(RHI_Vertex_PosTexNorTan), max_slack_bytes), vertex_capacity);
+            uint32_t new_index_capacity          = max(add_headroom(max(index_count, index_reserve), sizeof(uint32_t), max_slack_bytes), index_capacity);
+            uint32_t new_meshlet_bounds_capacity = max(add_headroom(max(meshlet_bounds_count, meshlet_bounds_reserve), sizeof(Sb_MeshletBounds), max_slack_bytes), max(meshlet_bounds_capacity, 1u));
+            uint32_t new_meshlet_vertex_capacity = max(add_headroom(max(max(meshlet_vertex_count, meshlet_vertex_reserve), 1u), sizeof(uint32_t), max_slack_bytes), max(meshlet_vertex_capacity, 1u));
+            uint32_t new_meshlet_micro_capacity  = max(add_headroom(max(max(meshlet_micro_count, meshlet_micro_reserve), 1u), sizeof(uint32_t), max_slack_bytes), max(meshlet_micro_capacity, 1u));
+            uint32_t new_instance_capacity       = max(add_headroom(max(instance_count, instance_reserve), sizeof(Instance), max_slack_bytes), max(instance_capacity, 1u));
 
             // allocate into temporaries so a failure leaves the previously working buffers in place
             auto new_vertex_buffer = make_unique<RHI_Buffer>(
@@ -659,12 +673,12 @@ namespace spartan
     {
         lock_guard<mutex> lock(buffer_mutex);
 
-        vertex_capacity         = max(vertex_capacity,         vertex_count);
-        index_capacity          = max(index_capacity,          index_count);
-        meshlet_bounds_capacity = max(meshlet_bounds_capacity, meshlet_bounds_count);
-        meshlet_vertex_capacity = max(meshlet_vertex_capacity, meshlet_vertex_count);
-        meshlet_micro_capacity  = max(meshlet_micro_capacity,  meshlet_micro_count);
-        instance_capacity       = max(instance_capacity,       instance_count);
+        vertex_reserve         = max(vertex_reserve,         vertex_count);
+        index_reserve          = max(index_reserve,          index_count);
+        meshlet_bounds_reserve = max(meshlet_bounds_reserve, meshlet_bounds_count);
+        meshlet_vertex_reserve = max(meshlet_vertex_reserve, meshlet_vertex_count);
+        meshlet_micro_reserve  = max(meshlet_micro_reserve,  meshlet_micro_count);
+        instance_reserve       = max(instance_reserve,       instance_count);
     }
 
     void GeometryBuffer::Shutdown()
@@ -701,6 +715,12 @@ namespace spartan
         meshlet_vertex_capacity        = 0;
         meshlet_micro_capacity         = 0;
         instance_capacity              = 0;
+        vertex_reserve                 = 0;
+        index_reserve                  = 0;
+        meshlet_bounds_reserve         = 0;
+        meshlet_vertex_reserve         = 0;
+        meshlet_micro_reserve          = 0;
+        instance_reserve               = 0;
         instance_capacity_failed_at    = 0;
         dirty                          = false;
         was_rebuilt                    = false;

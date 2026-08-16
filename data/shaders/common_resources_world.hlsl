@@ -33,6 +33,7 @@ Texture2D tex_perlin : register(t14);
 // space 0, next to perlin, bindless arrays live in other spaces so these registers are free here
 Texture2D<float4> tex_terrain_map_a : register(t15);
 Texture2D<float4> tex_terrain_map_b : register(t16);
+Texture2D<float>  tex_terrain_height : register(t17);
 
 // restir reservoir textures (shared across path tracing, temporal, and spatial passes)
 // kept contiguous so a single loop can bind all five slots starting from tex_reservoir_prev0

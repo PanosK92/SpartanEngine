@@ -65,7 +65,7 @@ namespace spartan
         // uploads only the new portion when it fits the existing capacity, otherwise recreates with headroom
         static void BuildIfDirty();
 
-        // bump capacity floors so the next BuildIfDirty allocates large enough buffers up-front
+        // request capacity floors, the next BuildIfDirty grows the gpu buffers if they are smaller
         // can be called before world load with a budget so we avoid mid-load rebuilds
         static void Reserve(
             uint32_t vertex_count,

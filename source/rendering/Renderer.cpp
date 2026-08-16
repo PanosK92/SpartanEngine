@@ -52,6 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../world/components/Volume.h"
 #include "../world/components/Render.h"
 #include "../world/components/Water.h"
+#include "../world/components/Terrain.h"
 #include "../core/ProgressTracker.h"
 #include "../math/Rectangle.h"
 #include "../resource/import/ImageImporter.h"
@@ -581,7 +582,7 @@ namespace spartan
             64u * 1024u,         // meshlet bounds
             4u  * 1024u * 1024u, // meshlet unique verts (~index/3)
             12u * 1024u * 1024u, // meshlet micro indices (~index count)
-            16u * 1024u          // instances
+            512u * 1024u         // instances, lush biome props exceed the old 16k floor
         );
 
         if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
@@ -1779,6 +1780,34 @@ namespace spartan
         else
         {
             m_cb_frame_cpu.ocean_enabled = 0.0f;
+        }
+
+        m_cb_frame_cpu.terrain_height_mapping = Vector4::Zero;
+        m_cb_frame_cpu.terrain_height_y       = 0.0f;
+        m_cb_frame_cpu.terrain_height_enabled = 0.0f;
+        if (m_pass_state.terrain_enabled && m_pass_state.terrain.height_map)
+        {
+            RHI_Texture* height = m_pass_state.terrain.height_map;
+            if (height->GetRhiResource() &&
+                height->GetResourceState() == ResourceState::PreparedForGpu)
+            {
+                Vector4 mapping = m_pass_state.terrain.world_mapping;
+                float y         = 0.0f;
+                if (Terrain* terrain = Terrain::FindActive())
+                {
+                    if (Entity* entity = terrain->GetEntity())
+                    {
+                        const Vector3 translation = entity->GetMatrix().GetTranslation();
+                        mapping.x += translation.x;
+                        mapping.y += translation.z;
+                        y          = translation.y;
+                    }
+                }
+
+                m_cb_frame_cpu.terrain_height_mapping = mapping;
+                m_cb_frame_cpu.terrain_height_y       = y;
+                m_cb_frame_cpu.terrain_height_enabled = 1.0f;
+            }
         }
     }
 
@@ -4238,6 +4267,15 @@ namespace spartan
             RHI_Texture* fallback = GetStandardTexture(Renderer_StandardTexture::Noise_perlin);
             RHI_CommandList::SetTexture("tex_terrain_map_a", ready ? map_a : fallback);
             RHI_CommandList::SetTexture("tex_terrain_map_b", ready ? map_b : fallback);
+
+            RHI_Texture* height = m_pass_state.terrain_enabled ? m_pass_state.terrain.height_map : nullptr;
+            const bool height_ready =
+                height &&
+                height->GetResourceState() == ResourceState::PreparedForGpu;
+            RHI_CommandList::SetTexture(
+                "tex_terrain_height",
+                height_ready ? height : fallback
+            );
         }
 
         Renderer_RenderTarget ocean_displacement_current = m_pass_state.ocean_history.SelectWrite(

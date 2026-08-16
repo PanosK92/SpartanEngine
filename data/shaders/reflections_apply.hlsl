@@ -61,7 +61,7 @@ static const float g_refraction_step_length   = g_refraction_max_distance / (flo
 
 // contact foam only where opaque geometry sits within this 3d world distance of the water surface point,
 // vertical clearance alone foams every submerged wall seen through the water, full distance cannot
-static const float contact_foam_radius = 0.35f;
+static const float contact_foam_radius = 0.85f;
 
 // Compute Fresnel for dielectrics using Schlick approximation
 float3 compute_dielectric_fresnel(float cos_theta, float ior_outer, float ior_inner)
@@ -403,7 +403,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
                 // absorption follows the water column of the sample actually shown so brightness stays consistent with the offset chosen above
                 float water_depth = max(depth_shown - depth_transparent, 0.0f);
-                refraction        = apply_water_absorption(refraction, water_depth, body_radiance);
+
+                // warm the column where the visible water is thin, screen depth not the 25 m heightfield
+                float shallow = saturate(1.0f - water_depth / 2.4f);
+                shallow       = shallow * shallow;
+                body_radiance = lerp(
+                    body_radiance,
+                    body_radiance * float3(1.12f, 1.04f, 0.82f) + refraction * 0.12f,
+                    shallow * 0.65f
+                );
+                refraction = apply_water_absorption(refraction, water_depth, body_radiance);
             }
             else
             {
@@ -519,12 +528,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 sky       = tex[thread_id.xy].rgb;
         float3 incoming  = sun_diff + sky;
 
-        // drive the chroma to white and lift the brightness so foam reads as whitewater instead of dull tinted water
+        // keep some of the water colour so foam is a veil, not a coat of paint
         float  luma       = luminance(incoming);
-        float3 foam_color = lerp(incoming, luma.xxx, 0.85f) * float3(0.97f, 0.98f, 1.0f) * 2.0f;
+        float3 foam_color = lerp(incoming, luma.xxx, 0.35f) * float3(0.96f, 0.97f, 1.0f) * 1.15f;
 
-        // foam sits on top of the water, dense foam fully hides the reflection and refraction below
-        float3 base = tex_uav[thread_id.xy].rgb;
-        tex_uav[thread_id.xy].rgb = lerp(base, foam_color, foam);
+        float3 base  = tex_uav[thread_id.xy].rgb;
+        float  cover = saturate(foam * 0.55f);
+        tex_uav[thread_id.xy].rgb = lerp(base, foam_color, cover);
     }
 }

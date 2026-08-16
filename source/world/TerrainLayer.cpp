@@ -165,11 +165,23 @@ namespace spartan
             r.weight_bias          = 0.8f;
         }
 
-        // layer 7, spare slot, left disabled by default, drop a folder named terrain_extra to use it
+        // layer 7, moss, damp shade and crevices, steeper than forest floor so it climbs rock
         {
-            TerrainLayerRule& r = rules[7];
-            r.name              = "terrain_extra";
-            r.weight_bias       = 0.0f;
+            TerrainLayerRule& r    = rules[7];
+            r.name                 = "moss";
+            r.slope_min            = 0.0f;
+            r.slope_max            = 50.0f;
+            r.height_min           = 2.0f;
+            r.flags                = TerrainLayerFlags_BelowSea;
+            r.insolation_influence = -0.6f;
+            r.occlusion_influence  = 0.4f;
+            r.curvature_influence  = 0.15f;
+            r.deposition_influence = 0.2f;
+            r.tiling_scale         = 0.85f;
+            r.blend_contrast       = 0.2f;
+            r.porosity             = 0.9f;
+            r.macro_strength       = 0.8f;
+            r.weight_bias          = 0.75f;
         }
 
         built = true;

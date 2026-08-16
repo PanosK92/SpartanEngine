@@ -832,10 +832,13 @@ namespace spartan
                     continue;
                 }
 
+                // centroid only, a triangle that merely clips the snow line must still be able to
+                // hold trees on the side that is actually below it
+                const float height = tri.centroid.y;
                 if (tri.slope_radians < prop_desc.min_slope_angle_rad ||
                     tri.slope_radians > prop_desc.max_slope_angle_rad ||
-                    tri.height_min < prop_desc.min_spawn_height ||
-                    tri.height_max > prop_desc.max_spawn_height)
+                    height < prop_desc.min_spawn_height ||
+                    height > prop_desc.max_spawn_height)
                 {
                     continue;
                 }
@@ -1105,16 +1108,32 @@ namespace spartan
                     }
 
                     uniform_int_distribution<int> nearby_dist(0, static_cast<int>(nearby.size()) - 1);
-                    uint32_t tri_idx  = nearby[nearby_dist(generator)];
-                    TriangleData& tri = tile_triangle_data[tri_idx];
+                    Vector3 position;
+                    uint32_t tri_idx = nearby[nearby_dist(generator)];
+                    const uint32_t max_point_attempts = 8;
+                    for (uint32_t attempt = 0; attempt < max_point_attempts; attempt++)
+                    {
+                        tri_idx = nearby[nearby_dist(generator)];
+                        TriangleData& candidate = tile_triangle_data[tri_idx];
 
-                    // random position within triangle
-                    float r1      = dist(generator);
-                    float r2      = dist(generator);
-                    float sqrt_r1 = sqrtf(r1);
-                    float u       = 1.0f - sqrt_r1;
-                    float v       = r2 * sqrt_r1;
-                    Vector3 position = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
+                        float r1      = dist(generator);
+                        float r2      = dist(generator);
+                        float sqrt_r1 = sqrtf(r1);
+                        float u       = 1.0f - sqrt_r1;
+                        float v       = r2 * sqrt_r1;
+                        position = candidate.v0 + u * candidate.v1_minus_v0 + v * candidate.v2_minus_v0
+                            + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
+
+                        if (!sample_biome_weight || prop_desc.prop_mask_channel < 0)
+                        {
+                            break;
+                        }
+                        if (sample_biome_weight(position.x, position.z) >= prop_desc.prop_mask_min)
+                        {
+                            break;
+                        }
+                    }
+                    TriangleData& tri = tile_triangle_data[tri_idx];
 
                     // rotation
                     Quaternion rotation;
@@ -1302,6 +1321,7 @@ namespace spartan
         params.surface       = m_material.get();
         params.map_a         = m_map_a.get();
         params.map_b         = m_map_b.get();
+        params.height_map    = m_height_map_gpu.get();
         params.world_mapping = m_world_mapping;
         params.sea_level     = m_level_sea;
         params.snow_level    = m_level_snow;
@@ -1342,6 +1362,7 @@ namespace spartan
         node.append_attribute("prop_density_tree")   = m_prop_density_tree;
         node.append_attribute("prop_density_rock")   = m_prop_density_rock;
         node.append_attribute("prop_density_flower") = m_prop_density_flower;
+        node.append_attribute("prop_density_grass")  = m_prop_density_grass;
 
         // flat terrain dims, used when there is no height map seed
         if (!m_height_map_seed && m_width > 1 && m_height > 1)
@@ -1378,6 +1399,7 @@ namespace spartan
         SetPropDensityTree(node.attribute("prop_density_tree").as_float(1.0f));
         SetPropDensityRock(node.attribute("prop_density_rock").as_float(1.0f));
         SetPropDensityFlower(node.attribute("prop_density_flower").as_float(1.0f));
+        SetPropDensityGrass(node.attribute("prop_density_grass").as_float(1.0f));
 
         // forest grass/rock/sand slope material
         ApplyDefaultMaterial();
@@ -1459,50 +1481,53 @@ namespace spartan
 
         if (terrain_prop == TerrainProp::Tree)
         {
-            description.max_slope_angle_rad     = 32.0f * math::deg_to_rad;
-            description.min_spawn_height        = sea_local + 5.0f;
-            description.max_spawn_height        = snow_local + 20;
+            description.max_slope_angle_rad     = 36.0f * math::deg_to_rad;
+            description.align_to_surface_normal = false;
+            description.min_spawn_height        = sea_local + 2.0f;
+            description.max_spawn_height        = snow_local + 10.0f;
             description.min_scale               = scale * 0.4f;
             description.max_scale               = scale * 1.0f;
-            description.instances_per_cluster   = 6;
-            description.cluster_radius          = 18.0f;
+            description.instances_per_cluster   = 8;
+            description.cluster_radius          = 22.0f;
             description.prop_mask_channel       = 1;
-            description.prop_mask_min           = 0.12f;
+            description.prop_mask_min           = 0.08f;
         }
         else if (terrain_prop == TerrainProp::Grass)
         {
-            description.max_slope_angle_rad     = 22.0f * math::deg_to_rad;
+            description.max_slope_angle_rad     = 24.0f * math::deg_to_rad;
             description.align_to_surface_normal = true;
             description.min_spawn_height        = sea_local + 1.0f;
             description.max_spawn_height        = snow_local;
             description.min_scale               = scale * 1.0f;
             description.max_scale               = scale * 1.5f;
             description.prop_mask_channel       = 0;
-            description.prop_mask_min           = 0.15f;
+            description.prop_mask_min           = 0.35f;
         }
         else if (terrain_prop == TerrainProp::Flower)
         {
-            description.max_slope_angle_rad     = 16.0f * math::deg_to_rad;
+            description.max_slope_angle_rad     = 18.0f * math::deg_to_rad;
             description.align_to_surface_normal = true;
-            description.min_spawn_height        = sea_local + 5.0f;
+            description.min_spawn_height        = sea_local + 3.0f;
             description.max_spawn_height        = snow_local;
             description.min_scale               = scale * 0.2f;
             description.max_scale               = scale * 1.2f;
             description.instances_per_cluster   = 1000;
             description.cluster_radius          = 30.0f;
             description.prop_mask_channel       = 0;
-            description.prop_mask_min           = 0.4f;
+            description.prop_mask_min           = 0.45f;
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
-            description.min_slope_angle_rad     = 14.0f * math::deg_to_rad;
-            description.max_slope_angle_rad     = 80.0f * math::deg_to_rad;
+            description.min_slope_angle_rad     = 0.0f;
+            description.max_slope_angle_rad     = 85.0f * math::deg_to_rad;
             description.align_to_surface_normal = true;
             description.min_spawn_height        = sea_local - 10.0f;
             description.max_spawn_height        = numeric_limits<float>::max();
             description.min_scale               = scale * 0.1f;
             description.max_scale               = scale * 1.0f;
             description.scale_adjust_by_slope   = true;
+            description.instances_per_cluster   = 3;
+            description.cluster_radius          = 12.0f;
             description.prop_mask_channel       = 2;
             description.prop_mask_min           = 0.08f;
         }
@@ -1741,6 +1766,42 @@ namespace spartan
         {
             loaded_from_cache = true;
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache");
+
+            // old caches still have a flat coast, lock it without rerunning erosion
+            if (ApplyShorelineLock())
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("locking shoreline...");
+                m_vertices.resize(m_dense_width * m_dense_height);
+                m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
+                TerrainSystem::GenerateVerticesAndIndices(
+                    m_vertices,
+                    m_indices,
+                    m_positions,
+                    m_dense_width,
+                    m_dense_height
+                );
+                TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
+                geometry_processing::split_surface_into_tiles(
+                    m_vertices,
+                    m_indices,
+                    m_tile_count,
+                    m_tile_vertices,
+                    m_tile_indices,
+                    m_tile_offsets
+                );
+                m_triangle_data.clear();
+                for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
+                {
+                    placement::compute_triangle_data(
+                        m_tile_vertices,
+                        m_tile_indices,
+                        tile_index,
+                        m_triangle_data
+                    );
+                }
+                SaveToFile(cache_file.c_str());
+            }
+
             for (uint32_t i = 0; i < 8; i++)
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
@@ -1776,6 +1837,10 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying erosion...");
             TerrainSystem::ApplyErosion(m_positions, m_dense_width, m_dense_height, m_level_sea, 1.0f, &m_erosion_maps);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+
+            // lift the real coastline above the waves and cut a beach
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("locking shoreline...");
+            ApplyShorelineLock();
 
             // 5. generate vertices and indices
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating mesh...");
@@ -2660,6 +2725,61 @@ namespace spartan
         return true;
     }
 
+    float Terrain::ResolveSeaLevelLocal() const
+    {
+        float sea_world = m_level_sea;
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity)
+            {
+                continue;
+            }
+
+            if (Water* water = entity->GetComponent<Water>())
+            {
+                sea_world = water->GetSeaLevel();
+                break;
+            }
+        }
+
+        float entity_y = 0.0f;
+        if (Entity* entity = GetEntity())
+        {
+            entity_y = entity->GetPosition().y;
+        }
+
+        return sea_world - entity_y;
+    }
+
+    bool Terrain::ApplyShorelineLock()
+    {
+        if (!HasHeightfield())
+        {
+            return false;
+        }
+
+        return TerrainSystem::ApplyCoastalProfile(
+            m_positions,
+            m_height_data.empty() ? nullptr : &m_height_data,
+            m_dense_width,
+            m_dense_height,
+            GetGridMapping(),
+            ResolveSeaLevelLocal()
+        );
+    }
+
+    void Terrain::LockShoreline()
+    {
+        if (!ApplyShorelineLock())
+        {
+            SP_LOG_INFO("shoreline already locked");
+            return;
+        }
+
+        RebuildSurface(true);
+        SnapshotBaseline();
+    }
+
     void Terrain::MakeIslandShore()
     {
         if (!HasHeightfield())
@@ -3118,6 +3238,7 @@ namespace spartan
         int sand_i   = -1;
         int dirt_i   = -1;
         int snow_i   = -1;
+        int moss_i   = -1;
         for (uint32_t i = 0; i < terrain_layer_max; i++)
         {
             if (m_layer_rules[i].name == "whispy_grass_meadow") grass_i = static_cast<int>(i);
@@ -3127,6 +3248,7 @@ namespace spartan
             if (m_layer_rules[i].name == "sand") sand_i = static_cast<int>(i);
             if (m_layer_rules[i].name == "dirt") dirt_i = static_cast<int>(i);
             if (m_layer_rules[i].name == "snow") snow_i = static_cast<int>(i);
+            if (m_layer_rules[i].name == "moss") moss_i = static_cast<int>(i);
         }
 
         const size_t cell_count = static_cast<size_t>(m_map_width) * m_map_height;
@@ -3243,72 +3365,63 @@ namespace spartan
                     const float below_snow = m_level_snow - y_c;
                     const float grass_w    = share(grass_i);
                     const float forest_w   = share(forest_i);
+                    const float moss_w     = share(moss_i);
                     const float rock_w     = share(rock_i);
                     const float gravel_w   = share(gravel_i);
                     const float dirt_w     = share(dirt_i);
                     const float sand_w     = share(sand_i);
                     const float snow_w     = share(snow_i);
 
-                    const float meadow = saturate(1.0f - slope_deg / 22.0f);
-                    const float meadow2 = meadow * meadow;
-                    const float steep  = saturate((slope_deg - 14.0f) / 45.0f);
-                    const float cliff  = saturate((slope_deg - 26.0f) / 28.0f);
-                    const float ridge  = saturate(1.0f - curvature * 2.0f);
-                    const float gully  = saturate(curvature * 2.0f - 1.0f);
-                    const float shade  = 1.0f - insolation;
+                    // the surface pick is the biome, props follow the same shares the shader painted
+                    const float living  = grass_w + forest_w * 0.9f + moss_w * 0.45f;
+                    const float mineral = rock_w + gravel_w * 0.9f + dirt_w * 0.55f;
+                    const float barren  = sand_w + snow_w;
+
+                    const float shade = 1.0f - insolation;
                     const float altitude = saturate(
                         (y_c - m_level_sea) / max(m_level_snow - m_level_sea, 1.0f)
                     );
                     const float alpine    = saturate((altitude - 0.55f) / 0.45f);
-                    const float tree_line = saturate(1.0f - alpine * 1.5f);
+                    const float tree_line = saturate(1.0f - alpine * 1.35f);
+                    const float slope_soft = saturate(1.0f - slope_deg / 32.0f);
 
-                    // geometry first, a steep face is never a meadow even if grass still scores
-                    if (slope_deg < 24.0f && above_sea > 1.0f && below_snow > 4.0f && sand_w < 0.45f && snow_w < 0.35f)
+                    // grass only where living ground beats rock, dirt, sand and snow
+                    float grass_raw = living - mineral * 1.2f - barren * 1.5f;
+                    grass_raw *= slope_soft;
+                    if (above_sea < 1.0f || below_snow < 2.0f)
                     {
-                        grass = grass_w * meadow2
-                            * lerp(0.3f, 1.0f, insolation)
-                            * lerp(0.4f, 1.0f, deposition)
-                            * (1.0f - alpine * 0.85f)
-                            * (1.0f - ridge * 0.75f);
-                        grass = saturate(grass);
+                        grass_raw = 0.0f;
                     }
+                    grass_raw = saturate(grass_raw);
+                    // lift the floor so mixed seams stay empty and meadow cores stay full
+                    grass = saturate((grass_raw - 0.18f) / 0.82f);
+                    grass = grass * grass * (3.0f - 2.0f * grass);
 
-                    if (slope_deg < 32.0f && above_sea > 4.0f && below_snow > 12.0f && sand_w < 0.35f && snow_w < 0.25f)
+                    // trees on forest floor, plus groves in living meadow, never on mineral
+                    float tree_raw = forest_w
+                        + grass_w * lerp(0.28f, 0.75f, saturate(shade * 1.15f + deposition * 0.35f))
+                        + moss_w * 0.2f;
+                    tree_raw *= slope_soft;
+                    tree_raw *= tree_line;
+                    tree_raw *= saturate(1.0f - mineral * 1.35f);
+                    tree_raw *= saturate(1.0f - barren * 2.0f);
+                    if (above_sea < 2.0f || below_snow < 6.0f)
                     {
-                        float tree_habitat = forest_w;
-                        if (tree_habitat < 0.05f)
-                        {
-                            tree_habitat = grass_w
-                                * saturate((shade - 0.4f) / 0.45f)
-                                * (1.0f - ridge)
-                                * meadow2;
-                        }
-                        trees = tree_habitat
-                            * saturate(1.0f - slope_deg / 32.0f)
-                            * tree_line
-                            * lerp(0.35f, 1.0f, occlusion)
-                            * lerp(0.5f, 1.0f, gully);
-                        trees = saturate(trees);
+                        tree_raw = 0.0f;
                     }
+                    trees = saturate(tree_raw);
 
-                    rock = (rock_w + gravel_w * 0.9f + dirt_w * 0.4f) * lerp(0.12f, 1.0f, steep)
-                        + cliff
-                        + ridge * steep * 0.55f;
-                    if (slope_deg < 12.0f)
+                    // rocks wherever the surface reads as mineral, including benches and scree
+                    float rock_raw = mineral;
+                    rock_raw *= saturate(1.0f - living * 0.9f);
+                    rock_raw *= saturate(1.0f - sand_w * 1.6f);
+                    rock_raw *= saturate(1.0f - snow_w);
+                    rock_raw *= lerp(0.8f, 1.15f, saturate((slope_deg - 6.0f) / 40.0f));
+                    if (above_sea < -2.0f)
                     {
-                        rock *= 0.08f;
+                        rock_raw = 0.0f;
                     }
-                    if (sand_w > 0.5f)
-                    {
-                        rock *= 0.15f;
-                    }
-                    rock = saturate(rock);
-
-                    if (slope_deg > 28.0f)
-                    {
-                        grass = 0.0f;
-                        trees = 0.0f;
-                    }
+                    rock = saturate(rock_raw);
                 }
 
                 m_prop_mask_pixels[offset + 0] = static_cast<uint8_t>(grass * 255.0f + 0.5f);
@@ -3318,6 +3431,33 @@ namespace spartan
             }
         };
         ThreadPool::ParallelLoop(bake, static_cast<uint32_t>(cell_count));
+
+        uint32_t grass_hits = 0;
+        uint32_t tree_hits  = 0;
+        uint32_t rock_hits  = 0;
+        for (size_t i = 0; i < cell_count; i++)
+        {
+            const size_t offset = i * 4;
+            if (m_prop_mask_pixels[offset + 0] > 40)
+            {
+                grass_hits++;
+            }
+            if (m_prop_mask_pixels[offset + 1] > 20)
+            {
+                tree_hits++;
+            }
+            if (m_prop_mask_pixels[offset + 2] > 20)
+            {
+                rock_hits++;
+            }
+        }
+        const float inv_cells = 100.0f / max(static_cast<float>(cell_count), 1.0f);
+        SP_LOG_INFO(
+            "prop mask: grass %.1f%%, trees %.1f%%, rocks %.1f%%",
+            static_cast<float>(grass_hits) * inv_cells,
+            static_cast<float>(tree_hits) * inv_cells,
+            static_cast<float>(rock_hits) * inv_cells
+        );
     }
 
     void Terrain::RebuildPropMask()

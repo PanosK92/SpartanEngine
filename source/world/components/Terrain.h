@@ -175,6 +175,8 @@ namespace spartan
         void SetPropDensityRock(float density)    { m_prop_density_rock = ClampPropDensity(density); }
         float GetPropDensityFlower() const        { return m_prop_density_flower; }
         void SetPropDensityFlower(float density)  { m_prop_density_flower = ClampPropDensity(density); }
+        float GetPropDensityGrass() const         { return m_prop_density_grass; }
+        void SetPropDensityGrass(float density)   { m_prop_density_grass = ClampPropDensity(density); }
         // reload the layer materials from project/materials and hand the whole set to the renderer
         void RefreshLayers();
         // hand the current layer set, analysis maps and world mapping to the renderer
@@ -228,6 +230,8 @@ namespace spartan
         TerrainGridMapping GetGridMapping() const;
         // bend map borders down to sea level so the ocean meets land
         void MakeIslandShore();
+        // raise the real coastline above the waves and cut a beach, no full regenerate
+        void LockShoreline();
 
         // find the first terrain with a heightfield in the loaded world
         static Terrain* FindActive();
@@ -272,6 +276,8 @@ namespace spartan
         void SaveTerrainMapsToCache() const;
         void SnapshotBaseline();
         uint64_t ComputeCacheHash() const;
+        float ResolveSeaLevelLocal() const;
+        bool ApplyShorelineLock();
 
         // textures
         RHI_Texture* m_height_map_seed                  = nullptr;
@@ -303,10 +309,11 @@ namespace spartan
 
         bool m_spawn_biome_props = true;
         // the base densities live in WorldHelpers, these scale them so a world can be sparser or
-        // denser without recompiling, rocks need the headroom most, their base is very low
+        // denser without recompiling
         float m_prop_density_tree   = 1.0f;
         float m_prop_density_rock   = 1.0f;
         float m_prop_density_flower = 1.0f;
+        float m_prop_density_grass  = 1.0f;
         float m_height_bake_min = 0.0f;
         float m_height_bake_max = 1.0f;
 

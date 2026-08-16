@@ -187,6 +187,9 @@ namespace spartan
         terrain_map_a = 15,
         terrain_map_b = 16,
 
+        // world y heightfield, sampled by the ocean for depth and swash
+        terrain_height = 17,
+
         // restir reservoir srv bindings (for temporal/spatial read)
         // kept contiguous so a single loop can bind all five slots starting from reservoir_prev0
         reservoir_prev0    = 22,

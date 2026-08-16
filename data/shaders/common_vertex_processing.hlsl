@@ -436,12 +436,14 @@ struct vertex_processing
         if (surface.is_water() && buffer_frame.ocean_enabled > 0.5f)
         {
             float2 world_xz = position_world.xz;
+            float depth     = get_ocean_water_depth(world_xz);
             float3 disp     = 0.0f;
             uint cascades   = buffer_frame.ocean_cascade_count;
             [loop] for (uint c = 0; c < cascades; ++c)
             {
-                float L   = buffer_frame.ocean_cascade_length[c];
-                float2 uv = world_xz / L;
+                float L     = buffer_frame.ocean_cascade_length[c];
+                float2 uv   = world_xz / L;
+                float scale = ocean_cascade_depth_scale(depth, L);
                 float3 displacement;
                 if (time_offset < 0.0f)
                 {
@@ -459,8 +461,9 @@ struct vertex_processing
                         0.0f
                     ).xyz;
                 }
-                disp += displacement;
+                disp += displacement * scale;
             }
+
             position_world += disp;
             return;
         }

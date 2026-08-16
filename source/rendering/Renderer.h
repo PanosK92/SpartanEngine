@@ -162,9 +162,10 @@ namespace spartan
         // shader can walk them from a single base index
         struct TerrainParams
         {
-            Material*    surface = nullptr;
-            RHI_Texture* map_a   = nullptr;
-            RHI_Texture* map_b   = nullptr;
+            Material*    surface    = nullptr;
+            RHI_Texture* map_a      = nullptr;
+            RHI_Texture* map_b      = nullptr;
+            RHI_Texture* height_map = nullptr;
 
             std::array<Material*, terrain_layer_max>        layer_materials{};
             std::array<TerrainLayerRule, terrain_layer_max> layer_rules{};

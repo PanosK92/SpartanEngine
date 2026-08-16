@@ -332,14 +332,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         );
         float grass_w = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0).r;
         float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
-        grass_w *= slope_fit * slope_fit;
+        grass_w *= slope_fit;
         if (grass_w < biome_min)
         {
             return;
         }
-        // square so weak meadow edges stay thin and only the core of a grass patch is dense
+        // density follows the mask, cores stay thick, the cpu bake already killed mixed rock
         float biome_roll = hash_unit(h0 ^ 0x27d4eb2du);
-        if (biome_roll > grass_w * grass_w)
+        if (biome_roll > grass_w)
         {
             return;
         }

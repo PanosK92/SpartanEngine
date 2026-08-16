@@ -96,7 +96,7 @@ namespace spartan
     };
 
     // the default rule set, tuned so a terrain with only grass, rock and sand present still reads
-    // correctly, and gains dirt, gravel, snow and forest floor the moment those folders exist
+    // correctly, and gains dirt, gravel, snow, forest floor and moss the moment those folders exist
     class TerrainLayerDefaults
     {
     public:

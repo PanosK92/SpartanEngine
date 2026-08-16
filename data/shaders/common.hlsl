@@ -163,19 +163,72 @@ float get_ocean_caustic(float2 world_xz, float travel)
     return 1.0f / max(abs(jacobian_x * jacobian_z), 0.1f);
 }
 
+// world y of the terrain under this xz, valid is 0 off the heightfield
+float sample_ocean_terrain_height(float2 world_xz, out float valid)
+{
+    valid = 0.0f;
+    if (buffer_frame.terrain_height_enabled < 0.5f)
+    {
+        return 0.0f;
+    }
+
+    float2 origin     = buffer_frame.terrain_height_mapping.xy;
+    float2 inv_size   = buffer_frame.terrain_height_mapping.zw;
+    float2 normalized = (world_xz - origin) * inv_size;
+    if (any(normalized < 0.0f) || any(normalized > 1.0f))
+    {
+        return 0.0f;
+    }
+
+    float2 tex_size;
+    tex_terrain_height.GetDimensions(tex_size.x, tex_size.y);
+    float2 uv = (normalized * (tex_size - 1.0f) + 0.5f) / max(tex_size, 1.0f);
+    valid = 1.0f;
+    return tex_terrain_height.SampleLevel(
+        samplers[sampler_bilinear_clamp],
+        uv,
+        0.0f
+    ) + buffer_frame.terrain_height_y;
+}
+
+// metres of water above the bed, large when there is no terrain
+float get_ocean_water_depth(float2 world_xz)
+{
+    float valid = 0.0f;
+    float terrain_y = sample_ocean_terrain_height(world_xz, valid);
+    if (valid < 0.5f)
+    {
+        return 1000.0f;
+    }
+
+    return buffer_frame.ocean_sea_level - terrain_y;
+}
+
+// long waves ease off in the shallows, a floor keeps the waterline moving
+float ocean_cascade_depth_scale(float depth, float wavelength)
+{
+    float deep = max(wavelength * 0.12f, 8.0f);
+    float dry  = 0.25f;
+    float s    = smoothstep(dry, deep, max(depth, 0.0f));
+    return lerp(0.4f, 1.0f, s);
+}
+
 // summed cascade displacement in the undisplaced grid the fft writes into
 float3 get_ocean_displacement(float2 grid_xz)
 {
     float3 displacement = 0.0f;
+    float depth         = get_ocean_water_depth(grid_xz);
     uint cascades       = buffer_frame.ocean_cascade_count;
     [loop] for (uint c = 0; c < cascades; ++c)
     {
-        float2 uv = grid_xz / buffer_frame.ocean_cascade_length[c];
+        float L     = buffer_frame.ocean_cascade_length[c];
+        float2 uv   = grid_xz / L;
+        float scale = ocean_cascade_depth_scale(depth, L);
         displacement += tex_ocean_displacement.SampleLevel(
             samplers[sampler_bilinear_wrap],
             float3(uv, (float)c),
             0.0f
-        ).xyz;
+        ).xyz * scale;
     }
     return displacement;
 }
@@ -248,6 +301,38 @@ float shape_ocean_foam(float coverage, float2 grid_xz)
     return saturate(max(body * lace, dense));
 }
 
+// foam where the displaced surface almost touches the bed, densest at the waterline
+float get_ocean_shore_foam(float2 world_xz, float time)
+{
+    float valid = 0.0f;
+    float terrain_y = sample_ocean_terrain_height(world_xz, valid);
+    if (valid < 0.5f)
+    {
+        return 0.0f;
+    }
+
+    float sea   = buffer_frame.ocean_sea_level;
+    float above = terrain_y - sea;
+    if (above > 2.0f || above < -2.5f)
+    {
+        return 0.0f;
+    }
+
+    float water_y   = get_ocean_height(world_xz);
+    float clearance = water_y - terrain_y;
+    float tongue    = exp(-clearance * clearance * 28.0f);
+    float edge      = saturate(1.0f - abs(above) / 0.85f);
+    edge            = edge * edge;
+
+    float n =
+        ocean_foam_noise(world_xz * 22.0f + float2(time * 0.4f, 0.0f)) * 0.45f +
+        ocean_foam_noise(world_xz * 58.0f - float2(0.0f, time * 0.85f)) * 0.35f +
+        ocean_foam_noise(world_xz * 120.0f + float2(time * 0.2f, time * 0.15f)) * 0.20f;
+    float lace = lerp(0.62f, 1.0f, n);
+
+    return saturate(tongue * edge * lace * 0.42f);
+}
+
 // compression from the swell cascades, gated by the summed crest so foam sits on the peak
 float get_ocean_foam(float2 grid_xz)
 {
@@ -271,7 +356,9 @@ float get_ocean_foam(float2 grid_xz)
             0.0f
         ).y;
     }
-    return shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
+    float shaped = shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
+    float shore  = get_ocean_shore_foam(grid_xz, (float)buffer_frame.time);
+    return saturate(max(shaped, shore));
 }
 
 // analytic fft slopes with distance fade, all cascades keep their ripple
@@ -302,9 +389,12 @@ void sample_ocean_surface(float2 grid_xz, float view_distance, out float3 normal
         ).y;
     }
 
-    float str = buffer_frame.ocean_normal_strength;
-    normal    = normalize(float3(-slope.x * str, 1.0f, -slope.y * str));
-    foam      = shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
+    float depth = get_ocean_water_depth(grid_xz);
+    float fade  = saturate(depth / 4.0f);
+    float str   = buffer_frame.ocean_normal_strength * lerp(0.45f, 1.0f, fade);
+    normal      = normalize(float3(-slope.x * str, 1.0f, -slope.y * str));
+    foam        = shape_ocean_foam(foam, grid_xz) * (height > 0.0f ? 1.0f : 0.0f);
+    foam        = saturate(max(foam, get_ocean_shore_foam(grid_xz, (float)buffer_frame.time)));
 }
 
 // chromaticity preserving hdr clamp, the engine sky panorama is clamped to keep huge sun

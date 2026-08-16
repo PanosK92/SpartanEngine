@@ -70,14 +70,17 @@ static const float terrain_height_jitter = 4.0f;
 
 // past this range the per layer detail work, hex tiling variants and the third and fourth picks, stops
 // paying for itself
-static const float terrain_detail_distance = 45.0f;
+static const float terrain_detail_distance = 140.0f;
+static const float terrain_detail_fade     = 140.0f;
 // the interface between two layers is a different thing to the detail inside one, a layer patch is tens
 // to hundreds of metres across so its boundary stays resolvable all the way out, collapsing to a single
 // pick at the detail range is what turns the mid field into a hard edged patchwork
-static const float terrain_blend_distance = 800.0f;
+static const float terrain_blend_distance = 1800.0f;
+static const float terrain_blend_fade     = 1400.0f;
 // the hex lattice has to outlive the layer blend by a long way, the repeat is most obvious at exactly
 // the mid distances where it is still resolvable, and on one layer three taps is cheap
-static const float terrain_hex_distance = 500.0f;
+static const float terrain_hex_distance = 1200.0f;
+static const float terrain_hex_fade     = 1000.0f;
 
 // debug views, must match TerrainDebugView in TerrainLayer.h
 static const uint terrain_debug_off        = 0;
@@ -654,6 +657,117 @@ struct TerrainLayerSample
     float  height;
 };
 
+// one method's raw maps, albedo is still encoded, packed and gradient are ready to blend
+struct TerrainMapFetch
+{
+    float4 albedo;
+    float4 packed;
+    float3 gradient;
+};
+
+TerrainMapFetch terrain_fetch_biplanar(
+    uint               layer_index,
+    MaterialParameters layer,
+    float3             position_world,
+    float3             dpdx,
+    float3             dpdy,
+    float3             normal_world
+)
+{
+    TerrainMapFetch fetch;
+    fetch.gradient = 0.0f;
+
+    float scale                = layer.terrain_tiling_scale;
+    TerrainBiplanarSetup setup = terrain_biplanar_setup(
+        position_world * scale, normal_world, dpdx * scale, dpdy * scale, 8.0f
+    );
+
+    fetch.albedo = terrain_biplanar_sample(setup, layer_index + material_texture_index_albedo);
+    fetch.packed = terrain_biplanar_sample(setup, layer_index + material_texture_index_packed);
+
+    if (layer.has_texture_normal())
+    {
+        float4 normal0 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
+        float4 normal1 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
+
+        fetch.gradient  = terrain_gradient_axis(terrain_normal_to_gradient(normal0.xyz), setup.axis_major)  * setup.weights.x;
+        fetch.gradient += terrain_gradient_axis(terrain_normal_to_gradient(normal1.xyz), setup.axis_median) * setup.weights.y;
+        fetch.gradient *= layer.normal;
+    }
+
+    return fetch;
+}
+
+TerrainMapFetch terrain_fetch_hex(
+    uint               layer_index,
+    MaterialParameters layer,
+    float2             uv,
+    float2             duvdx,
+    float2             duvdy
+)
+{
+    TerrainMapFetch fetch;
+    fetch.gradient = 0.0f;
+
+    float2 layer_uv       = uv * layer.terrain_tiling_scale;
+    TerrainHexSetup setup = terrain_hex_setup(layer_uv, duvdx * layer.terrain_tiling_scale, duvdy * layer.terrain_tiling_scale);
+
+    fetch.albedo = terrain_hex_sample(setup, layer_index + material_texture_index_albedo, true);
+    fetch.packed = terrain_hex_sample(setup, layer_index + material_texture_index_packed, false);
+
+    if (layer.has_texture_normal())
+    {
+        float4 normal_sample = terrain_hex_sample(setup, layer_index + material_texture_index_normal, false);
+        fetch.gradient       = terrain_gradient_planar(terrain_normal_to_gradient(normal_sample.xyz)) * layer.normal;
+    }
+
+    return fetch;
+}
+
+TerrainMapFetch terrain_fetch_planar(
+    uint               layer_index,
+    MaterialParameters layer,
+    float2             uv,
+    float2             duvdx,
+    float2             duvdy
+)
+{
+    TerrainMapFetch fetch;
+    fetch.gradient = 0.0f;
+
+    float2 layer_uv = uv * layer.terrain_tiling_scale;
+    float2 layer_dx = duvdx * layer.terrain_tiling_scale;
+    float2 layer_dy = duvdy * layer.terrain_tiling_scale;
+
+    fetch.albedo = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_albedo)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
+    fetch.packed = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
+
+    if (layer.has_texture_normal())
+    {
+        float4 normal_sample = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
+        fetch.gradient       = terrain_gradient_planar(terrain_normal_to_gradient(normal_sample.xyz)) * layer.normal;
+    }
+
+    return fetch;
+}
+
+TerrainMapFetch terrain_lerp_fetch(TerrainMapFetch a, TerrainMapFetch b, float t)
+{
+    TerrainMapFetch fetch;
+    fetch.albedo   = lerp(a.albedo, b.albedo, t);
+    fetch.packed   = lerp(a.packed, b.packed, t);
+    fetch.gradient = lerp(a.gradient, b.gradient, t);
+    return fetch;
+}
+
+// 1 inside the range, 0 past it, linear across fade_width so the change is not pinched into a ring
+float terrain_lod_weight(float distance_to_camera, float cutoff, float fade_width, float distance_offset)
+{
+    float start = max(cutoff - fade_width, 0.0f);
+    float span  = max(cutoff - start, 1e-5f);
+    return 1.0f - saturate((distance_to_camera + distance_offset - start) / span);
+}
+
 TerrainLayerSample terrain_sample_layer(
     uint   layer_index,
     float2 uv,
@@ -663,8 +777,8 @@ TerrainLayerSample terrain_sample_layer(
     float3 dpdx,
     float3 dpdy,
     float3 normal_world,
-    bool   allow_biplanar,
-    bool   allow_hex
+    float  biplanar_weight,
+    float  hex_weight
 )
 {
     MaterialParameters layer = material_parameters[NonUniformResourceIndex(layer_index)];
@@ -675,56 +789,46 @@ TerrainLayerSample terrain_sample_layer(
 
     // biplanar is for cliff faces, y still dominates until about 45 degrees so a looser
     // threshold projects a side axis onto rolling ground and shears the uv into streaks
-    bool biplanar = layer.terrain_layer_biplanar() && abs(normal_world.y) < 0.55f;
+    bool want_biplanar = layer.terrain_layer_biplanar() && abs(normal_world.y) < 0.55f && biplanar_weight > 0.0f;
 
-    if (biplanar)
+    TerrainMapFetch fetch;
+    if (want_biplanar)
     {
-        float scale                 = layer.terrain_tiling_scale;
-        TerrainBiplanarSetup setup  = terrain_biplanar_setup(position_world * scale, normal_world, dpdx * scale, dpdy * scale, 8.0f);
-
-        result.albedo = terrain_biplanar_sample(setup, layer_index + material_texture_index_albedo);
-        packed        = terrain_biplanar_sample(setup, layer_index + material_texture_index_packed);
-
-        if (layer.has_texture_normal())
+        fetch = terrain_fetch_biplanar(layer_index, layer, position_world, dpdx, dpdy, normal_world);
+        if (biplanar_weight < 1.0f)
         {
-            // one gradient per projection, weighted the same way the colour was
-            float4 normal0 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[0], setup.duvdx[0], setup.duvdy[0]);
-            float4 normal1 = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), setup.uv[1], setup.duvdx[1], setup.duvdy[1]);
-
-            result.gradient  = terrain_gradient_axis(terrain_normal_to_gradient(normal0.xyz), setup.axis_major)  * setup.weights.x;
-            result.gradient += terrain_gradient_axis(terrain_normal_to_gradient(normal1.xyz), setup.axis_median) * setup.weights.y;
-            result.gradient *= layer.normal;
+            TerrainMapFetch other;
+            if (hex_weight > 0.0f)
+            {
+                other = terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy);
+            }
+            else
+            {
+                other = terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy);
+            }
+            fetch = terrain_lerp_fetch(other, fetch, biplanar_weight);
         }
     }
-    else if (allow_hex)
+    else if (hex_weight >= 1.0f)
     {
-        float2 layer_uv         = uv * layer.terrain_tiling_scale;
-        TerrainHexSetup setup   = terrain_hex_setup(layer_uv, duvdx * layer.terrain_tiling_scale, duvdy * layer.terrain_tiling_scale);
-
-        result.albedo = terrain_hex_sample(setup, layer_index + material_texture_index_albedo, true);
-        packed        = terrain_hex_sample(setup, layer_index + material_texture_index_packed, false);
-
-        if (layer.has_texture_normal())
-        {
-            float4 normal_sample = terrain_hex_sample(setup, layer_index + material_texture_index_normal, false);
-            result.gradient      = terrain_gradient_planar(terrain_normal_to_gradient(normal_sample.xyz)) * layer.normal;
-        }
+        fetch = terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy);
+    }
+    else if (hex_weight <= 0.0f)
+    {
+        fetch = terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy);
     }
     else
     {
-        float2 layer_uv = uv * layer.terrain_tiling_scale;
-        float2 layer_dx = duvdx * layer.terrain_tiling_scale;
-        float2 layer_dy = duvdy * layer.terrain_tiling_scale;
-
-        result.albedo = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_albedo)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
-        packed        = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_packed)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
-
-        if (layer.has_texture_normal())
-        {
-            float4 normal_sample = material_textures[NonUniformResourceIndex(layer_index + material_texture_index_normal)].SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), layer_uv, layer_dx, layer_dy);
-            result.gradient      = terrain_gradient_planar(terrain_normal_to_gradient(normal_sample.xyz)) * layer.normal;
-        }
+        fetch = terrain_lerp_fetch(
+            terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy),
+            terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy),
+            hex_weight
+        );
     }
+
+    result.albedo   = fetch.albedo;
+    result.gradient = fetch.gradient;
+    packed          = fetch.packed;
 
     // bc compressed albedo carries srgb bits the format does not declare, decode it here or every
     // layer reads washed out against the rest of the scene
@@ -789,17 +893,20 @@ TerrainSurface terrain_evaluate(
         return output;
     }
 
-    bool detail = distance_to_camera < terrain_detail_distance;
-    bool hex    = distance_to_camera < terrain_hex_distance;
+    // wobble each cutoff so the fade is not a geometric circle around the camera
+    float lod_noise     = terrain_jitter(position_world, 4.2f);
+    float detail_weight = terrain_lod_weight(distance_to_camera, terrain_detail_distance, terrain_detail_fade, lod_noise * terrain_detail_fade * 0.75f);
+    float hex_weight    = terrain_lod_weight(distance_to_camera, terrain_hex_distance,    terrain_hex_fade,    lod_noise * terrain_hex_fade    * 0.75f);
+    float blend_weight  = terrain_lod_weight(distance_to_camera, terrain_blend_distance,  terrain_blend_fade,  lod_noise * terrain_blend_fade  * 0.75f);
 
     // close up every pick is resolvable, past that two layers still carry the interface for a fraction
     // of the fetches, and only in the far field is a single layer honest
     uint count = pick.count;
-    if (distance_to_camera >= terrain_blend_distance)
+    if (blend_weight <= 0.0f)
     {
         count = 1;
     }
-    else if (!detail)
+    else if (detail_weight <= 0.0f)
     {
         count = min(pick.count, 2u);
     }
@@ -814,7 +921,7 @@ TerrainSurface terrain_evaluate(
     for (uint s = 0; s < count; s++)
     {
         samples[s] = terrain_sample_layer(
-            pick.index[s], uv, duvdx, duvdy, position_world, dpdx, dpdy, geometric_normal, detail, hex
+            pick.index[s], uv, duvdx, duvdy, position_world, dpdx, dpdy, geometric_normal, detail_weight, hex_weight
         );
 
         MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[s])];
@@ -847,14 +954,33 @@ TerrainSurface terrain_evaluate(
         depth = min(depth, contrasts[c]);
     }
 
-    float threshold   = peak - depth;
-    float weight_sum  = 0.0f;
+    float threshold = peak - depth;
     float resolved[terrain_layer_pick_max];
     [loop]
     for (uint b = 0; b < count; b++)
     {
         resolved[b] = max(blend_weights[b] - threshold, 0.0f);
-        weight_sum += resolved[b];
+    }
+
+    // extra picks fade out across the lod bands instead of vanishing on a hard radius
+    if (count > 2)
+    {
+        resolved[2] *= detail_weight;
+    }
+    if (count > 3)
+    {
+        resolved[3] *= detail_weight;
+    }
+    if (count > 1)
+    {
+        resolved[1] *= blend_weight;
+    }
+
+    float weight_sum = 0.0f;
+    [loop]
+    for (uint n = 0; n < count; n++)
+    {
+        weight_sum += resolved[n];
     }
 
     float inverse_sum = 1.0f / max(weight_sum, 1e-6f);

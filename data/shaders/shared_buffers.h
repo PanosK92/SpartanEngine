@@ -150,6 +150,13 @@ struct FrameBufferData
     SHARED_FLOAT  ocean_turbidity;
     SHARED_FLOAT  ocean_caustics_intensity;
 
+    // terrain heightfield in world xz, sampled by the ocean for shallow water
+    SHARED_FLOAT4 terrain_height_mapping; // xy = world min xz, zw = 1 / world size
+    SHARED_FLOAT  terrain_height_y;
+    SHARED_FLOAT  terrain_height_enabled;
+    SHARED_FLOAT  padding_terrain_height_0;
+    SHARED_FLOAT  padding_terrain_height_1;
+
     // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels
     SHARED_FLOAT4 radial_blur_hubs[8];
     SHARED_FLOAT  radial_blur_hub_count;

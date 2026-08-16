@@ -246,13 +246,17 @@ namespace spartan
         const float shadow_distance         = 150.0f;
         // authored base densities, the terrain multipliers scale these so a world can be retuned
         // without a rebuild, see Terrain::SetPropDensityTree and friends
-        const float per_triangle_density_flower = 0.12f  * terrain->GetPropDensityFlower();
-        const float per_triangle_density_tree   = 0.02f  * terrain->GetPropDensityTree();
-        const float per_triangle_density_rock   = 0.05f  * terrain->GetPropDensityRock();
+        const float per_triangle_density_flower = 0.18f * terrain->GetPropDensityFlower();
+        const float per_triangle_density_tree   = 0.12f * terrain->GetPropDensityTree();
+        const float per_triangle_density_rock   = 0.20f * terrain->GetPropDensityRock();
 
         const uint32_t prop_mesh_flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
         shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", prop_mesh_flags);
         shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj", prop_mesh_flags);
+        if (!mesh_tree)
+        {
+            SP_LOG_WARNING("biome props: tree mesh missing at project/models/tree/tree.fbx");
+        }
         if (!mesh_rock)
         {
             SP_LOG_WARNING("biome props: rock mesh missing at project/models/rock_2/model.obj");
@@ -618,6 +622,15 @@ namespace spartan
 
         SP_LOG_INFO("biome props: placed %zu trees and %zu rocks across %u tiles", tree_total, rock_total, tile_count);
 
+        if (!mesh_tree || !mesh_tree->GetRootEntity())
+        {
+            SP_LOG_WARNING("biome props: tree mesh failed to load from project/models/tree/tree.fbx");
+        }
+        else if (tree_total == 0)
+        {
+            SP_LOG_WARNING("biome props: tree mesh is fine but the prop mask tree channel placed nothing");
+        }
+
         // rocks have three independent ways to end up invisible, separate them so one run says which
         {
             size_t rock_transforms = 0;
@@ -653,7 +666,7 @@ namespace spartan
             }
             else if (rock_transforms == 0)
             {
-                SP_LOG_WARNING("biome props: rock mesh is fine but the prop mask rock channel placed nothing, raise the rock layer weight or lower prop_mask_min");
+                SP_LOG_WARNING("biome props: rock mesh is fine but the prop mask rock channel placed nothing");
             }
             else
             {
@@ -671,14 +684,14 @@ namespace spartan
                 grass_params.ring_radii_m[0]  = 30.0f;
                 grass_params.ring_radii_m[1]  = 120.0f;
                 grass_params.ring_radii_m[2]  = render_distance_foliage;
-                grass_params.cell_size_m[0]   = 0.55f;
-                grass_params.cell_size_m[1]   = 1.6f;
-                grass_params.cell_size_m[2]   = 4.5f;
+                grass_params.cell_size_m[0]   = 0.36f;
+                grass_params.cell_size_m[1]   = 1.05f;
+                grass_params.cell_size_m[2]   = 3.0f;
                 grass_params.height_min       = terrain->GetSeaLevel() + 1.0f;
                 grass_params.height_max       = terrain->GetSnowLevel();
-                grass_params.max_slope_deg    = 22.0f;
-                grass_params.biome_min_weight = 0.15f;
-                grass_params.density          = 0.32f;
+                grass_params.max_slope_deg    = 24.0f;
+                grass_params.biome_min_weight = 0.38f;
+                grass_params.density          = clamp(0.9f * terrain->GetPropDensityGrass(), 0.05f, 1.0f);
                 grass_params.terrain_world_mapping = terrain->GetWorldMapping();
                 const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
                 const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());

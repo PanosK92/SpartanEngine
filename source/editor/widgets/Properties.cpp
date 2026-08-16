@@ -2550,7 +2550,13 @@ void Properties::ShowTerrain(Terrain* terrain) const
             RHI_Texture* baked = terrain->GetHeightMapFinal();
             if (baked && baked->GetResourceState() == ResourceState::PreparedForGpu)
             {
-                ImGuiSp::image(baked, ImVec2(80, 80));
+                // grid row 0 is -z, the source heightmap has north at the top
+                ImGuiSp::image(
+                    baked,
+                    ImVec2(80, 80),
+                    spartan::math::Vector2(0.0f, 1.0f),
+                    spartan::math::Vector2(1.0f, 0.0f)
+                );
             }
             else
             {
@@ -2691,6 +2697,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
             float density_tree   = terrain->GetPropDensityTree();
             float density_rock   = terrain->GetPropDensityRock();
             float density_flower = terrain->GetPropDensityFlower();
+            float density_grass  = terrain->GetPropDensityGrass();
 
             if (property_float(
                 "Tree Density",
@@ -2731,12 +2738,26 @@ void Properties::ShowTerrain(Terrain* terrain) const
                 terrain->SetPropDensityFlower(density_flower);
             }
 
+            if (property_float(
+                "Grass Density",
+                &density_grass,
+                0.1f,
+                0.0f,
+                1.0f,
+                "gpu grass fill, 1 is the lush cap. press respawn props to apply. "
+                "grass still only lands on meadow and forest in the biome mask",
+                "%.2f"
+            ))
+            {
+                terrain->SetPropDensityGrass(density_grass);
+            }
+
             if (ImGuiSp::button("Respawn Props", ImVec2(-1, 0)))
             {
                 spartan::WorldHelpers::PopulateTerrainBiomeProps(terrain);
             }
             ImGuiSp::tooltip(
-                "rescatter trees, rocks and flowers with the densities above. "
+                "rebuild the biome mask and rescatter trees, rocks, flowers and grass. "
                 "does not touch the terrain surface, so it is far cheaper than a full generate"
             );
         }
@@ -2856,7 +2877,12 @@ void Properties::ShowTerrain(Terrain* terrain) const
                     ImGui::TextUnformatted(label);
                     if (texture && texture->GetResourceState() == ResourceState::PreparedForGpu)
                     {
-                        ImGuiSp::image(texture, ImVec2(80, 80));
+                        ImGuiSp::image(
+                            texture,
+                            ImVec2(80, 80),
+                            spartan::math::Vector2(0.0f, 1.0f),
+                            spartan::math::Vector2(1.0f, 0.0f)
+                        );
                     }
                     else
                     {
@@ -2879,6 +2905,13 @@ void Properties::ShowTerrain(Terrain* terrain) const
                     terrain->GetAnalysisMapB(),
                     "baked heightfield analysis. red is bedrock wear, green is insolation, "
                     "blue is normalized height, alpha is talus scree"
+                );
+                ImGui::SameLine(0, design::spacing_xl);
+                preview(
+                    "Grass/Trees/Rocks",
+                    terrain->GetPropMask(),
+                    "biome prop mask. red is grass, green is trees, blue is rocks. "
+                    "props only spawn where their channel is bright"
                 );
             }
             ImGui::EndGroup();
@@ -2992,12 +3025,21 @@ void Properties::ShowTerrain(Terrain* terrain) const
         {
             terrain->MakeIslandShore();
         }
-        ImGui::EndDisabled();
         ImGuiSp::tooltip(
             has_field
                 ? "bend the map borders down to sea level so the ocean clips the shore cleanly. "
                   "run generate first"
                 : "generate a heightfield first, then use make island"
+        );
+        if (ImGuiSp::button("Lock Shoreline", ImVec2(-1, 0)))
+        {
+            terrain->LockShoreline();
+        }
+        ImGui::EndDisabled();
+        ImGuiSp::tooltip(
+            has_field
+                ? "raise the real coastline above the waves and cut a beach"
+                : "generate a heightfield first, then lock the shoreline"
         );
 
         if (ImGuiSp::button("Sculpt", ImVec2(-1, 0)))

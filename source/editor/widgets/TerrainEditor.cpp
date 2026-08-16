@@ -147,6 +147,12 @@ void TerrainEditor::OnTickVisible()
             m_heights_dirty = false;
         }
         ImGui::TextDisabled("slopes borders down to sea level");
+        if (ImGui::Button("Lock Shoreline", ImVec2(-1, 0)))
+        {
+            terrain->LockShoreline();
+            m_heights_dirty = false;
+        }
+        ImGui::TextDisabled("raises the coast and cuts a beach");
     }
 
     const int selected_tile = ResolveSelectedTileIndex();

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../core/ThreadPool.h"
 #include <random>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 #include <queue>
@@ -1653,6 +1654,218 @@ namespace spartan
                 }
             }
         }
+    }
+
+    namespace
+    {
+        void chamfer_distance(
+            vector<float>& dist,
+            const vector<uint8_t>& seed,
+            uint32_t width,
+            uint32_t height,
+            float cell_x,
+            float cell_z
+        )
+        {
+            const uint32_t count = width * height;
+            const float inf      = 1.0e8f;
+            const float diag     = sqrtf(cell_x * cell_x + cell_z * cell_z);
+            dist.assign(count, inf);
+
+            for (uint32_t i = 0; i < count; i++)
+            {
+                if (seed[i])
+                {
+                    dist[i] = 0.0f;
+                }
+            }
+
+            auto relax = [&](uint32_t x, uint32_t z, int nx, int nz, float step)
+            {
+                int rx = static_cast<int>(x) + nx;
+                int rz = static_cast<int>(z) + nz;
+                if (rx < 0 || rz < 0 ||
+                    rx >= static_cast<int>(width) ||
+                    rz >= static_cast<int>(height))
+                {
+                    return;
+                }
+
+                uint32_t src = static_cast<uint32_t>(rz) * width +
+                    static_cast<uint32_t>(rx);
+                uint32_t dst = z * width + x;
+                dist[dst] = min(dist[dst], dist[src] + step);
+            };
+
+            for (uint32_t z = 0; z < height; z++)
+            {
+                for (uint32_t x = 0; x < width; x++)
+                {
+                    relax(x, z, -1,  0, cell_x);
+                    relax(x, z,  0, -1, cell_z);
+                    relax(x, z, -1, -1, diag);
+                    relax(x, z,  1, -1, diag);
+                }
+            }
+
+            for (int z = static_cast<int>(height) - 1; z >= 0; z--)
+            {
+                for (int x = static_cast<int>(width) - 1; x >= 0; x--)
+                {
+                    uint32_t ux = static_cast<uint32_t>(x);
+                    uint32_t uz = static_cast<uint32_t>(z);
+                    relax(ux, uz,  1,  0, cell_x);
+                    relax(ux, uz,  0,  1, cell_z);
+                    relax(ux, uz,  1,  1, diag);
+                    relax(ux, uz, -1,  1, diag);
+                }
+            }
+        }
+
+        void flood_ocean_from_border(
+            vector<uint8_t>& is_ocean,
+            const vector<uint8_t>& is_land,
+            uint32_t width,
+            uint32_t height
+        )
+        {
+            const uint32_t count = width * height;
+            is_ocean.assign(count, 0);
+            queue<uint32_t> pending;
+
+            auto try_seed = [&](uint32_t x, uint32_t z)
+            {
+                uint32_t i = z * width + x;
+                if (is_land[i] || is_ocean[i])
+                {
+                    return;
+                }
+
+                is_ocean[i] = 1;
+                pending.push(i);
+            };
+
+            for (uint32_t x = 0; x < width; x++)
+            {
+                try_seed(x, 0);
+                try_seed(x, height - 1);
+            }
+            for (uint32_t z = 1; z + 1 < height; z++)
+            {
+                try_seed(0, z);
+                try_seed(width - 1, z);
+            }
+
+            const int nx[4] = { 1, -1, 0, 0 };
+            const int nz[4] = { 0, 0, 1, -1 };
+            while (!pending.empty())
+            {
+                uint32_t i = pending.front();
+                pending.pop();
+                uint32_t x = i % width;
+                uint32_t z = i / width;
+                for (uint32_t n = 0; n < 4; n++)
+                {
+                    int rx = static_cast<int>(x) + nx[n];
+                    int rz = static_cast<int>(z) + nz[n];
+                    if (rx < 0 || rz < 0 ||
+                        rx >= static_cast<int>(width) ||
+                        rz >= static_cast<int>(height))
+                    {
+                        continue;
+                    }
+
+                    uint32_t ni = static_cast<uint32_t>(rz) * width +
+                        static_cast<uint32_t>(rx);
+                    if (is_land[ni] || is_ocean[ni])
+                    {
+                        continue;
+                    }
+
+                    is_ocean[ni] = 1;
+                    pending.push(ni);
+                }
+            }
+        }
+    }
+
+    bool TerrainSystem::ApplyCoastalProfile(
+        vector<Vector3>& positions,
+        vector<float>* height_data,
+        uint32_t width,
+        uint32_t height,
+        const TerrainGridMapping& mapping,
+        float sea_level,
+        float freeboard,
+        float beach_width
+    )
+    {
+        const uint32_t count = width * height;
+        if (positions.size() < count || width < 3 || height < 3)
+        {
+            return false;
+        }
+
+        freeboard   = max(freeboard, 0.4f);
+        beach_width = max(beach_width, mapping.scale_x * 2.0f);
+
+        const float cell_x = max(mapping.scale_x, 0.001f);
+        const float cell_z = max(mapping.scale_z, 0.001f);
+        const float wet    = sea_level + 0.05f;
+        const float lip    = 0.12f;
+
+        vector<uint8_t> is_land(count, 0);
+        for (uint32_t i = 0; i < count; i++)
+        {
+            is_land[i] = positions[i].y > wet ? 1 : 0;
+        }
+
+        vector<uint8_t> is_ocean;
+        flood_ocean_from_border(is_ocean, is_land, width, height);
+
+        // interior puddles become land, the coastline itself is not grown
+        for (uint32_t i = 0; i < count; i++)
+        {
+            if (!is_ocean[i])
+            {
+                is_land[i] = 1;
+            }
+        }
+
+        vector<float> dist_ocean;
+        chamfer_distance(dist_ocean, is_ocean, width, height, cell_x, cell_z);
+
+        atomic<uint32_t> changed{0};
+        auto sculpt = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                float original = positions[i].y;
+                float h        = original;
+
+                if (is_land[i])
+                {
+                    float t = clamp(dist_ocean[i] / beach_width, 0.0f, 1.0f);
+                    t = t * t * (3.0f - 2.0f * t);
+                    float beach_y = lerp(sea_level + lip, sea_level + freeboard, t);
+                    h = max(original, beach_y);
+                }
+
+                if (abs(h - original) > 0.01f)
+                {
+                    changed.fetch_add(1, memory_order_relaxed);
+                }
+
+                positions[i].y = h;
+                if (height_data && i < height_data->size())
+                {
+                    (*height_data)[i] = h;
+                }
+            }
+        };
+        ThreadPool::ParallelLoop(sculpt, count);
+
+        return changed.load(memory_order_relaxed) > 0;
     }
 
     void TerrainSystem::ApplyIslandShore(

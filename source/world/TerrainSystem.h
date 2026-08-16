@@ -237,6 +237,19 @@ namespace spartan
             const TerrainBrush& brush
         );
 
+        // raise the existing island above the waves, do not grow or shrink its outline
+        // returns true when any cell moved by more than a centimeter
+        static bool ApplyCoastalProfile(
+            std::vector<math::Vector3>& positions,
+            std::vector<float>* height_data,
+            uint32_t width,
+            uint32_t height,
+            const TerrainGridMapping& mapping,
+            float sea_level,
+            float freeboard   = 1.6f,
+            float beach_width = 32.0f
+        );
+
         // bend samples near the map border down toward edge_height_local (smooth shore)
         static void ApplyIslandShore(
             std::vector<math::Vector3>& positions,
