@@ -52,21 +52,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
-    // the water body is lit by the downwelling sun and sky, attenuated by the water above the camera so the scene darkens with depth, same optics as the refraction composite
-    float3 camera_position = get_camera_position();
-    float  camera_depth    = max(get_ocean_height(camera_position.xz) - camera_position.y, 0.0f);
-    float3 sky_down        = tex2.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(float3(0.0f, 1.0f, 0.0f)), 7).rgb;
-    float3 downwelling     = get_sun_radiance() * saturate(-light_parameters[0].direction.y) * (1.0f / PI) + sky_down;
-    float3 body_radiance   = ocean_scatter_albedo * downwelling * exp(-ocean_extinction * camera_depth);
-
-    // beer lambert along the view ray, the depth buffer contains the water surface so looking up the column ends there, sky and distant pixels converge to the body color
-    float  depth         = get_depth(uv * get_render_uv_scale());
-    float  path_length   = length(get_position(depth, uv) - camera_position);
-    float3 transmittance = exp(-ocean_extinction * path_length);
-    float3 underwater    = color.rgb * transmittance + body_radiance * (1.0f - transmittance);
-    color.rgb            = lerp(color.rgb, underwater, saturate(-height_above / meniscus_half));
-
-    // the meniscus itself, a thick blurred darkened seam of water where the surface crosses the lens
+    // the froxel volume already owns the water column, this pass only draws the lens seam
     float band = 1.0f - saturate(abs(height_above) / meniscus_half);
     if (band > 0.0f)
     {

@@ -126,6 +126,9 @@ namespace spartan
     const uint32_t renderer_particle_volume_width   = 160;
     const uint32_t renderer_particle_volume_height  = 90;
     const uint32_t renderer_particle_volume_depth   = 64;
+    const uint32_t renderer_fog_volume_width        = 240;
+    const uint32_t renderer_fog_volume_height       = 135;
+    const uint32_t renderer_fog_volume_depth        = 96;
 
     enum class Renderer_Tonemapping : uint32_t
     {
@@ -308,6 +311,8 @@ namespace spartan
         light_flare_v,
         light_flare_p,
         light_composition_c,
+        fog_inject_c,
+        fog_integrate_c,
         light_image_based_c,
         line_v,
         line_p,
@@ -442,7 +447,9 @@ namespace spartan
         cloud_velocity,
         light_diffuse,
         light_specular,
-        light_volumetric,
+        fog_scatter,
+        fog_scatter_history,
+        fog_integrated,
         particle_volume,
         frame_render,
         frame_render_opaque,

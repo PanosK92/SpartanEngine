@@ -129,7 +129,7 @@ RWStructuredBuffer<uint>  cluster_light_indices : register(u46);
 // cluster assign telemetry, currently a single overflow counter bumped when a cluster overshoots CLUSTER_MAX_LIGHTS
 RWStructuredBuffer<uint> cluster_stats : register(u47);
 
-// compact list of volumetric light indices, written by the cpu in UpdateLights, scanned by the volumetric fog loop
+// compact list of volumetric light indices, written by the cpu in UpdateLights, scanned by froxel fog inject
 // declared rw for binding uniformity with the other indirect/cluster buffers, treated as read only inside the shader
 RWStructuredBuffer<uint> volumetric_light_indices : register(u48);
 

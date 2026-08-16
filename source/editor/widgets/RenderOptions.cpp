@@ -462,7 +462,7 @@ void RenderOptions::OnTickVisible()
 
                 if (option_header("Atmosphere"))
                 {
-                    option_value("Fog density", "r.fog", "Controls atmospheric fog strength", 0.1f);
+                    option_value("Fog density", "r.fog", "Controls volumetric fog strength", 0.1f);
                 }
 
                 if (option_header("Wind"))

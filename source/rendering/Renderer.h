@@ -374,6 +374,7 @@ namespace spartan
         void Pass_LightClusterAssign();
         void Pass_LightClusterVisualize();
         void Pass_LightFlares(uint32_t eye_layer = rhi_all_mips);
+        void Pass_Fog(uint32_t eye, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         void Pass_Light_Ibl(uint32_t eye_layer = rhi_all_mips);

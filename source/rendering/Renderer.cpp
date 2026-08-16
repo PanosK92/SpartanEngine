@@ -1505,6 +1505,7 @@ namespace spartan
             m_pass_state.cloud_history.Reset();
             m_pass_state.cloud_environment_dirty = true;
             m_pass_state.ssao_history.Reset();
+            m_pass_state.fog_history.Reset();
             m_taau_reset_history                 = true;
 
             CreateSamplers();
@@ -1555,6 +1556,7 @@ namespace spartan
         m_pass_state.cloud_history.Reset();
         m_pass_state.cloud_environment_dirty = true;
         m_pass_state.ssao_history.Reset();
+        m_pass_state.fog_history.Reset();
         CreateSamplers();
     }
 
@@ -4376,6 +4378,7 @@ namespace spartan
     void Renderer::ProduceFrame_PerEye(uint32_t eye, uint32_t eye_layer)
     {
         // on graphics on purpose, the graphics queue would otherwise idle for the whole of pass_light
+        Pass_Fog(eye, eye_layer);
         Pass_Light(false, eye_layer);
         Pass_Light_Composition(false, eye_layer);
 
@@ -4536,6 +4539,7 @@ namespace spartan
                     batch_a_timeline,
                     batch_a_value
                 );
+                RHI_Device::Bind(RHI_Frame_List::Graphics);
             }
 
             m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;

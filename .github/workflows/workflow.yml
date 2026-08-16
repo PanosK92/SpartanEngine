@@ -74,24 +74,20 @@ jobs:
         run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v143 /m Spartan.slnx
 
       - name: Create artifacts
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && matrix.configuration == 'release'
         shell: cmd
         run: |
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           set ZIP=spartan_${{ matrix.api }}_${{ matrix.configuration }}.zip
-          IF "${{ matrix.configuration }}" == "release" (
-            IF "${{ matrix.api }}" == "d3d12" (
-              tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\D3D12Core.dll binaries\d3d12SDKLayers.dll binaries\data binaries\spartan_d3d12.exe
-            ) ELSE (
-              tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\data binaries\spartan_vulkan.exe
-            )
+          IF "${{ matrix.api }}" == "d3d12" (
+            tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\D3D12Core.dll binaries\d3d12SDKLayers.dll binaries\data binaries\spartan_d3d12.exe
           ) ELSE (
-            tar -a -c -f %ZIP% binaries\libxess.dll binaries\data binaries\spartan_${{ matrix.api }}_debug.exe
+            tar -a -c -f %ZIP% binaries\dxcompiler.dll binaries\libxess.dll binaries\data binaries\spartan_vulkan.exe
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
       - name: Upload artifact
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && matrix.configuration == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: spartan_${{ matrix.api }}_${{ matrix.configuration }}
@@ -113,12 +109,6 @@ jobs:
           name: spartan_vulkan_release
           path: .
 
-      - name: Download vulkan debug build
-        uses: actions/download-artifact@v4
-        with:
-          name: spartan_vulkan_debug
-          path: .
-
       - name: Download d3d12 release build
         uses: actions/download-artifact@v4
         with:
@@ -132,7 +122,6 @@ jobs:
       - name: Rename release artifacts
         run: |
           mv spartan_vulkan_release.zip spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.zip
-          mv spartan_vulkan_debug.zip spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.zip
           mv spartan_d3d12_release.zip spartan_d3d12_release_${{ steps.get_datetime.outputs.version }}.zip
 
       - name: Generate release notes
@@ -140,7 +129,6 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // 1. Fetch Releases and Commits
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -149,7 +137,6 @@ jobs:
 
             let commits = [];
             const lastRelease = releases[0];
-            
             if (lastRelease && lastRelease.tag_name) {
               const { data: compareData } = await github.rest.repos.compareCommits({
                 owner: context.repo.owner,
@@ -167,44 +154,70 @@ jobs:
               commits = recentCommits || [];
             }
 
-            // 2. Format Commits
-            const commitLines = commits
-              .filter(commit => !commit.commit.message.startsWith('Merge'))
-              .map(commit => {
-                const shortSha = commit.sha.substring(0, 7);
-                const message = commit.commit.message.split('\n')[0];
-                const url = commit.html_url; 
-                return `- [\`${shortSha}\`](${url}) ${message}`;
-              });
-            
-            // 3. Extract Unique Contributors (Restored this logic)
-            const authorSet = new Set();
-            commits.forEach(commit => {
-                if (commit.author && commit.author.login) {
-                    authorSet.add(commit.author.login);
-                } else {
-                    authorSet.add(commit.commit.author.name);
-                }
-            });
-            const authors = [...authorSet];
-            
-            let finalNotes = "";
-            if (commitLines.length > 0) {
-                finalNotes += commitLines.join('\n');
-                
-                // Add Contributors section manually (Required because we are using a custom body)
-                if (authors.length > 0) {
-                    finalNotes += "\n\n### Contributors\n\n";
-                    finalNotes += authors.map(a => `@${a}`).join(', ');
-                }
-            } else {
-                finalNotes = "- Initial release or no new commits found";
+            const groupOrder = [
+              'rhi', 'vulkan', 'd3d12', 'rendering', 'editor',
+              'world', 'terrain', 'animation', 'physics', 'other'
+            ];
+            const groupTitle = {
+              rhi: 'RHI',
+              vulkan: 'Vulkan',
+              d3d12: 'Direct3D 12',
+              rendering: 'Rendering',
+              editor: 'Editor',
+              world: 'World',
+              terrain: 'Terrain',
+              animation: 'Animation',
+              physics: 'Physics',
+              other: 'Other'
+            };
+
+            const groups = {};
+            for (const commit of commits) {
+              const first = commit.commit.message.split('\n')[0].trim();
+              if (!first || first.startsWith('Merge')) {
+                continue;
+              }
+              const match = first.match(/^([a-z0-9][a-z0-9_-]{0,23}):\s+(.+)$/i);
+              const area = match ? match[1].toLowerCase() : 'other';
+              const text = match ? match[2] : first;
+              const sha = commit.sha.substring(0, 7);
+              if (!groups[area]) {
+                groups[area] = [];
+              }
+              groups[area].push(`- [\`${sha}\`](${commit.html_url}) ${text}`);
             }
 
-            // 4. Write Direct to Output
+            const seen = new Set();
+            const sections = [];
+            for (const area of [...groupOrder, ...Object.keys(groups).sort()]) {
+              if (seen.has(area) || !groups[area]) {
+                continue;
+              }
+              seen.add(area);
+              const title = groupTitle[area] || area.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+              sections.push(`### ${title}\n${groups[area].join('\n')}`);
+            }
+
+            const changelog = sections.length > 0
+              ? sections.join('\n\n')
+              : '_No new commits since the last release._';
+
+            const notes = [
+              'Windows editor builds. Unzip and run `spartan_vulkan.exe` or `spartan_d3d12.exe`.',
+              '',
+              '| Backend | Artifact |',
+              '| --- | --- |',
+              '| Vulkan | `spartan_vulkan_release_*.zip` |',
+              '| Direct3D 12 | `spartan_d3d12_release_*.zip` |',
+              '',
+              '## Changelog',
+              '',
+              changelog
+            ].join('\n');
+
             const fs = require('fs');
             const delimiter = 'EOF_' + Math.random().toString(36).substr(2, 9);
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `notes<<${delimiter}\n${finalNotes}\n${delimiter}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `notes<<${delimiter}\n${notes}\n${delimiter}\n`);
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
@@ -215,5 +228,4 @@ jobs:
           prerelease: true
           files: |
             spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.zip
-            spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.zip
             spartan_d3d12_release_${{ steps.get_datetime.outputs.version }}.zip

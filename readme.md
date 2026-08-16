@@ -79,7 +79,7 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 - **Hardware ray-traced reflections and shadows** via ray queries
 - **Atmospheric scattering** and image-based lighting with bent normals
 - **Volumetric clouds** (Nubis-style) baked into the sky panorama, with cumulus and cirrus layers, multi-scatter lighting and aerial perspective
-- **Volumetric fog** with temporal reprojection and shadow casting
+- **Froxel volumetric fog**, a single view-aligned volume for height and distance fog, sun shafts, and underwater caustic shafts, with temporal reprojection and shadowing
 - **FFT ocean** with a Tessendorf spectrum and multi-cascade IFFT in compute, driving a camera-following clipmap with choppy displacement, dynamic normals and crest foam
 - **Screen-space shadows** (inspired by Days Gone) and **XeGTAO** ambient occlusion
 - **Shadow map atlas** with fast filtering and penumbra estimation

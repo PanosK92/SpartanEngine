@@ -342,7 +342,7 @@ namespace
 
     bool is_work_in_progress(const spartan::WorldMetadata& world)
     {
-        return lowercase_copy(world.name).find("forest") != string::npos;
+        return lowercase_copy(world.name).find("plant") != string::npos;
     }
 
     string source_label(const string& path)

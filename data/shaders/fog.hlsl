@@ -19,48 +19,82 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES ========
 #include "common.hlsl"
-#include "sky/clouds.hlsl"
-//========================
+//===================
 
-// atmospheric fog using exponential height based falloff
-float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
+static const uint fog_width  = 240;
+static const uint fog_height = 135;
+static const uint fog_depth  = 96;
+static const float fog_underwater_far = 40.0f;
+static const float fog_air_far        = 6000.0f;
+static const float fog_scale_height   = 300.0f;
+static const float fog_density_scale  = 0.0004f;
+
+bool fog_camera_underwater()
 {
-    float camera_height = get_camera_position().y;
-    float density       = pass_get_f3_value().y * 0.00015f;
-    float scale_height  = 50.0f; // lower is denser near ground, higher is more uniform
-    float b             = 1.0f / scale_height;
-    float delta_height  = pixel_height_world - camera_height;
-    float dist          = camera_to_pixel_length;
-    
-    if (dist < 0.1f)
-        return 0.0f;
-    
-    float rd_y = (abs(dist) > 1e-6f) ? delta_height / dist : 0.0f;
-    float tau = 0.0f;
-    
-    if (abs(rd_y) < 1e-5f)
+    if (buffer_frame.ocean_enabled <= 0.5f || buffer_frame.ocean_turbidity <= 0.0f)
     {
-        // horizontal ray approximation
-        float base_density = density * exp(-camera_height * b);
-        tau = base_density * dist;
-    }
-    else
-    {
-        // analytical optical depth integral, numerically stable
-        float base_density = density * exp(-camera_height * b);
-        float exponent     = -dist * rd_y * b;
-        float exp_term     = 1.0f - exp(exponent);
-        tau = base_density * exp_term / (b * rd_y);
+        return false;
     }
 
-    // beer law, fog factor is the inscatter 1 - transmittance
-    float transmittance = exp(-tau);
-    float fog_factor    = 1.0f - transmittance;
-    fog_factor = pow(fog_factor, 0.8f);
-    
-    return saturate(fog_factor);
+    float3 camera = get_camera_position();
+    return camera.y < get_ocean_height(camera.xz);
+}
+
+float fog_volume_near()
+{
+    return max(buffer_frame.camera_near, 0.2f);
+}
+
+float fog_volume_far()
+{
+    if (fog_camera_underwater())
+    {
+        return fog_underwater_far;
+    }
+
+    return fog_air_far;
+}
+
+float fog_slice_to_distance(float slice_u)
+{
+    float n = fog_volume_near();
+    float f = max(fog_volume_far(), n + 0.1f);
+    float k = f / n;
+    float t = saturate(slice_u);
+    return (pow(k, t) - 1.0f) / (k - 1.0f) * f;
+}
+
+float fog_distance_to_slice(float dist)
+{
+    float n = fog_volume_near();
+    float f = max(fog_volume_far(), n + 0.1f);
+    float k = f / n;
+    return saturate(log(max(dist, 0.0f) / f * (k - 1.0f) + 1.0f) / log(k));
+}
+
+float3 fog_froxel_world(float3 voxel)
+{
+    float2 uv = (voxel.xy + 0.5f) / float2((float)fog_width, (float)fog_height);
+    float2 ndc = uv_to_ndc(uv);
+    float4 view_far = mul(float4(ndc, 1.0f, 1.0f), get_projection_inverted());
+    float3 view_dir = normalize(view_far.xyz / view_far.w);
+    float3 world_dir = normalize(mul(float4(view_dir, 0.0f), get_view_inverted()).xyz);
+    float slice_u = (voxel.z + 0.5f) / (float)fog_depth;
+    float dist = fog_slice_to_distance(slice_u);
+    return get_camera_position() + world_dir * dist;
+}
+
+float4 sample_fog_volume(float2 uv, float distance_camera)
+{
+    float u = fog_distance_to_slice(distance_camera);
+    float w = (u * ((float)fog_depth - 1.0f) + 0.5f) / (float)fog_depth;
+    return tex3d.SampleLevel(
+        GET_SAMPLER(sampler_trilinear_clamp),
+        float3(uv, w),
+        0.0f
+    );
 }
 
 // returns 1 if the world space position is lit by the light, 0 if occluded
@@ -81,7 +115,9 @@ float visible(float3 position, Light light, uint2 pixel_pos)
             light_get_transform(light, face_index)
         );
         if (clip_pos.w <= 0.0f)
+        {
             return 1.0f;
+        }
 
         float3 ndc          = clip_pos.xyz / clip_pos.w;
         float2 projected_uv = ndc_to_uv(ndc.xy);
@@ -135,12 +171,16 @@ float visible(float3 position, Light light, uint2 pixel_pos)
         light_get_transform(light, 0)
     );
     if (clip_pos.w <= 0.0f)
+    {
         return 1.0f;
+    }
 
     float3 projected_pos = clip_pos.xyz / clip_pos.w;
     float2 projected_uv  = ndc_to_uv(projected_pos.xy);
     if (!is_valid_uv(projected_uv))
+    {
         return 1.0f;
+    }
 
     return light_compare_depth(
         light,
@@ -155,7 +195,6 @@ float henyey_greenstein_phase(float cos_theta, float g)
     cos_theta     = clamp(cos_theta, -1.0f, 1.0f);
     float g2      = g * g;
     float denom   = max(1.0f + g2 - 2.0f * g * cos_theta, 1e-4f);
-    // d * sqrt(d) instead of pow(d, 1.5)
     float denom32 = denom * sqrt(denom);
     return (1.0f - g2) / (4.0f * PI * denom32);
 }
@@ -171,7 +210,6 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
         return;
     }
 
-    // soft minimum distance so the inverse square does not blow up at the surface
     const float soft_radius = 0.05f;
 
     if (light.is_area())
@@ -189,7 +227,6 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
         return;
     }
 
-    // point or spot
     float3 to_light = light.position - sample_pos;
     float  dist     = length(to_light);
     light_dir       = (dist > 1e-4f) ? to_light / dist : float3(0.0f, 1.0f, 0.0f);
@@ -200,177 +237,47 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 
     if (light.is_spot())
     {
-        // cos_outer and angle_scale are precomputed in Light::Build to keep this path trig free
         float cd          = dot(-light_dir, light.forward);
         float angle_atten = saturate((cd - light.cos_outer) * light.angle_scale);
         local_atten      *= angle_atten * angle_atten;
     }
 }
 
-// volumetric fog raymarch, single scattering with beer lambert transmittance
-// works for any light type, the per type differences are isolated in compute_volumetric_light_sample and visible
-float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
+Surface fog_build_surface(float3 position, float3 ray_direction, uint2 pixel, float2 uv)
 {
-    // sigma_s is the scattering coefficient, the sun uses a smaller one since its intensity
-    // is orders of magnitude larger and would otherwise wash close geometry
-    const float sigma_s_base   = pass_get_f3_value().y * 0.0012f;
-    const float sigma_s        = light.is_directional() ? (sigma_s_base * 0.25f) : sigma_s_base;
-    const float sigma_t        = sigma_s; // pure scattering, no absorption
-    const float total_distance = surface.camera_to_pixel_length;
-
-    // the sun marches through the water body even when atmospheric fog is off, the shafts are
-    // only visible from inside the water so a dry camera never pays for them
-    const bool ocean_march = light.is_directional() && buffer_frame.ocean_enabled > 0.5f && buffer_frame.ocean_turbidity > 0.0f && get_camera_position().y < buffer_frame.ocean_sea_level;
-
-    if (total_distance < 0.1f || (sigma_s <= 0.0f && !ocean_march))
-        return 0.0f;
-
-    const float3 ray_origin    = get_camera_position();
-    const float3 ray_direction = normalize(surface.camera_to_pixel);
-
-    // restrict the march to where the light can contribute, punctual lights clip to their range sphere
-    float march_start = 0.0f;
-    float march_end   = total_distance;
-
-    if (!light.is_directional())
-    {
-        const float volumetric_horizon = 60.0f;
-        float effective_range          = min(light.far, volumetric_horizon);
-
-        // ray sphere intersection around the light position
-        float3 oc = ray_origin - light.position;
-        float  b  = dot(oc, ray_direction);
-        float  c  = dot(oc, oc) - effective_range * effective_range;
-        float  h  = b * b - c;
-        if (h < 0.0f)
-            return 0.0f;
-
-        h = sqrt(h);
-        march_start = max(0.0f, -b - h);
-        march_end   = min(total_distance, -b + h);
-        if (march_end <= march_start)
-            return 0.0f;
-    }
-
-    // underwater the extinction makes anything past this range invisible, keep the march short
-    if (ocean_march)
-    {
-        march_end = min(march_end, 40.0f);
-    }
-
-    const float march_length = march_end - march_start;
-    if (march_length < 0.1f)
-        return 0.0f;
-
-    // step count proportional to march length, capped on both ends
-    // the water body is a smooth medium so the underwater march affords far coarser steps, the temporal jitter below resolves the difference
-    const uint  min_steps        = 24;
-    const uint  max_steps        = 96;
-    const float target_step      = ocean_march ? 2.0f : 0.65f;
-    const float step_count_float = clamp(march_length / target_step, (float)min_steps, (float)max_steps);
-    const uint  step_count       = (uint)step_count_float;
-    const float step_length      = march_length / step_count_float;
-    const float3 ray_step        = ray_direction * step_length;
-
-    // temporal jitter, taa resolves the noise into smooth scattering
-    const float temporal_noise = noise_interleaved_gradient(pixel_pos, true);
-    float3 ray_pos = ray_origin + ray_direction * (march_start + temporal_noise * step_length);
-
-    // forward scattering, the sun uses a weaker bias to avoid a bright halo around its direction
-    const float phase_g           = light.is_directional() ? 0.25f : 0.6f;
-    const float min_transmittance = 0.005f;
-
-    // hoisted invariants, step transmittance is constant for the whole march
-    const float step_transmittance = exp(-sigma_t * step_length);
-    const float sigma_s_dt         = sigma_s * step_length;
-
-    // for directional lights the direction, cos_theta and phase are constant, evaluate once
-    const bool is_dir = light.is_directional();
-    float3 dir_light_dir = 0.0f;
-    float  dir_phase     = 0.0f;
-    if (is_dir)
-    {
-        dir_light_dir       = normalize(-light.forward);
-        float dir_cos_theta = dot(ray_direction, dir_light_dir);
-        dir_phase           = henyey_greenstein_phase(dir_cos_theta, phase_g);
-    }
-
-    // start with the extinction accumulated over the unmarched segment from camera to march_start
-    // the water absorption along the view path is applied by the underwater post pass, not here
-    float3 inscatter     = 0.0f;
-    float  transmittance = exp(-sigma_t * march_start);
-
-    [loop]
-    for (uint i = 0; i < step_count; i++)
-    {
-        if (transmittance < min_transmittance)
-            break;
-
-        float3 light_dir;
-        float  local_atten;
-        float  phase;
-        if (is_dir)
-        {
-            light_dir   = dir_light_dir;
-            local_atten = 1.0f;
-            phase       = dir_phase;
-        }
-        else
-        {
-            compute_volumetric_light_sample(light, ray_pos, light_dir, local_atten);
-            float cos_theta = dot(ray_direction, light_dir);
-            phase           = henyey_greenstein_phase(cos_theta, phase_g);
-        }
-
-        if (local_atten > 0.0f)
-        {
-            // underwater samples scatter through the suspended particles, the flat sea level is a good enough waterline since the waves average out over the march
-            bool  in_water  = ocean_march && ray_pos.y < buffer_frame.ocean_sea_level;
-            float sigma_dt  = in_water ? 0.05f * buffer_frame.ocean_turbidity * step_length : sigma_s_dt;
-
-            // steps that scatter nothing skip the shadow fetch, fully shadowed steps skip the caustic samples
-            if (sigma_dt > 0.0f)
-            {
-                float visibility = visible(ray_pos, light, pixel_pos);
-
-                // clouds occlude the sun along the shaft, the sun-projected transmittance map
-                // bound on tex5 is what carves the crepuscular rays through the cloud gaps
-                if (is_dir && visibility > 0.0f)
-                {
-                    visibility *= cloud_shadow_sample(tex5, GET_SAMPLER(sampler_bilinear_clamp), ray_pos, dir_light_dir, ray_origin);
-                }
-
-                if (visibility > 0.0f)
-                {
-                    // single scattering integrand, sigma_s * phase * incident_radiance * transmittance * dt
-                    float3 tint = 1.0f;
-                    if (in_water)
-                    {
-                        float sun_path = (buffer_frame.ocean_sea_level - ray_pos.y) / max(dir_light_dir.y, 0.05f);
-                        tint           = exp(-ocean_extinction * sun_path) * (0.2f + 0.8f * get_ocean_caustic(ray_pos.xz + dir_light_dir.xz * sun_path, sun_path));
-                    }
-
-                    inscatter += phase * visibility * local_atten * transmittance * sigma_dt * tint;
-                }
-            }
-        }
-
-        transmittance *= step_transmittance;
-        ray_pos       += ray_step;
-    }
-
-    // color and intensity are constant along the ray so they pull out of the integral
-    float3 result = inscatter * light.intensity * light.color;
-
-    // fade by surface distance for non sky pixels so the haze does not flood close geometry,
-    // sky pixels keep the full inscatter so the beams stay visible against the horizon,
-    // a submerged camera skips it since the underwater post pass already absorbs with distance
-    bool camera_underwater = ocean_march && ray_origin.y < buffer_frame.ocean_sea_level;
-    if (!surface.is_sky() && !camera_underwater)
-    {
-        const float fade_rate = light.is_directional() ? 0.04f : 0.02f;
-        result *= exp(-total_distance * fade_rate);
-    }
-
-    return result;
+    Surface surface;
+    surface.flags                  = 0u;
+    surface.albedo                 = 1.0f;
+    surface.alpha                  = 1.0f;
+    surface.roughness              = 1.0f;
+    surface.roughness_alpha        = 1.0f;
+    surface.metallic               = 0.0f;
+    surface.clearcoat              = 0.0f;
+    surface.clearcoat_roughness    = 0.0f;
+    surface.anisotropic            = 0.0f;
+    surface.anisotropic_rotation   = 0.0f;
+    surface.sheen                  = 0.0f;
+    surface.subsurface_scattering  = 0.0f;
+    surface.flake_strength         = 0.0f;
+    surface.flake_scale            = 0.0f;
+    surface.pearl_strength         = 0.0f;
+    surface.pearl_color            = 0.0f;
+    surface.coat_tint              = 1.0f;
+    surface.coat_tint_strength     = 0.0f;
+    surface.ior                    = 1.5f;
+    surface.absorption             = 0.0f;
+    surface.thickness              = 0.0f;
+    surface.occlusion              = 1.0f;
+    surface.emissive               = 0.0f;
+    surface.F0                     = 0.04f;
+    surface.pos                    = pixel;
+    surface.uv                     = uv;
+    surface.depth                  = 0.0f;
+    surface.position               = position;
+    surface.normal                 = -ray_direction;
+    surface.bent_normal            = surface.normal;
+    surface.camera_to_pixel        = ray_direction;
+    surface.camera_to_pixel_length = distance(position, get_camera_position());
+    surface.diffuse_energy         = 1.0f;
+    return surface;
 }

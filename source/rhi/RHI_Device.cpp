@@ -342,6 +342,11 @@ namespace spartan
             semaphore_timeline_wait,
             timeline_wait_value
         );
+        // pipeline bind pins this list as the override, drop it so cmd() cannot hit a submitted list
+        if (frame_override == cmd_list)
+        {
+            frame_override = nullptr;
+        }
         RHI_Work work;
         work.timeline = cmd_list->GetTimelineSemaphore();
         work.value    = cmd_list->GetLastTimelineSignalValue();

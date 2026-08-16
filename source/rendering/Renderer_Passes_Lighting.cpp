@@ -1143,11 +1143,90 @@ namespace spartan
         RHI_CommandList::EndPass();
     }
 
+    void Renderer::Pass_Fog(uint32_t eye, uint32_t eye_layer /*= rhi_all_mips*/)
+    {
+        RHI_Shader* shader_inject    = GetShader(Renderer_Shader::fog_inject_c);
+        RHI_Shader* shader_integrate = GetShader(Renderer_Shader::fog_integrate_c);
+        RHI_Texture* tex_scatter     = GetRenderTarget(Renderer_RenderTarget::fog_scatter);
+        RHI_Texture* tex_history     = GetRenderTarget(Renderer_RenderTarget::fog_scatter_history);
+        RHI_Texture* tex_integrated  = GetRenderTarget(Renderer_RenderTarget::fog_integrated);
+        if (!tex_scatter || !tex_history || !tex_integrated)
+        {
+            return;
+        }
+
+        if (!shader_inject || !shader_inject->IsCompiled() ||
+            !shader_integrate || !shader_integrate->IsCompiled())
+        {
+            Renderer::BeginPass("fog_clear", eye_layer);
+            RHI_CommandList::ClearTexture(tex_integrated, Color(0.0f, 0.0f, 0.0f, 1.0f));
+            RHI_CommandList::EndPass();
+            return;
+        }
+
+        const bool use_history =
+            m_pass_state.fog_history.valid &&
+            !IsSecondaryViewActive() &&
+            eye == 0;
+
+        RHI_Texture* tex_write = m_pass_state.fog_history.SelectWrite(tex_scatter, tex_history);
+        RHI_Texture* tex_read  = m_pass_state.fog_history.SelectRead(tex_scatter, tex_history);
+
+        const uint32_t groups_x = (renderer_fog_volume_width + 7) / 8;
+        const uint32_t groups_y = (renderer_fog_volume_height + 7) / 8;
+        const uint32_t groups_z = (renderer_fog_volume_depth + 3) / 4;
+
+        Renderer::BeginPass("fog_inject", eye_layer);
+        {
+            RHI_CommandList::SetShader(shader_inject);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3d), tex_write, rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_read);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::skysphere));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
+            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::volumetric_light_indices), GetBuffer(Renderer_Buffer::VolumetricLightIndices));
+
+            if (RHI_Texture* tex_ocean_norm = GetRenderTarget(Renderer_RenderTarget::ocean_normal))
+            {
+                RHI_CommandList::SetTexture("tex_ocean_normal", tex_ocean_norm);
+            }
+
+            RHI_Texture* tex_ocean_disp = GetRenderTarget(
+                m_pass_state.ocean_history.SelectWrite(
+                    Renderer_RenderTarget::ocean_displacement,
+                    Renderer_RenderTarget::ocean_displacement_previous
+                )
+            );
+            if (tex_ocean_disp)
+            {
+                RHI_CommandList::SetTexture("tex_ocean_displacement", tex_ocean_disp);
+            }
+
+            m_pcb_pass_cpu.set_f3_value(use_history ? 0.0f : 1.0f, cvar_fog.GetValue());
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::Dispatch(groups_x, groups_y, groups_z);
+        }
+        RHI_CommandList::EndPass();
+
+        Renderer::BeginPass("fog_integrate", eye_layer);
+        {
+            RHI_CommandList::SetShader(shader_integrate);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_write);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3d), tex_integrated, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(groups_x, groups_y, 1);
+        }
+        RHI_CommandList::EndPass();
+
+        if (!IsSecondaryViewActive() && eye == 0)
+        {
+            m_pass_state.fog_history.Advance();
+        }
+    }
+
     void Renderer::Pass_Light(const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
-        RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
-        RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        RHI_Texture* light_diffuse  = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* light_specular = GetRenderTarget(Renderer_RenderTarget::light_specular);
 
         const char* pass_name = is_transparent_pass ? "light_transparent" : "light";
         Renderer::BeginPass(pass_name, eye_layer);
@@ -1157,16 +1236,13 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::skysphere));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
-            // sun-projected cloud transmittance, sampled by the volumetric fog march
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), light_diffuse, rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), light_specular, rhi_all_mips, 0, true);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), light_volumetric, rhi_all_mips, 0, true);
 
             // clustered lighting grid, written by light_cluster_assign in compute batch a
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cluster_light_grid), GetBuffer(Renderer_Buffer::ClusterLightGrid));
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::cluster_light_indices), GetBuffer(Renderer_Buffer::ClusterLightIndices));
-            RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::volumetric_light_indices), GetBuffer(Renderer_Buffer::VolumetricLightIndices));
 
             // bind tlas for inline ray traced shadows when ray tracing is supported and the world has geometry
             if (RHI_Device::IsSupportedRayTracing())
@@ -1179,10 +1255,8 @@ namespace spartan
                     }
                 }
             }
-    
-            // active light count now flows through buffer_frame.cluster_light_count, fog density still rides in f3.y
+
             m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue());
             RHI_CommandList::Dispatch(light_diffuse, Renderer::GetResolutionScale());
         }
         RHI_CommandList::EndPass();
@@ -1190,23 +1264,25 @@ namespace spartan
     
     void Renderer::Pass_Light_Composition(const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        RHI_Shader* shader_c              = GetShader(Renderer_Shader::light_composition_c);
-        RHI_Texture* tex_out              = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_skysphere        = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
-        RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
-        RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        RHI_Shader* shader_c           = GetShader(Renderer_Shader::light_composition_c);
+        RHI_Texture* tex_out           = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_skysphere     = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_light_diffuse = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* tex_light_specular = GetRenderTarget(Renderer_RenderTarget::light_specular);
+        RHI_Texture* tex_fog           = GetRenderTarget(Renderer_RenderTarget::fog_integrated);
 
         Renderer::BeginPass(is_transparent_pass ? "light_composition_transparent" : "light_composition", eye_layer);
         {
             RHI_CommandList::SetShader(shader_c);
             m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue(), 0.0f);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_out, rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), tex_skysphere);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), tex_light_diffuse);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), tex_light_specular);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), tex_light_volumetric);
+            if (tex_fog)
+            {
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3d), tex_fog);
+            }
             RHI_CommandList::Dispatch(tex_out, Renderer::GetResolutionScale());
         }
         RHI_CommandList::EndPass();
