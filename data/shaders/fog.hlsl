@@ -23,9 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //===================
 
-static const uint fog_width  = 240;
-static const uint fog_height = 135;
-static const uint fog_depth  = 96;
+// keep in sync with renderer_fog_volume_* in Renderer_Definitions.h
+static const uint fog_width  = 384;
+static const uint fog_height = 216;
+static const uint fog_depth  = 128;
 static const float fog_underwater_far = 40.0f;
 static const float fog_air_far        = 6000.0f;
 static const float fog_scale_height   = 300.0f;
@@ -77,6 +78,7 @@ float fog_distance_to_slice(float dist)
 float3 fog_froxel_world(float3 voxel)
 {
     float2 uv = (voxel.xy + 0.5f) / float2((float)fog_width, (float)fog_height);
+    // projection_inverted is unjittered, adding taa jitter crawls the grid
     float2 ndc = uv_to_ndc(uv);
     float4 view_far = mul(float4(ndc, 1.0f, 1.0f), get_projection_inverted());
     float3 view_dir = normalize(view_far.xyz / view_far.w);
@@ -237,9 +239,9 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 
     if (light.is_spot())
     {
-        float cd          = dot(-light_dir, light.forward);
-        float angle_atten = saturate((cd - light.cos_outer) * light.angle_scale);
-        local_atten      *= angle_atten * angle_atten;
+        float cd = dot(-light_dir, light.forward);
+        float t  = saturate((cd - light.cos_outer) * light.angle_scale);
+        local_atten *= t * t * (3.0f - 2.0f * t);
     }
 }
 

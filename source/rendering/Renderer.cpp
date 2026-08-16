@@ -1148,6 +1148,16 @@ namespace spartan
             &m_bindless_textures,
             GetBuffer(Renderer_Buffer::MaterialParameters)
         );
+
+        // null srvs write the 1m checkerboard, keep retrying until gpu prep finishes
+        for (RHI_Texture* texture : m_bindless_textures)
+        {
+            if (texture && !texture->GetRhiSrv())
+            {
+                m_pass_state.bindless_materials_dirty = true;
+                break;
+            }
+        }
     }
 
     void Renderer::TickUploadBindlessDependencies()
@@ -4251,15 +4261,15 @@ namespace spartan
         RHI_Texture* tex_ocean_norm = GetRenderTarget(
             Renderer_RenderTarget::ocean_normal
         );
-        if (is_graphics_queue && tex_ocean_disp)
+        if (tex_ocean_disp)
         {
             RHI_CommandList::SetTexture("tex_ocean_displacement", tex_ocean_disp);
         }
-        if (is_graphics_queue && tex_ocean_disp_previous)
+        if (tex_ocean_disp_previous)
         {
             RHI_CommandList::SetTexture("tex_ocean_displacement_previous", tex_ocean_disp_previous);
         }
-        if (is_graphics_queue && tex_ocean_norm)
+        if (tex_ocean_norm)
         {
             RHI_CommandList::SetTexture("tex_ocean_normal", tex_ocean_norm);
         }

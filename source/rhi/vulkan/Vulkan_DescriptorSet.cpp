@@ -67,7 +67,9 @@ namespace spartan
 
         void* get_fallback_srv()
         {
-            if (RHI_Texture* tex = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard))
+            // black, not the 1m checkerboard, unused tex slots in common.hlsl
+            // must not stamp the debug tile across a fullscreen pass
+            if (RHI_Texture* tex = Renderer::GetStandardTexture(Renderer_StandardTexture::Black))
             {
                 return tex->GetRhiSrv();
             }
@@ -197,7 +199,7 @@ namespace spartan
                     {
                         // single texture binding
                         void* view = nullptr;
-                        VkImageLayout img_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        VkImageLayout img_layout = VK_IMAGE_LAYOUT_GENERAL;
 
                         if (texture)
                         {
@@ -215,7 +217,7 @@ namespace spartan
                         else if (layout.type == RHI_Descriptor_Type::Image)
                         {
                             view = fallback_srv;
-                            img_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                            img_layout = VK_IMAGE_LAYOUT_GENERAL;
                         }
 
                         if (view)
@@ -236,7 +238,7 @@ namespace spartan
                             void* view = texture ? texture->GetRhiSrvMip(mip_idx) : fallback_srv;
                             VkImageLayout img_layout = texture
                                 ? vulkan_image_layout[static_cast<uint8_t>(binding.layout)]
-                                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                                : VK_IMAGE_LAYOUT_GENERAL;
 
                             uint32_t idx = g_ctx.image_count++;
                             g_ctx.images[idx].sampler     = nullptr;

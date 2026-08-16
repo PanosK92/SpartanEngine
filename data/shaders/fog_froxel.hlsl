@@ -121,19 +121,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
-    float3 jitter;
-    jitter.x = noise_interleaved_gradient(float2(thread_id.xy), true);
-    jitter.y = noise_interleaved_gradient(float2(thread_id.yz) + 17.3f, true);
-    jitter.z = noise_interleaved_gradient(float2(thread_id.xz) + 31.7f, true);
-
-    float3 sample_pos = fog_froxel_world(float3(thread_id) + jitter - 0.5f);
-    float3 sample_center = fog_froxel_world(float3(thread_id));
+    float3 sample_pos = fog_froxel_world(float3(thread_id));
     float3 ray_direction = normalize(sample_pos - get_camera_position());
     float2 uv = (float2(thread_id.xy) + 0.5f) / float2((float)fog_width, (float)fog_height);
 
     bool camera_underwater = fog_camera_underwater();
     float water_y = buffer_frame.ocean_enabled > 0.5f
-        ? get_ocean_height(sample_center.xz)
+        ? get_ocean_height(sample_pos.xz)
         : 0.0f;
     bool in_water = camera_underwater && sample_pos.y < water_y;
 
@@ -179,7 +173,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 thread_id.xy,
                 uv,
                 in_water,
-                sample_center.xz,
+                sample_pos.xz,
                 sigma_s
             );
         }
@@ -196,7 +190,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 thread_id.xy,
                 uv,
                 in_water,
-                sample_center.xz,
+                sample_pos.xz,
                 sigma_s
             );
         }
@@ -206,9 +200,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     bool reset_history = pass_get_f3_value().x > 0.5f;
     float4 result = current;
-    if (!reset_history && sigma_s > 0.0f)
+    if (!reset_history)
     {
-        float4 prev_clip = mul(float4(sample_pos, 1.0f), get_view_projection_previous());
+        float4 prev_clip = mul(
+            float4(sample_pos, 1.0f),
+            get_view_projection_previous_unjittered()
+        );
         if (prev_clip.w > 0.0f)
         {
             float3 prev_ndc = prev_clip.xyz / prev_clip.w;
@@ -223,8 +220,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     float3(prev_uv, prev_w),
                     0.0f
                 );
-                result = lerp(current, history, 0.7f);
-                result.rgb = max(current.rgb, result.rgb);
+                float2 uv_delta = prev_uv - uv;
+                float froxel_motion = length(
+                    uv_delta * float2((float)fog_width, (float)fog_height)
+                );
+                float keep = lerp(0.97f, 0.55f, saturate(froxel_motion * 0.5f));
+                result = lerp(current, history, keep);
             }
         }
     }
@@ -233,6 +234,40 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 }
 
 #elif defined(FOG_INTEGRATE)
+
+float4 fog_sample_scatter_filtered(uint2 xy, uint z)
+{
+    float4 sum = 0.0f;
+    float weight_sum = 0.0f;
+    [unroll]
+    for (int y = -1; y <= 1; y++)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; x++)
+        {
+            int2 p = int2(xy) + int2(x, y);
+            if (p.x < 0 || p.y < 0 || p.x >= (int)fog_width || p.y >= (int)fog_height)
+            {
+                continue;
+            }
+
+            float w = 1.0f;
+            if (x == 0 && y == 0)
+            {
+                w = 4.0f;
+            }
+            else if (x == 0 || y == 0)
+            {
+                w = 2.0f;
+            }
+
+            sum += tex3d[uint3(p, z)] * w;
+            weight_sum += w;
+        }
+    }
+
+    return sum / max(weight_sum, 1.0f);
+}
 
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
@@ -248,7 +283,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     [loop]
     for (uint z = 0u; z < fog_depth; z++)
     {
-        float4 scatter = tex3d[uint3(thread_id.xy, z)];
+        float4 scatter = fog_sample_scatter_filtered(thread_id.xy, z);
         float u0 = (float)z / (float)fog_depth;
         float u1 = (float)(z + 1u) / (float)fog_depth;
         float d0 = fog_slice_to_distance(u0);

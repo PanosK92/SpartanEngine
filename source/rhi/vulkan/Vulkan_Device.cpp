@@ -1289,7 +1289,7 @@ namespace spartan
                     RHI_Texture* tex     = (*textures)[i];
                     void* srv            = (tex && tex->GetRhiSrv()) ? tex->GetRhiSrv() : fallback;
                     image_infos[i].imageView   = static_cast<VkImageView>(srv);
-                    image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    image_infos[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                 }
 
                 VkWriteDescriptorSet write = {};

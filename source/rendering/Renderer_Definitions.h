@@ -126,9 +126,10 @@ namespace spartan
     const uint32_t renderer_particle_volume_width   = 160;
     const uint32_t renderer_particle_volume_height  = 90;
     const uint32_t renderer_particle_volume_depth   = 64;
-    const uint32_t renderer_fog_volume_width        = 240;
-    const uint32_t renderer_fog_volume_height       = 135;
-    const uint32_t renderer_fog_volume_depth        = 96;
+    // keep in sync with fog_width, fog_height, fog_depth in fog.hlsl
+    const uint32_t renderer_fog_volume_width        = 384;
+    const uint32_t renderer_fog_volume_height       = 216;
+    const uint32_t renderer_fog_volume_depth        = 128;
 
     enum class Renderer_Tonemapping : uint32_t
     {

@@ -71,6 +71,7 @@ matrix get_projection_inverted()      { return pass_is_right_eye() ? buffer_fram
 matrix get_view_projection()          { return pass_is_right_eye() ? buffer_frame.view_projection_right          : buffer_frame.view_projection; }
 matrix get_view_projection_inverted() { return pass_is_right_eye() ? buffer_frame.view_projection_inverted_right : buffer_frame.view_projection_inverted; }
 matrix get_view_projection_previous() { return pass_is_right_eye() ? buffer_frame.view_projection_previous_right : buffer_frame.view_projection_previous; }
+matrix get_view_projection_previous_unjittered() { return pass_is_right_eye() ? buffer_frame.view_projection_previous_unjittered_right : buffer_frame.view_projection_previous_unjittered; }
 float3 get_camera_position()          { return pass_is_right_eye() ? buffer_frame.camera_position_right          : buffer_frame.camera_position; }
 
 // explicit-view variants: used by raster pixel shaders in multiview passes where a single draw

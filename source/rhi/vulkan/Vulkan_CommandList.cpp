@@ -2916,7 +2916,13 @@ namespace spartan
             SP_ASSERT(texture->IsSrv());
         }
 
-        const bool is_attachment = find(m_pso.render_target_color_textures.begin(), m_pso.render_target_color_textures.end(), texture) != m_pso.render_target_color_textures.end() || m_pso.render_target_depth_texture == texture;
+        // compute and ray pipelines keep leftover graphics rts on the pso object,
+        // those must not block sampling or every unbound slot becomes the checkerboard
+        const bool is_attachment = m_pso.IsGraphics() &&
+            (
+                find(m_pso.render_target_color_textures.begin(), m_pso.render_target_color_textures.end(), texture) != m_pso.render_target_color_textures.end() ||
+                m_pso.render_target_depth_texture == texture
+            );
         if (is_attachment)
         {
             if (m_descriptor_layout_current->SetTexture(slot, nullptr, mip_index, mip_range, array_layer, target_layout, uav))
