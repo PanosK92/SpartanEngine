@@ -492,6 +492,7 @@ namespace ImGui::TransformGizmo
                 (op == ::TransformGizmo::Operation::Universal &&
                     (fabsf(scale_ratio.x - 1.0f) + fabsf(scale_ratio.y - 1.0f) + fabsf(scale_ratio.z - 1.0f)) > 0.00001f);
 
+            size_t entity_index = 0;
             for (spartan::Entity* entity : selected_entities)
             {
                 if (!entity || has_selected_ancestor(entity, selected_entities))
@@ -517,13 +518,16 @@ namespace ImGui::TransformGizmo
 
                 if (do_scale)
                 {
-                    const spartan::math::Vector3 current_scale = entity->GetScale();
+                    // ratio is total from drag start, apply it to the captured scale
+                    const spartan::math::Vector3 start_scale = scales_previous[entity_index];
                     entity->SetScale(spartan::math::Vector3(
-                        current_scale.x * scale_ratio.x,
-                        current_scale.y * scale_ratio.y,
-                        current_scale.z * scale_ratio.z
+                        start_scale.x * scale_ratio.x,
+                        start_scale.y * scale_ratio.y,
+                        start_scale.z * scale_ratio.z
                     ));
                 }
+
+                entity_index++;
             }
 
             if (spartan::Input::GetKeyUp(spartan::KeyCode::Click_Left))
