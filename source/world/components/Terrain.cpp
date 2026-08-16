@@ -1485,12 +1485,12 @@ namespace spartan
             description.align_to_surface_normal = false;
             description.min_spawn_height        = sea_local + 2.0f;
             description.max_spawn_height        = snow_local + 10.0f;
-            description.min_scale               = scale * 0.4f;
-            description.max_scale               = scale * 1.0f;
-            description.instances_per_cluster   = 8;
-            description.cluster_radius          = 22.0f;
+            description.min_scale               = scale * 0.22f;
+            description.max_scale               = scale * 1.35f;
+            description.instances_per_cluster   = 4;
+            description.cluster_radius          = 14.0f;
             description.prop_mask_channel       = 1;
-            description.prop_mask_min           = 0.08f;
+            description.prop_mask_min           = 0.05f;
         }
         else if (terrain_prop == TerrainProp::Grass)
         {
@@ -3397,10 +3397,10 @@ namespace spartan
                     grass = saturate((grass_raw - 0.18f) / 0.82f);
                     grass = grass * grass * (3.0f - 2.0f * grass);
 
-                    // trees on forest floor, plus groves in living meadow, never on mineral
+                    // trees fill living ground, forest is dense, meadows get groves
                     float tree_raw = forest_w
-                        + grass_w * lerp(0.28f, 0.75f, saturate(shade * 1.15f + deposition * 0.35f))
-                        + moss_w * 0.2f;
+                        + grass_w * lerp(0.5f, 0.95f, saturate(shade * 1.15f + deposition * 0.35f))
+                        + moss_w * 0.25f;
                     tree_raw *= slope_soft;
                     tree_raw *= tree_line;
                     tree_raw *= saturate(1.0f - mineral * 1.35f);

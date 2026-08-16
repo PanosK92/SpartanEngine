@@ -247,7 +247,7 @@ namespace spartan
         // authored base densities, the terrain multipliers scale these so a world can be retuned
         // without a rebuild, see Terrain::SetPropDensityTree and friends
         const float per_triangle_density_flower = 0.18f * terrain->GetPropDensityFlower();
-        const float per_triangle_density_tree   = 0.12f * terrain->GetPropDensityTree();
+        const float per_triangle_density_tree   = 0.28f * terrain->GetPropDensityTree();
         const float per_triangle_density_rock   = 0.20f * terrain->GetPropDensityRock();
 
         const uint32_t prop_mesh_flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
@@ -681,12 +681,12 @@ namespace spartan
             if (RHI_Texture* prop_mask = terrain->GetPropMask())
             {
                 Renderer::ProceduralGrassParams grass_params;
-                grass_params.ring_radii_m[0]  = 30.0f;
-                grass_params.ring_radii_m[1]  = 120.0f;
+                grass_params.ring_radii_m[0]  = 55.0f;
+                grass_params.ring_radii_m[1]  = 180.0f;
                 grass_params.ring_radii_m[2]  = render_distance_foliage;
                 grass_params.cell_size_m[0]   = 0.36f;
-                grass_params.cell_size_m[1]   = 1.05f;
-                grass_params.cell_size_m[2]   = 3.0f;
+                grass_params.cell_size_m[1]   = 0.82f;
+                grass_params.cell_size_m[2]   = 2.1f;
                 grass_params.height_min       = terrain->GetSeaLevel() + 1.0f;
                 grass_params.height_max       = terrain->GetSnowLevel();
                 grass_params.max_slope_deg    = 24.0f;

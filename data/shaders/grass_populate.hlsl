@@ -66,6 +66,19 @@ float hash_unit(uint h)
     return float(h) * (1.0f / 4294967296.0f);
 }
 
+// bilinear value noise, used to warp lod ring distances into blobs
+float grass_value_noise(float2 p, uint seed)
+{
+    int2 i = int2(floor(p));
+    float2 f = frac(p);
+    f = f * f * (3.0f - 2.0f * f);
+    float a = hash_unit(hash_u32((uint)i.x,      (uint)i.y,      seed));
+    float b = hash_unit(hash_u32((uint)i.x + 1u, (uint)i.y,      seed));
+    float c = hash_unit(hash_u32((uint)i.x,      (uint)i.y + 1u, seed));
+    float d = hash_unit(hash_u32((uint)i.x + 1u, (uint)i.y + 1u, seed));
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y) * 2.0f - 1.0f;
+}
+
 // 0 at the terrain's world minimum, 1 at its maximum, the range test lives in this space
 float2 terrain_world_to_normalized(float2 world_xz)
 {
@@ -226,14 +239,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float2 cell_origin_xz = float2(world_cell_x, world_cell_z) * cell_size;
     float2 world_xz       = cell_origin_xz + float2(jx, jz) * cell_size;
 
-    // retain narrow dithered transitions between annuli
+    // wide overlapping fades, then warp the radius with low frequency noise so the lod
+    // seam is a blob instead of a stamped circle
     float inner_transition = max(
-        cell_size * 2.0f,
-        inner_radius * 0.15f
+        cell_size * 10.0f,
+        inner_radius * 0.5f
     );
     float outer_transition = max(
-        cell_size * 2.0f,
-        ring_radius * 0.15f
+        cell_size * 10.0f,
+        ring_radius * 0.42f
     );
     float inner_start = max(
         0.0f,
@@ -246,26 +260,32 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     float2 to_camera = world_xz - camera_xz_anchor;
     float  dist2     = dot(to_camera, to_camera);
+    float  reject_outer = ring_radius + outer_transition * 0.15f;
     if (
         dist2 < inner_start * inner_start ||
-        dist2 > ring_radius * ring_radius
+        dist2 > reject_outer * reject_outer
     )
     {
         return;
     }
 
     float distance_to_camera = sqrt(dist2);
+    float warp_n = grass_value_noise(world_xz * (1.0f / 34.0f), 91u) * 0.7f
+                 + grass_value_noise(world_xz * (1.0f / 13.0f), 53u) * 0.3f;
+    float warp_amp = max(inner_transition, outer_transition) * 0.55f;
+    float distance_warped = distance_to_camera + warp_n * warp_amp;
+
     float fade_in = inner_radius > 0.0f ?
         smoothstep(
             inner_start,
             inner_radius,
-            distance_to_camera
+            distance_warped
         ) :
         1.0f;
     float fade_out = 1.0f - smoothstep(
         outer_start,
         ring_radius,
-        distance_to_camera
+        distance_warped
     );
     float lod_weight = fade_in * fade_out;
     float lod_random = hash_unit(h0 ^ 0xa511e9b3u);
