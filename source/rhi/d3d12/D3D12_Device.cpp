@@ -38,14 +38,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <vector>
 #include <fstream>
-#include <filesystem>
-#include "../../file_system/FileSystem.h"
-#include "../RHI_VendorTechnology.h"
-#ifdef _WIN32
-SP_WARNINGS_OFF
-#include "nvsdk_ngx.h"
-SP_WARNINGS_ON
-#endif
 //================================
 
 // pix3blob marker encoding constants, hard-coded so we don't need the winpixeventruntime header pack
@@ -64,54 +56,6 @@ using namespace spartan::math;
 
 namespace spartan
 {
-#ifdef _WIN32
-    namespace ngx_dlss
-    {
-        bool query_super_sampling(IDXGIAdapter* adapter)
-        {
-            if (!adapter)
-            {
-                return false;
-            }
-
-            static wstring data_path;
-            static const wchar_t* dll_dir = nullptr;
-            static NVSDK_NGX_FeatureCommonInfo feature_info = {};
-            if (data_path.empty())
-            {
-                data_path = filesystem::path(FileSystem::GetExecutableDirectory()).wstring();
-                dll_dir   = data_path.c_str();
-                feature_info.PathListInfo.Path   = &dll_dir;
-                feature_info.PathListInfo.Length = 1;
-            }
-
-            NVSDK_NGX_FeatureDiscoveryInfo info = {};
-            info.SDKVersion = NVSDK_NGX_Version_API;
-            info.FeatureID  = NVSDK_NGX_Feature_SuperSampling;
-            info.Identifier.IdentifierType = NVSDK_NGX_Application_Identifier_Type_Project_Id;
-            info.Identifier.v.ProjectDesc.ProjectId     = RHI_VendorTechnology::dlss_project_id;
-            info.Identifier.v.ProjectDesc.EngineType    = NVSDK_NGX_ENGINE_TYPE_CUSTOM;
-            info.Identifier.v.ProjectDesc.EngineVersion = RHI_VendorTechnology::dlss_engine_version;
-            info.ApplicationDataPath = data_path.c_str();
-            info.FeatureInfo         = &feature_info;
-
-            NVSDK_NGX_FeatureRequirement requirement = {};
-            NVSDK_NGX_Result result = NVSDK_NGX_D3D12_GetFeatureRequirements(adapter, &info, &requirement);
-            if (NVSDK_NGX_FAILED(result))
-            {
-                SP_LOG_WARNING("DLSS feature requirements query failed: 0x%x", static_cast<unsigned int>(result));
-                return false;
-            }
-            if (requirement.FeatureSupported != NVSDK_NGX_FeatureSupportResult_Supported)
-            {
-                SP_LOG_WARNING("DLSS feature requirements not met: 0x%x", static_cast<unsigned int>(requirement.FeatureSupported));
-                return false;
-            }
-            return true;
-        }
-    }
-#endif
-
     namespace validation
     {
         ID3D12InfoQueue*  info_queue      = nullptr;
@@ -820,11 +764,7 @@ namespace spartan
 
             // xess requires shader model 6.4 or newer
             m_xess_supported = caps::highest_shader_model >= D3D_SHADER_MODEL_6_4;
-#ifdef _WIN32
-            m_dlss_supported = ngx_dlss::query_super_sampling(adapter.Get());
-#else
-            m_dlss_supported = false;
-#endif
+            m_dlss_supported = GetPrimaryPhysicalDevice() && GetPrimaryPhysicalDevice()->IsNvidia();
 
             m_is_mesh_shaders_supported = (caps::mesh_shader_tier >= D3D12_MESH_SHADER_TIER_1);
             if (m_is_mesh_shaders_supported)

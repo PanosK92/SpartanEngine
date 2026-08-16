@@ -409,11 +409,11 @@ namespace spartan
             }
         }
 
-        bool sdk_init()
+        void sdk_init()
         {
             if (!RHI_Device::IsSupportedDlss() || sdk_ready)
             {
-                return RHI_Device::IsSupportedDlss() && sdk_ready;
+                return;
             }
 
             data_path = filesystem::path(FileSystem::GetExecutableDirectory()).wstring();
@@ -434,7 +434,7 @@ namespace spartan
             if (NVSDK_NGX_FAILED(result))
             {
                 SP_LOG_WARNING("DLSS ngx init failed: 0x%x", static_cast<unsigned int>(result));
-                return false;
+                return;
             }
 
             result = NVSDK_NGX_D3D12_GetCapabilityParameters(&parameters);
@@ -443,8 +443,10 @@ namespace spartan
                 SP_LOG_WARNING("DLSS capability parameters failed: 0x%x", static_cast<unsigned int>(result));
                 NVSDK_NGX_D3D12_Shutdown1(RHI_Context::device);
                 parameters = nullptr;
-                return false;
+                return;
             }
+
+            sdk_ready = true;
 
             unsigned int available    = 0;
             unsigned int needs_driver = 0;
@@ -455,14 +457,7 @@ namespace spartan
             if (!available)
             {
                 SP_LOG_WARNING("DLSS super sampling unavailable, needs_driver=%u, init_result=0x%x", needs_driver, static_cast<unsigned int>(init_result));
-                NVSDK_NGX_D3D12_DestroyParameters(parameters);
-                parameters = nullptr;
-                NVSDK_NGX_D3D12_Shutdown1(RHI_Context::device);
-                return false;
             }
-
-            sdk_ready = true;
-            return true;
         }
 
         void set_dlss4_presets()
@@ -679,10 +674,7 @@ namespace spartan
     void RHI_VendorTechnology::Initialize()
     {
     #ifdef _WIN32
-        if (!dlss::sdk_init())
-        {
-            RHI_Device::m_dlss_supported = false;
-        }
+        dlss::sdk_init();
     #endif
     }
 

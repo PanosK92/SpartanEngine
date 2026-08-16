@@ -4534,10 +4534,9 @@ namespace spartan
                 RHI_Device::IsSupportedRayTracing() &&
                 GetTopLevelAccelerationStructure() != nullptr &&
                 !IsSecondaryViewActive();
-            const bool fog_needs_atlas = cvar_fog.GetValue() > 0.0f;
             const bool shadow_maps_required =
                 World::GetLightCount() > 0 &&
-                (!(ray_traced_shadows && tlas_available) || fog_needs_atlas);
+                !(ray_traced_shadows && tlas_available);
             RHI_Device::Bind(RHI_Frame_List::Graphics);
             if (shadow_maps_required)
             {

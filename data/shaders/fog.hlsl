@@ -132,6 +132,13 @@ float visible(float3 position, Light light, uint2 pixel_pos)
 
     if (light.is_directional())
     {
+    #ifdef RAY_TRACING_ENABLED
+        if (is_ray_traced_shadows_enabled())
+        {
+            return 1.0f;
+        }
+    #endif
+
         const uint near_cascade = 0;
         const uint far_cascade  = 1;
 
@@ -245,6 +252,56 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
         local_atten *= t * t * (3.0f - 2.0f * t);
     }
 }
+
+#ifdef RAY_TRACING_ENABLED
+float fog_trace_shadow(Light light, float3 sample_pos)
+{
+    float3 light_dir;
+    float local_atten;
+    compute_volumetric_light_sample(light, sample_pos, light_dir, local_atten);
+    if (local_atten <= 0.0f)
+    {
+        return 0.0f;
+    }
+
+    float bias = 0.02f;
+    float3 origin = sample_pos + light_dir * bias;
+    float3 direction = light_dir;
+    float t_max = 10000.0f;
+
+    if (!light.is_directional())
+    {
+        float3 target = light.is_area()
+            ? light.compute_closest_point_on_area(sample_pos)
+            : light.position;
+        float3 to_light = target - origin;
+        float dist = length(to_light);
+        if (dist <= bias)
+        {
+            return 1.0f;
+        }
+
+        direction = to_light / dist;
+        float emitter_safety = 0.02f;
+        if (light.is_area())
+        {
+            emitter_safety = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
+        }
+        t_max = max(dist - emitter_safety, 0.001f);
+    }
+
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001f;
+    ray.TMax      = t_max;
+
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    query.Proceed();
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+}
+#endif
 
 Surface fog_build_surface(float3 position, float3 ray_direction, uint2 pixel, float2 uv)
 {
