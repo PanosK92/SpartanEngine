@@ -65,6 +65,10 @@ namespace spartan
         // uploads only the new portion when it fits the existing capacity, otherwise recreates with headroom
         static void BuildIfDirty();
 
+        // drop cpu data and rewind committed counts, gpu buffers stay so the next world can
+        // sub-region upload from offset 0 instead of swapping buffers and flashing the frame
+        static void Reset();
+
         // bump capacity floors so the next BuildIfDirty allocates large enough buffers up-front
         // can be called before world load with a budget so we avoid mid-load rebuilds
         static void Reserve(

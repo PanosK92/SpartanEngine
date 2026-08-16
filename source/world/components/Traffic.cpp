@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Traffic.h"
 #include "Physics.h"
+#include "Render.h"
 #include "../../car/Car.h"
 #include "../../car/CarPresets.h"
 #include "../../core/Engine.h"
@@ -50,6 +51,25 @@ namespace spartan
         constexpr float decision_interval = 0.1f;
         constexpr uint32_t max_physics_cars = 4;
         constexpr float steering_samples[] = { -1.0f, -0.72f, -0.48f, -0.3f, -0.18f, -0.08f, 0.0f, 0.08f, 0.18f, 0.3f, 0.48f, 0.72f, 1.0f };
+
+        void exclude_tree_from_ray_tracing(Entity* root)
+        {
+            if (!root)
+            {
+                return;
+            }
+
+            vector<Entity*> nodes;
+            nodes.push_back(root);
+            root->GetDescendants(&nodes);
+            for (Entity* node : nodes)
+            {
+                if (Render* render = node ? node->GetComponent<Render>() : nullptr)
+                {
+                    render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
+                }
+            }
+        }
 
         Physics* find_physics(Entity* entity)
         {
@@ -129,6 +149,7 @@ namespace spartan
         }
         m_drivers.clear();
         m_next_spawn_index = 0;
+        m_last_spawn_ms = 0.0;
         BeginSpawn();
     }
 
@@ -347,11 +368,30 @@ namespace spartan
             return;
         }
 
-        if (m_next_spawn_index < m_car_count)
+        if (m_next_spawn_index >= m_car_count)
         {
-            SpawnCar(m_next_spawn_index);
-            m_next_spawn_index++;
+            m_preload_state.reset();
+            return;
         }
+
+        if (
+            World::IsPlaySettling() ||
+            Physics::HasPendingCreates() ||
+            !World::ConsumePlaySpawnSlot()
+        )
+        {
+            return;
+        }
+
+        const double now_ms = Timer::GetTimeMs();
+        if (m_last_spawn_ms > 0.0 && (now_ms - m_last_spawn_ms) < 250.0)
+        {
+            return;
+        }
+
+        SpawnCar(m_next_spawn_index);
+        m_last_spawn_ms = now_ms;
+        m_next_spawn_index++;
 
         if (m_next_spawn_index >= m_car_count)
         {
@@ -400,6 +440,7 @@ namespace spartan
 
         entity->SetObjectName("traffic_car_" + to_string(index + 1));
         entity->SetTransient(true);
+        exclude_tree_from_ray_tracing(entity);
         physics->SetBodyTransform(position, rotation);
         physics->SetVehicleSimulationFrequency(m_simulation_frequency);
         physics->SetManualTransmission(false);

@@ -517,11 +517,21 @@ namespace ImGui::TransformGizmo
 
                 if (do_scale)
                 {
-                    const spartan::math::Vector3 current_scale = entity->GetScale();
+                    // ratio is absolute from drag start, apply it to the original scale
+                    spartan::math::Vector3 start_scale = entity->GetScale();
+                    for (size_t i = 0; i < entities_being_transformed.size(); i++)
+                    {
+                        if (entities_being_transformed[i] == entity)
+                        {
+                            start_scale = scales_previous[i];
+                            break;
+                        }
+                    }
+
                     entity->SetScale(spartan::math::Vector3(
-                        current_scale.x * scale_ratio.x,
-                        current_scale.y * scale_ratio.y,
-                        current_scale.z * scale_ratio.z
+                        start_scale.x * scale_ratio.x,
+                        start_scale.y * scale_ratio.y,
+                        start_scale.z * scale_ratio.z
                     ));
                 }
             }

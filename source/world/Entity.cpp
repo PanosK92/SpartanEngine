@@ -981,10 +981,12 @@ namespace spartan
         if (m_parent)
         {
             m_matrix = m_matrix_local * m_parent->GetMatrix();
+            m_rotation_world = m_parent->GetRotation() * m_rotation_local;
         }
         else
         {
             m_matrix = m_matrix_local;
+            m_rotation_world = m_rotation_local;
         }
 
         // update directions directly from matrix (avoids unstable quaternion decomposition)
@@ -1069,32 +1071,10 @@ namespace spartan
 
     void Entity::SetRotation(const Quaternion& rotation)
     {
-        // compute local rotation without using unstable GetRotation() decomposition
-        Quaternion local_rotation;
-        if (!GetParent())
+        Quaternion local_rotation = rotation;
+        if (GetParent())
         {
-            local_rotation = rotation;
-        }
-        else
-        {
-            // compute parent's world rotation by composing local rotations up the hierarchy
-            // world_rot = root_local * ... * parent_local (compose from root down)
-            vector<Quaternion> rotations;
-            Entity* ancestor = GetParent();
-            while (ancestor)
-            {
-                rotations.push_back(ancestor->GetRotationLocal());
-                ancestor = ancestor->GetParent();
-            }
-
-            // compose from root (back of vector) to parent (front of vector)
-            Quaternion parent_world_rotation = Quaternion::Identity;
-            for (auto it = rotations.rbegin(); it != rotations.rend(); ++it)
-            {
-                parent_world_rotation = parent_world_rotation * (*it);
-            }
-
-            local_rotation = parent_world_rotation.Inverse() * rotation;
+            local_rotation = GetParent()->GetRotation().Inverse() * rotation;
         }
 
         SetRotationLocal(local_rotation);

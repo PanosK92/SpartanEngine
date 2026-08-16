@@ -37,6 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../world/World.h"
 #include "../../world/Entity.h"
 #include "../../world/components/Light.h"
+#include "../../world/components/Physics.h"
+#include "../../world/components/Render.h"
 #include "../../resource/ResourceCache.h"
 SP_WARNINGS_OFF
 #include "assimp/scene.h"
@@ -339,6 +341,115 @@ namespace spartan
             }
 
             return true;
+        }
+
+        bool assimp_material_has_textures(const aiMaterial* material_assimp)
+        {
+            if (!material_assimp)
+            {
+                return false;
+            }
+
+            static constexpr aiTextureType types[] =
+            {
+                aiTextureType_DIFFUSE,
+                aiTextureType_BASE_COLOR,
+                aiTextureType_NORMALS,
+                aiTextureType_NORMAL_CAMERA,
+                aiTextureType_METALNESS,
+                aiTextureType_DIFFUSE_ROUGHNESS,
+                aiTextureType_GLTF_METALLIC_ROUGHNESS,
+                aiTextureType_AMBIENT_OCCLUSION,
+                aiTextureType_LIGHTMAP,
+                aiTextureType_EMISSIVE,
+                aiTextureType_EMISSION_COLOR,
+                aiTextureType_HEIGHT,
+                aiTextureType_OPACITY
+            };
+
+            for (const aiTextureType type : types)
+            {
+                if (material_assimp->GetTextureCount(type) > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // assimp invents defaultmaterial when the source file never assigned one
+        bool is_undefined_assimp_material(const aiMaterial* material_assimp)
+        {
+            if (!material_assimp)
+            {
+                return true;
+            }
+
+            if (assimp_material_has_textures(material_assimp))
+            {
+                return false;
+            }
+
+            aiString name_assimp;
+            aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
+            string name = name_assimp.C_Str();
+            transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+            // assimp uses defaultmaterial, a user material named default is still real
+            return name.empty() || name == "defaultmaterial";
+        }
+
+        bool bind_directory_textures(ImportContext& ctx, const shared_ptr<Material>& material)
+        {
+            struct Hint
+            {
+                MaterialTextureType type;
+                const char* names[4];
+            };
+            static constexpr Hint hints[] =
+            {
+                { MaterialTextureType::Color,     { "albedo", "diffuse", "color", "basecolor" } },
+                { MaterialTextureType::Normal,    { "normal", "nor", "nrm", "normalmap" } },
+                { MaterialTextureType::Roughness, { "roughness", "rough", "rgh", "" } },
+                { MaterialTextureType::Occlusion, { "occlusion", "ao", "ambientocclusion", "" } }
+            };
+
+            bool bound_color = false;
+            for (const Hint& hint : hints)
+            {
+                if (material->HasTextureOfType(hint.type))
+                {
+                    if (hint.type == MaterialTextureType::Color)
+                    {
+                        bound_color = true;
+                    }
+                    continue;
+                }
+
+                for (const char* name : hint.names)
+                {
+                    if (!name || name[0] == '\0')
+                    {
+                        continue;
+                    }
+
+                    const string path = resolve_texture_path(name, ctx.model_directory, ctx.directory_files);
+                    if (path.empty())
+                    {
+                        continue;
+                    }
+
+                    material->SetTexture(hint.type, path);
+                    if (hint.type == MaterialTextureType::Color)
+                    {
+                        bound_color = true;
+                    }
+                    break;
+                }
+            }
+
+            return bound_color;
         }
 
         shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp)
@@ -1313,6 +1424,24 @@ namespace spartan
                         ParseMesh(ctx, job.assimp_mesh, job.entity, job.sub_mesh_index);
                     }
                 }, mesh_job_count);
+
+                // cook after parse so render geometry exists, convex hull survives messy imported topology
+                for (const MeshJob& job : ctx.mesh_jobs)
+                {
+                    if (!job.entity || job.entity->GetComponent<Physics>())
+                    {
+                        continue;
+                    }
+
+                    if (!job.entity->GetComponent<Render>())
+                    {
+                        continue;
+                    }
+
+                    Physics* physics = job.entity->AddComponent<Physics>();
+                    physics->SetUseConvexHull(true);
+                    physics->SetBodyType(BodyType::Mesh);
+                }
             }
 
             // extract animation clips
@@ -1499,20 +1628,37 @@ namespace spartan
         }
 
         // set the geometry
-        entity_parent->AddComponent<Render>()->SetMesh(ctx.mesh, sub_mesh_index);
+        Render* render = entity_parent->AddComponent<Render>();
+        render->SetMesh(ctx.mesh, sub_mesh_index);
 
-        // material
-        if (ctx.scene->HasMaterials())
+        // keep the imported material even when it has no albedo, glass and metals often dont
+        const aiMaterial* assimp_material = nullptr;
+        if (ctx.scene->HasMaterials() &&
+            assimp_mesh->mMaterialIndex < ctx.scene->mNumMaterials)
         {
-            const aiMaterial* assimp_material = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex];
-            shared_ptr<Material> material = load_material(ctx, assimp_material);
+            assimp_material = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex];
+        }
 
-            // create a file path for this material
+        if (is_undefined_assimp_material(assimp_material))
+        {
+            shared_ptr<Material> fallback = make_shared<Material>();
+            if (bind_directory_textures(ctx, fallback))
+            {
+                fallback->SetResourceName(entity_parent->GetObjectName() + string(EXTENSION_MATERIAL));
+                fallback->SetResourceFilePath(ctx.model_directory + fallback->GetObjectName() + EXTENSION_MATERIAL);
+                render->SetMaterial(fallback);
+            }
+            else
+            {
+                render->SetDefaultMaterial();
+            }
+        }
+        else
+        {
+            shared_ptr<Material> material = load_material(ctx, assimp_material);
             const string spartan_asset_path = ctx.model_directory + material->GetObjectName() + EXTENSION_MATERIAL;
             material->SetResourceFilePath(spartan_asset_path);
-
-            // add a render component and set the material to it
-            entity_parent->AddComponent<Render>()->SetMaterial(material);
+            render->SetMaterial(material);
         }
     }
 

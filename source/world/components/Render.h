@@ -168,6 +168,8 @@ namespace spartan
         void UpdateAabb();
         void UpdateFrustumAndDistanceCulling();
         void UpdateLodIndices();
+        // rebuilds mesh bounds and marks the render visible, used after editor place/clone
+        void RefreshForEditor();
 
     private:
 

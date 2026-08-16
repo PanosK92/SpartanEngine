@@ -324,6 +324,17 @@ namespace spartan
         }
 
         UpdateAabb();
+
+        // import/clone can leave an empty mesh aabb, the world box then goes nan and the
+        // color pass skips the mesh while shadows still draw
+        const Vector3 center = m_bounding_box.GetCenter();
+        if ((center.IsNaN() || m_bounding_box.GetExtents().IsNaN()) && m_mesh && GetLodCount() > 0)
+        {
+            m_bounding_box_mesh  = GetLodAabb(0);
+            m_bounding_box_dirty = true;
+            UpdateAabb();
+        }
+
         UpdateFrustumAndDistanceCulling();
 
         // lod only matters for visible geometry, off-screen props skip the coverage math
@@ -473,6 +484,11 @@ namespace spartan
         if (!vertices.empty())
         {
             m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            m_bounding_box_dirty = true;
+        }
+        else if (GetLodCount() > 0)
+        {
+            m_bounding_box_mesh = GetLodAabb(0);
             m_bounding_box_dirty = true;
         }
 
@@ -895,6 +911,22 @@ namespace spartan
         UpdateAabb();
         UpdateFrustumAndDistanceCulling();
         UpdateLodIndices();
+    }
+
+    void Render::RefreshForEditor()
+    {
+        if (m_mesh && GetLodCount() > 0)
+        {
+            m_bounding_box_mesh = GetLodAabb(0);
+        }
+
+        m_bounding_box_override = false;
+        m_bounding_box_dirty    = true;
+        UpdateAabb();
+
+        // clone/import can inherit a stale culled flag, the color pass then skips until play
+        m_is_visible       = true;
+        m_distance_squared = 0.0f;
     }
 
     void Render::UpdateAabb()

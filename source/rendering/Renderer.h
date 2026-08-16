@@ -295,6 +295,9 @@ namespace spartan
         RHI_Buffer* GetBuffer(const Renderer_Buffer type);
         RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
         RHI_AccelerationStructure* GetTopLevelAccelerationStructure();
+        // false while the tlas is still growing or was rebuilt this frame
+        bool IsTlasReadyForTrace();
+        bool AreRayTracedShadowsLive();
         void DestroyAccelerationStructures();
 
         // cluster shading telemetry, last frame's count of clusters that exceeded CLUSTER_MAX_LIGHTS

@@ -184,6 +184,7 @@ namespace spartan
         float m_physics_exit_radius = 100.0f;
         uint32_t m_random_state = 0x6d2b79f5;
         uint32_t m_next_spawn_index = 0;
+        double m_last_spawn_ms = 0.0;
         std::string m_car_path;
         std::shared_ptr<PreloadState> m_preload_state;
     };

@@ -30,10 +30,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "rendering/Renderer.h"
 #include "rendering/Material.h"
 #include "resource/ResourceCache.h"
+#include "world/World.h"
+#include "world/Entity.h"
 #include "world/Prefab.h"
 #include "world/components/Render.h"
+#include "world/components/Physics.h"
 #include "world/components/Camera.h"
+#include "world/components/Terrain.h"
+#include "geometry/Mesh.h"
+#include "physics/PhysicsWorld.h"
+#include "core/ThreadPool.h"
 #include "math/Ray.h"
+#include "math/Plane.h"
 #include "../imgui/ImGui_EditorUi.h"
 #include "../imgui/ImGui_Extension.h"
 #include "../imgui/ImGui_Style.h"
@@ -160,6 +168,412 @@ namespace
         }
 
         return sp_payload->path;
+    }
+
+    const char* peek_model_drag_path()
+    {
+        const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+        if (!payload || !payload->IsDataType(ImGuiSp::GDragDropTypes[(int)ImGuiSp::DragPayloadType::Model].data()))
+        {
+            return nullptr;
+        }
+
+        if (payload->DataSize < static_cast<int>(sizeof(ImGuiSp::DragDropPayload)))
+        {
+            return nullptr;
+        }
+
+        const ImGuiSp::DragDropPayload* sp_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
+        if (sp_payload->path[0] == '\0')
+        {
+            return nullptr;
+        }
+
+        return sp_payload->path;
+    }
+
+    struct ModelPlaceDrag
+    {
+        string path;
+        uint64_t preview_id     = 0;
+        float ground_lift       = 0.0f;
+        bool load_started       = false;
+        bool pending_commit     = false;
+        bool drag_was_active    = false;
+        bool has_hit            = false;
+        Vector3 last_hit        = Vector3::Zero;
+    };
+
+    ModelPlaceDrag model_place;
+
+    bool compute_place_hit(Camera* camera, Entity* ignore, Vector3& hit_out)
+    {
+        if (!camera)
+        {
+            return false;
+        }
+
+        const Ray& pick_ray = camera->ComputePickingRay();
+        const Vector3 origin = pick_ray.GetStart();
+        Vector3 direction    = pick_ray.GetDirection() - origin;
+        if (direction.LengthSquared() <= 0.0f)
+        {
+            return false;
+        }
+        direction.Normalize();
+
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity || !entity->GetActive())
+            {
+                continue;
+            }
+
+            Terrain* terrain = entity->GetComponent<Terrain>();
+            if (!terrain)
+            {
+                continue;
+            }
+
+            Vector3 terrain_hit;
+            if (terrain->Raycast(pick_ray, terrain_hit))
+            {
+                hit_out = terrain_hit;
+                return true;
+            }
+        }
+
+        PhysicsRaycastHit physics_hit;
+        if (PhysicsWorld::RaycastStatic(origin, direction, 10000.0f, physics_hit, ignore))
+        {
+            hit_out = physics_hit.position;
+            return true;
+        }
+
+        const Ray world_ray(origin, direction);
+        const Plane ground(Vector3::Up, Vector3::Zero);
+        if (world_ray.HitDistance(ground, &hit_out) != numeric_limits<float>::infinity())
+        {
+            return true;
+        }
+
+        hit_out = origin + direction * 10.0f;
+        return true;
+    }
+
+    float compute_ground_lift(Entity* root)
+    {
+        if (!root)
+        {
+            return 0.0f;
+        }
+
+        BoundingBox combined;
+        vector<Entity*> nodes;
+        nodes.push_back(root);
+        root->GetDescendants(&nodes);
+
+        for (Entity* node : nodes)
+        {
+            Render* render = node->GetComponent<Render>();
+            if (!render)
+            {
+                continue;
+            }
+
+            render->UpdateAabb();
+            combined.Merge(render->GetBoundingBox());
+        }
+
+        if (combined.GetMin().y > combined.GetMax().y)
+        {
+            return 0.0f;
+        }
+
+        return root->GetPosition().y - combined.GetMin().y;
+    }
+
+    void ensure_imported_collision(Entity* root)
+    {
+        if (!root)
+        {
+            return;
+        }
+
+        vector<Entity*> nodes;
+        nodes.push_back(root);
+        root->GetDescendants(&nodes);
+
+        for (Entity* node : nodes)
+        {
+            Render* render = node->GetComponent<Render>();
+            if (!render || !render->GetMesh())
+            {
+                continue;
+            }
+
+            Physics* physics = node->GetComponent<Physics>();
+            if (!physics)
+            {
+                physics = node->AddComponent<Physics>();
+                physics->SetUseConvexHull(true);
+                physics->SetBodyType(BodyType::Mesh);
+                continue;
+            }
+
+            if (physics->GetBodyType() == BodyType::Max)
+            {
+                physics->SetUseConvexHull(true);
+                physics->SetBodyType(BodyType::Mesh);
+                continue;
+            }
+
+            // clone copies physics before render, so the first cook has no mesh
+            if (physics->GetBodyType() == BodyType::Mesh)
+            {
+                physics->Rebuild();
+            }
+        }
+    }
+
+    void refresh_render_culling(Entity* root)
+    {
+        if (!root)
+        {
+            return;
+        }
+
+        vector<Entity*> nodes;
+        nodes.push_back(root);
+        root->GetDescendants(&nodes);
+
+        for (Entity* node : nodes)
+        {
+            if (Render* render = node->GetComponent<Render>())
+            {
+                render->RefreshForEditor();
+            }
+        }
+    }
+
+    void move_model_preview(const Vector3& hit)
+    {
+        Entity* entity = World::GetEntityById(model_place.preview_id);
+        if (!entity)
+        {
+            return;
+        }
+
+        entity->SetPosition(hit + Vector3(0.0f, model_place.ground_lift, 0.0f));
+        refresh_render_culling(entity);
+        model_place.last_hit = hit;
+        model_place.has_hit  = true;
+    }
+
+    void cancel_model_place()
+    {
+        if (model_place.preview_id != 0)
+        {
+            if (Entity* entity = World::GetEntityById(model_place.preview_id))
+            {
+                World::RemoveEntityImmediate(entity);
+            }
+        }
+
+        model_place = ModelPlaceDrag{};
+    }
+
+    void commit_model_place(Editor* editor)
+    {
+        Entity* entity = World::GetEntityById(model_place.preview_id);
+        if (!entity)
+        {
+            if (!model_place.path.empty())
+            {
+                model_place.pending_commit = true;
+            }
+            return;
+        }
+
+        refresh_render_culling(entity);
+
+        if (Camera* camera = World::GetCamera())
+        {
+            camera->SetSelectedEntity(entity);
+        }
+
+        if (editor)
+        {
+            editor->GetWidget<WorldViewer>()->SetSelectedEntity(entity);
+        }
+
+        model_place = ModelPlaceDrag{};
+    }
+
+    void spawn_model_preview_if_ready()
+    {
+        if (model_place.preview_id != 0 || model_place.path.empty())
+        {
+            return;
+        }
+
+        shared_ptr<Mesh> mesh = ResourceCache::GetByPath<Mesh>(model_place.path);
+        if (!mesh || !mesh->GetRootEntity())
+        {
+            return;
+        }
+
+        Entity* source = mesh->GetRootEntity();
+        Entity* preview = model_place.load_started ? source : source->Clone();
+
+        if (!preview)
+        {
+            return;
+        }
+
+        preview->SetActive(true);
+
+        const string mesh_dir = FileSystem::GetDirectoryFromFilePath(mesh->GetResourceFilePath());
+        vector<Entity*> material_nodes;
+        material_nodes.push_back(preview);
+        preview->GetDescendants(&material_nodes);
+        for (Entity* node : material_nodes)
+        {
+            Render* render = node->GetComponent<Render>();
+            if (!render)
+            {
+                continue;
+            }
+
+            Material* material = render->GetMaterial();
+            if (material && !render->IsUsingDefaultMaterial())
+            {
+                continue;
+            }
+
+            const string albedo_path = mesh_dir + "albedo.png";
+            if (!FileSystem::Exists(albedo_path))
+            {
+                if (!material)
+                {
+                    render->SetDefaultMaterial();
+                }
+                continue;
+            }
+
+            if (!material || render->IsUsingDefaultMaterial())
+            {
+                shared_ptr<Material> created = make_shared<Material>();
+                render->SetMaterial(created);
+                material = render->GetMaterial();
+            }
+
+            if (!material)
+            {
+                render->SetDefaultMaterial();
+                continue;
+            }
+
+            auto try_tex = [&](MaterialTextureType type, const char* file)
+            {
+                const string path = mesh_dir + file;
+                if (FileSystem::Exists(path))
+                {
+                    material->SetTexture(type, path);
+                }
+            };
+            try_tex(MaterialTextureType::Color,     "albedo.png");
+            try_tex(MaterialTextureType::Normal,    "normal.png");
+            try_tex(MaterialTextureType::Roughness, "roughness.png");
+            try_tex(MaterialTextureType::Occlusion, "occlusion.png");
+        }
+
+        ensure_imported_collision(preview);
+        refresh_render_culling(preview);
+        model_place.preview_id  = preview->GetObjectId();
+        model_place.ground_lift = compute_ground_lift(preview);
+
+        if (model_place.has_hit)
+        {
+            move_model_preview(model_place.last_hit);
+        }
+    }
+
+    void start_model_load_if_needed(const string& path)
+    {
+        if (ResourceCache::GetByPath<Mesh>(path))
+        {
+            return;
+        }
+
+        if (model_place.load_started)
+        {
+            return;
+        }
+
+        model_place.load_started = true;
+        ThreadPool::AddTask([path]()
+        {
+            ResourceCache::Load<Mesh>(path, Mesh::GetDefaultFlags());
+        });
+    }
+
+    void tick_model_place(Editor* editor, bool in_image)
+    {
+        const char* drag_path = peek_model_drag_path();
+        const bool drag_active = drag_path != nullptr;
+
+        if (drag_active)
+        {
+            if (model_place.path != drag_path)
+            {
+                cancel_model_place();
+                model_place.path = drag_path;
+            }
+
+            start_model_load_if_needed(model_place.path);
+            spawn_model_preview_if_ready();
+
+            if (in_image)
+            {
+                Entity* ignore = World::GetEntityById(model_place.preview_id);
+                Vector3 hit;
+                if (compute_place_hit(World::GetCamera(), ignore, hit))
+                {
+                    move_model_preview(hit);
+                }
+            }
+
+            model_place.drag_was_active = true;
+            return;
+        }
+
+        spawn_model_preview_if_ready();
+
+        if (model_place.pending_commit)
+        {
+            if (model_place.preview_id != 0)
+            {
+                if (model_place.has_hit)
+                {
+                    move_model_preview(model_place.last_hit);
+                }
+                commit_model_place(editor);
+            }
+            return;
+        }
+
+        if (model_place.drag_was_active)
+        {
+            if (in_image)
+            {
+                commit_model_place(editor);
+            }
+            else
+            {
+                cancel_model_place();
+            }
+        }
     }
 }
 
@@ -337,13 +751,15 @@ void Viewport::OnTickVisible()
         preview_drag_was_active = drag_active;
     }
 
-    // handle model drop
-    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
+    // model drag places a live preview under the cursor, import button still opens the dialog
+    tick_model_place(m_editor, ImGui::IsMouseHoveringRect(image_rect_min, image_rect_max));
+    if (ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
     {
-        if (payload->path[0] != '\0')
-        {
-            m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(payload->path);
-        }
+        commit_model_place(m_editor);
+    }
+    if ((model_place.preview_id != 0 || model_place.load_started) && ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+    {
+        cancel_model_place();
     }
 
     // handle prefab drop
@@ -361,6 +777,13 @@ void Viewport::OnTickVisible()
 
                 // snapshot the loaded hierarchy as the prefab base so later edits persist as overrides
                 entity->MarkPrefabBaseline();
+
+                Vector3 hit;
+                if (compute_place_hit(World::GetCamera(), entity, hit))
+                {
+                    const float lift = compute_ground_lift(entity);
+                    entity->SetPosition(hit + Vector3(0.0f, lift, 0.0f));
+                }
             }
             else
             {

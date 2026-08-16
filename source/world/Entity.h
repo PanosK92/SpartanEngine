@@ -143,7 +143,7 @@ namespace spartan
         //=================================================================================
 
         //= ROTATION ======================================================================
-        math::Quaternion GetRotation()             const { return m_matrix.GetRotation(); }
+        math::Quaternion GetRotation()             const { return m_rotation_world; }
         const math::Quaternion& GetRotationLocal() const { return m_rotation_local; }
         void SetRotation(const math::Quaternion& rotation);
         void SetRotationLocal(const math::Quaternion& rotation);
@@ -245,6 +245,7 @@ namespace spartan
         math::Vector3 m_position_local    = math::Vector3::Zero;
         math::Quaternion m_rotation_local = math::Quaternion::Identity;
         math::Vector3 m_scale_local       = math::Vector3::One;
+        math::Quaternion m_rotation_world = math::Quaternion::Identity;
 
         math::Matrix m_matrix          = math::Matrix::Identity;
         math::Matrix m_matrix_previous = math::Matrix::Identity;
