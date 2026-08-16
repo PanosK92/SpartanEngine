@@ -308,6 +308,11 @@ float compute_shadow(Surface surface, Light light)
             {
                 shadow = vogel_depth(light, surface, float3(uv_far, far_cascade), ndc_far.z, 1.0f);
             }
+
+            if (far_valid)
+            {
+                shadow = lerp(1.0f, shadow, cascade_edge_fade(ndc_far.xy));
+            }
         }
 
         if (light.is_spot())

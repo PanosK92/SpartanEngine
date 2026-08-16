@@ -816,6 +816,13 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 ------------------------------------------------------------------------------*/
 bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) && (value.y >= 0.0f && value.y <= 1.0f); }
 
+float cascade_edge_fade(float2 ndc_xy)
+{
+    float2 a = abs(ndc_xy);
+    float m = max(a.x, a.y);
+    return 1.0f - smoothstep(0.82f, 0.98f, m);
+}
+
 float screen_fade(float2 uv)
 {
     float2 fade = max(0.0f, 12.0f * abs(uv - 0.5f) - 5.0f);

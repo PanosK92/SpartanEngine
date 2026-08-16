@@ -87,7 +87,16 @@ float3 fog_evaluate_light(
     float visibility = 1.0f;
     if (light.has_shadows())
     {
-        visibility = visible(sample_pos, light, pixel);
+    #ifdef RAY_TRACING_ENABLED
+        if (is_ray_traced_shadows_enabled())
+        {
+            visibility = fog_trace_shadow(light, sample_pos);
+        }
+        else
+    #endif
+        {
+            visibility = visible(sample_pos, light, pixel);
+        }
     }
 
     float3 tint = 1.0f;

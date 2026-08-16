@@ -48,8 +48,8 @@ namespace spartan
 
         // directional matrix parameters
         const float cascade_near_extent    = 20.0f;
-        const float cascade_far_extent     = 300.0f;
-        const float cascade_depth          = 1000.0f;
+        const float cascade_far_extent     = 2000.0f;
+        const float cascade_depth          = 4000.0f;
         const float cascade_far_max_extent = FLT_MAX;
 
         float get_sensible_range(const LightType type, const float photometric_intensity = 0.0f, const float angle_rad = math::deg_to_rad * 30.0f)

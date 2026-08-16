@@ -46,7 +46,7 @@ float sample_ray_traced_shadow(float2 uv)
 
 // inline ray traced shadow for any light type, deterministic hammersley disk
 #ifdef RAY_TRACING_ENABLED
-static const uint k_inline_shadow_spp = 1;
+static const uint k_inline_shadow_spp = 2;
 
 float radical_inverse_vdc(uint bits)
 {
@@ -110,22 +110,20 @@ float trace_inline_shadow_ray(Light light, Surface surface)
     float3 tangent         = normalize(cross(up_axis, light_dir_unit));
     float3 bitangent       = cross(light_dir_unit, tangent);
 
-    // safety margin so area light rays do not hit the emitter mesh
+    // cap so a tall tube does not shrink t_max past real occluders
     float emitter_safety = 0.0f;
     if (light.is_area())
     {
-        emitter_safety = min(light.area_width, light.area_height) * 0.5f + 0.005f;
+        emitter_safety = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
     }
 
     float visibility_sum = 0.0f;
     float valid_samples  = 0.0f;
 
-    // cranley patterson rotation per pixel per frame so taa averages the low sample count down,
-    // a deterministic 2 spp set would otherwise band, this jitters it into stable soft shadows
-    float  frame_index = (float)buffer_frame.frame;
+    // spatial only, a per frame rotation sparkles on area lights because they have no denoiser
     float2 cp_rot;
-    cp_rot.x = frac(hash(surface.uv)         + frame_index * 0.7548776662f);
-    cp_rot.y = frac(hash(surface.uv + 17.3f) + frame_index * 0.5698402909f);
+    cp_rot.x = frac(hash(surface.uv));
+    cp_rot.y = frac(hash(surface.uv + 17.3f));
 
     [unroll]
     for (uint s = 0; s < k_inline_shadow_spp; s++)
