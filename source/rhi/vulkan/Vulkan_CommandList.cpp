@@ -158,6 +158,16 @@ namespace spartan
             raw_image_layouts.erase(image);
         }
 
+        // sync2 blit/copy/clear are separate bits from the old transfer alias
+        constexpr VkPipelineStageFlags2 transfer_stages()
+        {
+            return VK_PIPELINE_STAGE_2_COPY_BIT |
+                   VK_PIPELINE_STAGE_2_BLIT_BIT |
+                   VK_PIPELINE_STAGE_2_RESOLVE_BIT |
+                   VK_PIPELINE_STAGE_2_CLEAR_BIT |
+                   VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        }
+
         // convert scope enum to vulkan pipeline stages
         VkPipelineStageFlags2 scope_to_stages(RHI_Barrier_Scope scope, bool is_depth = false)
         {
@@ -178,7 +188,7 @@ namespace spartan
                     // include draw_indirect so a compute pass that consumes indirect dispatch args reads them with the correct stage
                     return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
                 case RHI_Barrier_Scope::Transfer:
-                    return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                    return transfer_stages();
                 case RHI_Barrier_Scope::Fragment:
                     return VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
                 case RHI_Barrier_Scope::All:
@@ -223,10 +233,10 @@ namespace spartan
                     }
 
                 case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-                    return make_tuple(VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+                    return make_tuple(transfer_stages(), VK_ACCESS_2_TRANSFER_READ_BIT);
 
                 case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-                    return make_tuple(VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+                    return make_tuple(transfer_stages(), VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
                 case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
                     return make_tuple(
@@ -294,7 +304,10 @@ namespace spartan
             barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
             barrier.pNext                           = nullptr;
             barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout_old)];
-            barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout_new)];
+            const RHI_Image_Layout dst_layout = layout_new == RHI_Image_Layout::Present_Source
+                ? RHI_Image_Layout::Present_Source
+                : RHI_Image_Layout::General;
+            barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(dst_layout)];
             barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
             barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
             barrier.image                           = static_cast<VkImage>(image);
@@ -417,9 +430,11 @@ namespace spartan
         {
             case RHI_Barrier::Type::ImageLayout:
             {
-                // park in general, only present and vrs leave it
-                const RHI_Image_Layout target_layout = rhi_unify_image_layout(barrier.layout);
                 RHI_Texture* texture  = barrier.texture;
+                // engine textures stay in general, present is swapchain images only
+                const RHI_Image_Layout target_layout = texture
+                    ? RHI_Image_Layout::General
+                    : rhi_unify_image_layout(barrier.layout);
                 void* image           = texture ? texture->GetRhiResource() : barrier.image;
                 RHI_Format format     = texture ? texture->GetFormat() : barrier.format;
                 uint32_t array_length = texture ? texture->GetArrayLength() : barrier.array_length;
@@ -680,7 +695,7 @@ namespace spartan
                 case RHI_Resource_Usage::Vertex:
                 case RHI_Resource_Usage::Index:    return static_cast<VkPipelineStageFlags2>(VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT);
                 case RHI_Resource_Usage::Indirect: return static_cast<VkPipelineStageFlags2>(VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT);
-                case RHI_Resource_Usage::Transfer: return static_cast<VkPipelineStageFlags2>(VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+                case RHI_Resource_Usage::Transfer: return static_cast<VkPipelineStageFlags2>(barrier_helpers::transfer_stages());
                 default:                           return static_cast<VkPipelineStageFlags2>(0);
             }
         };
@@ -717,7 +732,7 @@ namespace spartan
             }
             else
             {
-                stages = usage == RHI_Resource_Usage::Transfer ? VK_PIPELINE_STAGE_2_TRANSFER_BIT : (is_depth ? VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+                stages = usage == RHI_Resource_Usage::Transfer ? barrier_helpers::transfer_stages() : (is_depth ? VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
                 if ((static_cast<uint8_t>(access) & static_cast<uint8_t>(RHI_Resource_Access::Read)) != 0)
                 {
                     access_mask |= usage == RHI_Resource_Usage::Transfer ? VK_ACCESS_2_TRANSFER_READ_BIT : (is_depth ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT : VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT);
@@ -802,7 +817,7 @@ namespace spartan
                             RHI_Image_Layout layout = pending.per_mip_layouts[mip];
                             if (layout == RHI_Image_Layout::Max)
                             {
-                                continue;
+                                layout = RHI_Image_Layout::General;
                             }
 
                             VkImageMemoryBarrier2 vk_barrier           = {};
@@ -838,37 +853,39 @@ namespace spartan
                     else
                     {
                         RHI_Image_Layout layout = pending.per_mip_layouts[0];
-                        if (layout != RHI_Image_Layout::Max)
+                        if (layout == RHI_Image_Layout::Max)
                         {
-                            VkImageMemoryBarrier2 vk_barrier           = {};
-                            vk_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-                            vk_barrier.srcStageMask                    = src_stages;
-                            vk_barrier.dstStageMask                    = dst_stages;
-                            vk_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-                            vk_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-                            vk_barrier.image                           = static_cast<VkImage>(pending.image);
-                            vk_barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)];
-                            vk_barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
-                            vk_barrier.subresourceRange.aspectMask     = pending.aspect_mask;
-                            vk_barrier.subresourceRange.baseMipLevel   = pending.mip_index;
-                            vk_barrier.subresourceRange.levelCount     = pending.mip_range;
-                            vk_barrier.subresourceRange.baseArrayLayer = 0;
-                            vk_barrier.subresourceRange.layerCount     = pending.array_length;
-
-                            set_sync_access_masks(vk_barrier);
-                            if (pending.barrier.scope_src == RHI_Barrier_Scope::None)
-                            {
-                                vk_barrier.srcAccessMask = VK_ACCESS_2_NONE;
-                            }
-                            if (pending.barrier.access_src != RHI_Resource_Access::None)
-                            {
-                                vk_barrier.srcAccessMask = access_to_mask(pending.barrier.access_src);
-                                vk_barrier.dstAccessMask = access_to_mask(pending.barrier.access_dst);
-                            }
-                            apply_image_usage(vk_barrier, pending.barrier.usage_src, pending.barrier.access_src, true, pending.is_depth);
-                            apply_image_usage(vk_barrier, pending.barrier.usage_dst, pending.barrier.access_dst, false, pending.is_depth);
-                            image_barriers.push_back(vk_barrier);
+                            layout = RHI_Image_Layout::General;
                         }
+
+                        VkImageMemoryBarrier2 vk_barrier           = {};
+                        vk_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+                        vk_barrier.srcStageMask                    = src_stages;
+                        vk_barrier.dstStageMask                    = dst_stages;
+                        vk_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                        vk_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                        vk_barrier.image                           = static_cast<VkImage>(pending.image);
+                        vk_barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)];
+                        vk_barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
+                        vk_barrier.subresourceRange.aspectMask     = pending.aspect_mask;
+                        vk_barrier.subresourceRange.baseMipLevel   = pending.mip_index;
+                        vk_barrier.subresourceRange.levelCount     = pending.mip_range;
+                        vk_barrier.subresourceRange.baseArrayLayer = 0;
+                        vk_barrier.subresourceRange.layerCount     = pending.array_length;
+
+                        set_sync_access_masks(vk_barrier);
+                        if (pending.barrier.scope_src == RHI_Barrier_Scope::None)
+                        {
+                            vk_barrier.srcAccessMask = VK_ACCESS_2_NONE;
+                        }
+                        if (pending.barrier.access_src != RHI_Resource_Access::None)
+                        {
+                            vk_barrier.srcAccessMask = access_to_mask(pending.barrier.access_src);
+                            vk_barrier.dstAccessMask = access_to_mask(pending.barrier.access_dst);
+                        }
+                        apply_image_usage(vk_barrier, pending.barrier.usage_src, pending.barrier.access_src, true, pending.is_depth);
+                        apply_image_usage(vk_barrier, pending.barrier.usage_dst, pending.barrier.access_dst, false, pending.is_depth);
+                        image_barriers.push_back(vk_barrier);
                     }
                     break;
                 }
@@ -1635,7 +1652,7 @@ namespace spartan
                     color_attachment.imageView                 = m_pso.is_multiview && rt->GetRhiRtvMultiview()
                         ? static_cast<VkImageView>(rt->GetRhiRtvMultiview())
                         : static_cast<VkImageView>(rt->GetRhiRtv(m_pso.render_target_array_index));
-                    color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(GetTrackedTextureLayout(rt, 0))];
+                    color_attachment.imageLayout               = VK_IMAGE_LAYOUT_GENERAL;
                     color_attachment.loadOp                    = m_load_color_render_targets[i] ? VK_ATTACHMENT_LOAD_OP_LOAD : get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
                     color_attachment.clearValue.color          = { m_pso.clear_color[i].r, m_pso.clear_color[i].g, m_pso.clear_color[i].b, m_pso.clear_color[i].a };
@@ -1668,7 +1685,7 @@ namespace spartan
             attachment_depth_stencil.imageView                       = m_pso.is_multiview && rt->GetRhiDsvMultiview()
                 ? static_cast<VkImageView>(rt->GetRhiDsvMultiview())
                 : static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_array_index));
-            attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(GetTrackedTextureLayout(rt, 0))];
+            attachment_depth_stencil.imageLayout                     = VK_IMAGE_LAYOUT_GENERAL;
             attachment_depth_stencil.loadOp                          = m_load_depth_render_target ? VK_ATTACHMENT_LOAD_OP_LOAD : get_depth_load_op(m_pso.clear_depth);
             attachment_depth_stencil.storeOp                         = VK_ATTACHMENT_STORE_OP_STORE;
             attachment_depth_stencil.clearValue.depthStencil.depth   = m_pso.clear_depth;
@@ -1688,11 +1705,11 @@ namespace spartan
         VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
         if (m_pso.vrs_input_texture)
         {
-            m_pso.vrs_input_texture->SetLayout(RHI_Image_Layout::Shading_Rate_Attachment, this);
-    
+            m_pso.vrs_input_texture->SetLayout(RHI_Image_Layout::General, this);
+
             attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
             attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrs_input_texture->GetRhiRtv());
-            attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(GetTrackedTextureLayout(m_pso.vrs_input_texture, 0))];
+            attachment_shading_rate.imageLayout                    = VK_IMAGE_LAYOUT_GENERAL;
             attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
     
             rendering_info.pNext = &attachment_shading_rate;
@@ -1835,7 +1852,7 @@ namespace spartan
 
             image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkImage>(texture->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
+            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkImage>(texture->GetRhiResource()), VK_IMAGE_LAYOUT_GENERAL, &_clear_color, 1, &image_subresource_range);
         }
         else if (texture->IsDepthStencilFormat())
         {
@@ -1854,7 +1871,7 @@ namespace spartan
             vkCmdClearDepthStencilImage(
                 static_cast<VkCommandBuffer>(m_rhi_resource),
                 static_cast<VkImage>(texture->GetRhiResource()),
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_GENERAL,
                 &clear_depth_stencil,
                 1,
                 &image_subresource_range);
@@ -2159,53 +2176,24 @@ namespace spartan
             blit_region.dstOffsets[1]                 = destination_blit_size;
         }
 
-        // save the initial layouts
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = {};
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = {};
-        for (uint32_t mip = 0; mip < source->GetMipCount(); mip++)
-        {
-            layouts_initial_source[mip] = GetTrackedTextureLayout(source, mip);
-        }
-        for (uint32_t mip = 0; mip < destination->GetMipCount(); mip++)
-        {
-            layouts_initial_destination[mip] = GetTrackedTextureLayout(destination, mip);
-        }
-
-        // transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::General, this);
-        destination->SetLayout(RHI_Image_Layout::General, this);
+        // general layout plus transfer access, setlayout is a no-op when already general
+        render_pass_end();
+        PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
+        PrepareForExternalWrite(destination, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
+        FlushBarriers();
 
         VkFilter filter = (source->IsDepthFormat() || destination->IsDepthFormat() || 
                           (source->GetWidth() == destination->GetWidth() && source->GetHeight() == destination->GetHeight())) 
         ? VK_FILTER_NEAREST 
         : VK_FILTER_LINEAR;
 
-        // blit
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_GENERAL,
+            static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_GENERAL,
             blit_region_count, &blit_regions[0],
             filter
         );
-
-        // transition to the initial layouts (use general as fallback for unknown layouts
-        // which can appear after a resolution change clears the tracking state)
-        auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
-
-        if (blit_mips)
-        {
-            for (uint32_t i = 0; i < source->GetMipCount(); i++)
-            {
-                source->SetLayout(safe_layout(layouts_initial_source[i]), this, i, 1);
-                destination->SetLayout(safe_layout(layouts_initial_destination[i]), this, i, 1);
-            }
-        }
-        else
-        {
-            source->SetLayout(safe_layout(layouts_initial_source[0]), this);
-            destination->SetLayout(safe_layout(layouts_initial_destination[0]), this);
-        }
     }
 
     void RHI_CommandList::blit_to_array_layer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer)
@@ -2214,11 +2202,9 @@ namespace spartan
         SP_ASSERT((source->GetFlags() & RHI_Texture_ClearBlit) != 0);
         SP_ASSERT((destination->GetFlags() & RHI_Texture_ClearBlit) != 0);
 
-        RHI_Image_Layout src_layout_initial = GetTrackedTextureLayout(source, 0);
-        RHI_Image_Layout dst_layout_initial = GetTrackedTextureLayout(destination, 0);
-
-        source->SetLayout(RHI_Image_Layout::General, this);
-        destination->SetLayout(RHI_Image_Layout::General, this);
+        render_pass_end();
+        PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
+        PrepareForExternalWrite(destination, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
         FlushBarriers();
 
         VkImageBlit blit_region = {};
@@ -2238,16 +2224,12 @@ namespace spartan
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkImage>(source->GetRhiResource()),
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_IMAGE_LAYOUT_GENERAL,
             static_cast<VkImage>(destination->GetRhiResource()),
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_GENERAL,
             1, &blit_region,
             VK_FILTER_LINEAR
         );
-
-        auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
-        source->SetLayout(safe_layout(src_layout_initial), this);
-        destination->SetLayout(safe_layout(dst_layout_initial), this);
     }
 
     void RHI_CommandList::blit(RHI_Texture* source, RHI_SwapChain* destination)
@@ -2280,33 +2262,24 @@ namespace spartan
         blit_region.dstOffsets[0]                 = { 0, 0, 0 };
         blit_region.dstOffsets[1]                 = destination_blit_size;
 
-        // save the initial layout
-        RHI_Image_Layout source_layout_initial = GetTrackedTextureLayout(source, 0);
-        if (source_layout_initial == RHI_Image_Layout::Max)
-        {
-            source_layout_initial = RHI_Image_Layout::General;
-        }
-
-        // transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::General, this);
+        render_pass_end();
+        PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
         InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::General);
+        FlushBarriers();
 
         // deduce filter
         bool width_equal  = source->GetWidth() == destination->GetWidth();
         bool height_equal = source->GetHeight() == destination->GetHeight();
         RHI_Filter filter = width_equal && height_equal ? RHI_Filter::Nearest : RHI_Filter::Linear;
 
-        // blit
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkImage>(source->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            static_cast<VkImage>(destination->GetRhiRt()),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<VkImage>(source->GetRhiResource()), VK_IMAGE_LAYOUT_GENERAL,
+            static_cast<VkImage>(destination->GetRhiRt()),  VK_IMAGE_LAYOUT_GENERAL,
             1, &blit_region,
             vulkan_filter[static_cast<uint32_t>(filter)]
         );
 
-        // transition to the initial layouts
-        source->SetLayout(source_layout_initial, this);
         InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
     }
 
@@ -2336,15 +2309,9 @@ namespace spartan
         uint32_t dst_width  = Xr::GetRecommendedWidth();
         uint32_t dst_height = Xr::GetRecommendedHeight();
 
-        // save the initial layout
-        RHI_Image_Layout source_layout_initial = GetTrackedTextureLayout(source, 0);
-        if (source_layout_initial == RHI_Image_Layout::Max)
-        {
-            source_layout_initial = RHI_Image_Layout::General;
-        }
-
         // transition source to transfer source
-        source->SetLayout(RHI_Image_Layout::General, this);
+        PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
+        FlushBarriers();
 
         // full pipeline barrier to sync with openxr runtime's previous frame read
         {
@@ -2379,7 +2346,7 @@ namespace spartan
             vkCmdClearColorImage(
                 static_cast<VkCommandBuffer>(m_rhi_resource),
                 xr_image,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_GENERAL,
                 &clear_color,
                 1, &range
             );
@@ -2422,9 +2389,9 @@ namespace spartan
             vkCmdBlitImage(
                 static_cast<VkCommandBuffer>(m_rhi_resource),
                 static_cast<VkImage>(source->GetRhiResource()),
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                VK_IMAGE_LAYOUT_GENERAL,
                 xr_image,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_GENERAL,
                 1, &blit_region,
                 VK_FILTER_LINEAR
             );
@@ -2449,9 +2416,6 @@ namespace spartan
 
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         }
-
-        // restore source layout
-        source->SetLayout(source_layout_initial, this);
 
         // release after gpu submit in Renderer::Tick, ending the frame before submit caused hmd judder
     }
@@ -2485,46 +2449,17 @@ namespace spartan
             copy_region.extent.depth              = 1;
         }
 
-        // save the initial layouts
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = {};
-        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = {};
-        for (uint32_t mip = 0; mip < source->GetMipCount(); mip++)
-        {
-            layouts_initial_source[mip] = GetTrackedTextureLayout(source, mip);
-        }
-        for (uint32_t mip = 0; mip < destination->GetMipCount(); mip++)
-        {
-            layouts_initial_destination[mip] = GetTrackedTextureLayout(destination, mip);
-        }
-
-        // transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::General, this);
-        destination->SetLayout(RHI_Image_Layout::General, this);
+        render_pass_end();
+        PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
+        PrepareForExternalWrite(destination, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
+        FlushBarriers();
 
         vkCmdCopyImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkImage>(source->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<VkImage>(source->GetRhiResource()), VK_IMAGE_LAYOUT_GENERAL,
+            static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_GENERAL,
             copy_region_count, &copy_regions[0]
         );
-
-        // transition to the initial layouts (use general as fallback for unknown layouts
-        // which can appear after a resolution change clears the tracking state)
-        auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
-
-        if (blit_mips)
-        {
-            for (uint32_t i = 0; i < source->GetMipCount(); i++)
-            {
-                source->SetLayout(safe_layout(layouts_initial_source[i]), this, i, 1);
-                destination->SetLayout(safe_layout(layouts_initial_destination[i]), this, i, 1);
-            }
-        }
-        else
-        {
-            source->SetLayout(safe_layout(layouts_initial_source[0]), this);
-            destination->SetLayout(safe_layout(layouts_initial_destination[0]), this);
-        }
     }
 
     void RHI_CommandList::copy(RHI_Texture* source, RHI_SwapChain* destination)
@@ -2545,26 +2480,18 @@ namespace spartan
         copy_region.extent.height             = source->GetHeight();
         copy_region.extent.depth              = 1;
 
-        // transition to blit appropriate layouts
-        RHI_Image_Layout layout_initial_source = GetTrackedTextureLayout(source, 0);
-        if (layout_initial_source == RHI_Image_Layout::Max)
-        {
-            layout_initial_source = RHI_Image_Layout::General;
-        }
-
-        source->SetLayout(RHI_Image_Layout::General, this);
+        render_pass_end();
+        PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
         InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::General);
+        FlushBarriers();
 
-        // blit
         vkCmdCopyImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkImage>(source->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            static_cast<VkImage>(destination->GetRhiRt()),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<VkImage>(source->GetRhiResource()), VK_IMAGE_LAYOUT_GENERAL,
+            static_cast<VkImage>(destination->GetRhiRt()),  VK_IMAGE_LAYOUT_GENERAL,
             1, &copy_region
         );
 
-        // transition to the initial layout
-        source->SetLayout(layout_initial_source, this);
         InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
     }
 
@@ -2573,8 +2500,7 @@ namespace spartan
         SP_ASSERT_MSG(source && destination, "Invalid source/destination");
         SP_ASSERT_MSG(source->GetWidth() && source->GetHeight(), "Source must have valid dimensions");
 
-        RHI_Image_Layout layout_initial = GetTrackedTextureLayout(source, 0);
-        InsertBarrier(source, RHI_Image_Layout::General, 0, 1);
+        PrepareForExternalRead(source, RHI_Image_Layout::General, RHI_Barrier_Scope::Transfer);
         FlushBarriers();
 
         // copy region (single mip/full extent)
@@ -2592,12 +2518,10 @@ namespace spartan
         vkCmdCopyImageToBuffer(
             static_cast<VkCommandBuffer>(GetRhiResource()),
             static_cast<VkImage>(source->GetRhiResource()),
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_IMAGE_LAYOUT_GENERAL,
             static_cast<VkBuffer>(destination->GetRhiResource()),
             1, &region
         );
-
-        InsertBarrier(source, layout_initial, 0, 1);
 
         VkBufferMemoryBarrier2 buffer_barrier = {};
         buffer_barrier.sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;

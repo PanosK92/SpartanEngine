@@ -44,162 +44,62 @@ float sample_ray_traced_shadow(float2 uv)
     );
 }
 
-// inline ray traced shadow for any light type, deterministic hammersley disk
+float sample_nrd_local_shadow(float2 uv, uint slot)
+{
+    if (!is_ray_traced_shadows_enabled() || slot == 0u)
+    {
+        return 1.0f;
+    }
+
+    uint slice = slot - 1u;
+    return saturate(
+        tex_rt_shadows_local.SampleLevel(
+            GET_SAMPLER(sampler_bilinear_clamp),
+            float3(uv, slice),
+            0
+        ).r
+    );
+}
+
+// inline fallback when a local light did not get an nrd slot, one ray to the closest point
 #ifdef RAY_TRACING_ENABLED
-static const uint k_inline_shadow_spp = 2;
-
-float radical_inverse_vdc(uint bits)
-{
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10f;
-}
-
-float2 hammersley_2d(uint index, uint count)
-{
-    return float2((float(index) + 0.5f) / float(count), radical_inverse_vdc(index + 1u));
-}
-
-// concentric mapping from [-1,1]^2 square to unit disk
-float2 concentric_disk(float2 u)
-{
-    if (u.x == 0.0f && u.y == 0.0f)
-        return float2(0.0f, 0.0f);
-
-    float r;
-    float theta;
-    if (abs(u.x) > abs(u.y))
-    {
-        r     = u.x;
-        theta = (PI * 0.25f) * (u.y / u.x);
-    }
-    else
-    {
-        r     = u.y;
-        theta = (PI * 0.5f) - (PI * 0.25f) * (u.x / u.y);
-    }
-    return r * float2(cos(theta), sin(theta));
-}
-
 float trace_inline_shadow_ray(Light light, Surface surface)
 {
-    // self intersection bias scaled by camera distance, reuse cached length
     float bias    = 0.005f + surface.camera_to_pixel_length * 0.0001f;
     float3 origin = surface.position + surface.normal * bias;
 
-    float rot_angle = 0.785398163f;
-    float cos_r     = cos(rot_angle);
-    float sin_r     = sin(rot_angle);
-
-    // precompute area light basis once across samples
-    float3 area_right = 0.0f;
-    float3 area_up    = 0.0f;
+    float3 target = light.position;
+    float  emitter_safety = bias * 2.0f;
     if (light.is_area())
     {
-        light.compute_area_light_basis(area_right, area_up);
+        target          = light.compute_closest_point_on_area(origin);
+        emitter_safety  = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
     }
 
-    // precompute a tangent frame for point/spot/directional source jitter
-    float3 to_light_center = light.position - origin;
-    float  center_dist     = length(to_light_center);
-    float3 light_dir_unit  = light.is_directional() ? normalize(-light.forward) : (center_dist > 0.0001f ? to_light_center / center_dist : float3(0.0f, 1.0f, 0.0f));
-    float3 up_axis         = abs(light_dir_unit.y) < 0.999f ? float3(0.0f, 1.0f, 0.0f) : float3(1.0f, 0.0f, 0.0f);
-    float3 tangent         = normalize(cross(up_axis, light_dir_unit));
-    float3 bitangent       = cross(light_dir_unit, tangent);
-
-    // cap so a tall tube does not shrink t_max past real occluders
-    float emitter_safety = 0.0f;
-    if (light.is_area())
+    float3 to_light = target - origin;
+    float  dist     = length(to_light);
+    if (dist < 0.0001f)
     {
-        emitter_safety = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
+        return 1.0f;
     }
 
-    float visibility_sum = 0.0f;
-    float valid_samples  = 0.0f;
-
-    // spatial only, a per frame rotation sparkles on area lights because they have no denoiser
-    float2 cp_rot;
-    cp_rot.x = frac(hash(surface.uv));
-    cp_rot.y = frac(hash(surface.uv + 17.3f));
-
-    [unroll]
-    for (uint s = 0; s < k_inline_shadow_spp; s++)
+    float3 direction = to_light / dist;
+    if (dot(surface.normal, direction) <= 0.0f)
     {
-        float2 sample_square = frac(hammersley_2d(s, k_inline_shadow_spp) + cp_rot) * 2.0f - 1.0f;
-        float2 disk          = concentric_disk(sample_square);
-
-        float2 disk_r = float2(disk.x * cos_r - disk.y * sin_r,
-                               disk.x * sin_r + disk.y * cos_r);
-
-        float3 direction;
-        float  t_max;
-
-        if (light.is_directional())
-        {
-            // jittered cone around the sun direction, half angle around 0.5 degrees
-            const float angular_radius = 0.0093f;
-            direction                  = normalize(light_dir_unit + (tangent * disk_r.x + bitangent * disk_r.y) * angular_radius);
-            t_max                      = 10000.0f;
-        }
-        else if (light.is_area())
-        {
-            // sample a deterministic point inside the rectangle for soft area shadows
-            float3 sample_point = light.position
-                                + area_right * sample_square.x * (light.area_width  * 0.5f)
-                                + area_up    * sample_square.y * (light.area_height * 0.5f);
-            float3 to_light = sample_point - origin;
-            float  dist     = length(to_light);
-            if (dist < 0.0001f)
-            {
-                visibility_sum += 1.0f;
-                valid_samples  += 1.0f;
-                continue;
-            }
-            direction = to_light / dist;
-            t_max     = max(dist - emitter_safety, bias);
-        }
-        else
-        {
-            // point or spot, jitter inside a small spherical source for soft penumbra
-            if (center_dist < 0.0001f)
-            {
-                visibility_sum += 1.0f;
-                valid_samples  += 1.0f;
-                continue;
-            }
-            const float light_radius = 0.05f;
-            float3 jittered_target   = light.position + (tangent * disk_r.x + bitangent * disk_r.y) * light_radius;
-            float3 to_jit            = jittered_target - origin;
-            float  dist              = length(to_jit);
-            direction                = to_jit / dist;
-            t_max                    = max(dist - bias * 2.0f, bias);
-        }
-
-        // back facing samples carry no light energy, ignore them entirely from the average
-        if (dot(surface.normal, direction) <= 0.0f)
-            continue;
-
-        valid_samples += 1.0f;
-
-        RayDesc ray;
-        ray.Origin    = origin;
-        ray.Direction = direction;
-        ray.TMin      = 0.001f;
-        ray.TMax      = max(t_max, 0.001f);
-
-        // mask 0x01 = opaque only, transparents do not block area/point/spot shadow rays
-        RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
-        query.Proceed();
-
-        visibility_sum += query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+        return 1.0f;
     }
 
-    // divide by valid samples so glancing surfaces aren't artificially darkened
-    return valid_samples > 0.0f ? (visibility_sum / valid_samples) : 1.0f;
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = direction;
+    ray.TMin      = 0.001f;
+    ray.TMax      = max(dist - emitter_safety, 0.001f);
+
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+    query.Proceed();
+
+    return query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
 }
 #endif
 
@@ -285,12 +185,17 @@ void evaluate_light(
         {
             const bool want_shadows          = light.has_shadows();
             const bool use_rt_shadow_texture = want_shadows && is_ray_traced_shadows_enabled() && light.is_directional();
-            const bool use_inline_rt_shadow  = want_shadows && !use_rt_shadow_texture && is_ray_traced_shadows_enabled();
-            const bool use_shadow_maps       = want_shadows && !use_rt_shadow_texture && !use_inline_rt_shadow;
+            const bool use_nrd_local_shadow  = want_shadows && is_ray_traced_shadows_enabled() && light.nrd_local_shadow_slot() != 0u;
+            const bool use_inline_rt_shadow  = want_shadows && !use_rt_shadow_texture && !use_nrd_local_shadow && is_ray_traced_shadows_enabled();
+            const bool use_shadow_maps       = want_shadows && !use_rt_shadow_texture && !use_nrd_local_shadow && !use_inline_rt_shadow;
 
             if (use_rt_shadow_texture)
             {
                 L_shadow_primary = sample_ray_traced_shadow(surface.uv);
+            }
+            else if (use_nrd_local_shadow)
+            {
+                L_shadow_primary = sample_nrd_local_shadow(surface.uv, light.nrd_local_shadow_slot());
             }
         #ifdef RAY_TRACING_ENABLED
             else if (use_inline_rt_shadow)
@@ -406,6 +311,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     bool early_exit_2 = pass_is_transparent() && !surface.is_transparent();
     if (early_exit_1 || early_exit_2)
     {
+        return;
+    }
+
+    if (surface.is_sky() && pass_is_opaque())
+    {
+        tex_uav[thread_id.xy]  = 0.0f;
+        tex_uav2[thread_id.xy] = 0.0f;
         return;
     }
 

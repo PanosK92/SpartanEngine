@@ -872,7 +872,8 @@ namespace spartan
             SP_ASSERT(mip_index + mip_range <= m_mip_count);
         }
 
-        cmd_list->InsertBarrier(this, new_layout, mip_index, mip_range);
+        cmd_list->InsertBarrier(this, RHI_Image_Layout::General, mip_index, mip_range);
+        (void)new_layout;
     }
 
     void RHI_Texture::SetLayoutDirect(uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout)

@@ -35,7 +35,7 @@ static const float SENSOR_HEIGHT_MM = 24.0f;
 static const float MAX_COC_RADIUS     = 24.0f; // maximum blur in pixels
 static const float COC_CLAMP_FACTOR   = 0.85f; // prevent excessive blur
 static const float IN_FOCUS_THRESHOLD = 0.4f;  // coc below this = sharp
-static const int   SAMPLE_COUNT       = 64;    // bokeh quality
+static const int   SAMPLE_COUNT       = 32;    // bokeh quality
 static const float GOLDEN_ANGLE       = 2.39996323f;
 static const int   APERTURE_BLADES    = 6;     // hexagonal cinematic bokeh
 

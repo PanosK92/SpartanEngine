@@ -59,13 +59,14 @@ float3 fog_evaluate_light(
     uint light_index,
     float3 sample_pos,
     float3 ray_direction,
-    uint2 pixel,
+    uint3 thread_id,
     float2 uv,
     bool in_water,
     float2 caustic_xz,
     float sigma_s
 )
 {
+    uint2 pixel = thread_id.xy;
     Surface surface = fog_build_surface(sample_pos, ray_direction, pixel, uv);
     Light light;
     light.Build(light_index, surface);
@@ -90,7 +91,11 @@ float3 fog_evaluate_light(
     #ifdef RAY_TRACING_ENABLED
         if (is_ray_traced_shadows_enabled())
         {
-            visibility = fog_trace_shadow(light, sample_pos);
+            // far froxels cover hundreds of meters, a shadow ray per voxel is wasted
+            if (thread_id.z < (fog_depth * 3u) / 4u)
+            {
+                visibility = fog_trace_shadow(light, sample_pos);
+            }
         }
         else
     #endif
@@ -135,10 +140,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 uv = (float2(thread_id.xy) + 0.5f) / float2((float)fog_width, (float)fog_height);
 
     bool camera_underwater = fog_camera_underwater();
-    float water_y = buffer_frame.ocean_enabled > 0.5f
-        ? get_ocean_height(sample_pos.xz)
-        : 0.0f;
-    bool in_water = camera_underwater && sample_pos.y < water_y;
+    float water_y = 0.0f;
+    bool in_water = false;
+    if (camera_underwater)
+    {
+        water_y = get_ocean_height(sample_pos.xz);
+        in_water = sample_pos.y < water_y;
+    }
 
     float ground_y = buffer_frame.ocean_enabled > 0.5f ? buffer_frame.ocean_sea_level : 0.0f;
     float height_world = max(sample_pos.y - ground_y, 0.0f);
@@ -179,7 +187,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 0u,
                 sample_pos,
                 ray_direction,
-                thread_id.xy,
+                thread_id,
                 uv,
                 in_water,
                 sample_pos.xz,
@@ -196,7 +204,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 light_index,
                 sample_pos,
                 ray_direction,
-                thread_id.xy,
+                thread_id,
                 uv,
                 in_water,
                 sample_pos.xz,
@@ -244,40 +252,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
 #elif defined(FOG_INTEGRATE)
 
-float4 fog_sample_scatter_filtered(uint2 xy, uint z)
-{
-    float4 sum = 0.0f;
-    float weight_sum = 0.0f;
-    [unroll]
-    for (int y = -1; y <= 1; y++)
-    {
-        [unroll]
-        for (int x = -1; x <= 1; x++)
-        {
-            int2 p = int2(xy) + int2(x, y);
-            if (p.x < 0 || p.y < 0 || p.x >= (int)fog_width || p.y >= (int)fog_height)
-            {
-                continue;
-            }
-
-            float w = 1.0f;
-            if (x == 0 && y == 0)
-            {
-                w = 4.0f;
-            }
-            else if (x == 0 || y == 0)
-            {
-                w = 2.0f;
-            }
-
-            sum += tex3d[uint3(p, z)] * w;
-            weight_sum += w;
-        }
-    }
-
-    return sum / max(weight_sum, 1.0f);
-}
-
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -292,7 +266,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     [loop]
     for (uint z = 0u; z < fog_depth; z++)
     {
-        float4 scatter = fog_sample_scatter_filtered(thread_id.xy, z);
+        // inject already temporally filters, a 3x3 here is 9x the bandwidth
+        float4 scatter = tex3d[uint3(thread_id.xy, z)];
         float u0 = (float)z / (float)fog_depth;
         float u1 = (float)(z + 1u) / (float)fog_depth;
         float d0 = fog_slice_to_distance(u0);

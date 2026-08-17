@@ -385,6 +385,14 @@ namespace spartan
                 {
                     RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline);
 
+                    // the outline is a selection affordance, but it writes into the draw data buffer that
+                    // the world and imgui share, and a subtree can be enormous, selecting a terrain pulls
+                    // in its tiles plus every scattered tree and rock, hundreds of thousands of instances,
+                    // which exhausts the buffer and drops the editor ui for the rest of the frame
+                    const uint32_t outline_draw_budget = 1024;
+                    uint32_t outline_draw_count        = 0;
+                    bool outline_budget_reached        = false;
+
                     bool any_rendered = false;
                     RHI_CommandList::BeginPass("color_silhouette");
                     {
@@ -395,6 +403,11 @@ namespace spartan
 
                         for (Entity* entity_selected : selected_entities)
                         {
+                            if (outline_budget_reached)
+                            {
+                                break;
+                            }
+
                             if (!entity_selected || !entity_selected->GetActive())
                             {
                                 continue;
@@ -406,6 +419,11 @@ namespace spartan
 
                             for (Entity* entity : to_outline)
                             {
+                                if (outline_budget_reached)
+                                {
+                                    break;
+                                }
+
                                 if (!entity || !entity->GetActive())
                                 {
                                     continue;
@@ -420,14 +438,23 @@ namespace spartan
                                 const uint32_t instance_count = render->HasInstancing() ? render->GetInstanceCount() : 1;
                                 for (uint32_t i = 0; i < instance_count; i++)
                                 {
+                                    if (outline_draw_count >= outline_draw_budget)
+                                    {
+                                        outline_budget_reached = true;
+                                        break;
+                                    }
+
                                     const Matrix world = render->HasInstancing()
                                         ? render->GetInstance(i, true)
                                         : entity->GetMatrix();
                                     const uint32_t draw_index = WriteDrawData(world);
                                     if (draw_index == numeric_limits<uint32_t>::max())
                                     {
+                                        outline_budget_reached = true;
                                         break;
                                     }
+
+                                    outline_draw_count++;
 
                                     m_pcb_pass_cpu.draw_index = draw_index;
                                     m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);

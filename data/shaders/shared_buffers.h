@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_SHARED_BUFFERS
 #define SPARTAN_SHARED_BUFFERS
 
+// sigma local lights, 1 jittered ray each, bits 8-10 of light flags store slot+1
+#define nrd_local_shadow_max 4
+
 // shared type abstraction - resolves to native types on each side
 #ifdef __cplusplus
     #define SHARED_FLOAT    float
@@ -388,6 +391,7 @@ struct IndirectDispatchArgs
 // flags bit 2: retired (was the hw-instancing fallback, the two-phase cull culls every instance individually)
 // flags bit 3: two-sided material (triangle pass skips backface)
 // flags bit 4: alpha-tested material (triangle pass routes survivors to the alpha half so the depth prepass can run opaque depth-only)
+// flags bit 5: skip hi-z (recently moved, last frame occluder depth would pop the mesh)
 // lod_first_index/lod_vertex_offset hold the global geometry offsets for the lod (replaces what indirect_draw_args used to carry)
 struct DrawData
 {

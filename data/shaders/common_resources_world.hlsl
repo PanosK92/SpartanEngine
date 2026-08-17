@@ -62,6 +62,10 @@ Texture2D<float4> tex_wind_field : register(t29);
 Texture2DArray<float4> tex_ocean_displacement : register(t30);
 Texture2DArray<float4> tex_ocean_normal       : register(t31);
 
+// nrd sigma local lights, one array slice per light, r = visibility
+Texture2DArray<float4> tex_rt_shadows_local : register(t32);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_rt_shadows_local : register(u26);
+
 // geometry info buffer for ray tracing (per-blas-instance offsets)
 RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
 

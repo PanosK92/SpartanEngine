@@ -52,6 +52,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
         bool skinned         = (draw.flags & 1u) != 0u;
         bool is_per_instance = (draw.flags & 2u) != 0u;
+        bool skip_hiz        = (draw.flags & 32u) != 0u;
 
         // per-instance world transform, non-instanced draws keep draw.transform, instanced rebuild from the packed instance buffer
         float4x4 world_xform = is_per_instance
@@ -89,7 +90,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         survives = passes_distance
             && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t)
             && sphere_contributes(center_world, radius_world, CULL_CONTRIBUTION_MESH_PX)
-            && sphere_hiz_visible(tex, center_world, radius_world, max_mip_level);
+            && (skip_hiz || sphere_hiz_visible(tex, center_world, radius_world, max_mip_level));
     }
 
     // wave-aggregated compaction, the first lane reserves a contiguous range so dense visibility doesn't hammer one address

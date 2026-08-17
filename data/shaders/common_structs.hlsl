@@ -202,6 +202,8 @@ struct Light
     bool has_shadows()              { return flags & uint(1U << 3); }
     bool has_shadows_screen_space() { return flags & uint(1U << 4); }
     bool is_volumetric()            { return flags & uint(1U << 5); }
+    // 0 means inline fallback, 1-4 maps to array slice 0-3
+    uint nrd_local_shadow_slot()    { return (flags >> 8u) & 7u; }
 
     float compute_attenuation_range(const float distance_to_light)
     {

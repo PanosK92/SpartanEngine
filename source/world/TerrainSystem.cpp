@@ -1185,8 +1185,42 @@ namespace spartan
         void TerrainSystem::GenerateNormals(vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t width, uint32_t height)
         {
             SP_ASSERT_MSG(!vertices.empty(), "vertices are empty");
-        
-            // interior vertices - no boundary checks needed
+            SP_ASSERT_MSG(width >= 2 && height >= 2, "grid is too small");
+
+            // positions are in metres, a unit-grid gradient turns a 25 m cell into a cliff
+            float cell_x = 1.0f;
+            float cell_z = 1.0f;
+            if (vertices.size() > 1)
+            {
+                cell_x = max(fabsf(vertices[1].pos[0] - vertices[0].pos[0]), 1e-3f);
+            }
+            if (vertices.size() > width)
+            {
+                cell_z = max(fabsf(vertices[width].pos[2] - vertices[0].pos[2]), 1e-3f);
+            }
+
+            const float inv_span_x = 0.5f / cell_x;
+            const float inv_span_z = 0.5f / cell_z;
+
+            auto write_normal = [&vertices](uint32_t vertex_idx, float dh_dx, float dh_dz)
+            {
+                float nx      = -dh_dx;
+                float ny      = 1.0f;
+                float nz      = -dh_dz;
+                float inv_len = 1.0f / sqrtf(nx * nx + ny * ny + nz * nz);
+                nx *= inv_len;
+                ny *= inv_len;
+                nz *= inv_len;
+                vertices[vertex_idx].set_normal(Vector3(nx, ny, nz));
+
+                float proj      = nx;
+                float tx        = 1.0f - nx * proj;
+                float ty        = -ny * proj;
+                float tz        = -nz * proj;
+                float t_inv_len = 1.0f / sqrtf(tx * tx + ty * ty + tz * tz);
+                vertices[vertex_idx].set_tangent(Vector3(tx * t_inv_len, ty * t_inv_len, tz * t_inv_len));
+            };
+
             uint32_t interior_count = (width - 2) * (height - 2);
             if (interior_count > 0)
             {
@@ -1198,70 +1232,71 @@ namespace spartan
                         uint32_t i              = (index % interior_width) + 1;
                         uint32_t j              = (index / interior_width) + 1;
                         uint32_t vertex_idx     = j * width + i;
-                        
+
                         float h_left   = vertices[vertex_idx - 1].pos[1];
                         float h_right  = vertices[vertex_idx + 1].pos[1];
                         float h_bottom = vertices[vertex_idx - width].pos[1];
                         float h_top    = vertices[vertex_idx + width].pos[1];
-                        
-                        float dh_dx = (h_right - h_left) * 0.5f;
-                        float dh_dz = (h_top - h_bottom) * 0.5f;
-                        
-                        float nx      = -dh_dx, ny = 1.0f, nz = -dh_dz;
-                        float inv_len = 1.0f / sqrtf(nx * nx + ny * ny + nz * nz);
-                        nx *= inv_len; ny *= inv_len; nz *= inv_len;
-                        vertices[vertex_idx].set_normal(Vector3(nx, ny, nz));
 
-                        float proj      = nx;
-                        float tx        = 1.0f - nx * proj, ty = -ny * proj, tz = -nz * proj;
-                        float t_inv_len = 1.0f / sqrtf(tx * tx + ty * ty + tz * tz);
-                        vertices[vertex_idx].set_tangent(Vector3(tx * t_inv_len, ty * t_inv_len, tz * t_inv_len));
+                        write_normal(
+                            vertex_idx,
+                            (h_right - h_left) * inv_span_x,
+                            (h_top - h_bottom) * inv_span_z
+                        );
                     }
                 };
                 ThreadPool::ParallelLoop(compute_interior, interior_count);
             }
-            
-            // edge vertices with boundary handling
+
             uint32_t edge_count = 2 * width + 2 * (height - 2);
             auto compute_edges = [&](uint32_t start, uint32_t end)
             {
                 for (uint32_t edge_idx = start; edge_idx < end; edge_idx++)
                 {
-                    uint32_t i, j;
+                    uint32_t i = 0;
+                    uint32_t j = 0;
                     uint32_t perimeter = 2 * width + 2 * (height - 2);
-                    
+
                     if (edge_idx < width)
-                        { i = edge_idx; j = 0; }
+                    {
+                        i = edge_idx;
+                        j = 0;
+                    }
                     else if (edge_idx < width + height - 1)
-                        { i = width - 1; j = edge_idx - width + 1; }
+                    {
+                        i = width - 1;
+                        j = edge_idx - width + 1;
+                    }
                     else if (edge_idx < 2 * width + height - 2)
-                        { i = 2 * width + height - 3 - edge_idx; j = height - 1; }
+                    {
+                        i = 2 * width + height - 3 - edge_idx;
+                        j = height - 1;
+                    }
                     else
-                        { i = 0; j = perimeter - edge_idx; }
-                    
+                    {
+                        i = 0;
+                        j = perimeter - edge_idx;
+                    }
+
                     uint32_t index   = j * width + i;
                     uint32_t i_left  = (i > 0) ? i - 1 : i;
                     uint32_t i_right = (i < width - 1) ? i + 1 : i;
                     uint32_t j_bot   = (j > 0) ? j - 1 : j;
                     uint32_t j_top   = (j < height - 1) ? j + 1 : j;
-                    
+
                     float h_left  = vertices[j * width + i_left].pos[1];
                     float h_right = vertices[j * width + i_right].pos[1];
                     float h_bot   = vertices[j_bot * width + i].pos[1];
                     float h_top   = vertices[j_top * width + i].pos[1];
-                    
-                    float dh_dx = (h_right - h_left) / ((i_right != i_left) ? static_cast<float>(i_right - i_left) : 1.0f);
-                    float dh_dz = (h_top - h_bot) / ((j_top != j_bot) ? static_cast<float>(j_top - j_bot) : 1.0f);
-                    
-                    float nx      = -dh_dx, ny = 1.0f, nz = -dh_dz;
-                    float inv_len = 1.0f / sqrtf(nx * nx + ny * ny + nz * nz);
-                    nx *= inv_len; ny *= inv_len; nz *= inv_len;
-                    vertices[index].set_normal(Vector3(nx, ny, nz));
 
-                    float proj      = nx;
-                    float tx        = 1.0f - nx * proj, ty = -ny * proj, tz = -nz * proj;
-                    float t_inv_len = 1.0f / sqrtf(tx * tx + ty * ty + tz * tz);
-                    vertices[index].set_tangent(Vector3(tx * t_inv_len, ty * t_inv_len, tz * t_inv_len));
+                    float span_x = ((i_right != i_left) ? static_cast<float>(i_right - i_left) : 1.0f) * cell_x;
+                    float span_z = ((j_top != j_bot) ? static_cast<float>(j_top - j_bot) : 1.0f) * cell_z;
+
+                    write_normal(
+                        index,
+                        (h_right - h_left) / span_x,
+                        (h_top - h_bot) / span_z
+                    );
                 }
             };
             ThreadPool::ParallelLoop(compute_edges, edge_count);

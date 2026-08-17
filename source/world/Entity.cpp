@@ -188,17 +188,9 @@ namespace spartan
     {
         m_components.fill(nullptr);
 
-        // if this entity is selected, deselect it
-        if (Camera* camera = World::GetCamera())
-        {
-            if (Entity* selected_entity = camera->GetSelectedEntity())
-            {
-                if (selected_entity->GetObjectId() == GetObjectId())
-                {
-                    camera->SetSelectedEntity(nullptr);
-                }
-            }
-        }
+        // the selection holds raw pointers, drop this one wherever it sits in the list, not just when
+        // it happens to be the primary pick
+        Camera::RemoveFromSelection(this);
     }
 
     Entity* Entity::Clone()

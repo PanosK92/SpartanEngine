@@ -209,9 +209,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float2 duvdy  = dpdy.xz * tiling;
         vertex.uv_misc.xy = uv;
 
-        // the analysis maps are low frequency, a distance driven mip is all they need and it keeps
-        // the evaluator usable from the ray tracing passes which have no derivatives at all
-        float analysis_lod = clamp(log2(max(distance, 1.0f) * 0.015625f), 0.0f, 6.0f);
+        // which layer owns a pixel must not depend on where the camera stands, a distance driven mip
+        // feeds blurrier analysis into the scores the further out you are, so the boundaries crawl and
+        // the ranking flips as you move toward a hillside, the maps are already low frequency
+        float analysis_lod = 0.0f;
 
         TerrainAnalysis analysis = terrain_sample_analysis(material, position_world, analysis_lod);
         float slope_radians      = acos(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f))));

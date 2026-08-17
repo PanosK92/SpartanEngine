@@ -39,8 +39,8 @@ bool fog_camera_underwater()
         return false;
     }
 
-    float3 camera = get_camera_position();
-    return camera.y < get_ocean_height(camera.xz);
+    // sea level only, wave height must not be sampled per froxel
+    return get_camera_position().y < buffer_frame.ocean_sea_level;
 }
 
 float fog_volume_near()

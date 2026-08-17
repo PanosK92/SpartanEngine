@@ -179,7 +179,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::PrepareForExternalWrite(RHI_Texture* texture, const RHI_Image_Layout layout, const RHI_Barrier_Scope scope)
+    void RHI_CommandList::PrepareForExternalAccess(RHI_Texture* texture, const RHI_Resource_Access access, const RHI_Image_Layout layout, const RHI_Barrier_Scope scope)
     {
         if (!texture)
         {
@@ -198,33 +198,67 @@ namespace spartan
             }
         }
 
+        const RHI_Resource_Usage usage_dst = scope == RHI_Barrier_Scope::Transfer
+            ? RHI_Resource_Usage::Transfer
+            : (scope == RHI_Barrier_Scope::Graphics ? RHI_Resource_Usage::Attachment : RHI_Resource_Usage::Shader);
+        const RHI_Image_Layout target_layout = RHI_Image_Layout::General;
+        (void)layout;
+
         for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
         {
             const RHI_Tracked_Usage& previous = history_it->second[mip];
             const RHI_Queue_Type current_queue = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
             const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current_queue != RHI_Queue_Type::Max && previous.queue != current_queue;
-            const RHI_Image_Layout target_layout =
-                rhi_unify_image_layout(layout);
+            const bool has_previous = previous.access != RHI_Resource_Access::None;
+            const bool to_transfer = scope == RHI_Barrier_Scope::Transfer;
+            const RHI_Barrier_Scope scope_src = cross_queue
+                ? RHI_Barrier_Scope::None
+                : (to_transfer || !has_previous ? RHI_Barrier_Scope::All : previous.scope);
+            const RHI_Resource_Access access_src = cross_queue || to_transfer || !has_previous
+                ? RHI_Resource_Access::None
+                : previous.access;
+            const RHI_Resource_Usage usage_src = cross_queue || to_transfer || !has_previous
+                ? RHI_Resource_Usage::None
+                : previous.usage;
+
             if (GetTrackedTextureLayout(texture, mip) != target_layout)
             {
                 RHI_Barrier barrier = RHI_Barrier::image_layout(texture, target_layout, mip, 1);
-                barrier.from(cross_queue ? RHI_Barrier_Scope::None : (previous.access == RHI_Resource_Access::None ? RHI_Barrier_Scope::All : previous.scope)).to(scope);
-                barrier.access_src = cross_queue ? RHI_Resource_Access::None : previous.access;
-                barrier.access_dst = RHI_Resource_Access::Write;
-                barrier.usage_src  = cross_queue ? RHI_Resource_Usage::None : previous.usage;
-                barrier.usage_dst  = scope == RHI_Barrier_Scope::Transfer ? RHI_Resource_Usage::Transfer : (scope == RHI_Barrier_Scope::Graphics ? RHI_Resource_Usage::Attachment : RHI_Resource_Usage::Shader);
+                barrier.from(scope_src).to(scope);
+                barrier.access_src = access_src;
+                barrier.access_dst = access;
+                barrier.usage_src  = usage_src;
+                barrier.usage_dst  = usage_dst;
                 InsertBarrier(barrier);
             }
-            else if (previous.access != RHI_Resource_Access::None)
-            {
-                RHI_Barrier barrier = RHI_Barrier::image_sync(texture, previous.access, RHI_Resource_Access::Write, mip, 1);
-                barrier.from(cross_queue ? RHI_Barrier_Scope::None : previous.scope).to(scope);
-                barrier.access_src = cross_queue ? RHI_Resource_Access::None : previous.access;
-                barrier.usage_src = cross_queue ? RHI_Resource_Usage::None : previous.usage;
-                barrier.usage_dst = scope == RHI_Barrier_Scope::Transfer ? RHI_Resource_Usage::Transfer : (scope == RHI_Barrier_Scope::Graphics ? RHI_Resource_Usage::Attachment : RHI_Resource_Usage::Shader);
-                InsertBarrier(barrier);
-            }
+
+            // always sync, layout already general is a no-op and skipped the transfer access
+            RHI_Barrier barrier = RHI_Barrier::image_sync(
+                texture,
+                has_previous ? previous.access : RHI_Resource_Access::Write,
+                access,
+                mip,
+                1
+            );
+            barrier.from(scope_src).to(scope);
+            barrier.access_src = access_src;
+            barrier.access_dst = access;
+            barrier.usage_src  = usage_src;
+            barrier.usage_dst  = usage_dst;
+            InsertBarrier(barrier);
         }
+
+        TrackExternalTextureUsage(texture, access, target_layout, scope, usage_dst);
+    }
+
+    void RHI_CommandList::PrepareForExternalRead(RHI_Texture* texture, const RHI_Image_Layout layout, const RHI_Barrier_Scope scope)
+    {
+        PrepareForExternalAccess(texture, RHI_Resource_Access::Read, layout, scope);
+    }
+
+    void RHI_CommandList::PrepareForExternalWrite(RHI_Texture* texture, const RHI_Image_Layout layout, const RHI_Barrier_Scope scope)
+    {
+        PrepareForExternalAccess(texture, RHI_Resource_Access::Write, layout, scope);
     }
 
     void RHI_CommandList::ResetTrackedBindings()
@@ -650,7 +684,7 @@ namespace spartan
             binding.mip_range = 1;
             binding.access    = RHI_Resource_Access::Read;
             binding.usage     = RHI_Resource_Usage::ShadingRate;
-            binding.layout    = RHI_Image_Layout::Shading_Rate_Attachment;
+            binding.layout    = RHI_Image_Layout::General;
         }
 
         SynchronizeResources(false);
@@ -751,7 +785,7 @@ namespace spartan
             {
                 RHI_Tracked_Usage& previous = previous_usages[mip];
                 RHI_Tracked_Usage& current  = current_usages[mip];
-                const RHI_Image_Layout desired_layout = rhi_unify_image_layout(current.layout);
+                const RHI_Image_Layout desired_layout = RHI_Image_Layout::General;
                 const bool layout_transition = current.access != RHI_Resource_Access::None && GetTrackedTextureLayout(texture, mip) != desired_layout;
                 if (layout_transition)
                 {

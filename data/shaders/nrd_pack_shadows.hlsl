@@ -25,7 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===============================
 
 // packs guides + rt shadow (visibility, blocker_dist) into sigma penumbra
-// pass_f3_value.x = tan(light_angular_radius)
+// pass_f3_value.x = tan(light_angular_radius) for the sun
+// pass_f3_value.y = local array slice
+// pass_f3_value.z = 0 sun, 1 local light
 // tex       = ray_traced_shadows
 // tex_uav   = in_mv
 // tex_uav2  = in_normal_roughness
@@ -48,6 +50,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float view_z = abs(get_position_view_space(uv).z);
     const float denoising_range = max(buffer_frame.camera_far * 0.99f, 1.0f);
     const float tan_light_angular_radius = pass_get_f3_value().x;
+    const uint  local_slice = (uint)pass_get_f3_value().y;
+    const bool  is_local    = pass_get_f3_value().z > 0.5f;
 
     if (depth <= 0.0f || view_z >= denoising_range)
     {
@@ -62,15 +66,45 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 velocity_ndc = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).xy;
     float2 mv = velocity_ndc * float2(-0.5f, 0.5f);
 
-    float4 shadow = tex[thread_id.xy];
-    float visibility   = shadow.r;
-    float blocker_dist = shadow.g;
+    float visibility   = 1.0f;
+    float blocker_dist = 0.0f;
+    float dist_to_light = 1.0f;
+    float light_size    = 1.0f;
+    if (is_local)
+    {
+        float4 shadow  = tex_rt_shadows_local.Load(int4(thread_id.xy, local_slice, 0));
+        visibility     = shadow.r;
+        blocker_dist   = shadow.g;
+        dist_to_light  = max(shadow.b, 1e-3f);
+        light_size     = max(shadow.a, 1e-3f);
+    }
+    else
+    {
+        float4 shadow  = tex[thread_id.xy];
+        visibility     = shadow.r;
+        blocker_dist   = shadow.g;
+    }
 
-    // misses are lit, back facing pixels use zero penumbra
+    // acne self hits land at near zero t, treat them as unshadowed
+    const float k_self_hit = 0.08f;
+    if (is_local && visibility < 0.99f && blocker_dist < k_self_hit)
+    {
+        visibility = 1.0f;
+    }
+
     float distance_to_occluder = visibility >= 0.99f
         ? NRD_FP16_MAX
         : max(blocker_dist, 0.0f);
-    float penumbra = SIGMA_FrontEnd_PackPenumbra(distance_to_occluder, tan_light_angular_radius);
+
+    // an occluder touching the emitter divides by zero inside the penumbra pack
+    if (is_local && distance_to_occluder < NRD_FP16_MAX)
+    {
+        distance_to_occluder = min(distance_to_occluder, dist_to_light * 0.95f);
+    }
+
+    float penumbra = is_local
+        ? SIGMA_FrontEnd_PackPenumbra(distance_to_occluder, dist_to_light, light_size)
+        : SIGMA_FrontEnd_PackPenumbra(distance_to_occluder, tan_light_angular_radius);
 
     tex_uav[thread_id.xy]  = float4(mv, 0.0f, 0.0f);
     tex_uav2[thread_id.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal_ws, 1.0f, 0.0f);

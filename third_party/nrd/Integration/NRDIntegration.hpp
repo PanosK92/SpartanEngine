@@ -430,7 +430,10 @@ bool Integration::_CreateResources() {
     }
 
     { // Descriptor pools
-        uint32_t setMaxNum = instanceDesc.descriptorPoolDesc.setsMaxNum;
+        // nrd sizes this for one GetComputeDispatches of every identifier at once.
+        // we Denoise identifiers sequentially in the same frame, and vulkan pools are exact-fit,
+        // so keep headroom for wrapped texture descriptors plus the extra sets
+        uint32_t setMaxNum = instanceDesc.descriptorPoolDesc.setsMaxNum * 2;
 
         nri::DescriptorPoolDesc descriptorPoolDesc = {};
         descriptorPoolDesc.descriptorSetMaxNum = setMaxNum;
@@ -765,12 +768,16 @@ void Integration::_Dispatch(nri::CommandBuffer& commandBuffer, nri::DescriptorPo
                     NRD_INTEGRATION_ASSERT(resource->nri.texture, "invalid entry!");
                 }
 
-                // Prepare barrier
+                // stay in general, sampled and storage both work from it
                 nri::AccessLayoutStage after = {};
                 if (resourceDesc.descriptorType == DescriptorType::TEXTURE)
-                    after = {nri::AccessBits::SHADER_RESOURCE, nri::Layout::SHADER_RESOURCE, nri::StageBits::COMPUTE_SHADER};
+                {
+                    after = {nri::AccessBits::SHADER_RESOURCE, nri::Layout::GENERAL, nri::StageBits::COMPUTE_SHADER};
+                }
                 else
-                    after = {nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::Layout::SHADER_RESOURCE_STORAGE, nri::StageBits::COMPUTE_SHADER};
+                {
+                    after = {nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::Layout::GENERAL, nri::StageBits::COMPUTE_SHADER};
+                }
 
                 bool isStateChanged = after.access != resource->state.access || after.layout != resource->state.layout;
                 bool isStorageBarrier = after.access == nri::AccessBits::SHADER_RESOURCE_STORAGE && resource->state.access == nri::AccessBits::SHADER_RESOURCE_STORAGE;

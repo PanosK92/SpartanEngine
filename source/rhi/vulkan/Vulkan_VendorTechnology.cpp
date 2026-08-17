@@ -62,9 +62,10 @@ namespace spartan
     #ifdef _WIN32
     namespace nrd_common
     {
-        constexpr nrd::Identifier id_gi          = 0;
-        constexpr nrd::Identifier id_reflections = 1;
-        constexpr nrd::Identifier id_shadows     = 2;
+        constexpr nrd::Identifier id_gi              = 0;
+        constexpr nrd::Identifier id_reflections     = 1;
+        constexpr nrd::Identifier id_shadows         = 2;
+        constexpr nrd::Identifier id_shadows_local0  = 3;
 
         // engine uses row vectors (v * m), nrd uses column vectors (m * v), so pass the transpose
         void copy_matrix_for_nrd(float destination[16], const math::Matrix& matrix)
@@ -171,17 +172,23 @@ namespace spartan
             settings.lobeAngleFraction                 = 0.15f;
             settings.fireflySuppressorMinRelativeScale = 2.0f;
             settings.enableAntiFirefly                 = true;
+            // taau already stabilizes the frame, the extra 4k pass is not worth it
+            settings.maxStabilizedFrameNum             = 0;
         }
 
         // directional rt shadows, sigma penumbra reconstruction
-        void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3], float delta_time)
+        void fill_preset_shadows(nrd::SigmaSettings& settings, const float light_direction[3], float delta_time, bool is_local)
         {
             settings                          = {};
-            settings.lightDirection[0]        = light_direction[0];
-            settings.lightDirection[1]        = light_direction[1];
-            settings.lightDirection[2]        = light_direction[2];
-            settings.planeDistanceSensitivity = 0.02f;
-            settings.maxStabilizedFrameNum    = get_accumulated_frame_num(nrd::SIGMA_DEFAULT_ACCUMULATION_TIME, nrd::SIGMA_MAX_HISTORY_FRAME_NUM, delta_time);
+            settings.lightDirection[0]        = is_local ? 0.0f : light_direction[0];
+            settings.lightDirection[1]        = is_local ? 0.0f : light_direction[1];
+            settings.lightDirection[2]        = is_local ? 0.0f : light_direction[2];
+            settings.planeDistanceSensitivity = is_local ? 0.04f : 0.02f;
+            // local lights trace to the emitter center so the input is already stable, the
+            // stabilize pass would only reproject the penumbra of a mover and smear it
+            settings.maxStabilizedFrameNum    = is_local
+                ? 0
+                : get_accumulated_frame_num(nrd::SIGMA_DEFAULT_ACCUMULATION_TIME, nrd::SIGMA_MAX_HISTORY_FRAME_NUM, delta_time);
         }
     }
 
@@ -577,7 +584,7 @@ namespace spartan
 
     namespace nvidia
     {
-        // gi is restir sized, screen is render sized for reflections and shadows
+        // one nrd instance per preset, sharing reblur and 5 sigma in one pool overflows the descriptor sets
         struct nrd_pool
         {
             nrd::Integration integration;
@@ -587,18 +594,21 @@ namespace spartan
             bool reset_history           = false;
             uint32_t last_frame_index    = UINT32_MAX;
             uint32_t last_settings_frame = UINT32_MAX;
-            bool is_screen               = false;
         };
 
         nrd_pool pool_gi;
-        nrd_pool pool_screen;
+        nrd_pool pool_reflections;
+        nrd_pool pool_shadows;
 
         nrd::Resource make_resource(RHI_Texture* texture, bool storage)
         {
             nrd::Resource resource = {};
             resource.vk.image  = reinterpret_cast<VKNonDispatchableHandle>(texture->GetRhiResource());
             resource.vk.format = static_cast<VKEnum>(vulkan_format[rhi_format_to_index(texture->GetFormat())]);
-            resource.state     = storage ? nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::Layout::SHADER_RESOURCE_STORAGE, nri::StageBits::COMPUTE_SHADER } : nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE, nri::Layout::SHADER_RESOURCE, nri::StageBits::COMPUTE_SHADER };
+            // engine parks images in general, nrd descriptors must match or draws hit vuid 09600
+            resource.state = storage
+                ? nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::Layout::GENERAL, nri::StageBits::COMPUTE_SHADER }
+                : nri::AccessLayoutStage{ nri::AccessBits::SHADER_RESOURCE, nri::Layout::GENERAL, nri::StageBits::COMPUTE_SHADER };
             resource.userArg   = texture;
             return resource;
         }
@@ -619,19 +629,20 @@ namespace spartan
         void context_destroy()
         {
             pool_destroy(pool_gi);
-            pool_destroy(pool_screen);
+            pool_destroy(pool_reflections);
+            pool_destroy(pool_shadows);
         }
 
         void request_history_reset()
         {
-            pool_gi.reset_history     = true;
-            pool_screen.reset_history = true;
+            pool_gi.reset_history          = true;
+            pool_reflections.reset_history = true;
+            pool_shadows.reset_history     = true;
         }
 
-        bool pool_create(nrd_pool& pool, uint32_t resource_width, uint32_t resource_height, bool is_screen)
+        bool pool_create(nrd_pool& pool, uint32_t resource_width, uint32_t resource_height, Nrd_Preset preset)
         {
             pool_destroy(pool);
-            pool.is_screen = is_screen;
 
             if (!RHI_Context::device || !RHI_Context::instance || !RHI_Context::device_physical || resource_width == 0 || resource_height == 0)
             {
@@ -657,30 +668,32 @@ namespace spartan
             device_desc.vkBindingOffsets.bRegister = library_desc->spirvBindingOffsets.constantBufferOffset;
             device_desc.vkBindingOffsets.uRegister = library_desc->spirvBindingOffsets.storageTextureAndBufferOffset;
 
-            nrd::DenoiserDesc denoisers_gi[] =
+            nrd::DenoiserDesc denoisers[5];
+            uint32_t denoiser_count = 1;
+            denoisers[0]            = { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE };
+            const char* pool_name   = "NRD_GI";
+            if (preset == Nrd_Preset::Reflections)
             {
-                { nrd_common::id_gi, nrd::Denoiser::REBLUR_DIFFUSE }
-            };
-            nrd::DenoiserDesc denoisers_screen[] =
+                denoisers[0] = { nrd_common::id_reflections, nrd::Denoiser::REBLUR_SPECULAR };
+                pool_name    = "NRD_Reflections";
+            }
+            else if (preset == Nrd_Preset::Shadows)
             {
-                { nrd_common::id_reflections, nrd::Denoiser::REBLUR_SPECULAR },
-                { nrd_common::id_shadows,     nrd::Denoiser::SIGMA_SHADOW }
-            };
+                denoisers[0] = { nrd_common::id_shadows, nrd::Denoiser::SIGMA_SHADOW };
+                denoisers[1] = { nrd_common::id_shadows_local0, nrd::Denoiser::SIGMA_SHADOW };
+                denoisers[2] = { nrd_common::id_shadows_local0 + 1, nrd::Denoiser::SIGMA_SHADOW };
+                denoisers[3] = { nrd_common::id_shadows_local0 + 2, nrd::Denoiser::SIGMA_SHADOW };
+                denoisers[4] = { nrd_common::id_shadows_local0 + 3, nrd::Denoiser::SIGMA_SHADOW };
+                denoiser_count = 5;
+                pool_name      = "NRD_Shadows";
+            }
 
             nrd::InstanceCreationDesc instance_desc = {};
-            if (pool.is_screen)
-            {
-                instance_desc.denoisers    = denoisers_screen;
-                instance_desc.denoisersNum = 2;
-            }
-            else
-            {
-                instance_desc.denoisers    = denoisers_gi;
-                instance_desc.denoisersNum = 1;
-            }
+            instance_desc.denoisers    = denoisers;
+            instance_desc.denoisersNum = denoiser_count;
 
             nrd::IntegrationCreationDesc integration_desc = {};
-            strncpy_s(integration_desc.name, pool.is_screen ? "NRD_Screen" : "NRD_GI", _TRUNCATE);
+            strncpy_s(integration_desc.name, pool_name, _TRUNCATE);
             integration_desc.queuedFrameNum                       = 3;
             integration_desc.enableWholeLifetimeDescriptorCaching = false;
             integration_desc.autoWaitForIdle                      = true;
@@ -701,7 +714,12 @@ namespace spartan
 
         nrd_pool& pool_for_preset(Nrd_Preset preset)
         {
-            return preset == Nrd_Preset::Gi ? pool_gi : pool_screen;
+            if (preset == Nrd_Preset::Gi)
+            {
+                return pool_gi;
+            }
+
+            return preset == Nrd_Preset::Reflections ? pool_reflections : pool_shadows;
         }
     }
     #endif // _WIN32
@@ -1009,7 +1027,8 @@ namespace spartan
         RHI_Texture* tex_view_z,
         RHI_Texture* tex_signal_in,
         RHI_Texture* tex_signal_out,
-        const math::Vector3* light_direction
+        const math::Vector3* light_direction,
+        uint32_t shadow_denoiser_index
     )
     {
         RHI_CommandList* cmd_list = RHI_Device::Cmd();
@@ -1030,7 +1049,7 @@ namespace spartan
         if (!pool.initialized || pool.width != width || pool.height != height)
         {
             RHI_Device::QueueWaitAll();
-            if (!nvidia::pool_create(pool, width, height, preset != Nrd_Preset::Gi))
+            if (!nvidia::pool_create(pool, width, height, preset))
             {
                 return false;
             }
@@ -1044,28 +1063,34 @@ namespace spartan
         cmd_list->PrepareForExternalWrite(tex_signal_out);
         cmd_list->FlushBarriers();
 
-        if (pool.last_frame_index != common::cb_frame->frame)
+        const uint32_t engine_frame = common::cb_frame->frame;
+        if (pool.last_frame_index != engine_frame)
         {
             pool.integration.NewFrame();
-            pool.last_frame_index = common::cb_frame->frame;
+            pool.last_frame_index = engine_frame;
         }
 
-        const bool reset_history = nrd_common::resolve_history_reset(pool.reset_history, common::cb_frame->frame, pool.last_settings_frame);
+        const bool already_set   = pool.last_settings_frame == engine_frame;
+        const bool reset_history = nrd_common::resolve_history_reset(pool.reset_history, engine_frame, pool.last_settings_frame);
         pool.reset_history = false;
 
-        nrd::CommonSettings common_settings = {};
-        nrd_common::fill_common_settings(
-            common_settings,
-            common::cb_frame,
-            width,
-            height,
-            reset_history,
-            preset
-        );
-        if (pool.integration.SetCommonSettings(common_settings) != nrd::Result::SUCCESS)
+        // setcommonsettings once per pool per frame, nrd integration asserts frameindex advances by 1
+        if (!already_set || reset_history)
         {
-            SP_LOG_WARNING("NRD SetCommonSettings failed");
-            return false;
+            nrd::CommonSettings common_settings = {};
+            nrd_common::fill_common_settings(
+                common_settings,
+                common::cb_frame,
+                width,
+                height,
+                reset_history,
+                preset
+            );
+            if (pool.integration.SetCommonSettings(common_settings) != nrd::Result::SUCCESS)
+            {
+                SP_LOG_WARNING("NRD SetCommonSettings failed");
+                return false;
+            }
         }
 
         nrd::Identifier denoiser_id = nrd_common::id_gi;
@@ -1101,13 +1126,16 @@ namespace spartan
         }
         else
         {
-            denoiser_id = nrd_common::id_shadows;
+            denoiser_id = shadow_denoiser_index == 0
+                ? nrd_common::id_shadows
+                : nrd_common::id_shadows_local0 + (shadow_denoiser_index - 1);
             const float light_dir[3] = { light_direction->x, light_direction->y, light_direction->z };
             nrd::SigmaSettings sigma = {};
             nrd_common::fill_preset_shadows(
                 sigma,
                 light_dir,
-                common::cb_frame->delta_time
+                common::cb_frame->delta_time,
+                shadow_denoiser_index != 0
             );
             if (pool.integration.SetDenoiserSettings(denoiser_id, &sigma) != nrd::Result::SUCCESS)
             {

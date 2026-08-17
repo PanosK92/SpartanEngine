@@ -1768,27 +1768,34 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache");
 
             // old caches still have a flat coast, lock it without rerunning erosion
-            if (ApplyShorelineLock())
+            const bool shoreline_moved = ApplyShorelineLock();
+            if (shoreline_moved)
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("locking shoreline...");
-                m_vertices.resize(m_dense_width * m_dense_height);
-                m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
-                TerrainSystem::GenerateVerticesAndIndices(
-                    m_vertices,
-                    m_indices,
-                    m_positions,
-                    m_dense_width,
-                    m_dense_height
-                );
-                TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
-                geometry_processing::split_surface_into_tiles(
-                    m_vertices,
-                    m_indices,
-                    m_tile_count,
-                    m_tile_vertices,
-                    m_tile_indices,
-                    m_tile_offsets
-                );
+            }
+
+            // cached meshes used unit-grid normals, rebuild so slope matches the heightfield
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("rebuilding normals...");
+            m_vertices.resize(m_dense_width * m_dense_height);
+            m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
+            TerrainSystem::GenerateVerticesAndIndices(
+                m_vertices,
+                m_indices,
+                m_positions,
+                m_dense_width,
+                m_dense_height
+            );
+            TerrainSystem::GenerateNormals(m_vertices, m_dense_width, m_dense_height);
+            geometry_processing::split_surface_into_tiles(
+                m_vertices,
+                m_indices,
+                m_tile_count,
+                m_tile_vertices,
+                m_tile_indices,
+                m_tile_offsets
+            );
+            if (shoreline_moved)
+            {
                 m_triangle_data.clear();
                 for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
                 {
@@ -3143,8 +3150,10 @@ namespace spartan
         const float slope_domain_max   = 1.5698f;
         const float height_domain_min  = -99999.0f;
         const float height_domain_max  = 99999.0f;
-        const float slope_feather_max  = 0.14f;
+        const float slope_feather_max  = 0.35f;
         const float height_feather_max = 6.0f;
+        const float blend_width_world  = 14.0f;
+        const float gradient_max       = 8.0f;
 
         auto band = [](float value, float low, float high, float feather_max,
             float domain_min, float domain_max) -> float
@@ -3152,8 +3161,8 @@ namespace spartan
             const bool open_low  = low  <= domain_min;
             const bool open_high = high >= domain_max;
 
-            const float span    = (open_low || open_high) ? (feather_max * 4.0f) : (high - low);
-            const float feather = clamp(span * 0.25f, 1e-4f, feather_max);
+            const float span    = (open_low || open_high) ? (feather_max * 2.0f) : (high - low);
+            const float feather = max(min(span, feather_max), 1e-4f);
 
             auto smooth = [](float t) -> float
             {
@@ -3197,6 +3206,12 @@ namespace spartan
             const float height_for_band = (rule.flags & TerrainLayerFlags_BelowSea) ?
                 (height - m_level_sea) : height;
 
+            // altitude gained per metre travelled horizontally, a feather written in altitude covers
+            // less and less ground as the slope steepens, which is what turns a boundary into a knife
+            // edge, scaling by the gradient holds the width along the surface instead
+            const float gradient       = min(tanf(min(slope_rad, 1.5f)), gradient_max);
+            const float height_feather = max(blend_width_world * gradient, height_feather_max * 0.25f);
+
             float weight = band(
                 slope_rad,
                 rule.slope_min * math::deg_to_rad,
@@ -3209,7 +3224,7 @@ namespace spartan
                 height_for_band,
                 rule.height_min,
                 rule.height_max,
-                height_feather_max,
+                height_feather,
                 height_domain_min,
                 height_domain_max
             );
@@ -3327,7 +3342,6 @@ namespace spartan
 
                 const uint32_t keep = clamp(m_layer_quality, 1u, 4u);
                 float picked[terrain_layer_max] = {};
-                float total = 0.0f;
                 for (uint32_t slot = 0; slot < keep; slot++)
                 {
                     float best_score = 0.0f;
@@ -3346,7 +3360,22 @@ namespace spartan
                     }
                     scores[best_layer] = 0.0f;
                     picked[best_layer] = best_score;
-                    total += best_score;
+                }
+
+                // the rank cut is a step, subtracting the highest rejected score pins a layer to zero
+                // as it enters and leaves the set, same as terrain_pick_layers, without it the prop
+                // mask steps where the surface fades and grass stops on a hard line
+                float rejected = 0.0f;
+                for (uint32_t layer = 0; layer < terrain_layer_max; layer++)
+                {
+                    rejected = max(rejected, scores[layer]); // the winners were zeroed as they were consumed
+                }
+
+                float total = 0.0f;
+                for (uint32_t layer = 0; layer < terrain_layer_max; layer++)
+                {
+                    picked[layer] = max(picked[layer] - rejected, 0.0f);
+                    total += picked[layer];
                 }
 
                 float grass = 0.0f;

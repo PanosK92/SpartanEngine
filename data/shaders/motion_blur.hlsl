@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // tuning parameters
-static const int   SAMPLE_COUNT             = 11;    // samples per direction (total = 2 * count + 1 = 23)
+static const int   SAMPLE_COUNT             = 7;     // samples per direction (total = 2 * count + 1 = 15)
 static const float MAX_BLUR_RADIUS_PIXELS   = 48.0f; // maximum blur extent in pixels
 static const float MIN_BLUR_THRESHOLD       = 0.75f; // minimum velocity in pixels to trigger blur
 static const float DEPTH_SCALE              = 50.0f; // depth comparison sensitivity

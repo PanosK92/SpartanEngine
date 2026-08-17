@@ -212,7 +212,7 @@ namespace spartan
                             {
                                 view = mip_specified ? texture->GetRhiSrvMip(binding.mip) : texture->GetRhiSrv();
                             }
-                            img_layout = vulkan_image_layout[static_cast<uint8_t>(binding.layout)];
+                            img_layout = VK_IMAGE_LAYOUT_GENERAL;
                         }
                         else if (layout.type == RHI_Descriptor_Type::Image)
                         {
@@ -236,9 +236,7 @@ namespace spartan
                         {
                             uint32_t mip_idx = mip_start + m;
                             void* view = texture ? texture->GetRhiSrvMip(mip_idx) : fallback_srv;
-                            VkImageLayout img_layout = texture
-                                ? vulkan_image_layout[static_cast<uint8_t>(binding.layout)]
-                                : VK_IMAGE_LAYOUT_GENERAL;
+                            VkImageLayout img_layout = VK_IMAGE_LAYOUT_GENERAL;
 
                             uint32_t idx = g_ctx.image_count++;
                             g_ctx.images[idx].sampler     = nullptr;

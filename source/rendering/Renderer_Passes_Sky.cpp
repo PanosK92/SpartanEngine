@@ -217,11 +217,11 @@ namespace spartan
 
         RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_temporal_c), "clouds_temporal");
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, false, eye_layer);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::cloud_raw), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::cloud_raw_distance), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(resolved_targets[history_index]), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(distance_targets[history_index]), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous), rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::cloud_raw), rhi_all_mips, 0, false, eye_layer);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::cloud_raw_distance), rhi_all_mips, 0, false, eye_layer);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(resolved_targets[history_index]), rhi_all_mips, 0, false, eye_layer);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(distance_targets[history_index]), rhi_all_mips, 0, false, eye_layer);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous), rhi_all_mips, 0, false, eye_layer);
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_output, rhi_all_mips, 0, true, eye_layer);
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_output_distance, rhi_all_mips, 0, true, eye_layer);
         m_pcb_pass_cpu.set_f3_value(m_pass_state.cloud_history.valid ? 0.0f : 1.0f);
@@ -238,8 +238,8 @@ namespace spartan
         RHI_CommandList::SetShader(GetShader(Renderer_Shader::clouds_composite_c), "clouds_composite");
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), rhi_all_mips, 0, false, eye_layer);
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_scene);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(resolved_targets[output_index]), rhi_all_mips, 0, eye_layer);
-        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(distance_targets[output_index]), rhi_all_mips, 0, eye_layer);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(resolved_targets[output_index]), rhi_all_mips, 0, false, eye_layer);
+        RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), GetRenderTarget(distance_targets[output_index]), rhi_all_mips, 0, false, eye_layer);
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_composite, rhi_all_mips, 0, true);
         RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), GetRenderTarget(Renderer_RenderTarget::cloud_velocity), rhi_all_mips, 0, true, eye_layer);

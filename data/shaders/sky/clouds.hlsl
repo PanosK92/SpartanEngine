@@ -362,17 +362,15 @@ float2 cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
         1.35
     );
     float authored_coverage = cloud_coverage_cumulus();
+    // slider 1 must fill the sky, a 0.55 weather floor plus smootherstep left holes
     float overcast_weight = smoothstep(
         0.75,
         1.0,
         authored_coverage
     );
-    float overcast_signal =
-        0.55 +
-        weather_signal * 0.45;
     float shaped_signal = lerp(
         weather_signal,
-        overcast_signal,
+        1.0,
         overcast_weight
     );
     float coverage = cloud_remap_soft(
@@ -1027,12 +1025,12 @@ void clouds_evaluate_detailed(
     float distance_weight = 0.0;
     float opacity_weight  = 0.0;
 
-    // cumulus is closer to the camera looking up, march it first so cirrus appears behind any gaps
+    // cumulus first so cirrus sits behind the gaps
     cloud_march_cumulus(cam_pos, view_dir, sun_dir,
         noise_tex, transmittance_lut,
         samp_noise, samp_lut,
         jitter, max_distance, in_scatter, transmittance, distance_weight, opacity_weight);
-    
+
     representative_distance = opacity_weight > 1e-5 ? distance_weight / opacity_weight : 0.0;
 }
 

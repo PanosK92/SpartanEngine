@@ -59,13 +59,24 @@ static const float terrain_slope_domain_max  = 1.5698f; // 89.94 degrees
 static const float terrain_height_domain_min = -99999.0f;
 static const float terrain_height_domain_max = 99999.0f;
 
-// ramp widths, the slope ramp has to stay narrow or a cliff layer bleeds down onto gentle ground,
-// and the height ramp is a shoreline transition measured in metres, not a whole altitude band
-static const float terrain_slope_feather_max  = 0.14f; // about 8 degrees
+// ramp widths, wide enough that a 25 m cell still holds a real mix instead of a hard isoline
+static const float terrain_slope_feather_max  = 0.35f; // about 20 degrees
 static const float terrain_height_feather_max = 6.0f;
 
-// threshold wobble, kept under the matching feather so it breaks a boundary up instead of moving it
-static const float terrain_slope_jitter  = 0.10f; // about 6 degrees
+// a height rule is an altitude contour, so a feather measured in metres of altitude is not what you
+// see, what you see is its width along the ground and that shrinks as the ground steepens, six metres
+// of altitude is about sixty metres across on a gentle slope and one metre across on a cliff, which is
+// the knife edge, scaling the feather by the local gradient holds this width along the surface instead
+static const float terrain_blend_width_world = 14.0f;
+static const float terrain_gradient_max      = 8.0f; // about 83 degrees
+
+// how far the projection switch is smeared either side of the biplanar threshold, a hard switch draws
+// a razor line straight across every slope that happens to sit at the crossover
+static const float terrain_biplanar_threshold = 0.55f;
+static const float terrain_biplanar_feather   = 0.12f;
+
+// threshold wobble, large enough to turn a slope contour into a coastline
+static const float terrain_slope_jitter  = 0.22f; // about 13 degrees
 static const float terrain_height_jitter = 4.0f;
 
 // past this range the per layer detail work, hex tiling variants and the third and fourth picks, stops
@@ -164,10 +175,11 @@ TerrainAnalysis terrain_sample_analysis(MaterialParameters surface, float3 posit
 float terrain_jitter(float3 position_world, float seed)
 {
     float2 p = position_world.xz * terrain_noise_rcp_scale;
-    float n  = noise_perlin(p * (1.0f / 250.0f) + seed);               // 250 m
+    float n  = noise_perlin(p * (1.0f / 700.0f) + seed * 0.4f) * 1.1f; // 700 m
+    n       += noise_perlin(p * (1.0f / 250.0f) + seed);               // 250 m
     n       += noise_perlin(p * (1.0f / 77.0f)  + seed * 1.7f) * 0.5f; //  77 m
     n       += noise_perlin(p * (1.0f / 24.0f)  + seed * 2.9f) * 0.25f;//  24 m
-    return n / 1.75f;
+    return n / 2.85f;
 }
 
 // soft band, one at the centre and zero outside
@@ -178,13 +190,16 @@ float terrain_jitter(float3 position_world, float seed)
 //
 // the feather also comes from a closed span only, an open ended range has no meaningful width and
 // feathering across it fades the layer out over its own open end
+//
+// a closed span feathers across its own width at most, past that the band peaks below one, which is
+// harmless because the picks are normalized against each other, only their ratio decides the surface
 float terrain_band(float value, float low, float high, float feather_max, float domain_min, float domain_max)
 {
     bool open_low  = low  <= domain_min;
     bool open_high = high >= domain_max;
 
-    float span    = (open_low || open_high) ? (feather_max * 4.0f) : (high - low);
-    float feather = clamp(span * 0.25f, 1e-4f, feather_max);
+    float span    = (open_low || open_high) ? (feather_max * 2.0f) : (high - low);
+    float feather = max(min(span, feather_max), 1e-4f);
 
     float rise = open_low  ? 1.0f : smoothstep(low  - feather, low  + feather, value);
     float fall = open_high ? 1.0f : 1.0f - smoothstep(high - feather, high + feather, value);
@@ -248,6 +263,16 @@ float terrain_layer_weight(
     float slope_jittered  = slope_radians + jitter * terrain_slope_jitter;
     float height_jittered = height        + jitter * terrain_height_jitter;
 
+    // altitude gained per metre travelled horizontally, the tangent of the slope, this is the factor
+    // between a feather written in altitude and the width it actually covers on the ground
+    float normal_y = max(normal_world.y, 0.125f);
+    float gradient = min(sqrt(saturate(1.0f - normal_y * normal_y)) / normal_y, terrain_gradient_max);
+
+    float height_feather = max(
+        terrain_blend_width_world * gradient,
+        terrain_height_feather_max * 0.25f
+    );
+
     float weight = terrain_band(
         slope_jittered,
         layer.terrain_slope_range.x,
@@ -260,7 +285,7 @@ float terrain_layer_weight(
         height_jittered,
         layer.terrain_height_range.x,
         layer.terrain_height_range.y,
-        terrain_height_feather_max,
+        height_feather,
         terrain_height_domain_min,
         terrain_height_domain_max
     );
@@ -346,10 +371,16 @@ TerrainLayerPick terrain_pick_layers(
             slope_radians,
             jitter
         );
+
+        // per layer noise so the isoline grows fingers instead of tracing a slope contour
+        if (scores[i] > 0.0f)
+        {
+            float breakup = terrain_jitter(position_world, 3.1f + (float)i * 2.3f);
+            scores[i]    *= lerp(0.55f, 1.45f, saturate(breakup * 0.5f + 0.5f));
+        }
     }
 
     // selection pass, keep is at most four so this is a handful of comparisons
-    float total = 0.0f;
     [loop]
     for (uint slot = 0; slot < keep; slot++)
     {
@@ -376,7 +407,6 @@ TerrainLayerPick terrain_pick_layers(
         scores[best_layer]      = 0.0f; // consumed
         pick.index[pick.count]  = surface.terrain_layer_base + best_layer * surface.terrain_layer_stride;
         pick.weight[pick.count] = best_score;
-        total                  += best_score;
         pick.count++;
     }
 
@@ -389,11 +419,37 @@ TerrainLayerPick terrain_pick_layers(
         return pick;
     }
 
-    float inverse_total = 1.0f / max(total, 1e-6f);
+    // the selection is a rank cut, and a rank cut is a step, the layer that just lost its slot walks
+    // off with the weight it held and the one that took it walks on with the same amount, which is
+    // exactly the knife edge, subtracting the highest rejected score pins both sides of that swap to
+    // zero so a layer fades in as it climbs the ranking instead of appearing at full strength
+    float rejected = 0.0f;
+    [loop]
+    for (uint rest = 0; rest < layer_count; rest++)
+    {
+        rejected = max(rejected, scores[rest]); // the winners were zeroed as they were consumed
+    }
+
+    float total = 0.0f;
     [unroll]
     for (uint n = 0; n < terrain_layer_pick_max; n++)
     {
-        pick.weight[n] *= inverse_total;
+        pick.weight[n] = max(pick.weight[n] - rejected, 0.0f);
+        total         += pick.weight[n];
+    }
+
+    // every kept layer tied the cut exactly, rare enough to just hand the pixel to the winner
+    if (total <= 0.0f)
+    {
+        pick.weight[0] = 1.0f;
+        total          = 1.0f;
+    }
+
+    float inverse_total = 1.0f / total;
+    [unroll]
+    for (uint m = 0; m < terrain_layer_pick_max; m++)
+    {
+        pick.weight[m] *= inverse_total;
     }
 
     return pick;
@@ -760,6 +816,34 @@ TerrainMapFetch terrain_lerp_fetch(TerrainMapFetch a, TerrainMapFetch b, float t
     return fetch;
 }
 
+// the ground projection, planar at range and hex tiled up close, one entry point so the biplanar
+// blend fades into the exact same thing the non biplanar path would have produced
+TerrainMapFetch terrain_fetch_ground(
+    uint               layer_index,
+    MaterialParameters layer,
+    float2             uv,
+    float2             duvdx,
+    float2             duvdy,
+    float              hex_weight
+)
+{
+    if (hex_weight >= 1.0f)
+    {
+        return terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy);
+    }
+
+    if (hex_weight <= 0.0f)
+    {
+        return terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy);
+    }
+
+    return terrain_lerp_fetch(
+        terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy),
+        terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy),
+        hex_weight
+    );
+}
+
 // 1 inside the range, 0 past it, linear across fade_width so the change is not pinched into a ring
 float terrain_lod_weight(float distance_to_camera, float cutoff, float fade_width, float distance_offset)
 {
@@ -789,7 +873,17 @@ TerrainLayerSample terrain_sample_layer(
 
     // biplanar is for cliff faces, y still dominates until about 45 degrees so a looser
     // threshold projects a side axis onto rolling ground and shears the uv into streaks
-    bool want_biplanar = layer.terrain_layer_biplanar() && abs(normal_world.y) < 0.55f && biplanar_weight > 0.0f;
+    //
+    // the threshold is feathered, a bare comparison swaps the whole projection between two adjacent
+    // pixels and the two projections agree on nothing, so it draws a seam along the iso line of the
+    // normal, which is a contour across every slope that grazes the crossover
+    float projection_fade = 1.0f - smoothstep(
+        terrain_biplanar_threshold - terrain_biplanar_feather,
+        terrain_biplanar_threshold + terrain_biplanar_feather,
+        abs(normal_world.y)
+    );
+    biplanar_weight    *= projection_fade;
+    bool want_biplanar  = layer.terrain_layer_biplanar() && biplanar_weight > 0.0f;
 
     TerrainMapFetch fetch;
     if (want_biplanar)
@@ -797,33 +891,16 @@ TerrainLayerSample terrain_sample_layer(
         fetch = terrain_fetch_biplanar(layer_index, layer, position_world, dpdx, dpdy, normal_world);
         if (biplanar_weight < 1.0f)
         {
-            TerrainMapFetch other;
-            if (hex_weight > 0.0f)
-            {
-                other = terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy);
-            }
-            else
-            {
-                other = terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy);
-            }
-            fetch = terrain_lerp_fetch(other, fetch, biplanar_weight);
+            fetch = terrain_lerp_fetch(
+                terrain_fetch_ground(layer_index, layer, uv, duvdx, duvdy, hex_weight),
+                fetch,
+                biplanar_weight
+            );
         }
-    }
-    else if (hex_weight >= 1.0f)
-    {
-        fetch = terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy);
-    }
-    else if (hex_weight <= 0.0f)
-    {
-        fetch = terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy);
     }
     else
     {
-        fetch = terrain_lerp_fetch(
-            terrain_fetch_planar(layer_index, layer, uv, duvdx, duvdy),
-            terrain_fetch_hex(layer_index, layer, uv, duvdx, duvdy),
-            hex_weight
-        );
+        fetch = terrain_fetch_ground(layer_index, layer, uv, duvdx, duvdy, hex_weight);
     }
 
     result.albedo   = fetch.albedo;
@@ -897,23 +974,25 @@ TerrainSurface terrain_evaluate(
     float lod_noise     = terrain_jitter(position_world, 4.2f);
     float detail_weight = terrain_lod_weight(distance_to_camera, terrain_detail_distance, terrain_detail_fade, lod_noise * terrain_detail_fade * 0.75f);
     float hex_weight    = terrain_lod_weight(distance_to_camera, terrain_hex_distance,    terrain_hex_fade,    lod_noise * terrain_hex_fade    * 0.75f);
-    float blend_weight  = terrain_lod_weight(distance_to_camera, terrain_blend_distance,  terrain_blend_fade,  lod_noise * terrain_blend_fade  * 0.75f);
 
-    // close up every pick is resolvable, past that two layers still carry the interface for a fraction
-    // of the fetches, and only in the far field is a single layer honest
+    // two layers stay in play at every distance, dropping to one is the hard split
     uint count = pick.count;
-    if (blend_weight <= 0.0f)
-    {
-        count = 1;
-    }
-    else if (detail_weight <= 0.0f)
+    if (detail_weight <= 0.0f)
     {
         count = min(pick.count, 2u);
     }
 
+    // the soft selection leaves a tail pick at exactly zero wherever it lost the cut cleanly, and the
+    // picks come out sorted, so trailing zeros are dead weight, nine texture fetches for no
+    // contribution, dropping them is what pays for keeping a third layer in play at all
+    [loop]
+    while (count > 1 && pick.weight[count - 1] <= 0.0f)
+    {
+        count--;
+    }
+
     // sample the picks
     TerrainLayerSample samples[terrain_layer_pick_max];
-    float contrasts[terrain_layer_pick_max];
     float porosities[terrain_layer_pick_max];
     float macros[terrain_layer_pick_max];
 
@@ -925,44 +1004,27 @@ TerrainSurface terrain_evaluate(
         );
 
         MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[s])];
-        contrasts[s]             = max(layer.terrain_blend_contrast, 0.01f);
         porosities[s]            = layer.terrain_porosity;
         macros[s]                = layer.terrain_macro_strength;
     }
 
-    // height blend, the interface is decided by which layer's material is physically higher at
-    // this point, not by a linear dissolve, so gravel settles into the gaps between rocks
-    // thick sediment adds to its own height so it genuinely buries what is under it
+    // mix by pick weight, height only nips the interface up close
+    // a hard height gate painted the sawtooth and flickered with taa
+    //
+    // both modifiers are multiplicative on purpose, anything added here would give a layer that enters
+    // the pick set at zero weight a floor to appear at, which puts the rank cut step back
     float deposition_bias = analysis.deposition * 0.35f;
-
-    float peak = -1e6f;
-    float blend_weights[terrain_layer_pick_max];
-    [loop]
-    for (uint p = 0; p < count; p++)
-    {
-        MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[p])];
-        float bias               = layer.terrain_deposition_influence > 0.0f ? deposition_bias : 0.0f;
-        blend_weights[p]         = samples[p].height + pick.weight[p] + bias;
-        peak                     = max(peak, blend_weights[p]);
-    }
-
-    // the narrowest contrast in play decides the band, a sharp layer must stay sharp against a soft one
-    float depth = 1.0f;
-    [loop]
-    for (uint c = 0; c < count; c++)
-    {
-        depth = min(depth, contrasts[c]);
-    }
-
-    float threshold = peak - depth;
     float resolved[terrain_layer_pick_max];
     [loop]
     for (uint b = 0; b < count; b++)
     {
-        resolved[b] = max(blend_weights[b] - threshold, 0.0f);
+        MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[b])];
+        float bias               = layer.terrain_deposition_influence > 0.0f ? deposition_bias : 0.0f;
+        float contrast           = layer.terrain_blend_contrast * detail_weight;
+        float height_mod         = lerp(1.0f, samples[b].height + 0.5f, contrast);
+        resolved[b]              = pick.weight[b] * (1.0f + bias * 0.5f) * height_mod;
     }
 
-    // extra picks fade out across the lod bands instead of vanishing on a hard radius
     if (count > 2)
     {
         resolved[2] *= detail_weight;
@@ -970,10 +1032,6 @@ TerrainSurface terrain_evaluate(
     if (count > 3)
     {
         resolved[3] *= detail_weight;
-    }
-    if (count > 1)
-    {
-        resolved[1] *= blend_weight;
     }
 
     float weight_sum = 0.0f;
@@ -1196,17 +1254,29 @@ float terrain_displacement(MaterialParameters surface, float3 position_world, fl
     float slope_radians      = acos(saturate(dot(normal_world, float3(0.0f, 1.0f, 0.0f))));
     TerrainLayerPick pick    = terrain_pick_layers(surface, analysis, position_world, normal_world, slope_radians);
 
-    MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[0])];
-    if (pick.count == 0 || !layer.has_texture_height())
+    if (pick.count == 0)
     {
         return 0.0f;
     }
 
-    float height = material_textures[NonUniformResourceIndex(pick.index[0] + material_texture_index_packed)]
-        .SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv * layer.terrain_tiling_scale, 0.0f).a;
+    // blend the top picks so a flipping winner cannot pop the silhouette
+    float displacement = 0.0f;
+    uint disp_count    = min(pick.count, 2u);
+    [loop]
+    for (uint d = 0; d < disp_count; d++)
+    {
+        MaterialParameters layer = material_parameters[NonUniformResourceIndex(pick.index[d])];
+        if (!layer.has_texture_height())
+        {
+            continue;
+        }
 
-    // centred on the midpoint so the surface neither inflates nor sinks as a whole
-    return (height - 0.5f) * layer.height * terrain_displacement_scale * pick.weight[0];
+        float height = material_textures[NonUniformResourceIndex(pick.index[d] + material_texture_index_packed)]
+            .SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv * layer.terrain_tiling_scale, 0.0f).a;
+        displacement += (height - 0.5f) * layer.height * pick.weight[d];
+    }
+
+    return displacement * terrain_displacement_scale;
 }
 
 //= non terrain snow =============================================================================

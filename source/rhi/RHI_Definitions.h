@@ -282,17 +282,11 @@ namespace spartan
         Max
     };
 
-    // vulkan parks images in general after the first undefined transition
-    // present and vrs are the only layouts that leave general
-    inline bool rhi_layout_is_unified_exception(const RHI_Image_Layout layout)
-    {
-        return layout == RHI_Image_Layout::Present_Source ||
-               layout == RHI_Image_Layout::Shading_Rate_Attachment;
-    }
-
+    // engine textures park in general after the first undefined transition
+    // present is swapchain only and is the one layout that still changes
     inline RHI_Image_Layout rhi_unify_image_layout(const RHI_Image_Layout layout)
     {
-        if (rhi_layout_is_unified_exception(layout) || layout == RHI_Image_Layout::Max)
+        if (layout == RHI_Image_Layout::Present_Source || layout == RHI_Image_Layout::Max)
         {
             return layout;
         }

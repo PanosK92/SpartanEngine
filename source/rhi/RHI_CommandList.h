@@ -394,6 +394,8 @@ namespace spartan
         void TrackBufferUsage(uint32_t slot, RHI_Buffer* buffer, RHI_Resource_Access access);
         void TrackBufferRead(uint32_t slot, RHI_Buffer* buffer, RHI_Resource_Usage usage);
         void TrackExternalTextureUsage(RHI_Texture* texture, RHI_Resource_Access access, RHI_Image_Layout layout, RHI_Barrier_Scope scope, RHI_Resource_Usage usage = RHI_Resource_Usage::Shader);
+        void PrepareForExternalAccess(RHI_Texture* texture, RHI_Resource_Access access, RHI_Image_Layout layout = RHI_Image_Layout::General, RHI_Barrier_Scope scope = RHI_Barrier_Scope::Compute);
+        void PrepareForExternalRead(RHI_Texture* texture, RHI_Image_Layout layout = RHI_Image_Layout::General, RHI_Barrier_Scope scope = RHI_Barrier_Scope::Compute);
         void PrepareForExternalWrite(RHI_Texture* texture, RHI_Image_Layout layout = RHI_Image_Layout::General, RHI_Barrier_Scope scope = RHI_Barrier_Scope::Compute);
         void SynchronizeRenderTargets();
         void SynchronizeResources(bool include_bindings = true);

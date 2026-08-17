@@ -749,6 +749,8 @@ namespace spartan
         }
     }
     
+    vector<Entity*> Camera::m_selected_entities;
+
     void Camera::SetSelectedEntity(Entity* entity)
     {
         m_selected_entities.clear();
@@ -818,7 +820,7 @@ namespace spartan
         m_selected_entities.clear();
     }
     
-    bool Camera::IsSelected(Entity* entity) const
+    bool Camera::IsSelected(Entity* entity)
     {
         if (!entity)
         {

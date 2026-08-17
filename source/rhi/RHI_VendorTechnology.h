@@ -73,6 +73,7 @@ namespace spartan
         );
 
         // nrd, guides + signal in/out, light_direction only for shadows
+        // shadow_denoiser_index 0 is the sun, 1-4 are local sigma instances
         static bool NRD_Dispatch(
             Nrd_Preset preset,
             RHI_Texture* tex_mv,
@@ -80,7 +81,8 @@ namespace spartan
             RHI_Texture* tex_view_z,
             RHI_Texture* tex_signal_in,
             RHI_Texture* tex_signal_out,
-            const math::Vector3* light_direction = nullptr
+            const math::Vector3* light_direction = nullptr,
+            uint32_t shadow_denoiser_index = 0
         );
     };
 }

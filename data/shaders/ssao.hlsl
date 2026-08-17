@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // constants
 static const float g_ao_radius        = 1.5f;
 static const float g_ao_intensity     = 1.0f;
-static const uint  g_directions       = 3;
+static const uint  g_directions       = 2;
 static const uint  g_steps            = 3;
 // r2 (roberts 2018), low discrepancy 2d sequence with no short period beats
 static const float g_r2_a1            = 0.7548776662466927f;
@@ -162,6 +162,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     uint2 pos                          = thread_id.xy;
     const float2 origin_uv             = (pos + 0.5f) / resolution_out;
+    const float depth_raw              = get_depth(pos);
+    if (depth_raw < 1e-4f)
+    {
+        float3 sky_bent = float3(0.0f, 1.0f, 0.0f);
+        tex_uav[thread_id.xy]  = float4(sky_bent, 1.0f);
+        tex_uav2[thread_id.xy] = float4(octahedral_encode_ssao(sky_bent), 1.0f, 1.0f);
+        return;
+    }
+
     const float3 origin_position       = get_position_view_space(origin_uv);
     const float3 origin_normal         = get_normal_view_space(origin_uv);
     const float3 geo_normal_world      = view_to_world(origin_normal, false);
@@ -303,26 +312,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 uv_prev     = origin_uv - velocity_uv;
     float  motion_px   = length(velocity_uv * resolution_out);
 
-    // wake, static pixel next to a fast mover (road behind car) must go noisy
+    // plus of radius 2, same wake reject without a 5x5 velocity fetch
+    static const int2 wake_taps[8] =
+    {
+        int2( 1,  0), int2(-1,  0), int2(0,  1), int2( 0, -1),
+        int2( 2,  0), int2(-2,  0), int2(0,  2), int2( 0, -2)
+    };
     float neighbor_motion_px = 0.0f;
     [unroll]
-    for (int my = -2; my <= 2; my++)
+    for (int t = 0; t < 8; t++)
     {
-        [unroll]
-        for (int mx = -2; mx <= 2; mx++)
+        int2 p = int2(pos) + wake_taps[t];
+        if (any(p < 0) || any(p >= int2(resolution_out)))
         {
-            if (mx == 0 && my == 0)
-            {
-                continue;
-            }
-            int2 p = int2(pos) + int2(mx, my);
-            if (any(p < 0) || any(p >= int2(resolution_out)))
-            {
-                continue;
-            }
-            float2 v = get_velocity_uv(uint2(p)) * float2(0.5f, -0.5f);
-            neighbor_motion_px = max(neighbor_motion_px, length(v * resolution_out));
+            continue;
         }
+        float2 v = get_velocity_uv(uint2(p)) * float2(0.5f, -0.5f);
+        neighbor_motion_px = max(neighbor_motion_px, length(v * resolution_out));
     }
     bool in_wake = neighbor_motion_px > g_wake_motion_px
         && (neighbor_motion_px - motion_px) > g_wake_delta_px;

@@ -175,7 +175,7 @@ namespace spartan
             float snow_level            = 400.0f;
             float snow_amount           = 1.0f;
             float wetness               = 0.0f;
-            uint32_t quality            = 2; // top n layers sampled per pixel
+            uint32_t quality            = 3; // top n layers sampled per pixel, matches Terrain's own default
             uint32_t debug_view         = 0; // TerrainDebugView, 0 is off
         };
 

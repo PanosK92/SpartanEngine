@@ -240,18 +240,25 @@ namespace spartan
         // misc
         bool IsWalking()                                { return m_is_walking; }
         
-        // selection - single entity (for compatibility)
-        void SetSelectedEntity(spartan::Entity* entity);
-        spartan::Entity* GetSelectedEntity();
-        
+        // selection, shared by every camera
+        //
+        // the selection belongs to the editor, not to a camera. World::GetCamera swaps which camera
+        // component is active whenever a secondary view renders or the sequencer previews through
+        // another camera, so per instance lists make that swap read as the selection being lost
+        //
+        // still reachable as camera->GetSelectedEntity(), calling a static member through an instance
+        // is legal, so every existing call site keeps working
+        static void SetSelectedEntity(spartan::Entity* entity);
+        static spartan::Entity* GetSelectedEntity();
+
         // selection - multiple entities
-        void AddToSelection(spartan::Entity* entity);
-        void RemoveFromSelection(spartan::Entity* entity);
-        void ToggleSelection(spartan::Entity* entity);
-        void ClearSelection();
-        bool IsSelected(spartan::Entity* entity) const;
-        const std::vector<spartan::Entity*>& GetSelectedEntities() const { return m_selected_entities; }
-        uint32_t GetSelectedEntityCount() const { return static_cast<uint32_t>(m_selected_entities.size()); }
+        static void AddToSelection(spartan::Entity* entity);
+        static void RemoveFromSelection(spartan::Entity* entity);
+        static void ToggleSelection(spartan::Entity* entity);
+        static void ClearSelection();
+        static bool IsSelected(spartan::Entity* entity);
+        static const std::vector<spartan::Entity*>& GetSelectedEntities() { return m_selected_entities; }
+        static uint32_t GetSelectedEntityCount() { return static_cast<uint32_t>(m_selected_entities.size()); }
 
         math::Matrix UpdateViewMatrix() const;
         math::Matrix ComputeProjection(const float near_plane, const float far_plane);
@@ -315,7 +322,7 @@ namespace spartan
         math::Quaternion m_anim_rotation_previous    = math::Quaternion::Identity;
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
-        std::vector<spartan::Entity*> m_selected_entities;
+        static std::vector<spartan::Entity*> m_selected_entities;
         
         // pre-allocated buffers for picking (to avoid heap allocations)
         std::vector<math::RayHitResult> m_pick_hits;

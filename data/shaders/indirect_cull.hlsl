@@ -52,6 +52,7 @@ groupshared DrawData gs_draw;
 groupshared float4x4 gs_world;
 groupshared float    gs_scale_max;
 groupshared bool     gs_skinned;
+groupshared bool     gs_skip_hiz;
 groupshared bool     gs_two_sided;
 groupshared bool     gs_is_alpha;
 groupshared uint     gs_meshlet_offset;
@@ -85,6 +86,7 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
             : gs_draw.transform;
         gs_scale_max          = max_world_scale(gs_world);
         gs_skinned            = (gs_draw.flags & 1u) != 0u;
+        gs_skip_hiz           = (gs_draw.flags & 32u) != 0u;
         gs_two_sided          = (gs_draw.flags & 8u) != 0u;
         gs_is_alpha           = (gs_draw.flags & 16u) != 0u;
         gs_meshlet_offset     = gs_draw.lod_meshlet_offset;
@@ -147,8 +149,8 @@ void main_cs(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
                     }
                 }
 
-                // per-meshlet hi-z, analytical sphere projection
-                if (is_visible)
+                // last frame hi-z is stale for movers, skip or the mesh pops for a frame
+                if (is_visible && !gs_skip_hiz)
                     is_visible = sphere_hiz_visible(tex, center_world, radius_world, max_mip_level);
             }
         }

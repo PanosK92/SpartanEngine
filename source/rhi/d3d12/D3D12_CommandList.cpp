@@ -1616,7 +1616,7 @@ namespace spartan
             ID3D12Resource* vrs_resource = static_cast<ID3D12Resource*>(vrs->GetRhiResource());
 
             cmd_state::push_transition(b, vrs_resource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
-            SetTrackedTextureLayout(vrs, 0, vrs->GetMipCount(), RHI_Image_Layout::Shading_Rate_Attachment);
+            SetTrackedTextureLayout(vrs, 0, vrs->GetMipCount(), RHI_Image_Layout::General);
             cmd_state::flush(cmd_list, b);
 
             RHI_Device::SetVariableRateShading(this, true);
@@ -3661,8 +3661,16 @@ namespace spartan
                 }
 
                 const bool is_uav = barrier.texture && barrier.texture->IsUav();
-                D3D12_RESOURCE_STATES state_after = rhi_to_d3d12_state(barrier.layout, is_depth, barrier.usage_dst, barrier.access_dst, is_uav);
-                RHI_Image_Layout layout_tracked = rhi_unify_image_layout(barrier.layout);
+                D3D12_RESOURCE_STATES state_after = rhi_to_d3d12_state(
+                    barrier.texture ? RHI_Image_Layout::General : barrier.layout,
+                    is_depth,
+                    barrier.usage_dst,
+                    barrier.access_dst,
+                    is_uav
+                );
+                RHI_Image_Layout layout_tracked = barrier.texture
+                    ? RHI_Image_Layout::General
+                    : rhi_unify_image_layout(barrier.layout);
 
                 // honor mip_index and mip_range when supplied so per-mip transitions can be requested
                 // (e.g. mipmap filtering passes that need to flip a single mip back to shader_read between dispatches)
@@ -3846,7 +3854,7 @@ namespace spartan
         }
         if (state & D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)
         {
-            return RHI_Image_Layout::Shading_Rate_Attachment;
+            return RHI_Image_Layout::General;
         }
         if (state == D3D12_RESOURCE_STATE_COMMON)
         {

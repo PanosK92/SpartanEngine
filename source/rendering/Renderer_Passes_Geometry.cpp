@@ -843,8 +843,11 @@ namespace spartan
             Renderer_SecondaryViewMode::Vertices
                 ? RHI_PrimitiveTopology::PointList
                 : RHI_PrimitiveTopology::TriangleList;
-        // equal, not greater-equal, so only prepass survivors draw, otherwise alpha cutouts render as solid quads
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
+        // opaque uses greater-equal, an equality test demands bit identical depth from two different mesh
+        // shaders, the prepass runs meshlet_mesh_depth_m and this pass runs meshlet_mesh_m, so a one bit
+        // disagreement leaves the pixel unshaded, which reads as a hole through the terrain that flickers
+        // as taa rejitters the projection, the alpha half below restores equal, it needs it for cutouts
+        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.vrs_input_texture                =
             cvar_variable_rate_shading.GetValueAs<bool>() &&
             !IsSecondaryViewActive()
@@ -899,6 +902,8 @@ namespace spartan
             pso.clear_color[1] = rhi_color_load;
             pso.clear_color[2] = rhi_color_load;
             pso.clear_color[3] = rhi_color_load;
+            // equal, not greater-equal, so only prepass survivors draw, otherwise cutouts render as solid quads
+            pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
             if (mesh_path)
             {
                 // the alpha variant compiles GBUFFER_ALPHA so it keeps the alpha survivors instead of the opaque ones
@@ -940,9 +945,15 @@ namespace spartan
             Renderer_SecondaryViewMode::Vertices
                 ? RHI_PrimitiveTopology::PointList
                 : RHI_PrimitiveTopology::TriangleList;
-        // transparent draws own their depth so they keep ReadWrite, opaque/tessellated leans on the depth prepass written through the
-        // tessellation_h/d pair so equal-z matches whatever the prepass produced, same alpha-test correctness argument as the indirect path
-        pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
+        // both halves of this pass own their depth
+        //
+        // the tessellated half cannot use equal-z. the indirect path can, because there the prepass and the
+        // g buffer rasterize the same vertices through the same transform. here the vertices are generated,
+        // the patch is subdivided and displaced by a chain that reads the layer rules and a height map, and
+        // it is driven by two separately compiled vertex shaders, depth_prepass_v in the prepass and
+        // gbuffer_v here. those agree only to the last bit, and equal-z rejects anything inexact, so a
+        // disagreement costs the whole patch its shading
+        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.vrs_input_texture                =
             cvar_variable_rate_shading.GetValueAs<bool>() &&
             !IsSecondaryViewActive()

@@ -580,6 +580,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
+            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_local)       = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_shift0)                   = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_shift1)                   = nullptr;
@@ -705,7 +706,8 @@ namespace spartan
 
             at(render_targets, Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
             at(render_targets, Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
-            at(render_targets, Renderer_RenderTarget::ray_traced_shadows) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
+            at(render_targets, Renderer_RenderTarget::ray_traced_shadows)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
+            at(render_targets, Renderer_RenderTarget::ray_traced_shadows_local) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, nrd_local_shadow_max, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows_local");
 
             // nrd screen guides and signals for reflections (reblur specular) and shadows (sigma)
             // must share one resolution: both presets use the same nrd pool_screen

@@ -1329,6 +1329,7 @@ namespace spartan
             camera          = nullptr;
             camera_override = nullptr;
             light           = nullptr;
+            Camera::ClearSelection(); // the selection outlives cameras now, don't let it hold freed entities
             for (Entity* entity : entities)
             {
                 delete entity;
@@ -1749,6 +1750,12 @@ namespace spartan
         {
             // track entities
             {
+                // the pick below walks the entity list, and that list is reordered as entities come and
+                // go, so a blind re-pick can hand the seat to a different camera on any frame where an
+                // entity changed, which swaps the view, the frustum and the temporal history at once
+                Entity* camera_incumbent   = camera;
+                bool camera_incumbent_live = false;
+
                 camera             = nullptr;
                 light              = nullptr;
                 audio_source_count = 0;
@@ -1764,6 +1771,7 @@ namespace spartan
                     if (entity->GetActive())
                     {
                         camera = pick_default_camera(camera, entity);
+                        camera_incumbent_live |= entity == camera_incumbent;
 
                         if (Light* light_comp = entity->GetComponent<Light>())
                         {
@@ -1846,6 +1854,12 @@ namespace spartan
                             }
                         }
                     }
+                }
+
+                // the incumbent keeps the seat unless it is gone, went inactive, or a player camera showed up
+                if (camera_incumbent_live)
+                {
+                    camera = pick_default_camera(camera_incumbent, camera);
                 }
             }
 

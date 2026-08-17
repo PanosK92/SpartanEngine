@@ -285,7 +285,8 @@ namespace spartan
             return;
         }
 
-        RHI_Texture* tex_shadows = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows);
+        RHI_Texture* tex_shadows       = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows);
+        RHI_Texture* tex_shadows_local = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_local);
 
         if (tex_shadows && (tex_shadows->GetWidth() < min_rt_dimension || tex_shadows->GetHeight() < min_rt_dimension))
         {
@@ -335,6 +336,10 @@ namespace spartan
                 RHI_CommandList::SetShaders(shader_rgen, shader_miss, shader_hit);
                 RHI_CommandList::SetAccelerationStructure(static_cast<uint32_t>(Renderer_BindingsSrv::tlas), tlas);
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
+                if (tex_shadows_local)
+                {
+                    RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::rt_shadows_local), tex_shadows_local, rhi_all_mips, 0, true);
+                }
 
                 // x tells the raygen whether transparents exist, opaque scenes take a single accept first hit ray
                 m_pcb_pass_cpu.set_f3_value(m_transparents_present ? 1.0f : 0.0f);
@@ -371,12 +376,13 @@ namespace spartan
             return;
         }
 
-        RHI_Texture* tex_shadows = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows);
-        RHI_Texture* tex_mv      = GetRenderTarget(Renderer_RenderTarget::nrd_screen_mv);
-        RHI_Texture* tex_normal  = GetRenderTarget(Renderer_RenderTarget::nrd_screen_normal_roughness);
-        RHI_Texture* tex_view_z  = GetRenderTarget(Renderer_RenderTarget::nrd_screen_viewz);
-        RHI_Texture* tex_in      = GetRenderTarget(Renderer_RenderTarget::nrd_in_penumbra);
-        RHI_Texture* tex_out     = GetRenderTarget(Renderer_RenderTarget::nrd_out_shadow);
+        RHI_Texture* tex_shadows       = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows);
+        RHI_Texture* tex_shadows_local = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_local);
+        RHI_Texture* tex_mv            = GetRenderTarget(Renderer_RenderTarget::nrd_screen_mv);
+        RHI_Texture* tex_normal        = GetRenderTarget(Renderer_RenderTarget::nrd_screen_normal_roughness);
+        RHI_Texture* tex_view_z        = GetRenderTarget(Renderer_RenderTarget::nrd_screen_viewz);
+        RHI_Texture* tex_in            = GetRenderTarget(Renderer_RenderTarget::nrd_in_penumbra);
+        RHI_Texture* tex_out           = GetRenderTarget(Renderer_RenderTarget::nrd_out_shadow);
         if (!tex_shadows || !tex_mv || !tex_normal || !tex_view_z || !tex_in || !tex_out)
         {
             return;
@@ -395,6 +401,42 @@ namespace spartan
             return;
         }
 
+        auto denoise_sigma = [&](float tan_radius, uint32_t slice, bool is_local, const Vector3& direction, uint32_t denoiser_index)
+        {
+            Renderer::SetPass(is_local ? "nrd_pack_shadows_local" : "nrd_pack_shadows", rhi_all_mips);
+            RHI_CommandList::SetShader(shader_pack);
+            m_pcb_pass_cpu.set_f3_value(tan_radius, static_cast<float>(slice), is_local ? 1.0f : 0.0f);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_shadows);
+            if (tex_shadows_local)
+            {
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::rt_shadows_local), tex_shadows_local);
+            }
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_mv, rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_normal, rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), tex_view_z, rhi_all_mips, 0, true);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex4), tex_in, rhi_all_mips, 0, true);
+            RHI_CommandList::Dispatch(tex_shadows);
+
+            if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Shadows, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, &direction, denoiser_index))
+            {
+                return false;
+            }
+
+            Renderer::SetPass(is_local ? "nrd_unpack_shadows_local" : "nrd_unpack_shadows", rhi_all_mips);
+            RHI_CommandList::SetShader(shader_unpack);
+            m_pcb_pass_cpu.set_f3_value(0.0f, static_cast<float>(slice), is_local ? 1.0f : 0.0f);
+            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_out);
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
+            if (tex_shadows_local)
+            {
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::rt_shadows_local), tex_shadows_local, rhi_all_mips, 0, true);
+            }
+            RHI_CommandList::Dispatch(tex_shadows);
+            return true;
+        };
+
         // sigma must use the same solar angular radius as the shadow rays
         Vector3 light_direction = Vector3::Down;
         const float tan_light_angular_radius = tanf(0.00465f);
@@ -406,39 +448,28 @@ namespace spartan
             }
         }
 
-        RHI_CommandList::BeginMarker("nrd_pack");
+        RHI_CommandList::BeginMarker("nrd_sun");
         {
-            Renderer::SetPass("nrd_pack_shadows", rhi_all_mips);
-            RHI_CommandList::SetShader(shader_pack);
-            m_pcb_pass_cpu.set_f3_value(tan_light_angular_radius);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_shadows);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_mv, rhi_all_mips, 0, true);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_normal, rhi_all_mips, 0, true);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), tex_view_z, rhi_all_mips, 0, true);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex4), tex_in, rhi_all_mips, 0, true);
-            RHI_CommandList::Dispatch(tex_shadows);
+            denoise_sigma(tan_light_angular_radius, 0, false, light_direction, 0);
         }
         RHI_CommandList::EndMarker();
 
-        RHI_CommandList::BeginMarker("nrd_dispatch");
+        // nrd needs lightDirection only for the sun, local lights pass zero
+        const Vector3 local_direction = Vector3::Zero;
+        for (uint32_t i = 1; i < m_count_active_lights; i++)
         {
-            if (!RHI_VendorTechnology::NRD_Dispatch(Nrd_Preset::Shadows, tex_mv, tex_normal, tex_view_z, tex_in, tex_out, &light_direction))
+            const uint32_t slot = (m_bindless_lights[i].flags >> 8) & 7u;
+            if (slot == 0)
             {
-                RHI_CommandList::EndMarker();
-                return;
+                continue;
             }
-        }
-        RHI_CommandList::EndMarker();
 
-        RHI_CommandList::BeginMarker("nrd_unpack");
-        {
-            Renderer::SetPass("nrd_unpack_shadows", rhi_all_mips);
-            RHI_CommandList::SetShader(shader_unpack);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), tex_out);
-            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
-            RHI_CommandList::Dispatch(tex_shadows);
+            RHI_CommandList::BeginMarker("nrd_local");
+            {
+                denoise_sigma(0.0f, slot - 1, true, local_direction, slot);
+            }
+            RHI_CommandList::EndMarker();
         }
-        RHI_CommandList::EndMarker();
     }
 
     // self inverting pairing table, lin 2026 3.1, repeated 2x2 shuffles yield deltas of standard deviation sigma, wrapped so it tiles
@@ -1247,6 +1278,7 @@ namespace spartan
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), GetRenderTarget(Renderer_RenderTarget::skysphere));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex4), GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows));
+            RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::rt_shadows_local), GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows_local));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex5), GetRenderTarget(Renderer_RenderTarget::cloud_shadow));
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), light_diffuse, rhi_all_mips, 0, true);
             RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), light_specular, rhi_all_mips, 0, true);

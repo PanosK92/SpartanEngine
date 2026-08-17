@@ -2950,7 +2950,61 @@ namespace spartan
                 fill_light(light_component);
             }
         }
-    
+
+        // nrd sigma has one history per slot, pick the strongest local shadowed lights
+        {
+            uint32_t chosen[nrd_local_shadow_max];
+            float scores[nrd_local_shadow_max];
+            uint32_t chosen_count = 0;
+            for (uint32_t i = 1; i < m_count_active_lights; i++)
+            {
+                const uint32_t flags = m_bindless_lights[i].flags;
+                if ((flags & (1u << 3)) == 0 || (flags & (1u << 0)) != 0)
+                {
+                    continue;
+                }
+
+                float score = m_bindless_lights[i].intensity;
+                if (flags & (1u << 6))
+                {
+                    score *= 100.0f;
+                }
+
+                uint32_t insert = chosen_count;
+                for (uint32_t s = 0; s < chosen_count; s++)
+                {
+                    if (score > scores[s])
+                    {
+                        insert = s;
+                        break;
+                    }
+                }
+
+                if (insert >= nrd_local_shadow_max)
+                {
+                    continue;
+                }
+
+                uint32_t last = min(chosen_count, static_cast<uint32_t>(nrd_local_shadow_max) - 1);
+                for (uint32_t s = last; s > insert; s--)
+                {
+                    chosen[s] = chosen[s - 1];
+                    scores[s] = scores[s - 1];
+                }
+                chosen[insert] = i;
+                scores[insert] = score;
+                if (chosen_count < nrd_local_shadow_max)
+                {
+                    chosen_count++;
+                }
+            }
+
+            for (uint32_t s = 0; s < chosen_count; s++)
+            {
+                m_bindless_lights[chosen[s]].flags |= (s + 1) << 8;
+            }
+        }
+
         // the atmosphere is driven entirely by slot 0, so a world with no lights at all leaves the
         // sky panorama black, a neutral default sun keeps a viewport usable before anything is
         // loaded, worlds that deliberately light with point lights only are left untouched
@@ -3263,7 +3317,7 @@ namespace spartan
             Entity* entity = render->GetEntity();
             Mesh* mesh     = render->GetMesh();
 
-            // flags bit 0 skinned, bit 1 per instance, bit 3 two sided material, bit 4 alpha tested (bit 2 retired with the hw-instancing fallback)
+            // flags bit 0 skinned, bit 1 per instance, bit 3 two sided, bit 4 alpha tested, bit 5 skip hi-z
             // override means cpu already wrote a deformed world aabb, use the skinned cull path so phase a does not test lod_aabb * entity
             const bool is_skinned       =
                 render->HasBoundingBoxOverride() ||
@@ -3271,6 +3325,7 @@ namespace spartan
             const bool use_per_instance = is_instanced;
             const bool is_two_sided     = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
             const bool is_alpha_tested  = material->IsAlphaTested();
+            const bool skip_hiz         = entity && entity->GetTimeSinceLastTransform() <= 0.1f;
             uint32_t base_flags         = 0u;
             if (is_skinned)
             {
@@ -3287,6 +3342,10 @@ namespace spartan
             if (is_alpha_tested)
             {
                 base_flags |= 16u;
+            }
+            if (skip_hiz)
+            {
+                base_flags |= 32u;
             }
 
             const uint32_t draw_idx        = m_indirect_draw_count++;
@@ -3369,8 +3428,10 @@ namespace spartan
             return;
         }
 
-        const float move_window_sec =
-            static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f + 0.0001f;
+        const float move_window_sec = max(
+            static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f,
+            0.05f
+        );
 
         auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
         {
@@ -3609,8 +3670,10 @@ namespace spartan
 
             if (!needs_tlas_rebuild)
             {
-                const float move_window_sec =
-                    static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f + 0.0001f;
+                const float move_window_sec = max(
+                    static_cast<float>(Timer::GetDeltaTimeSec()) * 2.0f,
+                    0.05f
+                );
 
                 for (Entity* entity : render_entities())
                 {

@@ -41,7 +41,7 @@ namespace spartan
             TerrainLayerRule& r     = rules[0];
             r.name                  = "whispy_grass_meadow";
             r.slope_min             = 0.0f;
-            r.slope_max             = 45.0f;
+            r.slope_max             = 52.0f;
             r.height_min            = 1.0f;
             r.flags                 = TerrainLayerFlags_BelowSea;
             r.insolation_influence  = 0.25f;
@@ -49,27 +49,27 @@ namespace spartan
             r.curvature_influence   = -0.1f;
             r.deposition_influence  = 0.2f;
             r.tiling_scale          = 1.0f;
-            r.blend_contrast        = 0.25f;
+            r.blend_contrast        = 0.45f;
             r.porosity              = 0.7f;
             r.macro_strength        = 1.0f;
-            r.weight_bias           = 1.2f;
+            r.weight_bias           = 1.35f;
         }
 
         // layer 1, rock, the cliff face, biplanar because planar xz smears on anything vertical
         {
             TerrainLayerRule& r    = rules[1];
             r.name                 = "rock";
-            r.slope_min            = 34.0f;
+            r.slope_min            = 48.0f;
             r.slope_max            = 90.0f;
             r.flags                = TerrainLayerFlags_Biplanar;
             r.curvature_influence  = -0.35f;
-            r.wear_influence       = 0.5f;
+            r.wear_influence       = 0.35f;
             r.deposition_influence = -0.3f;
             r.tiling_scale         = 0.6f;
-            r.blend_contrast       = 0.12f;
+            r.blend_contrast       = 0.4f;
             r.porosity             = 0.25f;
             r.macro_strength       = 0.6f;
-            r.weight_bias          = 1.0f;
+            r.weight_bias          = 0.8f;
         }
 
         // layer 2, sand, the shoreline and anything sitting at or below the water line

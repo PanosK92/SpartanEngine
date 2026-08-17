@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MAX_POINTS 3
 #define TESS_FACTOR 64
 #define TESS_DISTANCE 32.0f
-#define TESS_DISTANCE_SQUARED (TESS_DISTANCE * TESS_DISTANCE)
 
 // hull shader constant data
 struct HsConstantDataOutput
@@ -67,11 +66,22 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
         float2 screen_uv  = float2(ndc.x * 0.5f + 0.5f, 0.5f - ndc.y * 0.5f);
         avg_pos          += get_position_for_view(depth, screen_uv, patch_view_id);
     }
-    avg_pos                /= 3.0f;
-    float3 to_camera        = avg_pos - get_camera_position_for_view(patch_view_id);
-    float distance_squared  = dot(to_camera, to_camera);
-    float tess_factor       = (distance_squared <= TESS_DISTANCE_SQUARED) ? TESS_FACTOR : 1.0f;
-    
+    avg_pos          /= 3.0f;
+    float3 to_camera  = avg_pos - get_camera_position_for_view(patch_view_id);
+
+    // the factor has to be continuous in distance
+    //
+    // a binary factor is a cliff, and this patch is rasterized twice, once by the depth prepass vertex
+    // shader and once by the g buffer's, two separately compiled shaders that agree on the patch corners
+    // only to the last bit, so a patch sitting on the cutoff can be handed 64 by one pass and 1 by the
+    // other, which is two completely different meshes and no depth value in common, the g buffer then
+    // fails its depth test across the whole patch and the pixels are never shaded
+    //
+    // ramping means a last bit disagreement about the distance produces a last bit disagreement about
+    // the factor, and it also stops sixty four levels of geometry appearing in one step at the cutoff
+    float t           = saturate(1.0f - fast_length(to_camera) / TESS_DISTANCE);
+    float tess_factor = lerp(1.0f, (float)TESS_FACTOR, t * t);
+
     // set tessellation factors
     output.edges[0] = tess_factor;
     output.edges[1] = tess_factor;
@@ -130,8 +140,13 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
 
     // fade based on real distance (use the matching per-eye camera position so the fade does
     // not disagree between eyes and create inconsistent displacement)
+    //
+    // the curve matches the hull's tess ramp on purpose, displacement amplitude then tracks how much
+    // geometry is actually there to carry it, instead of snapping to full height in the last four
+    // metres over a patch that is still barely subdivided
     float distance_from_cam = fast_length(position - get_camera_position_for_view(vertex.view_id));
-    float fade_factor       = saturate((TESS_DISTANCE - distance_from_cam) / 4.0f);
+    float fade_t            = saturate(1.0f - distance_from_cam / TESS_DISTANCE);
+    float fade_factor       = fade_t * fade_t;
 
     MaterialParameters material = GetMaterial();
     Surface surface; surface.flags = material.flags;

@@ -59,7 +59,9 @@ namespace spartan
         atomic<bool> m_resource_path_index_dirty = false;
         recursive_mutex m_mutex;
         atomic<bool> shutting_down = false;
-        bool use_root_shader_directory = false;
+        // default on, running stale shaders out of binaries while editing the source tree is silent
+        // and costs hours, a shipped build finds no source tree and falls back with one warning
+        bool use_root_shader_directory = true;
         bool root_shader_directory_resolved = false;
         string root_shader_directory;
 
@@ -159,6 +161,31 @@ namespace spartan
             }
             return resolved;
         }
+
+        // resolve once, eagerly, so renderer init gets the root path before Settings runs and so a
+        // failed walk is logged instead of silently compiling whatever sits in binaries
+        void ensure_root_shader_directory_resolved()
+        {
+            if (!use_root_shader_directory || root_shader_directory_resolved)
+            {
+                return;
+            }
+
+            root_shader_directory          = resolve_root_shader_directory();
+            root_shader_directory_resolved = true;
+            if (root_shader_directory.empty())
+            {
+                SP_LOG_WARNING(
+                    "UseRootShaderDirectory is on but no source tree was found from exe '%s' or cwd '%s', using binaries",
+                    FileSystem::GetExecutableDirectory().c_str(),
+                    FileSystem::GetWorkingDirectory().c_str()
+                );
+            }
+            else
+            {
+                SP_LOG_INFO("Using root shader directory: %s", root_shader_directory.c_str());
+            }
+        }
     }
 
     void ResourceCache::Initialize()
@@ -174,6 +201,9 @@ namespace spartan
         AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
         AddResourceDirectory(ResourceDirectory::Shaders, data_dir + "shaders");
         AddResourceDirectory(ResourceDirectory::Textures, data_dir + "textures");
+
+        // the default is on, settings may later flip it, either way the shader path is known here
+        ensure_root_shader_directory_resolved();
     }
 
     void ResourceCache::Shutdown()
@@ -436,26 +466,7 @@ namespace spartan
             root_shader_directory_resolved = false;
         }
         use_root_shader_directory = _use_root_shader_directory;
-
-        // resolve immediately so renderer init (before Settings::Initialize) gets the
-        // root path, and so a failed walk is logged once instead of silently using binaries
-        if (use_root_shader_directory && !root_shader_directory_resolved)
-        {
-            root_shader_directory          = resolve_root_shader_directory();
-            root_shader_directory_resolved = true;
-            if (root_shader_directory.empty())
-            {
-                SP_LOG_WARNING(
-                    "UseRootShaderDirectory is on but no source tree was found from exe '%s' or cwd '%s'",
-                    FileSystem::GetExecutableDirectory().c_str(),
-                    FileSystem::GetWorkingDirectory().c_str()
-                );
-            }
-            else
-            {
-                SP_LOG_INFO("Using root shader directory: %s", root_shader_directory.c_str());
-            }
-        }
+        ensure_root_shader_directory_resolved();
     }
 
     const Icon& ResourceCache::GetIcon(IconType type)

@@ -210,6 +210,9 @@ namespace spartan
         // fft ocean, displacement and normal/foam cascades sampled by water geometry
         ocean_displacement = 30,
         ocean_normal       = 31,
+
+        // nrd sigma local light shadows, texture2d array
+        rt_shadows_local = 32,
     };
 
     enum class Renderer_BindingsUav : uint32_t
@@ -235,6 +238,7 @@ namespace spartan
         reservoir2    = 23,
         reservoir3    = 24,
         reservoir4    = 25,
+        rt_shadows_local = 26,
         // integer format textures (vrs, etc)
         tex_uint               = 30,
         // gpu-driven indirect drawing
@@ -484,6 +488,7 @@ namespace spartan
         dof_focus_previous,
         // ray traced shadows
         ray_traced_shadows,
+        ray_traced_shadows_local,
         // restir path tracing output
         restir_output,
         // sample duplication score map driving the adaptive temporal confidence cap, lin 2026
