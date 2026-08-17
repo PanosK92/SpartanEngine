@@ -179,6 +179,19 @@ namespace spartan::d3d12_state
 
 namespace spartan
 {
+    // rhi general, one readable state that both queues can use, compute masking drops the graphics bits
+    static D3D12_RESOURCE_STATES d3d12_general_state(bool is_depth)
+    {
+        D3D12_RESOURCE_STATES state =
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        if (is_depth)
+        {
+            state |= D3D12_RESOURCE_STATE_DEPTH_READ;
+        }
+        return state;
+    }
+
     static D3D12_RESOURCE_STATES rhi_to_d3d12_state(RHI_Image_Layout layout, bool is_depth, RHI_Resource_Usage usage, RHI_Resource_Access access, bool is_uav)
     {
         if (layout == RHI_Image_Layout::Present_Source)
@@ -207,9 +220,7 @@ namespace spartan
                 {
                     return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
                 }
-                return is_depth
-                    ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
-                    : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                return d3d12_general_state(is_depth);
         }
     }
 
@@ -591,20 +602,11 @@ namespace spartan
 
         static D3D12_RESOURCE_STATES compute_shader_resource_state(bool is_depth, bool include_pixel_stage)
         {
-            D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-
-            // on a compute queue both push_transition and adopt_state drop this bit again, so it stays legal there
             if (include_pixel_stage)
             {
-                state |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                return d3d12_general_state(is_depth);
             }
-
-            if (is_depth)
-            {
-                state |= D3D12_RESOURCE_STATE_DEPTH_READ;
-            }
-
-            return state;
+            return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
         }
 
         void flush(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
@@ -1643,6 +1645,35 @@ namespace spartan
         }
 
         m_render_pass_active = false;
+
+        // park attachments in general so the next queue does not inherit depth_write or render_target
+        if (m_pso.render_target_swapchain)
+        {
+            return;
+        }
+
+        auto& b = cmd_state::get(this);
+        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+        {
+            RHI_Texture* rt = m_pso.render_target_color_textures[i];
+            if (!rt || !rt->GetRhiResource())
+            {
+                continue;
+            }
+
+            ID3D12Resource* resource = static_cast<ID3D12Resource*>(rt->GetRhiResource());
+            cmd_state::push_transition(b, resource, d3d12_general_state(false));
+            SetTrackedTextureLayout(rt, 0, rt->GetMipCount(), RHI_Image_Layout::General);
+        }
+
+        if (RHI_Texture* depth = m_pso.render_target_depth_texture)
+        {
+            if (ID3D12Resource* resource = static_cast<ID3D12Resource*>(depth->GetRhiResource()))
+            {
+                cmd_state::push_transition(b, resource, d3d12_general_state(true));
+                SetTrackedTextureLayout(depth, 0, depth->GetMipCount(), RHI_Image_Layout::General);
+            }
+        }
     }
 
     void RHI_CommandList::clear_pipeline_state_render_targets(RHI_PipelineState& pipeline_state)
@@ -1680,6 +1711,7 @@ namespace spartan
                 (clear_depth == rhi_depth_load || clear_depth == rhi_depth_dont_care) ? 1.0f : clear_depth,
                 static_cast<UINT8>((clear_stencil == rhi_stencil_load || clear_stencil == rhi_stencil_dont_care) ? 0 : clear_stencil),
                 0, nullptr);
+            cmd_state::push_transition(b, resource, d3d12_general_state(true));
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics, RHI_Resource_Usage::Attachment);
         }
         else if (texture->GetRhiRtv(0))
@@ -1699,6 +1731,7 @@ namespace spartan
             rtv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiRtv(0));
             float c[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
             cmd_list->ClearRenderTargetView(rtv, c, 0, nullptr);
+            cmd_state::push_transition(b, resource, d3d12_general_state(false));
             TrackExternalTextureUsage(texture, RHI_Resource_Access::Write, RHI_Image_Layout::General, RHI_Barrier_Scope::Graphics, RHI_Resource_Usage::Attachment);
         }
     }
@@ -2213,10 +2246,7 @@ namespace spartan
         const bool dst_is_depth = destination->IsDepthStencilFormat();
         const bool src_is_depth = source->IsDepthStencilFormat();
 
-        // depth resources additionally allow depth_read to coexist with shader_resource state
-        const D3D12_RESOURCE_STATES src_read_state = src_is_depth
-            ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
-            : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        const D3D12_RESOURCE_STATES src_read_state = d3d12_general_state(src_is_depth);
         const D3D12_RESOURCE_STATES dst_write_state = dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET;
         const uint32_t mip_count = blit_mips ? destination->GetMipCount() : 1;
         const uint32_t src_mips  = source->GetMipCount();
@@ -2382,7 +2412,7 @@ namespace spartan
 
         // scaling or format-converting path, sample the source into the backbuffer through the fullscreen-triangle blit
         // copyresource can not scale or convert formats, so this mirrors the vkCmdBlitImage path the renderer expects
-        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmd_state::push_transition(b, src, d3d12_general_state(false));
         cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmd_state::flush(cmd_list, b);
 
@@ -2466,7 +2496,7 @@ namespace spartan
         {
             // scaling path, sample the source into the requested destination array layer through the fullscreen-triangle blit
             // copytextureregion can not scale, this mirrors the vkCmdBlitImage stereo-layer compositing path
-            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmd_state::push_transition(b, src, d3d12_general_state(false));
             cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_RENDER_TARGET);
             cmd_state::flush(cmd_list, b);
 
@@ -2562,7 +2592,7 @@ namespace spartan
             d3d12_barriers::Submit(cmd_list, &uav_barrier, 1);
         }
 
-        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmd_state::push_transition(b, src, d3d12_general_state(false));
         cmd_state::push_transition(b, xr_image, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmd_state::flush(cmd_list, b);
 
@@ -2835,6 +2865,7 @@ namespace spartan
         {
             cmd_list->SetGraphicsRootConstantBufferView(d3d12_root_slot::cbv_frame, addr);
         }
+        m_constant_buffer_bound = true;
     }
 
     void RHI_CommandList::push_constants(const uint32_t offset, const uint32_t size, const void* data)
@@ -3211,12 +3242,7 @@ namespace spartan
                 return;
             }
 
-            // shader_read covers both pixel and non-pixel reads, depth textures additionally allow depth_read
-            const bool is_depth = texture->IsDepthStencilFormat();
-            D3D12_RESOURCE_STATES read_state = is_depth
-                ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
-                : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            push_transition_for_view(read_state);
+            push_transition_for_view(d3d12_general_state(texture->IsDepthStencilFormat()));
             if (covers_full)
             {
                 SetTrackedTextureLayout(texture, 0, total_mips, RHI_Image_Layout::General);
@@ -3626,7 +3652,7 @@ namespace spartan
 
         cmd_list->CopyBufferRegion(dst, offset, staging, 0, size);
 
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmd_state::push_transition(b, dst, d3d12_general_state(false));
 
         // hold the staging buffer until this cmd list completes, Begin/destructor releases them back to the pool
         b.staging_buffers_in_flight.push_back(staging_ptr);
@@ -3712,7 +3738,14 @@ namespace spartan
                     break;
                 }
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(barrier.texture->GetRhiResource());
-                cmd_state::push_uav_barrier(b, resource);
+                if (barrier.texture->IsUav())
+                {
+                    cmd_state::push_uav_barrier(b, resource);
+                }
+                else
+                {
+                    cmd_state::push_transition(b, resource, d3d12_general_state(barrier.texture->IsDepthStencilFormat()));
+                }
                 break;
             }
             case RHI_Barrier::Type::BufferSync:
@@ -3728,11 +3761,11 @@ namespace spartan
                     case RHI_Resource_Usage::Vertex:   state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER; break;
                     case RHI_Resource_Usage::Index:    state = D3D12_RESOURCE_STATE_INDEX_BUFFER;               break;
                     case RHI_Resource_Usage::Indirect: state = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;          break;
-                    case RHI_Resource_Usage::Shader:   state = barrier.access_dst == RHI_Resource_Access::Read ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE : D3D12_RESOURCE_STATE_UNORDERED_ACCESS; break;
+                    case RHI_Resource_Usage::Shader:   state = barrier.access_dst == RHI_Resource_Access::Read ? d3d12_general_state(false) : D3D12_RESOURCE_STATE_UNORDERED_ACCESS; break;
                     default: break;
                 }
 
-                if (!cmd_state::push_transition(b, resource, state))
+                if (!cmd_state::push_transition(b, resource, state) && barrier.buffer->GetType() == RHI_Buffer_Type::Storage)
                 {
                     cmd_state::push_uav_barrier(b, resource);
                 }
@@ -3961,7 +3994,7 @@ namespace spartan
 
         cmd_list->CopyBufferRegion(dst, 0, staging, 0, size);
 
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmd_state::push_transition(b, dst, d3d12_general_state(false));
 
         b.staging_buffers_in_flight.push_back(staging_ptr);
     }

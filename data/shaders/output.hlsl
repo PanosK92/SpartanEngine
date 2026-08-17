@@ -448,7 +448,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (tone_mapping == 4)
             {
                 // gt7 hdr returns rec.2020 fb units where 1.0 = 100 nits
-                color.rgb = gt7_to_rec709(color.rgb) * (gt7_ref_luminance / 80.0f);
+                // scale paper white to the os sdr white or the viewport looks dim next to ui
+                color.rgb = gt7_to_rec709(color.rgb) * (sdr_white_nits / 80.0f);
             }
             else
             {

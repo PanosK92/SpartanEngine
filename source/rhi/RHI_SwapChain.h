@@ -80,7 +80,8 @@ namespace spartan
         static const uint8_t buffer_count  = 2;
         static const uint8_t acquire_semaphore_count = 3;
         static const RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
-        // d3d12 windowed hdr uses fp16 scrgb, vulkan uses hdr10 pq
+        // d3d12 windowed hdr must be fp16 scrgb, dwm composites hwnd swapchains in linear
+        // vulkan uses hdr10 pq, the wsi layer owns that conversion
         #if defined(API_GRAPHICS_D3D12)
         static const RHI_Format format_hdr = RHI_Format::R16G16B16A16_Float;
         #else

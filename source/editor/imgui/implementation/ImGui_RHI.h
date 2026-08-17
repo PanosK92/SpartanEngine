@@ -491,6 +491,8 @@ namespace ImGui::RHI
             );
             const uint32_t draw_index = Renderer::WriteDrawData(projection);
             rhi_resources->push_constant_buffer_pass.draw_index = draw_index;
+            // bind pass constants before the first settexture, validation runs on that bind
+            RHI_CommandList::PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
 
             uint32_t global_vtx_offset = 0;
             uint32_t global_idx_offset = 0;

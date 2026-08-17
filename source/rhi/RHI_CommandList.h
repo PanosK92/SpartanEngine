@@ -315,6 +315,7 @@ namespace spartan
         static void PrepareTextureForUpload(RHI_Texture* texture);
         static void PrepareTextureForUpload(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures);
+        static void PrepareTextureForCompute(RHI_Texture* texture);
         static void PrepareBufferForCompute(RHI_Buffer* buffer);
         static void PrepareBufferForCompute(RHI_CommandList* cmd_list, RHI_Buffer* buffer);
         static void PrepareBufferForReadback(RHI_Buffer* buffer);
@@ -464,6 +465,7 @@ namespace spartan
         bool m_resources_dirty = true;
         bool m_resources_have_write_bindings = false;
         uint32_t m_push_constant_size = 0;
+        bool m_constant_buffer_bound = false;
         mutable uint64_t m_texture_bindings_hash = 0;
         mutable uint64_t m_texture_bindings_srv = 0;
         mutable uint64_t m_texture_bindings_uav = 0;

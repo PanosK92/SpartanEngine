@@ -142,11 +142,16 @@ namespace spartan
             return false;
         }
 
-        const DXGI_COLOR_SPACE_TYPE color_space = format == RHI_SwapChain::format_hdr ?
-            (format == RHI_Format::R16G16B16A16_Float ?
-                DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709 :
-                DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) :
-            DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+        DXGI_COLOR_SPACE_TYPE color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+        if (format == RHI_Format::R16G16B16A16_Float)
+        {
+            // linear rec.709, 1.0 = 80 nits, required for windowed d3d12 hdr
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+        }
+        else if (format == RHI_Format::R10G10B10A2_Unorm)
+        {
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+        }
 
         UINT support = 0;
         HRESULT result = swapchain->CheckColorSpaceSupport(color_space, &support);
@@ -170,7 +175,7 @@ namespace spartan
         }
         s_color_space_by_swapchain[swapchain] = color_space;
 
-        // hdr10 metadata is only meaningful for pq swapchains, scrgb stays metadata-free
+        // hdr10 metadata goes with the pq color space
         if (format == RHI_Format::R10G10B10A2_Unorm)
         {
             set_hdr_metadata(swapchain);

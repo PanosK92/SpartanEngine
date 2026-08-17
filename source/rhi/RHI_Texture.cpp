@@ -51,32 +51,35 @@ namespace spartan
         {
             // device local input buffer for compressed shaders to read from fast vram
             static shared_ptr<RHI_Buffer> input;
-            // device local output buffer where compressed blocks are written
+            // device local output, one buffer per shader struct stride so d3d12 uav stride matches
             static shared_ptr<RHI_Buffer> output;
+            static shared_ptr<RHI_Buffer> output_bc1;
             // host visible readback buffer mapped into cpu memory
             static shared_ptr<RHI_Buffer> readback;
             // host visible staging buffer used to upload pixel data to input
             static shared_ptr<RHI_Buffer> staging;
 
-            static uint32_t input_capacity_pixels    = 0;
-            static uint32_t staging_capacity_pixels  = 0;
-            static uint32_t output_capacity_blocks   = 0;
-            static uint32_t readback_capacity_blocks = 0;
+            static uint32_t input_capacity_pixels      = 0;
+            static uint32_t staging_capacity_pixels    = 0;
+            static uint32_t output_capacity_blocks     = 0;
+            static uint32_t output_bc1_capacity_blocks = 0;
+            static uint32_t readback_capacity_blocks   = 0;
 
-            // bc3 and bc5 use 16 bytes per block, bc1 uses 8, sizing the pool at the max stride
-            // lets a single buffer serve every format at the cost of a small unused tail for bc1
-            constexpr uint32_t output_stride_bytes = sizeof(uint32_t) * 4;
+            constexpr uint32_t output_stride_bytes     = sizeof(uint32_t) * 4;
+            constexpr uint32_t output_bc1_stride_bytes = sizeof(uint32_t) * 2;
 
             void release()
             {
                 input.reset();
                 output.reset();
+                output_bc1.reset();
                 readback.reset();
                 staging.reset();
-                input_capacity_pixels    = 0;
-                staging_capacity_pixels  = 0;
-                output_capacity_blocks   = 0;
-                readback_capacity_blocks = 0;
+                input_capacity_pixels      = 0;
+                staging_capacity_pixels    = 0;
+                output_capacity_blocks     = 0;
+                output_bc1_capacity_blocks = 0;
+                readback_capacity_blocks   = 0;
             }
         }
 
@@ -88,7 +91,7 @@ namespace spartan
             return max(needed, headroom);
         }
 
-        static bool ensure_pool_capacity(uint32_t input_pixels, uint32_t output_blocks)
+        static bool ensure_pool_capacity(uint32_t input_pixels, uint32_t output_blocks, uint32_t output_stride)
         {
             auto fail = [](const char* name, const bool has_resource, const bool has_mapped, const uint64_t size) -> bool
             {
@@ -142,24 +145,28 @@ namespace spartan
                 pool::staging_capacity_pixels = new_cap;
             }
 
-            if (!pool::output || pool::output_capacity_blocks < output_blocks)
+            const bool is_bc1 = output_stride == pool::output_bc1_stride_bytes;
+            shared_ptr<RHI_Buffer>& output_buffer = is_bc1 ? pool::output_bc1 : pool::output;
+            uint32_t& output_capacity             = is_bc1 ? pool::output_bc1_capacity_blocks : pool::output_capacity_blocks;
+            const char* output_name               = is_bc1 ? "compress_output_bc1" : "compress_output";
+            if (!output_buffer || output_capacity < output_blocks)
             {
-                uint32_t new_cap = grow_capacity(pool::output_capacity_blocks, output_blocks);
-                pool::output = make_shared<RHI_Buffer>(
+                uint32_t new_cap = grow_capacity(output_capacity, output_blocks);
+                output_buffer = make_shared<RHI_Buffer>(
                     RHI_Buffer_Type::Storage,
-                    pool::output_stride_bytes,
+                    output_stride,
                     new_cap,
                     nullptr, false,
-                    "compress_output"
+                    output_name
                 );
-                if (!pool::output->GetRhiResource())
+                if (!output_buffer->GetRhiResource())
                 {
-                    const uint64_t size = pool::output->GetObjectSize();
-                    pool::output.reset();
-                    pool::output_capacity_blocks = 0;
-                    return fail("compress_output", false, false, size);
+                    const uint64_t size = output_buffer->GetObjectSize();
+                    output_buffer.reset();
+                    output_capacity = 0;
+                    return fail(output_name, false, false, size);
                 }
-                pool::output_capacity_blocks = new_cap;
+                output_capacity = new_cap;
             }
 
             if (!pool::readback || pool::readback_capacity_blocks < output_blocks)
@@ -289,13 +296,16 @@ namespace spartan
             // bail out if we don't have enough vram headroom, accounts for the worst case
             // pool grow that would happen this call (input + staging + output + readback)
             {
+                const bool is_bc1 = output_element_size == pool::output_bc1_stride_bytes;
+                uint32_t& output_capacity = is_bc1 ? pool::output_bc1_capacity_blocks : pool::output_capacity_blocks;
                 uint32_t input_grow    = (pool::input_capacity_pixels    < total_input_pixels) ? grow_capacity(pool::input_capacity_pixels,    total_input_pixels) - pool::input_capacity_pixels    : 0;
                 uint32_t staging_grow  = (pool::staging_capacity_pixels  < total_input_pixels) ? grow_capacity(pool::staging_capacity_pixels,  total_input_pixels) - pool::staging_capacity_pixels  : 0;
-                uint32_t output_grow   = (pool::output_capacity_blocks   < total_blocks)       ? grow_capacity(pool::output_capacity_blocks,   total_blocks)       - pool::output_capacity_blocks   : 0;
+                uint32_t output_grow   = (output_capacity                < total_blocks)       ? grow_capacity(output_capacity,                total_blocks)       - output_capacity                : 0;
                 uint32_t readback_grow = (pool::readback_capacity_blocks < total_blocks)       ? grow_capacity(pool::readback_capacity_blocks, total_blocks)       - pool::readback_capacity_blocks : 0;
 
                 uint64_t additional_bytes = static_cast<uint64_t>(input_grow + staging_grow) * sizeof(uint32_t)
-                                          + static_cast<uint64_t>(output_grow + readback_grow) * pool::output_stride_bytes;
+                                          + static_cast<uint64_t>(output_grow) * output_element_size
+                                          + static_cast<uint64_t>(readback_grow) * pool::output_stride_bytes;
                 uint64_t required_mb      = additional_bytes / (1024 * 1024);
                 if (required_mb > 0 && RHI_Device::MemoryGetAvailableMb() < required_mb + 256)
                 {
@@ -306,7 +316,7 @@ namespace spartan
 
             Breadcrumbs::BeginMarker("texture_compress_gpu_buffer_create");
 
-            if (!ensure_pool_capacity(total_input_pixels, total_blocks))
+            if (!ensure_pool_capacity(total_input_pixels, total_blocks, output_element_size))
             {
                 SP_LOG_ERROR("failed to acquire gpu compression pool buffers");
                 Breadcrumbs::EndMarker(); // buffer_create
@@ -362,8 +372,10 @@ namespace spartan
                 RHI_CommandList::SetPipelineState(cmd_list, pso);
 
                 RHI_CommandList::SetBuffer(cmd_list, 40, pool::input.get());
-                const uint32_t output_binding = (target_format == RHI_Format::BC1_Unorm) ? 42u : 41u;
-                RHI_CommandList::SetBuffer(cmd_list, output_binding, pool::output.get());
+                const bool is_bc1 = target_format == RHI_Format::BC1_Unorm;
+                const uint32_t output_binding = is_bc1 ? 42u : 41u;
+                RHI_Buffer* output_buffer = is_bc1 ? pool::output_bc1.get() : pool::output.get();
+                RHI_CommandList::SetBuffer(cmd_list, output_binding, output_buffer);
 
                 // dispatch from smallest to largest mip so the shader pipeline is warm by the
                 // time the heaviest dispatch runs
@@ -390,10 +402,10 @@ namespace spartan
                     RHI_CommandList::Dispatch(cmd_list, dispatch_x, dispatch_y, 1);
                 }
 
-                RHI_CommandList::PrepareBufferForReadback(cmd_list, pool::output.get());
+                RHI_CommandList::PrepareBufferForReadback(cmd_list, output_buffer);
 
                 uint64_t copy_size = static_cast<uint64_t>(total_blocks) * output_element_size;
-                RHI_CommandList::CopyBufferToBuffer(cmd_list, pool::output.get(), pool::readback.get(), copy_size);
+                RHI_CommandList::CopyBufferToBuffer(cmd_list, output_buffer, pool::readback.get(), copy_size);
 
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }

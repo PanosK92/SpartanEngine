@@ -96,13 +96,13 @@ void main_ms(
     }
     GroupMemoryBarrierWithGroupSync();
 
+    // dxc rejects more than one SetMeshOutputCounts site, even on exclusive paths
+    SetMeshOutputCounts(gs_vertex_count, gs_triangle_count);
     if (!gs_emit)
     {
-        SetMeshOutputCounts(0, 0);
         return;
     }
 
-    SetMeshOutputCounts(gs_vertex_count, gs_triangle_count);
     _draw = gs_draw;
 
     const uint vertex_loops = (MESHLET_MAX_VERTICES + MESH_SHADER_NUMTHREADS - 1) / MESH_SHADER_NUMTHREADS;

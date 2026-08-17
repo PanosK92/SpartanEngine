@@ -165,7 +165,7 @@ namespace spartan
             clear_value.DepthStencil.Depth   = 1.0f;
             clear_value.DepthStencil.Stencil = 0;
             clear_value_ptr                  = &clear_value;
-            initial_state                    = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+            initial_state                    = D3D12_RESOURCE_STATE_COMMON;
         }
         else if (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
         {

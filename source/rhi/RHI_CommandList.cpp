@@ -221,7 +221,7 @@ namespace spartan
                 ? RHI_Resource_Usage::None
                 : previous.usage;
 
-            if (GetTrackedTextureLayout(texture, mip) != target_layout)
+            // d3d12 still has to flip uav vs shader read while the rhi layout stays general
             {
                 RHI_Barrier barrier = RHI_Barrier::image_layout(texture, target_layout, mip, 1);
                 barrier.from(scope_src).to(scope);
@@ -232,7 +232,7 @@ namespace spartan
                 InsertBarrier(barrier);
             }
 
-            // always sync, layout already general is a no-op and skipped the transfer access
+            // memory sync after the usage change
             RHI_Barrier barrier = RHI_Barrier::image_sync(
                 texture,
                 has_previous ? previous.access : RHI_Resource_Access::Write,
@@ -270,6 +270,7 @@ namespace spartan
         m_tracked_attachments.fill(RHI_Tracked_Texture_Binding{});
         m_tracked_buffers.fill(RHI_Tracked_Buffer_Binding{});
         m_tracked_buffers_read.fill(RHI_Tracked_Buffer_Binding{});
+        m_constant_buffer_bound = false;
     }
 
     void RHI_CommandList::ResetTrackedResources()
@@ -518,6 +519,18 @@ namespace spartan
             if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
                 if (m_pso.use_standard_resources)
+                {
+                    return true;
+                }
+                // d3d12 root cbv at b0 and root constants at b1, not a descriptor set
+                const uint32_t unshifted = descriptor.slot >= rhi_shader_register_shift_b
+                    ? descriptor.slot - rhi_shader_register_shift_b
+                    : descriptor.slot;
+                if (unshifted == 0 && m_constant_buffer_bound)
+                {
+                    return true;
+                }
+                if (unshifted == 1 && m_push_constant_size > 0)
                 {
                     return true;
                 }
@@ -1579,6 +1592,17 @@ namespace spartan
     void RHI_CommandList::PrepareTexturesForSampling(const std::array<RHI_Texture*, rhi_max_array_size>* textures)
     {
         RHI_Device::Cmd()->prepare_textures_for_sampling(textures);
+    }
+
+    void RHI_CommandList::PrepareTextureForCompute(RHI_Texture* texture)
+    {
+        RHI_CommandList* cmd_list = RHI_Device::Cmd();
+        if (!cmd_list || !texture)
+        {
+            return;
+        }
+
+        cmd_list->EnsureComputeShaderResource(texture, true);
     }
 
     void RHI_CommandList::PrepareBufferForCompute(RHI_Buffer* buffer)
