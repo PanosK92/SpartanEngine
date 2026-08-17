@@ -1061,13 +1061,17 @@ namespace spartan
         }
         RHI_CommandList::EndTimeblock();
 
-        if (!is_transparent_pass)
+        if (!is_transparent_pass && !IsSecondaryViewActive())
         {
-            // cpu bookkeeping, kept outside the g_buffer gpu timeblock
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            // every renderable, not just this frame's draw list, a rotating car hides
+            // interior parts that later come back with a stale previous matrix and
+            // taa plus reflections then sparkle
+            for (Entity* entity : World::GetEntitiesWithRender())
             {
-                Entity* entity = m_draw_calls[i].render->GetEntity();
-                entity->SetMatrixPrevious(entity->GetMatrix());
+                if (entity)
+                {
+                    entity->SetMatrixPrevious(entity->GetMatrix());
+                }
             }
         }
     }

@@ -464,6 +464,13 @@ namespace spartan
                 continue;
             }
 
+            // area lights already average a rectangle of rays, sigma would treat that
+            // as a binary occluder and rebuild a spherical penumbra on top
+            if ((m_bindless_lights[i].flags & (1u << 6)) != 0)
+            {
+                continue;
+            }
+
             RHI_CommandList::BeginMarker("nrd_local");
             {
                 denoise_sigma(0.0f, slot - 1, true, local_direction, slot);

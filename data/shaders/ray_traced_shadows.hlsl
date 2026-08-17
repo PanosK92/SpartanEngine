@@ -115,6 +115,109 @@ void write_local_shadow(uint2 launch_id, uint slice, float visibility, float hit
     );
 }
 
+// tubes sample along the long axis, panels use a 2x8 grid
+static const uint k_area_shadow_samples = 16;
+
+float2 area_shadow_rect_uv(uint sample_index, float width, float height)
+{
+    float aspect = height / max(width, 1e-4f);
+    if (aspect >= 3.0f || aspect <= (1.0f / 3.0f))
+    {
+        float t = ((float)sample_index + 0.5f) / (float)k_area_shadow_samples * 2.0f - 1.0f;
+        if (aspect >= 3.0f)
+        {
+            return float2(0.0f, t);
+        }
+        return float2(t, 0.0f);
+    }
+
+    const uint nx = 2;
+    const uint ny = 8;
+    uint ix = sample_index % nx;
+    uint iy = sample_index / nx;
+    float u = ((float)ix + 0.5f) / (float)nx * 2.0f - 1.0f;
+    float v = ((float)iy + 0.5f) / (float)ny * 2.0f - 1.0f;
+    return float2(u, v);
+}
+
+void trace_area_light_shadow(
+    uint2 launch_id,
+    uint slice,
+    LightParameters light,
+    float3 ray_origin,
+    float3 normal_ws)
+{
+    float3 area_right = normalize(light.direction_right.xyz);
+    float3 area_up    = normalize(cross(light.direction.xyz, area_right));
+    float half_w      = light.area_width * 0.5f;
+    float half_h      = light.area_height * 0.5f;
+    float emitter_safety = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
+
+    float3 to_center   = ray_origin - light.position.xyz;
+    float right_proj   = clamp(dot(to_center, area_right), -half_w, half_w);
+    float up_proj      = clamp(dot(to_center, area_up), -half_h, half_h);
+    float3 closest     = light.position.xyz + area_right * right_proj + area_up * up_proj;
+    float dist_closest = length(closest - ray_origin);
+    if (dist_closest < 0.0001f)
+    {
+        write_local_shadow(launch_id, slice, 1.0f, 0.0f, 0.001f, 1.0f);
+        return;
+    }
+
+    float vis_sum          = 0.0f;
+    float hit_min          = 0.0f;
+    bool any_hit           = false;
+    const float k_self_hit = 0.08f;
+
+    [unroll]
+    for (uint s = 0; s < k_area_shadow_samples; s++)
+    {
+        float2 uv = area_shadow_rect_uv(s, light.area_width, light.area_height);
+        float3 sample_point = light.position.xyz
+            + area_right * uv.x * half_w
+            + area_up    * uv.y * half_h;
+        float3 to_sample = sample_point - ray_origin;
+        float dist       = length(to_sample);
+        if (dist < 0.0001f)
+        {
+            vis_sum += 1.0f;
+            continue;
+        }
+
+        float3 direction = to_sample / dist;
+        if (dot(normal_ws, direction) <= 0.0f)
+        {
+            vis_sum += 1.0f;
+            continue;
+        }
+
+        float t_max    = max(dist - emitter_safety, 0.001f);
+        float2 vis     = trace_opaque_shadow(ray_origin, direction, t_max);
+        float hit_dist = vis.x < 0.5f ? vis.y : 0.0f;
+        if (hit_dist > 0.0f && hit_dist < k_self_hit)
+        {
+            vis.x    = 1.0f;
+            hit_dist = 0.0f;
+        }
+
+        vis_sum += vis.x;
+        if (hit_dist > 0.0f && (!any_hit || hit_dist < hit_min))
+        {
+            hit_min = hit_dist;
+            any_hit = true;
+        }
+    }
+
+    write_local_shadow(
+        launch_id,
+        slice,
+        vis_sum / (float)k_area_shadow_samples,
+        any_hit ? hit_min : 0.0f,
+        dist_closest,
+        1.0f
+    );
+}
+
 [shader("raygeneration")]
 void ray_gen()
 {
@@ -223,9 +326,8 @@ void ray_gen()
         }
     }
 
-    // local lights, one deterministic ray to the emitter center, sigma reconstructs the penumbra
-    // from distance_to_occluder and light_size, a jittered target would feed sigma a stochastic
-    // signal it cannot resolve and the leftover coin flip survives as salt and pepper
+    // point and spot, one ray to the emitter center, sigma reconstructs the penumbra
+    // area lights average a rectangle of rays instead, sigma cannot resolve that
     uint light_count = buffer_frame.cluster_light_count;
     for (uint light_i = 1; light_i < light_count; light_i++)
     {
@@ -236,22 +338,19 @@ void ray_gen()
             continue;
         }
 
-        uint slice = slot - 1u;
+        uint slice   = slot - 1u;
         bool is_area = (light.flags & uint(1u << 6)) != 0u;
-
-        float3 target        = light.position.xyz;
-        float  light_size    = 0.1f;
-        float  emitter_safety = 0.01f;
         if (is_area)
         {
-            // geometric mean is the side of the square with the same emitter area, it keeps a thin
-            // strip from reading as a 4 metre wide source while still softening well
-            light_size     = sqrt(max(light.area_width * light.area_height, 1e-6f));
-            emitter_safety = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
+            trace_area_light_shadow(launch_id, slice, light, ray_origin, normal_ws);
+            continue;
         }
 
-        float3 to_light = target - ray_origin;
-        float  dist     = length(to_light);
+        float3 target         = light.position.xyz;
+        float  light_size     = 0.1f;
+        float  emitter_safety = 0.01f;
+        float3 to_light       = target - ray_origin;
+        float  dist           = length(to_light);
         if (dist < 0.0001f)
         {
             write_local_shadow(launch_id, slice, 1.0f, 0.0f, 0.001f, light_size);

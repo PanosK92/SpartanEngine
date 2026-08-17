@@ -2366,13 +2366,20 @@ namespace spartan
                     const int32_t x = static_cast<int32_t>(index % analysis_width);
                     const int32_t z = static_cast<int32_t>(index / analysis_width);
 
-                    const float dx = (sample_grid(drained, analysis_width, analysis_height, x + 1, z) -
-                                      sample_grid(drained, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
-                    const float dz = (sample_grid(drained, analysis_width, analysis_height, x, z + 1) -
-                                      sample_grid(drained, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
+                    // the slope comes off the real surface, the sink filled copy is flat to within an
+                    // epsilon across every filled basin so its gradient collapses onto the floor
+                    // below and the index saturates over the whole depression, which is exactly what
+                    // stamps a hard edged blob of one layer onto every bowl in the terrain
+                    const float dx = (sample_grid(heights, analysis_width, analysis_height, x + 1, z) -
+                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
+                    const float dz = (sample_grid(heights, analysis_width, analysis_height, x, z + 1) -
+                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
 
-                    const float tan_beta = max(sqrtf(dx * dx + dz * dz), 0.001f);
-                    const float alpha    = accumulation[index] * cell_size;
+                    // a floor of 0.001 is a twentieth of a degree, the log of it adds seven to every
+                    // flat cell and pins them all against the top of the range, half a degree is
+                    // still flat ground and leaves the channel something to rank
+                    const float tan_beta = max(sqrtf(dx * dx + dz * dz), 0.01f);
+                    const float alpha    = max(accumulation[index], 1.0f) * cell_size;
 
                     maps_out.flow[index] = logf(alpha / tan_beta);
                 }

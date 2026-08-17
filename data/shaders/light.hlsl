@@ -61,22 +61,139 @@ float sample_nrd_local_shadow(float2 uv, uint slot)
     );
 }
 
-// inline fallback when a local light did not get an nrd slot, one ray to the closest point
+// depth and normal aware blur, hides the discrete rectangle sample steps
+float sample_nrd_area_shadow(float2 uv, uint slot)
+{
+    if (!is_ray_traced_shadows_enabled() || slot == 0u)
+    {
+        return 1.0f;
+    }
+
+    uint slice = slot - 1u;
+    float width;
+    float height;
+    float layers;
+    tex_rt_shadows_local.GetDimensions(width, height, layers);
+    float2 texel = float2(1.0f / max(width, 1.0f), 1.0f / max(height, 1.0f));
+
+    float center_z  = get_linear_depth(uv);
+    float3 center_n = get_normal(uv);
+
+    const int radius     = 3;
+    const float sigma2   = 4.0f;
+    float acc            = 0.0f;
+    float weight_sum     = 0.0f;
+
+    [unroll]
+    for (int y = -radius; y <= radius; y++)
+    {
+        [unroll]
+        for (int x = -radius; x <= radius; x++)
+        {
+            float2 tap_uv = uv + float2((float)x, (float)y) * texel;
+            float visibility = tex_rt_shadows_local.SampleLevel(
+                GET_SAMPLER(sampler_bilinear_clamp),
+                float3(tap_uv, slice),
+                0
+            ).r;
+            float tap_z      = get_linear_depth(tap_uv);
+            float3 tap_n     = get_normal(tap_uv);
+            float weight_z   = saturate(1.0f - abs(center_z - tap_z) * 4.0f);
+            float weight_n   = saturate(dot(center_n, tap_n));
+            float weight_s   = exp(-float(x * x + y * y) / (2.0f * sigma2));
+            float weight     = weight_s * weight_z * weight_n;
+            acc             += visibility * weight;
+            weight_sum      += weight;
+        }
+    }
+
+    return saturate(acc / max(weight_sum, 1e-4f));
+}
+
+// inline fallback when a local light did not get an nrd slot
 #ifdef RAY_TRACING_ENABLED
+static const uint k_area_inline_shadow_samples = 8;
+
+float2 area_inline_shadow_uv(uint sample_index, float width, float height)
+{
+    float aspect = height / max(width, 1e-4f);
+    if (aspect >= 3.0f || aspect <= (1.0f / 3.0f))
+    {
+        float t = ((float)sample_index + 0.5f) / (float)k_area_inline_shadow_samples * 2.0f - 1.0f;
+        if (aspect >= 3.0f)
+        {
+            return float2(0.0f, t);
+        }
+        return float2(t, 0.0f);
+    }
+
+    const uint nx = 2;
+    const uint ny = 4;
+    uint ix = sample_index % nx;
+    uint iy = sample_index / nx;
+    float u = ((float)ix + 0.5f) / (float)nx * 2.0f - 1.0f;
+    float v = ((float)iy + 0.5f) / (float)ny * 2.0f - 1.0f;
+    return float2(u, v);
+}
+
+float trace_inline_area_shadow(Light light, float3 origin, float3 normal)
+{
+    float3 area_right;
+    float3 area_up;
+    light.compute_area_light_basis(area_right, area_up);
+    float half_w         = light.area_width * 0.5f;
+    float half_h         = light.area_height * 0.5f;
+    float emitter_safety = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
+    float vis_sum        = 0.0f;
+
+    [unroll]
+    for (uint s = 0; s < k_area_inline_shadow_samples; s++)
+    {
+        float2 uv = area_inline_shadow_uv(s, light.area_width, light.area_height);
+        float3 sample_point = light.position
+            + area_right * uv.x * half_w
+            + area_up    * uv.y * half_h;
+        float3 to_sample = sample_point - origin;
+        float dist       = length(to_sample);
+        if (dist < 0.0001f)
+        {
+            vis_sum += 1.0f;
+            continue;
+        }
+
+        float3 direction = to_sample / dist;
+        if (dot(normal, direction) <= 0.0f)
+        {
+            vis_sum += 1.0f;
+            continue;
+        }
+
+        RayDesc ray;
+        ray.Origin    = origin;
+        ray.Direction = direction;
+        ray.TMin      = 0.001f;
+        ray.TMax      = max(dist - emitter_safety, 0.001f);
+
+        RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
+        query.Proceed();
+        vis_sum += query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
+    }
+
+    return vis_sum / (float)k_area_inline_shadow_samples;
+}
+
 float trace_inline_shadow_ray(Light light, Surface surface)
 {
     float bias    = 0.005f + surface.camera_to_pixel_length * 0.0001f;
     float3 origin = surface.position + surface.normal * bias;
 
-    float3 target = light.position;
-    float  emitter_safety = bias * 2.0f;
     if (light.is_area())
     {
-        target          = light.compute_closest_point_on_area(origin);
-        emitter_safety  = min(min(light.area_width, light.area_height) * 0.5f, 0.08f) + 0.01f;
+        return trace_inline_area_shadow(light, origin, surface.normal);
     }
 
-    float3 to_light = target - origin;
+    float3 to_light = light.position - origin;
     float  dist     = length(to_light);
     if (dist < 0.0001f)
     {
@@ -93,7 +210,7 @@ float trace_inline_shadow_ray(Light light, Surface surface)
     ray.Origin    = origin;
     ray.Direction = direction;
     ray.TMin      = 0.001f;
-    ray.TMax      = max(dist - emitter_safety, 0.001f);
+    ray.TMax      = max(dist - bias * 2.0f, 0.001f);
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
@@ -195,7 +312,14 @@ void evaluate_light(
             }
             else if (use_nrd_local_shadow)
             {
-                L_shadow_primary = sample_nrd_local_shadow(surface.uv, light.nrd_local_shadow_slot());
+                if (light.is_area())
+                {
+                    L_shadow_primary = sample_nrd_area_shadow(surface.uv, light.nrd_local_shadow_slot());
+                }
+                else
+                {
+                    L_shadow_primary = sample_nrd_local_shadow(surface.uv, light.nrd_local_shadow_slot());
+                }
             }
         #ifdef RAY_TRACING_ENABLED
             else if (use_inline_rt_shadow)

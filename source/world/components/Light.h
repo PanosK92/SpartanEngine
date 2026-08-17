@@ -210,7 +210,7 @@ namespace spartan
         LightPreset m_preset             = LightPreset::custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
-        float m_cloud_coverage           = 0.90f;
+        float m_cloud_coverage           = 0.8f;
         float m_area_width               = 1.0f;  // area light width in meters
         float m_area_height              = 1.0f;  // area light height in meters
         uint32_t m_index                 = 0;

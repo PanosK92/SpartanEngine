@@ -46,6 +46,11 @@ static const float terrain_macro_fade_start  = 120.0f;
 static const float terrain_macro_fade_end    = 600.0f;
 
 // noise_perlin already scales its input by 0.1, so a wavelength of w meters needs 10 / w
+//
+// the perlin texture is 256 texels with blobs about eight texels across, so every octave below
+// actually lands at a thirty second of the wavelength written against it, correcting that makes
+// the per layer breakup low frequency enough to bias whole hillsides toward one layer, so the
+// scale stays as it is until the breakup amplitude is reworked to match
 static const float terrain_noise_rcp_scale = 10.0f;
 
 static const uint terrain_layer_max_shader = 8;
@@ -1095,7 +1100,10 @@ TerrainSurface terrain_evaluate(
 
     // wetness, lagarde 2013, water fills the pores which darkens the diffuse and smooths the
     // specular, puddles want concave, high flow and flat all at once
-    float wet  = saturate(analysis.flow * 1.4f - 0.35f);
+    // flow is the channel most prone to plateauing, and at one it darkens albedo to a fifth and
+    // drops roughness to 0.06, so a saturated basin reads as a slab of dark glass rather than damp
+    // ground, the artist control is left free to go all the way up
+    float wet  = saturate(analysis.flow * 1.4f - 0.35f) * 0.7f;
     wet        = max(wet, surface.terrain_wetness);
     float pool = saturate(analysis.curvature) * saturate(analysis.flow * 1.6f - 0.4f) * pow(saturate(geometric_normal.y), 8.0f);
     wet        = saturate(max(wet, pool));
@@ -1222,7 +1230,7 @@ TerrainSurface terrain_shade_lod(
     float variation = lerp(1.0f, terrain_macro_variation(position_world), saturate(layer.terrain_macro_strength));
     albedo.rgb     *= lerp(1.0f, variation, 0.45f);
 
-    float wet   = saturate(max(analysis.flow * 1.4f - 0.35f, surface.terrain_wetness));
+    float wet   = max(saturate(analysis.flow * 1.4f - 0.35f) * 0.7f, surface.terrain_wetness);
     albedo.rgb *= lerp(1.0f, lerp(1.0f, 0.2f, saturate(layer.terrain_porosity)), wet);
 
     output.albedo    = albedo.rgb;
