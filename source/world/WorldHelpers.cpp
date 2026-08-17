@@ -241,7 +241,11 @@ namespace spartan
 
         terrain->RebuildPropMask();
 
-        const float render_distance_trees   = 2'000.0f;
+        // trees and rocks read as the silhouette of an island from across the map, a radial cutoff
+        // pops whole hillsides of them in and out, so they carry no distance limit at all, the gpu
+        // instance cull drops each one on its own once it projects under two pixels and the lod
+        // picker has already collapsed a far tile to its cheapest mesh by then
+        const float render_distance_props   = numeric_limits<float>::max();
         const float render_distance_foliage = 500.0f;
         const float shadow_distance         = 150.0f;
         // authored base densities, the terrain multipliers scale these so a world can be retuned
@@ -532,7 +536,7 @@ namespace spartan
                     mesh_tree->GetRootEntity(),
                     "tree",
                     tree_transforms_per_tile[tile_index],
-                    render_distance_trees,
+                    render_distance_props,
                     shadow_distance,
                     [&material_body, &material_leaf](Entity* candidate, Render* render, bool)
                     {
@@ -567,7 +571,7 @@ namespace spartan
                     mesh_rock->GetRootEntity(),
                     "rock",
                     rock_transforms_per_tile[tile_index],
-                    render_distance_trees,
+                    render_distance_props,
                     shadow_distance,
                     [&material_rock](Entity* candidate, Render* render, bool is_first)
                     {

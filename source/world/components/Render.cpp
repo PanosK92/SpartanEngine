@@ -966,10 +966,26 @@ namespace spartan
         Vector3 closest_point = box.GetClosestPoint(camera_position);
         float distance        = max((closest_point - camera_position).Length(), 0.001f);
 
+        // an instanced renderable's box spans every instance it carries, so a tile of trees measures
+        // hundreds of metres across and scores full coverage from any distance, which pins the whole
+        // tile at lod 0 forever, the coverage has to come from the size of one instance while the box
+        // keeps supplying the distance
+        Vector3 measured_extents = box.GetExtents();
+        if (HasInstancing())
+        {
+            const Vector3 scale        = GetEntity()->GetScale();
+            const Vector3 mesh_extents = GetLodAabb(0).GetExtents();
+            measured_extents           = Vector3(
+                mesh_extents.x * abs(scale.x),
+                mesh_extents.y * abs(scale.y),
+                mesh_extents.z * abs(scale.z)
+            );
+        }
+
         // compute screen-space coverage: fraction of vertical screen space the object covers
         // screen_fraction = (object_diameter) / (visible_height_at_distance)
         // visible_height_at_distance = 2 * distance * tan(fov_v / 2)
-        float bounding_diameter = box.GetExtents().Length() * 2.0f;
+        float bounding_diameter = measured_extents.Length() * 2.0f;
         float tan_half_fov      = tan(camera->GetFovVerticalRad() * 0.5f);
         float screen_fraction   = bounding_diameter / (2.0f * distance * tan_half_fov);
 
