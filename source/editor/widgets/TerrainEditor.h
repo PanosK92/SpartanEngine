@@ -65,6 +65,7 @@ private:
 
     void DrawSummary(spartan::Terrain* terrain);
     void DrawActionBar(spartan::Terrain* terrain);
+    void DrawOpacity(float width);
     void DrawShape(spartan::Terrain* terrain);
     void DrawSculpt(spartan::Terrain* terrain);
     void DrawGround(spartan::Terrain* terrain);
@@ -85,6 +86,8 @@ private:
     // amber on the action bar, what is authored no longer matches what is in the viewport
     bool m_shape_dirty          = false;
     bool m_scatter_dirty        = false;
+    // the window fades so the terrain stays visible behind it while a rule is being tuned
+    float m_opacity             = 1.0f;
 
     // sculpting
     spartan::TerrainBrush m_brush;

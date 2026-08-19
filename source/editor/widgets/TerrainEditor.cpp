@@ -250,6 +250,8 @@ TerrainEditor::TerrainEditor(Editor* editor) : Widget(editor)
     m_title               = "Terrain";
     m_visible             = false;
     m_size_initial        = Vector2(460.0f, 760.0f);
+    // the header packs three buttons, a status line and the opacity slider, below this it wraps
+    m_size_min            = Vector2(380.0f, 300.0f);
     m_toolbar_order       = 7;
     m_toolbar_icon        = static_cast<int>(IconType::Terrain);
     m_brush.target_height = 0.0f;
@@ -259,6 +261,9 @@ TerrainEditor::~TerrainEditor() = default;
 
 void TerrainEditor::OnTick()
 {
+    // the base widget pushes this as the window alpha, -1 means leave the style alone
+    m_alpha = m_opacity < 1.0f ? m_opacity : k_widget_default_property;
+
     s_sculpt_active = m_visible && m_sculpt_enabled;
     TickSculpting();
 }
@@ -444,26 +449,52 @@ void TerrainEditor::DrawActionBar(Terrain* terrain)
     ImGui::EndDisabled();
     ImGuiSp::tooltip("paint the surface with the brush in the viewport, left mouse paints and right mouse still looks");
 
-    // one line that says what is out of date, this is the whole reason the bar exists
-    if (m_shape_dirty || m_scatter_dirty)
+    // one line that says what is out of date, this is the whole reason the bar exists, the opacity
+    // control rides along on the right of it so it costs no height of its own
+    const float row_width     = ImGui::GetContentRegionAvail().x;
+    const float opacity_width = ImGui::EditorUi::scaled(120.0f);
+
+    ImGui::AlignTextToFramePadding();
+    ImGui::PushStyleColor(
+        ImGuiCol_Text,
+        (m_shape_dirty || m_scatter_dirty) ? design::warning() : ImGui::Style::color_text_muted
+    );
+    if (m_shape_dirty)
     {
-        ImGui::PushStyleColor(ImGuiCol_Text, design::warning());
-        if (m_shape_dirty)
-        {
-            ImGui::TextUnformatted("shape edits pending, generate to rebuild the surface");
-        }
-        else
-        {
-            ImGui::TextUnformatted("rule edits pending, rescatter to place the props again");
-        }
-        ImGui::PopStyleColor();
+        ImGui::TextUnformatted("shape edits pending, generate");
+    }
+    else if (m_scatter_dirty)
+    {
+        ImGui::TextUnformatted("rule edits pending, rescatter");
     }
     else
     {
-        layout::caption("the viewport matches what is authored here");
+        ImGui::TextUnformatted("viewport matches what is authored");
     }
+    ImGui::PopStyleColor();
+
+    ImGui::SameLine(row_width - opacity_width);
+    DrawOpacity(opacity_width);
 
     ImGui::Dummy(ImVec2(0.0f, design::spacing_sm));
+}
+
+void TerrainEditor::DrawOpacity(const float width)
+{
+    // authoring a terrain means watching the terrain, not the panel in front of it
+    int percent = static_cast<int>(m_opacity * 100.0f + 0.5f);
+
+    ImGui::SetNextItemWidth(width);
+    if (ImGui::SliderInt("##opacity", &percent, 25, 100, "opacity %d%%", ImGuiSliderFlags_AlwaysClamp))
+    {
+        m_opacity = static_cast<float>(percent) / 100.0f;
+    }
+    ImGuiSp::tooltip("fade the whole window so the ground stays readable behind it, right click to go back to full");
+
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+    {
+        m_opacity = 1.0f;
+    }
 }
 
 void TerrainEditor::DrawNoTerrain()
