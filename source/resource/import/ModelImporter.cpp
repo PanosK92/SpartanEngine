@@ -341,6 +341,195 @@ namespace spartan
             return true;
         }
 
+        bool has_any_texture(const shared_ptr<Material>& material)
+        {
+            for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); type++)
+            {
+                if (material->HasTextureOfType(static_cast<MaterialTextureType>(type)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // a model whose mtl is missing, or whose material was never authored, imports with no maps at
+        // all and renders as flat grey, which reads as the asset having lost its material, the maps are
+        // almost always sitting next to the model under conventional names so they get picked up
+        void adopt_sibling_textures(
+            const string& model_directory,
+            const unordered_map<string, string>& directory_files,
+            const shared_ptr<Material>& material,
+            const string& material_name,
+            const uint32_t material_count
+        )
+        {
+            if (has_any_texture(material))
+            {
+                return;
+            }
+
+            // one map set next to a model belongs to that model, next to a model that has several
+            // materials there is no telling which one it belongs to, so only a single material asset
+            // adopts, the others just say what is wrong
+            if (material_count > 2)
+            {
+                SP_LOG_WARNING(
+                    "material '%s' in %s has no textures and the model has %u materials, it will render "
+                    "flat, point it at its maps by hand",
+                    material_name.c_str(),
+                    model_directory.c_str(),
+                    material_count
+                );
+                return;
+            }
+
+            struct convention
+            {
+                MaterialTextureType type;
+                array<const char*, 3> names;
+            };
+            static const array<convention, 6> conventions =
+            {{
+                { MaterialTextureType::Color,     {{ "albedo",     "basecolor",    "diffuse" }} },
+                { MaterialTextureType::Normal,    {{ "normal",     "normalmap",    nullptr   }} },
+                { MaterialTextureType::Roughness, {{ "roughness",  "rough",        nullptr   }} },
+                { MaterialTextureType::Occlusion, {{ "occlusion",  "ao",           nullptr   }} },
+                { MaterialTextureType::Height,    {{ "height",     "displacement", nullptr   }} },
+                { MaterialTextureType::AlphaMask, {{ "alpha_mask", "opacity",      nullptr   }} }
+            }};
+
+            string adopted;
+            for (const convention& entry : conventions)
+            {
+                for (const char* name : entry.names)
+                {
+                    if (!name)
+                    {
+                        continue;
+                    }
+
+                    // the resolver already probes every image extension, png is only the seed
+                    const string path = resolve_texture_path(string(name) + ".png", model_directory, directory_files);
+                    if (path.empty())
+                    {
+                        continue;
+                    }
+
+                    material->SetTexture(entry.type, path);
+
+                    if (!adopted.empty())
+                    {
+                        adopted += ", ";
+                    }
+                    adopted += FileSystem::GetFileNameFromFilePath(path);
+                    break;
+                }
+            }
+
+            if (adopted.empty())
+            {
+                // nothing to guess from, but silence here is what makes an asset look broken for weeks
+                SP_LOG_WARNING(
+                    "material '%s' in %s has no textures at all, it will render flat, name its maps "
+                    "albedo, normal, roughness or occlusion next to the model to have them picked up",
+                    material_name.c_str(),
+                    model_directory.c_str()
+                );
+                return;
+            }
+
+            // the diffuse tint an importer invents for a missing mtl would darken the adopted albedo
+            if (material->HasTextureOfType(MaterialTextureType::Color))
+            {
+                material->SetProperty(MaterialProperty::ColorR, 1.0f);
+                material->SetProperty(MaterialProperty::ColorG, 1.0f);
+                material->SetProperty(MaterialProperty::ColorB, 1.0f);
+            }
+
+            SP_LOG_WARNING(
+                "material '%s' in %s imported with no maps, its mtl is missing or empty, adopting the "
+                "textures next to the model: %s",
+                material_name.c_str(),
+                model_directory.c_str(),
+                adopted.c_str()
+            );
+        }
+
+        // two materials that answer to the same name are two surfaces the engine can no longer tell
+        // apart, anything that resolves a material by name gets whichever one loaded first, so a name
+        // that is generic or already taken carries the folder it came from from here on
+        string unique_material_name(const string& name, const string& model_directory)
+        {
+            string folder = model_directory;
+            while (!folder.empty() && (folder.back() == '/' || folder.back() == '\\'))
+            {
+                folder.pop_back();
+            }
+            folder = FileSystem::GetFileNameFromFilePath(folder);
+
+            if (folder.empty())
+            {
+                return name;
+            }
+
+            const string extension = EXTENSION_MATERIAL;
+
+            // the cache is keyed by path, so the name check and the claim have to happen as one step or
+            // two meshes importing at once both decide they are unique
+            lock_guard<recursive_mutex> lock(ResourceCache::GetMutex());
+
+            auto taken_by_another = [&model_directory, &extension](const string& candidate)
+            {
+                shared_ptr<Material> existing = ResourceCache::GetByName<Material>(candidate);
+                if (!existing)
+                {
+                    return false;
+                }
+
+                // the same material arriving again through a second mesh of the same model is not a clash
+                const string claimed = normalize_for_lookup(existing->GetResourceFilePath());
+                const string wanted  = normalize_for_lookup(
+                    FileSystem::GetRelativePath(model_directory + candidate + extension)
+                );
+
+                return claimed != wanted;
+            };
+
+            // an importer names an unauthored material after itself, every model in the project ends up
+            // with the same one, prefixing these is unconditional so the name never depends on load order
+            const string lowered = normalize_for_lookup(name);
+            const bool generic   = name.empty()                        ||
+                                   lowered.find("default") != string::npos ||
+                                   lowered == "material"               ||
+                                   lowered == "none";
+
+            if (!generic && !taken_by_another(name))
+            {
+                return name;
+            }
+
+            string candidate = name.empty() ? folder : folder + "_" + name;
+            for (uint32_t suffix = 2; suffix < 64 && taken_by_another(candidate); suffix++)
+            {
+                candidate = (name.empty() ? folder : folder + "_" + name) + "_" + to_string(suffix);
+            }
+
+            if (candidate != name)
+            {
+                SP_LOG_INFO(
+                    "material name '%s' in %s is %s, importing it as '%s' so it stays its own material",
+                    name.c_str(),
+                    model_directory.c_str(),
+                    generic ? "one every unauthored material gets" : "already taken by another material",
+                    candidate.c_str()
+                );
+            }
+
+            return candidate;
+        }
+
         shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp)
         {
             SP_ASSERT(material_assimp != nullptr);
@@ -381,7 +570,9 @@ namespace spartan
             aiString name_assimp;
             aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
             string name = name_assimp.C_Str();
-            material->SetResourceName(name + EXTENSION_MATERIAL);
+            // name only, a resource name would give the material a file path relative to the working
+            // directory and every property set during this import would save itself out there
+            material->SetObjectName(name);
 
             // color
             aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
@@ -467,6 +658,14 @@ namespace spartan
                     }
                 }
             }
+
+            adopt_sibling_textures(
+                ctx.model_directory,
+                ctx.directory_files,
+                material,
+                name,
+                ctx.scene ? ctx.scene->mNumMaterials : 1
+            );
 
             return material;
         }
@@ -1507,8 +1706,10 @@ namespace spartan
             const aiMaterial* assimp_material = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex];
             shared_ptr<Material> material = load_material(ctx, assimp_material);
 
-            // create a file path for this material
-            const string spartan_asset_path = ctx.model_directory + material->GetObjectName() + EXTENSION_MATERIAL;
+            // create a file path for this material, the name is made unique first so two assets can
+            // never end up sharing one and being resolved into each other
+            const string material_name      = unique_material_name(material->GetObjectName(), ctx.model_directory);
+            const string spartan_asset_path = ctx.model_directory + material_name + EXTENSION_MATERIAL;
             material->SetResourceFilePath(spartan_asset_path);
 
             // add a render component and set the material to it

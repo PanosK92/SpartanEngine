@@ -435,8 +435,22 @@ namespace spartan
                                     continue;
                                 }
 
-                                const uint32_t instance_count = render->HasInstancing() ? render->GetInstanceCount() : 1;
-                                for (uint32_t i = 0; i < instance_count; i++)
+                                // clicking a scattered tree selects the renderable that carries every
+                                // tree on that tile, outlining all of them says nothing about which
+                                // one was clicked, so a picked instance outlines on its own
+                                const int picked = Camera::GetSelectedInstance();
+                                // every part of one prop, bark and leaves, shares the tile transform
+                                // list, so the same index outlines the whole tree and nothing else
+                                const bool one_instance = render->HasInstancing() &&
+                                                          picked >= 0 &&
+                                                          static_cast<uint32_t>(picked) < render->GetInstanceCount();
+
+                                const uint32_t instance_first = one_instance ? static_cast<uint32_t>(picked) : 0;
+                                const uint32_t instance_end   = one_instance
+                                    ? static_cast<uint32_t>(picked) + 1
+                                    : (render->HasInstancing() ? render->GetInstanceCount() : 1);
+
+                                for (uint32_t i = instance_first; i < instance_end; i++)
                                 {
                                     if (outline_draw_count >= outline_draw_budget)
                                     {

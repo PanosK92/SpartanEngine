@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "components/AudioSource.h"
 #include "components/Terrain.h"
 #include "components/Water.h"
+#include "components/Camera.h"
 #include "../core/ThreadPool.h"
 #include "../core/Stopwatch.h"
 #include "../rendering/Renderer.h"
@@ -500,11 +501,64 @@ namespace spartan
 
         // clone the prototype onto every tile that has instances and hand that tile's transforms to
         // each renderable it carries, the hierarchy is kept because bark and leaves are two materials
+        // a scatter is judged by how fast the ground you are looking at fills in, not by how fast the
+        // far side of the map does, so the tiles are ranked from a probe a little ahead of the eye
+        vector<uint32_t> build_tile_order(const vector<Entity*>& tiles)
+        {
+            const uint32_t tile_count = static_cast<uint32_t>(tiles.size());
+
+            vector<uint32_t> order;
+            order.reserve(tile_count);
+            for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
+            {
+                order.push_back(tile_index);
+            }
+
+            Camera* camera = World::GetCamera();
+            if (!camera || !camera->GetEntity())
+            {
+                return order;
+            }
+
+            // pushing the probe forward breaks ties in favour of what is in front of the camera while
+            // still leaving it a circle, so turning around does not re-order much
+            const Vector3 eye   = camera->GetEntity()->GetPosition();
+            const Vector3 probe = eye + camera->GetEntity()->GetForward() * 64.0f;
+
+            vector<float> distance(tile_count, numeric_limits<float>::max());
+            for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
+            {
+                if (!tiles[tile_index])
+                {
+                    continue;
+                }
+
+                // the tile origin is a corner, the nearest point of its box is what the camera sees
+                Vector3 point = tiles[tile_index]->GetPosition();
+                if (Render* render = tiles[tile_index]->GetComponent<Render>())
+                {
+                    point = render->GetBoundingBox().GetClosestPoint(probe);
+                }
+
+                distance[tile_index] = (point - probe).LengthSquared();
+            }
+
+            sort(order.begin(), order.end(), [&distance](const uint32_t a, const uint32_t b)
+            {
+                return distance[a] < distance[b];
+            });
+
+            return order;
+        }
+
         void attach_scatter_layer(
             Mesh* mesh,
             const TerrainScatterLayer& layer,
             const vector<Entity*>& tiles,
-            const vector<vector<Matrix>>& transforms
+            const vector<vector<Matrix>>& transforms,
+            const vector<uint32_t>& tile_order,
+            const uint32_t order_begin,
+            const uint32_t order_end
         )
         {
             Entity* prototype = mesh->GetRootEntity();
@@ -531,9 +585,10 @@ namespace spartan
                 numeric_limits<float>::max();
             const bool casts_shadows = (layer.flags & TerrainScatterFlags_CastShadows) != 0;
 
-            for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiles.size()); tile_index++)
+            for (uint32_t order_index = order_begin; order_index < order_end; order_index++)
             {
-                Entity* tile = tiles[tile_index];
+                const uint32_t tile_index = tile_order[order_index];
+                Entity* tile              = tiles[tile_index];
                 if (!tile || transforms[tile_index].empty())
                 {
                     continue;
@@ -726,9 +781,28 @@ namespace spartan
             }
         }
 
+        // resolved once, every layer walks the tiles in the same camera first order
+        const vector<uint32_t> tile_order = build_tile_order(tiles);
+
         array<TerrainScatterLayer, terrain_scatter_max>& layers = terrain->GetScatterLayers();
-        bool grass_pushed       = false;
-        uint32_t instance_slots = 1;
+        bool grass_pushed = false;
+
+        // one of these per layer that has a mesh and passed its gates, placement only touches per tile
+        // buckets so it parallelises, the entities it feeds are built on this thread so the scene graph
+        // is only ever mutated in one order, the transforms stay tile local and inherit the tile offset
+        struct scatter_job
+        {
+            TerrainScatterLayer* layer  = nullptr;
+            Mesh* mesh                  = nullptr;
+            uint32_t slots_per_instance = 1;
+            vector<vector<Matrix>> transforms;
+            vector<float> coverage;
+            size_t placed               = 0;
+            size_t placed_batch         = 0;
+            float coverage_sum          = 0.0f;
+        };
+        vector<scatter_job> jobs;
+        jobs.reserve(terrain_scatter_max);
 
         for (uint32_t layer_index = 0; layer_index < terrain_scatter_max; layer_index++)
         {
@@ -758,54 +832,113 @@ namespace spartan
                 continue;
             }
 
-            // placement is the expensive part and it only touches per tile buckets, the entities it
-            // feeds are built afterwards on this thread so the scene graph is only ever mutated in
-            // one order, the transforms stay tile local and inherit the tile offset
-            vector<vector<Matrix>> transforms(tile_count);
-            vector<float> coverage(tile_count, 0.0f);
-            auto place = [&tiles, &transforms, &coverage, terrain, &layer](uint32_t start_index, uint32_t end_index)
+            scatter_job& job       = jobs.emplace_back();
+            job.layer              = &layer;
+            job.mesh               = mesh;
+            job.slots_per_instance = count_mesh_renderables(mesh->GetRootEntity());
+            job.transforms.resize(tile_count);
+            job.coverage.resize(tile_count, 0.0f);
+        }
+
+        // a batch of tiles is finished across every layer before the next batch starts and the first
+        // batch is tiny, so the ground the camera is on gets its trees and its rocks in a few
+        // milliseconds and the map grows outward from there, a pass per layer over every tile would
+        // leave the terrain bare until the last tile of the last layer was done
+        uint32_t order_done = 0;
+        uint32_t batch      = 4;
+        while (order_done < tile_count && !jobs.empty())
+        {
+            const uint32_t batch_size = min(batch, tile_count - order_done);
+            const uint32_t order_end  = order_done + batch_size;
+
+            for (scatter_job& job : jobs)
             {
-                for (uint32_t tile_index = start_index; tile_index < end_index; tile_index++)
+                auto place = [&job, &tiles, &tile_order, terrain, order_done](uint32_t start_index, uint32_t end_index)
                 {
-                    if (!tiles[tile_index])
+                    for (uint32_t batch_index = start_index; batch_index < end_index; batch_index++)
                     {
-                        continue;
+                        const uint32_t tile_index = tile_order[order_done + batch_index];
+                        if (!tiles[tile_index])
+                        {
+                            continue;
+                        }
+
+                        terrain->FindTransforms(
+                            tile_index,
+                            *job.layer,
+                            job.transforms[tile_index],
+                            &job.coverage[tile_index]
+                        );
                     }
+                };
+                ThreadPool::ParallelLoop(place, batch_size);
 
-                    terrain->FindTransforms(tile_index, layer, transforms[tile_index], &coverage[tile_index]);
+                job.placed_batch = 0;
+                for (uint32_t order_index = order_done; order_index < order_end; order_index++)
+                {
+                    const uint32_t tile_index = tile_order[order_index];
+                    job.placed_batch         += job.transforms[tile_index].size();
+                    job.coverage_sum         += job.coverage[tile_index];
                 }
-            };
-            ThreadPool::ParallelLoop(place, tile_count);
-
-            size_t placed       = 0;
-            float coverage_sum  = 0.0f;
-            for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
-            {
-                placed       += transforms[tile_index].size();
-                coverage_sum += coverage[tile_index];
+                job.placed += job.placed_batch;
             }
-            layer.instance_count = static_cast<uint32_t>(placed);
-            layer.coverage       = coverage_sum / static_cast<float>(tile_count);
 
-            if (placed == 0)
+            // the tiles done so far are a fair sample of the map, guessing the total from them keeps the
+            // instance buffer from growing once per batch, and the guess can never sit under what is
+            // already placed because there are always at least as many tiles left as sampled
+            uint32_t slots_projected = 1;
+            for (const scatter_job& job : jobs)
+            {
+                const uint64_t projected = (static_cast<uint64_t>(job.placed) * tile_count) / order_end;
+                slots_projected         += static_cast<uint32_t>(projected) * job.slots_per_instance;
+            }
+            GeometryBuffer::Reserve(0, 0, 0, 0, 0, slots_projected);
+
+            for (scatter_job& job : jobs)
+            {
+                if (job.placed_batch == 0)
+                {
+                    continue;
+                }
+
+                attach_scatter_layer(
+                    job.mesh,
+                    *job.layer,
+                    tiles,
+                    job.transforms,
+                    tile_order,
+                    order_done,
+                    order_end
+                );
+
+                // the editor reads this while the scatter runs, keeping it live makes the props count
+                // climb instead of jumping once at the end
+                job.layer->instance_count = static_cast<uint32_t>(job.placed);
+            }
+
+            order_done += batch_size;
+            batch       = min(batch * 2u, 64u);
+        }
+
+        for (const scatter_job& job : jobs)
+        {
+            job.layer->instance_count = static_cast<uint32_t>(job.placed);
+            job.layer->coverage       = job.coverage_sum / static_cast<float>(tile_count);
+
+            if (job.placed == 0)
             {
                 SP_LOG_WARNING(
                     "terrain scatter '%s': the rules accepted no ground, loosen the slope, height or mask gates",
-                    layer.name.c_str()
+                    job.layer->name.c_str()
                 );
                 continue;
             }
 
-            instance_slots += static_cast<uint32_t>(placed) * count_mesh_renderables(mesh->GetRootEntity());
-            GeometryBuffer::Reserve(0, 0, 0, 0, 0, instance_slots);
-
-            attach_scatter_layer(mesh, layer, tiles, transforms);
-
             SP_LOG_INFO(
                 "terrain scatter '%s': %zu instances, rules accepted %.1f%% of the surface",
-                layer.name.c_str(),
-                placed,
-                layer.coverage * 100.0f
+                job.layer->name.c_str(),
+                job.placed,
+                job.layer->coverage * 100.0f
             );
         }
 

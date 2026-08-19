@@ -413,6 +413,7 @@ namespace spartan
         static Vector2  s_cached_cursor    = Vector2(numeric_limits<float>::infinity(), numeric_limits<float>::infinity());
         static uint64_t s_cached_entity_id = 0;
         static uint64_t s_cached_frame     = 0;
+        static int      s_cached_instance  = -1;
         const  float    cursor_epsilon_px  = 0.5f;
         const  uint64_t max_cache_age      = 6;
 
@@ -421,10 +422,17 @@ namespace spartan
         if ((cursor - s_cached_cursor).LengthSquared() < cursor_epsilon_px * cursor_epsilon_px &&
             (frame - s_cached_frame) < max_cache_age)
         {
+            m_pick_instance           = s_cached_instance;
+            m_pick_instance_owner_id  = s_cached_entity_id;
             return World::GetEntityById(s_cached_entity_id);
         }
 
-        const Ray& ray = ComputePickingRay();
+        // ComputePickingRay puts a far plane position in the direction field, every bounding box
+        // test needs a real direction, with a position in there the ray tilts by the camera offset
+        // from the world origin and nothing small enough to matter is ever hit
+        const Ray& pick_ray = ComputePickingRay();
+        const Ray ray(pick_ray.GetStart(), pick_ray.GetDirection() - pick_ray.GetStart());
+
         m_pick_hits.clear();
 
         const vector<Entity*>& entities = World::GetEntities();
@@ -451,8 +459,9 @@ namespace spartan
             m_pick_hits.emplace_back(entity, Vector3::Zero, distance, distance == 0.0f);
         }
 
-        Entity* best_entity = nullptr;
-        float   best_depth  = numeric_limits<float>::max();
+        Entity* best_entity   = nullptr;
+        float   best_depth    = numeric_limits<float>::max();
+        int     best_instance = -1;
 
         // sort broadphase hits by aabb distance so we can early-out once the front-most triangle is closer
         // than any remaining candidate's bounding box (the camera is inside an aabb -> distance == 0, those go first)
@@ -473,44 +482,89 @@ namespace spartan
                 continue;
             }
 
-            // instanced foliage can be thousands of copies of a heavy mesh, a triangle test
-            // per instance freezes the editor, the instance aabb is tight enough to pick
+            // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
+            // only reserve if current capacity is insufficient
+            if (m_pick_indices.capacity() < render->GetIndexCount())
+            {
+                m_pick_indices.reserve(render->GetIndexCount());
+            }
+            if (m_pick_vertices.capacity() < render->GetVertexCount())
+            {
+                m_pick_vertices.reserve(render->GetVertexCount());
+            }
+
+            // instanced foliage is thousands of copies of one mesh, a triangle test per instance
+            // freezes the editor, so the boxes rank the instances and only the nearest handful get
+            // the exact test, that is what makes clicking one tree out of a forest land on that tree
             if (render->HasInstancing())
             {
-                const BoundingBox& mesh_aabb = render->GetBoundingBoxMesh();
+                const BoundingBox& mesh_aabb  = render->GetBoundingBoxMesh();
                 const uint32_t instance_count = render->GetInstanceCount();
+
+                constexpr uint32_t candidate_max = 8;
+                float candidate_depth[candidate_max];
+                uint32_t candidate_index[candidate_max];
+                uint32_t candidate_count = 0;
+
                 for (uint32_t i = 0; i < instance_count; i++)
                 {
-                    const BoundingBox world_box = mesh_aabb * render->GetInstance(i, true);
-                    const Vector3 extents = world_box.GetExtents();
-                    if (extents.x > 40.0f || extents.y > 40.0f || extents.z > 40.0f)
+                    const float box_dist = ray.HitDistance(mesh_aabb * render->GetInstance(i, true));
+                    if (box_dist >= best_depth)
                     {
                         continue;
                     }
 
-                    const float aabb_dist = ray.HitDistance(world_box);
-                    if (aabb_dist < best_depth)
+                    // keep the list sorted by depth, an insertion sort over eight entries is nothing
+                    uint32_t slot = candidate_count < candidate_max ? candidate_count : candidate_max - 1;
+                    if (candidate_count == candidate_max && box_dist >= candidate_depth[slot])
                     {
-                        best_depth  = aabb_dist;
-                        best_entity = broad_hit.m_entity;
+                        continue;
+                    }
+
+                    while (slot > 0 && candidate_depth[slot - 1] > box_dist)
+                    {
+                        candidate_depth[slot] = candidate_depth[slot - 1];
+                        candidate_index[slot] = candidate_index[slot - 1];
+                        slot--;
+                    }
+
+                    candidate_depth[slot] = box_dist;
+                    candidate_index[slot] = i;
+                    candidate_count       = min(candidate_count + 1, candidate_max);
+                }
+
+                if (candidate_count == 0)
+                {
+                    continue;
+                }
+
+                m_pick_indices.clear();
+                m_pick_vertices.clear();
+                render->GetGeometry(&m_pick_indices, &m_pick_vertices);
+
+                for (uint32_t c = 0; c < candidate_count; c++)
+                {
+                    // a leaf card is one alpha masked quad, its triangles are the silhouette, so the
+                    // geometry test is what stops a click in the gap between branches from selecting
+                    const float hit = m_pick_indices.empty() || m_pick_vertices.empty()
+                        ? candidate_depth[c]
+                        : ray_hit_mesh(
+                            ray,
+                            m_pick_indices,
+                            m_pick_vertices,
+                            render->GetInstance(candidate_index[c], true),
+                            best_depth
+                        );
+
+                    if (hit < best_depth)
+                    {
+                        best_depth    = hit;
+                        best_entity   = broad_hit.m_entity;
+                        best_instance = static_cast<int>(candidate_index[c]);
                     }
                 }
+
                 continue;
-            }
-
-            // query mesh size first to reserve exact capacity and avoid allocations
-            uint32_t index_count  = render->GetIndexCount();
-            uint32_t vertex_count = render->GetVertexCount();
-
-            // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
-            // only reserve if current capacity is insufficient
-            if (m_pick_indices.capacity() < index_count)
-            {
-                m_pick_indices.reserve(index_count);
-            }
-            if (m_pick_vertices.capacity() < vertex_count)
-            {
-                m_pick_vertices.reserve(vertex_count);
             }
 
             // clear and reuse pre-allocated buffers
@@ -532,13 +586,18 @@ namespace spartan
             );
             if (hit < best_depth)
             {
-                best_depth  = hit;
-                best_entity = broad_hit.m_entity;
+                best_depth    = hit;
+                best_entity   = broad_hit.m_entity;
+                best_instance = -1;
             }
         }
 
+        m_pick_instance          = best_instance;
+        m_pick_instance_owner_id = best_entity ? best_entity->GetObjectId() : 0;
+
         s_cached_cursor    = cursor;
-        s_cached_entity_id = best_entity ? best_entity->GetObjectId() : 0;
+        s_cached_entity_id = m_pick_instance_owner_id;
+        s_cached_instance  = best_instance;
         s_cached_frame     = frame;
         return best_entity;
     }
@@ -739,6 +798,13 @@ namespace spartan
             {
                 SetSelectedEntity(best_entity);
             }
+
+            // the selection is the renderable that owns the instances, remember which one was under
+            // the cursor so the outline is that one prop and not the whole tile worth of them
+            if (best_entity->GetObjectId() == m_pick_instance_owner_id)
+            {
+                m_selected_instance = m_pick_instance;
+            }
         }
         else
         {
@@ -750,9 +816,14 @@ namespace spartan
     }
     
     vector<Entity*> Camera::m_selected_entities;
+    int Camera::m_selected_instance = -1;
 
     void Camera::SetSelectedEntity(Entity* entity)
     {
+        // any selection that does not come from clicking an instance is the whole renderable, pick()
+        // sets this again right after it selects
+        m_selected_instance = -1;
+
         m_selected_entities.clear();
         if (entity)
         {
@@ -771,6 +842,8 @@ namespace spartan
         {
             return;
         }
+
+        m_selected_instance = -1;
         
         // check if already selected
         for (Entity* e : m_selected_entities)
@@ -818,6 +891,7 @@ namespace spartan
     void Camera::ClearSelection()
     {
         m_selected_entities.clear();
+        m_selected_instance = -1;
     }
     
     bool Camera::IsSelected(Entity* entity)
@@ -1489,9 +1563,24 @@ namespace spartan
 
         const Vector3 camera_position = GetEntity()->GetPosition();
         Vector3 focus_point           = entity->GetPosition();
+        BoundingBox focus_box         = BoundingBox::Zero;
+        bool has_box                  = false;
+
         if (Render* render = entity->GetComponent<Render>())
         {
-            focus_point = render->GetBoundingBox().GetCenter();
+            // the whole box of an instanced renderable is the tile it scatters over, framing that
+            // flies away from the prop that was clicked, so one instance frames on its own
+            const int instance = m_selected_instance;
+            const bool one     = render->HasInstancing() &&
+                                 instance >= 0 &&
+                                 static_cast<uint32_t>(instance) < render->GetInstanceCount();
+
+            focus_box = one
+                ? render->GetBoundingBoxMesh() * render->GetInstance(static_cast<uint32_t>(instance), true)
+                : render->GetBoundingBox();
+
+            focus_point = focus_box.GetCenter();
+            has_box     = true;
         }
 
         Vector3 to_focus = focus_point - camera_position;
@@ -1502,9 +1591,9 @@ namespace spartan
         to_focus.Normalize();
 
         float pullback = 1.0f;
-        if (Render* render = entity->GetComponent<Render>())
+        if (has_box)
         {
-            pullback = max(render->GetBoundingBox().GetExtents().Length() * 2.0f, 1.0f);
+            pullback = max(focus_box.GetExtents().Length() * 2.0f, 1.0f);
         }
 
         m_lerp_to_target_position = focus_point - to_focus * pullback;

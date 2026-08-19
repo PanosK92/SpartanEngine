@@ -260,6 +260,11 @@ namespace spartan
         static const std::vector<spartan::Entity*>& GetSelectedEntities() { return m_selected_entities; }
         static uint32_t GetSelectedEntityCount() { return static_cast<uint32_t>(m_selected_entities.size()); }
 
+        // a scattered tree or rock is one instance of a renderable that carries thousands of them,
+        // the selection is the entity that owns them all, this is the one that was clicked
+        // -1 when the selection is not an instance
+        static int GetSelectedInstance() { return m_selected_instance; }
+
         math::Matrix UpdateViewMatrix() const;
         math::Matrix ComputeProjection(const float near_plane, const float far_plane);
         void FocusOnSelectedEntity();
@@ -323,10 +328,15 @@ namespace spartan
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
         static std::vector<spartan::Entity*> m_selected_entities;
+        static int m_selected_instance;
         
         // pre-allocated buffers for picking (to avoid heap allocations)
         std::vector<math::RayHitResult> m_pick_hits;
         std::vector<uint32_t> m_pick_indices;
         std::vector<RHI_Vertex_PosTexNorTan> m_pick_vertices;
+
+        // what the last cursor resolve landed on, an instance index and the renderable that owns it
+        int m_pick_instance                 = -1;
+        uint64_t m_pick_instance_owner_id   = 0;
     };
 }
