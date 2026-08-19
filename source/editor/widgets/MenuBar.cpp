@@ -583,10 +583,15 @@ namespace
             const ImVec4 tint = is_active
                 ? ImGui::Style::color_accent_1
                 : ImGui::Style::color_text_muted;
+
+            // image_button derives its id from the icon type, so two buttons sharing an icon share
+            // an id, the tooltip is unique per button and makes the id unique whatever the icon is
+            ImGui::PushID(tooltip_text);
             if (ImGuiSp::image_button(icon_type, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 on_press(widget);
             }
+            ImGui::PopID();
 
             if (is_active)
             {
@@ -930,7 +935,7 @@ namespace
 
                 static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
                 static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
-                toolbar_button(spartan::IconType::Terrain, "Worlds", world_visible, world_press, nullptr, group_x + group_padding_x());
+                toolbar_button(spartan::IconType::World, "Worlds", world_visible, world_press, nullptr, group_x + group_padding_x());
 
                 ImGui::SameLine(0, button_gap());
                 draw_mcp_button(menubar_height, -1.0f);

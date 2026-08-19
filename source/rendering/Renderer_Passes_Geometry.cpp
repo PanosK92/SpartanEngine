@@ -940,11 +940,7 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.primitive_topology               =
-            GetSecondaryViewMode() ==
-            Renderer_SecondaryViewMode::Vertices
-                ? RHI_PrimitiveTopology::PointList
-                : RHI_PrimitiveTopology::TriangleList;
+        pso.primitive_topology               = GetSecondaryViewMode() == Renderer_SecondaryViewMode::Vertices ? RHI_PrimitiveTopology::PointList : RHI_PrimitiveTopology::TriangleList;
         // both halves of this pass own their depth
         //
         // the tessellated half cannot use equal-z. the indirect path can, because there the prepass and the

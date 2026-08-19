@@ -66,7 +66,6 @@ private:
     void ShowMaterial(spartan::Material* material, spartan::Render* render = nullptr) const;
     void ShowCamera(spartan::Camera* camera) const;
     void ShowTerrain(spartan::Terrain* terrain) const;
-    void ShowTerrainScatter(spartan::Terrain* terrain) const;
     void ShowSpline(spartan::Spline* spline) const;
     void ShowSplineFollower(spartan::SplineFollower* follower) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;

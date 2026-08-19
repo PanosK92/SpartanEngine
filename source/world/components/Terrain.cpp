@@ -1524,6 +1524,35 @@ namespace spartan
         node.append_attribute("tile_count")    = m_tile_count;
         node.append_attribute("create_border") = m_create_border;
         node.append_attribute("spawn_biome_props")   = m_spawn_biome_props;
+        node.append_attribute("layer_quality") = m_layer_quality;
+        node.append_attribute("snow_amount")   = m_snow_amount;
+        node.append_attribute("wetness")       = m_wetness;
+
+        // surface layer rules, these are authored per world exactly like the scatter rules are
+        pugi::xml_node layers_node = node.append_child("layers");
+        for (const TerrainLayerRule& rule : m_layer_rules)
+        {
+            pugi::xml_node rule_node = layers_node.append_child("layer");
+
+            rule_node.append_attribute("name")           = rule.name.c_str();
+            rule_node.append_attribute("slope_min")      = rule.slope_min;
+            rule_node.append_attribute("slope_max")      = rule.slope_max;
+            rule_node.append_attribute("height_min")     = rule.height_min;
+            rule_node.append_attribute("height_max")     = rule.height_max;
+            rule_node.append_attribute("curvature")      = rule.curvature_influence;
+            rule_node.append_attribute("flow")           = rule.flow_influence;
+            rule_node.append_attribute("occlusion")      = rule.occlusion_influence;
+            rule_node.append_attribute("insolation")     = rule.insolation_influence;
+            rule_node.append_attribute("wear")           = rule.wear_influence;
+            rule_node.append_attribute("deposition")     = rule.deposition_influence;
+            rule_node.append_attribute("talus")          = rule.talus_influence;
+            rule_node.append_attribute("tiling_scale")   = rule.tiling_scale;
+            rule_node.append_attribute("blend_contrast") = rule.blend_contrast;
+            rule_node.append_attribute("porosity")       = rule.porosity;
+            rule_node.append_attribute("macro_strength") = rule.macro_strength;
+            rule_node.append_attribute("weight_bias")    = rule.weight_bias;
+            rule_node.append_attribute("flags")          = rule.flags;
+        }
 
         // scatter layers, the whole prop rule set travels with the world
         pugi::xml_node scatter_node = node.append_child("scatter");
@@ -1612,6 +1641,41 @@ namespace spartan
         m_tile_count    = max(node.attribute("tile_count").as_uint(16), 1u);
         m_create_border = node.attribute("create_border").as_bool(false);
         m_spawn_biome_props = node.attribute("spawn_biome_props").as_bool(true);
+        m_layer_quality = clamp(node.attribute("layer_quality").as_uint(3), 1u, 4u);
+        m_snow_amount   = node.attribute("snow_amount").as_float(1.0f);
+        m_wetness       = node.attribute("wetness").as_float(0.0f);
+
+        // surface layer rules, a world saved before they travelled with it keeps the defaults
+        m_layer_rules = TerrainLayerDefaults::Get();
+        if (pugi::xml_node layers_node = node.child("layers"))
+        {
+            uint32_t rule_index = 0;
+            for (pugi::xml_node rule_node = layers_node.child("layer");
+                 rule_node && rule_index < terrain_layer_max;
+                 rule_node = rule_node.next_sibling("layer"), rule_index++)
+            {
+                TerrainLayerRule& rule = m_layer_rules[rule_index];
+
+                rule.name                 = rule_node.attribute("name").as_string(rule.name.c_str());
+                rule.slope_min            = rule_node.attribute("slope_min").as_float(rule.slope_min);
+                rule.slope_max            = rule_node.attribute("slope_max").as_float(rule.slope_max);
+                rule.height_min           = rule_node.attribute("height_min").as_float(rule.height_min);
+                rule.height_max           = rule_node.attribute("height_max").as_float(rule.height_max);
+                rule.curvature_influence  = rule_node.attribute("curvature").as_float(rule.curvature_influence);
+                rule.flow_influence       = rule_node.attribute("flow").as_float(rule.flow_influence);
+                rule.occlusion_influence  = rule_node.attribute("occlusion").as_float(rule.occlusion_influence);
+                rule.insolation_influence = rule_node.attribute("insolation").as_float(rule.insolation_influence);
+                rule.wear_influence       = rule_node.attribute("wear").as_float(rule.wear_influence);
+                rule.deposition_influence = rule_node.attribute("deposition").as_float(rule.deposition_influence);
+                rule.talus_influence      = rule_node.attribute("talus").as_float(rule.talus_influence);
+                rule.tiling_scale         = rule_node.attribute("tiling_scale").as_float(rule.tiling_scale);
+                rule.blend_contrast       = rule_node.attribute("blend_contrast").as_float(rule.blend_contrast);
+                rule.porosity             = rule_node.attribute("porosity").as_float(rule.porosity);
+                rule.macro_strength       = rule_node.attribute("macro_strength").as_float(rule.macro_strength);
+                rule.weight_bias          = rule_node.attribute("weight_bias").as_float(rule.weight_bias);
+                rule.flags                = rule_node.attribute("flags").as_uint(rule.flags);
+            }
+        }
 
         // scatter layers, a world saved before they existed carries the old per prop multipliers
         // instead, fold those into the matching default layer so it still looks the way it did
