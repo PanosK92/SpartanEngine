@@ -157,7 +157,7 @@ struct FrameBufferData
     SHARED_FLOAT4 terrain_height_mapping; // xy = world min xz, zw = 1 / world size
     SHARED_FLOAT  terrain_height_y;
     SHARED_FLOAT  terrain_height_enabled;
-    SHARED_FLOAT  padding_terrain_height_0;
+    SHARED_FLOAT  terrain_maps_enabled;
     SHARED_FLOAT  padding_terrain_height_1;
 
     // radial motion blur wheel hubs, xy = screen uv, z = signed per-frame rotation angle in radians, w = projected radius in output pixels

@@ -50,6 +50,7 @@ namespace spartan
     uint32_t Profiler::m_rhi_instance_count             = 0;
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
     uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
+    uint32_t Profiler::m_rhi_layout_barriers            = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_vertex     = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_constant   = 0;
@@ -1736,7 +1737,7 @@ namespace spartan
                 "Instances:\t%u\n"
                 "Index bindings:\t%u\n"
                 "Vertex bindings:\t%u\n"
-                "Barriers:\t\t%u\n"
+                "Barriers:\t\t%u (%u layout)\n"
                 "Pipeline bindings:\t%u/%u\n"
                 "Descriptor sets:\t%u/%u",
                 static_cast<uint32_t>(m_rhi_draw),
@@ -1744,6 +1745,7 @@ namespace spartan
                 static_cast<uint32_t>(m_rhi_bindings_buffer_index),
                 static_cast<uint32_t>(m_rhi_bindings_buffer_vertex),
                 static_cast<uint32_t>(m_rhi_pipeline_barriers),
+                static_cast<uint32_t>(m_rhi_layout_barriers),
                 static_cast<uint32_t>(m_rhi_bindings_pipeline),
                 static_cast<uint32_t>(RHI_Device::GetPipelineCount()),
                 static_cast<uint32_t>(m_rhi_descriptor_set_count),

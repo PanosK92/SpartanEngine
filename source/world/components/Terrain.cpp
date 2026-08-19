@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../resource/ResourceCache.h"
 #include "../../geometry/Mesh.h"
 #include "../../rendering/Material.h"
+#include "../../rendering/Color.h"
 #include "../../rendering/Renderer.h"
 #include "../../geometry/GeometryProcessing.h"
 #include "../../core/ThreadPool.h"
@@ -1431,7 +1432,7 @@ namespace spartan
         };
 
         // bump when cache format or the generation algorithms change so old caches get invalidated
-        const uint64_t cache_format_version = 12;
+        const uint64_t cache_format_version = 13;
         hash_combine(cache_format_version);
 
         hash_combine(static_cast<uint64_t>(m_min_y * 1000));
@@ -1849,6 +1850,9 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("locking shoreline...");
             ApplyShorelineLock();
 
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("carving channels...");
+            ApplyFlowChannelCarve();
+
             // 5. generate vertices and indices
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating mesh...");
             m_vertices.resize(m_dense_width * m_dense_height);
@@ -1982,6 +1986,7 @@ namespace spartan
         RefreshPhysics();
         RefreshLayers();
         PushToRenderer();
+        SpawnFlowRivers();
 
         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         ProgressTracker::GetProgress(ProgressType::Terrain).Complete();
@@ -2785,6 +2790,159 @@ namespace spartan
 
         RebuildSurface(true);
         SnapshotBaseline();
+    }
+
+    bool Terrain::ApplyFlowChannelCarve()
+    {
+        if (!HasHeightfield())
+        {
+            return false;
+        }
+
+        TerrainChannelCarve params;
+        params.sea_level = ResolveSeaLevelLocal();
+
+        return TerrainSystem::CarveFlowChannels(
+            m_positions,
+            m_height_data.empty() ? nullptr : &m_height_data,
+            m_dense_width,
+            m_dense_height,
+            params
+        );
+    }
+
+    void Terrain::CarveFlowChannels()
+    {
+        if (!ApplyFlowChannelCarve())
+        {
+            SP_LOG_INFO("no flow channels to carve");
+            return;
+        }
+
+        RebuildSurface(true);
+        SnapshotBaseline();
+    }
+
+    void Terrain::SpawnFlowRivers()
+    {
+        Entity* root = GetEntity();
+        if (!root || !HasHeightfield() || m_tile_offsets.empty())
+        {
+            return;
+        }
+
+        // leftover from when rivers sat on the terrain root
+        vector<Entity*> root_children = root->GetChildren();
+        for (Entity* child : root_children)
+        {
+            if (child && child->GetObjectName().rfind("river_", 0) == 0)
+            {
+                World::RemoveEntity(child);
+            }
+        }
+
+        vector<Entity*> tiles(m_tile_offsets.size(), nullptr);
+        for (Entity* child : root->GetChildren())
+        {
+            const int index = ParseTileIndex(child);
+            if (index >= 0 && static_cast<uint32_t>(index) < tiles.size())
+            {
+                tiles[static_cast<uint32_t>(index)] = child;
+            }
+        }
+
+        vector<TerrainFlowPath> paths;
+        TerrainSystem::TraceFlowPaths(
+            paths,
+            m_positions,
+            m_dense_width,
+            m_dense_height,
+            ResolveSeaLevelLocal()
+        );
+
+        if (paths.empty())
+        {
+            return;
+        }
+
+        shared_ptr<Material> water_material = make_shared<Material>();
+        water_material->SetResourceName("river_water" + string(EXTENSION_MATERIAL));
+        water_material->SetColor(Color(0.0f, 0.09f, 0.13f, 0.9f));
+        water_material->SetProperty(MaterialProperty::Roughness,            0.05f);
+        water_material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.3f);
+        water_material->SetProperty(MaterialProperty::IsWater,              1.0f);
+        water_material->SetProperty(MaterialProperty::Ior,                  Material::EnumToIor(MaterialIor::Water));
+        water_material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+
+        for (uint32_t i = 0; i < paths.size(); i++)
+        {
+            const TerrainFlowPath& path = paths[i];
+            if (path.points.size() < 3)
+            {
+                continue;
+            }
+
+            const Vector3 mid = path.points[path.points.size() / 2];
+            uint32_t tile_index = 0;
+            float best_dist = numeric_limits<float>::max();
+            for (uint32_t t = 0; t < m_tile_offsets.size(); t++)
+            {
+                const float dx = mid.x - m_tile_offsets[t].x;
+                const float dz = mid.z - m_tile_offsets[t].z;
+                const float dist = dx * dx + dz * dz;
+                if (dist < best_dist)
+                {
+                    best_dist  = dist;
+                    tile_index = t;
+                }
+            }
+
+            Entity* tile = tiles[tile_index];
+            if (!tile)
+            {
+                continue;
+            }
+
+            Entity* river = World::CreateEntity();
+            river->SetObjectName("river_" + to_string(i));
+            river->SetTransient(true);
+            river->SetParent(tile);
+            river->SetPositionLocal(Vector3::Zero);
+
+            Spline* spline = river->AddComponent<Spline>();
+            spline->SetMeshEnabled(true);
+            spline->SetProfile(SplineProfile::Road);
+            spline->SetClosedLoop(false);
+            spline->SetRoadWidth(path.width_start);
+            spline->SetRoadWidthEnd(path.width_end);
+            spline->SetConformToTerrain(true);
+            spline->SetTerrainOffset(0.28f);
+            spline->SetResolution(6);
+
+            const Vector3 tile_offset = m_tile_offsets[tile_index];
+            for (const Vector3& point : path.points)
+            {
+                spline->AddControlPoint(point - tile_offset);
+            }
+
+            for (Entity* point : river->GetChildren())
+            {
+                if (point)
+                {
+                    point->SetTransient(true);
+                }
+            }
+
+            spline->GenerateRoadMesh();
+
+            if (Render* render = river->GetComponent<Render>())
+            {
+                render->SetMaterial(water_material);
+                render->SetFlag(RenderFlags::CastsShadows, false);
+            }
+
+            river->RemoveComponent<Physics>();
+        }
     }
 
     void Terrain::MakeIslandShore()
@@ -3745,6 +3903,7 @@ namespace spartan
         RefreshPhysics();
         RefreshLayers();
         PushToRenderer();
+        SpawnFlowRivers();
 
         m_vertices.clear();
         m_indices.clear();

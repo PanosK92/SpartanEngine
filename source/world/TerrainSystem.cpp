@@ -1691,6 +1691,92 @@ namespace spartan
         }
     }
 
+    bool TerrainSystem::ApplyHeightEdit(
+        vector<Vector3>& positions,
+        vector<float>* height_data,
+        uint32_t width,
+        uint32_t height,
+        const TerrainHeightEdit& edit,
+        const float* weights,
+        uint32_t x0,
+        uint32_t z0,
+        uint32_t x1,
+        uint32_t z1
+    )
+    {
+        if (positions.empty() || width < 2 || height < 2)
+        {
+            return false;
+        }
+
+        const uint32_t x_end = min(x1, width);
+        const uint32_t z_end = min(z1, height);
+        const uint32_t x_start = min(x0, x_end);
+        const uint32_t z_start = min(z0, z_end);
+        if (x_end <= x_start || z_end <= z_start)
+        {
+            return false;
+        }
+
+        atomic<uint32_t> changed{0};
+        auto apply = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t row = start; row < end; row++)
+            {
+                const uint32_t z = z_start + row;
+                for (uint32_t x = x_start; x < x_end; x++)
+                {
+                    const uint32_t i = z * width + x;
+                    if (i >= positions.size())
+                    {
+                        continue;
+                    }
+
+                    float w = weights ? weights[i] : 1.0f;
+                    if (w <= 1e-4f)
+                    {
+                        continue;
+                    }
+
+                    w = clamp(w, 0.0f, 1.0f);
+                    const float original = positions[i].y;
+                    float h = original;
+
+                    if (edit.op == TerrainEditOp::Add)
+                    {
+                        h = original + edit.amount * w;
+                    }
+                    else if (edit.op == TerrainEditOp::Set)
+                    {
+                        h = lerp(original, edit.target, w);
+                    }
+                    else if (edit.op == TerrainEditOp::LowerTo)
+                    {
+                        h = min(original, lerp(original, edit.target, w));
+                    }
+                    else if (edit.op == TerrainEditOp::RaiseTo)
+                    {
+                        h = max(original, lerp(original, edit.target, w));
+                    }
+
+                    if (fabsf(h - original) > 0.01f)
+                    {
+                        changed.fetch_add(1, memory_order_relaxed);
+                    }
+
+                    positions[i].y = h;
+                    if (height_data && i < height_data->size())
+                    {
+                        (*height_data)[i] = h;
+                    }
+                }
+            }
+        };
+        ThreadPool::ParallelLoop(apply, z_end - z_start);
+
+        return changed.load(memory_order_relaxed) > 0;
+    }
+
     namespace
     {
         void chamfer_distance(
@@ -2016,6 +2102,46 @@ namespace spartan
             return grid[static_cast<size_t>(z) * width + x];
         }
 
+        float sample_bilinear(const float* grid, uint32_t width, uint32_t height, float x, float z)
+        {
+            x = clamp(x, 0.0f, static_cast<float>(width) - 1.0f);
+            z = clamp(z, 0.0f, static_cast<float>(height) - 1.0f);
+            const int32_t x0 = static_cast<int32_t>(floorf(x));
+            const int32_t z0 = static_cast<int32_t>(floorf(z));
+            const int32_t x1 = min(x0 + 1, static_cast<int32_t>(width) - 1);
+            const int32_t z1 = min(z0 + 1, static_cast<int32_t>(height) - 1);
+            const float tx = x - static_cast<float>(x0);
+            const float tz = z - static_cast<float>(z0);
+            const float a = grid[static_cast<size_t>(z0) * width + x0];
+            const float b = grid[static_cast<size_t>(z0) * width + x1];
+            const float c = grid[static_cast<size_t>(z1) * width + x0];
+            const float d = grid[static_cast<size_t>(z1) * width + x1];
+            return lerp(lerp(a, b, tx), lerp(c, d, tx), tz);
+        }
+
+        Vector3 sample_position_bilinear(
+            const vector<Vector3>& positions,
+            uint32_t width,
+            uint32_t height,
+            float x,
+            float z
+        )
+        {
+            x = clamp(x, 0.0f, static_cast<float>(width) - 1.0f);
+            z = clamp(z, 0.0f, static_cast<float>(height) - 1.0f);
+            const int32_t x0 = static_cast<int32_t>(floorf(x));
+            const int32_t z0 = static_cast<int32_t>(floorf(z));
+            const int32_t x1 = min(x0 + 1, static_cast<int32_t>(width) - 1);
+            const int32_t z1 = min(z0 + 1, static_cast<int32_t>(height) - 1);
+            const float tx = x - static_cast<float>(x0);
+            const float tz = z - static_cast<float>(z0);
+            const Vector3 a = positions[static_cast<size_t>(z0) * width + x0];
+            const Vector3 b = positions[static_cast<size_t>(z0) * width + x1];
+            const Vector3 c = positions[static_cast<size_t>(z1) * width + x0];
+            const Vector3 d = positions[static_cast<size_t>(z1) * width + x1];
+            return Vector3::Lerp(Vector3::Lerp(a, b, tx), Vector3::Lerp(c, d, tx), tz);
+        }
+
         // box downsample of an arbitrary source grid onto the analysis grid
         void resample_grid(
             vector<float>& destination,
@@ -2217,6 +2343,72 @@ namespace spartan
             }
         }
 
+        void compute_flow_wetness(
+            vector<float>& flow_out,
+            const vector<float>& heights,
+            uint32_t width,
+            uint32_t height,
+            float cell_size
+        )
+        {
+            vector<float> drained = heights;
+            fill_sinks(drained, width, height, cell_size * 1e-4f);
+
+            vector<float> accumulation;
+            accumulate_flow(accumulation, drained, width, height, cell_size);
+
+            const uint32_t cell_count = width * height;
+            flow_out.resize(cell_count);
+            auto to_wetness = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    const int32_t x = static_cast<int32_t>(index % width);
+                    const int32_t z = static_cast<int32_t>(index / width);
+
+                    const float dx = (sample_grid(heights, width, height, x + 1, z) -
+                                      sample_grid(heights, width, height, x - 1, z)) / (2.0f * cell_size);
+                    const float dz = (sample_grid(heights, width, height, x, z + 1) -
+                                      sample_grid(heights, width, height, x, z - 1)) / (2.0f * cell_size);
+
+                    const float tan_beta = max(sqrtf(dx * dx + dz * dz), 0.01f);
+                    const float alpha    = max(accumulation[index], 1.0f) * cell_size;
+
+                    flow_out[index] = logf(alpha / tan_beta);
+                }
+            };
+            ThreadPool::ParallelLoop(to_wetness, cell_count);
+            autolevel(flow_out, 0.05f, 0.995f);
+        }
+
+        // log drainage area, pinched so only the actual streams survive
+        void compute_channel_mask(
+            vector<float>& channel_out,
+            const vector<float>& heights,
+            uint32_t width,
+            uint32_t height,
+            float cell_size
+        )
+        {
+            vector<float> drained = heights;
+            fill_sinks(drained, width, height, cell_size * 1e-4f);
+
+            vector<float> accumulation;
+            accumulate_flow(accumulation, drained, width, height, cell_size);
+
+            const uint32_t cell_count = width * height;
+            channel_out.resize(cell_count);
+            auto to_log = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t index = start; index < end; index++)
+                {
+                    channel_out[index] = logf(max(accumulation[index], 1.0f));
+                }
+            };
+            ThreadPool::ParallelLoop(to_log, cell_count);
+            autolevel(channel_out, 0.80f, 0.997f);
+        }
+
         // horizon angle in one compass direction, exponential stepping so a handful of samples
         // still reach across the whole map
         float horizon_angle(
@@ -2351,42 +2543,7 @@ namespace spartan
         }
 
         // flow accumulation into a topographic wetness index
-        {
-            vector<float> drained = heights;
-            fill_sinks(drained, analysis_width, analysis_height, cell_size * 1e-4f);
-
-            vector<float> accumulation;
-            accumulate_flow(accumulation, drained, analysis_width, analysis_height, cell_size);
-
-            maps_out.flow.resize(cell_count);
-            auto to_wetness = [&](uint32_t start, uint32_t end)
-            {
-                for (uint32_t index = start; index < end; index++)
-                {
-                    const int32_t x = static_cast<int32_t>(index % analysis_width);
-                    const int32_t z = static_cast<int32_t>(index / analysis_width);
-
-                    // the slope comes off the real surface, the sink filled copy is flat to within an
-                    // epsilon across every filled basin so its gradient collapses onto the floor
-                    // below and the index saturates over the whole depression, which is exactly what
-                    // stamps a hard edged blob of one layer onto every bowl in the terrain
-                    const float dx = (sample_grid(heights, analysis_width, analysis_height, x + 1, z) -
-                                      sample_grid(heights, analysis_width, analysis_height, x - 1, z)) / (2.0f * cell_size);
-                    const float dz = (sample_grid(heights, analysis_width, analysis_height, x, z + 1) -
-                                      sample_grid(heights, analysis_width, analysis_height, x, z - 1)) / (2.0f * cell_size);
-
-                    // a floor of 0.001 is a twentieth of a degree, the log of it adds seven to every
-                    // flat cell and pins them all against the top of the range, half a degree is
-                    // still flat ground and leaves the channel something to rank
-                    const float tan_beta = max(sqrtf(dx * dx + dz * dz), 0.01f);
-                    const float alpha    = max(accumulation[index], 1.0f) * cell_size;
-
-                    maps_out.flow[index] = logf(alpha / tan_beta);
-                }
-            };
-            ThreadPool::ParallelLoop(to_wetness, cell_count);
-            autolevel(maps_out.flow, 0.05f, 0.995f);
-        }
+        compute_flow_wetness(maps_out.flow, heights, analysis_width, analysis_height, cell_size);
 
         // sky occlusion and sun path insolation share the horizon marches
         {
@@ -2570,6 +2727,425 @@ namespace spartan
                 }
             };
             ThreadPool::ParallelLoop(drown, cell_count);
+        }
+    }
+
+    void TerrainSystem::BuildWeightsFromMap(
+        vector<float>& weights_out,
+        const vector<Vector3>& positions,
+        uint32_t width,
+        uint32_t height,
+        const float* source,
+        uint32_t source_width,
+        uint32_t source_height,
+        const TerrainWeightFromMap& remap
+    )
+    {
+        const uint32_t count = width * height;
+        weights_out.assign(count, 0.0f);
+        if (!source || source_width < 1 || source_height < 1 || positions.size() < count)
+        {
+            return;
+        }
+
+        const float scale_x = static_cast<float>(source_width)  / static_cast<float>(width);
+        const float scale_z = static_cast<float>(source_height) / static_cast<float>(height);
+        const float range   = max(remap.value_high - remap.value_low, 1e-4f);
+
+        auto fill = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                const uint32_t x = i % width;
+                const uint32_t z = i / width;
+                const float fx = (static_cast<float>(x) + 0.5f) * scale_x - 0.5f;
+                const float fz = (static_cast<float>(z) + 0.5f) * scale_z - 0.5f;
+                const float value = sample_bilinear(source, source_width, source_height, fx, fz);
+
+                float w = clamp((value - remap.value_low) / range, 0.0f, 1.0f);
+                w = w * w * (3.0f - 2.0f * w);
+
+                const float h = positions[i].y;
+                float height_w = 1.0f;
+                if (h < remap.height_min)
+                {
+                    height_w = remap.height_soft > 1e-4f
+                        ? 1.0f - clamp((remap.height_min - h) / remap.height_soft, 0.0f, 1.0f)
+                        : 0.0f;
+                }
+                else if (h > remap.height_max)
+                {
+                    height_w = remap.height_soft > 1e-4f
+                        ? 1.0f - clamp((h - remap.height_max) / remap.height_soft, 0.0f, 1.0f)
+                        : 0.0f;
+                }
+                height_w = height_w * height_w * (3.0f - 2.0f * height_w);
+
+                weights_out[i] = w * height_w;
+            }
+        };
+        ThreadPool::ParallelLoop(fill, count);
+    }
+
+    void TerrainSystem::ComputeFlowMap(
+        vector<float>& flow_out,
+        uint32_t& width_out,
+        uint32_t& height_out,
+        const vector<Vector3>& positions,
+        uint32_t width,
+        uint32_t height,
+        TerrainFlowSignal signal,
+        uint32_t resolution_max
+    )
+    {
+        flow_out.clear();
+        width_out  = 0;
+        height_out = 0;
+
+        const size_t dense_count = static_cast<size_t>(width) * height;
+        if (positions.size() < dense_count || width < 16 || height < 16)
+        {
+            return;
+        }
+
+        const uint32_t analysis_width  = min(width,  max(resolution_max, 64u));
+        const uint32_t analysis_height = min(height, max(resolution_max, 64u));
+
+        float dense_cell = fabsf(positions[1].x - positions[0].x);
+        if (dense_cell < 1e-4f)
+        {
+            dense_cell = 1.0f;
+        }
+        const float cell_size = dense_cell * (static_cast<float>(width) / static_cast<float>(analysis_width));
+
+        vector<float> dense_heights(dense_count);
+        auto extract = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                dense_heights[i] = positions[i].y;
+            }
+        };
+        ThreadPool::ParallelLoop(extract, static_cast<uint32_t>(dense_count));
+
+        vector<float> heights;
+        resample_grid(heights, analysis_width, analysis_height, dense_heights, width, height);
+
+        if (signal == TerrainFlowSignal::Channel)
+        {
+            compute_channel_mask(flow_out, heights, analysis_width, analysis_height, cell_size);
+        }
+        else
+        {
+            compute_flow_wetness(flow_out, heights, analysis_width, analysis_height, cell_size);
+        }
+
+        width_out  = analysis_width;
+        height_out = analysis_height;
+    }
+
+    bool TerrainSystem::CarveFlowChannels(
+        vector<Vector3>& positions,
+        vector<float>* height_data,
+        uint32_t width,
+        uint32_t height,
+        const TerrainChannelCarve& params
+    )
+    {
+        vector<float> channel;
+        uint32_t channel_width  = 0;
+        uint32_t channel_height = 0;
+        ComputeFlowMap(
+            channel,
+            channel_width,
+            channel_height,
+            positions,
+            width,
+            height,
+            TerrainFlowSignal::Channel
+        );
+
+        if (channel.empty() || channel_width == 0 || channel_height == 0)
+        {
+            return false;
+        }
+
+        TerrainWeightFromMap remap;
+        remap.value_low   = params.flow_low;
+        remap.value_high  = params.flow_high;
+        remap.height_min  = params.sea_level - 2.0f;
+        remap.height_max  = params.sea_level + params.reach;
+        remap.height_soft = max(params.reach * 0.35f, 1.0f);
+
+        vector<float> weights;
+        BuildWeightsFromMap(
+            weights,
+            positions,
+            width,
+            height,
+            channel.data(),
+            channel_width,
+            channel_height,
+            remap
+        );
+
+        const float reach = max(params.reach, 1e-3f);
+        auto fade_by_reach = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                if (weights[i] <= 0.0f)
+                {
+                    continue;
+                }
+
+                const float above = positions[i].y - params.sea_level;
+                float reach_w = 1.0f - clamp(above / reach, 0.0f, 1.0f);
+                reach_w = reach_w * reach_w * (3.0f - 2.0f * reach_w);
+                weights[i] *= reach_w;
+            }
+        };
+        ThreadPool::ParallelLoop(fade_by_reach, width * height);
+
+        // only open channels the ocean can actually reach, inland bowls stay dry
+        {
+            const uint32_t count = width * height;
+            const float wet = params.sea_level + 0.05f;
+            vector<uint8_t> is_land(count, 0);
+            for (uint32_t i = 0; i < count; i++)
+            {
+                is_land[i] = (positions[i].y > wet && weights[i] < 0.15f) ? 1 : 0;
+            }
+
+            vector<uint8_t> is_ocean;
+            flood_ocean_from_border(is_ocean, is_land, width, height);
+
+            auto keep_draining = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    if (!is_ocean[i])
+                    {
+                        weights[i] = 0.0f;
+                    }
+                }
+            };
+            ThreadPool::ParallelLoop(keep_draining, count);
+        }
+
+        TerrainHeightEdit edit;
+        edit.op     = TerrainEditOp::LowerTo;
+        edit.target = params.sea_level - max(params.bed_depth, 0.05f);
+
+        return ApplyHeightEdit(positions, height_data, width, height, edit, weights.data());
+    }
+
+    void TerrainSystem::TraceFlowPaths(
+        vector<TerrainFlowPath>& paths_out,
+        const vector<Vector3>& positions,
+        uint32_t width,
+        uint32_t height,
+        float sea_level,
+        uint32_t path_max
+    )
+    {
+        paths_out.clear();
+
+        const size_t dense_count = static_cast<size_t>(width) * height;
+        if (positions.size() < dense_count || width < 16 || height < 16 || path_max == 0)
+        {
+            return;
+        }
+
+        const uint32_t analysis_width  = min(width,  1024u);
+        const uint32_t analysis_height = min(height, 1024u);
+        const uint32_t cell_count      = analysis_width * analysis_height;
+
+        float dense_cell = fabsf(positions[1].x - positions[0].x);
+        if (dense_cell < 1e-4f)
+        {
+            dense_cell = 1.0f;
+        }
+        const float cell_size = dense_cell * (static_cast<float>(width) / static_cast<float>(analysis_width));
+
+        vector<float> dense_heights(dense_count);
+        auto extract = [&](uint32_t start, uint32_t end)
+        {
+            for (uint32_t i = start; i < end; i++)
+            {
+                dense_heights[i] = positions[i].y;
+            }
+        };
+        ThreadPool::ParallelLoop(extract, static_cast<uint32_t>(dense_count));
+
+        vector<float> heights;
+        resample_grid(heights, analysis_width, analysis_height, dense_heights, width, height);
+
+        vector<float> drained = heights;
+        fill_sinks(drained, analysis_width, analysis_height, cell_size * 1e-4f);
+
+        vector<float> accumulation;
+        accumulate_flow(accumulation, drained, analysis_width, analysis_height, cell_size);
+
+        vector<float> channel;
+        compute_channel_mask(channel, heights, analysis_width, analysis_height, cell_size);
+
+        const int32_t neighbor_x[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
+        const int32_t neighbor_z[8] = { -1, -1, -1, 0, 0, 1, 1, 1 };
+
+        vector<uint32_t> down(cell_count);
+        for (uint32_t i = 0; i < cell_count; i++)
+        {
+            const int32_t cx = static_cast<int32_t>(i % analysis_width);
+            const int32_t cz = static_cast<int32_t>(i / analysis_width);
+            uint32_t best    = i;
+            float best_h     = drained[i];
+            for (uint32_t n = 0; n < 8; n++)
+            {
+                const int32_t nx = cx + neighbor_x[n];
+                const int32_t nz = cz + neighbor_z[n];
+                if (nx < 0 || nz < 0 ||
+                    nx >= static_cast<int32_t>(analysis_width) ||
+                    nz >= static_cast<int32_t>(analysis_height))
+                {
+                    continue;
+                }
+
+                const uint32_t ni = static_cast<uint32_t>(nz) * analysis_width + static_cast<uint32_t>(nx);
+                if (drained[ni] < best_h)
+                {
+                    best_h = drained[ni];
+                    best   = ni;
+                }
+            }
+            down[i] = best;
+        }
+
+        const float channel_on = 0.35f;
+        vector<uint32_t> inbound(cell_count, 0);
+        for (uint32_t i = 0; i < cell_count; i++)
+        {
+            if (channel[i] < channel_on)
+            {
+                continue;
+            }
+
+            const uint32_t next = down[i];
+            if (next != i && channel[next] >= channel_on)
+            {
+                inbound[next]++;
+            }
+        }
+
+        vector<float> channel_acc;
+        channel_acc.reserve(cell_count / 8);
+        for (uint32_t i = 0; i < cell_count; i++)
+        {
+            if (channel[i] >= channel_on)
+            {
+                channel_acc.push_back(accumulation[i]);
+            }
+        }
+        if (channel_acc.size() < 8)
+        {
+            return;
+        }
+        sort(channel_acc.begin(), channel_acc.end());
+        const float acc_cut = channel_acc[static_cast<size_t>(0.70f * static_cast<float>(channel_acc.size() - 1))];
+
+        vector<uint32_t> seeds;
+        for (uint32_t i = 0; i < cell_count; i++)
+        {
+            if (channel[i] >= channel_on && inbound[i] == 0 && accumulation[i] >= acc_cut)
+            {
+                seeds.push_back(i);
+            }
+        }
+        sort(seeds.begin(), seeds.end(), [&accumulation](uint32_t a, uint32_t b)
+        {
+            return accumulation[a] > accumulation[b];
+        });
+
+        vector<uint8_t> visited(cell_count, 0);
+        const float scale_x = static_cast<float>(width  - 1) / static_cast<float>(analysis_width);
+        const float scale_z = static_cast<float>(height - 1) / static_cast<float>(analysis_height);
+
+        for (uint32_t seed : seeds)
+        {
+            if (visited[seed] || paths_out.size() >= path_max)
+            {
+                continue;
+            }
+
+            vector<uint32_t> cells;
+            uint32_t cell  = seed;
+            uint32_t guard = 0;
+            while (guard++ < cell_count)
+            {
+                cells.push_back(cell);
+                visited[cell] = 1;
+
+                const uint32_t next = down[cell];
+                if (next == cell)
+                {
+                    break;
+                }
+                if (heights[next] < sea_level)
+                {
+                    cells.push_back(next);
+                    break;
+                }
+                if (visited[next])
+                {
+                    cells.push_back(next);
+                    break;
+                }
+                if (channel[next] < 0.20f && heights[next] > sea_level + 1.5f)
+                {
+                    break;
+                }
+                cell = next;
+            }
+
+            if (cells.size() < 8)
+            {
+                continue;
+            }
+
+            TerrainFlowPath path;
+            const float acc_a = max(accumulation[cells.front()], 1.0f);
+            const float acc_b = max(accumulation[cells.back()], 1.0f);
+            path.width_start = clamp(logf(acc_a) * 1.15f, 6.0f, 16.0f);
+            path.width_end   = clamp(logf(acc_b) * 1.35f, 10.0f, 24.0f);
+
+            Vector3 previous = Vector3::Zero;
+            bool has_previous = false;
+            for (size_t i = 0; i < cells.size(); i++)
+            {
+                const uint32_t index = cells[i];
+                const float ax = static_cast<float>(index % analysis_width) + 0.5f;
+                const float az = static_cast<float>(index / analysis_width) + 0.5f;
+                const Vector3 point = sample_position_bilinear(
+                    positions,
+                    width,
+                    height,
+                    ax * scale_x,
+                    az * scale_z
+                );
+
+                const bool last = (i + 1 == cells.size());
+                if (!has_previous || last || Vector3::Distance(previous, point) >= 28.0f)
+                {
+                    path.points.push_back(point);
+                    previous     = point;
+                    has_previous = true;
+                }
+            }
+
+            if (path.points.size() >= 3)
+            {
+                paths_out.push_back(move(path));
+            }
         }
     }
 }

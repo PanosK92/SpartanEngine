@@ -164,7 +164,7 @@ float get_ocean_caustic(float2 world_xz, float travel)
 }
 
 // world y of the terrain under this xz, valid is 0 off the heightfield
-float sample_ocean_terrain_height(float2 world_xz, out float valid)
+float2 ocean_terrain_uv(float2 world_xz, out float valid)
 {
     valid = 0.0f;
     if (buffer_frame.terrain_height_enabled < 0.5f)
@@ -180,10 +180,21 @@ float sample_ocean_terrain_height(float2 world_xz, out float valid)
         return 0.0f;
     }
 
+    valid = 1.0f;
+    return normalized;
+}
+
+float sample_ocean_terrain_height(float2 world_xz, out float valid)
+{
+    float2 normalized = ocean_terrain_uv(world_xz, valid);
+    if (valid < 0.5f)
+    {
+        return 0.0f;
+    }
+
     float2 tex_size;
     tex_terrain_height.GetDimensions(tex_size.x, tex_size.y);
     float2 uv = (normalized * (tex_size - 1.0f) + 0.5f) / max(tex_size, 1.0f);
-    valid = 1.0f;
     return tex_terrain_height.SampleLevel(
         samplers[sampler_bilinear_clamp],
         uv,
@@ -311,18 +322,15 @@ float get_ocean_shore_foam(float2 world_xz, float time)
         return 0.0f;
     }
 
-    float sea   = buffer_frame.ocean_sea_level;
-    float above = terrain_y - sea;
-    if (above > 2.0f || above < -2.5f)
+    float water_y   = get_ocean_height(world_xz);
+    float clearance = water_y - terrain_y;
+    if (clearance > 2.5f || clearance < -0.5f)
     {
         return 0.0f;
     }
-
-    float water_y   = get_ocean_height(world_xz);
-    float clearance = water_y - terrain_y;
-    float tongue    = exp(-clearance * clearance * 28.0f);
-    float edge      = saturate(1.0f - abs(above) / 0.85f);
-    edge            = edge * edge;
+    float tongue = exp(-clearance * clearance * 28.0f);
+    float edge   = saturate(1.0f - abs(clearance) / 0.85f);
+    edge         = edge * edge;
 
     float n =
         ocean_foam_noise(world_xz * 22.0f + float2(time * 0.4f, 0.0f)) * 0.45f +

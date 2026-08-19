@@ -69,6 +69,7 @@ namespace spartan
         RHI_Barrier_Scope scope    = RHI_Barrier_Scope::All;
         RHI_Queue_Type queue       = RHI_Queue_Type::Max;
         RHI_Image_Layout layout    = RHI_Image_Layout::Max;
+        bool unsynced              = false;
     };
 
     struct RHI_Tracked_Texture_Binding
@@ -403,6 +404,7 @@ namespace spartan
         void ValidateBindings();
         void ResetTrackedBindings();
         void ResetTrackedResources();
+        void MarkTrackedResourcesSynced();
         void CommitTrackedResources();
         RHI_Image_Layout GetTrackedTextureLayout(RHI_Texture* texture, uint32_t mip_index);
         void SetTrackedTextureLayout(RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, RHI_Image_Layout layout);
@@ -464,6 +466,9 @@ namespace spartan
         bool m_pipeline_state_dirty = false;
         bool m_resources_dirty = true;
         bool m_resources_have_write_bindings = false;
+        bool m_force_memory_sync = true;
+        bool m_pass_boundary = true;
+        bool m_immediate_memory_sync = false;
         uint32_t m_push_constant_size = 0;
         bool m_constant_buffer_bound = false;
         mutable uint64_t m_texture_bindings_hash = 0;

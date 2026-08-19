@@ -1785,6 +1785,7 @@ namespace spartan
         m_cb_frame_cpu.terrain_height_mapping = Vector4::Zero;
         m_cb_frame_cpu.terrain_height_y       = 0.0f;
         m_cb_frame_cpu.terrain_height_enabled = 0.0f;
+        m_cb_frame_cpu.terrain_maps_enabled   = 0.0f;
         if (m_pass_state.terrain_enabled && m_pass_state.terrain.height_map)
         {
             RHI_Texture* height = m_pass_state.terrain.height_map;
@@ -1808,6 +1809,15 @@ namespace spartan
                 m_cb_frame_cpu.terrain_height_y       = y;
                 m_cb_frame_cpu.terrain_height_enabled = 1.0f;
             }
+        }
+
+        if (m_pass_state.terrain_enabled &&
+            m_pass_state.terrain.map_a &&
+            m_pass_state.terrain.map_b &&
+            m_pass_state.terrain.map_a->GetResourceState() == ResourceState::PreparedForGpu &&
+            m_pass_state.terrain.map_b->GetResourceState() == ResourceState::PreparedForGpu)
+        {
+            m_cb_frame_cpu.terrain_maps_enabled = 1.0f;
         }
     }
 

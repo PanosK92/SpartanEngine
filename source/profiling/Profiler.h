@@ -87,6 +87,7 @@ namespace spartan
         static uint32_t m_rhi_instance_count;
         static uint32_t m_rhi_timeblock_count;
         static uint32_t m_rhi_pipeline_barriers;
+        static uint32_t m_rhi_layout_barriers;
         static uint32_t m_rhi_bindings_buffer_index;
         static uint32_t m_rhi_bindings_buffer_vertex;
         static uint32_t m_rhi_bindings_buffer_constant;
@@ -111,6 +112,7 @@ namespace spartan
             m_rhi_instance_count             = 0;
             m_rhi_timeblock_count            = 0;
             m_rhi_pipeline_barriers          = 0;
+            m_rhi_layout_barriers            = 0;
             m_rhi_bindings_buffer_index      = 0;
             m_rhi_bindings_buffer_vertex     = 0;
             m_rhi_bindings_buffer_constant   = 0;

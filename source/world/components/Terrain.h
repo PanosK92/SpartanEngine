@@ -232,6 +232,10 @@ namespace spartan
         void MakeIslandShore();
         // raise the real coastline above the waves and cut a beach, no full regenerate
         void LockShoreline();
+        // drop near-sea flow channels just below the ocean so water shows through
+        void CarveFlowChannels();
+        // trace the flow map into spline ribbons that use the ocean water material
+        void SpawnFlowRivers();
 
         // find the first terrain with a heightfield in the loaded world
         static Terrain* FindActive();
@@ -278,6 +282,7 @@ namespace spartan
         uint64_t ComputeCacheHash() const;
         float ResolveSeaLevelLocal() const;
         bool ApplyShorelineLock();
+        bool ApplyFlowChannelCarve();
 
         // textures
         RHI_Texture* m_height_map_seed                  = nullptr;

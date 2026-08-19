@@ -343,7 +343,6 @@ namespace spartan
     void Renderer::Pass_Bloom(RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         RHI_Shader* shader_luminance          = GetShader(Renderer_Shader::bloom_luminance_c);
-        RHI_Shader* shader_downsample         = GetShader(Renderer_Shader::bloom_downsample_c);
         RHI_Shader* shader_upsample_blend_mip = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
         RHI_Shader* shader_blend_frame        = GetShader(Renderer_Shader::bloom_blend_frame_c);
         RHI_Texture* tex_bloom                = GetRenderTarget(Renderer_RenderTarget::bloom);
@@ -375,31 +374,10 @@ namespace spartan
         }
         RHI_CommandList::EndMarker();
     
-        // downsample chain
-        RHI_CommandList::BeginMarker("downsample_chain");
+        if (bloom_mip_count > 1)
         {
-            RHI_CommandList::SetShader(shader_downsample, "bloom_downsample");
-    
-            for (uint32_t i = 0; i < bloom_mip_count - 1; i++)
-            {
-                RHI_Texture* input_mip = tex_bloom;
-                int input_mip_idx      = i;
-                int output_mip_idx     = i + 1;
-                
-                uint32_t output_width  = tex_bloom->GetWidth() >> output_mip_idx;
-                uint32_t output_height = tex_bloom->GetHeight() >> output_mip_idx;
-
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), input_mip, input_mip_idx, 1);
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), input_mip, output_mip_idx, 1, true);
-
-                uint32_t thread_group_count = 8;
-                uint32_t dispatch_x = (output_width + thread_group_count - 1) / thread_group_count;
-                uint32_t dispatch_y = (output_height + thread_group_count - 1) / thread_group_count;
-                
-                RHI_CommandList::Dispatch(dispatch_x, dispatch_y);
-            }
+            Pass_Downscale(tex_bloom, Renderer_DownsampleFilter::Average);
         }
-        RHI_CommandList::EndMarker();
     
         // upsample & blend chain
         RHI_CommandList::BeginMarker("upsample_chain");

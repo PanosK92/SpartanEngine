@@ -3779,7 +3779,19 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
+        if (m_force_memory_sync)
+        {
+            D3D12_RESOURCE_BARRIER uav = {};
+            uav.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            b.pending_barriers.push_back(uav);
+            m_force_memory_sync = false;
+        }
+        const bool had_work = !b.pending_barriers.empty();
         cmd_state::flush(cmd_list, b);
+        if (had_work)
+        {
+            MarkTrackedResourcesSynced();
+        }
     }
 
     void RHI_CommandList::restore_after_external_pass()

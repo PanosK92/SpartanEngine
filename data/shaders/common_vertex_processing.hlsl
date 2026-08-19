@@ -464,6 +464,10 @@ struct vertex_processing
                 disp += displacement * scale;
             }
 
+            // river ribbons sit above the sea, keep the fft as ripples not open ocean swell
+            float above = position_world.y - buffer_frame.ocean_sea_level;
+            disp *= lerp(1.0f, 0.22f, saturate(above / 1.5f));
+
             position_world += disp;
             return;
         }

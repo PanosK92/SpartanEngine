@@ -49,6 +49,56 @@ namespace spartan
         float target_height   = 0.0f;
     };
 
+    // height edits are weight * op, a brush later just builds a different weight field
+    enum class TerrainEditOp
+    {
+        Add,     // y += amount * weight
+        Set,     // lerp toward target
+        LowerTo, // pull down toward target, never raise
+        RaiseTo  // pull up toward target, never lower
+    };
+
+    struct TerrainHeightEdit
+    {
+        TerrainEditOp op = TerrainEditOp::Set;
+        float amount     = 0.0f;
+        float target     = 0.0f;
+    };
+
+    // remap a 0..1 source map onto a dense-grid weight, optional height band
+    struct TerrainWeightFromMap
+    {
+        float value_low   = 0.0f;
+        float value_high  = 1.0f;
+        float height_min  = -1.0e8f;
+        float height_max  =  1.0e8f;
+        float height_soft = 0.0f;
+    };
+
+    enum class TerrainFlowSignal
+    {
+        Wetness, // topographic wetness, broad, what texturing uses
+        Channel  // log drainage area, pinched to the actual streams
+    };
+
+    // generation recipe, same edit path a river brush would call
+    struct TerrainChannelCarve
+    {
+        float sea_level = 0.0f;
+        float bed_depth = 0.65f;
+        float reach     = 14.0f;
+        float flow_low  = 0.50f;
+        float flow_high = 0.85f;
+    };
+
+    // one traced drainage path in terrain local space, ready for a spline ribbon
+    struct TerrainFlowPath
+    {
+        std::vector<math::Vector3> points;
+        float width_start = 8.0f;
+        float width_end   = 16.0f;
+    };
+
     // grid extents derived from density and scale, shared by generation and sculpting
     struct TerrainGridMapping
     {
@@ -235,6 +285,61 @@ namespace spartan
             const TerrainGridMapping& mapping,
             const math::Vector3& world_center,
             const TerrainBrush& brush
+        );
+
+        // weighted height edit, weights is dense width*height or null for 1
+        // x0,z0,x1,z1 is the dirty rect, x1/z1 of ~0u means the full grid
+        static bool ApplyHeightEdit(
+            std::vector<math::Vector3>& positions,
+            std::vector<float>* height_data,
+            uint32_t width,
+            uint32_t height,
+            const TerrainHeightEdit& edit,
+            const float* weights = nullptr,
+            uint32_t x0 = 0,
+            uint32_t z0 = 0,
+            uint32_t x1 = 0xffffffffu,
+            uint32_t z1 = 0xffffffffu
+        );
+
+        static void BuildWeightsFromMap(
+            std::vector<float>& weights_out,
+            const std::vector<math::Vector3>& positions,
+            uint32_t width,
+            uint32_t height,
+            const float* source,
+            uint32_t source_width,
+            uint32_t source_height,
+            const TerrainWeightFromMap& remap
+        );
+
+        static void ComputeFlowMap(
+            std::vector<float>& flow_out,
+            uint32_t& width_out,
+            uint32_t& height_out,
+            const std::vector<math::Vector3>& positions,
+            uint32_t width,
+            uint32_t height,
+            TerrainFlowSignal signal = TerrainFlowSignal::Wetness,
+            uint32_t resolution_max = 1024
+        );
+
+        static bool CarveFlowChannels(
+            std::vector<math::Vector3>& positions,
+            std::vector<float>* height_data,
+            uint32_t width,
+            uint32_t height,
+            const TerrainChannelCarve& params
+        );
+
+        // walk the channel mask downhill into polylines the spline water can extrude
+        static void TraceFlowPaths(
+            std::vector<TerrainFlowPath>& paths_out,
+            const std::vector<math::Vector3>& positions,
+            uint32_t width,
+            uint32_t height,
+            float sea_level,
+            uint32_t path_max = 16
         );
 
         // raise the existing island above the waves, do not grow or shrink its outline

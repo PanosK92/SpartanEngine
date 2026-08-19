@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_DescriptorSetLayout.h"
 #include "RHI_Descriptor.h"
 #include "RHI_Device.h"
+#include "RHI_Implementation.h"
 #include <unordered_set>
 //============================
 
@@ -70,6 +71,22 @@ namespace spartan
         }
 
         RHI_Tracked_Texture_Binding& binding = uav ? m_tracked_textures_uav[slot] : m_tracked_textures_srv[slot];
+        const uint32_t resolved_mip   = mip_index == rhi_all_mips ? 0 : mip_index;
+        const uint32_t resolved_range = !texture ? 0 : (mip_index == rhi_all_mips ? texture->GetMipCount() : (mip_range == 0 ? 1 : mip_range));
+        const RHI_Resource_Access resolved_access = texture
+            ? (uav ? RHI_Resource_Access::ReadWrite : RHI_Resource_Access::Read)
+            : RHI_Resource_Access::None;
+        if (
+            binding.texture == texture &&
+            binding.mip_index == resolved_mip &&
+            binding.mip_range == resolved_range &&
+            binding.array_layer == array_layer &&
+            binding.access == resolved_access
+        )
+        {
+            return;
+        }
+
         m_resources_dirty = true;
         binding = {};
         if (!texture)
@@ -79,10 +96,10 @@ namespace spartan
         m_resources_have_write_bindings |= uav;
 
         binding.texture     = texture;
-        binding.mip_index   = mip_index == rhi_all_mips ? 0 : mip_index;
-        binding.mip_range   = mip_index == rhi_all_mips ? texture->GetMipCount() : (mip_range == 0 ? 1 : mip_range);
+        binding.mip_index   = resolved_mip;
+        binding.mip_range   = resolved_range;
         binding.array_layer = array_layer;
-        binding.access      = uav ? RHI_Resource_Access::ReadWrite : RHI_Resource_Access::Read;
+        binding.access      = resolved_access;
         binding.layout      = RHI_Image_Layout::General;
 
         auto& opposite_bindings = uav ? m_tracked_textures_srv : m_tracked_textures_uav;
@@ -171,11 +188,12 @@ namespace spartan
         auto& usages = m_tracked_texture_history[texture->GetObjectId()];
         for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
         {
-            usages[mip].access = access;
-            usages[mip].usage  = usage;
-            usages[mip].scope  = scope;
-            usages[mip].queue  = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
-            usages[mip].layout = layout;
+            usages[mip].access   = access;
+            usages[mip].usage    = usage;
+            usages[mip].scope    = scope;
+            usages[mip].queue    = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
+            usages[mip].layout   = layout;
+            usages[mip].unsynced = resource_tracker::writes(access);
         }
     }
 
@@ -195,6 +213,10 @@ namespace spartan
             if (global_it != resource_tracker::texture_history.end())
             {
                 history_it->second = global_it->second;
+                for (RHI_Tracked_Usage& usage : history_it->second)
+                {
+                    usage.unsynced = resource_tracker::writes(usage.access);
+                }
             }
         }
 
@@ -221,7 +243,7 @@ namespace spartan
                 ? RHI_Resource_Usage::None
                 : previous.usage;
 
-            // d3d12 still has to flip uav vs shader read while the rhi layout stays general
+            // d3d12 still flips uav vs shader read while the rhi layout stays general
             {
                 RHI_Barrier barrier = RHI_Barrier::image_layout(texture, target_layout, mip, 1);
                 barrier.from(scope_src).to(scope);
@@ -232,20 +254,13 @@ namespace spartan
                 InsertBarrier(barrier);
             }
 
-            // memory sync after the usage change
-            RHI_Barrier barrier = RHI_Barrier::image_sync(
-                texture,
-                has_previous ? previous.access : RHI_Resource_Access::Write,
-                access,
-                mip,
-                1
-            );
-            barrier.from(scope_src).to(scope);
-            barrier.access_src = access_src;
-            barrier.access_dst = access;
-            barrier.usage_src  = usage_src;
-            barrier.usage_dst  = usage_dst;
-            InsertBarrier(barrier);
+            const bool scope_change = has_previous && previous.scope != scope && previous.scope != RHI_Barrier_Scope::None && scope != RHI_Barrier_Scope::None;
+            const bool hazard = has_previous && previous.unsynced &&
+                (resource_tracker::writes(previous.access) || resource_tracker::writes(access));
+            if (cross_queue || scope_change || hazard)
+            {
+                m_force_memory_sync = true;
+            }
         }
 
         TrackExternalTextureUsage(texture, access, target_layout, scope, usage_dst);
@@ -287,6 +302,55 @@ namespace spartan
         m_tracked_buffer_history.reserve(64);
         m_current_texture_usage.reserve(64);
         m_current_buffer_usage.reserve(64);
+        m_force_memory_sync = true;
+        m_pass_boundary = true;
+        m_immediate_memory_sync = false;
+    }
+
+    void RHI_CommandList::MarkTrackedResourcesSynced()
+    {
+        for (auto& [resource_id, usages] : m_tracked_texture_history)
+        {
+            bool keep_writes = false;
+            for (const auto& [texture, current] : m_current_texture_usage)
+            {
+                if (texture->GetObjectId() != resource_id)
+                {
+                    continue;
+                }
+                keep_writes = true;
+                for (uint32_t mip = 0; mip < texture->GetMipCount(); mip++)
+                {
+                    usages[mip].unsynced = resource_tracker::writes(current[mip].access);
+                }
+                break;
+            }
+            if (!keep_writes)
+            {
+                for (RHI_Tracked_Usage& usage : usages)
+                {
+                    usage.unsynced = false;
+                }
+            }
+        }
+        for (auto& [resource_id, usage] : m_tracked_buffer_history)
+        {
+            bool keep_write = false;
+            for (const auto& [buffer, current] : m_current_buffer_usage)
+            {
+                if (buffer->GetObjectId() != resource_id)
+                {
+                    continue;
+                }
+                keep_write = true;
+                usage.unsynced = resource_tracker::writes(current.access);
+                break;
+            }
+            if (!keep_write)
+            {
+                usage.unsynced = false;
+            }
+        }
     }
 
     RHI_Image_Layout RHI_CommandList::GetTrackedTextureLayout(RHI_Texture* texture, uint32_t mip_index)
@@ -770,10 +834,33 @@ namespace spartan
                 if (global_it != resource_tracker::texture_history.end())
                 {
                     history_it->second = global_it->second;
+                    for (RHI_Tracked_Usage& usage : history_it->second)
+                    {
+                        usage.unsynced = resource_tracker::writes(usage.access);
+                    }
                 }
             }
 
             auto& previous_usages = history_it->second;
+            bool mip_chain = false;
+            if (include_bindings)
+            {
+                for (const RHI_Tracked_Texture_Binding& binding : m_tracked_textures_srv)
+                {
+                    if (binding.texture == texture)
+                    {
+                        for (const RHI_Tracked_Texture_Binding& uav : m_tracked_textures_uav)
+                        {
+                            if (uav.texture == texture)
+                            {
+                                mip_chain = true;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
             uint32_t barrier_start = rhi_all_mips;
             RHI_Tracked_Usage barrier_previous;
             RHI_Tracked_Usage barrier_current;
@@ -811,11 +898,41 @@ namespace spartan
                     barrier.usage_dst  = current.usage;
                     InsertBarrier(barrier);
                 }
+                const bool cross_queue_mip = previous.queue != RHI_Queue_Type::Max && current.queue != RHI_Queue_Type::Max && previous.queue != current.queue;
+                const bool same_rp_attachment = m_render_pass_active && previous.usage == RHI_Resource_Usage::Attachment && current.usage == RHI_Resource_Usage::Attachment;
                 const bool hazard = previous.access != RHI_Resource_Access::None && current.access != RHI_Resource_Access::None && (resource_tracker::writes(previous.access) || resource_tracker::writes(current.access));
-                const bool needs_barrier = hazard && previous.layout == current.layout && !layout_transition;
+                const bool scope_change = previous.scope != current.scope && previous.scope != RHI_Barrier_Scope::None && current.scope != RHI_Barrier_Scope::None;
+                const bool attachment_release = previous.usage == RHI_Resource_Usage::Attachment && current.usage != RHI_Resource_Usage::Attachment;
+                const bool vulkan = RHI_Context::api_type == RHI_Api_Type::Vulkan;
+                const bool sampled_after_write = previous.unsynced &&
+                    resource_tracker::writes(previous.access) &&
+                    current.access == RHI_Resource_Access::Read;
+                const bool needs_barrier = hazard && !layout_transition && !same_rp_attachment &&
+                    (
+                        cross_queue_mip ||
+                        scope_change ||
+                        attachment_release ||
+                        sampled_after_write ||
+                        (mip_chain && previous.unsynced) ||
+                        (!vulkan && previous.unsynced)
+                    );
                 const bool extends_range = barrier_start != rhi_all_mips && needs_barrier && previous.access == barrier_previous.access && previous.usage == barrier_previous.usage && previous.scope == barrier_previous.scope && previous.queue == barrier_previous.queue && current.access == barrier_current.access && current.usage == barrier_current.usage && current.scope == barrier_current.scope && current.queue == barrier_current.queue;
 
-                if (!extends_range)
+                if (vulkan && needs_barrier)
+                {
+                    m_force_memory_sync = true;
+                    if (
+                        mip_chain ||
+                        (sampled_after_write && !m_pass_boundary) ||
+                        cross_queue_mip ||
+                        scope_change ||
+                        attachment_release
+                    )
+                    {
+                        m_immediate_memory_sync = true;
+                    }
+                }
+                else if (!extends_range)
                 {
                     flush_range(mip);
                     if (needs_barrier)
@@ -828,6 +945,7 @@ namespace spartan
 
                 if (current.access != RHI_Resource_Access::None)
                 {
+                    current.unsynced = resource_tracker::writes(current.access);
                     previous = current;
                 }
             }
@@ -881,6 +999,7 @@ namespace spartan
                 if (global_it != resource_tracker::buffer_history.end())
                 {
                     history_it->second = global_it->second;
+                    history_it->second.unsynced = resource_tracker::writes(history_it->second.access);
                 }
             }
 
@@ -890,16 +1009,31 @@ namespace spartan
                 previous.scope == RHI_Barrier_Scope::Compute &&
                 current.scope == RHI_Barrier_Scope::Graphics &&
                 resource_tracker::writes(previous.access);
-            if (previous.access != RHI_Resource_Access::None && (wrote || compute_to_graphics))
+            const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current.queue != RHI_Queue_Type::Max && previous.queue != current.queue;
+            const bool vulkan = RHI_Context::api_type == RHI_Api_Type::Vulkan;
+            const bool to_indirect = current.usage == RHI_Resource_Usage::Indirect;
+            if (previous.access != RHI_Resource_Access::None && (wrote || compute_to_graphics || to_indirect) &&
+                (cross_queue || compute_to_graphics || to_indirect || previous.unsynced))
             {
-                const bool cross_queue = previous.queue != RHI_Queue_Type::Max && current.queue != RHI_Queue_Type::Max && previous.queue != current.queue;
-                RHI_Barrier barrier = RHI_Barrier::buffer_sync(buffer, previous.access, current.access);
-                barrier.from(cross_queue ? RHI_Barrier_Scope::None : previous.scope).to(current.scope);
-                barrier.access_src = cross_queue ? RHI_Resource_Access::None : previous.access;
-                barrier.usage_src = cross_queue ? RHI_Resource_Usage::None : previous.usage;
-                barrier.usage_dst = current.usage;
-                InsertBarrier(barrier);
+                if (vulkan)
+                {
+                    m_force_memory_sync = true;
+                    if (cross_queue || compute_to_graphics || to_indirect || previous.unsynced)
+                    {
+                        m_immediate_memory_sync = true;
+                    }
+                }
+                else
+                {
+                    RHI_Barrier barrier = RHI_Barrier::buffer_sync(buffer, previous.access, current.access);
+                    barrier.from(cross_queue ? RHI_Barrier_Scope::None : previous.scope).to(current.scope);
+                    barrier.access_src = cross_queue ? RHI_Resource_Access::None : previous.access;
+                    barrier.usage_src = cross_queue ? RHI_Resource_Usage::None : previous.usage;
+                    barrier.usage_dst = current.usage;
+                    InsertBarrier(barrier);
+                }
             }
+            current.unsynced = resource_tracker::writes(current.access);
             previous = current;
         }
 
@@ -1150,6 +1284,7 @@ namespace spartan
         m_pso_pending = RHI_PipelineState();
         m_pso_pending.name = name;
         m_pipeline_state_dirty = true;
+        m_pass_boundary = true;
     }
 
     void RHI_CommandList::set_shader(RHI_Shader* shader, const char* name)
