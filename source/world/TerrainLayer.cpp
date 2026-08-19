@@ -187,4 +187,140 @@ namespace spartan
         built = true;
         return rules;
     }
+
+    const array<TerrainScatterLayer, terrain_scatter_max>& TerrainScatterDefaults::Get()
+    {
+        static array<TerrainScatterLayer, terrain_scatter_max> layers;
+        static bool built = false;
+        if (built)
+        {
+            return layers;
+        }
+
+        // scatter 0, trees, groves on living ground, they stand upright because a trunk that leans
+        // with the slope reads as broken rather than as natural
+        {
+            TerrainScatterLayer& s = layers[0];
+            s.name                 = "trees";
+            s.mesh_path            = "project/models/tree/tree.fbx";
+            s.enabled              = true;
+            s.density              = 9.0f;
+            s.slope_max            = 36.0f;
+            s.height_min           = 2.0f;
+            s.height_max           = 410.0f;
+            s.mask_channel         = 1;
+            s.mask_min             = 0.05f;
+            s.clump_radius         = 14.0f;
+            s.clump_count          = 4;
+            s.mesh_scale           = 0.026f;
+            s.size_min             = 0.22f;
+            s.size_max             = 1.35f;
+            s.align_to_normal      = 0.0f;
+            s.surface_offset       = 0.05f;
+            s.flags                = TerrainScatterFlags_Wind |
+                                     TerrainScatterFlags_ColorVariation |
+                                     TerrainScatterFlags_Collision |
+                                     TerrainScatterFlags_CastShadows |
+                                     TerrainScatterFlags_LogSize;
+        }
+
+        // scatter 1, boulders, the landmark rocks, they only start well above the water line and
+        // grow with the relief so a peak carries the big ones
+        {
+            TerrainScatterLayer& s = layers[1];
+            s.name                 = "boulders";
+            s.mesh_path            = "project/models/rock_2/model.obj";
+            s.enabled              = true;
+            s.density              = 11.2f;
+            s.max_per_tile         = 400;
+            s.slope_min            = 3.0f;
+            s.slope_max            = 80.0f;
+            s.slope_bias           = 0.35f;
+            s.height_min           = 40.0f;
+            s.height_fade          = 70.0f;
+            s.clump_radius         = 75.0f;
+            s.clump_count          = 4;
+            s.mesh_scale           = 200.0f;
+            s.size_min             = 0.53f;
+            s.size_max             = 1.44f;
+            s.size_from_slope      = 0.35f;
+            s.size_from_altitude   = 0.65f;
+            s.altitude_span        = 415.0f;
+            s.align_to_normal      = 1.0f;
+            s.surface_offset       = 0.0f;
+            s.sink                 = 0.10f;
+            s.flags                = TerrainScatterFlags_CastShadows;
+        }
+
+        // scatter 2, rock debris, small stones on the low flats, never a landmark, never a beach
+        {
+            TerrainScatterLayer& s = layers[2];
+            s.name                 = "rock_debris";
+            s.mesh_path            = "project/models/rock_2/model.obj";
+            s.enabled              = true;
+            s.density              = 44.8f;
+            s.max_per_tile         = 3000;
+            s.slope_max            = 18.0f;
+            s.height_min           = 8.0f;
+            s.height_max           = 38.0f;
+            s.clump_radius         = 8.0f;
+            s.clump_count          = 6;
+            s.size_min             = 0.25f;
+            s.size_max             = 2.2f;
+            s.align_to_normal      = 0.0f;
+            s.flags                = TerrainScatterFlags_CastShadows |
+                                     TerrainScatterFlags_Tumble |
+                                     TerrainScatterFlags_LogSize;
+        }
+
+        // scatter 3, flowers, dense patches on the meadow cores only, they carry no shadow because
+        // the instance count is what pays for them
+        {
+            TerrainScatterLayer& s = layers[3];
+            s.name                 = "flowers";
+            s.mesh_path            = "builtin/flower";
+            s.enabled              = true;
+            s.density              = 5.76f;
+            s.slope_max            = 18.0f;
+            s.height_min           = 3.0f;
+            s.height_max           = 400.0f;
+            s.mask_channel         = 0;
+            s.mask_min             = 0.45f;
+            s.clump_radius         = 30.0f;
+            s.clump_count          = 1000;
+            s.mesh_scale           = 0.64f;
+            s.size_min             = 0.2f;
+            s.size_max             = 1.2f;
+            s.render_distance      = 500.0f;
+            s.flags                = TerrainScatterFlags_LogSize;
+        }
+
+        // scatter 4, grass, the gpu ring populate, density here is a fill fraction not a count
+        {
+            TerrainScatterLayer& s   = layers[4];
+            s.name                   = "grass";
+            s.mesh_path              = "builtin/grass_blade";
+            s.enabled                = true;
+            s.kind                   = TerrainScatterKind::Grass;
+            s.density                = 0.9f;
+            s.slope_max              = 24.0f;
+            s.height_min             = 1.0f;
+            s.height_max             = 400.0f;
+            s.mask_channel           = 0;
+            s.mask_min               = 0.38f;
+            s.render_distance        = 500.0f;
+            s.grass_ring_radius[0]   = 55.0f;
+            s.grass_ring_radius[1]   = 180.0f;
+            s.grass_ring_radius[2]   = 500.0f;
+            s.grass_cell_size[0]     = 0.36f;
+            s.grass_cell_size[1]     = 0.82f;
+            s.grass_cell_size[2]     = 2.1f;
+            s.flags                  = TerrainScatterFlags_None;
+        }
+
+        // slots 5 to 7 stay empty, they are there so a world can add its own scatter without
+        // touching the engine, point one at a mesh, name it and switch it on
+        built = true;
+        return layers;
+    }
 }

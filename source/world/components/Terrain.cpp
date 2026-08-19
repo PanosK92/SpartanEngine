@@ -747,13 +747,22 @@ namespace spartan
             ThreadPool::ParallelLoop(compute_triangle, triangle_count);
         }
 
+        // the parts of the terrain a scatter rule needs that do not live on the rule itself
+        struct ScatterContext
+        {
+            float sea_local           = 0.0f;   // sea level in tile local y
+            float triangle_area       = 312.5f; // square meters, turns density per hectare into a count
+            math::Vector3 tile_offset = math::Vector3::Zero;
+            function<bool(float, float, TerrainSurfaceSample&)> sample_surface;
+        };
+
         void find_transforms(
-            TerrainPropDescription prop_desc,
-            const float density_fraction,
+            const TerrainScatterLayer& layer,
+            const ScatterContext& ctx,
             uint32_t tile_index,
             vector<Matrix>& transforms_out,
             unordered_map<uint64_t, vector<TriangleData>>& triangle_data,
-            const function<float(float, float)>& sample_biome_weight = {}
+            float* coverage_out = nullptr
         )
         {
             auto it = triangle_data.find(tile_index);
@@ -818,6 +827,104 @@ namespace spartan
             float edge_threshold_x   = tile_max_x - edge_epsilon;
             float edge_threshold_z   = tile_max_z - edge_epsilon;
 
+            const float slope_min_rad = layer.slope_min * math::deg_to_rad;
+            const float slope_max_rad = layer.slope_max * math::deg_to_rad;
+            const float slope_range   = max(slope_max_rad - slope_min_rad, 1e-3f);
+            const bool reads_surface  = layer.ground_mask != 0 ||
+                                        layer.mask_channel >= 0 ||
+                                        layer.curvature_influence  != 0.0f ||
+                                        layer.flow_influence       != 0.0f ||
+                                        layer.occlusion_influence  != 0.0f ||
+                                        layer.insolation_influence != 0.0f ||
+                                        layer.wear_influence       != 0.0f ||
+                                        layer.deposition_influence != 0.0f ||
+                                        layer.talus_influence      != 0.0f;
+
+            auto mask_of = [&layer](const TerrainSurfaceSample& s) -> float
+            {
+                if (layer.mask_channel == 0)
+                {
+                    return s.mask_grass;
+                }
+                if (layer.mask_channel == 1)
+                {
+                    return s.mask_trees;
+                }
+                if (layer.mask_channel == 2)
+                {
+                    return s.mask_rocks;
+                }
+
+                return 1.0f;
+            };
+
+            // one weight per triangle, 0 rejects the ground and 1 is ground the rule fully accepts,
+            // the count follows the sum so density stays an honest instances per hectare figure
+            auto weigh = [&](const TriangleData& tri) -> float
+            {
+                const float height = tri.centroid.y - ctx.sea_local;
+                if (tri.slope_radians < slope_min_rad ||
+                    tri.slope_radians > slope_max_rad ||
+                    height < layer.height_min ||
+                    height > layer.height_max)
+                {
+                    return 0.0f;
+                }
+
+                float weight = 1.0f;
+
+                if (layer.height_fade > 0.0f)
+                {
+                    weight *= saturate((height - layer.height_min) / layer.height_fade);
+                }
+
+                if (layer.slope_bias != 0.0f)
+                {
+                    const float t = saturate((tri.slope_radians - slope_min_rad) / slope_range);
+                    weight *= layer.slope_bias > 0.0f ?
+                        powf(t, layer.slope_bias) :
+                        powf(1.0f - t, -layer.slope_bias);
+                }
+
+                if (reads_surface && ctx.sample_surface)
+                {
+                    TerrainSurfaceSample sample;
+                    ctx.sample_surface(
+                        tri.centroid.x + ctx.tile_offset.x,
+                        tri.centroid.z + ctx.tile_offset.z,
+                        sample
+                    );
+
+                    if (layer.ground_mask != 0 && (layer.ground_mask & (1u << sample.dominant_layer)) == 0)
+                    {
+                        return 0.0f;
+                    }
+
+                    if (layer.mask_channel >= 0)
+                    {
+                        const float mask = mask_of(sample);
+                        if (mask < layer.mask_min)
+                        {
+                            return 0.0f;
+                        }
+                        weight *= mask;
+                    }
+
+                    // same push the surface rules use, so an influence reads the same on both sides
+                    float push = 0.0f;
+                    push += layer.curvature_influence  * (sample.curvature * 2.0f - 1.0f);
+                    push += layer.flow_influence       * (sample.flow * 2.0f - 1.0f);
+                    push += layer.occlusion_influence  * (1.0f - sample.occlusion * 2.0f);
+                    push += layer.insolation_influence * (sample.insolation * 2.0f - 1.0f);
+                    push += layer.wear_influence       * (sample.wear * 2.0f - 1.0f);
+                    push += layer.deposition_influence * (sample.deposition * 2.0f - 1.0f);
+                    push += layer.talus_influence      * (sample.talus * 2.0f - 1.0f);
+                    weight *= exp2f(clamp(push, -1.0f, 1.0f) * 1.25f);
+                }
+
+                return saturate(weight);
+            };
+
             vector<uint32_t> acceptable_triangles;
             vector<float> acceptable_weights;
             acceptable_triangles.reserve(tile_triangle_data.size());
@@ -835,29 +942,22 @@ namespace spartan
 
                 // centroid only, a triangle that merely clips the snow line must still be able to
                 // hold trees on the side that is actually below it
-                const float height = tri.centroid.y;
-                if (tri.slope_radians < prop_desc.min_slope_angle_rad ||
-                    tri.slope_radians > prop_desc.max_slope_angle_rad ||
-                    height < prop_desc.min_spawn_height ||
-                    height > prop_desc.max_spawn_height)
+                const float weight = weigh(tri);
+                if (weight <= 1e-6f)
                 {
                     continue;
-                }
-
-                float weight = 1.0f;
-                if (sample_biome_weight && prop_desc.prop_mask_channel >= 0)
-                {
-                    weight = sample_biome_weight(tri.centroid.x, tri.centroid.z);
-                    if (weight < prop_desc.prop_mask_min)
-                    {
-                        continue;
-                    }
                 }
 
                 acceptable_triangles.push_back(i);
                 acceptable_weights.push_back(weight);
                 weight_sum += weight;
             }
+
+            if (coverage_out)
+            {
+                *coverage_out = weight_sum / max(static_cast<float>(tile_triangle_data.size()), 1.0f);
+            }
+
             if (acceptable_triangles.empty() || weight_sum <= 1e-6f)
             {
                 return;
@@ -886,12 +986,14 @@ namespace spartan
                 return local;
             };
 
-            // instance count follows mask strength, a tile that is 10 percent meadow gets 10 percent
-            // of the instances instead of a flat scatter across every triangle that merely passed
-            const float expected    = density_fraction * weight_sum;
-            uint32_t adjusted_count = static_cast<uint32_t>(expected);
+            // instance count follows the accepted weight, a tile that is 10 percent meadow gets 10
+            // percent of the instances instead of a flat scatter across every triangle that passed
+            // the area factor is what makes density independent of the mesh resolution
+            const float per_triangle = layer.density * ctx.triangle_area * (1.0f / 10000.0f);
+            const float expected     = per_triangle * weight_sum;
+            uint32_t adjusted_count  = static_cast<uint32_t>(expected);
             {
-                uint32_t h = tile_index * 2654435761u + 1013904223u;
+                uint32_t h = tile_index * 2654435761u + layer.seed * 2246822519u + 1013904223u;
                 h = (h ^ (h >> 16)) * 0x7feb352du;
                 h = (h ^ (h >> 15)) * 0x846ca68bu;
                 h = h ^ (h >> 16);
@@ -901,6 +1003,10 @@ namespace spartan
                     adjusted_count++;
                 }
             }
+            if (layer.max_per_tile > 0 && adjusted_count > layer.max_per_tile)
+            {
+                adjusted_count = layer.max_per_tile;
+            }
             transforms_out.resize(adjusted_count);
             if (adjusted_count == 0)
             {
@@ -908,18 +1014,19 @@ namespace spartan
             }
 
             // setup cluster parameters
-            float safe_min_x   = tile_min_x + prop_desc.cluster_radius;
-            float safe_max_x   = tile_max_x - prop_desc.cluster_radius;
-            float safe_min_z   = tile_min_z + prop_desc.cluster_radius;
-            float safe_max_z   = tile_max_z - prop_desc.cluster_radius;
+            const float clump_radius = max(layer.clump_radius, 0.0f);
+            float safe_min_x   = tile_min_x + clump_radius;
+            float safe_max_x   = tile_max_x - clump_radius;
+            float safe_min_z   = tile_min_z + clump_radius;
+            float safe_max_z   = tile_max_z - clump_radius;
             bool has_safe_zone = (safe_min_x < safe_max_x) && (safe_min_z < safe_max_z);
 
             uint32_t cluster_count              = adjusted_count;
             uint32_t base_instances_per_cluster = 1;
             uint32_t remainder_instances        = 0;
-            if (prop_desc.instances_per_cluster > 1)
+            if (layer.clump_count > 1)
             {
-                cluster_count              = max(1u, adjusted_count / prop_desc.instances_per_cluster);
+                cluster_count              = max(1u, adjusted_count / layer.clump_count);
                 base_instances_per_cluster = adjusted_count / cluster_count;
                 remainder_instances        = adjusted_count % cluster_count;
             }
@@ -928,7 +1035,7 @@ namespace spartan
             // place cluster centers
             auto place_cluster = [&](uint32_t start_index, uint32_t end_index)
             {
-                mt19937 generator(tile_index * 1000003u + start_index * 31u + 12345u);
+                mt19937 generator(tile_index * 1000003u + start_index * 31u + layer.seed * 7919u + 12345u);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 const uint32_t max_attempts = 50;
                 
@@ -948,10 +1055,10 @@ namespace spartan
                         float sqrt_r1 = sqrtf(r1);
                         float u       = 1.0f - sqrt_r1;
                         float v       = r2 * sqrt_r1;
-                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
+                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, layer.surface_offset, 0.0f);
                         attempts++;
                         
-                        if (!has_safe_zone || prop_desc.cluster_radius <= 0.0f)
+                        if (!has_safe_zone || clump_radius <= 0.0f)
                         {
                             break;
                         }
@@ -967,7 +1074,7 @@ namespace spartan
 
             // build spatial grid for nearby triangle lookup
             vector<vector<uint32_t>> cluster_nearby_tris(cluster_count);
-            const float max_effective_radius = prop_desc.cluster_radius * 1.6f;
+            const float max_effective_radius = clump_radius * 1.6f;
             const float cell_size            = max(max_effective_radius, 1.0f);
             
             int32_t grid_min_x  = static_cast<int32_t>(floorf(tile_min_x / cell_size));
@@ -976,7 +1083,7 @@ namespace spartan
             int32_t grid_width  = grid_max_x - grid_min_x + 1;
             
             unordered_map<int64_t, vector<uint32_t>> spatial_grid;
-            if (prop_desc.cluster_radius > 0.0f)
+            if (clump_radius > 0.0f)
             {
                 for (uint32_t t = 0; t < static_cast<uint32_t>(acceptable_triangles.size()); t++)
                 {
@@ -998,7 +1105,7 @@ namespace spartan
                     ClusterData& cluster = clusters[c];
                     Vector2 cluster_xz(cluster.center_position.x, cluster.center_position.z);
                     
-                    if (prop_desc.cluster_radius <= 0.0f)
+                    if (clump_radius <= 0.0f)
                     {
                         nearby.push_back(cluster.center_tri_idx);
                         continue;
@@ -1024,7 +1131,7 @@ namespace spartan
                     float phase5 = (seed2 + seed3) * pi;
                     
                     // query nearby grid cells
-                    float max_radius   = prop_desc.cluster_radius * 1.6f;
+                    float max_radius   = clump_radius * 1.6f;
                     int32_t cell_x     = static_cast<int32_t>(floorf(cluster_xz.x / cell_size)) - grid_min_x;
                     int32_t cell_z     = static_cast<int32_t>(floorf(cluster_xz.y / cell_size)) - grid_min_z;
                     int32_t cell_range = static_cast<int32_t>(ceilf(max_radius / cell_size));
@@ -1049,7 +1156,7 @@ namespace spartan
                                 float dist_sq   = offset.LengthSquared();
                                 float dist      = sqrtf(dist_sq);
                                 float angle     = atan2f(offset.y, offset.x);
-                                float norm_dist = dist / prop_desc.cluster_radius;
+                                float norm_dist = dist / clump_radius;
                                 
                                 // layered noise for organic blob shape
                                 float noise1     = sinf(angle * freq1 + phase1) * 0.18f;
@@ -1060,10 +1167,12 @@ namespace spartan
                                 float dist_noise = sinf(norm_dist * 3.14159f + seed1 * 6.28f) * 0.12f * norm_dist;
                                 float pos_noise  = sinf(offset.x * 0.3f + seed2 * 10.0f) * cosf(offset.y * 0.3f + seed3 * 10.0f) * 0.08f;
                                 
-                                float radius_variation = 1.0f + noise1 + noise2 + noise3 + noise4 + noise5 + dist_noise + pos_noise;
+                                // raggedness of 0 leaves a clean circle, 1 is the full organic blob
+                                const float ragged     = saturate(layer.clump_raggedness);
+                                float radius_variation = 1.0f + (noise1 + noise2 + noise3 + noise4 + noise5 + dist_noise + pos_noise) * ragged;
                                 radius_variation       = fmaxf(0.4f, fminf(1.6f, radius_variation));
                                 
-                                float effective_radius = prop_desc.cluster_radius * radius_variation;
+                                float effective_radius = clump_radius * radius_variation;
                                 if (dist_sq <= effective_radius * effective_radius)
                                 {
                                     nearby.push_back(tri_idx);
@@ -1083,10 +1192,9 @@ namespace spartan
             // place instances within clusters
             auto place_mesh = [&](uint32_t start_index, uint32_t end_index)
             {
-                mt19937 generator(tile_index * 2000003u + start_index * 37u + 67890u);
+                mt19937 generator(tile_index * 2000003u + start_index * 37u + layer.seed * 104729u + 67890u);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
-                uniform_real_distribution<float> scale_dist(prop_desc.min_scale, prop_desc.max_scale);
                 uint32_t larger_cluster_size = base_instances_per_cluster + 1;
                 
                 for (uint32_t i = start_index; i < end_index; i++)
@@ -1123,39 +1231,94 @@ namespace spartan
                         float u       = 1.0f - sqrt_r1;
                         float v       = r2 * sqrt_r1;
                         position = candidate.v0 + u * candidate.v1_minus_v0 + v * candidate.v2_minus_v0
-                            + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
+                            + Vector3(0.0f, layer.surface_offset, 0.0f);
 
-                        if (!sample_biome_weight || prop_desc.prop_mask_channel < 0)
+                        if (layer.mask_channel < 0 || !ctx.sample_surface)
                         {
                             break;
                         }
-                        if (sample_biome_weight(position.x, position.z) >= prop_desc.prop_mask_min)
+
+                        TerrainSurfaceSample sample;
+                        ctx.sample_surface(
+                            position.x + ctx.tile_offset.x,
+                            position.z + ctx.tile_offset.z,
+                            sample
+                        );
+                        if (mask_of(sample) >= layer.mask_min)
                         {
                             break;
                         }
                     }
                     TriangleData& tri = tile_triangle_data[tri_idx];
 
-                    // rotation
+                    // rotation, align is a continuous lean into the slope so a rule can sit a prop
+                    // anywhere between upright and flat on the face
+                    const Quaternion yaw = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
                     Quaternion rotation;
-                    if (prop_desc.align_to_surface_normal)
+                    if (layer.flags & TerrainScatterFlags_Tumble)
                     {
-                        Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
-                        rotation = tri.rotation_to_normal * random_y_rotation;
+                        rotation = Quaternion::FromEulerAngles(
+                            angle_dist(generator),
+                            angle_dist(generator),
+                            angle_dist(generator)
+                        );
+                    }
+                    else if (layer.align_to_normal <= 0.001f)
+                    {
+                        rotation = yaw;
+                    }
+                    else if (layer.align_to_normal >= 0.999f)
+                    {
+                        rotation = tri.rotation_to_normal * yaw;
                     }
                     else
                     {
-                        rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                        const Quaternion lean = Quaternion::Lerp(
+                            Quaternion::Identity,
+                            tri.rotation_to_normal,
+                            layer.align_to_normal
+                        );
+                        rotation = lean * yaw;
                     }
 
-                    // scale with optional slope adjustment
-                    float scale = scale_dist(generator);
-                    if (prop_desc.scale_adjust_by_slope)
+                    // size, either a straight pick from the range or driven by where the ground sits
+                    // in the slope and altitude bands
+                    const float gradient_weight = layer.size_from_slope + layer.size_from_altitude;
+                    float size                  = 0.0f;
+                    if (gradient_weight > 0.0f)
                     {
-                        float slope_normalized = clamp(tri.slope_radians / prop_desc.max_slope_angle_rad, 0.0f, 1.0f);
-                        scale *= lerp(1.0f, prop_desc.max_scale / prop_desc.min_scale, slope_normalized);
+                        const float relief = max(tri.centroid.y - ctx.sea_local, 16.0f);
+                        const float alt_t  = sqrtf(saturate(relief / max(layer.altitude_span, 16.0f)));
+                        const float slope_t = saturate((tri.slope_radians - slope_min_rad) / slope_range);
+                        const float t = saturate(
+                            (alt_t * layer.size_from_altitude + slope_t * layer.size_from_slope) / gradient_weight
+                        );
+                        size = lerp(layer.size_min, layer.size_max, t);
+                        size *= lerp(0.85f, 1.2f, dist(generator));
                     }
-                    
+                    else if (layer.flags & TerrainScatterFlags_LogSize)
+                    {
+                        const float log_min = logf(max(layer.size_min, 1e-4f));
+                        const float log_max = logf(max(layer.size_max, 1e-4f));
+                        size = expf(lerp(log_min, log_max, dist(generator)));
+                    }
+                    else
+                    {
+                        size = lerp(layer.size_min, layer.size_max, dist(generator));
+                    }
+
+                    if (layer.giant_chance > 0.0f && dist(generator) < layer.giant_chance)
+                    {
+                        const float giant = layer.giant_size > 0.0f ? layer.giant_size : layer.size_max;
+                        size = lerp(giant * 0.55f, giant, dist(generator));
+                    }
+
+                    const float scale = max(size, 0.0f) * layer.mesh_scale;
+                    if (layer.sink > 0.0f)
+                    {
+                        position -= tri.normal * (scale * layer.sink);
+                    }
+
                     transforms_out[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
                 }
             };
@@ -1181,7 +1344,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index_count, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_triangle_count, uint32_t);
 
-        m_layer_rules = TerrainLayerDefaults::Get();
+        m_layer_rules    = TerrainLayerDefaults::Get();
+        m_scatter_layers = TerrainScatterDefaults::Get();
 
         m_material = make_shared<Material>();
         m_material->SetObjectName("terrain");
@@ -1360,10 +1524,61 @@ namespace spartan
         node.append_attribute("tile_count")    = m_tile_count;
         node.append_attribute("create_border") = m_create_border;
         node.append_attribute("spawn_biome_props")   = m_spawn_biome_props;
-        node.append_attribute("prop_density_tree")   = m_prop_density_tree;
-        node.append_attribute("prop_density_rock")   = m_prop_density_rock;
-        node.append_attribute("prop_density_flower") = m_prop_density_flower;
-        node.append_attribute("prop_density_grass")  = m_prop_density_grass;
+
+        // scatter layers, the whole prop rule set travels with the world
+        pugi::xml_node scatter_node = node.append_child("scatter");
+        for (const TerrainScatterLayer& layer : m_scatter_layers)
+        {
+            pugi::xml_node layer_node = scatter_node.append_child("layer");
+
+            layer_node.append_attribute("name")                = layer.name.c_str();
+            layer_node.append_attribute("mesh_path")            = layer.mesh_path.c_str();
+            layer_node.append_attribute("material_folder")      = layer.material_folder.c_str();
+            layer_node.append_attribute("enabled")              = layer.enabled;
+            layer_node.append_attribute("kind")                 = static_cast<uint32_t>(layer.kind);
+            layer_node.append_attribute("density")              = layer.density;
+            layer_node.append_attribute("max_per_tile")         = layer.max_per_tile;
+            layer_node.append_attribute("seed")                 = layer.seed;
+            layer_node.append_attribute("slope_min")            = layer.slope_min;
+            layer_node.append_attribute("slope_max")            = layer.slope_max;
+            layer_node.append_attribute("slope_bias")           = layer.slope_bias;
+            layer_node.append_attribute("height_min")           = layer.height_min;
+            layer_node.append_attribute("height_max")           = layer.height_max;
+            layer_node.append_attribute("height_fade")          = layer.height_fade;
+            layer_node.append_attribute("curvature")            = layer.curvature_influence;
+            layer_node.append_attribute("flow")                 = layer.flow_influence;
+            layer_node.append_attribute("occlusion")            = layer.occlusion_influence;
+            layer_node.append_attribute("insolation")           = layer.insolation_influence;
+            layer_node.append_attribute("wear")                 = layer.wear_influence;
+            layer_node.append_attribute("deposition")           = layer.deposition_influence;
+            layer_node.append_attribute("talus")                = layer.talus_influence;
+            layer_node.append_attribute("ground_mask")          = layer.ground_mask;
+            layer_node.append_attribute("mask_channel")         = layer.mask_channel;
+            layer_node.append_attribute("mask_min")             = layer.mask_min;
+            layer_node.append_attribute("clump_radius")         = layer.clump_radius;
+            layer_node.append_attribute("clump_count")          = layer.clump_count;
+            layer_node.append_attribute("clump_raggedness")     = layer.clump_raggedness;
+            layer_node.append_attribute("mesh_scale")           = layer.mesh_scale;
+            layer_node.append_attribute("size_min")             = layer.size_min;
+            layer_node.append_attribute("size_max")             = layer.size_max;
+            layer_node.append_attribute("size_from_slope")      = layer.size_from_slope;
+            layer_node.append_attribute("size_from_altitude")   = layer.size_from_altitude;
+            layer_node.append_attribute("altitude_span")        = layer.altitude_span;
+            layer_node.append_attribute("giant_chance")         = layer.giant_chance;
+            layer_node.append_attribute("giant_size")           = layer.giant_size;
+            layer_node.append_attribute("align_to_normal")      = layer.align_to_normal;
+            layer_node.append_attribute("surface_offset")       = layer.surface_offset;
+            layer_node.append_attribute("sink")                 = layer.sink;
+            layer_node.append_attribute("render_distance")      = layer.render_distance;
+            layer_node.append_attribute("shadow_distance")      = layer.shadow_distance;
+            layer_node.append_attribute("grass_ring_0")         = layer.grass_ring_radius[0];
+            layer_node.append_attribute("grass_ring_1")         = layer.grass_ring_radius[1];
+            layer_node.append_attribute("grass_ring_2")         = layer.grass_ring_radius[2];
+            layer_node.append_attribute("grass_cell_0")         = layer.grass_cell_size[0];
+            layer_node.append_attribute("grass_cell_1")         = layer.grass_cell_size[1];
+            layer_node.append_attribute("grass_cell_2")         = layer.grass_cell_size[2];
+            layer_node.append_attribute("flags")                = layer.flags;
+        }
 
         // flat terrain dims, used when there is no height map seed
         if (!m_height_map_seed && m_width > 1 && m_height > 1)
@@ -1397,10 +1612,96 @@ namespace spartan
         m_tile_count    = max(node.attribute("tile_count").as_uint(16), 1u);
         m_create_border = node.attribute("create_border").as_bool(false);
         m_spawn_biome_props = node.attribute("spawn_biome_props").as_bool(true);
-        SetPropDensityTree(node.attribute("prop_density_tree").as_float(1.0f));
-        SetPropDensityRock(node.attribute("prop_density_rock").as_float(1.0f));
-        SetPropDensityFlower(node.attribute("prop_density_flower").as_float(1.0f));
-        SetPropDensityGrass(node.attribute("prop_density_grass").as_float(1.0f));
+
+        // scatter layers, a world saved before they existed carries the old per prop multipliers
+        // instead, fold those into the matching default layer so it still looks the way it did
+        m_scatter_layers = TerrainScatterDefaults::Get();
+        if (pugi::xml_node scatter_node = node.child("scatter"))
+        {
+            uint32_t index = 0;
+            for (pugi::xml_node layer_node = scatter_node.child("layer");
+                 layer_node && index < terrain_scatter_max;
+                 layer_node = layer_node.next_sibling("layer"), index++)
+            {
+                TerrainScatterLayer& layer = m_scatter_layers[index];
+
+                layer.name                 = layer_node.attribute("name").as_string("");
+                layer.mesh_path            = layer_node.attribute("mesh_path").as_string("");
+                layer.material_folder      = layer_node.attribute("material_folder").as_string("");
+                layer.enabled              = layer_node.attribute("enabled").as_bool(false);
+                layer.kind                 = static_cast<TerrainScatterKind>(
+                    min(layer_node.attribute("kind").as_uint(0), static_cast<uint32_t>(TerrainScatterKind::Max) - 1u));
+                layer.density              = layer_node.attribute("density").as_float(8.0f);
+                layer.max_per_tile         = layer_node.attribute("max_per_tile").as_uint(0);
+                layer.seed                 = layer_node.attribute("seed").as_uint(0);
+                layer.slope_min            = layer_node.attribute("slope_min").as_float(0.0f);
+                layer.slope_max            = layer_node.attribute("slope_max").as_float(35.0f);
+                layer.slope_bias           = layer_node.attribute("slope_bias").as_float(0.0f);
+                layer.height_min           = layer_node.attribute("height_min").as_float(1.0f);
+                layer.height_max           = layer_node.attribute("height_max").as_float(100000.0f);
+                layer.height_fade          = layer_node.attribute("height_fade").as_float(0.0f);
+                layer.curvature_influence  = layer_node.attribute("curvature").as_float(0.0f);
+                layer.flow_influence       = layer_node.attribute("flow").as_float(0.0f);
+                layer.occlusion_influence  = layer_node.attribute("occlusion").as_float(0.0f);
+                layer.insolation_influence = layer_node.attribute("insolation").as_float(0.0f);
+                layer.wear_influence       = layer_node.attribute("wear").as_float(0.0f);
+                layer.deposition_influence = layer_node.attribute("deposition").as_float(0.0f);
+                layer.talus_influence      = layer_node.attribute("talus").as_float(0.0f);
+                layer.ground_mask          = layer_node.attribute("ground_mask").as_uint(0);
+                layer.mask_channel         = layer_node.attribute("mask_channel").as_int(-1);
+                layer.mask_min             = layer_node.attribute("mask_min").as_float(0.0f);
+                layer.clump_radius         = layer_node.attribute("clump_radius").as_float(0.0f);
+                layer.clump_count          = max(layer_node.attribute("clump_count").as_uint(1), 1u);
+                layer.clump_raggedness     = layer_node.attribute("clump_raggedness").as_float(1.0f);
+                layer.mesh_scale           = layer_node.attribute("mesh_scale").as_float(1.0f);
+                layer.size_min             = layer_node.attribute("size_min").as_float(0.8f);
+                layer.size_max             = layer_node.attribute("size_max").as_float(1.2f);
+                layer.size_from_slope      = layer_node.attribute("size_from_slope").as_float(0.0f);
+                layer.size_from_altitude   = layer_node.attribute("size_from_altitude").as_float(0.0f);
+                layer.altitude_span        = layer_node.attribute("altitude_span").as_float(180.0f);
+                layer.giant_chance         = layer_node.attribute("giant_chance").as_float(0.0f);
+                layer.giant_size           = layer_node.attribute("giant_size").as_float(0.0f);
+                layer.align_to_normal      = layer_node.attribute("align_to_normal").as_float(1.0f);
+                layer.surface_offset       = layer_node.attribute("surface_offset").as_float(0.05f);
+                layer.sink                 = layer_node.attribute("sink").as_float(0.0f);
+                layer.render_distance      = layer_node.attribute("render_distance").as_float(0.0f);
+                layer.shadow_distance      = layer_node.attribute("shadow_distance").as_float(150.0f);
+                layer.grass_ring_radius[0] = layer_node.attribute("grass_ring_0").as_float(55.0f);
+                layer.grass_ring_radius[1] = layer_node.attribute("grass_ring_1").as_float(180.0f);
+                layer.grass_ring_radius[2] = layer_node.attribute("grass_ring_2").as_float(500.0f);
+                layer.grass_cell_size[0]   = layer_node.attribute("grass_cell_0").as_float(0.36f);
+                layer.grass_cell_size[1]   = layer_node.attribute("grass_cell_1").as_float(0.82f);
+                layer.grass_cell_size[2]   = layer_node.attribute("grass_cell_2").as_float(2.1f);
+                layer.flags                = layer_node.attribute("flags").as_uint(TerrainScatterFlags_CastShadows);
+            }
+        }
+        else
+        {
+            const float legacy_tree   = node.attribute("prop_density_tree").as_float(1.0f);
+            const float legacy_rock   = node.attribute("prop_density_rock").as_float(1.0f);
+            const float legacy_flower = node.attribute("prop_density_flower").as_float(1.0f);
+            const float legacy_grass  = node.attribute("prop_density_grass").as_float(1.0f);
+
+            for (TerrainScatterLayer& layer : m_scatter_layers)
+            {
+                if (layer.name == "trees")
+                {
+                    layer.density *= legacy_tree;
+                }
+                else if (layer.name == "boulders" || layer.name == "rock_debris")
+                {
+                    layer.density *= legacy_rock;
+                }
+                else if (layer.name == "flowers")
+                {
+                    layer.density *= legacy_flower;
+                }
+                else if (layer.name == "grass")
+                {
+                    layer.density *= legacy_grass;
+                }
+            }
+        }
 
         // forest grass/rock/sand slope material
         ApplyDefaultMaterial();
@@ -1461,115 +1762,117 @@ namespace spartan
         return hash;
     }
 
-    void Terrain::FindTransforms(const uint32_t tile_index, const TerrainProp terrain_prop, Entity* entity, const float density_fraction, const float scale, vector<Matrix>& transforms_out)
+    bool Terrain::IsScatterSoloed() const
     {
-        TerrainPropDescription description;
+        for (const TerrainScatterLayer& layer : m_scatter_layers)
+        {
+            if (layer.solo)
+            {
+                return true;
+            }
+        }
 
-        // triangle heights are tile local, sea and snow are world y
+        return false;
+    }
+
+    bool Terrain::IsScatterActive(const TerrainScatterLayer& layer) const
+    {
+        if (!layer.enabled || layer.mesh_path.empty())
+        {
+            return false;
+        }
+
+        // soloing one layer is the fastest way to see what a rule is actually doing
+        return layer.solo || !IsScatterSoloed();
+    }
+
+    float Terrain::GetTriangleArea() const
+    {
+        const float spacing = static_cast<float>(m_scale) / static_cast<float>(max(m_density, 1u));
+        return max(spacing * spacing * 0.5f, 1e-3f);
+    }
+
+    float Terrain::GetSeaLevelLocal() const
+    {
+        // triangle heights are entity local, the levels are world
         // during load the world matrix can still be identity, local y is already authored
         float terrain_y = 0.0f;
-        if (Entity* terrain_entity = GetEntity())
+        if (Entity* entity = GetEntity())
         {
-            terrain_y = terrain_entity->GetPositionLocal().y;
-            const float world_y = terrain_entity->GetMatrix().GetTranslation().y;
+            terrain_y = entity->GetPositionLocal().y;
+            const float world_y = entity->GetMatrix().GetTranslation().y;
             if (world_y != 0.0f)
             {
                 terrain_y = world_y;
             }
         }
-        const float sea_local  = m_level_sea  - terrain_y;
-        const float snow_local = m_level_snow - terrain_y;
 
-        if (terrain_prop == TerrainProp::Tree)
+        return m_level_sea - terrain_y;
+    }
+
+    bool Terrain::SampleSurface(float world_x, float world_z, TerrainSurfaceSample& sample_out) const
+    {
+        if (m_map_a_pixels.empty() || m_map_b_pixels.empty() || m_map_width == 0 || m_map_height == 0)
         {
-            description.max_slope_angle_rad     = 36.0f * math::deg_to_rad;
-            description.align_to_surface_normal = false;
-            description.min_spawn_height        = sea_local + 2.0f;
-            description.max_spawn_height        = snow_local + 10.0f;
-            description.min_scale               = scale * 0.22f;
-            description.max_scale               = scale * 1.35f;
-            description.instances_per_cluster   = 4;
-            description.cluster_radius          = 14.0f;
-            description.prop_mask_channel       = 1;
-            description.prop_mask_min           = 0.05f;
-        }
-        else if (terrain_prop == TerrainProp::Grass)
-        {
-            description.max_slope_angle_rad     = 24.0f * math::deg_to_rad;
-            description.align_to_surface_normal = true;
-            description.min_spawn_height        = sea_local + 1.0f;
-            description.max_spawn_height        = snow_local;
-            description.min_scale               = scale * 1.0f;
-            description.max_scale               = scale * 1.5f;
-            description.prop_mask_channel       = 0;
-            description.prop_mask_min           = 0.35f;
-        }
-        else if (terrain_prop == TerrainProp::Flower)
-        {
-            description.max_slope_angle_rad     = 18.0f * math::deg_to_rad;
-            description.align_to_surface_normal = true;
-            description.min_spawn_height        = sea_local + 3.0f;
-            description.max_spawn_height        = snow_local;
-            description.min_scale               = scale * 0.2f;
-            description.max_scale               = scale * 1.2f;
-            description.instances_per_cluster   = 1000;
-            description.cluster_radius          = 30.0f;
-            description.prop_mask_channel       = 0;
-            description.prop_mask_min           = 0.45f;
-        }
-        else if (terrain_prop == TerrainProp::Rock)
-        {
-            description.min_slope_angle_rad     = 0.0f;
-            description.max_slope_angle_rad     = 85.0f * math::deg_to_rad;
-            description.align_to_surface_normal = true;
-            description.min_spawn_height        = sea_local - 10.0f;
-            description.max_spawn_height        = numeric_limits<float>::max();
-            description.min_scale               = scale * 0.1f;
-            description.max_scale               = scale * 1.0f;
-            description.scale_adjust_by_slope   = true;
-            description.instances_per_cluster   = 3;
-            description.cluster_radius          = 12.0f;
-            description.prop_mask_channel       = 2;
-            description.prop_mask_min           = 0.08f;
-        }
-        else
-        {
-            SP_ASSERT_MSG(false, "unknown terrain prop type");
+            return false;
         }
 
-        function<float(float, float)> biome_sample;
-        if (description.prop_mask_channel >= 0)
-        {
-            if (m_prop_mask_pixels.empty())
-            {
-                transforms_out.clear();
-                return;
-            }
+        float u = (world_x - m_world_mapping.x) * m_world_mapping.z;
+        float v = (world_z - m_world_mapping.y) * m_world_mapping.w;
+        u = clamp(u, 0.0f, 1.0f);
+        v = clamp(v, 0.0f, 1.0f);
 
-            const int channel = description.prop_mask_channel;
-            const Vector3 tile_offset = (tile_index < m_tile_offsets.size()) ?
-                m_tile_offsets[tile_index] :
-                Vector3::Zero;
-            // triangle centroids are tile-local, the prop mask is authored in terrain xz
-            biome_sample = [this, channel, tile_offset](float x, float z) -> float
-            {
-                return SamplePropMaskChannel(
-                    x + tile_offset.x,
-                    z + tile_offset.z,
-                    channel
-                );
-            };
+        // nearest is enough, every channel here is a macro signal over tens of meters
+        const uint32_t x    = min(static_cast<uint32_t>(u * static_cast<float>(m_map_width - 1) + 0.5f), m_map_width - 1u);
+        const uint32_t z    = min(static_cast<uint32_t>(v * static_cast<float>(m_map_height - 1) + 0.5f), m_map_height - 1u);
+        const size_t offset = (static_cast<size_t>(z) * m_map_width + x) * 4;
+        const float inv     = 1.0f / 255.0f;
+
+        sample_out.curvature  = m_map_a_pixels[offset + 0] * inv;
+        sample_out.flow       = m_map_a_pixels[offset + 1] * inv;
+        sample_out.occlusion  = m_map_a_pixels[offset + 2] * inv;
+        sample_out.deposition = m_map_a_pixels[offset + 3] * inv;
+        sample_out.wear       = m_map_b_pixels[offset + 0] * inv;
+        sample_out.insolation = m_map_b_pixels[offset + 1] * inv;
+        sample_out.talus      = m_map_b_pixels[offset + 3] * inv;
+
+        if (m_prop_mask_pixels.size() > offset + 3)
+        {
+            sample_out.mask_grass = m_prop_mask_pixels[offset + 0] * inv;
+            sample_out.mask_trees = m_prop_mask_pixels[offset + 1] * inv;
+            sample_out.mask_rocks = m_prop_mask_pixels[offset + 2] * inv;
         }
 
-        placement::find_transforms(description, density_fraction, tile_index, transforms_out, m_triangle_data, biome_sample);
-
-        // compensate for entity scale
-        if (entity && entity->GetScale() != Vector3::One && entity->GetScale() != Vector3::Zero)
+        const size_t cell = static_cast<size_t>(z) * m_map_width + x;
+        if (cell < m_layer_dominant.size())
         {
-            Matrix root_scale_matrix = Matrix::CreateScale(Vector3::One / entity->GetScale());
-            for (Matrix& t : transforms_out)
-                t *= root_scale_matrix;
+            sample_out.dominant_layer = min(
+                static_cast<uint32_t>(m_layer_dominant[cell]),
+                terrain_layer_max - 1u
+            );
         }
+
+        return true;
+    }
+
+    void Terrain::FindTransforms(
+        const uint32_t tile_index,
+        const TerrainScatterLayer& layer,
+        vector<Matrix>& transforms_out,
+        float* coverage_out
+    )
+    {
+        placement::ScatterContext context;
+        context.sea_local     = GetSeaLevelLocal();
+        context.triangle_area = GetTriangleArea();
+        context.tile_offset   = (tile_index < m_tile_offsets.size()) ? m_tile_offsets[tile_index] : Vector3::Zero;
+        // triangle centroids are tile local, the baked maps are authored in terrain xz
+        context.sample_surface = [this](float x, float z, TerrainSurfaceSample& out) -> bool
+        {
+            return SampleSurface(x, z, out);
+        };
+
+        placement::find_transforms(layer, context, tile_index, transforms_out, m_triangle_data, coverage_out);
     }
 
     void Terrain::SaveToFile(const char* file_path)
@@ -3298,6 +3601,7 @@ namespace spartan
             m_map_width == 0 || m_map_height == 0 || m_dense_width < 2 || m_dense_height < 2)
         {
             m_prop_mask_pixels.clear();
+            m_layer_dominant.clear();
             return;
         }
 
@@ -3426,6 +3730,7 @@ namespace spartan
 
         const size_t cell_count = static_cast<size_t>(m_map_width) * m_map_height;
         m_prop_mask_pixels.resize(cell_count * 4);
+        m_layer_dominant.resize(cell_count);
 
         const uint32_t dense_w = m_dense_width;
         const uint32_t dense_h = m_dense_height;
@@ -3500,6 +3805,7 @@ namespace spartan
 
                 const uint32_t keep = clamp(m_layer_quality, 1u, 4u);
                 float picked[terrain_layer_max] = {};
+                uint32_t dominant_layer = 0;
                 for (uint32_t slot = 0; slot < keep; slot++)
                 {
                     float best_score = 0.0f;
@@ -3515,6 +3821,10 @@ namespace spartan
                     if (best_layer < 0)
                     {
                         break;
+                    }
+                    if (slot == 0)
+                    {
+                        dominant_layer = static_cast<uint32_t>(best_layer);
                     }
                     scores[best_layer] = 0.0f;
                     picked[best_layer] = best_score;
@@ -3598,13 +3908,13 @@ namespace spartan
                     }
                     trees = saturate(tree_raw);
 
-                    // rocks wherever the surface reads as mineral, including benches and scree
-                    float rock_raw = mineral;
-                    rock_raw *= saturate(1.0f - living * 0.9f);
-                    rock_raw *= saturate(1.0f - sand_w * 1.6f);
-                    rock_raw *= saturate(1.0f - snow_w);
-                    rock_raw *= lerp(0.8f, 1.15f, saturate((slope_deg - 6.0f) / 40.0f));
-                    if (above_sea < -2.0f)
+                    // rocks on almost all dry ground, denser on mineral and slope
+                    float rock_raw = 0.55f + mineral * 0.45f;
+                    rock_raw += saturate((slope_deg - 3.0f) / 28.0f) * 0.4f;
+                    rock_raw *= saturate(1.0f - living * 0.12f);
+                    rock_raw *= saturate(1.0f - sand_w * 0.25f);
+                    rock_raw *= saturate(1.0f - snow_w * 0.55f);
+                    if (above_sea < -0.5f)
                     {
                         rock_raw = 0.0f;
                     }
@@ -3615,6 +3925,9 @@ namespace spartan
                 m_prop_mask_pixels[offset + 1] = static_cast<uint8_t>(trees * 255.0f + 0.5f);
                 m_prop_mask_pixels[offset + 2] = static_cast<uint8_t>(rock * 255.0f + 0.5f);
                 m_prop_mask_pixels[offset + 3] = 255;
+                // which surface layer won this point, it stays off the texture so the preview and the
+                // grass populate pass keep reading an opaque rgb mask
+                m_layer_dominant[i] = static_cast<uint8_t>(dominant_layer);
             }
         };
         ThreadPool::ParallelLoop(bake, static_cast<uint32_t>(cell_count));

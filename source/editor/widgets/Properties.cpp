@@ -2689,77 +2689,22 @@ void Properties::ShowTerrain(Terrain* terrain) const
 
         if (spawn_biome_props)
         {
-            const char* density_tooltip =
-                "multiplier on the authored density for this prop. 1 is the default look, "
-                "press respawn props to apply. placement is still gated by the biome mask, "
-                "so a prop cannot spread onto ground its layer does not own";
-
-            float density_tree   = terrain->GetPropDensityTree();
-            float density_rock   = terrain->GetPropDensityRock();
-            float density_flower = terrain->GetPropDensityFlower();
-            float density_grass  = terrain->GetPropDensityGrass();
-
-            if (property_float(
-                "Tree Density",
-                &density_tree,
-                0.1f,
-                0.0f,
-                spartan::Terrain::prop_density_max,
-                density_tooltip,
-                "%.2f"
-            ))
-            {
-                terrain->SetPropDensityTree(density_tree);
-            }
-
-            if (property_float(
-                "Rock Density",
-                &density_rock,
-                0.1f,
-                0.0f,
-                spartan::Terrain::prop_density_max,
-                density_tooltip,
-                "%.2f"
-            ))
-            {
-                terrain->SetPropDensityRock(density_rock);
-            }
-
-            if (property_float(
-                "Flower Density",
-                &density_flower,
-                0.1f,
-                0.0f,
-                spartan::Terrain::prop_density_max,
-                density_tooltip,
-                "%.2f"
-            ))
-            {
-                terrain->SetPropDensityFlower(density_flower);
-            }
-
-            if (property_float(
-                "Grass Density",
-                &density_grass,
-                0.1f,
-                0.0f,
-                1.0f,
-                "gpu grass fill, 1 is the lush cap. press respawn props to apply. "
-                "grass still only lands on meadow and forest in the biome mask",
-                "%.2f"
-            ))
-            {
-                terrain->SetPropDensityGrass(density_grass);
-            }
+            layout::group_spacing();
+            layout::section_header("Scatter Layers");
 
             if (ImGuiSp::button("Respawn Props", ImVec2(-1, 0)))
             {
-                spartan::WorldHelpers::PopulateTerrainBiomeProps(terrain);
+                spartan::ThreadPool::AddTask([terrain]()
+                {
+                    spartan::WorldHelpers::PopulateTerrainBiomeProps(terrain);
+                });
             }
             ImGuiSp::tooltip(
-                "rebuild the biome mask and rescatter trees, rocks, flowers and grass. "
+                "rebuild the biome mask and rescatter every layer below. "
                 "does not touch the terrain surface, so it is far cheaper than a full generate"
             );
+
+            ShowTerrainScatter(terrain);
         }
 
         layout::group_spacing();
@@ -3090,6 +3035,306 @@ void Properties::ShowTerrain(Terrain* terrain) const
         }
     }
     component_end();
+}
+
+// the prop half of the terrain rule system, one tree node per layer, everything here is live data
+// and takes effect on the next respawn
+void Properties::ShowTerrainScatter(Terrain* terrain) const
+{
+    std::array<spartan::TerrainScatterLayer, spartan::terrain_scatter_max>& layers = terrain->GetScatterLayers();
+    const std::array<spartan::TerrainLayerRule, spartan::terrain_layer_max>& rules = terrain->GetLayerRules();
+
+    for (uint32_t i = 0; i < spartan::terrain_scatter_max; i++)
+    {
+        spartan::TerrainScatterLayer& layer = layers[i];
+        const bool active                   = terrain->IsScatterActive(layer);
+        const bool is_grass                 = layer.kind == spartan::TerrainScatterKind::Grass;
+
+        char header[192];
+        if (layer.name.empty())
+        {
+            std::snprintf(header, sizeof(header), "%u  (unused)###terrain_scatter_%u", i, i);
+        }
+        else if (is_grass)
+        {
+            std::snprintf(
+                header,
+                sizeof(header),
+                "%u  %s  gpu%s###terrain_scatter_%u",
+                i,
+                layer.name.c_str(),
+                layer.solo ? "  [solo]" : "",
+                i
+            );
+        }
+        else
+        {
+            std::snprintf(
+                header,
+                sizeof(header),
+                "%u  %s  %u instances%s###terrain_scatter_%u",
+                i,
+                layer.name.c_str(),
+                layer.instance_count,
+                layer.solo ? "  [solo]" : "",
+                i
+            );
+        }
+
+        ImGui::PushStyleColor(ImGuiCol_Text, active ? ImVec4(0.9f, 0.9f, 0.9f, 1.0f) : ImVec4(0.55f, 0.55f, 0.55f, 1.0f));
+        const bool open = ImGui::TreeNode(header);
+        ImGui::PopStyleColor();
+
+        if (!open)
+        {
+            continue;
+        }
+
+        ImGui::PushID(static_cast<int>(1000 + i));
+
+        // asset
+        property_input_text("Name", &layer.name, false, "what this layer is called, it also names the spawned entities");
+
+        property_resource(
+            "Mesh",
+            &layer.mesh_path,
+            "model to scatter. builtin/flower and builtin/grass_blade are the generated foliage meshes",
+            [terrain, i](const std::string& path)
+            {
+                terrain->GetScatterLayers()[i].mesh_path = path;
+            }
+        );
+
+        property_input_text(
+            "Material Folder",
+            &layer.material_folder,
+            false,
+            "optional folder holding albedo, normal, roughness, occlusion, height and alpha_mask png. "
+            "empty keeps whatever materials the model imported"
+        );
+
+        uint32_t kind = static_cast<uint32_t>(layer.kind);
+        if (property_combo(
+            "Kind",
+            { "Mesh Instances", "GPU Grass" },
+            &kind,
+            "mesh instances become entities on each tile. gpu grass is the ring populate pass, "
+            "it costs nothing per blade but only reads the grass channel of the biome mask"
+        ))
+        {
+            layer.kind = static_cast<spartan::TerrainScatterKind>(kind);
+        }
+
+        property_toggle("Enabled", &layer.enabled, "off removes this layer on the next respawn");
+        property_toggle(
+            "Solo",
+            &layer.solo,
+            "while any layer is soloed only the soloed ones spawn. this is the fastest way to see "
+            "what one rule is doing on its own"
+        );
+
+        // amount
+        layout::group_spacing();
+        layout::section_header("Amount");
+
+        if (is_grass)
+        {
+            property_float("Fill", &layer.density, 0.01f, 0.05f, 1.0f, "how much of each grass cell gets a blade, 1 is the lush cap", "%.2f");
+        }
+        else
+        {
+            property_float(
+                "Density",
+                &layer.density,
+                0.5f,
+                0.0f,
+                4000.0f,
+                "instances per hectare on ground the rules fully accept. independent of mesh "
+                "density, so changing the terrain resolution does not change the prop count",
+                "%.1f /ha"
+            );
+            property_uint("Max Per Tile", &layer.max_per_tile, 10.0f, 0, 100000, "hard cap per terrain tile, 0 is uncapped");
+        }
+
+        property_uint("Seed", &layer.seed, 1.0f, 0, 100000, "change this to reroll the same rules into a different arrangement");
+
+        // placement
+        layout::group_spacing();
+        layout::section_header("Where");
+
+        property_float("Slope Min", &layer.slope_min, 0.5f, 0.0f, 90.0f, "shallowest ground this layer accepts", "%.0f deg");
+        property_float("Slope Max", &layer.slope_max, 0.5f, 0.0f, 90.0f, "steepest ground this layer accepts", "%.0f deg");
+        property_float(
+            "Slope Bias",
+            &layer.slope_bias,
+            0.05f,
+            -4.0f,
+            4.0f,
+            "0 spreads evenly across the slope band, positive crowds the steep end, negative the flat end",
+            "%.2f"
+        );
+
+        property_float("Height Min", &layer.height_min, 1.0f, -1000.0f, 100000.0f, "lowest ground this layer accepts, measured above sea level", "%.0f m");
+        property_float("Height Max", &layer.height_max, 1.0f, -1000.0f, 100000.0f, "highest ground this layer accepts, measured above sea level", "%.0f m");
+        property_float("Height Fade", &layer.height_fade, 1.0f, 0.0f, 500.0f, "meters of ramp above height min, this is what stops a hard line along a shore", "%.0f m");
+
+        uint32_t mask_channel = static_cast<uint32_t>(layer.mask_channel + 1);
+        if (property_combo(
+            "Biome Mask",
+            { "Ignore", "Grass", "Trees", "Rocks" },
+            &mask_channel,
+            "gate on a channel of the biome mask, the same mask the preview above shows. "
+            "the channel value also scales the density, so a half strength meadow gets half the props"
+        ))
+        {
+            layer.mask_channel = static_cast<int>(mask_channel) - 1;
+        }
+        if (layer.mask_channel >= 0)
+        {
+            property_float("Mask Min", &layer.mask_min, 0.01f, 0.0f, 1.0f, "reject ground below this mask strength", "%.2f");
+        }
+
+        if (ImGui::TreeNode("Ground Types"))
+        {
+            ImGui::TextDisabled("none checked means any ground");
+            for (uint32_t rule_index = 0; rule_index < spartan::terrain_layer_max; rule_index++)
+            {
+                const uint32_t bit = 1u << rule_index;
+                bool allowed       = (layer.ground_mask & bit) != 0;
+
+                char label[128];
+                std::snprintf(
+                    label,
+                    sizeof(label),
+                    "%s",
+                    rules[rule_index].name.empty() ? "(unused)" : rules[rule_index].name.c_str()
+                );
+
+                if (property_toggle(label, &allowed, "only scatter where this surface layer is the dominant one"))
+                {
+                    layer.ground_mask = allowed ? (layer.ground_mask | bit) : (layer.ground_mask & ~bit);
+                }
+            }
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Analysis"))
+        {
+            property_float("Curvature",  &layer.curvature_influence,  0.01f, -1.0f, 1.0f, "positive favours concave gullies, negative favours convex ridges", "%.2f");
+            property_float("Flow",       &layer.flow_influence,       0.01f, -1.0f, 1.0f, "positive favours water channels and damp ground", "%.2f");
+            property_float("Occlusion",  &layer.occlusion_influence,  0.01f, -1.0f, 1.0f, "positive favours crevices and valley floors", "%.2f");
+            property_float("Insolation", &layer.insolation_influence, 0.01f, -1.0f, 1.0f, "positive favours sun facing slopes, negative favours shaded ones", "%.2f");
+            property_float("Wear",       &layer.wear_influence,       0.01f, -1.0f, 1.0f, "positive favours scoured bedrock", "%.2f");
+            property_float("Deposition", &layer.deposition_influence, 0.01f, -1.0f, 1.0f, "positive favours accumulated sediment", "%.2f");
+            property_float("Talus",      &layer.talus_influence,      0.01f, -1.0f, 1.0f, "positive favours scree fans below cliffs", "%.2f");
+            ImGui::TreePop();
+        }
+
+        if (!is_grass)
+        {
+            // clumping
+            layout::group_spacing();
+            layout::section_header("Clumping");
+
+            property_float("Clump Radius",  &layer.clump_radius, 0.5f, 0.0f, 500.0f, "meters, 0 scatters evenly instead of in patches", "%.1f m");
+            property_uint("Clump Count",    &layer.clump_count, 1.0f, 1, 5000, "instances per patch, 1 is an even scatter");
+            property_float("Raggedness",    &layer.clump_raggedness, 0.01f, 0.0f, 1.0f, "0 is a clean circle, 1 is an organic blob edge", "%.2f");
+
+            // size
+            layout::group_spacing();
+            layout::section_header("Size");
+
+            property_float("Mesh Scale",    &layer.mesh_scale, 0.001f, 0.0001f, 1000.0f, "asset unit fix, the sizes below multiply this", "%.4f");
+            property_float("Size Min",      &layer.size_min, 0.01f, 0.0f, 100.0f, "smallest instance, relative to mesh scale", "%.2f");
+            property_float("Size Max",      &layer.size_max, 0.01f, 0.0f, 100.0f, "largest instance, relative to mesh scale", "%.2f");
+            property_float("From Slope",    &layer.size_from_slope, 0.01f, 0.0f, 1.0f, "steeper ground picks nearer size max instead of rolling at random", "%.2f");
+            property_float("From Altitude", &layer.size_from_altitude, 0.01f, 0.0f, 1.0f, "higher ground picks nearer size max, this is what makes peaks carry the big ones", "%.2f");
+            property_float("Altitude Span", &layer.altitude_span, 1.0f, 16.0f, 2000.0f, "meters of climb over which from altitude reaches size max", "%.0f m");
+            property_float("Giant Chance",  &layer.giant_chance, 0.001f, 0.0f, 1.0f, "odds of a landmark sized instance, keep this tiny", "%.3f");
+            property_float("Giant Size",    &layer.giant_size, 0.1f, 0.0f, 500.0f, "size of that landmark, 0 falls back to size max", "%.2f");
+
+            // seating
+            layout::group_spacing();
+            layout::section_header("Seating");
+
+            property_float(
+                "Align To Normal",
+                &layer.align_to_normal,
+                0.01f,
+                0.0f,
+                1.0f,
+                "0 stands the prop upright, 1 lies it flat on the slope. trunks want 0, boulders want 1",
+                "%.2f"
+            );
+            property_float("Surface Offset", &layer.surface_offset, 0.01f, -5.0f, 5.0f, "meters lifted off the ground", "%.2f m");
+            property_float("Sink",           &layer.sink, 0.01f, 0.0f, 1.0f, "fraction of the final size pushed into the ground, this is what stops a rock floating", "%.2f");
+        }
+
+        // rendering
+        layout::group_spacing();
+        layout::section_header("Rendering");
+
+        property_float("Render Distance", &layer.render_distance, 10.0f, 0.0f, 20000.0f, "meters, 0 is unlimited and lets the gpu cull decide", "%.0f m");
+
+        if (!is_grass)
+        {
+            property_float("Shadow Distance", &layer.shadow_distance, 5.0f, 0.0f, 5000.0f, "beyond this the instance stops casting a shadow", "%.0f m");
+
+            auto flag_toggle = [&layer](const char* label, uint32_t bit, const char* tooltip)
+            {
+                bool value = (layer.flags & bit) != 0;
+                if (property_toggle(label, &value, tooltip))
+                {
+                    layer.flags = value ? (layer.flags | bit) : (layer.flags & ~bit);
+                }
+            };
+
+            flag_toggle("Cast Shadows",    spartan::TerrainScatterFlags_CastShadows,    "shadow casting for this layer");
+            flag_toggle("Wind",            spartan::TerrainScatterFlags_Wind,           "animate the alpha masked parts, leaves and twigs, in the wind");
+            flag_toggle("Color Variation", spartan::TerrainScatterFlags_ColorVariation, "tint each instance a little differently so a grove does not read as one clone");
+            flag_toggle("Collision",       spartan::TerrainScatterFlags_Collision,      "convex hull body on the solid parts, leaves stay walk through");
+            flag_toggle("Tumble",          spartan::TerrainScatterFlags_Tumble,         "fully random rotation, for debris that has come to rest at any angle");
+            flag_toggle("Log Size",        spartan::TerrainScatterFlags_LogSize,        "sample the size range logarithmically, a wide range reads better with many small and few large");
+        }
+        else
+        {
+            if (ImGui::TreeNode("Grass Rings"))
+            {
+                for (uint32_t ring = 0; ring < 3; ring++)
+                {
+                    char radius_label[32];
+                    char cell_label[32];
+                    std::snprintf(radius_label, sizeof(radius_label), "Ring %u Radius", ring);
+                    std::snprintf(cell_label, sizeof(cell_label), "Ring %u Cell", ring);
+
+                    property_float(radius_label, &layer.grass_ring_radius[ring], 1.0f, 1.0f, 5000.0f, "how far this ring reaches from the camera", "%.0f m");
+                    property_float(cell_label, &layer.grass_cell_size[ring], 0.01f, 0.05f, 16.0f, "spacing inside the ring, smaller is denser and heavier", "%.2f m");
+                }
+                ImGui::TreePop();
+            }
+        }
+
+        // stats
+        layout::group_spacing();
+        layout::section_header("Result");
+
+        char stat[128];
+        if (is_grass)
+        {
+            property_text("Instances", "gpu, decided per frame", "gpu grass has no entities, the populate pass fills the rings every frame");
+        }
+        else
+        {
+            std::snprintf(stat, sizeof(stat), "%u", layer.instance_count);
+            property_text("Instances", stat, "how many instances the last respawn placed");
+        }
+
+        std::snprintf(stat, sizeof(stat), "%.1f %%", layer.coverage * 100.0f);
+        property_text("Accepted Ground", stat, "how much of the surface the rules accepted, 0 means the gates are too tight");
+
+        ImGui::PopID();
+        ImGui::TreePop();
+    }
 }
 
 void Properties::ShowWater(spartan::Water* water) const

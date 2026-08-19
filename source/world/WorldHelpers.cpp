@@ -221,6 +221,478 @@ namespace spartan
         // generate already calls PopulateTerrainBiomeProps when spawn_biome_props is on
     }
 
+    namespace
+    {
+        // generated foliage meshes and folder materials, cached so a respawn does not rebuild them
+        unordered_map<string, shared_ptr<Mesh>> builtin_meshes;
+        unordered_map<string, shared_ptr<Material>> scatter_materials;
+
+        shared_ptr<Mesh> build_grass_blade_mesh()
+        {
+            shared_ptr<Mesh> mesh = make_shared<Mesh>();
+            mesh->SetObjectName("grass_blade");
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+
+            const uint32_t segments[3] = { 6, 3, 1 };
+            uint32_t sub_mesh_index    = 0;
+            for (uint32_t lod = 0; lod < 3; lod++)
+            {
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                vector<uint32_t> indices;
+                geometry_generation::generate_foliage_grass_blade(&vertices, &indices, segments[lod]);
+
+                if (lod == 0)
+                {
+                    mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);
+                }
+                else
+                {
+                    mesh->AddLod(vertices, indices, sub_mesh_index);
+                }
+            }
+            mesh->CreateGpuBuffers();
+
+            return mesh;
+        }
+
+        shared_ptr<Mesh> build_flower_mesh()
+        {
+            shared_ptr<Mesh> mesh   = make_shared<Mesh>();
+            const string cache_path = string(ResourceCache::GetProjectDirectory()) + "standard_flower" + EXTENSION_MESH;
+            if (FileSystem::Exists(cache_path))
+            {
+                mesh->LoadFromFile(cache_path);
+            }
+            if (mesh->GetVertexCount() > 0)
+            {
+                return mesh;
+            }
+
+            mesh->SetObjectName("flower");
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+
+            const uint32_t petals[3] = { 3, 2, 1 };
+            const uint32_t rings[3]  = { 6, 4, 1 };
+            const uint32_t stems[3]  = { 3, 2, 1 };
+            uint32_t sub_mesh_index  = 0;
+            for (uint32_t lod = 0; lod < 3; lod++)
+            {
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                vector<uint32_t> indices;
+                geometry_generation::generate_foliage_flower(&vertices, &indices, petals[lod], rings[lod], stems[lod]);
+
+                if (lod == 0)
+                {
+                    mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);
+                }
+                else
+                {
+                    mesh->AddLod(vertices, indices, sub_mesh_index);
+                }
+            }
+            mesh->SetResourceFilePath(cache_path);
+            mesh->SaveToFile(cache_path);
+            mesh->CreateGpuBuffers();
+
+            return mesh;
+        }
+
+        // builtin/ is one of the generated foliage meshes, anything else is an asset path
+        Mesh* resolve_scatter_mesh(const string& path)
+        {
+            if (path.rfind("builtin/", 0) == 0)
+            {
+                auto it = builtin_meshes.find(path);
+                if (it != builtin_meshes.end())
+                {
+                    return it->second.get();
+                }
+
+                shared_ptr<Mesh> mesh;
+                if (path == "builtin/grass_blade")
+                {
+                    mesh = build_grass_blade_mesh();
+                }
+                else if (path == "builtin/flower")
+                {
+                    mesh = build_flower_mesh();
+                }
+
+                if (!mesh)
+                {
+                    return nullptr;
+                }
+
+                builder_meshes.push_back(mesh);
+                builtin_meshes[path] = mesh;
+
+                return mesh.get();
+            }
+
+            const uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+            shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>(path, flags);
+
+            return mesh ? mesh.get() : nullptr;
+        }
+
+        // one material from a folder of conventionally named textures, the same convention the
+        // surface layers use, this is how a scatter layer overrides whatever the asset imported
+        shared_ptr<Material> resolve_folder_material(const string& folder)
+        {
+            auto it = scatter_materials.find(folder);
+            if (it != scatter_materials.end())
+            {
+                return it->second;
+            }
+
+            const string base   = folder.back() == '/' ? folder : folder + "/";
+            const string albedo = base + "albedo.png";
+            if (!FileSystem::Exists(albedo))
+            {
+                SP_LOG_WARNING("terrain scatter: no albedo.png in %s", base.c_str());
+                return nullptr;
+            }
+
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetTexture(MaterialTextureType::Color, albedo);
+
+            auto set_optional = [&material, &base](MaterialTextureType type, const char* file)
+            {
+                const string path = base + file;
+                if (FileSystem::Exists(path))
+                {
+                    material->SetTexture(type, path);
+                }
+            };
+            set_optional(MaterialTextureType::Normal,    "normal.png");
+            set_optional(MaterialTextureType::Roughness, "roughness.png");
+            set_optional(MaterialTextureType::Occlusion, "occlusion.png");
+            set_optional(MaterialTextureType::Height,    "height.png");
+            set_optional(MaterialTextureType::AlphaMask, "alpha_mask.png");
+
+            string name        = base.substr(0, base.size() - 1);
+            const size_t slash = name.find_last_of('/');
+            if (slash != string::npos)
+            {
+                name = name.substr(slash + 1);
+            }
+            material->SetObjectName(name);
+            material->SetResourceName(name + string(EXTENSION_MATERIAL));
+
+            scatter_materials[folder] = material;
+            builder_materials.push_back(material);
+
+            return material;
+        }
+
+        // the generated foliage meshes carry no imported material, they need the shader flags that
+        // make a blade bend and a flower face the light
+        shared_ptr<Material> resolve_builtin_material(const string& mesh_path)
+        {
+            auto it = scatter_materials.find(mesh_path);
+            if (it != scatter_materials.end())
+            {
+                return it->second;
+            }
+
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetColor(Color::standard_white);
+            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+
+            if (mesh_path == "builtin/grass_blade")
+            {
+                material->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
+                material->SetProperty(MaterialProperty::Roughness, 0.85f);
+                material->SetProperty(MaterialProperty::Clearcoat, 0.0f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.5f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
+                material->SetObjectName("grass_blade");
+                material->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
+                material = ResourceCache::Cache(material);
+            }
+            else
+            {
+                material->SetProperty(MaterialProperty::IsFlower, 1.0f);
+                material->SetProperty(MaterialProperty::Roughness, 1.0f);
+                material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
+                material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                material->SetObjectName("flower");
+                material->SetResourceName("flower" + string(EXTENSION_MATERIAL));
+            }
+
+            scatter_materials[mesh_path] = material;
+            builder_materials.push_back(material);
+
+            return material;
+        }
+
+        // a cutout is what separates a leaf card from a trunk, the name is the fallback for an asset
+        // whose material never declared one
+        bool is_foliage_material(Material* material)
+        {
+            if (material->HasTextureOfType(MaterialTextureType::AlphaMask))
+            {
+                return true;
+            }
+
+            string name = material->GetObjectName();
+            transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+            return name.find("twig")    != string::npos ||
+                   name.find("leaf")    != string::npos ||
+                   name.find("leaves")  != string::npos ||
+                   name.find("foliage") != string::npos ||
+                   name.find("needle")  != string::npos ||
+                   name.find("frond")   != string::npos;
+        }
+
+        // an fbx that never declared its opacity map still ships it next to the mesh, and without
+        // the cutout every leaf card renders as a solid quad
+        void ensure_alpha_mask(Material* material, const string& mesh_path)
+        {
+            if (material->HasTextureOfType(MaterialTextureType::AlphaMask))
+            {
+                return;
+            }
+
+            const string directory = FileSystem::GetDirectoryFromFilePath(mesh_path);
+            for (const string& file : FileSystem::GetFilesInDirectory(directory))
+            {
+                if (!FileSystem::IsSupportedImageFile(file))
+                {
+                    continue;
+                }
+
+                string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file);
+                transform(name.begin(), name.end(), name.begin(), ::tolower);
+                if (name.find("opacity") != string::npos || name.find("alpha") != string::npos)
+                {
+                    material->SetTexture(MaterialTextureType::AlphaMask, file);
+                    return;
+                }
+            }
+        }
+
+        uint32_t count_mesh_renderables(Entity* root)
+        {
+            if (!root)
+            {
+                return 1;
+            }
+
+            vector<Entity*> parts;
+            parts.push_back(root);
+            root->GetDescendants(&parts);
+
+            uint32_t count = 0;
+            for (Entity* part : parts)
+            {
+                Render* render = part->GetComponent<Render>();
+                if (render && render->GetMesh())
+                {
+                    count++;
+                }
+            }
+
+            return max(count, 1u);
+        }
+
+        // clone the prototype onto every tile that has instances and hand that tile's transforms to
+        // each renderable it carries, the hierarchy is kept because bark and leaves are two materials
+        void attach_scatter_layer(
+            Mesh* mesh,
+            const TerrainScatterLayer& layer,
+            const vector<Entity*>& tiles,
+            const vector<vector<Matrix>>& transforms
+        )
+        {
+            Entity* prototype = mesh->GetRootEntity();
+            if (prototype)
+            {
+                prototype->SetTransient(true);
+            }
+
+            shared_ptr<Material> material_override;
+            if (!layer.material_folder.empty())
+            {
+                material_override = resolve_folder_material(layer.material_folder);
+            }
+            else if (!prototype)
+            {
+                material_override = resolve_builtin_material(layer.mesh_path);
+            }
+
+            // trees and rocks read as the silhouette of an island from across the map, a radial
+            // cutoff pops whole hillsides of them in and out, so 0 means no limit at all and the gpu
+            // instance cull drops each one on its own once it projects under two pixels
+            const float render_distance = layer.render_distance > 0.0f ?
+                layer.render_distance :
+                numeric_limits<float>::max();
+            const bool casts_shadows = (layer.flags & TerrainScatterFlags_CastShadows) != 0;
+
+            for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiles.size()); tile_index++)
+            {
+                Entity* tile = tiles[tile_index];
+                if (!tile || transforms[tile_index].empty())
+                {
+                    continue;
+                }
+
+                vector<Entity*> parts;
+                if (prototype)
+                {
+                    Entity* entity = prototype->Clone();
+                    entity->SetObjectName(layer.name);
+                    entity->SetTransient(true);
+                    entity->AddTag(terrain_prop_tag);
+                    entity->SetParent(tile);
+                    entity->SetActive(true);
+
+                    parts.push_back(entity);
+                    entity->GetDescendants(&parts);
+
+                    // instances are tile local, every node must sit at the tile origin so the gpu
+                    // ends up doing instance times tile
+                    for (Entity* part : parts)
+                    {
+                        part->SetTransient(true);
+                        part->SetPositionLocal(Vector3::Zero);
+                        part->SetRotationLocal(Quaternion::Identity);
+                        part->SetScaleLocal(Vector3::One);
+                    }
+                }
+                else
+                {
+                    Entity* entity = World::CreateEntity();
+                    entity->SetObjectName(layer.name);
+                    entity->SetTransient(true);
+                    entity->AddTag(terrain_prop_tag);
+                    entity->SetParent(tile);
+                    entity->AddComponent<Render>()->SetMesh(mesh);
+                    parts.push_back(entity);
+                }
+
+                for (Entity* part : parts)
+                {
+                    Render* render = part->GetComponent<Render>();
+                    if (!render || !render->GetMesh())
+                    {
+                        continue;
+                    }
+
+                    if (material_override)
+                    {
+                        render->SetMaterial(material_override);
+                    }
+
+                    bool foliage = false;
+                    if (Material* material = render->GetMaterial())
+                    {
+                        foliage = is_foliage_material(material);
+
+                        if (foliage && (layer.flags & TerrainScatterFlags_Wind))
+                        {
+                            if (prototype)
+                            {
+                                ensure_alpha_mask(material, layer.mesh_path);
+                            }
+                            material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        }
+
+                        if (layer.flags & TerrainScatterFlags_ColorVariation)
+                        {
+                            material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
+                        }
+                    }
+
+                    render->SetInstances(transforms[tile_index]);
+                    render->SetMaxRenderDistance(render_distance);
+                    render->SetMaxShadowDistance(layer.shadow_distance);
+                    render->SetFlag(RenderFlags::CastsShadows, casts_shadows);
+                    // foliage instance counts blow the tlas, and the entity origin would ghost a
+                    // full size mesh at the tile center
+                    render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
+
+                    if (render->GetMeshletCount(0) == 0)
+                    {
+                        SP_LOG_WARNING(
+                            "terrain scatter '%s': '%s' has no meshlets, the opaque path will skip it",
+                            layer.name.c_str(),
+                            part->GetObjectName().c_str()
+                        );
+                    }
+
+                    // only the solid parts are collidable, twigs and leaves would just snag the player
+                    if ((layer.flags & TerrainScatterFlags_Collision) && !foliage)
+                    {
+                        Physics* physics = part->AddComponent<Physics>();
+                        physics->SetUseConvexHull(true);
+                        physics->SetBodyType(BodyType::Mesh);
+                    }
+                }
+            }
+
+            // the prototype stays in the world as a template, hide it so it does not draw at the origin
+            if (prototype)
+            {
+                prototype->SetActive(false);
+            }
+        }
+
+        // the gpu grass rings, there are no entities for this, the populate pass reads the height map
+        // and the grass channel of the biome mask every frame
+        bool enable_procedural_grass(Terrain* terrain, const TerrainScatterLayer& layer)
+        {
+            RHI_Texture* height_map = terrain->GetHeightMapGpu();
+            if (!height_map)
+            {
+                SP_LOG_WARNING("terrain scatter '%s': no r32 height map, gpu grass disabled", layer.name.c_str());
+                return false;
+            }
+
+            RHI_Texture* prop_mask = terrain->GetPropMask();
+            if (!prop_mask)
+            {
+                SP_LOG_WARNING("terrain scatter '%s': no biome mask, gpu grass disabled", layer.name.c_str());
+                return false;
+            }
+
+            Mesh* mesh = resolve_scatter_mesh(layer.mesh_path);
+            shared_ptr<Material> material = layer.material_folder.empty() ?
+                resolve_builtin_material("builtin/grass_blade") :
+                resolve_folder_material(layer.material_folder);
+            if (!mesh || !material)
+            {
+                SP_LOG_WARNING("terrain scatter '%s': no blade mesh or material, gpu grass disabled", layer.name.c_str());
+                return false;
+            }
+
+            Renderer::ProceduralGrassParams params;
+            for (uint32_t ring = 0; ring < 3; ring++)
+            {
+                params.ring_radii_m[ring] = layer.grass_ring_radius[ring];
+                params.cell_size_m[ring]  = layer.grass_cell_size[ring];
+            }
+            params.height_min = terrain->GetSeaLevel() + layer.height_min;
+            params.height_max = terrain->GetSeaLevel() + layer.height_max;
+            params.max_slope_deg = layer.slope_max;
+            // the populate pass only reads the grass channel, a mask channel of -1 turns the gate off
+            params.biome_min_weight = layer.mask_channel >= 0 ? layer.mask_min : -1.0f;
+            params.density = clamp(layer.density, 0.05f, 1.0f);
+            params.terrain_world_mapping = terrain->GetWorldMapping();
+
+            const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
+            const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());
+            params.terrain_extent_m = Vector2(extent_x, extent_z);
+
+            Renderer::EnableProceduralGrass(mesh, material.get(), height_map, params, prop_mask);
+
+            return true;
+        }
+    }
+
     void WorldHelpers::PopulateTerrainBiomeProps(Terrain* terrain)
     {
         if (!terrain || !terrain->GetEntity())
@@ -241,142 +713,11 @@ namespace spartan
 
         terrain->RebuildPropMask();
 
-        // trees and rocks read as the silhouette of an island from across the map, a radial cutoff
-        // pops whole hillsides of them in and out, so they carry no distance limit at all, the gpu
-        // instance cull drops each one on its own once it projects under two pixels and the lod
-        // picker has already collapsed a far tile to its cheapest mesh by then
-        const float render_distance_props   = numeric_limits<float>::max();
-        const float render_distance_foliage = 500.0f;
-        const float shadow_distance         = 150.0f;
-        // authored base densities, the terrain multipliers scale these so a world can be retuned
-        // without a rebuild, see Terrain::SetPropDensityTree and friends
-        const float per_triangle_density_flower = 0.18f * terrain->GetPropDensityFlower();
-        const float per_triangle_density_tree   = 0.28f * terrain->GetPropDensityTree();
-        const float per_triangle_density_rock   = 0.20f * terrain->GetPropDensityRock();
-
-        const uint32_t prop_mesh_flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-        shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", prop_mesh_flags);
-        shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj", prop_mesh_flags);
-        if (!mesh_tree)
-        {
-            SP_LOG_WARNING("biome props: tree mesh missing at project/models/tree/tree.fbx");
-        }
-        if (!mesh_rock)
-        {
-            SP_LOG_WARNING("biome props: rock mesh missing at project/models/rock_2/model.obj");
-        }
-
-        shared_ptr<Mesh> mesh_grass_blade = builder_meshes.emplace_back(make_shared<Mesh>());
-        {
-            mesh_grass_blade->SetObjectName("grass_blade");
-            mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            uint32_t sub_mesh_index = 0;
-            {
-                vector<RHI_Vertex_PosTexNorTan> vertices;
-                vector<uint32_t> indices;
-                geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 6);
-                mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index);
-            }
-            {
-                vector<RHI_Vertex_PosTexNorTan> vertices;
-                vector<uint32_t> indices;
-                geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 3);
-                mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
-            }
-            {
-                vector<RHI_Vertex_PosTexNorTan> vertices;
-                vector<uint32_t> indices;
-                geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 1);
-                mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
-            }
-            mesh_grass_blade->CreateGpuBuffers();
-        }
-
-        shared_ptr<Mesh> mesh_flower = builder_meshes.emplace_back(make_shared<Mesh>());
-        {
-            const string flower_cache_path = string(ResourceCache::GetProjectDirectory()) + "standard_flower" + EXTENSION_MESH;
-            if (FileSystem::Exists(flower_cache_path))
-            {
-                mesh_flower->LoadFromFile(flower_cache_path);
-            }
-            if (mesh_flower->GetVertexCount() == 0)
-            {
-                mesh_flower->SetObjectName("flower");
-                mesh_flower->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                uint32_t sub_mesh_index = 0;
-                {
-                    vector<RHI_Vertex_PosTexNorTan> vertices;
-                    vector<uint32_t> indices;
-                    geometry_generation::generate_foliage_flower(&vertices, &indices, 3, 6, 3);
-                    mesh_flower->AddGeometry(vertices, indices, false, &sub_mesh_index);
-                }
-                {
-                    vector<RHI_Vertex_PosTexNorTan> vertices;
-                    vector<uint32_t> indices;
-                    geometry_generation::generate_foliage_flower(&vertices, &indices, 2, 4, 2);
-                    mesh_flower->AddLod(vertices, indices, sub_mesh_index);
-                }
-                {
-                    vector<RHI_Vertex_PosTexNorTan> vertices;
-                    vector<uint32_t> indices;
-                    geometry_generation::generate_foliage_flower(&vertices, &indices, 1, 1, 1);
-                    mesh_flower->AddLod(vertices, indices, sub_mesh_index);
-                }
-                mesh_flower->SetResourceFilePath(flower_cache_path);
-                mesh_flower->SaveToFile(flower_cache_path);
-                mesh_flower->CreateGpuBuffers();
-            }
-        }
-
-        shared_ptr<Material> material_leaf = make_shared<Material>();
-        material_leaf->SetTexture(MaterialTextureType::Color, "project/models/tree/Twig_Base_Material_2.png");
-        material_leaf->SetTexture(MaterialTextureType::Normal, "project/models/tree/Twig_Normal.png");
-        material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project/models/tree/Twig_Opacity_Map.jpg");
-        material_leaf->SetProperty(MaterialProperty::WindAnimation, 1.0f);
-        material_leaf->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
-        material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-        material_leaf->SetResourceName("tree_leaf" + string(EXTENSION_MATERIAL));
-
-        shared_ptr<Material> material_body = make_shared<Material>();
-        material_body->SetTexture(MaterialTextureType::Color, "project/models/tree/tree_bark_diffuse.png");
-        material_body->SetTexture(MaterialTextureType::Normal, "project/models/tree/tree_bark_normal.png");
-        material_body->SetTexture(MaterialTextureType::Roughness, "project/models/tree/tree_bark_roughness.png");
-        material_body->SetResourceName("tree_body" + string(EXTENSION_MATERIAL));
-
-        shared_ptr<Material> material_rock = make_shared<Material>();
-        material_rock->SetTexture(MaterialTextureType::Color, "project/models/rock_2/albedo.png");
-        material_rock->SetTexture(MaterialTextureType::Normal, "project/models/rock_2/normal.png");
-        material_rock->SetTexture(MaterialTextureType::Roughness, "project/models/rock_2/roughness.png");
-        material_rock->SetTexture(MaterialTextureType::Occlusion, "project/models/rock_2/occlusion.png");
-        material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
-
-        shared_ptr<Material> material_grass_blade = make_shared<Material>();
-        material_grass_blade->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
-        material_grass_blade->SetProperty(MaterialProperty::Roughness, 0.85f);
-        material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 0.0f);
-        material_grass_blade->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.5f);
-        material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 0.35f);
-        material_grass_blade->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-        material_grass_blade->SetColor(Color::standard_white);
-        material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
-        material_grass_blade = ResourceCache::Cache(material_grass_blade);
-        builder_materials.push_back(material_grass_blade);
-
-        shared_ptr<Material> material_flower = make_shared<Material>();
-        material_flower->SetProperty(MaterialProperty::IsFlower, 1.0f);
-        material_flower->SetProperty(MaterialProperty::Roughness, 1.0f);
-        material_flower->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-        material_flower->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-        material_flower->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-        material_flower->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-        material_flower->SetColor(Color::standard_white);
-        material_flower->SetResourceName("flower" + string(EXTENSION_MATERIAL));
-
-        vector<Entity*> children = terrain_entity->GetChildren();
+        // tiles, every prop is parented to one so tile culling and tile teardown take it along
         const uint32_t tile_axis  = max(terrain->GetTileCountAxis(), 1u);
         const uint32_t tile_count = tile_axis * tile_axis;
         vector<Entity*> tiles(tile_count, nullptr);
-        for (Entity* child : children)
+        for (Entity* child : terrain_entity->GetChildren())
         {
             const int tile_index = Terrain::ParseTileIndex(child);
             if (tile_index >= 0 && static_cast<uint32_t>(tile_index) < tile_count)
@@ -385,338 +726,91 @@ namespace spartan
             }
         }
 
-        vector<vector<Matrix>> tree_transforms_per_tile(tile_count);
-        vector<vector<Matrix>> rock_transforms_per_tile(tile_count);
-        vector<vector<Matrix>> flower_transforms_per_tile(tile_count);
-
-        // placement is the expensive part and it only touches per tile buckets, the entities it feeds
-        // are built afterwards on this thread so the scene graph is only ever mutated in one order
-        // the transforms stay tile local, every prop is parented to its tile and inherits its offset
-        auto compute_transforms = [
-            &tiles,
-            &tree_transforms_per_tile,
-            &rock_transforms_per_tile,
-            &flower_transforms_per_tile,
-            terrain,
-            per_triangle_density_flower,
-            per_triangle_density_tree,
-            per_triangle_density_rock
-        ](uint32_t start_index, uint32_t end_index)
-        {
-            for (uint32_t tile_index = start_index; tile_index < end_index; tile_index++)
-            {
-                if (!tiles[tile_index])
-                {
-                    continue;
-                }
-
-                terrain->FindTransforms(tile_index, TerrainProp::Tree,   nullptr, per_triangle_density_tree,   0.026f, tree_transforms_per_tile[tile_index]);
-                terrain->FindTransforms(tile_index, TerrainProp::Rock,   nullptr, per_triangle_density_rock,   0.64f,  rock_transforms_per_tile[tile_index]);
-                terrain->FindTransforms(tile_index, TerrainProp::Flower, nullptr, per_triangle_density_flower, 0.64f,  flower_transforms_per_tile[tile_index]);
-            }
-        };
-
-        ThreadPool::ParallelLoop(compute_transforms, tile_count);
-
-        auto count_mesh_renderables = [](Entity* root) -> uint32_t
-        {
-            if (!root)
-            {
-                return 1;
-            }
-
-            vector<Entity*> parts;
-            parts.push_back(root);
-            root->GetDescendants(&parts);
-
-            uint32_t n = 0;
-            for (Entity* part : parts)
-            {
-                Render* render = part->GetComponent<Render>();
-                if (render && render->GetMesh())
-                {
-                    n++;
-                }
-            }
-
-            return max(n, 1u);
-        };
-
-        const uint32_t tree_renderables = count_mesh_renderables(mesh_tree ? mesh_tree->GetRootEntity() : nullptr);
-        const uint32_t rock_renderables = count_mesh_renderables(mesh_rock ? mesh_rock->GetRootEntity() : nullptr);
+        array<TerrainScatterLayer, terrain_scatter_max>& layers = terrain->GetScatterLayers();
+        bool grass_pushed       = false;
         uint32_t instance_slots = 1;
-        for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
+
+        for (uint32_t layer_index = 0; layer_index < terrain_scatter_max; layer_index++)
         {
-            instance_slots += static_cast<uint32_t>(tree_transforms_per_tile[tile_index].size()) * tree_renderables;
-            instance_slots += static_cast<uint32_t>(rock_transforms_per_tile[tile_index].size()) * rock_renderables;
-            instance_slots += static_cast<uint32_t>(flower_transforms_per_tile[tile_index].size());
-        }
-        GeometryBuffer::Reserve(0, 0, 0, 0, 0, instance_slots);
+            TerrainScatterLayer& layer = layers[layer_index];
+            layer.instance_count       = 0;
+            layer.coverage             = 0.0f;
 
-        // clones a prop prototype onto one tile and hands that tile's instances to every renderable it
-        // carries, the prototype hierarchy is kept because bark and leaves need different materials
-        auto attach_prop_to_tile = [](
-            Entity* tile,
-            Entity* prototype,
-            const char* name,
-            const vector<Matrix>& transforms,
-            float render_distance,
-            float shadow_distance_in,
-            const function<void(Entity*, Render*, bool)>& configure
-        ) -> uint32_t
-        {
-            if (!tile || !prototype || transforms.empty())
-            {
-                return 0;
-            }
-
-            Entity* entity = prototype->Clone();
-            entity->SetObjectName(name);
-            entity->SetTransient(true);
-            entity->AddTag(terrain_prop_tag);
-            entity->SetParent(tile);
-            entity->SetActive(true);
-
-            vector<Entity*> candidates;
-            candidates.push_back(entity);
-            entity->GetDescendants(&candidates);
-
-            // instances are tile local, every node must sit at the tile origin so the gpu does instance * tile
-            for (Entity* candidate : candidates)
-            {
-                candidate->SetTransient(true);
-                candidate->SetPositionLocal(Vector3::Zero);
-                candidate->SetRotationLocal(Quaternion::Identity);
-                candidate->SetScaleLocal(Vector3::One);
-            }
-
-            uint32_t render_count = 0;
-            for (Entity* candidate : candidates)
-            {
-                Render* render = candidate->GetComponent<Render>();
-                if (!render || !render->GetMesh())
-                {
-                    continue;
-                }
-
-                render->SetInstances(transforms);
-                render->SetMaxRenderDistance(render_distance);
-                render->SetMaxShadowDistance(shadow_distance_in);
-                // foliage instance counts blow the tlas, the entity origin would also ghost a full size mesh at the tile center
-                render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
-                if (render->GetMeshletCount(0) == 0)
-                {
-                    SP_LOG_WARNING("biome props: '%s' has no meshlets, opaque path will skip it", candidate->GetObjectName().c_str());
-                }
-                configure(candidate, render, render_count == 0);
-                render_count++;
-            }
-
-            return render_count;
-        };
-
-        size_t tree_total   = 0;
-        size_t rock_total   = 0;
-        uint32_t rock_tiles = 0;
-
-        for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
-        {
-            Entity* terrain_tile = tiles[tile_index];
-            if (!terrain_tile)
+            if (!terrain->IsScatterActive(layer))
             {
                 continue;
             }
 
-            // trees
-            if (mesh_tree && mesh_tree->GetRootEntity())
+            if (layer.kind == TerrainScatterKind::Grass)
             {
-                mesh_tree->GetRootEntity()->SetTransient(true);
-                const uint32_t placed = attach_prop_to_tile(
-                    terrain_tile,
-                    mesh_tree->GetRootEntity(),
-                    "tree",
-                    tree_transforms_per_tile[tile_index],
-                    render_distance_props,
-                    shadow_distance,
-                    [&material_body, &material_leaf](Entity* candidate, Render* render, bool)
-                    {
-                        Material* imported     = render->GetMaterial();
-                        const string imported_name = imported ? imported->GetObjectName() : string();
-                        const bool is_bark     = imported_name.find("Bark") != string::npos ||
-                                                 imported_name.find("bark") != string::npos;
-                        render->SetMaterial(is_bark ? material_body : material_leaf);
+                grass_pushed = enable_procedural_grass(terrain, layer) || grass_pushed;
+                continue;
+            }
 
-                        // only the trunk is collidable, twigs and leaves would just snag the player
-                        if (is_bark)
-                        {
-                            Physics* physics = candidate->AddComponent<Physics>();
-                            physics->SetUseConvexHull(true);
-                            physics->SetBodyType(BodyType::Mesh);
-                        }
-                    }
+            Mesh* mesh = resolve_scatter_mesh(layer.mesh_path);
+            if (!mesh)
+            {
+                SP_LOG_WARNING(
+                    "terrain scatter '%s': no mesh at %s",
+                    layer.name.c_str(),
+                    layer.mesh_path.c_str()
                 );
-
-                if (placed > 0)
-                {
-                    tree_total += tree_transforms_per_tile[tile_index].size();
-                }
+                continue;
             }
 
-            // rocks
-            if (mesh_rock && mesh_rock->GetRootEntity())
+            // placement is the expensive part and it only touches per tile buckets, the entities it
+            // feeds are built afterwards on this thread so the scene graph is only ever mutated in
+            // one order, the transforms stay tile local and inherit the tile offset
+            vector<vector<Matrix>> transforms(tile_count);
+            vector<float> coverage(tile_count, 0.0f);
+            auto place = [&tiles, &transforms, &coverage, terrain, &layer](uint32_t start_index, uint32_t end_index)
             {
-                mesh_rock->GetRootEntity()->SetTransient(true);
-                const uint32_t placed = attach_prop_to_tile(
-                    terrain_tile,
-                    mesh_rock->GetRootEntity(),
-                    "rock",
-                    rock_transforms_per_tile[tile_index],
-                    render_distance_props,
-                    shadow_distance,
-                    [&material_rock](Entity* candidate, Render* render, bool is_first)
+                for (uint32_t tile_index = start_index; tile_index < end_index; tile_index++)
+                {
+                    if (!tiles[tile_index])
                     {
-                        render->SetMaterial(material_rock);
-
-                        // a boulder is close enough to convex that a hull matches the silhouette
-                        if (is_first)
-                        {
-                            Physics* physics = candidate->AddComponent<Physics>();
-                            physics->SetUseConvexHull(true);
-                            physics->SetBodyType(BodyType::Mesh);
-                        }
+                        continue;
                     }
-                );
 
-                if (placed > 0)
-                {
-                    rock_total += rock_transforms_per_tile[tile_index].size();
-                    rock_tiles++;
+                    terrain->FindTransforms(tile_index, layer, transforms[tile_index], &coverage[tile_index]);
                 }
-            }
+            };
+            ThreadPool::ParallelLoop(place, tile_count);
 
-            // flowers, a generated mesh with one material so it needs no prototype hierarchy
-            const vector<Matrix>& flowers = flower_transforms_per_tile[tile_index];
-            if (!flowers.empty() && mesh_flower)
+            size_t placed       = 0;
+            float coverage_sum  = 0.0f;
+            for (uint32_t tile_index = 0; tile_index < tile_count; tile_index++)
             {
-                Entity* entity = World::CreateEntity();
-                entity->SetObjectName("flower");
-                entity->SetTransient(true);
-                entity->AddTag(terrain_prop_tag);
-                entity->SetParent(terrain_tile);
-
-                Render* render = entity->AddComponent<Render>();
-                render->SetMesh(mesh_flower.get());
-                render->SetFlag(RenderFlags::CastsShadows, false);
-                render->SetFlag(RenderFlags::ExcludeFromRayTracing, true);
-                render->SetInstances(flowers);
-                render->SetMaterial(material_flower);
-                render->SetMaxRenderDistance(render_distance_foliage);
+                placed       += transforms[tile_index].size();
+                coverage_sum += coverage[tile_index];
             }
-        }
+            layer.instance_count = static_cast<uint32_t>(placed);
+            layer.coverage       = coverage_sum / static_cast<float>(tile_count);
 
-        // prototypes stay in the world as templates, hide them so they do not draw at the origin
-        if (mesh_tree && mesh_tree->GetRootEntity())
-        {
-            mesh_tree->GetRootEntity()->SetActive(false);
-        }
-        if (mesh_rock && mesh_rock->GetRootEntity())
-        {
-            mesh_rock->GetRootEntity()->SetActive(false);
-        }
-
-        SP_LOG_INFO("biome props: placed %zu trees and %zu rocks across %u tiles", tree_total, rock_total, tile_count);
-
-        if (!mesh_tree || !mesh_tree->GetRootEntity())
-        {
-            SP_LOG_WARNING("biome props: tree mesh failed to load from project/models/tree/tree.fbx");
-        }
-        else if (tree_total == 0)
-        {
-            SP_LOG_WARNING("biome props: tree mesh is fine but the prop mask tree channel placed nothing");
-        }
-
-        // rocks have three independent ways to end up invisible, separate them so one run says which
-        {
-            size_t rock_transforms = 0;
-            for (const vector<Matrix>& v : rock_transforms_per_tile)
+            if (placed == 0)
             {
-                rock_transforms += v.size();
-            }
-
-            const bool has_mesh = mesh_rock && mesh_rock->GetRootEntity();
-            uint32_t mesh_renderables = 0;
-            if (has_mesh)
-            {
-                vector<Entity*> parts;
-                parts.push_back(mesh_rock->GetRootEntity());
-                mesh_rock->GetRootEntity()->GetDescendants(&parts);
-                for (Entity* part : parts)
-                {
-                    Render* render = part->GetComponent<Render>();
-                    if (render && render->GetMesh())
-                    {
-                        mesh_renderables++;
-                    }
-                }
-            }
-
-            if (!has_mesh)
-            {
-                SP_LOG_WARNING("biome props: rock mesh failed to load from project/models/rock_2/model.obj");
-            }
-            else if (mesh_renderables == 0)
-            {
-                SP_LOG_WARNING("biome props: rock mesh loaded but carries no renderable, %zu transforms unused", rock_transforms);
-            }
-            else if (rock_transforms == 0)
-            {
-                SP_LOG_WARNING("biome props: rock mesh is fine but the prop mask rock channel placed nothing");
-            }
-            else
-            {
-                SP_LOG_INFO("biome props: rock mesh has %u renderables, %u tiles carry rocks", mesh_renderables, rock_tiles);
-            }
-        }
-
-        // gpu procedural grass, gated by the grass channel of the biome prop mask
-        // r32 local heights, the populate pass adds the terrain entity y each frame
-        if (RHI_Texture* heightmap = terrain->GetHeightMapGpu())
-        {
-            if (RHI_Texture* prop_mask = terrain->GetPropMask())
-            {
-                Renderer::ProceduralGrassParams grass_params;
-                grass_params.ring_radii_m[0]  = 55.0f;
-                grass_params.ring_radii_m[1]  = 180.0f;
-                grass_params.ring_radii_m[2]  = render_distance_foliage;
-                grass_params.cell_size_m[0]   = 0.36f;
-                grass_params.cell_size_m[1]   = 0.82f;
-                grass_params.cell_size_m[2]   = 2.1f;
-                grass_params.height_min       = terrain->GetSeaLevel() + 1.0f;
-                grass_params.height_max       = terrain->GetSnowLevel();
-                grass_params.max_slope_deg    = 24.0f;
-                grass_params.biome_min_weight = 0.38f;
-                grass_params.density          = clamp(0.9f * terrain->GetPropDensityGrass(), 0.05f, 1.0f);
-                grass_params.terrain_world_mapping = terrain->GetWorldMapping();
-                const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
-                const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());
-                grass_params.terrain_extent_m = Vector2(extent_x, extent_z);
-                Renderer::EnableProceduralGrass(
-                    mesh_grass_blade.get(),
-                    material_grass_blade.get(),
-                    heightmap,
-                    grass_params,
-                    prop_mask
+                SP_LOG_WARNING(
+                    "terrain scatter '%s': the rules accepted no ground, loosen the slope, height or mask gates",
+                    layer.name.c_str()
                 );
+                continue;
             }
-            else
-            {
-                SP_LOG_WARNING("biome props: missing prop mask, gpu grass disabled");
-                Renderer::DisableProceduralGrass();
-            }
+
+            instance_slots += static_cast<uint32_t>(placed) * count_mesh_renderables(mesh->GetRootEntity());
+            GeometryBuffer::Reserve(0, 0, 0, 0, 0, instance_slots);
+
+            attach_scatter_layer(mesh, layer, tiles, transforms);
+
+            SP_LOG_INFO(
+                "terrain scatter '%s': %zu instances, rules accepted %.1f%% of the surface",
+                layer.name.c_str(),
+                placed,
+                layer.coverage * 100.0f
+            );
         }
-        else
+
+        if (!grass_pushed)
         {
-            SP_LOG_WARNING("biome props: missing terrain r32 height map, gpu grass disabled");
             Renderer::DisableProceduralGrass();
         }
     }
@@ -725,6 +819,8 @@ namespace spartan
     {
         // procedural grass references a mesh and a material owned by these vectors,
         // the caller is expected to disable it first so the renderer drops its references
+        builtin_meshes.clear();
+        scatter_materials.clear();
         builder_meshes.clear();
         builder_materials.clear();
     }

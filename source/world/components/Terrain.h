@@ -44,31 +44,22 @@ namespace spartan
         class Vector3;
     }
 
-    enum class TerrainProp
+    // everything the baked analysis knows about one point on the surface, every channel is 0 to 1
+    // this is what a scatter rule reads, the same signals the surface shader reads
+    struct TerrainSurfaceSample
     {
-        Tree,
-        Grass,
-        Flower,
-        Rock,
-        Max
-    };
-
-    struct TerrainPropDescription
-    {
-        bool  align_to_surface_normal  = true;
-        float min_slope_angle_rad      = 0.0f;
-        float max_slope_angle_rad      = math::deg_to_rad * 35.0f;
-        float surface_offset           = 0.05f;
-        float min_spawn_height         = 0.0f;
-        float max_spawn_height         = 1000.0f;
-        float min_scale                = 0.8f;
-        float max_scale                = 1.2f;
-        bool  scale_adjust_by_slope    = false;
-        uint32_t instances_per_cluster = 0;
-        float cluster_radius           = 0.0f;
-        // biome prop mask, -1 ignores the mask, 0=r grass, 1=g trees, 2=b rocks
-        int   prop_mask_channel        = -1;
-        float prop_mask_min            = 0.2f;
+        float curvature       = 0.5f;
+        float flow            = 0.0f;
+        float occlusion       = 1.0f;
+        float deposition      = 0.0f;
+        float wear            = 0.0f;
+        float insolation      = 0.5f;
+        float talus           = 0.0f;
+        float mask_grass      = 0.0f;
+        float mask_trees      = 0.0f;
+        float mask_rocks      = 0.0f;
+        // which surface layer won this point, matches the layer rule index
+        uint32_t dominant_layer = 0;
     };
 
     // precomputed per-triangle data for prop placement
@@ -167,16 +158,18 @@ namespace spartan
         bool GetSpawnBiomeProps() const         { return m_spawn_biome_props; }
         void SetSpawnBiomeProps(bool enabled)   { m_spawn_biome_props = enabled; }
 
-        // multipliers on the tuned base density of each prop type, 1 is the authored look
-        static constexpr float prop_density_max = 20.0f;
-        float GetPropDensityTree() const          { return m_prop_density_tree; }
-        void SetPropDensityTree(float density)    { m_prop_density_tree = ClampPropDensity(density); }
-        float GetPropDensityRock() const          { return m_prop_density_rock; }
-        void SetPropDensityRock(float density)    { m_prop_density_rock = ClampPropDensity(density); }
-        float GetPropDensityFlower() const        { return m_prop_density_flower; }
-        void SetPropDensityFlower(float density)  { m_prop_density_flower = ClampPropDensity(density); }
-        float GetPropDensityGrass() const         { return m_prop_density_grass; }
-        void SetPropDensityGrass(float density)   { m_prop_density_grass = ClampPropDensity(density); }
+        // scatter layers, the prop rule set, authored per world and saved with it
+        const std::array<TerrainScatterLayer, terrain_scatter_max>& GetScatterLayers() const { return m_scatter_layers; }
+        std::array<TerrainScatterLayer, terrain_scatter_max>& GetScatterLayers()             { return m_scatter_layers; }
+        // a layer only scatters when it is switched on, has an asset, and nothing else is soloed
+        bool IsScatterSoloed() const;
+        bool IsScatterActive(const TerrainScatterLayer& layer) const;
+        // ground area one instance of density 1 covers, used to turn instances per hectare into a count
+        float GetTriangleArea() const;
+        // sea and snow in entity local y, triangle heights are local and the levels are world
+        float GetSeaLevelLocal() const;
+        // baked analysis and biome mask at a world xz, false when nothing is baked yet
+        bool SampleSurface(float world_x, float world_z, TerrainSurfaceSample& sample_out) const;
         // reload the layer materials from project/materials and hand the whole set to the renderer
         void RefreshLayers();
         // hand the current layer set, analysis maps and world mapping to the renderer
@@ -197,13 +190,13 @@ namespace spartan
         uint32_t GetTileCountAxis() const { return m_tile_count; }
         void SetTileCountAxis(uint32_t count);
         uint32_t GetTileEntityCount() const { return static_cast<uint32_t>(m_tile_offsets.size()); }
+        // place one scatter layer over one tile, the transforms come back tile local so every prop
+        // can be parented to its tile and inherit the tile offset
         void FindTransforms(
             const uint32_t tile_index,
-            const TerrainProp terrain_prop,
-            Entity* entity,
-            const float density_fraction,
-            const float scale,
-            std::vector<math::Matrix>& transforms_out
+            const TerrainScatterLayer& layer,
+            std::vector<math::Matrix>& transforms_out,
+            float* coverage_out = nullptr
         );
 
         // sculpting
@@ -303,22 +296,14 @@ namespace spartan
         std::vector<uint8_t> m_map_a_pixels; // mip 0 rgba8, kept so the cache write does not re-derive it
         std::vector<uint8_t> m_map_b_pixels;
         std::vector<uint8_t> m_prop_mask_pixels; // r=grass g=trees b=rocks
+        std::vector<uint8_t> m_layer_dominant;   // one surface layer index per analysis cell
         std::vector<uint8_t> m_height_gpu_bytes;
         std::vector<uint8_t> m_height_preview_bytes;
         uint32_t m_map_width  = 0;
         uint32_t m_map_height = 0;
-        static constexpr float ClampPropDensity(float density)
-        {
-            return density < 0.0f ? 0.0f : (density > prop_density_max ? prop_density_max : density);
-        }
 
         bool m_spawn_biome_props = true;
-        // the base densities live in WorldHelpers, these scale them so a world can be sparser or
-        // denser without recompiling
-        float m_prop_density_tree   = 1.0f;
-        float m_prop_density_rock   = 1.0f;
-        float m_prop_density_flower = 1.0f;
-        float m_prop_density_grass  = 1.0f;
+        std::array<TerrainScatterLayer, terrain_scatter_max> m_scatter_layers;
         float m_height_bake_min = 0.0f;
         float m_height_bake_max = 1.0f;
 

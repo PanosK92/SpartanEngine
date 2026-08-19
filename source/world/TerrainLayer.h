@@ -102,4 +102,114 @@ namespace spartan
     public:
         static const std::array<TerrainLayerRule, terrain_layer_max>& Get();
     };
+
+    // scatter layers are the prop half of the same rule system, a slope band, an altitude band and
+    // an analysis influence mean exactly what they mean for a surface layer above
+    const uint32_t terrain_scatter_max = 8;
+
+    enum class TerrainScatterKind : uint32_t
+    {
+        Mesh,  // instanced entities cloned onto every terrain tile
+        Grass, // gpu procedural grass rings, no entities exist for it
+        Max
+    };
+
+    enum TerrainScatterFlags : uint32_t
+    {
+        TerrainScatterFlags_None           = 0,
+        TerrainScatterFlags_Wind           = 1u << 0, // wind animation on the alpha masked parts, leaves and twigs
+        TerrainScatterFlags_ColorVariation = 1u << 1, // tint each instance a little differently
+        TerrainScatterFlags_Collision      = 1u << 2, // convex hull body on the opaque parts, trunks not leaves
+        TerrainScatterFlags_CastShadows    = 1u << 3,
+        TerrainScatterFlags_Tumble         = 1u << 4, // fully random rotation, debris that has come to rest
+        TerrainScatterFlags_LogSize        = 1u << 5  // sample size logarithmically, wide ranges read better
+    };
+
+    // one prop scatter rule, everything the placer needs to answer where, how many, how big
+    struct TerrainScatterLayer
+    {
+        std::string name;
+        // mesh asset, or builtin/grass_blade and builtin/flower for the generated foliage meshes
+        std::string mesh_path;
+        // optional folder under project/materials, when set it replaces the imported materials
+        std::string material_folder;
+        bool enabled                = false;
+        TerrainScatterKind kind     = TerrainScatterKind::Mesh;
+
+        // how many, density is resolution independent so changing the mesh density does not change
+        // the prop count, it is the count on ground the rules fully accept
+        float density               = 8.0f;  // instances per hectare, or 0 to 1 fill for grass
+        uint32_t max_per_tile       = 0;     // 0 is uncapped
+        uint32_t seed               = 0;     // change this to reroll the same rules differently
+
+        // where, slope band in degrees from horizontal
+        float slope_min             = 0.0f;
+        float slope_max             = 35.0f;
+        // signed exponent on the position inside the band, positive favours the steep end
+        float slope_bias            = 0.0f;
+
+        // where, altitude band in meters above sea level
+        float height_min            = 1.0f;
+        float height_max            = 100000.0f;
+        float height_fade           = 0.0f; // meters of ramp above height_min, keeps shorelines soft
+
+        // where, analysis influences, signed, zero means the layer ignores that channel
+        float curvature_influence   = 0.0f; // positive favours concave gullies, negative convex ridges
+        float flow_influence        = 0.0f; // positive favours water channels
+        float occlusion_influence   = 0.0f; // positive favours crevices and valley floors
+        float insolation_influence  = 0.0f; // positive favours sun facing slopes
+        float wear_influence        = 0.0f; // positive favours eroded bedrock
+        float deposition_influence  = 0.0f; // positive favours accumulated sediment
+        float talus_influence       = 0.0f; // positive favours scree below cliffs
+
+        // where, ground type gate, bit i allows surface layer i, 0 allows every layer
+        uint32_t ground_mask        = 0;
+        // where, biome mask gate, -1 ignores it, 0 grass, 1 trees, 2 rocks
+        int mask_channel            = -1;
+        float mask_min              = 0.0f;
+
+        // clumping, a radius of zero scatters evenly
+        float clump_radius          = 0.0f; // meters
+        uint32_t clump_count        = 1;    // instances per clump
+        float clump_raggedness      = 1.0f; // 0 is a clean circle, 1 is an organic blob
+
+        // size, the final scale is mesh_scale times the size pick
+        float mesh_scale            = 1.0f; // asset unit fix, the size below is relative to it
+        float size_min              = 0.8f;
+        float size_max              = 1.2f;
+        float size_from_slope       = 0.0f; // 0 to 1, steeper ground picks nearer size_max
+        float size_from_altitude    = 0.0f; // 0 to 1, higher ground picks nearer size_max
+        float altitude_span         = 180.0f; // meters over which size_from_altitude reaches full
+        float giant_chance          = 0.0f; // 0 to 1, odds of a landmark sized instance
+        float giant_size            = 0.0f; // size of that landmark, 0 falls back to size_max
+
+        // seating on the surface
+        float align_to_normal       = 1.0f;  // 0 stands upright, 1 lies flat on the slope
+        float surface_offset        = 0.05f; // meters lifted off the ground
+        float sink                  = 0.0f;  // fraction of the final size pushed into the ground
+
+        // rendering
+        float render_distance       = 0.0f;   // meters, 0 is unlimited
+        float shadow_distance       = 150.0f; // meters
+
+        // grass only, the three concentric rings the gpu populates
+        float grass_ring_radius[3]  = { 55.0f, 180.0f, 500.0f };
+        float grass_cell_size[3]    = { 0.36f, 0.82f, 2.1f };
+
+        uint32_t flags              = TerrainScatterFlags_CastShadows;
+
+        // runtime only, never serialized, these exist so the editor can show what a rule produced
+        // and so one layer can be inspected on its own
+        bool solo                   = false;
+        uint32_t instance_count     = 0;
+        float coverage              = 0.0f; // fraction of the surface this layer accepted
+    };
+
+    // the default scatter set, this is the authored forest look, every value here used to be a
+    // literal buried in the placement code
+    class TerrainScatterDefaults
+    {
+    public:
+        static const std::array<TerrainScatterLayer, terrain_scatter_max>& Get();
+    };
 }
