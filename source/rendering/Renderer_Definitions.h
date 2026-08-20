@@ -96,15 +96,19 @@ namespace spartan
 
     // gpu scatter, the camera relative ring populate that owns no entities, slot 0 is grass and the
     // rest are micro detail, pebbles and chips, the stuff that stops close ground reading as flat
-    // vertices. per-lod cap, visible density is cap / ring_area so each ring is tuned on its own
+    // vertices
     const uint32_t renderer_max_gpu_scatter_slots = 3;
     const uint32_t renderer_max_gpu_scatter_lods  = 3;
+
+    // a ring's cap and its cell size together decide instances per square metre, they are tuned as a
+    // pair so adjacent rings land within about 2x of each other, a bigger step than that and the ring
+    // boundary reads as a visible edge on the ground no matter how wide the crossfade is
     constexpr std::array<std::array<uint32_t, renderer_max_gpu_scatter_lods>, renderer_max_gpu_scatter_slots>
     renderer_max_gpu_scatter_per_lod =
     {{
         {{ 384u * 1024u, 512u * 1024u, 512u * 1024u }}, // grass, a blade every few centimetres out to half a kilometre
-        {{  32u * 1024u,  24u * 1024u,  24u * 1024u }}, // micro detail, a short reach so the cap only has to cover a few thousand cells
-        {{  32u * 1024u,  24u * 1024u,  24u * 1024u }}
+        {{   6u * 1024u,  16u * 1024u,  24u * 1024u }}, // micro detail, ~5, ~2.6 and ~1.1 chips per square metre
+        {{   6u * 1024u,  16u * 1024u,  24u * 1024u }}
     }};
 
     constexpr uint32_t renderer_gpu_scatter_cap(uint32_t slot, uint32_t lod)

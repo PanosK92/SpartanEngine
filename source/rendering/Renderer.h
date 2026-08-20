@@ -154,6 +154,12 @@ namespace spartan
             float density            = 1.0f;
             float size_min           = 0.8f; // world scale on the mesh, one roll per instance inside the range
             float size_max           = 1.2f;
+            // fraction of the material each instance samples, every instance takes a different patch of
+            // it. 0 leaves the mesh uv alone, which is what grass needs, its uv is the blade gradient
+            float uv_patch           = 0.0f;
+            // degrees of random lean away from the surface normal, a solid instance that sits perfectly
+            // flat reads as a sticker. grass wants 0, it takes its bend from the wind instead
+            float tilt_deg           = 0.0f;
             float height_bake_min    = 0.0f; // remap 0-1 height preview to world y
             float height_bake_max    = 1.0f;
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f);

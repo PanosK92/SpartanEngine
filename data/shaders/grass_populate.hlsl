@@ -31,6 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float grass_cull_half_height = 0.5f;
 static const float grass_cull_radius      = 1.5f;
 
+// the populate dispatch is sized from the same numbers on the cpu, so the expected instance count has
+// to sit below the range or the tail of the distribution gets clipped by the atomic and blinks
+#define GRASS_FILL_MARGIN 0.85f
+
 // gpu scatter placement (ghost of tsushima style), slot 0 is grass and the higher slots are micro
 // detail, pebbles and chips, the same ring machinery with a different mesh and a tighter reach
 //
@@ -52,6 +56,7 @@ static const float grass_cull_radius      = 1.5f;
 //   bits 8-11  prop mask channel, 0 grass, 1 trees, 2 rocks
 //   bits 12-19 packed instance scale at the small end of the size range
 //   bits 20-27 packed instance scale at the large end
+//   bits 28-31 random lean away from the surface normal, in units of three degrees
 // camera xz comes from buffer_frame
 // terrain height is r32 local y bound to tex (t7), material_index bitcast is the entity y
 // biome_min arrives asfloat(is_transparent), negative disables the gate
@@ -204,6 +209,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     uint  mask_channel  = (packed_index >> 8)  & 0xFu;
     float scale_01_min  = float((packed_index >> 12) & 0xFFu) / 255.0f;
     float scale_01_max  = float((packed_index >> 20) & 0xFFu) / 255.0f;
+    float tilt_deg      = float((packed_index >> 28) & 0xFu) * (45.0f / 15.0f);
 
     // the counters and the indirect args are laid out slot major, matches renderer_gpu_scatter_arg_index
     uint  count_index   = slot_index * 3u + lod_index;
@@ -231,7 +237,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         inner_radius * inner_radius
     );
     float cells_in_ring  = ring_area / max(cell_size * cell_size, 1e-6f);
-    uint  blades_per_cell = max(1u, (uint)floor(float(max_instances_per_lod) / max(cells_in_ring, 1.0f)));
+
+    // the budget divided by the cells is rarely a whole number, flooring it threw the remainder away
+    // and turned the fill slider into a staircase, 1 instance per cell then 2 with nothing in between.
+    // ceil the count and carry the fraction as a keep probability instead, so density is continuous
+    // and two rings with different cell sizes can be tuned to the same instances per square metre
+    float per_cell        = float(max_instances_per_lod) * GRASS_FILL_MARGIN / max(cells_in_ring, 1.0f);
+    uint  blades_per_cell = max(1u, (uint)ceil(per_cell));
+    float cell_keep       = saturate(per_cell / float(blades_per_cell));
     if (dispatch_thread_id.x >= cells_per_axis ||
         dispatch_thread_id.y >= cells_per_axis ||
         dispatch_thread_id.z >= blades_per_cell)
@@ -316,7 +329,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         ring_radius,
         distance_warped
     );
-    float lod_weight = fade_in * fade_out;
+    float lod_weight = fade_in * fade_out * cell_keep;
     float lod_random = hash_unit(h0 ^ 0xa511e9b3u);
     if (lod_random > lod_weight)
     {
@@ -398,6 +411,21 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // one roll inside the authored size range, the ends arrive already packed the way the raster
     // unpacks them so no size ever leaves the range the layer asked for
     float scale_01 = lerp(scale_01_min, scale_01_max, sc);
+
+    // a stone that has come to rest is not flat on the ground. the lean goes on after the slope gate so
+    // it cannot smuggle an instance onto a cliff, and the mesh sits low enough that the raised edge
+    // stays seated. this is most of what separates a field of gravel from a field of stickers
+    if (tilt_deg > 0.0f)
+    {
+        float2 lean = float2(
+            hash_unit(h0 ^ 0x1b56c4e9u),
+            hash_unit(h0 ^ 0x632be5abu)
+        ) * 2.0f - 1.0f;
+
+        surface_normal = normalize(
+            surface_normal + float3(lean.x, 0.0f, lean.y) * tan(radians(tilt_deg))
+        );
+    }
 
     // atomic-allocate a slot inside this lod's section, bail out cleanly once full
     // blades_per_cell was sized from cells_in_ring with floor() so the upper bound on writes is

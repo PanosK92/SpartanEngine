@@ -157,6 +157,9 @@ namespace spartan
                    slot.heightmap->GetResourceState() == ResourceState::PreparedForGpu;
         }
 
+        // has to match GRASS_FILL_MARGIN in grass_populate.hlsl
+        const float gpu_scatter_fill_margin = 0.85f;
+
         // the populate dispatch stops writing at this many instances, so the args builder has to clamp
         // the atomic counter against the same number or the raster reads instances nobody wrote
         uint32_t gpu_scatter_lod_cap(const uint32_t slot, const uint32_t lod, const float density)
@@ -1202,11 +1205,16 @@ namespace spartan
                     terrain_mapping.y += terrain_offset.z;
                 }
 
-                // the populate shader has no push constant floats left, so the slot, the mask channel
-                // and the two ends of the size range travel in the spare bits of draw_index
+                // the populate shader has no push constant floats left, so the slot, the mask channel,
+                // the two ends of the size range and the lean travel in the bits of draw_index
                 const uint32_t mask_channel = std::min(state.params.mask_channel, 3u);
                 const uint32_t scale_min    = pack_instance_scale(std::min(state.params.size_min, state.params.size_max));
                 const uint32_t scale_max    = pack_instance_scale(std::max(state.params.size_min, state.params.size_max));
+                // four bits left, enough for the lean, one degree of resolution is beyond what a chip
+                // a few centimetres across can show
+                const uint32_t tilt         = static_cast<uint32_t>(
+                    clamp(state.params.tilt_deg, 0.0f, 45.0f) * (15.0f / 45.0f) + 0.5f
+                );
 
                 for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                 {
@@ -1235,11 +1243,12 @@ namespace spartan
                     // heightmap is r32 local y, material_index bitcast is the entity y offset
                     // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
                     m_pcb_pass_cpu.is_transparent = *reinterpret_cast<const uint32_t*>(&biome_min);
-                    m_pcb_pass_cpu.draw_index     = lod              |
-                                                    (slot     << 4)  |
-                                                    (mask_channel << 8) |
-                                                    (scale_min << 12) |
-                                                    (scale_max << 20);
+                    m_pcb_pass_cpu.draw_index     = lod                 |
+                                                    (slot         << 4)  |
+                                                    (mask_channel << 8)  |
+                                                    (scale_min    << 12) |
+                                                    (scale_max    << 20) |
+                                                    (tilt         << 28);
                     m_pcb_pass_cpu.material_index = *reinterpret_cast<const uint32_t*>(&terrain_entity_y);
                     m_pcb_pass_cpu.v[0]  = cell_size;
                     m_pcb_pass_cpu.v[1]  = ring_radius;
@@ -1271,14 +1280,13 @@ namespace spartan
                     const float cells_in_ring =
                         ring_area /
                         (cell_size * cell_size);
+                    // mirrors grass_populate.hlsl, the fraction it drops here it carries as a keep
+                    // probability instead, so this only decides how many threads a cell gets
+                    const float per_cell = static_cast<float>(lod_cap) * gpu_scatter_fill_margin /
+                                           std::max(cells_in_ring, 1.0f);
                     const uint32_t blades_per_cell = std::max(
                         1u,
-                        static_cast<uint32_t>(
-                            std::floor(
-                                static_cast<float>(lod_cap) /
-                                std::max(cells_in_ring, 1.0f)
-                            )
-                        )
+                        static_cast<uint32_t>(std::ceil(per_cell))
                     );
                     RHI_CommandList::Dispatch(groups, groups, blades_per_cell);
                 }
@@ -1408,11 +1416,11 @@ namespace spartan
             {
                 const uint32_t lod_base = renderer_gpu_scatter_base(slot, lod);
 
-                // values[0] = (0, 0, lod_base, lod_index), the scatter vs reads lod_base from values[0].z
+                // values[0] = (uv_patch, 0, lod_base, lod_index), the scatter vs reads lod_base from values[0].z
                 m_pcb_pass_cpu.draw_index     = 0;
                 m_pcb_pass_cpu.is_transparent = 0;
                 m_pcb_pass_cpu.material_index = state.material->GetIndex();
-                m_pcb_pass_cpu.v[0] = 0.0f;
+                m_pcb_pass_cpu.v[0] = state.params.uv_patch;
                 m_pcb_pass_cpu.v[1] = 0.0f;
                 m_pcb_pass_cpu.v[2] = static_cast<float>(lod_base);
                 m_pcb_pass_cpu.v[3] = static_cast<float>(lod);

@@ -450,10 +450,12 @@ namespace spartan
                 // a chip is a solid, none of the foliage flags apply, and it is only ever this grey
                 // when the layer has no material folder to take its maps from
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::Back));
-                material->SetProperty(MaterialProperty::Roughness, 0.9f);
-                material->SetProperty(MaterialProperty::ColorR, 0.40f);
-                material->SetProperty(MaterialProperty::ColorG, 0.38f);
-                material->SetProperty(MaterialProperty::ColorB, 0.36f);
+                material->SetProperty(MaterialProperty::Roughness, 0.82f);
+                // stone is far darker than it looks, a light grey chip reads as painted plastic against
+                // any ground, this is roughly the albedo of dry granite
+                material->SetProperty(MaterialProperty::ColorR, 0.18f);
+                material->SetProperty(MaterialProperty::ColorG, 0.17f);
+                material->SetProperty(MaterialProperty::ColorB, 0.16f);
                 material->SetObjectName("pebble");
                 material->SetResourceName("pebble" + string(EXTENSION_MATERIAL));
             }
@@ -769,6 +771,19 @@ namespace spartan
             {
                 material = resolve_folder_material(layer.material_folder);
             }
+            if (!material && layer.kind == TerrainScatterKind::Detail)
+            {
+                // a chip only needs stone, so any of the ground materials will do, this is what keeps
+                // micro detail textured on a project that never made a gravel folder
+                for (const char* folder : { "project/materials/rock", "project/materials/dirt" })
+                {
+                    material = resolve_folder_material(folder);
+                    if (material)
+                    {
+                        break;
+                    }
+                }
+            }
             if (!material)
             {
                 // a generated mesh carries no imported material, the flags that make a blade bend or a
@@ -800,6 +815,11 @@ namespace spartan
             // the gpu rolls one size per instance the same way the cpu placer does
             params.size_min = layer.mesh_scale * min(layer.size_min, layer.size_max);
             params.size_max = layer.mesh_scale * max(layer.size_min, layer.size_max);
+            // a generated chip has a planar uv over the whole texture, so without this every chip in the
+            // field is stamped with the same image of a whole gravel bed and the field reads as plastic
+            const bool textured = material->HasTextureOfType(MaterialTextureType::Color);
+            params.uv_patch     = (layer.kind == TerrainScatterKind::Detail && textured) ? 0.22f : 0.0f;
+            params.tilt_deg     = layer.kind == TerrainScatterKind::Detail ? 18.0f : 0.0f;
             params.terrain_world_mapping = terrain->GetWorldMapping();
 
             const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());

@@ -325,29 +325,31 @@ namespace spartan
             TerrainScatterLayer& s   = layers[5];
             s.name                   = "pebbles";
             s.mesh_path              = "builtin/pebble";
-            // no folder, the builtin stone tint is enough at this size, point it at a rock material
-            // folder from the editor if the world has one
-            s.material_folder        = "";
+            // the same folder the gravel surface layer reads, so a chip and the ground it sits on are
+            // made of the same stone. falls back to rock, then to a flat tint, if the folder is missing
+            s.material_folder        = "project/materials/gravel";
             s.enabled                = true;
             s.kind                   = TerrainScatterKind::Detail;
-            // fill times the per ring budget has to stay above the cell count of the ring, one chip per
-            // cell is the look, and the reach is short because a chip is subpixel past forty metres
-            s.density                = 0.10f;
+            // fill spends the whole per ring budget, the spacing below is what sets the density, and the
+            // three rings are tuned to about 5, 2.6 and 1.1 chips per square metre. the reach carries to
+            // ninety metres, not because a chip is legible there but because the last ring has to fade
+            // out somewhere and a chip is under three pixels past fifty
+            s.density                = 1.0f;
             s.slope_max              = 45.0f;
             s.height_min             = 0.5f;
             s.height_max             = 100000.0f;
             // chips belong on every surface, gating them on a biome channel would leave the meadows bare
             s.mask_channel           = -1;
             s.mesh_scale             = 0.11f;
-            s.size_min               = 0.55f;
-            s.size_max               = 1.70f;
-            s.render_distance        = 45.0f;
-            s.grass_ring_radius[0]   = 8.0f;
-            s.grass_ring_radius[1]   = 20.0f;
-            s.grass_ring_radius[2]   = 45.0f;
-            s.grass_cell_size[0]     = 0.35f;
-            s.grass_cell_size[1]     = 0.80f;
-            s.grass_cell_size[2]     = 1.60f;
+            s.size_min               = 0.45f;
+            s.size_max               = 1.80f;
+            s.render_distance        = 0.0f;
+            s.grass_ring_radius[0]   = 18.0f;
+            s.grass_ring_radius[1]   = 45.0f;
+            s.grass_ring_radius[2]   = 90.0f;
+            s.grass_cell_size[0]     = 0.45f;
+            s.grass_cell_size[1]     = 0.62f;
+            s.grass_cell_size[2]     = 0.95f;
             s.flags                  = TerrainScatterFlags_None;
         }
 

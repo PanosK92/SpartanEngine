@@ -107,6 +107,26 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     _draw.transform_previous = _draw.transform;
     _draw.material_index     = buffer_pass.material_index;
     _draw.uv_tiling          = float2(1.0f, 1.0f);
+
+    // a solid detail instance, a stone chip, has a planar uv that covers the whole material, so every
+    // one of them would carry an identical copy of the texture. give each a small random patch of it
+    // instead and a field of chips reads as many different pieces of the same stone
+    float uv_patch = buffer_pass.values[0].x;
+    if (uv_patch > 0.0f)
+    {
+        uint h = (asuint(gi.pos_x) * 73856093u) ^
+                 (asuint(gi.pos_z) * 19349663u) ^
+                 (gi.normal_yaw_scale * 83492791u);
+        h ^= h >> 16;
+        h *= 0x7feb352du;
+        h ^= h >> 15;
+
+        _draw.uv_tiling = float2(uv_patch, uv_patch);
+        _draw.uv_offset = float2(
+            float(h & 0xFFFFu),
+            float((h >> 16) & 0xFFFFu)
+        ) * (1.0f / 65535.0f) * (1.0f - uv_patch);
+    }
 #else
 gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
 {
