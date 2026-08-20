@@ -131,14 +131,20 @@ namespace spartan
 
             bool                  bindless_materials_dirty = true;
 
-            bool                  grass_enabled    = false;
-            Mesh*                 grass_mesh       = nullptr;
-            Material*             grass_material   = nullptr;
-            RHI_Texture*          grass_heightmap  = nullptr;
-            RHI_Texture*          grass_prop_mask  = nullptr;
-            ProceduralGrassParams grass_params;
-            std::array<Sb_IndirectDrawArgs, renderer_max_grass_lod_count> grass_indirect_args_static{};
-            bool                  grass_args_baked = false;
+            // one gpu scatter slot, slot 0 is grass and the rest are micro detail, they all share the
+            // instance pool and the populate pass, only the mesh, the material and the rules differ
+            struct GpuScatterSlot
+            {
+                bool             enabled    = false;
+                Mesh*            mesh       = nullptr;
+                Material*        material   = nullptr;
+                RHI_Texture*     heightmap  = nullptr;
+                RHI_Texture*     prop_mask  = nullptr;
+                GpuScatterParams params;
+                std::array<Sb_IndirectDrawArgs, renderer_max_gpu_scatter_lods> indirect_args_static{};
+                bool             args_baked = false;
+            };
+            std::array<GpuScatterSlot, renderer_max_gpu_scatter_slots> gpu_scatter{};
 
             bool          terrain_enabled = false;
             TerrainParams terrain;

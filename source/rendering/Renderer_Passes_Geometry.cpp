@@ -146,6 +146,40 @@ namespace spartan
             mapping_out.y += offset_out.z;
         }
 
+        // a slot only dispatches once its mesh is in the geometry buffer and the height map it samples
+        // has reached the gpu, otherwise the populate compute reads a freed or half uploaded resource
+        bool gpu_scatter_ready(const Renderer::PassState::GpuScatterSlot& slot)
+        {
+            return slot.enabled                &&
+                   slot.mesh                   &&
+                   slot.heightmap              &&
+                   slot.heightmap->GetRhiResource() &&
+                   slot.heightmap->GetResourceState() == ResourceState::PreparedForGpu;
+        }
+
+        // the populate dispatch stops writing at this many instances, so the args builder has to clamp
+        // the atomic counter against the same number or the raster reads instances nobody wrote
+        uint32_t gpu_scatter_lod_cap(const uint32_t slot, const uint32_t lod, const float density)
+        {
+            const float scaled = static_cast<float>(renderer_gpu_scatter_cap(slot, lod)) *
+                                 clamp(density, 0.01f, 1.0f);
+
+            return max(1u, static_cast<uint32_t>(floorf(scaled)));
+        }
+
+        // compose_instance_transform unpacks the instance scale logarithmically over 0.01 to 100, so a
+        // world scale has to travel as its position inside that curve
+        uint32_t pack_instance_scale(const float scale)
+        {
+            const float scale_min_log2 = -6.643856f;
+            const float scale_max_log2 =  6.643856f;
+
+            const float normalized = (log2f(clamp(scale, 0.01f, 100.0f)) - scale_min_log2) /
+                                     (scale_max_log2 - scale_min_log2);
+
+            return static_cast<uint32_t>(clamp(normalized, 0.0f, 1.0f) * 255.0f + 0.5f);
+        }
+
         void bind_mesh_shader_geometry()
         {
             RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::indirect_draw_data), Renderer::GetBuffer(Renderer_Buffer::IndirectDrawData));
@@ -1074,80 +1108,110 @@ namespace spartan
 
     void Renderer::Pass_Grass_Populate()
     {
-        // fills the per-lod sections of grass_instances around the camera, then bakes instance_count into the indirect args
+        // fills the per-slot per-lod sections of grass_instances around the camera, then bakes
+        // instance_count into the indirect args, slot 0 is grass and the higher slots are micro detail
 
-        if (!m_pass_state.grass_enabled || !m_pass_state.grass_mesh || !m_pass_state.grass_heightmap)
+        bool any_ready = false;
+        for (const PassState::GpuScatterSlot& slot : m_pass_state.gpu_scatter)
+        {
+            any_ready = any_ready || gpu_scatter_ready(slot);
+        }
+        if (!any_ready)
         {
             return;
         }
 
-        if (!m_pass_state.grass_heightmap->GetRhiResource() ||
-            m_pass_state.grass_heightmap->GetResourceState() != ResourceState::PreparedForGpu)
+        // camera position used as the anchor for the ring grid, the populate shader snaps it to the cell grid
+        Camera* camera = World::GetCamera();
+        if (!camera || !camera->GetEntity())
         {
             return;
         }
 
-        RHI_CommandList::BeginPass("grass_populate");
+        RHI_CommandList::BeginPass("gpu_scatter_populate");
         {
             RHI_Buffer* buf_instances = GetBuffer(Renderer_Buffer::GrassInstances);
             RHI_Buffer* buf_count     = GetBuffer(Renderer_Buffer::GrassCount);
             RHI_Buffer* buf_args      = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
 
-            // bake static portions of the per-lod indirect args buffer once (or whenever the mesh layout changes)
-            // these never change frame to frame so a single Update covers the lifetime of EnableProceduralGrass
-            if (!m_pass_state.grass_args_baked)
+            // bake static portions of the per-lod indirect args once per slot (or whenever its mesh changes)
+            // these never change frame to frame so a single Update covers the lifetime of the slot
+            for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
             {
-                RHI_CommandList::UpdateBuffer(buf_args, 0, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs) * renderer_max_grass_lod_count), &m_pass_state.grass_indirect_args_static[0], false);
-                m_pass_state.grass_args_baked = true;
+                PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+                if (!gpu_scatter_ready(state) || state.args_baked)
+                {
+                    continue;
+                }
+
+                RHI_CommandList::UpdateBuffer(
+                    buf_args,
+                    renderer_gpu_scatter_arg_index(slot, 0) * static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
+                    static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs) * renderer_max_gpu_scatter_lods),
+                    &state.indirect_args_static[0],
+                    false
+                );
+                state.args_baked = true;
             }
 
-            // clear the per lod counters on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops its grass for a frame
-            uint32_t zero_counts[renderer_max_grass_lod_count] = { 0u, 0u, 0u };
+            // clear every counter on the gpu timeline, a mapped cpu memcpy races the in flight previous frame and drops a frame of scatter
+            uint32_t zero_counts[renderer_max_gpu_scatter_args] = {};
             RHI_CommandList::UpdateBuffer(buf_count, 0, sizeof(zero_counts), &zero_counts[0], false);
 
-            // camera position used as the anchor for the ring grid, the populate shader snaps it to the cell grid
-            Camera* camera = World::GetCamera();
-            if (!camera || !camera->GetEntity())
-            {
-                RHI_CommandList::EndPass();
-                return;
-            }
+            // the terrain frame is shared, every slot scatters onto the same surface
+            Vector3 terrain_offset;
+            Vector4 terrain_mapping_live;
+            get_grass_terrain_frame_state(terrain_offset, terrain_mapping_live);
+            const float terrain_entity_y = terrain_offset.y;
 
-            // populate dispatches, one per lod ring, each fills its slot in grass_instances and grass_count
+            // populate dispatches, one per slot per lod ring, each fills its own range of grass_instances
+            RHI_CommandList::SetShader(GetShader(Renderer_Shader::grass_populate_c));
+
+            for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
             {
-                RHI_CommandList::SetShader(GetShader(Renderer_Shader::grass_populate_c));
+                const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+                if (!gpu_scatter_ready(state))
+                {
+                    continue;
+                }
 
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_count), buf_count);
                 // the populate shader samples the terrain heightmap through the tex slot
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), m_pass_state.grass_heightmap);
-                // occluder hi-z on tex2 drives the per-blade frustum + occlusion cull, built by Pass_HiZ which runs earlier this frame
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex), state.heightmap);
+                // occluder hi-z on tex2 drives the per-instance frustum + occlusion cull, built by Pass_HiZ which runs earlier this frame
                 RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex2), GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz));
-                // biome prop mask on tex3, r = grass suitability, black means no grass
-                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), m_pass_state.grass_prop_mask ?
-                        m_pass_state.grass_prop_mask :
+                // biome prop mask on tex3, the slot picks the channel, black means nothing is suitable
+                RHI_CommandList::SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::tex3), state.prop_mask ?
+                        state.prop_mask :
                         GetStandardTexture(Renderer_StandardTexture::Black));
 
-                const float max_slope_cos = cosf(m_pass_state.grass_params.max_slope_deg * (math::pi / 180.0f));
-                // no mask used to disable the gate and fill the world, keep it on and fail closed
-                const float biome_min = m_pass_state.grass_prop_mask ?
-                    m_pass_state.grass_params.biome_min_weight : 2.0f;
+                const float max_slope_cos = cosf(state.params.max_slope_deg * (math::pi / 180.0f));
+                // a negative weight is the slot saying it wants no biome gate at all, which is what micro
+                // detail asks for. a slot that does want one and has no mask fails closed instead of
+                // filling the world
+                const float biome_min = state.params.biome_min_weight < 0.0f ?
+                    -1.0f :
+                    (state.prop_mask ? state.params.biome_min_weight : 2.0f);
 
-                Vector3 terrain_offset;
-                Vector4 terrain_mapping;
-                get_grass_terrain_frame_state(terrain_offset, terrain_mapping);
+                Vector4 terrain_mapping = terrain_mapping_live;
                 if (terrain_mapping.z == 0.0f && terrain_mapping.w == 0.0f)
                 {
-                    terrain_mapping = m_pass_state.grass_params.terrain_world_mapping;
+                    terrain_mapping = state.params.terrain_world_mapping;
                     terrain_mapping.x += terrain_offset.x;
                     terrain_mapping.y += terrain_offset.z;
                 }
-                const float terrain_entity_y = terrain_offset.y;
 
-                for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
+                // the populate shader has no push constant floats left, so the slot, the mask channel
+                // and the two ends of the size range travel in the spare bits of draw_index
+                const uint32_t mask_channel = std::min(state.params.mask_channel, 3u);
+                const uint32_t scale_min    = pack_instance_scale(std::min(state.params.size_min, state.params.size_max));
+                const uint32_t scale_max    = pack_instance_scale(std::max(state.params.size_min, state.params.size_max));
+
+                for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
                 {
-                    const float cell_size   = m_pass_state.grass_params.cell_size_m[lod];
-                    const float ring_radius = m_pass_state.grass_params.ring_radii_m[lod];
+                    const float cell_size   = state.params.cell_size_m[lod];
+                    const float ring_radius = state.params.ring_radii_m[lod];
                     if (cell_size <= 0.0f || ring_radius <= 0.0f)
                     {
                         continue;
@@ -1156,21 +1220,13 @@ namespace spartan
                     const float inner_radius = lod == 0 ?
                         0.0f :
                         std::min(
-                            m_pass_state.grass_params.ring_radii_m[lod - 1],
+                            state.params.ring_radii_m[lod - 1],
                             ring_radius
                         );
-                    // grass_instances is partitioned by lod, lod_base is the cumulative prefix sum
-                    // of the per-lod caps so each ring writes into its own contiguous slot
-                    const uint32_t lod_base   = renderer_grass_lod_base(lod);
-                    const uint32_t lod_cap    = std::max(
-                        1u,
-                        static_cast<uint32_t>(
-                            std::floor(
-                                static_cast<float>(renderer_max_grass_per_lod[lod]) *
-                                clamp(m_pass_state.grass_params.density, 0.05f, 1.0f)
-                            )
-                        )
-                    );
+                    // grass_instances is partitioned by slot and lod, the base is the cumulative prefix
+                    // sum of every cap before it so each ring writes into its own contiguous range
+                    const uint32_t lod_base   = renderer_gpu_scatter_base(slot, lod);
+                    const uint32_t lod_cap    = gpu_scatter_lod_cap(slot, lod, state.params.density);
 
                     // layout mirrors grass_populate.hlsl values[0..2]
                     // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
@@ -1179,14 +1235,18 @@ namespace spartan
                     // heightmap is r32 local y, material_index bitcast is the entity y offset
                     // is_transparent bitcast carries biome_min_weight, negative disables the mask gate
                     m_pcb_pass_cpu.is_transparent = *reinterpret_cast<const uint32_t*>(&biome_min);
-                    m_pcb_pass_cpu.draw_index     = lod;
+                    m_pcb_pass_cpu.draw_index     = lod              |
+                                                    (slot     << 4)  |
+                                                    (mask_channel << 8) |
+                                                    (scale_min << 12) |
+                                                    (scale_max << 20);
                     m_pcb_pass_cpu.material_index = *reinterpret_cast<const uint32_t*>(&terrain_entity_y);
                     m_pcb_pass_cpu.v[0]  = cell_size;
                     m_pcb_pass_cpu.v[1]  = ring_radius;
                     m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
                     m_pcb_pass_cpu.v[3]  = static_cast<float>(lod_cap);
-                    m_pcb_pass_cpu.v[4]  = m_pass_state.grass_params.height_min;
-                    m_pcb_pass_cpu.v[5]  = m_pass_state.grass_params.height_max;
+                    m_pcb_pass_cpu.v[4]  = state.params.height_min;
+                    m_pcb_pass_cpu.v[5]  = state.params.height_max;
                     m_pcb_pass_cpu.v[6]  = max_slope_cos;
                     m_pcb_pass_cpu.v[7]  = inner_radius;
                     m_pcb_pass_cpu.v[8]  = terrain_mapping.x;
@@ -1195,7 +1255,8 @@ namespace spartan
                     m_pcb_pass_cpu.v[11] = terrain_mapping.w;
                     RHI_CommandList::PushConstants(m_pcb_pass_cpu);
 
-                    // one cell per thread, dispatch z carries the blade index, the shader recomputes blades_per_cell so both formulas must match
+                    // one cell per thread, dispatch z carries the instance index inside the cell, the
+                    // shader recomputes instances_per_cell so both formulas must match
                     const uint32_t cells_per_axis =
                         2u *
                         static_cast<uint32_t>(
@@ -1223,7 +1284,7 @@ namespace spartan
                 }
             }
 
-            // args build, reads grass_count and writes grass_indirect_args[lod].instance_count
+            // args build, reads grass_count and writes the instance_count of this slot's three entries
             {
                 RHI_CommandList::SetShader(
                     GetShader(Renderer_Shader::grass_indirect_args_c),
@@ -1233,14 +1294,29 @@ namespace spartan
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_count), buf_count);
                 RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_indirect_args), buf_args);
 
-                // values[0] = (cap_lod0, cap_lod1, cap_lod2, lod_count), the args shader clamps its atomic counter against its own slot
-                static_assert(renderer_max_grass_lod_count == 3, "grass_indirect_args push constant layout assumes 3 lods");
-                m_pcb_pass_cpu.material_index = 0;
-                m_pcb_pass_cpu.v[0] = static_cast<float>(renderer_max_grass_per_lod[0]);
-                m_pcb_pass_cpu.v[1] = static_cast<float>(renderer_max_grass_per_lod[1]);
-                m_pcb_pass_cpu.v[2] = static_cast<float>(renderer_max_grass_per_lod[2]);
-                m_pcb_pass_cpu.v[3] = static_cast<float>(renderer_max_grass_lod_count);
-                RHI_CommandList::Dispatch(1, 1, 1);
+                // values[0] = (cap_lod0, cap_lod1, cap_lod2, lod_count), the args shader clamps each
+                // atomic counter against its own cap, draw_index is the first args entry of the slot
+                static_assert(renderer_max_gpu_scatter_lods == 3, "grass_indirect_args push constant layout assumes 3 lods");
+
+                for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+                {
+                    const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+                    if (!gpu_scatter_ready(state))
+                    {
+                        continue;
+                    }
+
+                    m_pcb_pass_cpu.material_index = 0;
+                    m_pcb_pass_cpu.is_transparent = 0;
+                    m_pcb_pass_cpu.draw_index     = renderer_gpu_scatter_arg_index(slot, 0);
+                    m_pcb_pass_cpu.v[0] = static_cast<float>(gpu_scatter_lod_cap(slot, 0, state.params.density));
+                    m_pcb_pass_cpu.v[1] = static_cast<float>(gpu_scatter_lod_cap(slot, 1, state.params.density));
+                    m_pcb_pass_cpu.v[2] = static_cast<float>(gpu_scatter_lod_cap(slot, 2, state.params.density));
+                    m_pcb_pass_cpu.v[3] = static_cast<float>(renderer_max_gpu_scatter_lods);
+                    RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+
+                    RHI_CommandList::Dispatch(1, 1, 1);
+                }
             }
         }
         RHI_CommandList::EndPass();
@@ -1248,31 +1324,27 @@ namespace spartan
 
     void Renderer::Pass_Grass_Draw()
     {
-        // procedural grass raster, one DrawIndexedIndirect per lod ring, runs once inside the g-buffer pass
-        // shares the geometry stage render pass, sets its own vertex shader that reads grass_instances
+        // gpu scatter raster, one DrawIndexedIndirect per slot per lod ring, runs once inside the
+        // g-buffer pass, shares the geometry stage render pass and sets its own vertex shader that
+        // reads grass_instances
 
-        if (!m_pass_state.grass_enabled || !m_pass_state.grass_mesh || !m_pass_state.grass_material)
+        bool any_ready = false;
+        for (const PassState::GpuScatterSlot& slot : m_pass_state.gpu_scatter)
+        {
+            any_ready = any_ready ||
+                        (gpu_scatter_ready(slot) &&
+                         slot.args_baked         &&
+                         slot.material           &&
+                         slot.mesh->GetVertexBuffer() &&
+                         slot.mesh->GetIndexBuffer());
+        }
+        if (!any_ready)
         {
             return;
         }
-
-        if (!m_pass_state.grass_args_baked)
-        {
-            return;
-        }
-
-        if (m_pass_state.grass_heightmap &&
-            (!m_pass_state.grass_heightmap->GetRhiResource() ||
-             m_pass_state.grass_heightmap->GetResourceState() != ResourceState::PreparedForGpu))
-        {
-            return;
-        }
-
-        Mesh*     mesh     = m_pass_state.grass_mesh;
-        Material* material = m_pass_state.grass_material;
 
         // wait for the geometry buffer and the bindless material index, a zero index reads another render's textures
-        if (!mesh->GetVertexBuffer() || !mesh->GetIndexBuffer() || !GeometryBuffer::GetInstanceBuffer())
+        if (!GeometryBuffer::GetInstanceBuffer())
         {
             return;
         }
@@ -1303,35 +1375,52 @@ namespace spartan
 
         RHI_CommandList::SetPipelineState(pso);
 
-        // grass blades are double sided, the material flags carry this but the raster needs an explicit setting
+        // grass blades are double sided and a stone chip is closed, but both are cheap enough that one
+        // raster state for every slot is not worth a second pipeline
         RHI_CommandList::SetCullMode(RHI_CullMode::None);
 
-        // the grass vs never reads the per-instance stream, it is bound to the global instance buffer only to keep the vertex layout uniform
+        // the scatter vs never reads the per-instance stream, it is bound to the global instance buffer only to keep the vertex layout uniform
         RHI_Buffer* buf_instances     = GetBuffer(Renderer_Buffer::GrassInstances);
         RHI_Buffer* buf_args          = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
         RHI_Buffer* binding1_instance = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
         RHI_CommandList::SetBuffer(static_cast<uint32_t>(Renderer_BindingsUav::grass_instances), buf_instances);
-        RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
-        RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
 
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
 
-        for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
         {
-            const uint32_t lod_base = renderer_grass_lod_base(lod);
+            const PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
+            if (!gpu_scatter_ready(state) || !state.args_baked || !state.material)
+            {
+                continue;
+            }
 
-            // values[0] = (0, 0, lod_base, lod_index), the grass vs reads lod_base from values[0].z
-            m_pcb_pass_cpu.draw_index     = 0;
-            m_pcb_pass_cpu.is_transparent = 0;
-            m_pcb_pass_cpu.material_index = material->GetIndex();
-            m_pcb_pass_cpu.v[0] = 0.0f;
-            m_pcb_pass_cpu.v[1] = 0.0f;
-            m_pcb_pass_cpu.v[2] = static_cast<float>(lod_base);
-            m_pcb_pass_cpu.v[3] = static_cast<float>(lod);
-            RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+            Mesh* mesh = state.mesh;
+            if (!mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
+            {
+                continue;
+            }
 
-            // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost
-            RHI_CommandList::DrawIndexedIndirect(buf_args, lod * arg_stride);
+            RHI_CommandList::SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
+            RHI_CommandList::SetBufferIndex(mesh->GetIndexBuffer());
+
+            for (uint32_t lod = 0; lod < renderer_max_gpu_scatter_lods; lod++)
+            {
+                const uint32_t lod_base = renderer_gpu_scatter_base(slot, lod);
+
+                // values[0] = (0, 0, lod_base, lod_index), the scatter vs reads lod_base from values[0].z
+                m_pcb_pass_cpu.draw_index     = 0;
+                m_pcb_pass_cpu.is_transparent = 0;
+                m_pcb_pass_cpu.material_index = state.material->GetIndex();
+                m_pcb_pass_cpu.v[0] = 0.0f;
+                m_pcb_pass_cpu.v[1] = 0.0f;
+                m_pcb_pass_cpu.v[2] = static_cast<float>(lod_base);
+                m_pcb_pass_cpu.v[3] = static_cast<float>(lod);
+                RHI_CommandList::PushConstants(m_pcb_pass_cpu);
+
+                // an empty ring bakes instance_count 0 into the args so the gpu skips it at near-zero cost
+                RHI_CommandList::DrawIndexedIndirect(buf_args, renderer_gpu_scatter_arg_index(slot, lod) * arg_stride);
+            }
         }
     }
 

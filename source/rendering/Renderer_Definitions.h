@@ -94,20 +94,52 @@ namespace spartan
     // opaque survivors grow from 0 and alpha tested from here, so the prepass can draw the opaque half with no pixel shader
     const uint32_t renderer_visible_triangles_half = renderer_max_visible_triangles / 2;
 
-    // per-lod grass blade cap, visible density is cap / ring_area so each lod is tuned on its own
-    const uint32_t renderer_max_grass_lod_count                                              = 3;
-    constexpr std::array<uint32_t, renderer_max_grass_lod_count> renderer_max_grass_per_lod  = { 384u * 1024u, 512u * 1024u, 512u * 1024u };
-    const uint32_t renderer_max_grass_instances                                              = renderer_max_grass_per_lod[0] + renderer_max_grass_per_lod[1] + renderer_max_grass_per_lod[2];
-    // cumulative prefix sum of the per-lod caps, the populate shader writes into [base, base + cap)
-    constexpr uint32_t renderer_grass_lod_base(uint32_t lod)
+    // gpu scatter, the camera relative ring populate that owns no entities, slot 0 is grass and the
+    // rest are micro detail, pebbles and chips, the stuff that stops close ground reading as flat
+    // vertices. per-lod cap, visible density is cap / ring_area so each ring is tuned on its own
+    const uint32_t renderer_max_gpu_scatter_slots = 3;
+    const uint32_t renderer_max_gpu_scatter_lods  = 3;
+    constexpr std::array<std::array<uint32_t, renderer_max_gpu_scatter_lods>, renderer_max_gpu_scatter_slots>
+    renderer_max_gpu_scatter_per_lod =
+    {{
+        {{ 384u * 1024u, 512u * 1024u, 512u * 1024u }}, // grass, a blade every few centimetres out to half a kilometre
+        {{  32u * 1024u,  24u * 1024u,  24u * 1024u }}, // micro detail, a short reach so the cap only has to cover a few thousand cells
+        {{  32u * 1024u,  24u * 1024u,  24u * 1024u }}
+    }};
+
+    constexpr uint32_t renderer_gpu_scatter_cap(uint32_t slot, uint32_t lod)
+    {
+        return renderer_max_gpu_scatter_per_lod[slot][lod];
+    }
+
+    // cumulative prefix sum over every slot and lod, the populate shader writes into [base, base + cap)
+    constexpr uint32_t renderer_gpu_scatter_base(uint32_t slot, uint32_t lod)
     {
         uint32_t base = 0u;
-        for (uint32_t i = 0u; i < lod; i++)
+        for (uint32_t s = 0u; s < renderer_max_gpu_scatter_slots; s++)
         {
-            base += renderer_max_grass_per_lod[i];
+            for (uint32_t l = 0u; l < renderer_max_gpu_scatter_lods; l++)
+            {
+                if (s == slot && l == lod)
+                {
+                    return base;
+                }
+                base += renderer_max_gpu_scatter_per_lod[s][l];
+            }
         }
         return base;
     }
+
+    // the counter and the indirect args buffers hold one entry per slot per lod, laid out slot major
+    constexpr uint32_t renderer_gpu_scatter_arg_index(uint32_t slot, uint32_t lod)
+    {
+        return slot * renderer_max_gpu_scatter_lods + lod;
+    }
+
+    const uint32_t renderer_max_gpu_scatter_args      = renderer_max_gpu_scatter_slots * renderer_max_gpu_scatter_lods;
+    const uint32_t renderer_max_gpu_scatter_instances =
+        renderer_gpu_scatter_base(renderer_max_gpu_scatter_slots - 1, renderer_max_gpu_scatter_lods - 1) +
+        renderer_gpu_scatter_cap(renderer_max_gpu_scatter_slots - 1, renderer_max_gpu_scatter_lods - 1);
 
     // fft ocean, square spectrum resolution and the max number of cascades packed as array slices
     const uint32_t renderer_ocean_resolution         = 512;
@@ -598,10 +630,10 @@ namespace spartan
         ParticleEmitter,
         ParticleVolumeDensity,
         ParticleVolumeColor,
-        // gpu procedural grass, allocated lazily by Renderer::EnableProceduralGrass
+        // gpu scatter, grass and micro detail, one range per slot per lod, fed by Renderer::EnableGpuScatter
         GrassInstances,            // ring buffer of GrassInstance entries
-        GrassCount,                // one uint per lod, bumped atomically by the populate shader
-        GrassIndirectArgs,         // one DrawIndexedIndirect entry per lod, written by the args build shader
+        GrassCount,                // one uint per slot per lod, bumped atomically by the populate shader
+        GrassIndirectArgs,         // one DrawIndexedIndirect entry per slot per lod, written by the args build shader
         Max
     };
 

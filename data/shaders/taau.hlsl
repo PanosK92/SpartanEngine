@@ -31,7 +31,7 @@ static const float box_widen_static   = 0.5f;
 static const float box_pad_relative   = 0.08f;
 static const float box_pad_absolute   = 0.002f;
 static const float box_pad_hdr        = 0.2f;
-// relative depth, same surface, jitter and precision only
+// relative depth tolerance for same surface
 static const float reuse_depth_tol = 0.02f;
 
 float3 tonemap_for_taa(float3 c)
@@ -109,8 +109,7 @@ float3 clip_to_aabb(float3 box_min, float3 box_max, float3 history)
     return (ratio > 1.0f) ? (center + offset * rcp(ratio)) : history;
 }
 
-// sky has no gbuffer velocity, rebuild camera rotation at infinity so history
-// tracks the dome instead of smearing into curved ghost trails
+// sky has no gbuffer velocity, rebuild camera rotation at infinity
 float2 compute_sky_velocity(float2 uv)
 {
     matrix vp_curr = pass_is_right_eye() ?
@@ -133,9 +132,7 @@ float2 compute_sky_velocity(float2 uv)
     return curr_clip.xy / max(curr_clip.w, 1e-6f) - prev_clip.xy / max(prev_clip.w, 1e-6f);
 }
 
-// expected previous depth of this surface versus what was actually stored,
-// sampled at the reprojected jittered uv so a still camera is not compared
-// against the wrong texel
+// compare expected previous depth of this surface against what was stored
 float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_max, float2 velocity_ndc)
 {
     float  depth_raw = tex_depth[px_render].r;
@@ -163,8 +160,7 @@ float compute_history_reuse(int2 px_render, float2 res_render, int2 px_render_ma
         return 1.0f;
     }
 
-    // mismatch, keep only if a still neighbour owns that previous depth, jitter
-    // across a static silhouette, a moving neighbour is an occluder that left
+    // mismatch, keep only if a still neighbour owns that previous depth
     static const float still_px = 0.5f;
     static const int2 n4[4] =
     {
@@ -230,7 +226,7 @@ float3 taau(uint2 px_out, float2 res_out)
     int2  closest_px    = center;
     float closest_depth = -1.0f;
 
-    // 3x3 neighborhood for reconstruct + near aabb, corners only for the wide clamp
+    // corners widen the near aabb built from the 3x3
     static const int2 wide_corners[4] =
     {
         int2(-2, -2), int2( 2, -2),
@@ -297,7 +293,7 @@ float3 taau(uint2 px_out, float2 res_out)
     bool current_valid = weight_sum > 0.0f;
     current_rgb_tm     = current_valid ? current_rgb_tm * rcp(weight_sum) : 0.0f.xxx;
 
-    // dilated velocity is for history uv only, the reuse test must use this pixel
+    // dilated velocity is for the history uv only, the reuse test uses this pixel
     float  center_depth    = tex_depth[center].r;
     bool   is_sky          = center_depth < 1e-4f;
     float2 velocity_center = tex_velocity[center].xy;
@@ -315,7 +311,6 @@ float3 taau(uint2 px_out, float2 res_out)
 
     if (!current_valid)
     {
-        // no current signal, try history at this uv
         float3 fallback = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_out, 0.0f).rgb;
         return saturate_16(max(fallback, 0.0f.xxx));
     }
@@ -328,7 +323,7 @@ float3 taau(uint2 px_out, float2 res_out)
     float motion_px = length(velocity_uv * res_out);
     float motion    = saturate(motion_px * rcp(motion_px_full));
 
-    // always test, a revealed sky pixel has no velocity so a motion gate would keep the ghost
+    // never gate on motion, a revealed sky pixel has no velocity
     float reuse = compute_history_reuse(center, active_render_f, px_render_max, velocity_center);
     if (reuse < 1.0f)
     {
@@ -345,8 +340,7 @@ float3 taau(uint2 px_out, float2 res_out)
     float3 rgb_min = lerp(rgb_min_near, rgb_min_wide, widen);
     float3 rgb_max = lerp(rgb_max_near, rgb_max_wide, widen);
 
-    // the reinhard curve compresses highlights, so a fixed tolerance in tonemapped space is a
-    // tiny tolerance in linear space, this restores a constant relative tolerance for bright taps
+    // reinhard compresses highlights, restore a constant relative tolerance for bright taps
     float  box_level = max3(rgb_max);
     float  pad_hdr   = box_pad_hdr * box_level * (1.0f - box_level);
     float3 box_pad   = max((rgb_max - rgb_min) * box_pad_relative, max(box_pad_absolute, pad_hdr));
@@ -358,8 +352,7 @@ float3 taau(uint2 px_out, float2 res_out)
 
     float blend_base = lerp(blend_static, blend_motion, motion);
 
-    // measured back in linear, a small wobble at the top of the reinhard curve is a large
-    // brightness swing and that is what makes saturated highlights read as unstable
+    // measure in linear, a small wobble at the top of the curve is a large brightness swing
     float curr_l    = max3(tonemap_for_taa_inv(current_rgb_tm));
     float hist_l    = max3(tonemap_for_taa_inv(history_clipped_tm));
     float disagree  = abs(curr_l - hist_l) * rcp(max(max(curr_l, hist_l), 0.1f));

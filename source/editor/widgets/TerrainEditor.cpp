@@ -1064,6 +1064,7 @@ void TerrainEditor::DrawLife(Terrain* terrain)
             TerrainScatterLayer& layer = layers[i];
             const bool active          = terrain->IsScatterActive(layer);
             const bool is_grass        = layer.kind == TerrainScatterKind::Grass;
+            const bool is_gpu          = layer.kind != TerrainScatterKind::Mesh;
 
             ImGui::PushID(static_cast<int>(i));
 
@@ -1102,14 +1103,15 @@ void TerrainEditor::DrawLife(Terrain* terrain)
             row_text(row, x, name, active ? ImGui::Style::color_text : ImGui::Style::color_text_muted);
             x += ImGui::CalcTextSize(name).x + design::spacing_md;
 
-            row_text(row, x, is_grass ? "gpu grass" : "mesh", ImGui::Style::color_text_muted);
+            const char* kind_text = is_grass ? "gpu grass" : (is_gpu ? "gpu detail" : "mesh");
+            row_text(row, x, kind_text, ImGui::Style::color_text_muted);
 
             char amount[32];
             if (layer.name.empty())
             {
                 amount[0] = '\0';
             }
-            else if (is_grass)
+            else if (is_gpu)
             {
                 snprintf(amount, sizeof(amount), "%.0f%% fill", layer.density * 100.0f);
             }
@@ -1157,11 +1159,12 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
     TerrainScatterLayer& layer                             = terrain->GetScatterLayers()[index];
     const array<TerrainLayerRule, terrain_layer_max>& rules = terrain->GetLayerRules();
     const bool is_grass                                    = layer.kind == TerrainScatterKind::Grass;
+    const bool is_gpu                                      = layer.kind != TerrainScatterKind::Mesh;
     bool changed                                           = false;
 
     ImGui::PushID(static_cast<int>(1000 + index));
 
-    card_begin("Asset", "what gets placed, gpu grass costs nothing per blade but only reads the grass channel of the biome mask");
+    card_begin("Asset", "what gets placed, the gpu kinds cost nothing per instance and nothing at all past their reach, but they own no entities so nothing can be clicked or collided with");
     {
         property_input_text("Name", &layer.name, false, "names the layer and the entities it spawns");
         if (ImGui::IsItemDeactivatedAfterEdit())
@@ -1170,14 +1173,18 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
         }
 
         uint32_t kind = static_cast<uint32_t>(layer.kind);
-        layout::begin_property("Kind", "mesh instances become entities under each tile, gpu grass is the ring populate pass");
-        if (segmented_control("kind", { "Mesh", "GPU Grass" }, &kind, ImGui::CalcItemWidth()))
+        layout::begin_property(
+            "Kind",
+            "mesh instances become entities under each tile. gpu grass and gpu detail are the same ring "
+            "populate pass around the camera, grass bends in the wind, detail is solid, pebbles and chips"
+        );
+        if (segmented_control("kind", { "Mesh", "GPU Grass", "GPU Detail" }, &kind, ImGui::CalcItemWidth()))
         {
             layer.kind = static_cast<TerrainScatterKind>(kind);
             changed    = true;
         }
 
-        if (property_path("Mesh", layer.mesh_path, "model to scatter, builtin/grass_blade and builtin/flower are the generated foliage meshes"))
+        if (property_path("Mesh", layer.mesh_path, "model to scatter, builtin/grass_blade, builtin/flower and builtin/pebble are the generated meshes"))
         {
             Browse([this, terrain, index](const string& path)
             {
@@ -1201,9 +1208,18 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
 
     card_begin("Amount", "density is resolution independent, changing the mesh resolution does not change the prop count");
     {
-        if (is_grass)
+        if (is_gpu)
         {
-            changed |= property_float("Fill", &layer.density, 0.01f, 0.05f, 1.0f, "how much of each grass cell gets a blade, 1 is the lush cap", "%.2f");
+            changed |= property_float(
+                "Fill",
+                &layer.density,
+                0.01f,
+                0.01f,
+                1.0f,
+                "how much of the per ring budget gets spent, 1 is the cap. spacing below is the other "
+                "half of this, a tighter cell is more instances for the same fill",
+                "%.2f"
+            );
         }
         else
         {
@@ -1303,7 +1319,7 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
     }
     card_end();
 
-    if (!is_grass)
+    if (!is_gpu)
     {
         card_begin("Grouping", "nature does not scatter evenly, a radius turns an even spread into patches");
         {
@@ -1312,19 +1328,31 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
             changed |= property_float("Raggedness", &layer.clump_raggedness, 0.01f, 0.0f, 1.0f, "0 is a clean circle, 1 is an organic blob edge", "%.2f");
         }
         card_end();
+    }
 
+    // grass sizes itself from the blade mesh, everything else earns its variety here, and for gpu
+    // detail this is the whole reason a chip reads as gravel instead of as a repeated prop
+    if (!is_grass)
+    {
         card_begin("Size", "one asset carries a whole stand when the size comes from the ground it stands on");
         {
             changed |= property_float("Mesh Scale", &layer.mesh_scale, 0.001f, 0.0001f, 1000.0f, "asset unit fix, the sizes below multiply this", "%.4f");
             changed |= property_range("Size", &layer.size_min, &layer.size_max, 0.0f, 8.0f, "the size range, relative to mesh scale", "%.2f");
-            changed |= property_float("From Slope", &layer.size_from_slope, 0.01f, 0.0f, 1.0f, "steeper ground picks nearer the top of the range instead of rolling at random", "%.2f");
-            changed |= property_float("From Altitude", &layer.size_from_altitude, 0.01f, 0.0f, 1.0f, "higher ground picks nearer the top of the range, this is what makes peaks carry the big ones", "%.2f");
-            changed |= property_float("Altitude Span", &layer.altitude_span, 1.0f, 16.0f, 2000.0f, "metres of climb over which from altitude reaches the top of the range", "%.0f m");
-            changed |= property_float("Giant Chance", &layer.giant_chance, 0.001f, 0.0f, 1.0f, "odds of a landmark sized instance, keep this tiny", "%.3f");
-            changed |= property_float("Giant Size", &layer.giant_size, 0.1f, 0.0f, 500.0f, "size of that landmark, 0 falls back to the top of the range", "%.2f");
+
+            if (!is_gpu)
+            {
+                changed |= property_float("From Slope", &layer.size_from_slope, 0.01f, 0.0f, 1.0f, "steeper ground picks nearer the top of the range instead of rolling at random", "%.2f");
+                changed |= property_float("From Altitude", &layer.size_from_altitude, 0.01f, 0.0f, 1.0f, "higher ground picks nearer the top of the range, this is what makes peaks carry the big ones", "%.2f");
+                changed |= property_float("Altitude Span", &layer.altitude_span, 1.0f, 16.0f, 2000.0f, "metres of climb over which from altitude reaches the top of the range", "%.0f m");
+                changed |= property_float("Giant Chance", &layer.giant_chance, 0.001f, 0.0f, 1.0f, "odds of a landmark sized instance, keep this tiny", "%.3f");
+                changed |= property_float("Giant Size", &layer.giant_size, 0.1f, 0.0f, 500.0f, "size of that landmark, 0 falls back to the top of the range", "%.2f");
+            }
         }
         card_end();
+    }
 
+    if (!is_gpu)
+    {
         card_begin("Seating", "how the prop meets the ground, this is the difference between placed and floating");
         {
             changed |= property_float("Align To Normal", &layer.align_to_normal, 0.01f, 0.0f, 1.0f, "0 stands the prop upright, 1 lies it flat on the slope. trunks want 0, boulders want 1", "%.2f");
@@ -1336,10 +1364,9 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
 
     card_begin("Rendering", "cost controls, these are the knobs to reach for when a layer is heavy");
     {
-        changed |= property_float("Render Distance", &layer.render_distance, 10.0f, 0.0f, 20000.0f, "metres, 0 is unlimited and lets the gpu cull decide", "%.0f m");
-
-        if (!is_grass)
+        if (!is_gpu)
         {
+            changed |= property_float("Render Distance", &layer.render_distance, 10.0f, 0.0f, 20000.0f, "metres, 0 is unlimited and lets the gpu cull decide", "%.0f m");
             changed |= property_float("Shadow Distance", &layer.shadow_distance, 5.0f, 0.0f, 5000.0f, "beyond this the instance stops casting a shadow", "%.0f m");
 
             auto flag_toggle = [&layer, &changed](const char* label, const uint32_t bit, const char* tooltip)
@@ -1368,7 +1395,7 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
                 snprintf(radius_label, sizeof(radius_label), "Ring %u Reach", ring);
                 snprintf(cell_label, sizeof(cell_label), "Ring %u Spacing", ring);
 
-                changed |= property_float(radius_label, &layer.grass_ring_radius[ring], 1.0f, 1.0f, 5000.0f, "how far this ring reaches from the camera", "%.0f m");
+                changed |= property_float(radius_label, &layer.grass_ring_radius[ring], 1.0f, 1.0f, 5000.0f, "how far this ring reaches from the camera, nothing exists past the last one", "%.0f m");
                 changed |= property_float(cell_label, &layer.grass_cell_size[ring], 0.01f, 0.05f, 16.0f, "spacing inside the ring, smaller is denser and heavier", "%.2f m");
             }
         }
@@ -1378,9 +1405,9 @@ void TerrainEditor::DrawLifeLayer(Terrain* terrain, const uint32_t index)
     card_begin("Result", "what the last scatter actually produced");
     {
         char text[64];
-        if (is_grass)
+        if (is_gpu)
         {
-            property_text("Instances", "decided on the gpu every frame", "gpu grass has no entities, the populate pass fills the rings each frame");
+            property_text("Instances", "decided on the gpu every frame", "a gpu layer has no entities, the populate pass fills the rings each frame");
         }
         else
         {

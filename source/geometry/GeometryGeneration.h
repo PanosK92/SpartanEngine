@@ -144,6 +144,8 @@ namespace spartan::geometry_generation
         float scale_start,
         float scale_end
     );
+    // a stone chip for micro detail scatter, flat shaded so it reads as rock at a few centimetres across
+    void generate_pebble(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t subdivisions, const uint32_t seed);
     void generate_foliage_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count);
     void generate_foliage_flower(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t stem_segment_count, const uint32_t petal_count, const uint32_t petal_segment_count);
 }

@@ -309,18 +309,19 @@ namespace spartan
         at(buffers, Renderer_Buffer::ParticleVolumeDensity) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count, nullptr, false, "particle_volume_density");
         at(buffers, Renderer_Buffer::ParticleVolumeColor)   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), particle_volume_voxel_count * 3, nullptr, false, "particle_volume_color");
 
+        // one pool shared by every gpu scatter slot, each slot and lod owns a contiguous range of it
         // GrassInstance keeps full float xyz, the shared packed format quantizes distant positions onto a visible lattice
         at(buffers, Renderer_Buffer::GrassInstances) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Instance, static_cast<uint32_t>(sizeof(Sb_GrassInstance)),
-            renderer_max_grass_instances, nullptr, false, "grass_instances"
+            renderer_max_gpu_scatter_instances, nullptr, false, "grass_instances"
         );
         at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
-            renderer_max_grass_lod_count, nullptr, true, "grass_count"
+            renderer_max_gpu_scatter_args, nullptr, true, "grass_count"
         );
         at(buffers, Renderer_Buffer::GrassIndirectArgs) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
-            renderer_max_grass_lod_count, nullptr, true, "grass_indirect_args"
+            renderer_max_gpu_scatter_args, nullptr, true, "grass_indirect_args"
         );
     }
 

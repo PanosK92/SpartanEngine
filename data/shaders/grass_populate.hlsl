@@ -24,13 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common_culling.hlsl"
 //============================
 
-// conservative world-space bound used to cull a blade against the camera frustum and the occluder hi-z
-// covers the tallest scaled blade plus wind sway and the intra-cell scatter, generous enough that no
-// on-screen blade is ever wrongly rejected so visible density stays identical
+// conservative world-space bound used to cull an instance against the camera frustum and the occluder
+// hi-z, covers the tallest scaled instance plus wind sway and the intra-cell scatter, generous enough
+// that nothing on screen is ever wrongly rejected so visible density stays identical. both are scaled
+// by the slot's largest instance, a stone chip a few centimetres across does not need a metre of slack
 static const float grass_cull_half_height = 0.5f;
 static const float grass_cull_radius      = 1.5f;
 
-// gpu procedural grass placement (ghost of tsushima style)
+// gpu scatter placement (ghost of tsushima style), slot 0 is grass and the higher slots are micro
+// detail, pebbles and chips, the same ring machinery with a different mesh and a tighter reach
 //
 // one thread per cell in a 2d ring around the camera, the ring lives entirely inside grass_instances
 // each accepted cell is atomically committed into the per-lod section of the buffer and the per-lod
@@ -44,6 +46,12 @@ static const float grass_cull_radius      = 1.5f;
 //   values[0] = (cell_size, ring_radius, lod_base_in_instances, max_instances_per_lod)
 //   values[1] = (height_min, height_max, max_slope_cos, inner_radius)
 //   values[2] = (map_origin_x, map_origin_z, map_inv_size_x, map_inv_size_z)
+// every float is taken, so the rest travels in the bits of draw_index:
+//   bits 0-3   lod ring
+//   bits 4-7   scatter slot
+//   bits 8-11  prop mask channel, 0 grass, 1 trees, 2 rocks
+//   bits 12-19 packed instance scale at the small end of the size range
+//   bits 20-27 packed instance scale at the large end
 // camera xz comes from buffer_frame
 // terrain height is r32 local y bound to tex (t7), material_index bitcast is the entity y
 // biome_min arrives asfloat(is_transparent), negative disables the gate
@@ -189,7 +197,22 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     float height_max    = buffer_pass.values[1].y;
     float max_slope_cos = buffer_pass.values[1].z;
     float inner_radius  = buffer_pass.values[1].w;
-    uint  lod_index     = buffer_pass.draw_index;
+
+    uint  packed_index  = buffer_pass.draw_index;
+    uint  lod_index     = packed_index & 0xFu;
+    uint  slot_index    = (packed_index >> 4)  & 0xFu;
+    uint  mask_channel  = (packed_index >> 8)  & 0xFu;
+    float scale_01_min  = float((packed_index >> 12) & 0xFFu) / 255.0f;
+    float scale_01_max  = float((packed_index >> 20) & 0xFFu) / 255.0f;
+
+    // the counters and the indirect args are laid out slot major, matches renderer_gpu_scatter_arg_index
+    uint  count_index   = slot_index * 3u + lod_index;
+
+    // the cull sphere has to grow with the instance, compose_instance_transform maps the packed scale
+    // logarithmically over 0.01 to 100 and the raster will unpack it exactly the same way
+    float largest_scale = exp2(lerp(-6.643856f, 6.643856f, scale_01_max));
+    float cull_radius   = grass_cull_radius * largest_scale;
+    float cull_height   = grass_cull_half_height * largest_scale;
 
     float2 camera_xz_anchor = get_camera_position().xz;
 
@@ -226,8 +249,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // hash combines the cell coordinates, the blade index inside the cell, and the lod seed,
     // each (cell, blade) pair gets an independent stable hash, no two blades collide and there is
     // no per-cell pattern because blade_index decorrelates blades that share a cell
+    // the slot is part of the seed, otherwise every slot would stack its instances on the exact same
+    // points and a pebble would be born inside every blade of grass
     uint blade_index = dispatch_thread_id.z;
-    uint h0  = hash_u32((uint)world_cell_x, (uint)world_cell_z, lod_index * 2654435761u + blade_index * 0x9e3779b9u);
+    uint h0  = hash_u32(
+        (uint)world_cell_x,
+        (uint)world_cell_z,
+        lod_index * 2654435761u + blade_index * 0x9e3779b9u + slot_index * 0x85ebca6bu
+    );
     float jx = hash_unit(h0);
     float jz = hash_unit(h0 * 16807u + 1u);
     float ys = hash_unit(h0 * 48271u + 3u);
@@ -312,17 +341,17 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // visibility cull, frustum + occluder hi-z on a conservative blade sphere, only blades the camera
     // can actually see survive so on-screen density is unchanged while off-screen and occluded blades
     // are dropped before the expensive slope taps, vertex shading and the atomic allocate
-    float3 blade_center = float3(world_xz.x, world_y + grass_cull_half_height, world_xz.y);
+    float3 blade_center = float3(world_xz.x, world_y + cull_height, world_xz.y);
     float4 plane_l, plane_r, plane_b, plane_t;
     get_frustum_side_planes(plane_l, plane_r, plane_b, plane_t);
-    if (!sphere_in_side_planes(blade_center, grass_cull_radius, plane_l, plane_r, plane_b, plane_t))
+    if (!sphere_in_side_planes(blade_center, cull_radius, plane_l, plane_r, plane_b, plane_t))
         return;
 
     // hi-z arrives on tex2, derive the max mip from the texture so no extra push constant is needed
     // the sphere test also rejects blades behind the camera (the side planes alone do not)
     uint hiz_w, hiz_h, hiz_mips;
     tex2.GetDimensions(0, hiz_w, hiz_h, hiz_mips);
-    if (!sphere_hiz_visible(tex2, blade_center, grass_cull_radius, float(hiz_mips - 1u)))
+    if (!sphere_hiz_visible(tex2, blade_center, cull_radius, float(hiz_mips - 1u)))
         return;
 
     // slope reject, two forward taps reusing the centre height, paid only by visible blades
@@ -336,7 +365,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         return;
     }
 
-    // biome grass mask, same uv as the heightfield, r channel is grass suitability
+    // biome mask, same uv as the heightfield, the slot picks the channel it is gated on
     // is_transparent carries biome_min as float bits, negative disables the gate
     float biome_min = asfloat(buffer_pass.is_transparent);
     if (biome_min >= 0.0f)
@@ -350,7 +379,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             terrain_world_to_normalized(world_xz),
             float2(mask_w, mask_h)
         );
-        float grass_w = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0).r;
+        float4 mask     = tex3.SampleLevel(samplers[sampler_bilinear_clamp], mask_uv, 0);
+        float grass_w   = mask_channel == 0u ? mask.r : (mask_channel == 1u ? mask.g : mask.b);
         float slope_fit = saturate((surface_normal.y - max_slope_cos) / max(1.0f - max_slope_cos, 1e-4f));
         grass_w *= slope_fit;
         if (grass_w < biome_min)
@@ -365,14 +395,15 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         }
     }
 
-    // keep the authored blade proportions within a natural range
-    float scale_01 = 0.5f + (sc - 0.5f) * 0.05f;
+    // one roll inside the authored size range, the ends arrive already packed the way the raster
+    // unpacks them so no size ever leaves the range the layer asked for
+    float scale_01 = lerp(scale_01_min, scale_01_max, sc);
 
     // atomic-allocate a slot inside this lod's section, bail out cleanly once full
     // blades_per_cell was sized from cells_in_ring with floor() so the upper bound on writes is
     // floor(cap / cells_in_ring) * cells_in_ring <= cap, the clamp here is just a defensive guard
     uint local_slot;
-    InterlockedAdd(grass_count[lod_index], 1u, local_slot);
+    InterlockedAdd(grass_count[count_index], 1u, local_slot);
     if (local_slot >= max_instances_per_lod)
         return;
 

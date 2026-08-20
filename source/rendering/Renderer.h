@@ -142,7 +142,7 @@ namespace spartan
     namespace Renderer
     {
         // one ring_radii_m and cell_size_m entry per lod ring, the renderer assumes three rings ordered near to far
-        struct ProceduralGrassParams
+        struct GpuScatterParams
         {
             float ring_radii_m[3]    = { 30.0f, 120.0f, 500.0f };
             float cell_size_m[3]     = { 0.25f, 0.6f, 1.2f };
@@ -150,7 +150,10 @@ namespace spartan
             float height_max         = 400.0f;
             float max_slope_deg      = 45.0f;
             float biome_min_weight   = 0.2f;
+            uint32_t mask_channel    = 0;    // which prop mask channel gates the slot, 0 grass, 1 trees, 2 rocks
             float density            = 1.0f;
+            float size_min           = 0.8f; // world scale on the mesh, one roll per instance inside the range
+            float size_max           = 1.2f;
             float height_bake_min    = 0.0f; // remap 0-1 height preview to world y
             float height_bake_max    = 1.0f;
             math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f);
@@ -217,16 +220,20 @@ namespace spartan
         const math::Vector3& GetWind();
         void SetWind(const math::Vector3& wind);
 
-        // gpu procedural grass, the caller keeps ownership of the mesh, material and heightmap and must outlive the renderer's use
-        void EnableProceduralGrass(
-            Mesh* grass_mesh,
-            Material* grass_material,
+        // gpu scatter, camera relative rings populated on the gpu with no entities behind them, slot 0
+        // is grass and the higher slots are micro detail, the caller keeps ownership of the mesh,
+        // material and heightmap and must outlive the renderer's use
+        void EnableGpuScatter(
+            uint32_t slot,
+            Mesh* mesh,
+            Material* material,
             RHI_Texture* terrain_heightmap,
-            const ProceduralGrassParams& params,
+            const GpuScatterParams& params,
             RHI_Texture* terrain_prop_mask = nullptr
         );
-        void DisableProceduralGrass();
-        bool IsProceduralGrassEnabled();
+        void DisableGpuScatter(uint32_t slot);
+        void DisableGpuScatter();
+        bool IsGpuScatterEnabled();
 
         // terrain surface, the Terrain component keeps ownership of the materials and maps and must outlive their use
         void SetTerrain(const TerrainParams& params);

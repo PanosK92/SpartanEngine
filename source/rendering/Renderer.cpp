@@ -2217,35 +2217,43 @@ namespace spartan
         World::SetWind(wind);
     }
 
-    void Renderer::EnableProceduralGrass(
-        Mesh* grass_mesh,
-        Material* grass_material,
+    void Renderer::EnableGpuScatter(
+        uint32_t slot,
+        Mesh* mesh,
+        Material* material,
         RHI_Texture* terrain_heightmap,
-        const ProceduralGrassParams& params,
+        const GpuScatterParams& params,
         RHI_Texture* terrain_prop_mask
     )
     {
-        // every required input must be present, otherwise the populate compute will read garbage
-        // from a freed heightmap, the indirect args would point past the global geometry buffer, etc
-        if (!grass_mesh || !grass_material || !terrain_heightmap)
+        if (slot >= renderer_max_gpu_scatter_slots)
         {
-            m_pass_state.grass_enabled = false;
             return;
         }
 
-        m_pass_state.grass_mesh      = grass_mesh;
-        m_pass_state.grass_material  = grass_material;
-        m_pass_state.grass_heightmap = terrain_heightmap;
-        m_pass_state.grass_prop_mask = terrain_prop_mask;
-        m_pass_state.grass_params    = params;
-        m_pass_state.grass_enabled   = true;
+        PassState::GpuScatterSlot& state = m_pass_state.gpu_scatter[slot];
 
-        // Render::SetMaterial normally derives these, procedural grass has no Render component and the blade vs divides by zero without them
+        // every required input must be present, otherwise the populate compute will read garbage
+        // from a freed heightmap, the indirect args would point past the global geometry buffer, etc
+        if (!mesh || !material || !terrain_heightmap)
         {
-            const std::vector<RHI_Vertex_PosTexNorTan>& mesh_vertices = grass_mesh->GetVertices();
+            state.enabled = false;
+            return;
+        }
+
+        state.mesh      = mesh;
+        state.material  = material;
+        state.heightmap = terrain_heightmap;
+        state.prop_mask = terrain_prop_mask;
+        state.params    = params;
+        state.enabled   = true;
+
+        // Render::SetMaterial normally derives these, gpu scatter has no Render component and the blade vs divides by zero without them
+        {
+            const std::vector<RHI_Vertex_PosTexNorTan>& mesh_vertices = mesh->GetVertices();
             if (!mesh_vertices.empty())
             {
-                const SubMesh& sm = grass_mesh->GetSubMesh(0);
+                const SubMesh& sm = mesh->GetSubMesh(0);
                 if (!sm.lods.empty())
                 {
                     const MeshLod& lod0 = sm.lods[0];
@@ -2262,54 +2270,77 @@ namespace spartan
                         min_y = std::min(min_y, vert.pos[1]);
                         max_y = std::max(max_y, vert.pos[1]);
                     }
-                    grass_material->SetProperty(MaterialProperty::WorldWidth,  max_x - min_x);
-                    grass_material->SetProperty(MaterialProperty::WorldHeight, max_y - min_y);
+                    material->SetProperty(MaterialProperty::WorldWidth,  max_x - min_x);
+                    material->SetProperty(MaterialProperty::WorldHeight, max_y - min_y);
                 }
             }
         }
 
         // bake static portions of the per-lod indirect args from the mesh's lod layout in the global geometry buffer
         // instance_count is dynamic and written each frame by grass_indirect_args.hlsl, the rest stays frozen here
-        const SubMesh& sub      = grass_mesh->GetSubMesh(0);
-        const uint32_t lod_cap  = renderer_max_grass_lod_count;
+        const SubMesh& sub      = mesh->GetSubMesh(0);
+        const uint32_t lod_cap  = renderer_max_gpu_scatter_lods;
         const uint32_t lod_have = static_cast<uint32_t>(sub.lods.size());
         const uint32_t lod_use  = std::min(lod_cap, lod_have);
+        if (lod_have == 0)
+        {
+            state.enabled = false;
+            return;
+        }
 
         for (uint32_t i = 0; i < lod_cap; i++)
         {
-            // grass mesh may have fewer than 3 lods on load races, fall back to lod 0 so we never index out of bounds
+            // the mesh may have fewer than 3 lods on load races, fall back to lod 0 so we never index out of bounds
             const uint32_t lod_index = i < lod_use ? i : 0u;
             const MeshLod& lod       = sub.lods[lod_index];
 
-            Sb_IndirectDrawArgs& args = m_pass_state.grass_indirect_args_static[i];
+            Sb_IndirectDrawArgs& args = state.indirect_args_static[i];
             args.index_count          = lod.index_count;
             args.instance_count       = 0; // filled by grass_indirect_args_c each frame
-            args.first_index          = grass_mesh->GetGlobalIndexOffset() + lod.index_offset;
-            args.vertex_offset        = static_cast<int32_t>(grass_mesh->GetGlobalVertexOffset() + lod.vertex_offset);
+            args.first_index          = mesh->GetGlobalIndexOffset() + lod.index_offset;
+            args.vertex_offset        = static_cast<int32_t>(mesh->GetGlobalVertexOffset() + lod.vertex_offset);
             args.first_instance       = 0; // lod_base is fed via push constant instead, sv_instanceid is per-draw zero-based
         }
 
-        m_pass_state.grass_args_baked = false; // commit on the first frame after enable
+        state.args_baked = false; // commit on the first frame after enable
 
-        // the grass material belongs to no entity, only the material upload hands it a bindless slot,
-        // so it has to be asked for or the blades sample whatever material already sits at that index
+        // the scatter material belongs to no entity, only the material upload hands it a bindless slot,
+        // so it has to be asked for or the instances sample whatever material already sits at that index
         m_pass_state.bindless_materials_dirty = true;
     }
 
-    void Renderer::DisableProceduralGrass()
+    void Renderer::DisableGpuScatter(uint32_t slot)
     {
-        m_pass_state.grass_enabled            = false;
-        m_pass_state.grass_mesh               = nullptr;
-        m_pass_state.grass_material           = nullptr;
-        m_pass_state.grass_heightmap          = nullptr;
-        m_pass_state.grass_prop_mask          = nullptr;
-        m_pass_state.grass_args_baked         = false;
+        if (slot >= renderer_max_gpu_scatter_slots)
+        {
+            return;
+        }
+
+        m_pass_state.gpu_scatter[slot]        = PassState::GpuScatterSlot();
         m_pass_state.bindless_materials_dirty = true;
     }
 
-    bool Renderer::IsProceduralGrassEnabled()
+    void Renderer::DisableGpuScatter()
     {
-        return m_pass_state.grass_enabled;
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+        {
+            m_pass_state.gpu_scatter[slot] = PassState::GpuScatterSlot();
+        }
+
+        m_pass_state.bindless_materials_dirty = true;
+    }
+
+    bool Renderer::IsGpuScatterEnabled()
+    {
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
+        {
+            if (m_pass_state.gpu_scatter[slot].enabled)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void Renderer::SetTerrain(const TerrainParams& params)
@@ -2779,11 +2810,14 @@ namespace spartan
 
         update_entities();
 
-        // procedural grass material is not attached to any entity, register it here so it lands in the
-        // bindless table and material_index can be pushed into the grass raster passes via the push constant
-        if (m_pass_state.grass_enabled && m_pass_state.grass_material)
+        // a gpu scatter material is not attached to any entity, register it here so it lands in the
+        // bindless table and material_index can be pushed into the scatter raster passes via the push constant
+        for (const PassState::GpuScatterSlot& slot : m_pass_state.gpu_scatter)
         {
-            update_material(m_pass_state.grass_material);
+            if (slot.enabled && slot.material)
+            {
+                update_material(slot.material);
+            }
         }
 
         RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);

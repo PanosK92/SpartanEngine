@@ -1689,6 +1689,15 @@ namespace spartan
             {
                 TerrainScatterLayer& layer = m_scatter_layers[index];
 
+                // a slot that was empty when the world was saved carries no authoring, so the engine
+                // default wins, that is how a new default layer reaches a world saved before it existed
+                const bool saved_empty = string(layer_node.attribute("mesh_path").as_string("")).empty() &&
+                                         !layer_node.attribute("enabled").as_bool(false);
+                if (saved_empty)
+                {
+                    continue;
+                }
+
                 layer.name                 = layer_node.attribute("name").as_string("");
                 layer.mesh_path            = layer_node.attribute("mesh_path").as_string("");
                 layer.material_folder      = layer_node.attribute("material_folder").as_string("");

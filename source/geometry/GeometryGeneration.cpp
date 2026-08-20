@@ -1834,6 +1834,133 @@ namespace spartan::geometry_generation
     
     }
 
+    void generate_pebble(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t subdivisions, const uint32_t seed)
+    {
+
+        using namespace math;
+
+        // an icosahedron is the most even way to put twelve points on a sphere, so the displacement
+        // below never has a pole to pinch and every facet ends up about the same size
+        const float t = 0.5f * (1.0f + sqrtf(5.0f));
+        std::vector<Vector3> points =
+        {
+            Vector3(-1.0f,  t,     0.0f), Vector3( 1.0f,  t,     0.0f),
+            Vector3(-1.0f, -t,     0.0f), Vector3( 1.0f, -t,     0.0f),
+            Vector3( 0.0f, -1.0f,  t),    Vector3( 0.0f,  1.0f,  t),
+            Vector3( 0.0f, -1.0f, -t),    Vector3( 0.0f,  1.0f, -t),
+            Vector3( t,     0.0f, -1.0f), Vector3( t,     0.0f,  1.0f),
+            Vector3(-t,     0.0f, -1.0f), Vector3(-t,     0.0f,  1.0f)
+        };
+        for (Vector3& point : points)
+        {
+            point.Normalize();
+        }
+
+        std::vector<uint32_t> faces =
+        {
+            0, 11, 5,  0, 5,  1,  0, 1, 7,  0, 7,  10, 0,  10, 11,
+            1, 5,  9,  5, 11, 4,  11, 10, 2, 10, 7, 6,  7,  1,  8,
+            3, 9,  4,  3, 4,  2,  3, 2, 6,  3, 6,  8,  3,  8,  9,
+            4, 9,  5,  2, 4,  11, 6, 2, 10, 8, 6,  7,  9,  8,  1
+        };
+
+        // the radius is a function of the direction alone, so two faces that share an edge derive the
+        // same corner and the surface never cracks, which is what lets the subdivision skip a weld pass
+        auto surface_point = [seed](const Vector3& direction)
+        {
+            const float phase = static_cast<float>(seed) * 0.618f;
+            float radius      = 1.0f;
+            radius += 0.20f * sinf(3.1f * direction.x + phase) * cosf(2.7f * direction.y + phase * 1.7f);
+            radius += 0.14f * sinf(4.3f * direction.z + phase * 2.3f);
+            radius += 0.09f * cosf(6.7f * direction.x + 5.1f * direction.z + phase * 3.1f);
+
+            Vector3 point = direction * (0.5f * radius);
+            // a chip that has come to rest is wider than it is tall, and it sits low enough in the
+            // ground that it reads as embedded rather than dropped on top
+            point.y = point.y * 0.62f + 0.12f;
+
+            return point;
+        };
+
+        for (uint32_t step = 0; step < subdivisions; step++)
+        {
+            std::vector<uint32_t> split;
+            split.reserve(faces.size() * 4);
+
+            const uint32_t face_count = static_cast<uint32_t>(faces.size() / 3);
+            for (uint32_t face = 0; face < face_count; face++)
+            {
+                const uint32_t i0 = faces[face * 3 + 0];
+                const uint32_t i1 = faces[face * 3 + 1];
+                const uint32_t i2 = faces[face * 3 + 2];
+
+                const uint32_t m0 = static_cast<uint32_t>(points.size());
+                points.push_back((points[i0] + points[i1]).Normalized());
+                const uint32_t m1 = static_cast<uint32_t>(points.size());
+                points.push_back((points[i1] + points[i2]).Normalized());
+                const uint32_t m2 = static_cast<uint32_t>(points.size());
+                points.push_back((points[i2] + points[i0]).Normalized());
+
+                const uint32_t children[4][3] =
+                {
+                    { i0, m0, m2 },
+                    { m0, i1, m1 },
+                    { m2, m1, i2 },
+                    { m0, m1, m2 }
+                };
+                for (const uint32_t* child : children)
+                {
+                    split.push_back(child[0]);
+                    split.push_back(child[1]);
+                    split.push_back(child[2]);
+                }
+            }
+
+            faces = split;
+        }
+
+        // flat shaded, one vertex triple per facet, a shared normal would round the chip off and it
+        // would read as a ball of mud instead of stone
+        const uint32_t face_count = static_cast<uint32_t>(faces.size() / 3);
+        vertices->reserve(face_count * 3);
+        indices->reserve(face_count * 3);
+
+        for (uint32_t face = 0; face < face_count; face++)
+        {
+            const Vector3 a = surface_point(points[faces[face * 3 + 0]]);
+            const Vector3 b = surface_point(points[faces[face * 3 + 1]]);
+            const Vector3 c = surface_point(points[faces[face * 3 + 2]]);
+
+            Vector3 normal = Vector3::Cross(b - a, c - a).Normalized();
+
+            // the chip is convex around its own centre, so the centroid direction says which way is
+            // out and the normal is right whatever the winding of the source list turned out to be
+            const Vector3 centroid = (a + b + c) / 3.0f;
+            if (Vector3::Dot(normal, centroid) < 0.0f)
+            {
+                normal = Vector3(-normal.x, -normal.y, -normal.z);
+            }
+
+            Vector3 tangent = Vector3::Cross(Vector3(0.0f, 1.0f, 0.0f), normal);
+            if (tangent.Length() < 0.001f)
+            {
+                tangent = Vector3(1.0f, 0.0f, 0.0f);
+            }
+            tangent.Normalize();
+
+            // planar uv from above, a stone texture has no seam to respect so this is enough
+            const uint32_t offset = static_cast<uint32_t>(vertices->size());
+            vertices->emplace_back(a, Vector2(a.x + 0.5f, a.z + 0.5f), normal, tangent);
+            vertices->emplace_back(b, Vector2(b.x + 0.5f, b.z + 0.5f), normal, tangent);
+            vertices->emplace_back(c, Vector2(c.x + 0.5f, c.z + 0.5f), normal, tangent);
+
+            indices->push_back(offset);
+            indices->push_back(offset + 1);
+            indices->push_back(offset + 2);
+        }
+
+    }
+
     void generate_foliage_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count)
     {
 

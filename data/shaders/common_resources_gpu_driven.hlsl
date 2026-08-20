@@ -146,10 +146,10 @@ RWStructuredBuffer<uint> restir_pairing : register(u57);
 // declared rw to match the engine pattern for per-pass structured buffers but treated as read-only
 RWStructuredBuffer<EmissiveTriangle> emissive_triangles : register(u49);
 
-// gpu procedural grass, written each frame by grass_populate.hlsl and consumed by the grass raster vs
-// grass_instances is the transient ring buffer, partitioned into one section per lod via lod_base in the push constant
-// grass_count holds one atomic counter per lod, bumped by interlockedadd during the populate dispatch
-// grass_indirect_args holds one DrawIndexedIndirect args entry per lod, the args compute reads grass_count
+// gpu scatter, grass and micro detail, written each frame by grass_populate.hlsl and consumed by the scatter raster vs
+// grass_instances is the transient pool, partitioned into one section per slot per lod via lod_base in the push constant
+// grass_count holds one atomic counter per slot per lod, bumped by interlockedadd during the populate dispatch
+// grass_indirect_args holds one DrawIndexedIndirect args entry per slot per lod, the args compute reads grass_count
 // and bakes index_count / first_index / vertex_offset / first_instance from the per-lod constants
 RWStructuredBuffer<GrassInstance>    grass_instances     : register(u50);
 RWStructuredBuffer<uint>             grass_count         : register(u51);

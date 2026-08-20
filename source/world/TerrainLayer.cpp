@@ -318,7 +318,40 @@ namespace spartan
             s.flags                  = TerrainScatterFlags_None;
         }
 
-        // slots 5 to 7 stay empty, they are there so a world can add its own scatter without
+        // scatter 5, micro detail, stone chips on the gpu rings right around the camera. bare ground
+        // three metres away is a flat sheet of vertices no matter how good the material is, this is
+        // what breaks that silhouette up, and it costs nothing past its reach because it has no entities
+        {
+            TerrainScatterLayer& s   = layers[5];
+            s.name                   = "pebbles";
+            s.mesh_path              = "builtin/pebble";
+            // no folder, the builtin stone tint is enough at this size, point it at a rock material
+            // folder from the editor if the world has one
+            s.material_folder        = "";
+            s.enabled                = true;
+            s.kind                   = TerrainScatterKind::Detail;
+            // fill times the per ring budget has to stay above the cell count of the ring, one chip per
+            // cell is the look, and the reach is short because a chip is subpixel past forty metres
+            s.density                = 0.10f;
+            s.slope_max              = 45.0f;
+            s.height_min             = 0.5f;
+            s.height_max             = 100000.0f;
+            // chips belong on every surface, gating them on a biome channel would leave the meadows bare
+            s.mask_channel           = -1;
+            s.mesh_scale             = 0.11f;
+            s.size_min               = 0.55f;
+            s.size_max               = 1.70f;
+            s.render_distance        = 45.0f;
+            s.grass_ring_radius[0]   = 8.0f;
+            s.grass_ring_radius[1]   = 20.0f;
+            s.grass_ring_radius[2]   = 45.0f;
+            s.grass_cell_size[0]     = 0.35f;
+            s.grass_cell_size[1]     = 0.80f;
+            s.grass_cell_size[2]     = 1.60f;
+            s.flags                  = TerrainScatterFlags_None;
+        }
+
+        // slots 6 and 7 stay empty, they are there so a world can add its own scatter without
         // touching the engine, point one at a mesh, name it and switch it on
         built = true;
         return layers;

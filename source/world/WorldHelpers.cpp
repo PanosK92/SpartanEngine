@@ -117,9 +117,9 @@ namespace spartan
             World::RemoveEntity(entity);
         }
 
-        // grass has no entities to sweep, it is a renderer pass fed by the height map and the prop
-        // mask, so removing props has to turn it off explicitly or it keeps drawing over bare terrain
-        Renderer::DisableProceduralGrass();
+        // grass and micro detail have no entities to sweep, they are renderer passes fed by the height
+        // map and the prop mask, so removing props has to turn them off or they keep drawing over bare terrain
+        Renderer::DisableGpuScatter();
 
         if (!doomed.empty())
         {
@@ -256,6 +256,36 @@ namespace spartan
             return mesh;
         }
 
+        // a stone chip, the smallest thing the gpu rings scatter, three lods because the near ring
+        // carries thousands of them and the far ring only needs a silhouette
+        shared_ptr<Mesh> build_pebble_mesh()
+        {
+            shared_ptr<Mesh> mesh = make_shared<Mesh>();
+            mesh->SetObjectName("pebble");
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+
+            const uint32_t subdivisions[3] = { 1, 0, 0 };
+            uint32_t sub_mesh_index        = 0;
+            for (uint32_t lod = 0; lod < 3; lod++)
+            {
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                vector<uint32_t> indices;
+                geometry_generation::generate_pebble(&vertices, &indices, subdivisions[lod], 7u);
+
+                if (lod == 0)
+                {
+                    mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);
+                }
+                else
+                {
+                    mesh->AddLod(vertices, indices, sub_mesh_index);
+                }
+            }
+            mesh->CreateGpuBuffers();
+
+            return mesh;
+        }
+
         shared_ptr<Mesh> build_flower_mesh()
         {
             shared_ptr<Mesh> mesh   = make_shared<Mesh>();
@@ -317,6 +347,10 @@ namespace spartan
                 else if (path == "builtin/flower")
                 {
                     mesh = build_flower_mesh();
+                }
+                else if (path == "builtin/pebble")
+                {
+                    mesh = build_pebble_mesh();
                 }
 
                 if (!mesh)
@@ -410,6 +444,18 @@ namespace spartan
                 material->SetObjectName("grass_blade");
                 material->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
                 material = ResourceCache::Cache(material);
+            }
+            else if (mesh_path == "builtin/pebble")
+            {
+                // a chip is a solid, none of the foliage flags apply, and it is only ever this grey
+                // when the layer has no material folder to take its maps from
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::Back));
+                material->SetProperty(MaterialProperty::Roughness, 0.9f);
+                material->SetProperty(MaterialProperty::ColorR, 0.40f);
+                material->SetProperty(MaterialProperty::ColorG, 0.38f);
+                material->SetProperty(MaterialProperty::ColorB, 0.36f);
+                material->SetObjectName("pebble");
+                material->SetResourceName("pebble" + string(EXTENSION_MATERIAL));
             }
             else
             {
@@ -696,35 +742,49 @@ namespace spartan
             }
         }
 
-        // the gpu grass rings, there are no entities for this, the populate pass reads the height map
-        // and the grass channel of the biome mask every frame
-        bool enable_procedural_grass(Terrain* terrain, const TerrainScatterLayer& layer)
+        // one gpu scatter slot, there are no entities for this, the populate pass reads the height map
+        // and a channel of the biome mask every frame. grass takes slot 0, micro detail takes the rest
+        bool enable_gpu_scatter(Terrain* terrain, const TerrainScatterLayer& layer, const uint32_t slot)
         {
             RHI_Texture* height_map = terrain->GetHeightMapGpu();
             if (!height_map)
             {
-                SP_LOG_WARNING("terrain scatter '%s': no r32 height map, gpu grass disabled", layer.name.c_str());
+                SP_LOG_WARNING("terrain scatter '%s': no r32 height map, gpu scatter disabled", layer.name.c_str());
                 return false;
             }
 
+            // a layer that gates on a mask channel cannot run without the mask, a layer that ignores it
+            // does not care, which is what lets micro detail cover ground no biome claimed
             RHI_Texture* prop_mask = terrain->GetPropMask();
-            if (!prop_mask)
+            if (!prop_mask && layer.mask_channel >= 0)
             {
-                SP_LOG_WARNING("terrain scatter '%s': no biome mask, gpu grass disabled", layer.name.c_str());
+                SP_LOG_WARNING("terrain scatter '%s': no biome mask, gpu scatter disabled", layer.name.c_str());
                 return false;
             }
 
             Mesh* mesh = resolve_scatter_mesh(layer.mesh_path);
-            shared_ptr<Material> material = layer.material_folder.empty() ?
-                resolve_builtin_material("builtin/grass_blade") :
-                resolve_folder_material(layer.material_folder);
+
+            shared_ptr<Material> material;
+            if (!layer.material_folder.empty())
+            {
+                material = resolve_folder_material(layer.material_folder);
+            }
+            if (!material)
+            {
+                // a generated mesh carries no imported material, the flags that make a blade bend or a
+                // chip read as stone live in the builtin set
+                const bool builtin   = layer.mesh_path.rfind("builtin/", 0) == 0;
+                const char* fallback = layer.kind == TerrainScatterKind::Detail ? "builtin/pebble" : "builtin/grass_blade";
+                material             = resolve_builtin_material(builtin ? layer.mesh_path : string(fallback));
+            }
+
             if (!mesh || !material)
             {
-                SP_LOG_WARNING("terrain scatter '%s': no blade mesh or material, gpu grass disabled", layer.name.c_str());
+                SP_LOG_WARNING("terrain scatter '%s': no mesh or material, gpu scatter disabled", layer.name.c_str());
                 return false;
             }
 
-            Renderer::ProceduralGrassParams params;
+            Renderer::GpuScatterParams params;
             for (uint32_t ring = 0; ring < 3; ring++)
             {
                 params.ring_radii_m[ring] = layer.grass_ring_radius[ring];
@@ -733,16 +793,20 @@ namespace spartan
             params.height_min = terrain->GetSeaLevel() + layer.height_min;
             params.height_max = terrain->GetSeaLevel() + layer.height_max;
             params.max_slope_deg = layer.slope_max;
-            // the populate pass only reads the grass channel, a mask channel of -1 turns the gate off
+            // a mask channel of -1 turns the gate off, which is what detail wants, a chip belongs anywhere
             params.biome_min_weight = layer.mask_channel >= 0 ? layer.mask_min : -1.0f;
-            params.density = clamp(layer.density, 0.05f, 1.0f);
+            params.mask_channel = layer.mask_channel >= 0 ? static_cast<uint32_t>(layer.mask_channel) : 0u;
+            params.density = clamp(layer.density, 0.01f, 1.0f);
+            // the gpu rolls one size per instance the same way the cpu placer does
+            params.size_min = layer.mesh_scale * min(layer.size_min, layer.size_max);
+            params.size_max = layer.mesh_scale * max(layer.size_min, layer.size_max);
             params.terrain_world_mapping = terrain->GetWorldMapping();
 
             const float extent_x = static_cast<float>(terrain->GetWidth()  - 1) * static_cast<float>(terrain->GetScale());
             const float extent_z = static_cast<float>(terrain->GetHeight() - 1) * static_cast<float>(terrain->GetScale());
             params.terrain_extent_m = Vector2(extent_x, extent_z);
 
-            Renderer::EnableProceduralGrass(mesh, material.get(), height_map, params, prop_mask);
+            Renderer::EnableGpuScatter(slot, mesh, material.get(), height_map, params, prop_mask);
 
             return true;
         }
@@ -762,7 +826,7 @@ namespace spartan
 
         if (!terrain->GetSpawnBiomeProps())
         {
-            Renderer::DisableProceduralGrass();
+            Renderer::DisableGpuScatter();
             return;
         }
 
@@ -785,7 +849,11 @@ namespace spartan
         const vector<uint32_t> tile_order = build_tile_order(tiles);
 
         array<TerrainScatterLayer, terrain_scatter_max>& layers = terrain->GetScatterLayers();
-        bool grass_pushed = false;
+
+        // grass owns slot 0 because its caps are the large ones, every detail layer claims the next
+        // slot in order, a world with more gpu layers than slots gets a warning and the extras stay off
+        bool gpu_slot_pushed[renderer_max_gpu_scatter_slots] = {};
+        uint32_t detail_slot_next                            = 1;
 
         // one of these per layer that has a mesh and passed its gates, placement only touches per tile
         // buckets so it parallelises, the entities it feeds are built on this thread so the scene graph
@@ -815,9 +883,39 @@ namespace spartan
                 continue;
             }
 
-            if (layer.kind == TerrainScatterKind::Grass)
+            if (layer.kind == TerrainScatterKind::Grass || layer.kind == TerrainScatterKind::Detail)
             {
-                grass_pushed = enable_procedural_grass(terrain, layer) || grass_pushed;
+                uint32_t slot = 0;
+                if (layer.kind == TerrainScatterKind::Detail)
+                {
+                    if (detail_slot_next >= renderer_max_gpu_scatter_slots)
+                    {
+                        SP_LOG_WARNING(
+                            "terrain scatter '%s': every gpu detail slot is taken, this layer stays off",
+                            layer.name.c_str()
+                        );
+                        continue;
+                    }
+                    slot = detail_slot_next++;
+                }
+                else if (gpu_slot_pushed[0])
+                {
+                    // two grass layers would fight over slot 0, the second one borrows a detail slot
+                    if (detail_slot_next >= renderer_max_gpu_scatter_slots)
+                    {
+                        SP_LOG_WARNING(
+                            "terrain scatter '%s': every gpu scatter slot is taken, this layer stays off",
+                            layer.name.c_str()
+                        );
+                        continue;
+                    }
+                    slot = detail_slot_next++;
+                }
+
+                if (enable_gpu_scatter(terrain, layer, slot))
+                {
+                    gpu_slot_pushed[slot] = true;
+                }
                 continue;
             }
 
@@ -942,9 +1040,14 @@ namespace spartan
             );
         }
 
-        if (!grass_pushed)
+        // a slot nobody claimed this pass has to be switched off, otherwise it keeps drawing the mesh
+        // and the rules it was given the last time round
+        for (uint32_t slot = 0; slot < renderer_max_gpu_scatter_slots; slot++)
         {
-            Renderer::DisableProceduralGrass();
+            if (!gpu_slot_pushed[slot])
+            {
+                Renderer::DisableGpuScatter(slot);
+            }
         }
     }
 

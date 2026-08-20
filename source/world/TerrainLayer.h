@@ -109,8 +109,9 @@ namespace spartan
 
     enum class TerrainScatterKind : uint32_t
     {
-        Mesh,  // instanced entities cloned onto every terrain tile
-        Grass, // gpu procedural grass rings, no entities exist for it
+        Mesh,   // instanced entities cloned onto every terrain tile
+        Grass,  // gpu procedural grass rings, no entities exist for it
+        Detail, // the same gpu rings with a solid mesh, pebbles and chips right around the camera
         Max
     };
 
@@ -192,7 +193,8 @@ namespace spartan
         float render_distance       = 0.0f;   // meters, 0 is unlimited
         float shadow_distance       = 150.0f; // meters
 
-        // grass only, the three concentric rings the gpu populates
+        // gpu kinds only, grass and detail, the three concentric rings the gpu populates around the
+        // camera, the spacing is what sets the density and the reach is what sets the cost
         float grass_ring_radius[3]  = { 55.0f, 180.0f, 500.0f };
         float grass_cell_size[3]    = { 0.36f, 0.82f, 2.1f };
 

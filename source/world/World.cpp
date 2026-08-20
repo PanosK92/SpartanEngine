@@ -1317,7 +1317,7 @@ namespace spartan
         load_ready_for_main_commit.store(false, memory_order_release);
         defer_script_init.store(false, memory_order_release);
 
-        Renderer::DisableProceduralGrass();          // drop renderer references to builder owned grass mesh/material
+        Renderer::DisableGpuScatter();               // drop renderer references to builder owned scatter meshes/materials
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
 
         // cars hold entity pointers, drop them before entity delete
